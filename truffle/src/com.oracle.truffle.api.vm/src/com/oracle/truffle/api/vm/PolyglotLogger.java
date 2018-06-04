@@ -28,10 +28,12 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import java.io.Closeable;
+import java.io.ObjectStreamException;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -151,10 +154,10 @@ final class PolyglotLogger extends Logger {
         if (filter != null && !filter.isLoggable(record)) {
             return;
         }
-
+        final LogRecord immutable = ImmutableLogRecord.create(record);
         for (Logger current = this; current != null; current = current.getParent()) {
             for (Handler handler : current.getHandlers()) {
-                handler.publish(record);
+                handler.publish(immutable);
             }
             if (!current.getUseParentHandlers()) {
                 break;
@@ -700,6 +703,176 @@ final class PolyglotLogger extends Logger {
                 result = currentContext.logHandler;
             }
             return result;
+        }
+    }
+
+    private static final class ImmutableLogRecord extends LogRecord {
+
+        private static final long serialVersionUID = 1L;
+
+        private final LogRecord delegate;
+
+        private ImmutableLogRecord(final LogRecord delegate) {
+            super(delegate.getLevel(), delegate.getMessage());
+            this.delegate = delegate;
+            final Object[] params = delegate.getParameters();
+            Object[] copy = null;
+            if (params != null) {
+                copy = new Object[params.length];
+                final PolyglotContextImpl[] contextHolder = new PolyglotContextImpl[1];
+                for (int i = 0; i < params.length; i++) {
+                    copy[i] = safeValue(params[i], contextHolder);
+                }
+            }
+            super.setParameters(copy);
+        }
+
+        @Override
+        public String getLoggerName() {
+            return delegate.getLoggerName();
+        }
+
+        @Override
+        public ResourceBundle getResourceBundle() {
+            return delegate.getResourceBundle();
+        }
+
+        @Override
+        public String getResourceBundleName() {
+            return delegate.getResourceBundleName();
+        }
+
+        @Override
+        public long getSequenceNumber() {
+            return delegate.getSequenceNumber();
+        }
+
+        @Override
+        public String getSourceClassName() {
+            return delegate.getSourceClassName();
+        }
+
+        @Override
+        public String getSourceMethodName() {
+            return delegate.getSourceMethodName();
+        }
+
+        @Override
+        public Object[] getParameters() {
+            final Object[] params = super.getParameters();
+            return params == null ? null : Arrays.copyOf(params, params.length);
+        }
+
+        @Override
+        public int getThreadID() {
+            return delegate.getThreadID();
+        }
+
+        @Override
+        public long getMillis() {
+            return delegate.getMillis();
+        }
+
+        @Override
+        public Throwable getThrown() {
+            return delegate.getThrown();
+        }
+
+        @Override
+        public void setLevel(Level level) {
+            throw new UnsupportedOperationException("Setting Level is not supported.");
+        }
+
+        @Override
+        public void setLoggerName(String name) {
+            throw new UnsupportedOperationException("Setting Logger Name is not supported.");
+        }
+
+        @Override
+        public void setMessage(String message) {
+            throw new UnsupportedOperationException("Setting Messag is not supported.");
+        }
+
+        @Override
+        public void setMillis(long millis) {
+            throw new UnsupportedOperationException("Setting Millis is not supported.");
+        }
+
+        @Override
+        public void setParameters(Object[] parameters) {
+            throw new UnsupportedOperationException("Setting Parameters is not supported.");
+        }
+
+        @Override
+        public void setResourceBundle(ResourceBundle bundle) {
+            throw new UnsupportedOperationException("Setting Resource Bundle is not supported.");
+        }
+
+        @Override
+        public void setResourceBundleName(String name) {
+            throw new UnsupportedOperationException("Setting Resource Bundle Name is not supported.");
+        }
+
+        @Override
+        public void setSequenceNumber(long seq) {
+            throw new UnsupportedOperationException("Setting Sequence Number is not supported.");
+        }
+
+        @Override
+        public void setSourceClassName(String sourceClassName) {
+            throw new UnsupportedOperationException("Setting Parameters is not supported.");
+        }
+
+        @Override
+        public void setSourceMethodName(String sourceMethodName) {
+            throw new UnsupportedOperationException("Setting Source Method Name is not supported.");
+        }
+
+        @Override
+        public void setThreadID(int threadID) {
+            throw new UnsupportedOperationException("Setting Thread ID is not supported.");
+        }
+
+        @Override
+        public void setThrown(Throwable thrown) {
+            throw new UnsupportedOperationException("Setting Throwable is not supported.");
+        }
+
+        private Object writeReplace() throws ObjectStreamException {
+            final LogRecord serializableForm = new LogRecord(getLevel(), getMessage());
+            serializableForm.setLoggerName(delegate.getLoggerName());
+            serializableForm.setMillis(delegate.getMillis());
+            serializableForm.setParameters(super.getParameters());
+            serializableForm.setResourceBundle(delegate.getResourceBundle());
+            serializableForm.setResourceBundleName(delegate.getResourceBundleName());
+            serializableForm.setSequenceNumber(delegate.getSequenceNumber());
+            serializableForm.setSourceClassName(delegate.getSourceClassName());
+            serializableForm.setSourceMethodName(delegate.getSourceMethodName());
+            serializableForm.setThreadID(delegate.getThreadID());
+            serializableForm.setThrown(delegate.getThrown());
+            return serializableForm;
+        }
+
+        @SuppressWarnings("deprecation")
+        private static Object safeValue(final Object param, PolyglotContextImpl[] contextHolder) {
+            if (param == null || PolyglotImpl.EngineImpl.isPrimitive(param)) {
+                return param;
+            }
+            if (contextHolder[0] == null) {
+                contextHolder[0] = PolyglotContextImpl.current();
+            }
+            final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(contextHolder[0], null, param);
+            final PolyglotLanguageContext displayLanguageContext;
+            if (resolvedLanguage != null) {
+                displayLanguageContext = contextHolder[0].contexts[resolvedLanguage.index];
+            } else {
+                displayLanguageContext = contextHolder[0].getHostContext();
+            }
+            return VMAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
+        }
+
+        static LogRecord create(final LogRecord delegate) {
+            return new ImmutableLogRecord(delegate);
         }
     }
 }

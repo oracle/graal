@@ -42,6 +42,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -355,12 +356,33 @@ public final class Engine implements AutoCloseable {
             return this;
         }
 
+        /**
+         * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
+         * using the {@link #options(java.util.Map)}. The level option key has the following format:
+         * {@code log.languageId.loggerName.level} or {@code log.instrumentId.loggerName.level}. The
+         * value is either a name of pre-defined {@link Level} or a numeric {@link Level} value.
+         *
+         * @param logHandler the {@link Handler} to use for logging in engine's {@link Context}s.
+         * @return the {@link Builder}
+         * @since 1.0
+         */
         public Builder logHandler(final Handler logHandler) {
             Objects.requireNonNull(logHandler, "Hanlder must be non null.");
             this.customLogHandler = logHandler;
             return this;
         }
 
+        /**
+         * Installs a new logging {@link Handler} using given {@link OutputStream}. The logger's
+         * {@link Level} configuration is done using the {@link #options(java.util.Map)}. The level
+         * option key has the following format: {@code log.languageId.loggerName.level} or
+         * {@code log.instrumentId.loggerName.level}. The value is either a name of pre-defined
+         * {@link Level} or a numeric {@link Level} value.
+         *
+         * @param out the {@link OutputStream} to use for logging in engine's {@link Context}s.
+         * @return the {@link Builder}
+         * @since 1.0
+         */
         public Builder logOut(final OutputStream out) {
             Objects.requireNonNull(out, "out must be non null.");
             this.customLogHandler = new PolyglotStreamHandler(out);

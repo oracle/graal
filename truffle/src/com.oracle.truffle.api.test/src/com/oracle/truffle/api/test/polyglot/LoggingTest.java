@@ -26,9 +26,12 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -368,6 +371,144 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testLogRecordImmutable() {
+        final TestHandler handler1 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder().logHandler(handler1).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            boolean logged = false;
+            for (LogRecord r : handler1.getRawLog()) {
+                logged = true;
+                assertImmutable(r);
+            }
+            Assert.assertTrue(logged);
+        }
+    }
+
+    @Test
+    public void testParametersPrimitive() {
+        final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
+        AbstractLoggingLanguage.action = new Consumer<Collection<Logger>>() {
+            @Override
+            public void accept(final Collection<Logger> loggers) {
+                for (Logger logger : loggers) {
+                    logger.log(Level.WARNING, "Parameters", Arrays.copyOf(expected, expected.length));
+                }
+            }
+        };
+        final TestHandler handler1 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder().logHandler(handler1).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            boolean logged = false;
+            for (LogRecord r : handler1.getRawLog()) {
+                if ("Parameters".equals(r.getMessage())) {
+                    logged = true;
+                    Assert.assertArrayEquals(expected, r.getParameters());
+                }
+            }
+            Assert.assertTrue(logged);
+        }
+    }
+
+    @Test
+    public void testParametersObjects() {
+        AbstractLoggingLanguage.action = new Consumer<Collection<Logger>>() {
+            @Override
+            public void accept(final Collection<Logger> loggers) {
+                for (Logger logger : loggers) {
+                    logger.log(Level.WARNING, "Parameters", new LoggingLanguageObject("passed"));
+                }
+            }
+        };
+        final TestHandler handler1 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder().logHandler(handler1).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            boolean logged = false;
+            for (LogRecord r : handler1.getRawLog()) {
+                if ("Parameters".equals(r.getMessage())) {
+                    logged = true;
+                    Assert.assertArrayEquals(new Object[]{"passed"}, r.getParameters());
+                }
+            }
+            Assert.assertTrue(logged);
+        }
+    }
+
+    private static void assertImmutable(final LogRecord r) {
+        try {
+            r.setLevel(Level.FINEST);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setLoggerName("test");
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setMessage("test");
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setMillis(10);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setParameters(new Object[0]);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setResourceBundle(null);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setResourceBundleName(null);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setSequenceNumber(10);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setSourceClassName("Test");
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setSourceMethodName("test");
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setThreadID(10);
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+        try {
+            r.setThrown(new NullPointerException());
+            Assert.fail("Should not reach here.");
+        } catch (UnsupportedOperationException e) {
+            // Expected
+        }
+    }
+
     private static Level min(Level a, Level b) {
         return a.intValue() < b.intValue() ? a : b;
     }
@@ -487,6 +628,19 @@ public class LoggingTest {
         }
     }
 
+    private static final class LoggingLanguageObject implements TruffleObject {
+        final String stringValue;
+
+        LoggingLanguageObject(final String stringValue) {
+            this.stringValue = stringValue;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return null;
+        }
+    }
+
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {
         static final String[] LOGGER_NAMES = {"a", "a.a", "a.b", "a.a.a", "b", "b.a", "b.a.a.a"};
         static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
@@ -496,7 +650,7 @@ public class LoggingTest {
         AbstractLoggingLanguage(final String id) {
             final Collection<Logger> loggers = new ArrayList<>(LOGGER_NAMES.length);
             for (String loggerName : LOGGER_NAMES) {
-                loggers.add(Truffle.getLogger(id, loggerName, null));
+                loggers.add(Truffle.getLogger(id, loggerName));
             }
             allLoggers = loggers;
         }
@@ -508,7 +662,12 @@ public class LoggingTest {
 
         @Override
         protected boolean isObjectOfLanguage(Object object) {
-            return false;
+            return object instanceof LoggingLanguageObject;
+        }
+
+        @Override
+        protected String toString(LoggingContext context, Object value) {
+            return ((LoggingLanguageObject) value).stringValue;
         }
 
         @Override
@@ -554,7 +713,7 @@ public class LoggingTest {
     }
 
     private static final class TestHandler extends Handler {
-        private final List<Map.Entry<Level, String>> logRecords;
+        private final List<LogRecord> logRecords;
 
         TestHandler() {
             this.logRecords = new ArrayList<>();
@@ -566,7 +725,7 @@ public class LoggingTest {
             Assert.assertNotNull(message);
             final Level level = record.getLevel();
             Assert.assertNotNull(level);
-            logRecords.add(new AbstractMap.SimpleImmutableEntry<>(level, message));
+            logRecords.add(record);
         }
 
         @Override
@@ -579,6 +738,14 @@ public class LoggingTest {
         }
 
         List<Map.Entry<Level, String>> getLog() {
+            final List<Map.Entry<Level, String>> res = new ArrayList<>();
+            for (LogRecord r : logRecords) {
+                res.add(new AbstractMap.SimpleImmutableEntry<>(r.getLevel(), r.getMessage()));
+            }
+            return res;
+        }
+
+        List<LogRecord> getRawLog() {
             return logRecords;
         }
 

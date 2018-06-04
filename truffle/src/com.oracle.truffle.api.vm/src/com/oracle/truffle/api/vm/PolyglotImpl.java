@@ -504,7 +504,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return foundLanguage;
         }
 
-        private static boolean isPrimitive(final Object value) {
+        static boolean isPrimitive(final Object value) {
             final Class<?> valueClass = value.getClass();
             return valueClass == Boolean.class || valueClass == Byte.class || valueClass == Short.class || valueClass == Integer.class || valueClass == Long.class ||
                             valueClass == Float.class || valueClass == Double.class ||
