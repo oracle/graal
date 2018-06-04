@@ -13,7 +13,7 @@
   <module name="TreeWalker">
     <module name="AvoidStarImport">
       <!-- After GR-8623 is fixed this should be disabled again.
-           We should allow star class imports as it allows us to import deprecated API without 
+           We should allow star class imports as it allows us to import deprecated API without
            triggering the javac bug for deprecated warnings for imports:
            https://stackoverflow.com/questions/1858021/suppress-deprecated-import-warning-in-java/20909204#20909204 -->
       <property name="allowClassImports" value="true"/>
