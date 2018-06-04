@@ -41,5 +41,5 @@ Each GraalVM component is licensed:
 the [GPL 2 with Classpath exception](truffle/LICENSE.GPL.md).
 * [Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md).
 * [TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
-* The [Graal compiler](/compiler/) is licensed under the [GPL 2](compiler/LICENSE.md).
-* [Substrate VM](/substratevm/) is licensed under the [GPL 2](substratevm/LICENSE.md).
+* The [Graal compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).
+* [Substrate VM](/substratevm/) is licensed under the [GPL 2 with Classpath exception](substratevm/LICENSE.md).
