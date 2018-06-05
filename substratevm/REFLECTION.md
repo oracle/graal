@@ -8,7 +8,7 @@ Examining and accessing program elements through `java.lang.reflect` at runtime 
 
     -H:ReflectionConfigurationFiles=/path/to/reflectconfig
 
-where `reflectconfig` is a JSON file in the following format (use `-H:+PrintFlags` for more details):
+where `reflectconfig` is a JSON file in the following format (use `--expert-options` for more details):
 
 	[
 	  {
