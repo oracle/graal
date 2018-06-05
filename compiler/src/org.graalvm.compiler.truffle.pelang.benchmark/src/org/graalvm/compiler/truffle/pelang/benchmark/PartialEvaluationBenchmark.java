@@ -45,6 +45,9 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
+
 import jdk.vm.ci.meta.SpeculationLog;
 
 @State(Scope.Thread)
@@ -53,11 +56,12 @@ public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
     private final PartialEvaluatorProxy proxy = new PartialEvaluatorProxy();
     private CompileState state;
 
-    protected abstract OptimizedCallTarget createCallTarget();
+    protected abstract RootNode createRootNode();
 
     @Setup
     public void setup() {
-        OptimizedCallTarget callTarget = createCallTarget();
+        RootNode rootNode = createRootNode();
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
 
         // call the target a few times
         callTarget.call();
