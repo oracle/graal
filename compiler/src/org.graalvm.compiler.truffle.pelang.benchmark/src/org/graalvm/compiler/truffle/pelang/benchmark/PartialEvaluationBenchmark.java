@@ -76,10 +76,10 @@ public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
         proxy.createGraph(state);
     }
 
-    @Benchmark
-    public void fastPartialEvaluate() {
-        proxy.fastPartialEvaluation(state);
-    }
+// @Benchmark
+// public void fastPartialEvaluate() {
+// proxy.fastPartialEvaluation(state);
+// }
 
     private static class PartialEvaluatorProxy {
 
