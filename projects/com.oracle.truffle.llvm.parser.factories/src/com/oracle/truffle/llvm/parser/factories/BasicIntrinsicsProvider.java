@@ -143,8 +143,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
-import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
@@ -1233,6 +1234,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMLangStartNodeGen.create(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
+            }
+        });
+        factories.put("@std::rt::lang_start_internal", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMLangStartInternalNodeGen.create(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
             }
         });
         factories.put("@std::process::exit", new LLVMNativeIntrinsicFactory(true, false) {

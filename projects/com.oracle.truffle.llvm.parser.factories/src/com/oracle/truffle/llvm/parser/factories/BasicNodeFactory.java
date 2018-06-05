@@ -1346,6 +1346,9 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMStoreNode store;
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
+                case I1:
+                    store = LLVMI1StoreNodeGen.create(null, null);
+                    break;
                 case I8:
                     store = LLVMI8StoreNodeGen.create(null, null);
                     break;
