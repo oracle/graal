@@ -45,6 +45,11 @@ public abstract class CustomSubstitutionField implements ReadableJavaField {
     }
 
     @Override
+    public int getOffset() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean isInternal() {
         return false;
     }

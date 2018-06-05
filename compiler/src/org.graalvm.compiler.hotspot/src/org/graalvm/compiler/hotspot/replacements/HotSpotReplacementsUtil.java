@@ -24,8 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 import static org.graalvm.compiler.hotspot.replacements.UnsafeAccess.UNSAFE;
@@ -67,12 +66,12 @@ import org.graalvm.word.WordFactory;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 //JaCoCo Exclude
@@ -136,7 +135,7 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    public static HotSpotJVMCIRuntimeProvider runtime() {
+    public static HotSpotJVMCIRuntime runtime() {
         return HotSpotJVMCIRuntime.runtime();
     }
 
@@ -558,17 +557,17 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int arrayBaseOffset(JavaKind elementKind) {
-        return getArrayBaseOffset(elementKind);
+    public static int getArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+        return metaAccessProvider.getArrayBaseOffset(elementKind);
     }
 
     @Fold
-    public static int arrayIndexScale(JavaKind elementKind) {
-        return getArrayIndexScale(elementKind);
+    public static int arrayIndexScale(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+        return metaAccessProvider.getArrayIndexScale(elementKind);
     }
 
     public static Word arrayStart(int[] a) {
-        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, getArrayBaseOffset(JavaKind.Int)));
+        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
     }
 
     /**

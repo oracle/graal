@@ -145,6 +145,11 @@ public class SubstrateField implements SharedField, Replaced {
     }
 
     @Override
+    public int getOffset() {
+        throw unimplemented();
+    }
+
+    @Override
     public boolean isInternal() {
         throw unimplemented();
     }

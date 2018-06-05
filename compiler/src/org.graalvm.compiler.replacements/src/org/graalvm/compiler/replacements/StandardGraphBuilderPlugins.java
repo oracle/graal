@@ -127,6 +127,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import sun.misc.Unsafe;
 
 /**
@@ -981,11 +982,11 @@ public class StandardGraphBuilderPlugins {
                 GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is need to use `deoptimizeAndInvalidateWithSpeculation`");
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
                 DirectiveSpeculationReason reason = new DirectiveSpeculationReason(pos);
-                JavaConstant speculation;
+                Speculation speculation;
                 if (b.getGraph().getSpeculationLog().maySpeculate(reason)) {
                     speculation = b.getGraph().getSpeculationLog().speculate(reason);
                 } else {
-                    speculation = JavaConstant.defaultForKind(JavaKind.Object);
+                    speculation = SpeculationLog.NO_SPECULATION;
                 }
                 b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter, speculation));
                 return true;

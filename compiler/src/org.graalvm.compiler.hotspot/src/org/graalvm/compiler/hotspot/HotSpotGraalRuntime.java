@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
@@ -86,6 +85,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
@@ -98,15 +98,15 @@ import jdk.vm.ci.runtime.JVMCIBackend;
  */
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
-    private static boolean checkArrayIndexScaleInvariants() {
-        assert getArrayIndexScale(JavaKind.Byte) == 1;
-        assert getArrayIndexScale(JavaKind.Boolean) == 1;
-        assert getArrayIndexScale(JavaKind.Char) == 2;
-        assert getArrayIndexScale(JavaKind.Short) == 2;
-        assert getArrayIndexScale(JavaKind.Int) == 4;
-        assert getArrayIndexScale(JavaKind.Long) == 8;
-        assert getArrayIndexScale(JavaKind.Float) == 4;
-        assert getArrayIndexScale(JavaKind.Double) == 8;
+    private static boolean checkArrayIndexScaleInvariants(MetaAccessProvider metaAccess) {
+        assert metaAccess.getArrayIndexScale(JavaKind.Byte) == 1;
+        assert metaAccess.getArrayIndexScale(JavaKind.Boolean) == 1;
+        assert metaAccess.getArrayIndexScale(JavaKind.Char) == 2;
+        assert metaAccess.getArrayIndexScale(JavaKind.Short) == 2;
+        assert metaAccess.getArrayIndexScale(JavaKind.Int) == 4;
+        assert metaAccess.getArrayIndexScale(JavaKind.Long) == 8;
+        assert metaAccess.getArrayIndexScale(JavaKind.Float) == 4;
+        assert metaAccess.getArrayIndexScale(JavaKind.Double) == 8;
         return true;
     }
 
@@ -259,7 +259,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         BenchmarkCounters.initialize(jvmciRuntime, options);
 
-        assert checkArrayIndexScaleInvariants();
+        assert checkArrayIndexScaleInvariants(hostJvmciBackend.getMetaAccess());
 
         runtimeStartTime = System.nanoTime();
         bootstrapJVMCI = config.getFlag("BootstrapJVMCI", Boolean.class);
@@ -288,7 +288,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             if (compilable instanceof HotSpotResolvedJavaMethod) {
                 HotSpotResolvedObjectType type = ((HotSpotResolvedJavaMethod) compilable).getDeclaringClass();
                 if (type instanceof HotSpotResolvedJavaType) {
-                    Class<?> clazz = ((HotSpotResolvedJavaType) type).mirror();
+                    Class<?> clazz = runtime().getMirror(type);
                     try {
                         ClassLoader cl = clazz.getClassLoader();
                         if (cl != null) {
