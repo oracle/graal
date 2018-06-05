@@ -5,7 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 1.0.0 RC3
 
 * Removed deprecated ResultVerifier.getDefaultResultVerfier.
-* Deprecated `com.oracle.truffle.api.frame.FrameDescriptor.shallowCopy` 
+* Deprecated `com.oracle.truffle.api.frame.FrameDescriptor.shallowCopy` and `com.oracle.truffle.api.frame.FrameSlot.getFrameDescriptor` 
 
 ## Version 1.0.0 RC2
 
