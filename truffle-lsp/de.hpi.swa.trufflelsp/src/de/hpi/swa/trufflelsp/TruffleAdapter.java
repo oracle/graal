@@ -46,6 +46,7 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -391,7 +392,7 @@ public class TruffleAdapter implements ContextsListener {
                             Object nearestNodeReturnValue = executeToSection(nearestNode, sourceWrapper);
                             if (nearestNodeReturnValue != null) {
                                 boolean areOjectPropertiesPresent = nearestNodeReturnValue instanceof DebugValue
-                                                ? doWithContext(() -> fillCompletionsFromTruffleObject(completions, (DebugValue) nearestNodeReturnValue))
+                                                ? doWithContext(() -> fillCompletionsFromTruffleObject(completions, (DebugValue) nearestNodeReturnValue, langId))
                                                 : doWithContext(() -> fillCompletionsFromTruffleObject(completions, langId, nearestNodeReturnValue));
                                 if (areOjectPropertiesPresent) {
                                     // If there are object properties available for code completion, then we do not want to display any
@@ -436,8 +437,9 @@ public class TruffleAdapter implements ContextsListener {
     private Object executeToSection(final Node nearestNode, final SourceWrapper sourceWrapper) {
         Debugger debugger = this.env.lookup(this.env.getInstruments().get("debugger"), Debugger.class);
         TypeHarvestingSuspendCallback callback = new TypeHarvestingSuspendCallback();
-        try (DebuggerSession ds = debugger.startSession(callback)) {
-            ds.install(Breakpoint.newBuilder(nearestNode.getSourceSection()).suspendAnchor(SuspendAnchor.AFTER).build());
+        // We do not want to step, so an empty SourceElement-array avoids wrapping of nodes
+        try (DebuggerSession ds = debugger.startSession(callback, new SourceElement[0])) {
+            ds.install(Breakpoint.newBuilder(nearestNode.getSourceSection()).suspendAnchor(SuspendAnchor.BEFORE).build());
 
             try {
 // doWithContext(() -> sourceWrapper.getCallTarget().call());
@@ -553,13 +555,23 @@ public class TruffleAdapter implements ContextsListener {
 
     }
 
-    protected boolean fillCompletionsFromTruffleObject(CompletionList completions, DebugValue object) {
+    @SuppressWarnings("unused")
+    protected boolean fillCompletionsFromTruffleObject(CompletionList completions, DebugValue object, String langId) {
         Collection<DebugValue> properties = null;
         DebugValue metaObject = object.getMetaObject();
         if (object.isReadable()) {
             properties = object.getProperties();
         }
 
+        if (properties == null) {
+            Object value = LanguageSpecificHacks.getDebugValueValue(object);
+            if (value == null)
+                return false;
+            return fillCompletionsFromTruffleObject(completions, langId, value);
+        }
+
+        // TODO(ds) this check is not good. We do not want the properties of the meta-object, we want the
+        // boxed representation of object.get(), but this is not accessible here :/
         if (properties == null && metaObject != null && metaObject.isReadable()) {
             properties = metaObject.getProperties();
         }
@@ -596,15 +608,14 @@ public class TruffleAdapter implements ContextsListener {
     }
 
     protected boolean fillCompletionsFromTruffleObject(CompletionList completions, String langId, Object object, Object metaObject) {
-        Map<Object, Object> map;
+        Map<Object, Object> map = null;
         if (object instanceof TruffleObject) {
             map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) object);
-        } else if (metaObject instanceof TruffleObject) {
-            // TODO(ds) is this ok? Native objects likes Strings, Integer, etc. are no TruffleObjects, but are
-            // the Keys of their metaObject always Keys related to that object?
-            map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), ((TruffleObject) metaObject));
         } else {
-            return false;
+            Object boxedObject = LanguageSpecificHacks.getBoxedObject(object, langId);
+            if (boxedObject instanceof TruffleObject) {
+                map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) boxedObject);
+            }
         }
 
         if (map == null) {
@@ -627,7 +638,8 @@ public class TruffleAdapter implements ContextsListener {
 
             documentation = LanguageSpecificHacks.getDocumentationForTruffleObject(langId, entry, completion, documentation);
 
-            documentation += "in " + metaObject.toString();
+            documentation += "in " + metaObject.toString(); // TODO(ds) is "in xyz" semantically correct? Because we send the KEYS message to the object and not
+                                                            // to the meta object
             completion.setDocumentation(documentation);
         }
 
@@ -649,17 +661,8 @@ public class TruffleAdapter implements ContextsListener {
     }
 
     private String createCompletionDetail(Object obj, String langId, boolean includeClass) {
-        String metaInfo = null;
         Object metaObject = getMetaObject(langId, obj);
-        if (metaObject instanceof TruffleObject) {
-            // TODO(ds)
-// System.out.println("metaObject: " + metaObject);
-// ObjectStructures.asList(new ObjectStructures.MessageNodes(), ((TruffleObject) metaObject));
-// ObjectStructures.asMap(new ObjectStructures.MessageNodes(), ((TruffleObject) metaObject));
-            metaInfo = metaObject.toString();
-        } else if (metaObject instanceof String) {
-            metaInfo = metaObject.toString();
-        }
+        String metaInfo = metaObject != null ? metaObject.toString() : null;
 
 // if (obj instanceof TruffleObject) {
 // TruffleObject truffleObj = (TruffleObject) obj;
@@ -797,27 +800,12 @@ public class TruffleAdapter implements ContextsListener {
         // TODO(ds) disabled
         typeHarvestingUri = uri;
 
-        SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(new SourcePredicate() {
-
-            public boolean test(Source source) {
-                return uri.equals(source.getURI());
-            }
-        }).build();
-// filter = SourceSectionFilter.newBuilder().sourceIs(new SourcePredicate() {
-//
-// public boolean test(Source source) {
-// return source.getName().contains("elo");
-// }
-// }).build();
-        filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(); // TODO(ds)
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).sourceFilter(
+                        SourceFilter.newBuilder().sourceIs(source -> uri.equals(source.getURI())).build()).build();
         EventBinding<ExecutionEventListener> listener = env.getInstrumenter().attachExecutionEventListener(filter, new ExecutionEventListener() {
 
             @TruffleBoundary
             public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
-// System.out.println(((result instanceof TruffleObject) ? ">>> " : "") + "onReturnValue " +
-// eventContext.getInstrumentedNode().getClass().getSimpleName() + " " + result + " " +
-// eventContext.getInstrumentedSourceSection());
-
                 // TODO(ds) this is only a hacky solution. Not all expressions emit a result (for example
                 // SLReadLocalVariableNode onReturnValue(frame, result) has a result != null if the read is a child
                 // node of a assignment or return statement, otherwise excuteVoid() is called and a null-result is
@@ -834,8 +822,6 @@ public class TruffleAdapter implements ContextsListener {
             }
 
             public void onEnter(EventContext eventContext, VirtualFrame frame) {
-// System.out.println("onEnter " + eventContext.getInstrumentedNode().getClass().getSimpleName() + "
-// " + eventContext.getInstrumentedSourceSection());
                 final SourceSection section = eventContext.getInstrumentedSourceSection();
                 if (section != null) {
                     putSection2frame(section, frame.materialize());
@@ -845,6 +831,29 @@ public class TruffleAdapter implements ContextsListener {
             @TruffleBoundary
             private void putSection2frame(SourceSection section, MaterializedFrame frame) {
                 surrogateOfOpendFile.getSection2frame().put(section, frame);
+            }
+        });
+
+        final URI coverageUri = typeHarvestingUri;
+        EventBinding<ExecutionEventListener> coverageListener = env.getInstrumenter().attachExecutionEventListener(filter, new ExecutionEventListener() {
+
+            @TruffleBoundary
+            public void onReturnValue(EventContext eventContext, VirtualFrame frame, Object result) {
+            }
+
+            public void onReturnExceptional(EventContext eventContext, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onEnter(EventContext eventContext, VirtualFrame frame) {
+                final SourceSection section = eventContext.getInstrumentedSourceSection();
+                if (section != null) {
+                    putSection2Uri(section);
+                }
+            }
+
+            @TruffleBoundary
+            private void putSection2Uri(SourceSection section) {
+                surrogateOfOpendFile.getSection2coverageUri().put(section, coverageUri);
             }
         });
 
@@ -876,6 +885,7 @@ public class TruffleAdapter implements ContextsListener {
             }
         } finally {
             listener.dispose();
+            coverageListener.dispose();
             this.diagnosticsPublisher.addDiagnostics(diagnostics);
         }
     }

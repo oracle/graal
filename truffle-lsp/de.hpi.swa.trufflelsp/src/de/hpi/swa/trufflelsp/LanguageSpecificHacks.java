@@ -9,6 +9,7 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
 
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -112,5 +113,41 @@ public class LanguageSpecificHacks {
         } else {
             return false;
         }
+    }
+
+    public static Object getBoxedObject(Object object, String langId) {
+        // TODO(ds) What we really want is a BOXED-message which we can send to get a TruffleObject which
+        // wraps the primitive typed value (Integers, floats, bools, etc.) to be able to send them the KEYS
+        // message
+        if (enableLanguageSpecificHacks) {
+            if (langId.equals("python")) {
+                try {
+                    Class<?> clazzPythonObjectFactory = LanguageSpecificHacks.class.getClassLoader().loadClass("com.oracle.graal.python.runtime.object.PythonObjectFactory");
+                    Method methodGet = clazzPythonObjectFactory.getMethod("get");
+                    Object factory = methodGet.invoke(clazzPythonObjectFactory);
+                    if (object instanceof Integer) {
+                        Method methodCreateInt = clazzPythonObjectFactory.getDeclaredMethod("createInt", int.class);
+                        return methodCreateInt.invoke(factory, object);
+                    }
+                    if (object instanceof Double) {
+                        Method methodCreateFloat = clazzPythonObjectFactory.getDeclaredMethod("createFloat", double.class);
+                        return methodCreateFloat.invoke(factory, object);
+                    }
+                } catch (NoSuchMethodException | SecurityException | ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                }
+            }
+        }
+        return null;
+    }
+
+    public static Object getDebugValueValue(DebugValue value) {
+        try {
+            Class<?> clazzDebugValue = LanguageSpecificHacks.class.getClassLoader().loadClass("com.oracle.truffle.api.debug.DebugValue");
+            Method methodGet = clazzDebugValue.getDeclaredMethod("get");
+            methodGet.setAccessible(true);
+            return methodGet.invoke(value);
+        } catch (NoSuchMethodException | SecurityException | ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+        }
+        return null;
     }
 }

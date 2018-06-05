@@ -17,6 +17,7 @@ public class TextDocumentSurrogate {
     private final String langId;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
     private final Map<SourceSection, MaterializedFrame> section2frame = new HashMap<>();
+    private final Map<SourceSection, URI> section2coverageUri = new HashMap<>();
     private String currentText;
     private Boolean typeHarvestingDone = Boolean.FALSE;
     private SourceWrapper parsedSourceWrapper;
@@ -82,5 +83,9 @@ public class TextDocumentSurrogate {
 
     public Map<SourceSection, MaterializedFrame> getSection2frame() {
         return section2frame;
+    }
+
+    public Map<SourceSection, URI> getSection2coverageUri() {
+        return section2coverageUri;
     }
 }
