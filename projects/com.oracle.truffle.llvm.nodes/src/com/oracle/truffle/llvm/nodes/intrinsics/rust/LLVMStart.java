@@ -87,6 +87,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                     @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMLangStartInternal extends LLVMStart {
 
+        @TruffleBoundary
         protected LangStartVtableType createLangStartVtable(Type vtableType) {
             DataLayout dataSpecConverter = getContextReference().get().getDataSpecConverter();
             return LangStartVtableType.create(dataSpecConverter, vtableType);
