@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -30,6 +32,8 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+
+import jdk.vm.ci.meta.TriState;
 
 /**
  * Logic node that negates its argument.
@@ -77,4 +81,11 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
         return this;
     }
 
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (other == getValue()) {
+            return TriState.get(thisNegated);
+        }
+        return getValue().implies(!thisNegated, other);
+    }
 }

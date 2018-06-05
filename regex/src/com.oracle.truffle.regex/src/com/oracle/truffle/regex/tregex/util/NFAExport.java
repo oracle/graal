@@ -24,12 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.dfa.NFAStateSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAAbstractFinalState;
-import com.oracle.truffle.regex.tregex.nfa.NFAAnchoredFinalState;
-import com.oracle.truffle.regex.tregex.nfa.NFAFinalState;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
@@ -38,44 +34,60 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class NFAExport {
 
+    private enum StateStyle {
+        ANCHORED_INITIAL,
+        UN_ANCHORED_INITIAL,
+        ANCHORED_FINAL,
+        UN_ANCHORED_FINAL,
+        REGULAR
+    }
+
     private final NFA nfa;
     private final BufferedWriter writer;
-    private final boolean reverse;
+    private final boolean forward;
     private final boolean fullLabels;
+    private final boolean mergeFinalStates;
 
-    private NFAExport(NFA nfa, BufferedWriter writer, boolean reverse, boolean fullLabels) {
+    private int nextStateNumber = 1;
+    private final HashMap<NFAState, Integer> stateNumberMap = new HashMap<>();
+
+    private NFAExport(NFA nfa, BufferedWriter writer, boolean forward, boolean fullLabels, boolean mergeFinalStates) {
         this.nfa = nfa;
         this.writer = writer;
-        this.reverse = reverse;
+        this.forward = forward;
         this.fullLabels = fullLabels;
+        this.mergeFinalStates = mergeFinalStates;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static void exportDot(NFA nfa, String path, boolean fullLabels) {
+    @TruffleBoundary
+    public static void exportDot(NFA nfa, String path, boolean fullLabels, boolean mergeFinalStates) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, false, fullLabels).exportDot();
+            new NFAExport(nfa, writer, true, fullLabels, mergeFinalStates).exportDot();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static void exportDotReverse(NFA nfa, String path, boolean fullLabels) {
+    @TruffleBoundary
+    public static void exportDotReverse(NFA nfa, String path, boolean fullLabels, boolean mergeFinalStates) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, true, fullLabels).exportDotReverse();
+            new NFAExport(nfa, writer, false, fullLabels, mergeFinalStates).exportDot();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static void exportLaTex(NFA nfa, String path, boolean fullLabels) {
+    @TruffleBoundary
+    public static void exportLaTex(NFA nfa, String path, boolean fullLabels, boolean mergeFinalStates) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, false, fullLabels).exportLaTex();
+            new NFAExport(nfa, writer, true, fullLabels, mergeFinalStates).exportLaTex();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -85,64 +97,44 @@ public final class NFAExport {
         writer.write("digraph finite_state_machine {");
         writer.newLine();
         writer.newLine();
-        if (!nfa.getReverseUnAnchoredEntry().getPrev().isEmpty()) {
-            setDotNodeStyle(nfa.getReverseUnAnchoredEntry(), "doublecircle");
+        for (NFAState state : nfa.getStates()) {
+            if (showState(state)) {
+                setDotNodeStyle(state, getDotStateStyle(state));
+            }
         }
-        if (!nfa.getReverseAnchoredEntry().getPrev().isEmpty()) {
-            setDotNodeStyle(nfa.getReverseAnchoredEntry(), "Mcircle");
-        }
-        writer.write("    node [shape = circle];");
         writer.newLine();
         for (NFAState state : nfa.getStates()) {
-            if (state == null) {
-                continue;
-            }
-            for (int i = 0; i < state.getNext().size(); i++) {
-                NFAStateTransition transition = state.getNext().get(i);
-                DotExport.printConnection(writer, labelState(state), labelState(transition.getTarget()), labelTransition(transition, i));
+            if (showState(state)) {
+                for (int i = 0; i < state.getNext(forward).size(); i++) {
+                    NFAStateTransition transition = state.getNext(forward).get(i);
+                    DotExport.printConnection(writer,
+                                    labelState(transition.getSource(forward), true),
+                                    labelState(transition.getTarget(forward), true),
+                                    labelTransition(transition, i));
+                }
             }
         }
         writer.write("}");
         writer.newLine();
     }
 
-    private void exportDotReverse() throws IOException {
-        writer.write("digraph finite_state_machine {");
-        writer.newLine();
-        writer.newLine();
-        if (nfa.getUnAnchoredEntry() == null) { // traceFinder NFA
-            for (NFAState state : nfa.getStates()) {
-                if (state == null) {
-                    continue;
-                }
-                if (state instanceof NFAFinalState && state != nfa.getReverseUnAnchoredEntry()) {
-                    setDotNodeStyle(state, "doublecircle");
-                } else if (state instanceof NFAAnchoredFinalState && state != nfa.getReverseAnchoredEntry()) {
-                    setDotNodeStyle(state, "Mcircle");
-                }
-            }
-        } else {
-            for (int i = 0; i < nfa.getAnchoredEntry().size(); i++) {
-                if (!nfa.getUnAnchoredEntry().get(i).getNext().isEmpty()) {
-                    setDotNodeStyle(nfa.getUnAnchoredEntry().get(i), "doublecircle");
-                }
-                if (!nfa.getAnchoredEntry().get(i).getNext().isEmpty()) {
-                    setDotNodeStyle(nfa.getAnchoredEntry().get(i), "Mcircle");
-                }
-            }
+    private String getDotStateStyle(NFAState state) {
+        switch (getStateStyle(state)) {
+            case ANCHORED_FINAL:
+                return "Mcircle";
+            case UN_ANCHORED_FINAL:
+                return "doublecircle";
+            case ANCHORED_INITIAL:
+            case UN_ANCHORED_INITIAL:
+            case REGULAR:
+                return "circle";
+            default:
+                throw new IllegalStateException();
         }
-        writer.write("    node [shape = circle];");
-        writer.newLine();
-        for (NFAState state : nfa.getStates()) {
-            if (state == null) {
-                continue;
-            }
-            for (int i = 0; i < state.getPrev().size(); i++) {
-                NFAStateTransition transition = state.getPrev().get(i);
-                DotExport.printConnection(writer, labelState(state), labelState(transition.getSource()), labelTransition(transition, i));
-            }
-        }
-        writer.write("}");
+    }
+
+    private void setDotNodeStyle(NFAState state, String style) throws IOException {
+        writer.write(String.format("    node [shape = %s]; \"%s\";", style, DotExport.escape(labelState(state, true))));
         writer.newLine();
     }
 
@@ -153,32 +145,86 @@ public final class NFAExport {
                         "\\usepackage[T1]{fontenc}\n" +
                         "\\usepackage{tikz}\n" +
                         "\n" +
+                        "\\usetikzlibrary{calc}\n" +
                         "\\usetikzlibrary{automata}\n" +
-                        "\\usetikzlibrary{arrows}\n" +
+                        "\\usetikzlibrary{arrows.meta}\n" +
+                        "\n" +
+                        "\\tikzset{\n" +
+                        "\tregex automaton/.style={\n" +
+                        "\t\tauto, \n" +
+                        "\t\tnode distance=2cm,\n" +
+                        "\t\tevery state/.style={\n" +
+                        "\t\t\tsemithick,\n" +
+                        "\t\t\tfill=gray!5,\n" +
+                        "\t\t\tfont=\\footnotesize\\ttfamily,\n" +
+                        "\t\t},\n" +
+                        "\t\tdouble distance=1.5pt,  % Adjust appearance of accept states\n" +
+                        "\t\tinitial text={start},   % label on inital state arrow\n" +
+                        "\t\tevery edge/.style={\n" +
+                        "\t\t\tdraw,\n" +
+                        "\t\t\tfont=\\footnotesize\\ttfamily,\n" +
+                        "\t\t\t-Stealth,\n" +
+                        "\t\t\tshorten >=1pt,\n" +
+                        "\t\t\tauto,\n" +
+                        "\t\t\tsemithick\n" +
+                        "\t\t},\n" +
+                        "\t\tevery loop/.style={\n" +
+                        "\t\t\tdraw,\n" +
+                        "\t\t\tfont=\\footnotesize\\ttfamily,\n" +
+                        "\t\t\t-Stealth,\n" +
+                        "\t\t\tshorten >=1pt,\n" +
+                        "\t\t\tauto,\n" +
+                        "\t\t\tsemithick\n" +
+                        "\t\t}\n" +
+                        "\t},\n" +
+                        "\tanchored/.style={\n" +
+                        "\t\tpath picture={\n" +
+                        "\t\t\t\\draw[semithick] ($(path picture bounding box.north west)-(0,0.2)$) -- ($(path picture bounding box.north east)-(0,0.2)$);\n" +
+                        "\t\t\t\\draw[semithick] ($(path picture bounding box.south west)+(0,0.2)$) -- ($(path picture bounding box.south east)+(0,0.2)$);\n" +
+                        "\t\t}\n" +
+                        "\t}\n" +
+                        "}\n" +
                         "\n" +
                         "\\begin{document}\n" +
-                        "\\begin{tikzpicture}[>=stealth',auto,node distance=2.5cm]\n");
-        writer.newLine();
+                        "\\begin{tikzpicture}[regex automaton]\n" +
+                        "\n");
         ArrayList<NFAState> curStates = new ArrayList<>();
         ArrayList<NFAState> nextStates = new ArrayList<>();
-        curStates.add(nfa.getAnchoredEntry().get(nfa.getAnchoredEntry().size() - 1));
-        curStates.add(nfa.getUnAnchoredEntry().get(nfa.getUnAnchoredEntry().size() - 1));
-        printLaTexState(curStates.get(0), null, null);
-        printLaTexState(curStates.get(1), curStates.get(0), "below");
+        int entryOffset = nfa.getAnchoredEntry().length - 1;
+        NFAState lastAnchoredEntry = nfa.getAnchoredEntry()[entryOffset].getTarget();
+        NFAState lastUnAnchoredEntry = nfa.getUnAnchoredEntry()[entryOffset].getTarget();
+        visited.add(lastAnchoredEntry);
+        visited.add(lastUnAnchoredEntry);
+        curStates.add(lastAnchoredEntry);
+        printLaTexState(lastAnchoredEntry, null, null);
+        if (lastAnchoredEntry != lastUnAnchoredEntry) {
+            curStates.add(lastUnAnchoredEntry);
+            printLaTexState(lastUnAnchoredEntry, lastAnchoredEntry, "below");
+        }
+        entryOffset--;
         while (!curStates.isEmpty()) {
             for (NFAState s : curStates) {
                 for (NFAStateTransition t : s.getNext()) {
-                    if (visited.add(t.getTarget())) {
+                    if (!(mergeFinalStates && t.getTarget().isFinalState(forward)) && visited.add(t.getTarget())) {
                         nextStates.add(t.getTarget());
                     }
                 }
             }
-            for (int i = 0; i < nextStates.size(); i++) {
-                if (i == 0) {
-                    printLaTexState(nextStates.get(i), curStates.get(0), "right");
-                } else {
-                    printLaTexState(nextStates.get(i), nextStates.get(i - 1), "below");
+            if (entryOffset >= 0) {
+                NFAState anchoredEntry = nfa.getAnchoredEntry()[entryOffset].getTarget();
+                if (visited.add(anchoredEntry)) {
+                    nextStates.add(anchoredEntry);
                 }
+                NFAState unAnchoredEntry = nfa.getUnAnchoredEntry()[entryOffset].getTarget();
+                if (visited.add(unAnchoredEntry)) {
+                    nextStates.add(unAnchoredEntry);
+                }
+                entryOffset--;
+            }
+            NFAState relativeTo = null;
+            for (NFAState nextState : nextStates) {
+                printLaTexState(nextState, relativeTo == null ? curStates.get(0) : relativeTo, relativeTo == null ? "right" : "below");
+                relativeTo = nextState;
             }
             ArrayList<NFAState> tmp = curStates;
             curStates = nextStates;
@@ -193,7 +239,10 @@ public final class NFAExport {
                 continue;
             }
             for (int i = 0; i < s.getNext().size(); i++) {
-                printLaTexTransition(s.getNext().get(i), i);
+                NFAStateTransition t = s.getNext().get(i);
+                if (visited.contains(s) && visited.contains(t.getTarget())) {
+                    printLaTexTransition(t, i);
+                }
             }
         }
         writer.write(";");
@@ -207,9 +256,10 @@ public final class NFAExport {
     private void printLaTexState(NFAState state, NFAState relativeTo, String direction) throws IOException {
         String offset = "";
         if (relativeTo != null) {
-            offset = String.format("%s of=s%s", direction, relativeTo.getId());
+            offset = String.format("%s of=%s", direction, getLaTexStateID(relativeTo));
         }
-        writer.write(String.format("\\node[%s] (s%d) [%s] {$%s$};", getLaTexStateStyle(state), state.getId(), offset, LaTexExport.escape(labelState(state))));
+        writer.write(String.format("\\node[%s] (%s) [%s] {%s};", getLaTexStateStyle(state),
+                        getLaTexStateID(state), offset, LaTexExport.escape(labelState(state, false))));
         writer.newLine();
     }
 
@@ -218,89 +268,116 @@ public final class NFAExport {
         if (t.getSource() == t.getTarget()) {
             options.add("loop above");
         }
-        writer.write(String.format("(s%d) edge [%s] node {%s} (s%d)", t.getSource().getId(),
+        writer.write(String.format("(%s) edge [%s] node {%s} (%s)", getLaTexStateID(t.getSource()),
                         options.stream().collect(Collectors.joining(", ")),
                         LaTexExport.escape(labelTransition(t, priority)),
-                        t.getTarget().getId()));
+                        getLaTexStateID(t.getTarget())));
         writer.newLine();
+    }
+
+    private String getLaTexStateID(NFAState state) {
+        if (state.isAnchoredFinalState(forward)) {
+            return "af";
+        }
+        if (state.isUnAnchoredFinalState(forward)) {
+            return "f";
+        }
+        if (nfa.isEntry(state, forward)) {
+            String lbl = nfa.isUnAnchoredEntry(state, forward) ? "i" : "ai";
+            return lbl + (nfa.isUnAnchoredEntry(state, forward) ? nfa.getUnAnchoredEntryOffset(state, forward) : nfa.getAnchoredEntryOffset(state, forward));
+        }
+        return "s" + stateNumberMap.computeIfAbsent(state, x -> nextStateNumber++);
     }
 
     private String getLaTexStateStyle(NFAState state) {
-        if (state instanceof NFAAbstractFinalState) {
-            if (reverse) {
-                if (state == nfa.getReverseAnchoredEntry() || state == nfa.getReverseUnAnchoredEntry()) {
-                    return "initial,state";
-                }
+        switch (getStateStyle(state)) {
+            case ANCHORED_INITIAL:
+                return "anchored,initial,state";
+            case UN_ANCHORED_INITIAL:
+                return "initial,state";
+            case ANCHORED_FINAL:
+                return "anchored,accepting,state";
+            case UN_ANCHORED_FINAL:
                 return "accepting,state";
-            } else {
-                if (state instanceof NFAAnchoredFinalState && nfa.getAnchoredEntry().contains(state) ||
-                                state instanceof NFAFinalState && nfa.getUnAnchoredEntry().contains(state)) {
-                    return "initial,state";
-                }
-                return "accepting,state";
+            case REGULAR:
+                return "state";
+            default:
+                throw new IllegalStateException();
+        }
+    }
+
+    private boolean showState(NFAState state) {
+        if (state == null || state == nfa.getDummyInitialState()) {
+            return false;
+        }
+        if (nfa.isEntry(state, forward)) {
+            return !state.getNext(forward).isEmpty();
+        }
+        if (state.isFinalState(forward)) {
+            return !state.getPrev(forward).isEmpty();
+        }
+        return true;
+    }
+
+    private StateStyle getStateStyle(NFAState state) {
+        if (nfa.isEntry(state, forward)) {
+            if (nfa.isAnchoredEntry(state, forward) && !nfa.isUnAnchoredEntry(state, forward)) {
+                return StateStyle.ANCHORED_INITIAL;
             }
+            return StateStyle.UN_ANCHORED_INITIAL;
         }
-        return "state";
+        if (mergeFinalStates && state.hasTransitionToAnchoredFinalState(forward) && !state.hasTransitionToUnAnchoredFinalState(forward) ||
+                        state.isAnchoredFinalState(forward)) {
+            return StateStyle.ANCHORED_FINAL;
+        }
+        if (state.isFinalState(forward) || mergeFinalStates && state.hasTransitionToUnAnchoredFinalState(forward)) {
+            return StateStyle.UN_ANCHORED_FINAL;
+        }
+        return StateStyle.REGULAR;
     }
 
-    private String labelTransition(NFAStateTransition transition, int priority) {
+    private String labelState(NFAState state, boolean markAnchored) {
         StringBuilder sb = new StringBuilder();
-        if (!(transition.getTarget(!reverse) instanceof NFAAbstractFinalState)) {
-            sb.append(transition.getTarget(!reverse));
-        }
-        if (fullLabels) {
-            sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());
-        }
-        return sb.toString();
-    }
-
-    private void setDotNodeStyle(NFAState state, String style) throws IOException {
-        writer.write(String.format("    node [shape = %s]; \"%s\";", style, DotExport.escape(labelState(state))));
-        writer.newLine();
-    }
-
-    private String labelState(NFAState state) {
-        StringBuilder sb = new StringBuilder();
-        if (state instanceof NFAAbstractFinalState) {
-            if (state instanceof NFAAnchoredFinalState) {
-                if (reverse) {
-                    if (state == nfa.getReverseAnchoredEntry()) {
-                        sb.append("I^");
-                    }
-                } else {
-                    int i = nfa.getAnchoredEntry().indexOf(state);
-                    if (i >= 0) {
-                        sb.append("I^").append(i);
-                    }
-                }
-                if (sb.length() == 0) {
-                    sb.append("F$");
-                }
-            } else {
-                assert state instanceof NFAFinalState;
-                if (reverse) {
-                    if (state == nfa.getReverseUnAnchoredEntry()) {
-                        sb.append("I");
-                    }
-                } else {
-                    int i = nfa.getUnAnchoredEntry().indexOf(state);
-                    if (i >= 0) {
-                        sb.append("I").append(i);
-                    }
-                }
-                if (sb.length() == 0) {
-                    sb.append("F");
-                }
+        if (nfa.isAnchoredEntry(state, forward) && !nfa.isUnAnchoredEntry(state, forward)) {
+            sb.append("I");
+            if (markAnchored) {
+                sb.append("^");
             }
+            if (forward) {
+                sb.append(nfa.getAnchoredEntryOffset(state, true));
+            }
+        } else if (nfa.isUnAnchoredEntry(state, forward)) {
+            sb.append("I");
+            if (forward) {
+                sb.append(nfa.getUnAnchoredEntryOffset(state, true));
+            }
+        } else if (state.isAnchoredFinalState(forward)) {
+            sb.append("F");
+            if (markAnchored) {
+                sb.append("$");
+            }
+        } else if (state.isUnAnchoredFinalState(forward)) {
+            sb.append("F");
         } else {
             if (fullLabels) {
                 sb.append("S").append(state.idToString());
             } else {
-                sb.append(state.getId());
+                sb.append(stateNumberMap.computeIfAbsent(state, x -> nextStateNumber++));
             }
         }
         if (fullLabels && state.hasPossibleResults()) {
             sb.append("_r").append(state.getPossibleResults());
+        }
+        return sb.toString();
+    }
+
+    private String labelTransition(NFAStateTransition transition, int priority) {
+        StringBuilder sb = new StringBuilder();
+        if (!(transition.getTarget(forward).isFinalState(forward))) {
+            sb.append(transition.getTarget(forward).getMatcherBuilder());
+        }
+        if (fullLabels) {
+            sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());
         }
         return sb.toString();
     }

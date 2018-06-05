@@ -5,7 +5,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -63,6 +65,9 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMOV
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMSUB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMUL;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FNEG;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FRINTM;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FRINTN;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FRINTP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FRINTZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FSQRT;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FSUB;
@@ -580,6 +585,9 @@ public abstract class AArch64Assembler extends Assembler {
         FSQRT(0x00018000),
         FNEG(0x00010000),
 
+        FRINTM(0x00050000),
+        FRINTN(0x00040000),
+        FRINTP(0x00048000),
         FRINTZ(0x00058000),
 
         FADD(0x00002000),
@@ -2500,6 +2508,39 @@ public abstract class AArch64Assembler extends Assembler {
      */
     protected void frintz(int size, Register dst, Register src) {
         fpDataProcessing1Source(FRINTZ, dst, src, floatFromSize(size));
+    }
+
+    /**
+     * Rounds floating-point to integral. Rounds towards nearest with ties to even.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src floating point register. May not be null.
+     */
+    public void frintn(int size, Register dst, Register src) {
+        fpDataProcessing1Source(FRINTN, dst, src, floatFromSize(size));
+    }
+
+    /**
+     * Rounds floating-point to integral. Rounds towards minus infinity.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src floating point register. May not be null.
+     */
+    public void frintm(int size, Register dst, Register src) {
+        fpDataProcessing1Source(FRINTM, dst, src, floatFromSize(size));
+    }
+
+    /**
+     * Rounds floating-point to integral. Rounds towards plus infinity.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src floating point register. May not be null.
+     */
+    public void frintp(int size, Register dst, Register src) {
+        fpDataProcessing1Source(FRINTP, dst, src, floatFromSize(size));
     }
 
     /* Floating-point Arithmetic (1 source) (5.7.6) */

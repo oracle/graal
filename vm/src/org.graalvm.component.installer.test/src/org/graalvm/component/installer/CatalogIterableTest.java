@@ -70,7 +70,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testRemoteNames() throws Exception {
-        initRemoteComponent("persist/data/truffleruby2.jar", "test://graal.us.oracle.com/download/truffleruby.zip", "testComponent", "test");
+        initRemoteComponent("persist/data/truffleruby2.jar", "test://graalvm.io/download/truffleruby.zip", "testComponent", "test");
 
         assertEquals("test", param.getSpecification());
         assertEquals("testComponent", param.getDisplayName());
@@ -80,7 +80,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testCreateMetaLoader() throws Exception {
-        initRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", "testComponent", "test");
+        initRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", "testComponent", "test");
 
         MetadataLoader ldr = param.createMetaLoader();
         ldr.setNoVerifySymlinks(false);
@@ -101,7 +101,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testCreateFileLoader() throws Exception {
-        initRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", "testComponent", "test");
+        initRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", "testComponent", "test");
 
         MetadataLoader ldr = param.createFileLoader();
         ldr.setNoVerifySymlinks(false);
@@ -122,7 +122,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testVerifyRemoteJars() throws Exception {
-        initRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", "testComponent", "test");
+        initRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", "testComponent", "test");
         info.setShaDigest(RemoteStorage.toHashBytes(null, "d3a45ea326b379cc3d543cc56130ee9bd395fd1c1d51a470e8c2c8af1129829c", this));
 
         try {
@@ -149,7 +149,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testReadComponentMetadataNoNetwork() throws Exception {
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("ruby");
         CatalogIterable cit = new CatalogIterable(this, this, this);
         assertTrue(cit.iterator().hasNext());
@@ -164,7 +164,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
     public void testUnknownComponentSpecified() throws Exception {
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_UnknownComponentId");
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("r");
         CatalogIterable cit = new CatalogIterable(this, this, this);
         assertTrue(cit.iterator().hasNext());
@@ -173,7 +173,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testMetaAccessesDirectURL() throws Exception {
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
 
@@ -185,7 +185,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testDirectURLAccessedJustOnce() throws Exception {
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
 
@@ -203,7 +203,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testDirectURLJarClosedAfterMeta() throws Exception {
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
 
@@ -220,7 +220,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testDirectURLJarClosedAfterJar() throws Exception {
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
         JarFile jf = rparam.getJarFile();
@@ -232,7 +232,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
 
     @Test
     public void testURLDoesNotExist() throws Exception {
-        addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("ruby");
         Handler.bind(url.toString(), new URLConnection(url) {
             @Override

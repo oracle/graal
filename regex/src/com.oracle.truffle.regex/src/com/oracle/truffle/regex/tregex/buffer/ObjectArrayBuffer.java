@@ -49,10 +49,9 @@ import java.util.Iterator;
  * }
  * </pre>
  */
-public final class ObjectArrayBuffer implements Iterable<Object> {
+public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iterable<Object> {
 
     private Object[] buf;
-    private int size = 0;
 
     public ObjectArrayBuffer() {
         this(16);
@@ -62,16 +61,14 @@ public final class ObjectArrayBuffer implements Iterable<Object> {
         buf = new Object[initialSize];
     }
 
-    public void clear() {
-        size = 0;
+    @Override
+    int getBufferSize() {
+        return buf.length;
     }
 
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
-    public int size() {
-        return size;
+    @Override
+    void grow(int newSize) {
+        buf = Arrays.copyOf(buf, newSize);
     }
 
     public Object get(int i) {
@@ -84,10 +81,6 @@ public final class ObjectArrayBuffer implements Iterable<Object> {
         }
         buf[size] = o;
         size++;
-    }
-
-    private void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
     }
 
     @SuppressWarnings("unchecked")

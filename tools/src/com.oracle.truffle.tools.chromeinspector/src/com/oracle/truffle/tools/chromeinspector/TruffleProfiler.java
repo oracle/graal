@@ -34,8 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -83,7 +83,7 @@ public final class TruffleProfiler extends ProfilerDomain {
     }
 
     private void doEnable() {
-        slh = context.getScriptsHandler();
+        slh = context.acquireScriptsHandler();
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
         tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
         InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(TypeProfileInstrument.ID);
@@ -201,7 +201,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private Params getCoverage(Collection<CPUTracer.Payload> payloads) {
         JSONObject json = new JSONObject();
-        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new HashMap<>();
+        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new LinkedHashMap<>();
         payloads.forEach(payload -> {
             Map<String, Collection<CPUTracer.Payload>> rootsToPayloads = sourceToRoots.computeIfAbsent(payload.getSourceSection().getSource(), s -> new LinkedHashMap<>());
             Collection<CPUTracer.Payload> pls = rootsToPayloads.computeIfAbsent(payload.getRootName(), t -> new LinkedList<>());
@@ -269,7 +269,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private Params getTypeProfile(Collection<TypeHandler.SectionTypeProfile> profiles) {
         JSONObject json = new JSONObject();
-        Map<Source, Collection<TypeHandler.SectionTypeProfile>> sourceToProfiles = new HashMap<>();
+        Map<Source, Collection<TypeHandler.SectionTypeProfile>> sourceToProfiles = new LinkedHashMap<>();
         profiles.forEach(profile -> {
             Collection<TypeHandler.SectionTypeProfile> pfs = sourceToProfiles.computeIfAbsent(profile.getSourceSection().getSource(), t -> new LinkedList<>());
             pfs.add(profile);

@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.events;
 
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.tools.chromeinspector.commands.Command;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;

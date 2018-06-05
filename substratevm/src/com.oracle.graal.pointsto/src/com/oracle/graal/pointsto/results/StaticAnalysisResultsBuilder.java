@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,6 +29,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -109,10 +112,10 @@ public class StaticAnalysisResultsBuilder {
 
         ArrayList<BytecodeEntry> entries = new ArrayList<>(method.getCodeSize());
 
-        for (InstanceOfTypeFlow originalInstanceOf : originalFlows.getInstaceOfFlows()) {
-            if (BytecodeLocation.hasValidBci(originalInstanceOf.getLocation())) {
-
-                int bci = originalInstanceOf.getLocation().getBci();
+        for (Map.Entry<Object, InstanceOfTypeFlow> entry : originalFlows.getInstanceOfFlows()) {
+            if (BytecodeLocation.isValidBci(entry.getKey())) {
+                int bci = (int) entry.getKey();
+                InstanceOfTypeFlow originalInstanceOf = entry.getValue();
 
                 /* Fold the instanceof flows. */
                 TypeState instanceOfTypeState = methodFlow.foldTypeFlow(bb, originalInstanceOf);
@@ -127,9 +130,10 @@ public class StaticAnalysisResultsBuilder {
             }
         }
 
-        for (InvokeTypeFlow originalInvoke : originalFlows.getInvokes()) {
-            if (BytecodeLocation.hasValidBci(originalInvoke.getLocation())) {
-                int bci = originalInvoke.getLocation().getBci();
+        for (Entry<Object, InvokeTypeFlow> entry : originalFlows.getInvokes()) {
+            if (BytecodeLocation.isValidBci(entry.getKey())) {
+                int bci = (int) entry.getKey();
+                InvokeTypeFlow originalInvoke = entry.getValue();
 
                 TypeState invokeTypeState = TypeState.forEmpty();
                 if (originalInvoke.getTargetMethod().hasReceiver()) {

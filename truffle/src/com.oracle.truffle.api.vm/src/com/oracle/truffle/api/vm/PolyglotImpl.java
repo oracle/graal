@@ -39,6 +39,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -134,6 +135,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     /**
      * Internal method do not use.
      *
+     * @since 1.0
+     */
+    @Override
+    public Context getCurrentContext() {
+        PolyglotContextImpl context = PolyglotContextImpl.current();
+        if (context == null) {
+            return super.getCurrentContext();
+        }
+        return context.currentApi;
+    }
+
+    /**
+     * Internal method do not use.
+     *
      * @since 0.27
      */
     @Override
@@ -163,7 +178,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                             contextClassLoader, boundEngine);
         }
         Engine engine = getAPIAccess().newEngine(impl);
-        impl.api = engine;
+        impl.creatorApi = engine;
+        impl.currentApi = getAPIAccess().newEngine(impl);
         return engine;
     }
 
@@ -557,13 +573,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName) {
-            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            int index = context.context.engine.idToLanguage.get(language.getId()).index;
-            return context.context.contexts[index].lookupGuest(symbolName);
-        }
-
-        @Override
         public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             HostContext hostContext = ((PolyglotLanguageContext) vmObject).context.getHostContextImpl();
@@ -713,7 +722,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (context.isActive()) {
                 throw new IllegalStateException("The context is currently entered and cannot be closed.");
             }
-            context.close(false);
+            context.closeImpl(false, false);
         }
 
         @Override
@@ -722,7 +731,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotContextImpl impl;
             synchronized (creator.context) {
                 impl = new PolyglotContextImpl(creator, config, spiContext);
-                impl.api = impl.getAPIAccess().newContext(impl);
+                impl.creatorApi = impl.getAPIAccess().newContext(impl);
+                impl.currentApi = impl.getAPIAccess().newContext(impl);
             }
             return impl;
         }

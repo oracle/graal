@@ -49,7 +49,7 @@ public final class RangeListMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public boolean matchChar(char c) {
         for (int i = 0; i < ranges.length; i += 2) {
             final char lo = ranges[i];
@@ -63,6 +63,11 @@ public final class RangeListMatcher extends ProfiledCharMatcher {
             }
         }
         return false;
+    }
+
+    @Override
+    public int estimatedCost() {
+        return ranges.length / 2;
     }
 
     @Override

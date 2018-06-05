@@ -1,7 +1,7 @@
 [
   {
-    "annotatedClass": "com.oracle.truffle.tools.chromeinspector.aot.Target_org_json_JSONObject",
-    "originalClass": "org.json.JSONObject",
+    "annotatedClass": "com.oracle.truffle.tools.chromeinspector.aot.Target_com_oracle_truffle_tools_utils_json_JSONObject",
+    "originalClass": "com.oracle.truffle.tools.utils.json.JSONObject",
     "methods": [
       {
         "annotatedName": "wrap",

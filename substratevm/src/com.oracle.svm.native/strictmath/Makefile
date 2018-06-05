@@ -4,7 +4,9 @@
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,17 +28,6 @@ LIBRARY_NAME = strictmath
 LIBM_SRC_DIR = fdlibm/src
 LIBM_INCLUDE = fdlibm/include
 
-TARGETOS ?= $(shell uname -s)
-ifeq ($(TARGETOS),Linux)
-    OS:=linux
-endif
-ifeq ($(TARGETOS),Darwin)
-    OS:=darwin
-endif
-ifeq ($(TARGETOS),CYGWIN_NT-10.0)
-    OS:=windows
-endif
-
 # How to make object files from source files.
 ifeq (${OS},windows)
 CFLAGS := /I $(LIBM_INCLUDE) /O1 /D _LITTLE_ENDIAN
@@ -50,26 +41,28 @@ endif
 
 # A list of all the libm function source files.
 LIBM_SRCS = $(wildcard $(LIBM_SRC_DIR)/*.c)
-LIBM_OBJS = $(LIBM_SRCS:$(LIBM_SRC_DIR)/%.c=%.$(OBJ_EXT))
+OBJ_DIR = $(TARGET_DIR)/$(LIBRARY_NAME)
+LIBM_OBJS = $(LIBM_SRCS:$(LIBM_SRC_DIR)/%.c=$(OBJ_DIR)/%.$(OBJ_EXT))
 
-TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 
 # The first target is what gets made by default.
-$(TARGET) : StrictMath.$(OBJ_EXT) $(LIBM_OBJS)
-	mkdir -p $(TARGET_DIR)
-	ar -cr $@ $^
+$(TARGET) : $(OBJ_DIR)/StrictMath.$(OBJ_EXT) $(LIBM_OBJS) | $(TARGET_DIR)
+	$(AR) -cr $@ $^
 
-StrictMath.$(OBJ_EXT) : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
-	$(CC) -c $(CFLAGS) $<
+$(OBJ_DIR)/StrictMath.$(OBJ_EXT) : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< -o $@
 
-%.$(OBJ_EXT) : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
-	$(CC) -c $(CFLAGS) $<
+$(OBJ_DIR)/%.$(OBJ_EXT) : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< -o $@
+
+$(TARGET_DIR) $(OBJ_DIR):
+	mkdir -p $@
 
 # How to clean up.
 clean :
 	$(RM) $(LIBM_OBJS)
-	$(RM) StrictMath.$(OBJ_EXT)
+	$(RM) $(TARGET_DIR)/StrictMath.$(OBJ_EXT)
 	$(RM) $(TARGET)
 
 # Use "make dependencies" to discover all the dependencies.

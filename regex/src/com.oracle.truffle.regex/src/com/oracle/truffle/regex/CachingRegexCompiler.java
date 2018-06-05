@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.regex;
 
-import java.util.Collections;
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.util.LRUCache;
+
+import java.util.Collections;
+import java.util.Map;
 
 public class CachingRegexCompiler extends RegexCompiler {
 
@@ -79,7 +79,7 @@ public class CachingRegexCompiler extends RegexCompiler {
     private final Map<RegexSource, CompilationResult> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
 
     @Override
-    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         CompilationResult result = cacheGet(source);
         if (result == null) {
             result = doCompile(source);

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,7 +29,6 @@ import static org.graalvm.compiler.serviceprovider.GraalServices.JMXService.jmx;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
@@ -79,24 +80,10 @@ public final class GraalServices {
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
-    @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        try {
-            if (loadMethod == null) {
-                loadMethod = Services.class.getMethod("load", Class.class);
-            }
-            return (Iterable<S>) loadMethod.invoke(null, service);
-        } catch (Exception e) {
-            throw new InternalError(e);
-        }
+        return Services.load(service);
     }
-
-    /**
-     * {@code Services.load(Class)} is only defined in JVMCI-8 so we use reflection to simplify
-     * compiling with javac on JDK 9 or later.
-     */
-    private static volatile Method loadMethod;
 
     /**
      * Gets the provider for a given service for which at most one provider must be available.

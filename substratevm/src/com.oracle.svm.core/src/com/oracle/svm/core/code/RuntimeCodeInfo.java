@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -42,7 +44,7 @@ import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.RingBuffer;
@@ -264,7 +266,7 @@ public class RuntimeCodeInfo {
         }
 
         methodInfo.allocator.release();
-        VirtualMemoryProvider.get().freeVirtualMemory(methodInfo.getCodeStart(), methodInfo.getCodeSize());
+        CommittedMemoryProvider.get().free(methodInfo.getCodeStart(), methodInfo.getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

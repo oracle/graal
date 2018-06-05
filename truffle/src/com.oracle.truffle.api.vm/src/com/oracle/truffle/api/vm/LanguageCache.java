@@ -141,7 +141,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : VMAccessor.SPI.allLoaders()) {
+        for (ClassLoader loader : VMAccessor.allLoaders()) {
             collectLanguages(loader, caches);
         }
         if (additionalLoader != null) {

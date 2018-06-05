@@ -24,11 +24,20 @@
  */
 package org.graalvm.component.installer;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
 
+/**
+ *
+ * @author sdedic
+ */
 public class SimpleGetopt {
     private LinkedList<String> parameters;
     private final Map<String, String> globalOptions;
@@ -38,6 +47,11 @@ public class SimpleGetopt {
     private final LinkedList<String> positionalParameters = new LinkedList<>();
 
     private String command;
+    private boolean ignoreUnknownCommands;
+    private boolean unknownCommand;
+
+    private Map<String, String> abbreviations = new HashMap<>();
+    private final Map<String, Map<String, String>> commandAbbreviations = new HashMap<>();
 
     public SimpleGetopt(Map<String, String> globalOptions) {
         this.globalOptions = globalOptions;
@@ -45,6 +59,11 @@ public class SimpleGetopt {
 
     public void setParameters(LinkedList<String> parameters) {
         this.parameters = parameters;
+    }
+
+    public SimpleGetopt ignoreUnknownCommands(boolean ignore) {
+        this.ignoreUnknownCommands = ignore;
+        return this;
     }
 
     // overridable by tests
@@ -55,6 +74,9 @@ public class SimpleGetopt {
     private String findCommand(String cmdString) {
         String cmd = cmdString;
         if (cmd.isEmpty()) {
+            if (ignoreUnknownCommands) {
+                return null;
+            }
             throw err("ERROR_MissingCommand"); // NOI18N
         }
         String selCommand = null;
@@ -70,13 +92,72 @@ public class SimpleGetopt {
             }
         }
         if (selCommand == null) {
+            if (ignoreUnknownCommands) {
+                unknownCommand = true;
+                command = cmdString;
+                return null;
+            }
             throw err("ERROR_UnknownCommand", cmdString); // NOI18N
         }
         command = selCommand;
         return command;
     }
 
+    private static final String NO_ABBREV = "**no-abbrev"; // NOI18N
+
+    private boolean hasCommand() {
+        return command != null && !unknownCommand;
+    }
+
+    @SuppressWarnings("StringEquality")
+    Map<String, String> computeAbbreviations(Collection<String> optNames) {
+        Map<String, String> result = new HashMap<>();
+
+        for (String o : optNames) {
+            if (o.length() < 2) {
+                continue;
+            }
+            result.put(o, NO_ABBREV);
+            for (int i = 2; i < o.length(); i++) {
+                String s = o.substring(0, i);
+
+                String fullName = result.get(s);
+                if (fullName == null) {
+                    result.put(s, o);
+                } else if (fullName.length() == 2) {
+                    continue;
+                } else if (o.length() == 2) {
+                    result.put(o, o);
+                } else {
+                    result.put(s, NO_ABBREV);
+                }
+            }
+        }
+        // final Object noAbbrevMark = NO_ABBREV;
+        for (Iterator<Entry<String, String>> ens = result.entrySet().iterator(); ens.hasNext();) {
+            Entry<String, String> en = ens.next();
+            // cannot use comparison to NO_ABBREV directly because of FindBugs + mx gate combo.
+            if (NO_ABBREV.equals(en.getValue())) {
+                ens.remove();
+            }
+        }
+        return result;
+    }
+
+    void computeAbbreviations() {
+        abbreviations = computeAbbreviations(globalOptions.keySet());
+
+        for (String c : commandOptions.keySet()) {
+            Set<String> names = new HashSet<>(commandOptions.get(c).keySet());
+            names.addAll(globalOptions.keySet());
+
+            Map<String, String> commandAbbrevs = computeAbbreviations(names);
+            commandAbbreviations.put(c, commandAbbrevs);
+        }
+    }
+
     public void process() {
+        computeAbbreviations();
         while (true) {
             String p = parameters.peek();
             if (p == null) {
@@ -86,15 +167,22 @@ public class SimpleGetopt {
                 if (command == null) {
                     findCommand(parameters.poll());
                     Map<String, String> cOpts = commandOptions.get(command);
-                    for (String s : optValues.keySet()) {
-                        if ("X".equals(cOpts.get(s))) {
-                            throw err("ERROR_UnsupportedOption", s, command); // NOI18N
+                    if (cOpts != null) {
+                        for (String s : optValues.keySet()) {
+                            if (s.length() > 1) {
+                                continue;
+                            }
+                            if ("X".equals(cOpts.get(s))) {
+                                throw err("ERROR_UnsupportedOption", s, command); // NOI18N
+                            }
                         }
-                    }
-                    if (cOpts.containsKey(DO_NOT_PROCESS_OPTIONS)) { // NOI18N
-                        // terminate all processing, the rest are positional params
-                        positionalParameters.addAll(parameters);
-                        break;
+                        if (cOpts.containsKey(DO_NOT_PROCESS_OPTIONS)) { // NOI18N
+                            // terminate all processing, the rest are positional params
+                            positionalParameters.addAll(parameters);
+                            break;
+                        }
+                    } else {
+                        positionalParameters.add(p);
                     }
                 } else {
                     positionalParameters.add(parameters.poll());
@@ -114,30 +202,58 @@ public class SimpleGetopt {
                 if (nextParam) {
                     optName = param.substring(2);
                     param = processOptSpec(optName, optCharIndex, param, nextParam);
-                    break;
                 } else {
                     optName = param.substring(optCharIndex, optCharIndex + 1);
+                    optCharIndex += optName.length();
+                    param = processOptSpec(optName, optCharIndex, param, nextParam);
                 }
-                optCharIndex += optName.length();
-                for (int i = 0; i < optName.length(); i++) {
-                    String o = String.valueOf(optName.charAt(i));
-                    param = processOptSpec(o, optCharIndex, param, nextParam);
+                // hack: if "help" option (hardcoded) is present, terminate
+                if (optValues.get("h") != null) {
+                    return;
+                }
+                if (nextParam) {
+                    break;
                 }
             }
         }
     }
 
-    private String processOptSpec(String o, int optCharIndex, String inParam, boolean nextParam) {
-        String param = inParam;
+    private String processOptSpec(String o, int optCharIndex, String optParam, boolean nextParam) {
+        String param = optParam;
         String optSpec = null;
-        if (command != null) {
+        String optName = o;
+        if (hasCommand()) {
+            Map<String, String> cmdAbbrevs = commandAbbreviations.get(command);
+            String fullO = cmdAbbrevs.get(optName);
+            if (fullO != null) {
+                optName = fullO;
+            }
             Map<String, String> cmdSpec = commandOptions.get(command);
-            optSpec = cmdSpec.get(o);
+            String c = cmdSpec.get(optName);
+            if (c != null && optName.length() > 1) {
+                optSpec = cmdSpec.get(c);
+                optName = c;
+            } else {
+                optSpec = c;
+            }
         }
         if (optSpec == null) {
-            optSpec = globalOptions.get(o);
+            String fullO = abbreviations.get(optName);
+            if (fullO != null) {
+                optName = fullO;
+            }
+            String c = globalOptions.get(optName);
+            if (c != null && optName.length() > 1) {
+                optSpec = globalOptions.get(c);
+                optName = c;
+            } else {
+                optSpec = c;
+            }
         }
         if (optSpec == null) {
+            if (unknownCommand) {
+                return param;
+            }
             if (command == null) {
                 throw err("ERROR_UnsupportedGlobalOption", o); // NOI18N
             }
@@ -172,7 +288,7 @@ public class SimpleGetopt {
             case "":
                 break;
         }
-        optValues.put(o, optVal); // NOI18N
+        optValues.put(optName, optVal); // NOI18N
         return param;
     }
 

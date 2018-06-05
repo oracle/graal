@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.source.Source;
@@ -55,13 +55,17 @@ public final class StackTrace {
             }
             JSONObject callFrame = new JSONObject();
             callFrame.put("functionName", frame.getName());
-            ScriptsHandler sch = context.getScriptsHandler();
-            int scriptId = sch.assureLoaded(source);
-            callFrame.put("scriptId", Integer.toString(scriptId));
-            callFrame.put("url", sch.getScript(scriptId).getUrl());
-            callFrame.put("lineNumber", sourceSection.getStartLine() - 1);
-            callFrame.put("columnNumber", sourceSection.getStartColumn() - 1);
-            callFrames.put(callFrame);
+            ScriptsHandler sch = context.acquireScriptsHandler();
+            try {
+                int scriptId = sch.assureLoaded(source);
+                callFrame.put("scriptId", Integer.toString(scriptId));
+                callFrame.put("url", sch.getScript(scriptId).getUrl());
+                callFrame.put("lineNumber", sourceSection.getStartLine() - 1);
+                callFrame.put("columnNumber", sourceSection.getStartColumn() - 1);
+                callFrames.put(callFrame);
+            } finally {
+                context.releaseScriptsHandler();
+            }
         }
         jsonObject.put("callFrames", callFrames);
     }

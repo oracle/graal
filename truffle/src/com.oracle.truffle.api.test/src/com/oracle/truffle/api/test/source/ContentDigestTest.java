@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -73,7 +75,7 @@ public class ContentDigestTest {
         byte[] result = MessageDigest.getInstance("MD2").digest(arr);
         String expecting = new BigInteger(1, result).toString(16);
 
-        Method m = Class.forName("com.oracle.truffle.api.source.Content").getDeclaredMethod("digest", byte[].class, int.class, int.class);
+        Method m = Class.forName("com.oracle.truffle.api.source.Source").getDeclaredMethod("digest", byte[].class, int.class, int.class);
         ReflectionUtils.setAccessible(m, true);
         String own = (String) m.invoke(null, arr, 0, arr.length);
 

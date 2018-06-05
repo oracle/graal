@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds depending on whether another regular expression can be matched at the
@@ -34,40 +36,27 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
  * !</strong> <em>Disjunction</em> <strong>)</strong> right-hand sides of the <em>Assertion</em>
  * goal symbol in the ECMAScript RegExp syntax.
  */
-public class LookAheadAssertion extends RegexASTSubtreeRootNode {
+public class LookAheadAssertion extends LookAroundAssertion {
 
     /**
-     * Creates a new look-ahead assertion AST node.
+     * Creates a new lookahead assertion AST node.
      * 
      * Note that for this node to be complete, {@link RegexASTSubtreeRootNode#setGroup(Group)} has
-     * to be called with the {@link Group} that represents the contents of this look-ahead
-     * assertion.
+     * to be called with the {@link Group} that represents the contents of this lookahead assertion.
      * 
-     * @param negated whether this look-ahead assertion is negative or not
+     * @param negated whether this lookahead assertion is negative or not
      */
     LookAheadAssertion(boolean negated) {
-        setFlag(FLAG_LOOK_AHEAD_NEGATED, negated);
+        super(negated);
     }
 
-    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast) {
-        super(copy, ast);
+    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast, boolean recursive) {
+        super(copy, ast, recursive);
     }
 
     @Override
-    public LookAheadAssertion copy(RegexAST ast) {
-        return ast.register(new LookAheadAssertion(this, ast));
-    }
-
-    /**
-     * Indicates whether this is a negative look-ahead assertion (written as {@code (?!...)}) or
-     * positive one (written as {@code (?:...)}).
-     * <p>
-     * Positive look-ahead assertions match if and only if the text at the current position matches
-     * the contents of the assertion. Negative look-ahead assertions match if and only if the text
-     * at the current position <em>does not</em> match the contents of the assertion.
-     */
-    public boolean isNegated() {
-        return isFlagSet(FLAG_LOOK_AHEAD_NEGATED);
+    public LookAheadAssertion copy(RegexAST ast, boolean recursive) {
+        return ast.register(new LookAheadAssertion(this, ast, recursive));
     }
 
     @Override
@@ -75,8 +64,9 @@ public class LookAheadAssertion extends RegexASTSubtreeRootNode {
         return isNegated() ? "?!" : "?=";
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable(isNegated() ? "NegativeLookAheadAssertion" : "LookAheadAssertion");
+    public JsonValue toJson() {
+        return toJson(isNegated() ? "NegativeLookAheadAssertion" : "LookAheadAssertion");
     }
 }

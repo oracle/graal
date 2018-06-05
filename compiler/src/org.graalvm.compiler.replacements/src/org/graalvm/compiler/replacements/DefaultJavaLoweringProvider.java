@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,6 +43,7 @@ import java.util.List;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -84,6 +87,7 @@ import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -109,7 +113,9 @@ import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
@@ -156,6 +162,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final ForeignCallsProvider foreignCalls;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
+    private final ResolvedJavaType objectArrayType;
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
@@ -165,6 +172,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         this.foreignCalls = foreignCalls;
         this.target = target;
         this.useCompressedOops = useCompressedOops;
+        this.objectArrayType = metaAccess.lookupJavaType(Object[].class);
     }
 
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
@@ -195,10 +203,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerArrayLengthNode((ArrayLengthNode) n, tool);
             } else if (n instanceof LoadHubNode) {
                 lowerLoadHubNode((LoadHubNode) n, tool);
+            } else if (n instanceof LoadArrayComponentHubNode) {
+                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
             } else if (n instanceof MonitorEnterNode) {
                 lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
                 lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
+            } else if (n instanceof UnsafeCompareAndExchangeNode) {
+                lowerCompareAndExchangeNode((UnsafeCompareAndExchangeNode) n);
             } else if (n instanceof AtomicReadAndWriteNode) {
                 lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
             } else if (n instanceof RawLoadNode) {
@@ -448,7 +460,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind elementKind = storeIndexed.elementKind();
 
         LogicNode condition = null;
-        if (elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
+        if (storeIndexed.getStoreCheck() == null && elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
             TypeReference arrayType = StampTool.typeReferenceOrNull(array);
             if (arrayType != null && arrayType.isExact()) {
@@ -513,6 +525,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         loadHub.replaceAtUsagesAndDelete(hub);
     }
 
+    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
+        StructuredGraph graph = loadHub.graph();
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), loadHub);
+        graph.replaceFixed(loadHub, hub);
+    }
+
     protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
         ValueNode object = createNullCheckedValue(monitorEnter.object(), monitorEnter, tool);
         ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess(), tool.getConstantReflection()));
@@ -530,9 +548,25 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
+        BarrierType barrierType = guessStoreBarrierType(cas.object(), expectedValue);
         LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, barrierType));
         atomicNode.setStateAfter(cas.stateAfter());
+        graph.replaceFixedWithFixed(cas, atomicNode);
+    }
+
+    protected void lowerCompareAndExchangeNode(UnsafeCompareAndExchangeNode cas) {
+        StructuredGraph graph = cas.graph();
+        JavaKind valueKind = cas.getValueKind();
+
+        ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected());
+        ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
+
+        AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
+        BarrierType barrierType = guessStoreBarrierType(cas.object(), expectedValue);
+        ValueCompareAndSwapNode atomicNode = graph.add(new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getLocationIdentity(), barrierType));
+        ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
+        atomicNode.setStateAfter(cas.stateAfter());
+        cas.replaceAtUsages(coercedNode);
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
 
@@ -543,8 +577,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
-        BarrierType barrierType = storeBarrierType(n.object(), n.newValue());
-        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, barrierType));
+        BarrierType barrierType = guessStoreBarrierType(n.object(), n.newValue());
+        LIRKind lirAccessKind = LIRKind.fromJavaKind(target.arch, valueKind);
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, lirAccessKind, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
@@ -896,20 +931,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
-    private static BarrierType unsafeStoreBarrierType(RawStoreNode store) {
+    private BarrierType unsafeStoreBarrierType(RawStoreNode store) {
         if (!store.needsBarrier()) {
             return BarrierType.NONE;
         }
-        return storeBarrierType(store.object(), store.value());
+        return guessStoreBarrierType(store.object(), store.value());
     }
 
-    private static BarrierType storeBarrierType(ValueNode object, ValueNode value) {
+    private BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
-            if (type != null && !type.isArray()) {
-                return BarrierType.IMPRECISE;
-            } else {
+            // Array types must use a precise barrier, so if the type is unknown or is a supertype
+            // of Object[] then treat it as an array.
+            if (type == null || type.isArray() || type.isAssignableFrom(objectArrayType)) {
                 return BarrierType.PRECISE;
+            } else {
+                return BarrierType.IMPRECISE;
             }
         }
         return BarrierType.NONE;
@@ -1036,6 +1073,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
     protected GuardingNode getBoundsCheck(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
+        if (n.getBoundsCheck() != null) {
+            return n.getBoundsCheck();
+        }
+
         StructuredGraph graph = n.graph();
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
         if (arrayLength == null) {

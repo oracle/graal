@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.PrimitiveIterator;
@@ -75,6 +77,10 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     public StateSet<S> copy() {
         return new StateSet<>(this);
+    }
+
+    public StateIndex<? super S> getStateIndex() {
+        return stateIndex;
     }
 
     private void checkSwitchToBitSet(int newSize) {
@@ -523,11 +529,13 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
         }
     }
 
+    @TruffleBoundary
     @Override
     public Stream<S> stream() {
         return StreamSupport.stream(this.spliterator(), false);
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         return stream().map(S::toString).collect(Collectors.joining(",", "{", "}"));

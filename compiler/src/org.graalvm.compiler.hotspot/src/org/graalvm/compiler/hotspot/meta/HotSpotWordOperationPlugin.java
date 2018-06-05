@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -45,6 +47,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
@@ -69,13 +72,13 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
     }
 
     @Override
-    protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index) {
+    protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index, GuardingNode boundsCheck) {
         ResolvedJavaType arrayType = StampTool.typeOrNull(array);
         Stamp componentStamp = wordTypes.getWordStamp(arrayType.getComponentType());
         if (componentStamp instanceof MetaspacePointerStamp) {
-            return new LoadIndexedPointerNode(componentStamp, array, index);
+            return new LoadIndexedPointerNode(componentStamp, array, index, boundsCheck);
         } else {
-            return super.createLoadIndexedNode(array, index);
+            return super.createLoadIndexedNode(array, index, boundsCheck);
         }
     }
 

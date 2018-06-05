@@ -488,7 +488,7 @@ public class HeaderParser {
     /**
      * Parses required capabilities string.
      *
-     * org.graalvm; filter:="(&(graalvm_version=0.32)(os_name=linux)(os_arch=amd64))"
+     * org.graalvm; filter:="(&amp;(graalvm_version=0.32)(os_name=linux)(os_arch=amd64))"
      * 
      * @return graal capabilities
      * @throws MetadataException

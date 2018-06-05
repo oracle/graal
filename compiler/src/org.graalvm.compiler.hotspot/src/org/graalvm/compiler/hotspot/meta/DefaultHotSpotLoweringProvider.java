@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -39,6 +41,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.ref.Reference;
+import java.util.EnumMap;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -92,8 +95,8 @@ import org.graalvm.compiler.hotspot.replacements.UnsafeLoadSnippets;
 import org.graalvm.compiler.hotspot.replacements.WriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyNode;
-import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyWithSlowPathNode;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopySnippets;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyWithSlowPathNode;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -119,6 +122,7 @@ import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.debug.StringToBytesNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -208,7 +212,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         instanceofSnippets = new InstanceOfSnippets.Templates(options, factories, runtime, providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(options, factories, runtime, providers, target, config);
         monitorSnippets = new MonitorSnippets.Templates(options, factories, runtime, providers, target, config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, factories, providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(options, factories, providers, target);
         assertionSnippets = new AssertionSnippets.Templates(options, factories, providers, target);
@@ -639,59 +643,53 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     static final class Exceptions {
-        protected static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException;
-        protected static final NullPointerException cachedNullPointerException;
+        protected static final EnumMap<BytecodeExceptionKind, RuntimeException> cachedExceptions;
 
         static {
-            cachedArrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException();
-            cachedArrayIndexOutOfBoundsException.setStackTrace(new StackTraceElement[0]);
-            cachedNullPointerException = new NullPointerException();
-            cachedNullPointerException.setStackTrace(new StackTraceElement[0]);
+            cachedExceptions = new EnumMap<>(BytecodeExceptionKind.class);
+            cachedExceptions.put(BytecodeExceptionKind.NULL_POINTER, clearStackTrace(new NullPointerException()));
+            cachedExceptions.put(BytecodeExceptionKind.OUT_OF_BOUNDS, clearStackTrace(new ArrayIndexOutOfBoundsException()));
+            cachedExceptions.put(BytecodeExceptionKind.CLASS_CAST, clearStackTrace(new ClassCastException()));
+            cachedExceptions.put(BytecodeExceptionKind.ARRAY_STORE, clearStackTrace(new ArrayStoreException()));
+            cachedExceptions.put(BytecodeExceptionKind.DIVISION_BY_ZERO, clearStackTrace(new ArithmeticException()));
+        }
+
+        private static RuntimeException clearStackTrace(RuntimeException ex) {
+            ex.setStackTrace(new StackTraceElement[0]);
+            return ex;
         }
     }
 
     public static final class RuntimeCalls {
-        public static final ForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = new ForeignCallDescriptor("createArrayStoreException", ArrayStoreException.class, Object.class);
-        public static final ForeignCallDescriptor CREATE_CLASS_CAST_EXCEPTION = new ForeignCallDescriptor("createClassCastException", ClassCastException.class, Object.class, KlassPointer.class);
-        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", NullPointerException.class);
-        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class);
+        public static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> runtimeCalls;
+
+        static {
+            runtimeCalls = new EnumMap<>(BytecodeExceptionKind.class);
+            runtimeCalls.put(BytecodeExceptionKind.ARRAY_STORE, new ForeignCallDescriptor("createArrayStoreException", ArrayStoreException.class, Object.class));
+            runtimeCalls.put(BytecodeExceptionKind.CLASS_CAST, new ForeignCallDescriptor("createClassCastException", ClassCastException.class, Object.class, KlassPointer.class));
+            runtimeCalls.put(BytecodeExceptionKind.NULL_POINTER, new ForeignCallDescriptor("createNullPointerException", NullPointerException.class));
+            runtimeCalls.put(BytecodeExceptionKind.OUT_OF_BOUNDS, new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class, int.class));
+            runtimeCalls.put(BytecodeExceptionKind.DIVISION_BY_ZERO, new ForeignCallDescriptor("createDivisionByZeroException", ArithmeticException.class));
+        }
     }
 
-    private boolean throwCachedException(BytecodeExceptionNode node) {
-        Throwable exception;
-        if (node.getExceptionClass() == NullPointerException.class) {
-            exception = Exceptions.cachedNullPointerException;
-        } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-            exception = Exceptions.cachedArrayIndexOutOfBoundsException;
-        } else {
-            return false;
-        }
+    private void throwCachedException(BytecodeExceptionNode node) {
+        Throwable exception = Exceptions.cachedExceptions.get(node.getExceptionKind());
+        assert exception != null;
 
         StructuredGraph graph = node.graph();
         FloatingNode exceptionNode = ConstantNode.forConstant(constantReflection.forObject(exception), metaAccess, graph);
         graph.replaceFixedWithFloating(node, exceptionNode);
-        return true;
     }
 
     private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
         if (OmitHotExceptionStacktrace.getValue(node.getOptions())) {
-            if (throwCachedException(node)) {
-                return;
-            }
+            throwCachedException(node);
+            return;
         }
 
-        ForeignCallDescriptor descriptor;
-        if (node.getExceptionClass() == NullPointerException.class) {
-            descriptor = RuntimeCalls.CREATE_NULL_POINTER_EXCEPTION;
-        } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-            descriptor = RuntimeCalls.CREATE_OUT_OF_BOUNDS_EXCEPTION;
-        } else if (node.getExceptionClass() == ArrayStoreException.class) {
-            descriptor = RuntimeCalls.CREATE_ARRAY_STORE_EXCEPTION;
-        } else if (node.getExceptionClass() == ClassCastException.class) {
-            descriptor = RuntimeCalls.CREATE_CLASS_CAST_EXCEPTION;
-        } else {
-            throw GraalError.shouldNotReachHere();
-        }
+        ForeignCallDescriptor descriptor = RuntimeCalls.runtimeCalls.get(node.getExceptionKind());
+        assert descriptor != null;
 
         StructuredGraph graph = node.graph();
         ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));

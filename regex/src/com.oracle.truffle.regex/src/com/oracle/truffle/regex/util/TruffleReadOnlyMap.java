@@ -33,12 +33,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexLanguageObject;
+
 import java.util.Map;
 
-import static com.oracle.truffle.regex.util.Boundaries.mapContainsKey;
-import static com.oracle.truffle.regex.util.Boundaries.mapGet;
-import static com.oracle.truffle.regex.util.Boundaries.mapKeySet;
-import static com.oracle.truffle.regex.util.Boundaries.setToArray;
+import static com.oracle.truffle.regex.util.Boundaries.*;
 
 public class TruffleReadOnlyMap implements RegexLanguageObject {
 

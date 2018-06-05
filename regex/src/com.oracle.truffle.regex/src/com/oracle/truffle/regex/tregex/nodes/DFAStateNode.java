@@ -31,14 +31,17 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Arrays;
 
 public class DFAStateNode extends DFAAbstractStateNode {
 
-    private static final byte FINAL_STATE_FLAG = 1;
-    private static final byte ANCHORED_FINAL_STATE_FLAG = 1 << 1;
-    private static final byte FIND_SINGLE_CHAR_FLAG = 1 << 2;
+    private static final byte FLAG_FINAL_STATE = 1;
+    private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
+    private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
 
     private final short id;
     private final byte flags;
@@ -48,31 +51,40 @@ public class DFAStateNode extends DFAAbstractStateNode {
     public DFAStateNode(short id,
                     boolean finalState,
                     boolean anchoredFinalState,
-                    boolean findSingleChar,
+                    boolean hasBackwardPrefixState,
                     short loopToSelf,
                     short[] successors,
                     CharMatcher[] matchers) {
+        this(id, initFlags(finalState, anchoredFinalState, hasBackwardPrefixState), loopToSelf, successors, matchers);
+    }
+
+    DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopToSelf,
+                        Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
+                        nodeSplitCopy.getMatchers());
+    }
+
+    private DFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers) {
         super(successors);
         assert id > 0;
         this.id = id;
-        byte newFlags = 0;
-        if (finalState) {
-            newFlags |= FINAL_STATE_FLAG;
-        }
-        if (anchoredFinalState) {
-            newFlags |= ANCHORED_FINAL_STATE_FLAG;
-        }
-        if (findSingleChar) {
-            newFlags |= FIND_SINGLE_CHAR_FLAG;
-        }
+        this.flags = flags;
         this.loopToSelf = loopToSelf;
-        this.flags = newFlags;
         this.matchers = matchers;
     }
 
-    protected DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.isFinalState(), nodeSplitCopy.isAnchoredFinalState(), nodeSplitCopy.isFindSingleChar(), nodeSplitCopy.loopToSelf,
-                        Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length), nodeSplitCopy.getMatchers());
+    private static byte initFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
+        byte newFlags = 0;
+        if (finalState) {
+            newFlags |= FLAG_FINAL_STATE;
+        }
+        if (anchoredFinalState) {
+            newFlags |= FLAG_ANCHORED_FINAL_STATE;
+        }
+        if (hasBackwardPrefixState) {
+            newFlags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
+        }
+        return newFlags;
     }
 
     @Override
@@ -90,23 +102,48 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     public boolean isFinalState() {
-        return flagIsSet(FINAL_STATE_FLAG);
+        return flagIsSet(FLAG_FINAL_STATE);
     }
 
     public boolean isAnchoredFinalState() {
-        return flagIsSet(ANCHORED_FINAL_STATE_FLAG);
+        return flagIsSet(FLAG_ANCHORED_FINAL_STATE);
     }
 
-    public boolean isFindSingleChar() {
-        return flagIsSet(FIND_SINGLE_CHAR_FLAG);
+    public boolean hasBackwardPrefixState() {
+        return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
     }
 
     private boolean flagIsSet(byte flag) {
         return (flags & flag) != 0;
     }
 
-    public boolean isLoopToSelf() {
+    public boolean hasLoopToSelf() {
         return loopToSelf != -1;
+    }
+
+    protected boolean isLoopToSelf(int transitionIndex) {
+        return transitionIndex == loopToSelf;
+    }
+
+    private boolean treeTransitionMatching() {
+        return matchers.length > 0 && matchers[matchers.length - 1] instanceof AllTransitionsInOneTreeMatcher;
+    }
+
+    private AllTransitionsInOneTreeMatcher getTreeMatcher() {
+        return (AllTransitionsInOneTreeMatcher) matchers[matchers.length - 1];
+    }
+
+    private boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, char c, int allTransitionsMatcherResult) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (executor.isRegressionTestMode()) {
+            for (int i = 0; i < matchers.length - 1; i++) {
+                if (matchers[i].match(c)) {
+                    return i == allTransitionsMatcherResult;
+                }
+            }
+            return allTransitionsMatcherResult == -1;
+        }
+        return true;
     }
 
     /**
@@ -154,26 +191,33 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return <code>true</code> if the matching transition loops back to this state,
-     *         <code>false</code> otherwise.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
-        for (int i = 0; i < matchers.length; i++) {
-            if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                System.out.println("check " + matchers[i]);
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree1(frame, executor, this, c);
+            assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return hasLoopToSelf() && isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (matchers[i].match(c)) {
+                    if (executor.recordExecution()) {
+                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
+                    }
+                    CompilerAsserts.partialEvaluationConstant(i);
+                    successorFound1(frame, executor, i);
+                    executor.setSuccessorIndex(frame, i);
+                    return hasLoopToSelf() && isLoopToSelf(i);
+                }
             }
-            if (matchers[i].match(c)) {
-                CompilerAsserts.partialEvaluationConstant(i);
-                successorFound1(frame, executor, i);
-                executor.setSuccessorIndex(frame, i);
-                return isLoopToSelf() && i == loopToSelf;
-            }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            return false;
         }
-        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
-        return false;
     }
 
     /**
@@ -188,30 +232,37 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return <code>true</code> if the matching transition loops back to this state,
-     *         <code>false</code> otherwise.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
-        for (int i = 0; i < matchers.length; i++) {
-            if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                System.out.println("check " + matchers[i]);
-            }
-            if (matchers[i].match(c)) {
-                executor.setSuccessorIndex(frame, i);
-                if (i != loopToSelf) {
-                    CompilerAsserts.partialEvaluationConstant(i);
-                    successorFound2(frame, executor, i);
-                    return false;
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree2(frame, executor, this, c);
+            assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (matchers[i].match(c)) {
+                    if (executor.recordExecution()) {
+                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
+                    }
+                    executor.setSuccessorIndex(frame, i);
+                    if (!isLoopToSelf(i)) {
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        successorFound2(frame, executor, i);
+                        return false;
+                    }
+                    return true;
                 }
-                return true;
             }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            noSuccessor2(frame, executor);
+            return false;
         }
-        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
-        noSuccessor2(frame, executor);
-        return false;
     }
 
     /**
@@ -232,30 +283,37 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * @param preLoopIndex the index pointed to by
      *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i> this method is
      *            called for the first time.
-     * @return <code>true</code> if the matching transition loops back to this state,
-     *         <code>false</code> otherwise.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
-        for (int i = 0; i < matchers.length; i++) {
-            if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                System.out.println("check " + matchers[i]);
-            }
-            if (matchers[i].match(c)) {
-                executor.setSuccessorIndex(frame, i);
-                if (i != loopToSelf) {
-                    CompilerAsserts.partialEvaluationConstant(i);
-                    successorFound3(frame, executor, i, preLoopIndex);
-                    return false;
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree3(frame, executor, this, c, preLoopIndex);
+            assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (matchers[i].match(c)) {
+                    if (executor.recordExecution()) {
+                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
+                    }
+                    executor.setSuccessorIndex(frame, i);
+                    if (!isLoopToSelf(i)) {
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        successorFound3(frame, executor, i, preLoopIndex);
+                        return false;
+                    }
+                    return true;
                 }
-                return true;
             }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            noSuccessor3(frame, executor, preLoopIndex);
+            return false;
         }
-        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
-        noSuccessor3(frame, executor, preLoopIndex);
-        return false;
     }
 
     /**
@@ -440,7 +498,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        DebugUtil.appendNodeId(sb, id).append(": ").append(matchers.length).append(" successors");
+        DebugUtil.appendNodeId(sb, id).append(": ");
+        if (!treeTransitionMatching()) {
+            sb.append(matchers.length).append(" successors");
+        }
         if (isAnchoredFinalState()) {
             sb.append(", AFS");
         }
@@ -448,36 +509,28 @@ public class DFAStateNode extends DFAAbstractStateNode {
             sb.append(", FS");
         }
         sb.append(":\n");
-        for (int i = 0; i < matchers.length; i++) {
-            sb.append("      - ").append(matchers[i]).append(" -> ");
-            DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
+        if (treeTransitionMatching()) {
+            sb.append("      ").append(matchers[0]).append("\n      successors: ").append(Arrays.toString(successors)).append("\n");
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                sb.append("      ").append(i).append(": ").append(matchers[i]).append(" -> ");
+                DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
+            }
         }
         return sb.toString();
     }
 
     @TruffleBoundary
-    private DebugUtil.Table transitionToTable(int i) {
-        return new DebugUtil.Table("Transition",
-                        new DebugUtil.Value("matcher", matchers[i]),
-                        new DebugUtil.Value("target", DebugUtil.nodeID(successors[i])));
-    }
-
-    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table(DebugUtil.nodeID(id));
-        if (isAnchoredFinalState()) {
-            table.append(new DebugUtil.Value("anchoredFinalState", "true"));
-        }
-        if (isFinalState()) {
-            table.append(new DebugUtil.Value("finalState", "true"));
-        }
-        if (isLoopToSelf()) {
-            table.append(new DebugUtil.Value("loopToSelf", "true"));
-        }
+    public JsonValue toJson() {
+        JsonArray transitions = Json.array();
         for (int i = 0; i < matchers.length; i++) {
-            table.append(transitionToTable(i));
+            transitions.append(Json.obj(Json.prop("matcher", matchers[i].toString()), Json.prop("target", successors[i])));
         }
-        return table;
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("anchoredFinalState", isAnchoredFinalState()),
+                        Json.prop("finalState", isFinalState()),
+                        Json.prop("loopToSelf", hasLoopToSelf()),
+                        Json.prop("transitions", transitions));
     }
 }

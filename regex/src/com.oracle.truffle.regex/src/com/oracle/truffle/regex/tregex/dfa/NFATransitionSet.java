@@ -24,79 +24,78 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAAnchoredFinalState;
-import com.oracle.truffle.regex.tregex.nfa.NFAFinalState;
-import com.oracle.truffle.regex.tregex.nfa.NFAMatcherState;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public final class NFATransitionSet implements Iterable<NFAStateTransition> {
+/**
+ * This class represents a set of NFA transitions leading to a set of NFA states. The uniqueness of
+ * one {@link NFAStateTransition} inside this class is defined by its target {@link NFAState} as
+ * returned by {@link NFAStateTransition#getTarget(boolean)}, where
+ * {@link NFATransitionSet#isForward()} is used as the parameter {@code forward}.
+ * {@link #iterator()} reflects insertion order.
+ *
+ * @see DFAGenerator
+ * @see DFAStateTransitionBuilder
+ */
+public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransition> {
 
     private static final byte FLAG_FORWARD = 1;
-    private static final byte FLAG_PRIORITY_SENSITIVE = 1 << 1;
-    private static final byte FLAG_CONTAINS_PREFIX_STATES = 1 << 2;
-    private static final byte FLAG_HASH_COMPUTED = 1 << 3;
+    private static final byte FLAG_LEADS_TO_FINAL_STATE = 1 << 1;
+    private static final byte FLAG_HASH_COMPUTED = 1 << 2;
 
     private final NFA nfa;
     private final NFAStateSet stateSet;
     private byte flags = 0;
     private short[] transitions;
     private short size = 0;
-    private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
-    private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
-    private short finalState = -1;
-    private short anchoredFinalState = -1;
     private int cachedHash;
 
-    private NFATransitionSet(NFA nfa, boolean forward, boolean prioritySensitive, short[] transitions) {
+    NFATransitionSet(NFA nfa, boolean forward) {
         this.nfa = nfa;
         stateSet = new NFAStateSet(nfa);
         if (forward) {
             flags |= FLAG_FORWARD;
         }
-        if (prioritySensitive) {
-            flags |= FLAG_PRIORITY_SENSITIVE;
-        }
-        this.transitions = transitions;
+        this.transitions = new short[20];
     }
 
-    private NFATransitionSet(NFATransitionSet copy, int capacity) {
+    NFATransitionSet(NFATransitionSet copy, int capacity) {
         this.nfa = copy.nfa;
         this.stateSet = copy.stateSet.copy();
         this.flags = copy.flags;
         this.transitions = new short[capacity];
         System.arraycopy(copy.transitions, 0, this.transitions, 0, copy.size);
         this.size = copy.size;
-        this.preCalculatedUnAnchoredResult = copy.preCalculatedUnAnchoredResult;
-        this.preCalculatedAnchoredResult = copy.preCalculatedAnchoredResult;
-        this.finalState = copy.finalState;
-        this.anchoredFinalState = copy.anchoredFinalState;
         this.cachedHash = copy.cachedHash;
     }
 
-    public static NFATransitionSet create(NFA nfa, boolean forward, boolean prioritySensitive) {
-        return new NFATransitionSet(nfa, forward, prioritySensitive, new short[20]);
-    }
-
-    public static NFATransitionSet create(NFA nfa, boolean forward, boolean prioritySensitive, List<NFAStateTransition> transitions) {
-        NFATransitionSet transitionSet = new NFATransitionSet(nfa, forward, prioritySensitive, new short[(transitions.size() * 2) < 20 ? 20 : transitions.size() * 2]);
-        transitionSet.addAll(transitions);
+    public static NFATransitionSet create(NFA nfa, boolean forward, NFAStateTransition transition) {
+        NFATransitionSet transitionSet = new NFATransitionSet(nfa, forward);
+        transitionSet.add(transition);
         return transitionSet;
     }
 
-    public NFATransitionSet createMerged(NFATransitionSet otherTargetState) {
-        NFATransitionSet merged = new NFATransitionSet(this, size() + otherTargetState.size() + 20);
-        merged.addAll(otherTargetState);
+    @Override
+    public NFATransitionSet createMerged(TransitionSet other) {
+        NFATransitionSet merged = new NFATransitionSet(this, mergedInitialCapacity((NFATransitionSet) other));
+        merged.addAll(other);
         return merged;
+    }
+
+    int mergedInitialCapacity(NFATransitionSet other) {
+        return size() + other.size() + 20;
     }
 
     private boolean isFlagSet(byte flag) {
@@ -111,27 +110,29 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         flags &= ~flag;
     }
 
-    private boolean isForward() {
+    public boolean isForward() {
         return isFlagSet(FLAG_FORWARD);
     }
 
-    public boolean isPrioritySensitive() {
-        return isFlagSet(FLAG_PRIORITY_SENSITIVE);
+    /**
+     * Returns {@code true} if the set contains a transition to a NFA state that in turn contains a
+     * transition to an un-anchored NFA final state as denoted by
+     * {@link NFAState#hasTransitionToUnAnchoredFinalState(boolean)}, where {@link #isForward()} is
+     * used as the {@code forward} parameter.
+     */
+    public boolean leadsToFinalState() {
+        return isFlagSet(FLAG_LEADS_TO_FINAL_STATE);
     }
 
-    public boolean containsPrefixStates() {
-        return isFlagSet(FLAG_CONTAINS_PREFIX_STATES);
+    private void setLeadsToFinalState() {
+        setFlag(FLAG_LEADS_TO_FINAL_STATE);
     }
 
-    private void setContainsPrefixStates() {
-        setFlag(FLAG_CONTAINS_PREFIX_STATES);
-    }
-
-    private boolean isHashComputed() {
+    boolean isHashComputed() {
         return isFlagSet(FLAG_HASH_COMPUTED);
     }
 
-    private void setHashComputed() {
+    void setHashComputed() {
         setFlag(FLAG_HASH_COMPUTED);
     }
 
@@ -139,28 +140,12 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         clearFlag(FLAG_HASH_COMPUTED);
     }
 
-    public NFAFinalState getFinalState() {
-        return containsFinalState() ? (NFAFinalState) nfa.getStates()[finalState] : null;
+    int getCachedHash() {
+        return cachedHash;
     }
 
-    public NFAAnchoredFinalState getAnchoredFinalState() {
-        return containsAnchoredFinalState() ? (NFAAnchoredFinalState) nfa.getStates()[anchoredFinalState] : null;
-    }
-
-    public boolean containsAnchoredFinalState() {
-        return anchoredFinalState >= 0;
-    }
-
-    public boolean containsFinalState() {
-        return finalState >= 0;
-    }
-
-    public byte getPreCalculatedUnAnchoredResult() {
-        return preCalculatedUnAnchoredResult;
-    }
-
-    public byte getPreCalculatedAnchoredResult() {
-        return preCalculatedAnchoredResult;
+    void setCachedHash(int cachedHash) {
+        this.cachedHash = cachedHash;
     }
 
     public boolean isEmpty() {
@@ -171,36 +156,33 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         return size;
     }
 
+    NFAStateTransition getTransition(int i) {
+        return nfa.getTransitions()[transitions[i]];
+    }
+
+    /**
+     * Add a {@link NFAStateTransition} to this set. Note that this set will refuse to add the
+     * transition if it already contains a transition leading to the same <em>target state</em> as
+     * denoted by {@link NFAStateTransition#getTarget(boolean)}, where {@link #isForward()} is used
+     * as the {@code forward} parameter.
+     */
     public void add(NFAStateTransition transition) {
+        doAdd(transition);
+    }
+
+    void doAdd(NFAStateTransition transition) {
         NFAState target = transition.getTarget(isForward());
-        if (isPrioritySensitive() && (containsFinalState() || (target instanceof NFAAnchoredFinalState && containsAnchoredFinalState()))) {
-            return;
-        }
+        assert !target.isFinalState(isForward());
         if (!stateSet.add(target)) {
             return;
         }
-        if (target.hasPrefixStates()) {
-            setContainsPrefixStates();
+        if (target.hasTransitionToUnAnchoredFinalState(isForward())) {
+            setLeadsToFinalState();
         }
-        if (target instanceof NFAMatcherState) {
-            appendTransition(transition);
-        } else if (target instanceof NFAAnchoredFinalState) {
-            anchoredFinalState = target.getId();
-            if (target.hasPossibleResults()) {
-                updatePreCalcAnchoredResult(target.getPossibleResults().get(0));
-            }
-            appendTransition(transition);
-        } else {
-            assert target instanceof NFAFinalState;
-            finalState = target.getId();
-            if (target.hasPossibleResults()) {
-                updatePreCalcUnAnchoredResult(target.getPossibleResults().get(0));
-            }
-            appendTransition(transition);
-        }
+        appendTransition(transition);
     }
 
-    private void ensureCapacity(int newSize) {
+    void ensureCapacity(int newSize) {
         if (newSize < transitions.length) {
             return;
         }
@@ -208,77 +190,51 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         while (newLength < newSize) {
             newLength *= 2;
         }
-        short[] newTransitions = new short[newLength];
-        System.arraycopy(transitions, 0, newTransitions, 0, size);
-        transitions = newTransitions;
+        transitions = Arrays.copyOf(transitions, newLength);
     }
 
     private void appendTransition(NFAStateTransition transition) {
         ensureCapacity(size + 1);
+        assert nfa.getTransitions()[transition.getId()] == transition;
         transitions[size] = transition.getId();
         size++;
         clearHashComputed();
     }
 
-    public void addAll(NFATransitionSet other) {
-        if (isPrioritySensitive() && containsFinalState()) {
-            return;
-        }
-        ensureCapacity(size + other.size);
-        for (int i = 0; i < other.size; i++) {
-            add(nfa.getTransitions()[other.transitions[i]]);
-        }
-    }
-
-    public void addAll(List<NFAStateTransition> addTransitions) {
-        if (isPrioritySensitive() && containsFinalState()) {
-            return;
-        }
-        ensureCapacity(size + addTransitions.size());
-        for (NFAStateTransition t : addTransitions) {
-            add(t);
+    /**
+     * Add all transitions contained in the given transition set.
+     *
+     * @see #add(NFAStateTransition)
+     */
+    @Override
+    public void addAll(TransitionSet other) {
+        NFATransitionSet o = (NFATransitionSet) other;
+        ensureCapacity(size + o.size);
+        for (int i = 0; i < o.size; i++) {
+            doAdd(o.getTransition(i));
         }
     }
 
-    private void updatePreCalcUnAnchoredResult(int newResult) {
-        if (newResult >= 0) {
-            if (preCalculatedUnAnchoredResult == TraceFinderDFAStateNode.NO_PRE_CALC_RESULT || Byte.toUnsignedInt(preCalculatedUnAnchoredResult) > newResult) {
-                preCalculatedUnAnchoredResult = (byte) newResult;
-            }
-        }
-    }
-
-    private void updatePreCalcAnchoredResult(int newResult) {
-        if (newResult >= 0) {
-            if (preCalculatedAnchoredResult == TraceFinderDFAStateNode.NO_PRE_CALC_RESULT || Byte.toUnsignedInt(preCalculatedAnchoredResult) > newResult) {
-                preCalculatedAnchoredResult = (byte) newResult;
-            }
-        }
-    }
-
+    /**
+     * Returns the hash code value for this set.
+     *
+     * The hash is equal to the hashcode of a {@link NFAStateSet} containing all
+     * <em>target states</em> of the transitions in this transition set.
+     */
     @Override
     public int hashCode() {
         if (!isHashComputed()) {
-            if (isPrioritySensitive()) {
-                cachedHash = 1;
-                for (int i = 0; i < size; i++) {
-                    cachedHash = 31 * cachedHash + nfa.getTransitions()[transitions[i]].getTarget(isForward()).hashCode();
-                }
-            } else {
-                cachedHash = stateSetHashCode(stateSet);
-            }
+            cachedHash = Objects.hashCode(stateSet);
             setHashComputed();
         }
         return cachedHash;
     }
 
-    private static int stateSetHashCode(NFAStateSet nfaStates) {
-        if (nfaStates == null) {
-            return 0;
-        }
-        return nfaStates.hashCode();
-    }
-
+    /**
+     * Checks if the set is equal to another given set. Two sets are considered equal only if both
+     * are {@link NFATransitionSet}s and have the same set of <em>target states</em> (as returned by
+     * {@link NFAStateTransition#getTarget(boolean)}).
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {
@@ -287,29 +243,14 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         if (!(obj instanceof NFATransitionSet)) {
             return false;
         }
-        NFATransitionSet o = (NFATransitionSet) obj;
-        if (isPrioritySensitive()) {
-            if (size() != o.size()) {
-                return false;
-            }
-            for (int i = 0; i < size(); i++) {
-                if (!nfa.getTransitions()[transitions[i]].getTarget(isForward()).equals(nfa.getTransitions()[o.transitions[i]].getTarget(isForward()))) {
-                    return false;
-                }
-            }
-            return true;
-        } else {
-            return stateSetEquals(stateSet, o.stateSet);
-        }
+        assert !(obj instanceof PrioritySensitiveNFATransitionSet) : "Do not mix NFATransitionSet and PrioritySensitiveNFATransitionSet!";
+        return Objects.equals(stateSet, ((NFATransitionSet) obj).stateSet);
     }
 
-    private static boolean stateSetEquals(NFAStateSet a, NFAStateSet b) {
-        if (a == null) {
-            return b == null;
-        }
-        return a.equals(b);
-    }
-
+    /**
+     * Returns an iterator that will yield the elements contained in this set <em>in insertion
+     * order</em>.
+     */
     @Override
     public Iterator<NFAStateTransition> iterator() {
         return new NFATransitionSetIterator(nfa, transitions, size);
@@ -339,20 +280,24 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         }
     }
 
+    /**
+     * Returns a stream that will yield the elements contained in this set <em>in insertion
+     * order</em>.
+     */
+    @TruffleBoundary
     public Stream<NFAStateTransition> stream() {
         return StreamSupport.stream(spliterator(), false);
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         return stream().map(x -> x.getTarget(isForward()).idToString()).collect(Collectors.joining(",", "{", "}"));
     }
 
-    public DebugUtil.Table toTable(String name) {
-        DebugUtil.Table table = new DebugUtil.Table(name);
-        for (NFAStateTransition transition : this) {
-            table.append(transition.toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(this);
     }
 }

@@ -100,6 +100,13 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        // 4 for the bit set check, 2 for the array load + 2 penalty for potentially huge data
+        // structure
+        return 8;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         StringBuilder sb = new StringBuilder(modifiersToString()).append("[\n");

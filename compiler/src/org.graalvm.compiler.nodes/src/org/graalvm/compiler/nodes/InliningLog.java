@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -225,9 +227,11 @@ public class InliningLog {
         while (replacementEntries.advance()) {
             Invokable replacementInvoke = replacementEntries.getKey();
             Callsite replacementSite = replacementEntries.getValue();
-            Invokable invoke = (Invokable) replacements.get((Node) replacementInvoke);
-            Callsite site = mapping.get(replacementSite);
-            leaves.put(invoke, site);
+            if (replacementInvoke.isAlive()) {
+                Invokable invoke = (Invokable) replacements.get((Node) replacementInvoke);
+                Callsite site = mapping.get(replacementSite);
+                leaves.put(invoke, site);
+            }
         }
     }
 

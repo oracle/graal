@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -286,7 +288,17 @@ public class ValueAssert {
                         assertNull(value.asString());
                     } else {
                         assertFails(() -> value.asString(), ClassCastException.class);
-                        assertFails(() -> value.as(String.class), ClassCastException.class);
+
+                        if (value.isBoolean()) {
+                            String expected = String.valueOf(value.asBoolean());
+                            assertEquals(expected, value.as(String.class));
+                        } else if (value.isNumber()) {
+                            String expected = value.as(Number.class).toString();
+                            assertEquals(expected, value.as(String.class));
+                        } else {
+                            assertFails(() -> value.as(String.class), ClassCastException.class);
+                        }
+
                         if (value.isNumber() && value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
                             char ch = value.as(Character.class);
                             assertEquals(ch, value.asInt());

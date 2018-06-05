@@ -138,7 +138,7 @@ final class ShadowStack {
                     // inlined root.
                     // Than there should be no stack pop until we exit the original compilation
                     // root.
-                    if (getStack().top() != location) {
+                    if (!getStack().top().equals(location)) {
                         return;
                     }
                 }

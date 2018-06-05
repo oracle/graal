@@ -43,7 +43,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
         TruffleObject regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;
@@ -66,7 +66,8 @@ public class RegexCompilerWithFallback extends RegexCompiler {
                     elapsedTimeFallback = timer.getElapsed();
                 }
             } catch (UnsupportedRegexException fallbackBailout) {
-                throw new UnsupportedRegexException(String.format("%s; %s", mainBailout.getMessage(), fallbackBailout.getMessage()));
+                String bailoutReasons = String.format("%s; %s", mainBailout.getReason(), fallbackBailout.getReason());
+                throw new UnsupportedRegexException(bailoutReasons, regexSource);
             }
         }
         if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {

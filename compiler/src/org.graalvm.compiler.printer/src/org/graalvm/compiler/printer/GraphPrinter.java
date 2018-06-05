@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -111,7 +113,14 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
         SnippetReflectionProvider snippetReflection = getSnippetReflectionProvider();
         if (snippetReflection != null) {
             if (constant.getJavaKind() == JavaKind.Object) {
-                Object obj = snippetReflection.asObject(Object.class, constant);
+                Object obj = null;
+                /*
+                 * Ignore any exceptions on unknown JavaConstant implementations in debugging code.
+                 */
+                try {
+                    obj = snippetReflection.asObject(Object.class, constant);
+                } catch (Throwable ex) {
+                }
                 if (obj != null) {
                     return GraphPrinter.constantToString(obj);
                 }

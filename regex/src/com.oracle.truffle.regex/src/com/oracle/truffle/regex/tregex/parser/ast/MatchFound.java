@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * {@link MatchFound} nodes are {@link RegexASTNode}s that represent the initial/final states of the
@@ -51,7 +54,7 @@ public class MatchFound extends Term {
     private RegexASTNode next;
 
     @Override
-    public MatchFound copy(RegexAST ast) {
+    public MatchFound copy(RegexAST ast, boolean recursive) {
         throw new UnsupportedOperationException();
     }
 
@@ -64,12 +67,28 @@ public class MatchFound extends Term {
     }
 
     @Override
+    public SourceSection getSourceSection() {
+        if (super.getSourceSection() == null) {
+            RegexASTSubtreeRootNode parent = getSubTreeParent();
+            if (parent == null || parent.getSourceSection() == null) {
+                // initial state, not part of actual AST
+                return null;
+            }
+            // set source section to empty space after parent tree
+            SourceSection parentSourceSection = parent.getSourceSection();
+            super.setSourceSection(parentSourceSection.getSource().createSection(parentSourceSection.getCharEndIndex(), 0));
+        }
+        return super.getSourceSection();
+    }
+
+    @Override
     public String toString() {
         return "::";
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("MatchFound");
+    public JsonValue toJson() {
+        return toJson("MatchFound");
     }
 }

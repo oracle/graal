@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -32,6 +34,7 @@ import java.lang.reflect.Method;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class DeclaredAnnotationsComputer implements CustomFieldValueComputer {
@@ -39,7 +42,7 @@ public abstract class DeclaredAnnotationsComputer implements CustomFieldValueCom
     protected abstract Class<?> getDeclaringClass();
 
     @Override
-    public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         try {
             Method declaredAnnotationsMethod = getDeclaringClass().getDeclaredMethod("declaredAnnotations");
             declaredAnnotationsMethod.setAccessible(true);

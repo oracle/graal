@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -35,6 +37,7 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
  * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
@@ -71,10 +74,7 @@ public final class AllocatedObjectNode extends FloatingNode implements Virtualiz
     }
 
     @Override
-    public ValueNode length() {
-        if (virtualObject instanceof ArrayLengthProvider) {
-            return ((ArrayLengthProvider) virtualObject).length();
-        }
-        return null;
+    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
+        return GraphUtil.arrayLength(virtualObject, mode);
     }
 }

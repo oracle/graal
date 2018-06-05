@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -32,7 +34,11 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.graalvm.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
@@ -63,7 +69,11 @@ public class MethodFlowsGraph {
     private List<CloneTypeFlow> clones;
     private List<MonitorEnterTypeFlow> monitorEntries;
 
-    private List<InstanceOfTypeFlow> instaceOfFlows;
+    /*
+     * We keep a bci->flow mapping for instanceof and invoke flows since they are queried by the
+     * analysis results builder.
+     */
+    private Map<Object, InstanceOfTypeFlow> instanceOfFlows;
     private Map<Object, InvokeTypeFlow> invokeFlows;
 
     private FormalReturnTypeFlow result;
@@ -125,7 +135,7 @@ public class MethodFlowsGraph {
         miscEntryFlows = new ArrayList<>();
 
         // instanceof
-        instaceOfFlows = new ArrayList<>();
+        instanceOfFlows = new HashMap<>();
 
         // invoke
         invokeFlows = new HashMap<>(4, 0.75f);
@@ -187,7 +197,7 @@ public class MethodFlowsGraph {
         indexedLoads = originalMethodFlowsGraph.indexedLoads.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
 
         // instanceof
-        instaceOfFlows = originalMethodFlowsGraph.instaceOfFlows.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
+        instanceOfFlows = originalMethodFlowsGraph.instanceOfFlows.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> lookupCloneOf(bb, e.getValue())));
 
         // misc entry flows (merge, proxy, etc.)
         miscEntryFlows = originalMethodFlowsGraph.miscEntryFlows.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
@@ -338,7 +348,7 @@ public class MethodFlowsGraph {
         worklist.addAll(fieldLoads);
         worklist.addAll(indexedLoads);
 
-        worklist.addAll(instaceOfFlows);
+        worklist.addAll(instanceOfFlows.values());
         worklist.addAll(invokeFlows.values());
 
         if (result != null) {
@@ -478,29 +488,45 @@ public class MethodFlowsGraph {
         return this.result;
     }
 
-    public Collection<InvokeTypeFlow> getInvokes() {
+    public Set<Entry<Object, InvokeTypeFlow>> getInvokes() {
+        return invokeFlows.entrySet();
+    }
+
+    public Collection<InvokeTypeFlow> getInvokeFlows() {
         return invokeFlows.values();
     }
 
-    public Collection<InstanceOfTypeFlow> getInstaceOfFlows() {
-        return instaceOfFlows;
+    public Set<Entry<Object, InstanceOfTypeFlow>> getInstanceOfFlows() {
+        return instanceOfFlows.entrySet();
     }
 
-    public void addInstanceOf(InstanceOfTypeFlow instanceOf) {
-        instaceOfFlows.add(instanceOf);
+    void addInstanceOf(Object key, InstanceOfTypeFlow instanceOf) {
+        doAddFlow(key, instanceOf, instanceOfFlows);
     }
 
-    public void addInvoke(Object key, InvokeTypeFlow invokeTypeFlow) {
-        assert !invokeFlows.containsKey(key);
-        invokeFlows.put(key, invokeTypeFlow);
+    void addInvoke(Object key, InvokeTypeFlow invokeTypeFlow) {
+        doAddFlow(key, invokeTypeFlow, invokeFlows);
+    }
+
+    private static <T extends TypeFlow<? extends Node>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+        if (map.containsKey(key)) {
+            assert key instanceof Integer;
+            /*
+             * This can happen when Graal inlines jsr/ret routines and the inlined nodes share the
+             * same bci. Remove the old bci->flow pairing and replace it with a uniqueKey->flow
+             * pairing.
+             */
+            T oldFlow = map.remove(key);
+            map.put(new Object(), oldFlow);
+            map.put(new Object(), flow);
+        } else {
+            map.put(key, flow);
+        }
+
     }
 
     public InvokeTypeFlow getInvoke(Object key) {
         return invokeFlows.get(key);
-    }
-
-    public TypeFlow<?>[] getLinearizedGraph() {
-        return linearizedGraph;
     }
 
     public boolean isLinearized() {
@@ -522,7 +548,7 @@ public class MethodFlowsGraph {
         List<MethodFlowsGraph> callers = new ArrayList<>();
         for (AnalysisMethod caller : method.getJavaInvocations()) {
             for (MethodFlowsGraph callerFlowGraph : caller.getTypeFlow().getFlows()) {
-                for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes()) {
+                for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
                     for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
@@ -545,7 +571,7 @@ public class MethodFlowsGraph {
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
     public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, BigBang bb) {
-        for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes()) {
+        for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
             for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it

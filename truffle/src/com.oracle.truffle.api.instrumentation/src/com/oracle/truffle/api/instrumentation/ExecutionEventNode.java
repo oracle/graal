@@ -125,7 +125,8 @@ public abstract class ExecutionEventNode extends Node {
      * Invoked when an {@link EventContext#getInstrumentedNode() instrumented node} is unwound from
      * the execution stack by {@link EventContext#createUnwind(Object) unwind throwable} thrown in
      * this node implementation. Any nodes between the instrumented ones are unwound off without any
-     * notification. The default implementation returns <code>null</code>.
+     * notification. The default implementation returns <code>null</code> to indicate continue
+     * unwind.
      *
      * @param frame the frame that was used for executing instrumented node
      * @param info an info associated with the unwind - the object passed to

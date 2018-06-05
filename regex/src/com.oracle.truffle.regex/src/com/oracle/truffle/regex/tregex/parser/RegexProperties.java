@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class RegexProperties {
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public class RegexProperties implements JsonConvertible {
 
     private boolean alternations = false;
     private boolean backReferences = false;
@@ -35,9 +38,11 @@ public class RegexProperties {
     private boolean charClasses = false;
     private boolean lookAheadAssertions = false;
     private boolean complexLookAheadAssertions = false;
-    private boolean lookBehindAssertions = false;
-    private boolean complexLookBehindAssertions = false;
     private boolean negativeLookAheadAssertions = false;
+    private boolean lookBehindAssertions = false;
+    private boolean nonLiteralLookBehindAssertions = false;
+    private boolean complexLookBehindAssertions = false;
+    private boolean negativeLookBehindAssertions = false;
     private boolean loops = false;
     private boolean largeCountedRepetitions = false;
 
@@ -93,12 +98,28 @@ public class RegexProperties {
         complexLookAheadAssertions = true;
     }
 
+    public boolean hasNegativeLookAheadAssertions() {
+        return negativeLookAheadAssertions;
+    }
+
+    public void setNegativeLookAheadAssertions() {
+        negativeLookAheadAssertions = true;
+    }
+
     public boolean hasLookBehindAssertions() {
         return lookBehindAssertions;
     }
 
     public void setLookBehindAssertions() {
         lookBehindAssertions = true;
+    }
+
+    public boolean hasNonLiteralLookBehindAssertions() {
+        return nonLiteralLookBehindAssertions;
+    }
+
+    public void setNonLiteralLookBehindAssertions() {
+        nonLiteralLookBehindAssertions = true;
     }
 
     public boolean hasComplexLookBehindAssertions() {
@@ -109,12 +130,12 @@ public class RegexProperties {
         complexLookBehindAssertions = true;
     }
 
-    public boolean hasNegativeLookAheadAssertions() {
-        return negativeLookAheadAssertions;
+    public boolean hasNegativeLookBehindAssertions() {
+        return negativeLookBehindAssertions;
     }
 
-    public void setNegativeLookAheadAssertions() {
-        negativeLookAheadAssertions = true;
+    public void setNegativeLookBehindAssertions() {
+        negativeLookBehindAssertions = true;
     }
 
     public boolean hasLoops() {
@@ -133,19 +154,21 @@ public class RegexProperties {
         largeCountedRepetitions = true;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("RegexProperties",
-                        new DebugUtil.Value("Alternations", alternations),
-                        new DebugUtil.Value("BackReferences", backReferences),
-                        new DebugUtil.Value("CharClasses", charClasses),
-                        new DebugUtil.Value("CaptureGroups", captureGroups),
-                        new DebugUtil.Value("LookAheadAssertions", lookAheadAssertions),
-                        new DebugUtil.Value("ComplexLookAheadAssertions", complexLookAheadAssertions),
-                        new DebugUtil.Value("LookBehindAssertions", lookBehindAssertions),
-                        new DebugUtil.Value("ComplexLookBehindAssertions", complexLookBehindAssertions),
-                        new DebugUtil.Value("NegativeLookAheadAssertions", negativeLookAheadAssertions),
-                        new DebugUtil.Value("Loops", loops),
-                        new DebugUtil.Value("LargeCountedRepetitions", largeCountedRepetitions));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("alternations", alternations),
+                        Json.prop("backReferences", backReferences),
+                        Json.prop("charClasses", charClasses),
+                        Json.prop("captureGroups", captureGroups),
+                        Json.prop("lookAheadAssertions", lookAheadAssertions),
+                        Json.prop("complexLookAheadAssertions", complexLookAheadAssertions),
+                        Json.prop("negativeLookAheadAssertions", negativeLookAheadAssertions),
+                        Json.prop("lookBehindAssertions", lookBehindAssertions),
+                        Json.prop("nonLiteralLookBehindAssertions", nonLiteralLookBehindAssertions),
+                        Json.prop("complexLookBehindAssertions", complexLookBehindAssertions),
+                        Json.prop("negativeLookBehindAssertions", negativeLookBehindAssertions),
+                        Json.prop("loops", loops),
+                        Json.prop("largeCountedRepetitions", largeCountedRepetitions));
     }
 }

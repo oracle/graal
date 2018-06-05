@@ -28,9 +28,9 @@ import java.io.PrintWriter;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONException;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.commands.Command;
@@ -66,6 +66,7 @@ public final class InspectServerSession {
         runtime.disable();
         debugger.disable();
         profiler.disable();
+        context.reset();
         messageListener = null;
         processThread.dispose();
     }

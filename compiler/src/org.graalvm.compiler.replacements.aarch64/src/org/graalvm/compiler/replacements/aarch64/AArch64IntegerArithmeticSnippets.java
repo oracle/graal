@@ -5,7 +5,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,7 +27,9 @@
 package org.graalvm.compiler.replacements.aarch64;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -35,7 +39,7 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
@@ -85,7 +89,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         ulrem = snippet(AArch64IntegerArithmeticSnippets.class, "ulremSnippet");
     }
 
-    public void lower(FixedBinaryNode node, LoweringTool tool) {
+    public void lower(IntegerDivRemNode node, LoweringTool tool) {
         JavaKind kind = node.stamp(NodeView.DEFAULT).getStackKind();
         assert kind == JavaKind.Int || kind == JavaKind.Long;
         SnippetTemplate.SnippetInfo snippet;
@@ -107,54 +111,74 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
         args.add("x", node.getX());
         args.add("y", node.getY());
+
+        IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
+        args.addConst("needsZeroCheck", node.getZeroCheck() == null && yStamp.contains(0));
+
         template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }
 
     @Snippet
-    public static int idivSnippet(int x, int y) {
-        checkForZero(y);
+    public static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeDiv(x, y);
     }
 
     @Snippet
-    public static long ldivSnippet(long x, long y) {
-        checkForZero(y);
+    public static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeDiv(x, y);
     }
 
     @Snippet
-    public static int iremSnippet(int x, int y) {
-        checkForZero(y);
+    public static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeRem(x, y);
     }
 
     @Snippet
-    public static long lremSnippet(long x, long y) {
-        checkForZero(y);
+    public static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeRem(x, y);
     }
 
     @Snippet
-    public static int uidivSnippet(int x, int y) {
-        checkForZero(y);
+    public static int uidivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeUDiv(x, y);
     }
 
     @Snippet
-    public static long uldivSnippet(long x, long y) {
-        checkForZero(y);
+    public static long uldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeUDiv(x, y);
     }
 
     @Snippet
-    public static int uiremSnippet(int x, int y) {
-        checkForZero(y);
+    public static int uiremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeURem(x, y);
     }
 
     @Snippet
-    public static long ulremSnippet(long x, long y) {
-        checkForZero(y);
+    public static long ulremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            checkForZero(y);
+        }
         return safeURem(x, y);
     }
 
@@ -208,7 +232,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeSignedDivNode> TYPE = NodeClass.create(SafeSignedDivNode.class);
 
         protected SafeSignedDivNode(ValueNode x, ValueNode y) {
-            super(TYPE, x, y);
+            super(TYPE, x, y, null);
         }
 
         @Override
@@ -224,7 +248,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeSignedRemNode> TYPE = NodeClass.create(SafeSignedRemNode.class);
 
         protected SafeSignedRemNode(ValueNode x, ValueNode y) {
-            super(TYPE, x, y);
+            super(TYPE, x, y, null);
         }
 
         @Override
@@ -240,7 +264,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeUnsignedDivNode> TYPE = NodeClass.create(SafeUnsignedDivNode.class);
 
         protected SafeUnsignedDivNode(ValueNode x, ValueNode y) {
-            super(TYPE, x, y);
+            super(TYPE, x, y, null);
         }
 
         @Override
@@ -256,7 +280,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         public static final NodeClass<SafeUnsignedRemNode> TYPE = NodeClass.create(SafeUnsignedRemNode.class);
 
         protected SafeUnsignedRemNode(ValueNode x, ValueNode y) {
-            super(TYPE, x, y);
+            super(TYPE, x, y, null);
         }
 
         @Override

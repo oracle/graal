@@ -2,6 +2,9 @@ gateCmdSuffix : ["-v", "--kill-with-sigquit", "gate", "--strict-mode", "--extra-
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 gateCmdLenient : ["mx"] ${gateCmdSuffix}
 
+graalWeekly: ${graal-weekly-notifications} {
+  targets: ["weekly"]
+}
 gateTest : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -118,7 +121,7 @@ gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
   downloads : {
     JAVA_HOME : ${jdks.oraclejdkSNAPSHOT}
-    EXTRA_JAVA_HOMES : {pathlist: []}
+    EXTRA_JAVA_HOMES : {pathlist :[ ${jdks.labsjdk8} ]}
   }
 }
 

@@ -42,8 +42,8 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoWSD;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
@@ -157,7 +157,8 @@ public final class WebSocketServer extends NanoWSD {
             log.flush();
         }
         if (context != null) {
-            boolean debugBreak = DEBUG_BRK.get(descriptor);
+            // Do the initial break for the first time only, do not break on reconnect
+            boolean debugBreak = Boolean.TRUE.equals(DEBUG_BRK.remove(descriptor));
             RuntimeDomain runtime = new TruffleRuntime(context);
             DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
             ProfilerDomain profiler = new TruffleProfiler(context, connectionWatcher);

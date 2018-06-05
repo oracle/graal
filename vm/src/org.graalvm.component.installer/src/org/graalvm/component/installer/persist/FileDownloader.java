@@ -56,6 +56,7 @@ public class FileDownloader {
 
     private static final int TRANSFER_LENGTH = 2048;
     private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);
+    private static final int DEFAULT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.connectDelaySec", 5);
     private final String fileDescription;
     private final URL sourceURL;
     private final Feedback feedback;
@@ -67,6 +68,8 @@ public class FileDownloader {
     private static volatile File tempDir;
     private boolean displayProgress;
     private byte[] shaDigest;
+    private int connectDelay = DEFAULT_CONNECT_DELAY;
+    long sizeThreshold = MIN_PROGRESS_THRESHOLD;
 
     public FileDownloader(String fileDescription, URL sourceURL, Feedback feedback) {
         this.fileDescription = fileDescription;
@@ -240,6 +243,7 @@ public class FileDownloader {
                         Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
                         URLConnection test = url.openConnection(proxy);
                         test.connect();
+                        test.getHeaderField("bogusHeader");
                         conn[0] = test;
                         connected.countDown();
                     } catch (IOException ex) {
@@ -259,6 +263,7 @@ public class FileDownloader {
                         Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
                         URLConnection test = url.openConnection(proxy);
                         test.connect();
+                        test.getHeaderField("bogusHeader");
                         conn[0] = test;
                         connected.countDown();
                     } catch (IOException ex) {
@@ -274,16 +279,20 @@ public class FileDownloader {
                 try {
                     URLConnection test = url.openConnection();
                     test.connect();
+                    test.getHeaderField("bogusHeader");
                     conn[0] = test;
                     connected.countDown();
                 } catch (IOException ex) {
-                    ex2.set(ex);
+                    ex3.set(ex);
                 }
 
             }
         });
         try {
-            if (!connected.await(5, TimeUnit.SECONDS)) {
+            if (!connected.await(connectDelay, TimeUnit.SECONDS)) {
+                if (ex3.get() != null) {
+                    throw ex3.get();
+                }
                 throw new ConnectException("Timeout while connecting to " + url);
             }
             if (conn[0] == null) {
@@ -302,7 +311,9 @@ public class FileDownloader {
 
     public void download() throws IOException {
         if (fileDescription != null) {
-            feedback.output("MSG_Downloading", getFileDescription());
+            if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
+                feedback.output("MSG_Downloading", getFileDescription());
+            }
         } else {
             feedback.output("MSG_DownloadingFrom", getSourceURL());
         }
@@ -312,7 +323,7 @@ public class FileDownloader {
         if (verbose) {
             displayProgress = true;
         }
-        if (size < MIN_PROGRESS_THRESHOLD) {
+        if (size < sizeThreshold) {
             displayProgress = false;
         }
 

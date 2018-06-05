@@ -1,12 +1,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
-
-# Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+#
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,6 +43,8 @@ import time
 # } GR-8964
 import functools
 import collections
+import itertools
+import glob
 
 import mx
 import mx_compiler
@@ -63,9 +67,16 @@ IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
+orig_command_gate = mx.command_function('gate')
 orig_command_build = mx.command_function('build')
 
-allow_native_image_build = True
+native_image_build_veto = None
+gate_run = False
+
+def gate(args):
+    global gate_run
+    gate_run = True
+    orig_command_gate(args)
 
 def build(args, vm=None):
     if any([opt in args for opt in ['-h', '--help']]):
@@ -76,12 +87,15 @@ def build(args, vm=None):
     if not _host_os_supported():
         mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
 
-    global allow_native_image_build
-    if '--warning-as-error' in args and '--force-javac' not in args:
-        # --warning-as-error with ecj is buggy (GR-3969)
-        allow_native_image_build = False
+    global native_image_build_veto
+    if svm_suite().primary and not gate_run:
+        native_image_build_veto = 'No SVM gate-run'
+    elif mx.get_os() == 'windows':
+        native_image_build_veto = mx.get_os() + ' currently not supported'
+    elif '--warning-as-error' in args and '--force-javac' not in args:
+        native_image_build_veto = 'Building with ejc + --warning-as-error (see GR-3969)'
     else:
-        allow_native_image_build = True
+        native_image_build_veto = None
 
     orig_command_build(args, vm)
 
@@ -124,15 +138,16 @@ def suite_native_image_root(suite=None):
         suite = svm_suite()
     return join(svmbuild_dir(suite), 'native-image-root')
 
-def native_image_distribution():
+def native_image_distributions():
+    deps = [mx.distribution('GRAAL_MANAGEMENT')]
     for d in svm_suite().dists:
         if isinstance(d, str):
             name = d
         else:
             name = d.name
         if name.startswith("NATIVE_IMAGE"):
-            return d
-    return None
+            deps.append(d)
+    return deps
 
 def remove_existing_symlink(target_path):
     if islink(target_path):
@@ -244,7 +259,7 @@ tools_map = {
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'nfi' : ToolDescriptor(), # just an alias for truffle (to be removed soon)
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
-    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
+    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR', 'tools:TruffleJSON']),
     'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
 
@@ -284,21 +299,18 @@ def native_image_extract_dependencies(args):
             deps += [language_suite_name + ':' + dep for dep in language_native_deps]
     return deps
 
-def native_image_symlink_path(native_image_root, platform_specific=True):
-    symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
-    if platform_specific:
-        symlink_path += '-' + platform_subdir()
-    return symlink_path
+def native_image_on_jvm(args):
+    driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
+    driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
+    driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
+    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp), mx.dependency('substratevm:SVM_DRIVER').mainClass] + args)
 
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
-    if not allow_native_image_build:
-        mx.logv('Detected building with ejc + --warning-as-error -> suppress bootstrap_native_image')
-        return
-
     bootstrap_command = list(GRAAL_COMPILER_FLAGS)
     bootstrap_command += locale_US_args()
     bootstrap_command += substratevm_version_args()
     bootstrap_command += ['-Dgraalvm.version=dev']
+    bootstrap_command += ['-Dcom.oracle.graalvm.isaot=true']
 
     builder_classpath = classpath(svmDistribution)
     imagecp_classpath = classpath(svmDistribution + ['substratevm:SVM_DRIVER'])
@@ -319,8 +331,11 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     if mx._opts.strip_jars:
         bootstrap_command += ['-H:-VerifyNamingConventions']
 
-    run_java(bootstrap_command)
-    mx.logv('Built ' + native_image_path(native_image_root))
+    if native_image_build_veto:
+        mx.log('Skip building native-image executable: ' + native_image_build_veto)
+    else:
+        run_java(bootstrap_command)
+        mx.logv('Built ' + native_image_path(native_image_root))
 
     def names_to_dists(dist_names):
         return [mx.dependency(dist_name) for dist_name in dist_names]
@@ -333,7 +348,7 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
 
     # Create native-image layout for sdk parts
     native_image_layout_dists(join('lib', 'boot'), ['sdk:GRAAL_SDK'])
-    native_image_layout_dists(join('lib', 'graalvm'), ['sdk:LAUNCHER_COMMON'])
+    native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'sdk:LAUNCHER_COMMON'])
 
     # Create native-image layout for compiler & jvmci parts
     native_image_layout_dists(join('lib', 'jvmci'), graalDistribution)
@@ -359,13 +374,6 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
-
-    # Create platform-specific symlink to native-image in svm_suite().dir
-    symlink_path = remove_existing_symlink(native_image_symlink_path(native_image_root))
-    relsymlink(native_image_path(native_image_root), symlink_path)
-    # Finally create default symlink to native-image in svm_suite().dir
-    symlink_path = remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
-    relsymlink(native_image_path(native_image_root), symlink_path)
 
 class BootstrapNativeImage(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense=None, **kwargs):
@@ -393,36 +401,14 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         self._newestOutput = None
 
     def _allow_bootstrapping(self):
-        return self.subject.suite == svm_suite()
+        task_suite_match = self.subject.suite == svm_suite()
+        return task_suite_match, ['Using ' + svm_suite().name + '. Skip ', ''][task_suite_match] + self.subject.name
 
     def __str__(self):
-        prefix = "Bootstrapping " if self._allow_bootstrapping() else "Skip bootstrapping "
-        return prefix + self.subject.name
-
-    def _shouldRebuildNativeImage(self):
-        # Only bootstrap native-image for the most-specific svm_suite
-        if not self._allow_bootstrapping():
-            return False, 'Skip bootstrapping'
-
-        supress = mx.get_env("SUPPRESS_NATIVE_IMAGE_REBUILD", 'false')
-        if supress.lower() in ('false', '0', 'no', ''):
-            supress = False
-        elif supress.lower() in ('true', '1', 'yes'):
-            supress = True
-        else:
-            mx.abort("Could not understand SUPPRESS_NATIVE_IMAGE_REBUILD=" + supress)
-        if supress:
-            # Only bootstrap if it doesn't already exist
-            symlink_path = native_image_symlink_path(self.subject.native_image_root)
-            if exists(symlink_path):
-                mx.log('Suppressed rebuilding native-image (delete ' + symlink_path + ' to allow rebuilding).')
-                return False, 'Already bootstrapped'
-
-        return True, ''
+        return self._allow_bootstrapping()[1]
 
     def build(self):
-        shouldRebuild = self._shouldRebuildNativeImage()[0]
-        if not shouldRebuild:
+        if not self._allow_bootstrapping()[0]:
             return
 
         bootstrap_native_image(
@@ -439,13 +425,11 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         native_image_root = self.subject.native_image_root
         if exists(native_image_root):
             remove_tree(native_image_root)
-        remove_existing_symlink(native_image_symlink_path(native_image_root))
-        remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
 
     def needsBuild(self, newestInput):
-        shouldRebuild, reason = self._shouldRebuildNativeImage()
-        if not shouldRebuild:
-            return False, reason
+        allow, message = self._allow_bootstrapping()
+        if not allow:
+            return False, message
 
         witness = self.newestOutput()
         if not self._newestOutput or witness.isNewerThan(self._newestOutput):
@@ -613,7 +597,9 @@ def svm_gate_body(args, tasks):
 
         with Task('Ruby', tasks, tags=[GraalTags.ruby]) as t:
             if t:
-                ruby = build_ruby(native_image, debug_gr_8964=debug_gr_8964)
+                # Debug GR-9912 on Ruby gate runs.
+                debug_gr_9912 = 16
+                ruby = build_ruby(native_image, debug_gr_8964=debug_gr_8964, debug_gr_9912=debug_gr_9912)
                 test_ruby([ruby, 'release'])
 
         with Task('Python', tasks, tags=[GraalTags.python]) as t:
@@ -741,13 +727,13 @@ def test_python_smoke(args):
             mx.abort("Python smoke test failed")
         mx.log("Python binary says: " + out.data)
 
-def build_ruby(native_image, debug_gr_8964=False):
+def build_ruby(native_image, debug_gr_8964=False, debug_gr_9912=0):
     truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # ruby depends on sulong
     truffle_language_ensure('ruby', debug_gr_8964=debug_gr_8964)
 
     # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
     ruby_bin_dir = join(suite_native_image_root(), 'languages', 'ruby', 'bin')
-    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir])
+    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
@@ -871,7 +857,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='svm',
     license_files=[],
     third_party_license_files=[],
-    support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],  # TODO needs support? or could be jars?
+    jar_distributions=['substratevm:LIBRARY_SUPPORT'],
+    builder_jar_distributions=[
+        'substratevm:SVM',
+        'substratevm:OBJECTFILE',
+        'substratevm:POINTSTO',
+    ],
+    support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk.LauncherConfig(
             destination="bin/native-image",
@@ -892,7 +884,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='polyglot',
     license_files=[],
     third_party_license_files=[],
-    support_distributions=['substratevm:POLYGLOT_NATIVE_API_SUPPORT'],  # TODO only support? or could be jars?
+    jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
+    support_distributions=['substratevm:POLYGLOT_NATIVE_API_SUPPORT'],
     polyglot_lib_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",
@@ -904,14 +897,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     ],
     polyglot_lib_build_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API_SUPPORT",
+        "substratevm:POLYGLOT_NATIVE_API_HEADERS"
     ],
     has_polyglot_lib_entrypoints=True,
 ))
 
 mx.update_commands(suite, {
+    'gate': [gate, '[options]'],
     'build': [build, ''],
     'helloworld' : [lambda args: native_image_context_run(helloworld, args), ''],
     'cinterfacetutorial' : [lambda args: native_image_context_run(cinterfacetutorial, args), ''],
     'fetch-languages': [lambda args: fetch_languages(args, early_exit=False), ''],
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
+    'native-image': [native_image_on_jvm, ''],
 })

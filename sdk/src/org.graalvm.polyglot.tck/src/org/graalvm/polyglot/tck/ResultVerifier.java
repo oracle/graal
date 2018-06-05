@@ -152,19 +152,6 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * result type is in bounds specified by the {@link Snippet}.
      *
      * @return the default {@link ResultVerifier}
-     * @since 0.30
-     * @deprecated Use {@link ResultVerifier#getDefaultResultVerifier()}.
-     */
-    @Deprecated
-    static ResultVerifier getDefaultResultVerfier() {
-        return getDefaultResultVerifier();
-    }
-
-    /**
-     * Creates a default {@link ResultVerifier}. The default {@link ResultVerifier} tests that the
-     * result type is in bounds specified by the {@link Snippet}.
-     *
-     * @return the default {@link ResultVerifier}
      * @since 1.0
      */
     static ResultVerifier getDefaultResultVerifier() {

@@ -46,29 +46,22 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class CharArrayBuffer {
+public class CharArrayBuffer extends AbstractArrayBuffer {
 
     private char[] buf;
-    private int size = 0;
 
     public CharArrayBuffer(int initialSize) {
         buf = new char[initialSize];
     }
 
-    public void clear() {
-        size = 0;
+    @Override
+    int getBufferSize() {
+        return buf.length;
     }
 
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
-    public int size() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
+    @Override
+    void grow(int newSize) {
+        buf = Arrays.copyOf(buf, newSize);
     }
 
     public char[] getBuffer() {
@@ -80,20 +73,6 @@ public class CharArrayBuffer {
             grow(size * 2);
         }
         buf[size++] = c;
-    }
-
-    public void ensureCapacity(int newSize) {
-        if (buf.length < newSize) {
-            int newBufferSize = buf.length * 2;
-            while (newBufferSize < newSize) {
-                newBufferSize *= 2;
-            }
-            grow(newBufferSize);
-        }
-    }
-
-    private void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
     }
 
     public char[] toArray() {

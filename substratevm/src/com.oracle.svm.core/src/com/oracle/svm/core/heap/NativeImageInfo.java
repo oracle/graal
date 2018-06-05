@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -98,6 +100,24 @@ public class NativeImageInfo {
     public static boolean isInWritableReferencePartition(final Pointer ptr) {
         final boolean result = Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
         return result;
+    }
+
+    /* Convenience methods taking an Object as a parameter. */
+
+    public static boolean isObjectInReadOnlyPrimitivePartition(Object obj) {
+        return isInReadOnlyPrimitivePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInWritablePrimitivePartition(Object obj) {
+        return isInWritablePrimitivePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInReadOnlyReferencePartition(Object obj) {
+        return isInReadOnlyReferencePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInWritableReferencePartition(Object obj) {
+        return isInWritableReferencePartition(Word.objectToUntrackedPointer(obj));
     }
 
     /*

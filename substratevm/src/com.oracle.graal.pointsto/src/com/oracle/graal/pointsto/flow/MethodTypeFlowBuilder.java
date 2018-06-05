@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -68,7 +70,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -260,11 +261,6 @@ public class MethodTypeFlowBuilder {
                     assert arrayType.isArray();
                     arrayType.getComponentType().registerAsInTypeCheck();
                 }
-
-            } else if (n instanceof BytecodeExceptionNode) {
-                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
-                AnalysisType type = bb.getMetaAccess().lookupJavaType(node.getExceptionClass());
-                type.registerAsInHeap();
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
@@ -606,7 +602,7 @@ public class MethodTypeFlowBuilder {
                 BytecodeLocation location = BytecodeLocation.create(bciKey, method);
                 TypeFlowBuilder<?> instanceOfBuilder = TypeFlowBuilder.create(bb, node, InstanceOfTypeFlow.class, () -> {
                     InstanceOfTypeFlow instanceOf = new InstanceOfTypeFlow(node, location, declaredType);
-                    methodFlow.addInstanceOf(instanceOf);
+                    methodFlow.addInstanceOf(key, instanceOf);
                     return instanceOf;
                 });
                 /* InstanceOf must not be removed as it is reported by the analysis results. */
@@ -1288,13 +1284,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisMethod targetMethod = (AnalysisMethod) target.targetMethod();
                     bb.isCallAllowed(bb, callerMethod, targetMethod, target.getNodeSourcePosition());
 
-                    Object key;
-                    if (invoke.bci() >= 0) {
-                        key = invoke.bci();
-                    } else {
-                        shouldNotReachHere("InvokeTypeFlow has a negative BCI");
-                        key = new Object();
-                    }
+                    Object key = uniqueKey(n);
                     BytecodeLocation location = BytecodeLocation.create(key, methodFlow.getMethod());
 
                     /*

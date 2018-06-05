@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -66,22 +68,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 public class SnippetRuntime {
-
-    public static final SubstrateForeignCallDescriptor THROW_NULL_POINTER_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwNullPointerException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CLASS_CAST_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwClassCastException", true);
-    public static final SubstrateForeignCallDescriptor THROW_ARRAY_STORE_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwArrayStoreException", true);
-    public static final SubstrateForeignCallDescriptor THROW_ARITHMETIC_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwArithmeticException", true);
-    public static final SubstrateForeignCallDescriptor THROW_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwArrayIndexOutOfBoundsException", true);
-    public static final SubstrateForeignCallDescriptor THROW_OUT_OF_MEMORY_ERROR = findForeignCall(SnippetRuntime.class, "throwOutOfMemoryError", true);
-    public static final SubstrateForeignCallDescriptor THROW_ASSERTION_ERROR = findForeignCall(SnippetRuntime.class, "throwAssertionError", true);
-
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_NULL_POINTER_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwCachedNullPointerException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_CLASS_CAST_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwCachedClassCastException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARRAY_STORE_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwCachedArrayStoreException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARITHMETIC_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwCachedArithmeticException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION = findForeignCall(SnippetRuntime.class, "throwCachedArrayIndexOutOfBoundsException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_OUT_OF_MEMORY_ERROR = findForeignCall(SnippetRuntime.class, "throwCachedOutOfMemoryError", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ASSERTION_ERROR = findForeignCall(SnippetRuntime.class, "throwCachedAssertionError", true);
 
     public static final SubstrateForeignCallDescriptor REPORT_TYPE_ASSERTION_ERROR = findForeignCall(SnippetRuntime.class, "reportTypeAssertionError", true, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNREACHED_CODE = findForeignCall(SnippetRuntime.class, "unreachedCode", true, LocationIdentity.any());
@@ -198,103 +184,6 @@ public class SnippetRuntime {
         public LocationIdentity[] getKilledLocations() {
             return killedLocations;
         }
-    }
-
-    /** Foreign call: {@link #THROW_NULL_POINTER_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwNullPointerException() {
-        throw new NullPointerException();
-    }
-
-    /** Foreign call: {@link #THROW_CLASS_CAST_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwClassCastException() {
-        throw new ClassCastException();
-    }
-
-    /** Foreign call: {@link #THROW_ARRAY_STORE_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwArrayStoreException() {
-        throw new ArrayStoreException();
-    }
-
-    /** Foreign call: {@link #THROW_ARITHMETIC_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwArithmeticException() {
-        throw new ArithmeticException();
-    }
-
-    /** Foreign call: {@link #THROW_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwArrayIndexOutOfBoundsException() {
-        throw new ArrayIndexOutOfBoundsException();
-    }
-
-    /** Foreign call: {@link #THROW_OUT_OF_MEMORY_ERROR}. */
-    @SubstrateForeignCallTarget
-    private static void throwOutOfMemoryError() {
-        throw new OutOfMemoryError();
-    }
-
-    /** Foreign call: {@link #THROW_ASSERTION_ERROR}. */
-    @SubstrateForeignCallTarget
-    private static void throwAssertionError() {
-        throw new AssertionError();
-    }
-
-    private static <T extends Throwable> T setEmptyStackTrace(T exception) {
-        exception.setStackTrace(new StackTraceElement[0]);
-        return exception;
-    }
-
-    public static final NullPointerException cachedNullPointerException = setEmptyStackTrace(new NullPointerException());
-    private static final ClassCastException cachedClassCastException = setEmptyStackTrace(new ClassCastException());
-    private static final ArrayStoreException cachedArrayStoreException = setEmptyStackTrace(new ArrayStoreException());
-    private static final ArithmeticException cachedArithmeticException = setEmptyStackTrace(new ArithmeticException());
-    public static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = setEmptyStackTrace(new ArrayIndexOutOfBoundsException());
-    private static final OutOfMemoryError cachedOutOfMemoryError = setEmptyStackTrace(new OutOfMemoryError());
-    public static final AssertionError cachedAssertionError = setEmptyStackTrace(new AssertionError());
-
-    /** Foreign call: {@link #THROW_CACHED_NULL_POINTER_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedNullPointerException() {
-        throw cachedNullPointerException;
-    }
-
-    /** Foreign call: {@link #THROW_CACHED_CLASS_CAST_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedClassCastException() {
-        throw cachedClassCastException;
-    }
-
-    /** Foreign call: {@link #THROW_CACHED_ARRAY_STORE_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedArrayStoreException() {
-        throw cachedArrayStoreException;
-    }
-
-    /** Foreign call: {@link #THROW_CACHED_ARITHMETIC_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedArithmeticException() {
-        throw cachedArithmeticException;
-    }
-
-    /** Foreign call: {@link #THROW_CACHED_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedArrayIndexOutOfBoundsException() {
-        throw cachedArrayIndexOutOfBoundsException;
-    }
-
-    /** Foreign call: {@link #THROW_CACHED_OUT_OF_MEMORY_ERROR}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedOutOfMemoryError() {
-        throw cachedOutOfMemoryError;
-    }
-
-    /** Foreign call: {@link #THROW_CACHED_ASSERTION_ERROR}. */
-    @SubstrateForeignCallTarget
-    private static void throwCachedAssertionError() {
-        throw cachedAssertionError;
     }
 
     /** Foreign call: {@link #REPORT_TYPE_ASSERTION_ERROR}. */
@@ -454,13 +343,6 @@ public class SnippetRuntime {
         }
         Log.log().newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
-    }
-
-    public static void reportUnhandledExceptionJava(Throwable exception) {
-        // Checkstyle: stop (printStackTrace below is going to write to System.err too)
-        System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
-        // Checkstyle: resume
-        exception.printStackTrace();
     }
 
     /** Foreign call: {@link #REGISTER_FINALIZER}. */

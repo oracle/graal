@@ -24,28 +24,34 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
-import com.oracle.truffle.regex.tregex.parser.CodePointSet;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import org.graalvm.collections.EconomicMap;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class RegexAST implements StateIndex<RegexASTNode> {
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     /**
      * Original pattern as seen by the parser.
      */
     private final RegexSource source;
+    private final RegexOptions options;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxParseTreeSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final RegexProperties properties = new RegexProperties();
@@ -58,19 +64,26 @@ public class RegexAST implements StateIndex<RegexASTNode> {
      * Possibly wrapped root for NFA generation (see {@link #createPrefix()}).
      */
     private Group wrappedRoot;
+    private Group[] captureGroups;
     private final List<LookBehindAssertion> lookBehinds = new ArrayList<>();
     private final List<MatchFound> endPoints = new ArrayList<>();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private ASTNodeSet<PositionAssertion> nfaAnchoredInitialStates;
     private ASTNodeSet<RegexASTNode> hardPrefixNodes;
+    private final EconomicMap<GroupBoundaries, GroupBoundaries> groupBoundariesDeduplicationMap = EconomicMap.create();
 
-    public RegexAST(RegexSource source) {
+    public RegexAST(RegexSource source, RegexOptions options) {
         this.source = source;
+        this.options = options;
     }
 
     public RegexSource getSource() {
         return source;
+    }
+
+    public RegexOptions getOptions() {
+        return options;
     }
 
     public Group getRoot() {
@@ -101,8 +114,23 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         return groupCount;
     }
 
+    /**
+     * @return the number of capturing groups in the AST, including group 0.
+     */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
+    }
+
+    public Group getGroupByBoundaryIndex(int index) {
+        if (captureGroups == null) {
+            captureGroups = new Group[getNumberOfCaptureGroups()];
+            for (RegexASTNode n : nodes) {
+                if (n instanceof Group && ((Group) n).isCapturing()) {
+                    captureGroups[((Group) n).getGroupNumber()] = (Group) n;
+                }
+            }
+        }
+        return captureGroups[index / 2];
     }
 
     public RegexProperties getProperties() {
@@ -181,10 +209,6 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         return register(new BackReference(groupNumber));
     }
 
-    public CharacterClass createCharacterClass(CodePointSet codePointSet) {
-        return createCharacterClass(MatcherBuilder.create(codePointSet));
-    }
-
     public CharacterClass createCharacterClass(MatcherBuilder matcherBuilder) {
         return register(new CharacterClass(matcherBuilder));
     }
@@ -203,8 +227,8 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         return register(assertion);
     }
 
-    public LookBehindAssertion createLookBehindAssertion() {
-        final LookBehindAssertion assertion = new LookBehindAssertion();
+    public LookBehindAssertion createLookBehindAssertion(boolean negated) {
+        final LookBehindAssertion assertion = new LookBehindAssertion(negated);
         createEndPoint(assertion);
         return register(assertion);
     }
@@ -258,6 +282,9 @@ public class RegexAST implements StateIndex<RegexASTNode> {
     public LookBehindAssertion register(LookBehindAssertion lookBehindAssertion) {
         nodeCount.inc();
         properties.setLookBehindAssertions();
+        if (lookBehindAssertion.isNegated()) {
+            properties.setNegativeLookBehindAssertions();
+        }
         lookBehinds.add(lookBehindAssertion);
         return lookBehindAssertion;
     }
@@ -394,6 +421,20 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         wrappedRoot = wrapRoot;
     }
 
+    public GroupBoundaries createGroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
+        if (updateIndices.isEmpty() && clearIndices.isEmpty()) {
+            return GroupBoundaries.getEmptyInstance();
+        }
+        GroupBoundaries lookup = new GroupBoundaries(updateIndices, clearIndices);
+        if (groupBoundariesDeduplicationMap.containsKey(lookup)) {
+            return groupBoundariesDeduplicationMap.get(lookup);
+        } else {
+            GroupBoundaries gb = new GroupBoundaries(updateIndices.copy(), clearIndices.copy());
+            groupBoundariesDeduplicationMap.put(gb, gb);
+            return gb;
+        }
+    }
+
     /**
      * Creates a {@link CharacterClass} node which matches any character and whose 'prefix' flag is
      * set to true.
@@ -402,12 +443,6 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         final CharacterClass anyMatcher = createCharacterClass(MatcherBuilder.createFull());
         anyMatcher.setPrefix();
         return anyMatcher;
-    }
-
-    public CharacterClass createLoopBackMatcher() {
-        CharacterClass loopBackCC = new CharacterClass(MatcherBuilder.createFull());
-        initNodeId(loopBackCC, nodes.length - 1);
-        return loopBackCC;
     }
 
     private void addToIndex(RegexASTNode node) {
@@ -422,22 +457,17 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         addToIndex(node);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("RegexAST",
-                        source.toTable(),
-                        new DebugUtil.Value("root", root),
-                        new DebugUtil.Value("debugAST", ASTDebugDumpVisitor.getDump(wrappedRoot)),
-                        new DebugUtil.Value("wrappedRoot", wrappedRoot),
-                        new DebugUtil.Value("reachableCarets", reachableCarets),
-                        new DebugUtil.Value("startsWithCaret", root.startsWithCaret()),
-                        new DebugUtil.Value("endsWithDollar", root.endsWithDollar()),
-                        new DebugUtil.Value("reachableDollars", reachableDollars)).append(properties.toTable());
-    }
-
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public String toString() {
-        return toTable().toString();
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("source", source),
+                        Json.prop("root", root),
+                        Json.prop("debugAST", ASTDebugDumpVisitor.getDump(wrappedRoot)),
+                        Json.prop("wrappedRoot", wrappedRoot),
+                        Json.prop("reachableCarets", reachableCarets),
+                        Json.prop("startsWithCaret", root.startsWithCaret()),
+                        Json.prop("endsWithDollar", root.endsWithDollar()),
+                        Json.prop("reachableDollars", reachableDollars),
+                        Json.prop("properties", properties));
     }
 }

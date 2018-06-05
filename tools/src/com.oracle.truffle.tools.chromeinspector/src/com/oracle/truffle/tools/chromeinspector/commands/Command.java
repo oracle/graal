@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.tools.chromeinspector.commands;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONException;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class Command {
 

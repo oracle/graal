@@ -24,7 +24,9 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +37,8 @@ import java.util.Map;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.CommonConstants;
+import static org.graalvm.component.installer.CommonConstants.WARN_REBUILD_IMAGES;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
@@ -64,6 +68,14 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_VALIDATE, "");
         OPTIONS.put(Commands.OPTION_VALIDATE_DOWNLOAD, "");
         OPTIONS.put(Commands.OPTION_IGNORE_FAILURES, "");
+
+        OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
+        OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
+        OPTIONS.put(Commands.LONG_OPTION_REPLACE_COMPONENTS, Commands.OPTION_REPLACE_COMPONENTS);
+        OPTIONS.put(Commands.LONG_OPTION_REPLACE_DIFFERENT_FILES, Commands.OPTION_REPLACE_DIFFERENT_FILES);
+        OPTIONS.put(Commands.LONG_OPTION_VALIDATE, Commands.OPTION_VALIDATE);
+        OPTIONS.put(Commands.LONG_OPTION_VALIDATE_DOWNLOAD, Commands.OPTION_VALIDATE_DOWNLOAD);
+        OPTIONS.put(Commands.LONG_OPTION_IGNORE_FAILURES, Commands.OPTION_IGNORE_FAILURES);
     }
 
     @Override
@@ -102,6 +114,10 @@ public class InstallCommand implements InstallerCommand {
         executeStep(this::prepareInstallation, false);
         if (!validateBeforeInstall) {
             executeStep(this::doInstallation, true);
+        }
+        if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
+            Path p = Paths.get(CommonConstants.PATH_JRE_BIN);
+            feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
         }
         return 0;
     }

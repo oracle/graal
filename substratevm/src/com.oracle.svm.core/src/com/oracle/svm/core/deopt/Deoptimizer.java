@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -672,18 +674,18 @@ public final class Deoptimizer {
         installDeoptimizedFrame(sourceSp, deoptimizedFrame);
 
         if (Options.TraceDeoptimization.getValue()) {
-            printDeoptimizedFrame(Log.log(), sourceSp, deoptimizedFrame, frameInfo);
+            printDeoptimizedFrame(Log.log(), sourceSp, deoptimizedFrame, frameInfo, false);
         }
-        logDeoptSourceFrameOperation(sourceSp, deoptimizedFrame);
+        logDeoptSourceFrameOperation(sourceSp, deoptimizedFrame, frameInfo);
 
         return deoptimizedFrame;
     }
 
-    private static void logDeoptSourceFrameOperation(Pointer sp, DeoptimizedFrame deoptimizedFrame) {
+    private static void logDeoptSourceFrameOperation(Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult frameInfo) {
         StringBuilderLog log = new StringBuilderLog();
         PointerBase deoptimizedFrameAddress = deoptimizedFrame.getPin().addressOfObject();
         log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").hex(deoptimizedFrameAddress).string(": ");
-        printDeoptimizedFrame(log, sp, deoptimizedFrame, null);
+        printDeoptimizedFrame(log, sp, deoptimizedFrame, frameInfo, true);
         recentDeoptimizationEvents.append(log.getResult().toCharArray());
     }
 
@@ -990,7 +992,7 @@ public final class Deoptimizer {
         }
     }
 
-    private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo) {
+    private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo, boolean printOnlyTopFrames) {
         log.string("[Deoptimization of frame").newline();
 
         SubstrateInstalledCode installedCode = deoptimizedFrame.getSourceInstalledCode();
@@ -1003,6 +1005,7 @@ public final class Deoptimizer {
             log.string("    stack trace where execution continues:").newline();
             FrameInfoQueryResult sourceFrame = sourceFrameInfo;
             VirtualFrame targetFrame = deoptimizedFrame.getTopFrame();
+            int count = 0;
             while (sourceFrame != null) {
                 SharedMethod deoptMethod = sourceFrame.getDeoptMethod();
                 int bci = sourceFrame.getBci();
@@ -1018,10 +1021,15 @@ public final class Deoptimizer {
                 } else {
                     log.string("method at ").hex(sourceFrame.getDeoptMethodAddress()).string(" bci ").signed(bci);
                 }
-                log.newline();
+                log.string("  return address ").hex(targetFrame.returnAddress.returnAddress).newline();
 
                 if (Options.TraceDeoptimizationDetails.getValue()) {
                     printVirtualFrame(log, targetFrame);
+                }
+
+                count++;
+                if (printOnlyTopFrames && count >= 4) {
+                    break;
                 }
 
                 sourceFrame = sourceFrame.getCaller();

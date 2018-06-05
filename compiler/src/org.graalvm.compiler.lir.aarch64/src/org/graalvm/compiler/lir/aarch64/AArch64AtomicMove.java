@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -74,20 +76,82 @@ public class AArch64AtomicMove {
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
-            Register scratch = asRegister(scratchValue);
-            // We could avoid using a scratch register here, by reusing resultValue for the stlxr
-            // success flag and issue a mov resultValue, expectedValue in case of success before
-            // returning.
-            Label retry = new Label();
-            Label fail = new Label();
-            masm.bind(retry);
-            masm.ldaxr(size, result, address);
-            AArch64Compare.gpCompare(masm, resultValue, expectedValue);
-            masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-            masm.stlxr(size, scratch, newVal, address);
-            // if scratch == 0 then write successful, else retry.
-            masm.cbnz(32, scratch, retry);
-            masm.bind(fail);
+            if (AArch64LIRFlagsVersioned.useLSE(masm)) {
+                Register expected = asRegister(expectedValue);
+                masm.mov(size, result, expected);
+                masm.cas(size, expected, newVal, address, true /* acquire */, true /* release */);
+                AArch64Compare.gpCompare(masm, resultValue, expectedValue);
+            } else {
+                // We could avoid using a scratch register here, by reusing resultValue for the
+                // stlxr success flag and issue a mov resultValue, expectedValue in case of success
+                // before returning.
+                Register scratch = asRegister(scratchValue);
+                Label retry = new Label();
+                Label fail = new Label();
+                masm.bind(retry);
+                masm.ldaxr(size, result, address);
+                AArch64Compare.gpCompare(masm, resultValue, expectedValue);
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
+                masm.stlxr(size, scratch, newVal, address);
+                // if scratch == 0 then write successful, else retry.
+                masm.cbnz(32, scratch, retry);
+                masm.bind(fail);
+            }
+        }
+    }
+
+    /**
+     * Load (Read) and Add instruction. Does the following atomically: <code>
+     *  ATOMIC_READ_AND_ADD(addend, result, address):
+     *    result = *address
+     *    *address = result + addend
+     *    return result
+     * </code>
+     */
+    @Opcode("ATOMIC_READ_AND_ADD")
+    public static final class AtomicReadAndAddOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<AtomicReadAndAddOp> TYPE = LIRInstructionClass.create(AtomicReadAndAddOp.class);
+
+        private final AArch64Kind accessKind;
+
+        @Def protected AllocatableValue resultValue;
+        @Alive protected AllocatableValue addressValue;
+        @Alive protected AllocatableValue deltaValue;
+        @Temp protected AllocatableValue scratchValue1;
+        @Temp protected AllocatableValue scratchValue2;
+
+        public AtomicReadAndAddOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue delta, AllocatableValue scratch1, AllocatableValue scratch2) {
+            super(TYPE);
+            this.accessKind = kind;
+            this.resultValue = result;
+            this.addressValue = address;
+            this.deltaValue = delta;
+            this.scratchValue1 = scratch1;
+            this.scratchValue2 = scratch2;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            assert accessKind.isInteger();
+            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+
+            Register address = asRegister(addressValue);
+            Register delta = asRegister(deltaValue);
+            Register result = asRegister(resultValue);
+
+            if (AArch64LIRFlagsVersioned.useLSE(masm)) {
+                masm.ldadd(size, delta, result, address, true, true);
+            } else {
+                Register scratch1 = asRegister(scratchValue1);
+                Register scratch2 = asRegister(scratchValue2);
+                Label retry = new Label();
+                masm.bind(retry);
+                masm.ldaxr(size, result, address);
+                masm.add(size, scratch1, result, delta);
+                masm.stlxr(size, scratch2, scratch1, address);
+                // if scratch2 == 0 then write successful, else retry
+                masm.cbnz(32, scratch2, retry);
+            }
         }
     }
 
@@ -126,15 +190,19 @@ public class AArch64AtomicMove {
 
             Register address = asRegister(addressValue);
             Register value = asRegister(newValue);
-            Register scratch = asRegister(scratchValue);
             Register result = asRegister(resultValue);
 
-            Label retry = new Label();
-            masm.bind(retry);
-            masm.ldaxr(size, result, address);
-            masm.stlxr(size, scratch, value, address);
-            // if scratch == 0 then write successful, else retry
-            masm.cbnz(32, scratch, retry);
+            if (AArch64LIRFlagsVersioned.useLSE(masm)) {
+                masm.swp(size, value, result, address, true, true);
+            } else {
+                Register scratch = asRegister(scratchValue);
+                Label retry = new Label();
+                masm.bind(retry);
+                masm.ldaxr(size, result, address);
+                masm.stlxr(size, scratch, value, address);
+                // if scratch == 0 then write successful, else retry
+                masm.cbnz(32, scratch, retry);
+            }
         }
     }
 }

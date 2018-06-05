@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +23,8 @@
  * questions.
  */
 package com.oracle.truffle.api.test.polyglot;
+
+import java.util.function.Consumer;
 
 import org.graalvm.options.OptionDescriptors;
 
@@ -56,10 +60,16 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     private boolean wrapper = true;
     protected ProxyLanguage languageInstance;
 
+    private Consumer<LanguageContext> onCreate;
+
     public static <T extends ProxyLanguage> T setDelegate(T delegate) {
         ((ProxyLanguage) delegate).wrapper = false;
         ProxyLanguage.delegate = delegate;
         return delegate;
+    }
+
+    public void setOnCreate(Consumer<LanguageContext> onCreate) {
+        this.onCreate = onCreate;
     }
 
     public static LanguageContext getCurrentContext() {
@@ -76,7 +86,11 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             delegate.languageInstance = this;
             return delegate.createContext(env);
         } else {
-            return new LanguageContext(env);
+            LanguageContext c = new LanguageContext(env);
+            if (onCreate != null) {
+                onCreate.accept(c);
+            }
+            return c;
         }
     }
 

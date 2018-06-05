@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -239,8 +241,11 @@ final class DebugConfigImpl implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(DebugContext debug, Throwable e) {
-        if (e instanceof BailoutException && !DebugOptions.InterceptBailout.getValue(options)) {
-            return null;
+        if (e instanceof BailoutException) {
+            final boolean causedByCompilerAssert = e instanceof CausableByCompilerAssert && ((CausableByCompilerAssert) e).isCausedByCompilerAssert();
+            if (!DebugOptions.InterceptBailout.getValue(options) && !causedByCompilerAssert) {
+                return null;
+            }
         }
 
         OptionValues interceptOptions = new OptionValues(options,

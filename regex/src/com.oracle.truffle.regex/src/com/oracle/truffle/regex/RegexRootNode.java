@@ -26,8 +26,11 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class RegexRootNode extends RootNode {
 
@@ -59,8 +62,12 @@ public final class RegexRootNode extends RootNode {
         return body.execute(frame);
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
+        if (body instanceof InstrumentableNode.WrapperNode) {
+            return ((InstrumentableNode.WrapperNode) body).getDelegateNode().toString();
+        }
         return body.toString();
     }
 }

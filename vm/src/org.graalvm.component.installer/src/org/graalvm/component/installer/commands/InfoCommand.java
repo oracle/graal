@@ -54,6 +54,11 @@ public class InfoCommand extends QueryCommandBase {
         OPTIONS.put(Commands.OPTION_FULL_PATHS, "");
         OPTIONS.put(Commands.OPTION_IGNORE_OPEN_ERRORS, "");
         OPTIONS.put(Commands.OPTION_SUPPRESS_TABLE, "");
+
+        OPTIONS.put(Commands.LONG_OPTION_VERIFY_JARS, Commands.OPTION_VERIFY_JARS);
+        OPTIONS.put(Commands.LONG_OPTION_FULL_PATHS, Commands.OPTION_FULL_PATHS);
+        OPTIONS.put(Commands.LONG_OPTION_IGNORE_OPEN_ERRORS, Commands.OPTION_IGNORE_OPEN_ERRORS);
+        OPTIONS.put(Commands.LONG_OPTION_SUPPRESS_TABLE, Commands.OPTION_SUPPRESS_TABLE);
     }
 
     private boolean ignoreOpenErrors;

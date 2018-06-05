@@ -28,8 +28,8 @@ import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -85,21 +85,23 @@ public final class RemoteObject {
         String vsubtype = null;
         String vclassName = null;
         String vdescription = null;
-        if (metaObject != null) {
+        if (metaObject != null && originalLanguage != null && "js".equals(originalLanguage.getId())) {
+            // Get special JS properties:
             try {
-                Collection<DebugValue> properties = metaObject.getProperties();
-                if (properties != null) {
-                    for (DebugValue prop : properties) {
-                        String name = prop.getName();
-                        if ("type".equals(name)) {
-                            vtype = prop.as(String.class);
-                        } else if ("subtype".equals(name)) {
-                            vsubtype = prop.as(String.class);
-                        } else if ("className".equals(name)) {
-                            vclassName = prop.as(String.class);
-                        } else if ("description".equals(name)) {
-                            vdescription = prop.as(String.class);
-                        }
+                DebugValue property = metaObject.getProperty("type");
+                if (property != null) {
+                    vtype = property.as(String.class);
+                    property = metaObject.getProperty("subtype");
+                    if (property != null) {
+                        vsubtype = property.as(String.class);
+                    }
+                    property = metaObject.getProperty("className");
+                    if (property != null) {
+                        vclassName = property.as(String.class);
+                    }
+                    property = metaObject.getProperty("description");
+                    if (property != null) {
+                        vdescription = property.as(String.class);
                     }
                 }
             } catch (Exception ex) {
@@ -120,11 +122,14 @@ public final class RemoteObject {
             } else {
                 this.subtype = null;
             }
-            if (isObject) {
+            String metaType = (metaObject != null) ? metaObject.as(String.class) : null;
+            if (debugValue.canExecute()) {
+                this.type = TYPE.FUNCTION.getId();
+                this.className = metaType;
+            } else if (isObject) {
                 this.type = TYPE.OBJECT.getId();
-                this.className = (metaObject != null) ? metaObject.as(String.class) : null;
+                this.className = metaType;
             } else {
-                String metaType = (metaObject != null) ? metaObject.as(String.class) : null;
                 this.type = getType(debugValue, metaType);
                 this.className = null;
                 if (TYPE.OBJECT.getId().equals(this.type)) {
@@ -146,7 +151,7 @@ public final class RemoteObject {
             toString = null;
         }
         this.value = (!isObject) ? toString : null;
-        if ((vdescription == null || vdescription.equals(toString)) && descriptionType != null) {
+        if (vdescription == null && descriptionType != null) {
             this.description = descriptionType + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
         } else if (vdescription != null && !vdescription.isEmpty()) {
             this.description = vdescription;
@@ -200,7 +205,7 @@ public final class RemoteObject {
     private static boolean isObject(DebugValue debugValue, PrintWriter err) {
         boolean isObject;
         try {
-            isObject = debugValue.getProperties() != null;
+            isObject = debugValue.getProperties() != null || debugValue.canExecute();
         } catch (Exception ex) {
             if (err != null) {
                 err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);

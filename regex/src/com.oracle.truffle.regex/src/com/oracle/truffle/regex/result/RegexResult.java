@@ -57,6 +57,11 @@ import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
 public abstract class RegexResult implements RegexLanguageObject {
 
     public static final RegexResult NO_MATCH = new RegexResult(null, "NULL", 0) {
+
+        @Override
+        public String toString() {
+            return "NO_MATCH";
+        }
     };
 
     private final RegexObject regex;

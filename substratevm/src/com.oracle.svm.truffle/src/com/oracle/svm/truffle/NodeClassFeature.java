@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -142,7 +144,7 @@ public class NodeClassFeature implements Feature {
                  * Unsafe in the NodeClass, e.g. when making changes in the graph.
                  */
                 // TODO register unsafe accessed Truffle nodes in a separate partition?
-                access.registerAsUnsafeWritten(field);
+                access.registerAsUnsafeAccessed(field);
             }
 
             if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA) {

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
@@ -36,16 +37,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.hamcrest.CoreMatchers;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -62,35 +60,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.ArrayTruffleObject;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.Data;
 
-public class LanguageSPIHostInteropTest {
-
-    private Context context;
-    private Env env;
+public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).build();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected LanguageContext createContext(Env contextEnv) {
-                env = contextEnv;
-                return super.createContext(contextEnv);
-            }
-        });
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
-        assertNotNull(env);
-    }
-
-    @After
-    public void after() {
-        context.leave();
-        context.close();
+        setupEnv();
     }
 
     @Test
     public void testSystemMethod() throws InteropException {
-        TruffleObject system = (TruffleObject) env.lookupHostSymbol(System.class.getName());
+        TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
         Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
@@ -108,8 +87,8 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void conversionToClassYieldsTheClass() {
-        Object javaValue = env.asHostObject(env.asGuestValue(TestClass.class));
-        Object javaSymbol = env.asHostObject(env.lookupHostSymbol(TestClass.class.getName()));
+        Object javaValue = languageEnv.asHostObject(languageEnv.asGuestValue(TestClass.class));
+        Object javaSymbol = languageEnv.asHostObject(languageEnv.lookupHostSymbol(TestClass.class.getName()));
 
         assertTrue(javaValue instanceof Class);
         assertSame("Both class objects are the same", javaValue, javaSymbol);
@@ -117,23 +96,23 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void conversionToClassNull() {
-        Object meta = env.findMetaObject(env.asGuestValue(null));
+        Object meta = languageEnv.findMetaObject(languageEnv.asGuestValue(null));
         assertSame(Void.class,
-                        env.asHostObject(meta));
+                        languageEnv.asHostObject(meta));
     }
 
     @Test
     public void nullAsJavaObject() {
-        Object nullObject = env.asGuestValue(null);
-        assertTrue(env.isHostObject(nullObject));
-        assertNull(env.asHostObject(nullObject));
+        Object nullObject = languageEnv.asGuestValue(null);
+        assertTrue(languageEnv.isHostObject(nullObject));
+        assertNull(languageEnv.asHostObject(nullObject));
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void assertKeysAndProperties() {
         Data dataObj = new Data();
-        TruffleObject data = (TruffleObject) env.asGuestValue(dataObj);
+        TruffleObject data = (TruffleObject) languageEnv.asGuestValue(dataObj);
 
         TruffleObject keys = sendKeys(data);
         List<Object> list = context.asValue(keys).as(List.class);
@@ -154,12 +133,12 @@ public class LanguageSPIHostInteropTest {
     @Test
     public void invokeJavaLangObjectFields() throws InteropException {
         Data data = new Data();
-        TruffleObject obj = (TruffleObject) env.asGuestValue(data);
+        TruffleObject obj = (TruffleObject) languageEnv.asGuestValue(data);
 
         Object string = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
         Object clazz = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "getClass");
-        assertTrue(clazz instanceof TruffleObject && env.asHostObject(clazz) == Data.class);
+        assertTrue(clazz instanceof TruffleObject && languageEnv.asHostObject(clazz) == Data.class);
         assertEquals(true, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "equals", obj));
         assertTrue(ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "hashCode") instanceof Integer);
 
@@ -171,7 +150,7 @@ public class LanguageSPIHostInteropTest {
     @Test
     public void indexJavaArrayWithNumberTypes() throws Exception {
         int[] a = new int[]{1, 2, 3};
-        TruffleObject truffleObject = (TruffleObject) env.asGuestValue(a);
+        TruffleObject truffleObject = (TruffleObject) languageEnv.asGuestValue(a);
 
         assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
         assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
@@ -191,38 +170,38 @@ public class LanguageSPIHostInteropTest {
     public void testAsGuestValue() {
         Object object = new Object();
         // Test that asTruffleValue() returns the same as asTruffleObject() for non-primitive types:
-        assertEquals(env.asGuestValue(object), env.asGuestValue(object));
+        assertEquals(languageEnv.asGuestValue(object), languageEnv.asGuestValue(object));
 
         Data data = new Data();
-        Object obj = env.asGuestValue(data);
-        assertEquals(obj, env.asGuestValue(data));
+        Object obj = languageEnv.asGuestValue(data);
+        assertEquals(obj, languageEnv.asGuestValue(data));
         // Test that asTruffleValue() returns non-wraped primitives:
         object = 42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = (byte) 42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = (short) 42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = 424242424242L;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = 42.42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = true;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = "42";
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = '4';
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = true;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
     }
 
     @Test
     public void notUnboxable() {
         Node unboxNode = Message.UNBOX.createNode();
-        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) env.asGuestValue(null)), UnsupportedMessageException.class);
-        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) env.asGuestValue(new Object())), UnsupportedMessageException.class);
-        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) env.asGuestValue(Object.class)), UnsupportedMessageException.class);
+        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) languageEnv.asGuestValue(null)), UnsupportedMessageException.class);
+        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) languageEnv.asGuestValue(new Object())), UnsupportedMessageException.class);
+        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) languageEnv.asGuestValue(Object.class)), UnsupportedMessageException.class);
     }
 
     @Test
@@ -286,7 +265,7 @@ public class LanguageSPIHostInteropTest {
 
         TruffleObject aobj = new ArrayTruffleObject(100);
         testArrayObject(aobj, 100);
-        aobj = (TruffleObject) env.asGuestValue(new String[]{"A", "B", "C", "D"});
+        aobj = (TruffleObject) languageEnv.asGuestValue(new String[]{"A", "B", "C", "D"});
         testArrayObject(aobj, 4);
     }
 
@@ -330,18 +309,18 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void testPrimitiveBoxing() {
-        assertNumberMembers((byte) 1, env.asBoxedGuestValue((byte) 1));
-        assertNumberMembers((short) 1, env.asBoxedGuestValue((short) 1));
-        assertNumberMembers(1, env.asBoxedGuestValue(1));
-        assertNumberMembers(1L, env.asBoxedGuestValue(1L));
-        assertNumberMembers(1F, env.asBoxedGuestValue(1F));
-        assertNumberMembers(1D, env.asBoxedGuestValue(1D));
+        assertNumberMembers((byte) 1, languageEnv.asBoxedGuestValue((byte) 1));
+        assertNumberMembers((short) 1, languageEnv.asBoxedGuestValue((short) 1));
+        assertNumberMembers(1, languageEnv.asBoxedGuestValue(1));
+        assertNumberMembers(1L, languageEnv.asBoxedGuestValue(1L));
+        assertNumberMembers(1F, languageEnv.asBoxedGuestValue(1F));
+        assertNumberMembers(1D, languageEnv.asBoxedGuestValue(1D));
 
-        assertStringMembers("foobarbaz", env.asBoxedGuestValue("foobarbaz"));
-        assertStringMembers("", env.asBoxedGuestValue(""));
-        assertBooleanMembers(false, env.asBoxedGuestValue(false));
-        assertBooleanMembers(true, env.asBoxedGuestValue(true));
-        assertCharacterMembers('a', env.asBoxedGuestValue('a'));
+        assertStringMembers("foobarbaz", languageEnv.asBoxedGuestValue("foobarbaz"));
+        assertStringMembers("", languageEnv.asBoxedGuestValue(""));
+        assertBooleanMembers(false, languageEnv.asBoxedGuestValue(false));
+        assertBooleanMembers(true, languageEnv.asBoxedGuestValue(true));
+        assertCharacterMembers('a', languageEnv.asBoxedGuestValue('a'));
 
     }
 
@@ -358,8 +337,8 @@ public class LanguageSPIHostInteropTest {
         assertInvocable(number.hashCode(), numberObject, "hashCode");
         assertInvocable(number.toString(), numberObject, "toString");
 
-        assertTrue(env.isHostObject(numberObject));
-        assertEquals(number, env.asHostObject(numberObject));
+        assertTrue(languageEnv.isHostObject(numberObject));
+        assertEquals(number, languageEnv.asHostObject(numberObject));
     }
 
     private static void assertInvocable(Object expectedValue, Object receiver, String method, Object... args) {
@@ -405,8 +384,8 @@ public class LanguageSPIHostInteropTest {
         assertInvocable(string.equals(unboxValue), stringObject, "equals", unboxValue);
         assertInvocable(string.hashCode(), stringObject, "hashCode");
         assertInvocable(string.toString(), stringObject, "toString");
-        assertTrue(env.isHostObject(stringObject));
-        assertEquals(string, env.asHostObject(stringObject));
+        assertTrue(languageEnv.isHostObject(stringObject));
+        assertEquals(string, languageEnv.asHostObject(stringObject));
     }
 
     private void assertBooleanMembers(Object unboxValue, Object booleanObject) {
@@ -419,8 +398,8 @@ public class LanguageSPIHostInteropTest {
         assertInvocable(b.hashCode(), booleanObject, "hashCode");
         assertInvocable(b.toString(), booleanObject, "toString");
 
-        assertTrue(env.isHostObject(booleanObject));
-        assertEquals(b, env.asHostObject(booleanObject));
+        assertTrue(languageEnv.isHostObject(booleanObject));
+        assertEquals(b, languageEnv.asHostObject(booleanObject));
     }
 
     private void assertCharacterMembers(Character unboxValue, Object charObject) {
@@ -433,8 +412,8 @@ public class LanguageSPIHostInteropTest {
         assertInvocable(b.hashCode(), charObject, "hashCode");
         assertInvocable(b.toString(), charObject, "toString");
 
-        assertTrue(env.isHostObject(charObject));
-        assertEquals(b, env.asHostObject(charObject));
+        assertTrue(languageEnv.isHostObject(charObject));
+        assertEquals(b, languageEnv.asHostObject(charObject));
     }
 
     @Test
@@ -513,7 +492,7 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void keyInfoJavaObject() {
-        TruffleObject d = (TruffleObject) env.asGuestValue(new TestJavaObject());
+        TruffleObject d = (TruffleObject) languageEnv.asGuestValue(new TestJavaObject());
         int keyInfo = getKeyInfo(d, "nnoonnee");
         assertFalse(KeyInfo.isExisting(keyInfo));
         keyInfo = getKeyInfo(d, "aField");
@@ -557,8 +536,8 @@ public class LanguageSPIHostInteropTest {
             callable.call();
             fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
         } catch (Exception e) {
-            assertTrue(env.isHostException(e));
-            assertSame(exception, env.asHostException(e).getClass());
+            assertTrue(languageEnv.isHostException(e));
+            assertSame(exception, languageEnv.asHostException(e).getClass());
         }
     }
 

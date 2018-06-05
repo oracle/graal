@@ -28,9 +28,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 
-public abstract class DFAAbstractStateNode extends Node {
+public abstract class DFAAbstractStateNode extends Node implements JsonConvertible {
 
     static final int FS_RESULT_NO_SUCCESSOR = -1;
 
@@ -60,12 +60,10 @@ public abstract class DFAAbstractStateNode extends Node {
      * Calculates this state's successor and returns its ID ({@link DFAStateNode#getId()}) via
      * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. This return value is
      * called "successor index" and may either be an index of the successors array (between 0 and
-     * <code>{@link #getSuccessors()}.length</code>) or {@link #FS_RESULT_NO_SUCCESSOR}.
+     * {@link #getSuccessors()}{@code .length}) or {@link #FS_RESULT_NO_SUCCESSOR}.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      */
     public abstract void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor);
-
-    public abstract DebugUtil.Table toTable();
 }

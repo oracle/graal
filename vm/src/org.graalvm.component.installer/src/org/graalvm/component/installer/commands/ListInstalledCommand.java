@@ -54,6 +54,7 @@ public class ListInstalledCommand extends QueryCommandBase {
     public Map<String, String> supportedOptions() {
         Map<String, String> m = new HashMap<>(super.supportedOptions());
         m.put(Commands.OPTION_URLS, "X"); // mask out
+        m.put(Commands.OPTION_FILES, "X"); // mask out
         return m;
     }
 

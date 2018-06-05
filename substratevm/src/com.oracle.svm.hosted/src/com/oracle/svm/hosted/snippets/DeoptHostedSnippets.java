@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -48,6 +50,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
 
@@ -65,33 +68,33 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
          */
         if (reason == DeoptimizationReason.NullCheckException) {
             if (mustNotAllocate) {
-                runtimeCall(SnippetRuntime.THROW_CACHED_NULL_POINTER_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_CACHED_NULL_POINTER_EXCEPTION);
             } else {
-                runtimeCall(SnippetRuntime.THROW_NULL_POINTER_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_NEW_NULL_POINTER_EXCEPTION);
             }
         } else if (reason == DeoptimizationReason.BoundsCheckException) {
             if (mustNotAllocate) {
-                runtimeCall(SnippetRuntime.THROW_CACHED_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION);
             } else {
-                runtimeCall(SnippetRuntime.THROW_ARRAY_INDEX_OUT_OF_BOUNDS_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_NEW_OUT_OF_BOUNDS_EXCEPTION);
             }
         } else if (reason == DeoptimizationReason.ClassCastException) {
             if (mustNotAllocate) {
-                runtimeCall(SnippetRuntime.THROW_CACHED_CLASS_CAST_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_CACHED_CLASS_CAST_EXCEPTION);
             } else {
-                runtimeCall(SnippetRuntime.THROW_CLASS_CAST_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_NEW_CLASS_CAST_EXCEPTION);
             }
         } else if (reason == DeoptimizationReason.ArrayStoreException) {
             if (mustNotAllocate) {
-                runtimeCall(SnippetRuntime.THROW_CACHED_ARRAY_STORE_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_CACHED_ARRAY_STORE_EXCEPTION);
             } else {
-                runtimeCall(SnippetRuntime.THROW_ARRAY_STORE_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_NEW_ARRAY_STORE_EXCEPTION);
             }
         } else if (reason == DeoptimizationReason.ArithmeticException) {
             if (mustNotAllocate) {
-                runtimeCall(SnippetRuntime.THROW_CACHED_ARITHMETIC_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
             } else {
-                runtimeCall(SnippetRuntime.THROW_ARITHMETIC_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_NEW_ARITHMETIC_EXCEPTION);
             }
         } else if (reason == DeoptimizationReason.UnreachedCode || reason == DeoptimizationReason.TypeCheckedInliningViolated || reason == DeoptimizationReason.NotCompiledExceptionHandler) {
             runtimeCall(SnippetRuntime.UNREACHED_CODE);

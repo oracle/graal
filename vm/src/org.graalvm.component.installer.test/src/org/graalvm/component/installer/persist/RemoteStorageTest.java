@@ -48,7 +48,7 @@ import org.junit.rules.ExpectedException;
 
 public class RemoteStorageTest extends TestBase {
     private static final String TEST_GRAAL_VERSION = "0.33-dev_linux_amd64";
-    private static final String TEST_BASE_URL_DIR = "https://graal.us.oracle.com/";
+    private static final String TEST_BASE_URL_DIR = "https://graalvm.io/";
     private static final String TEST_BASE_URL = TEST_BASE_URL_DIR + "download/catalog";
     private RemoteStorage remStorage;
     private MockStorage storage;

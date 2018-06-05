@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,6 +27,7 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.InputType.Condition;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.vm.ci.meta.TriState;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
@@ -74,5 +77,20 @@ public abstract class LogicNode extends FloatingNode implements IndirectCanonica
         }
 
         return false;
+    }
+
+    /**
+     * Determines what this condition implies about the other.
+     *
+     * <ul>
+     * <li>If negate(this, thisNegated) => other, returns {@link TriState#TRUE}</li>
+     * <li>If negate(this, thisNegated) => !other, returns {@link TriState#FALSE}</li>
+     * </ul>
+     *
+     * @param thisNegated whether this condition should be considered as false.
+     * @param other the other condition.
+     */
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        return TriState.UNKNOWN;
     }
 }

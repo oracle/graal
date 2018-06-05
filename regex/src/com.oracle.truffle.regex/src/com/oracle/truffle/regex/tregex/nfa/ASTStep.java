@@ -24,15 +24,18 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 
-public final class ASTStep {
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public final class ASTStep implements JsonConvertible {
 
     private final RegexASTNode root;
     private final ArrayList<ASTSuccessor> successors = new ArrayList<>();
@@ -61,18 +64,14 @@ public final class ASTStep {
         // to avoid running out of memory in such situations, we have to bailout during the
         // collection of ASTSuccessors in ASTStep, before they are transformed into NFA transitions.
         if (successors.size() > TRegexOptions.TRegexMaxNumberOfASTSuccessorsInOneASTStep) {
-            throw new UnsupportedRegexException("TRegex Bailout: ASTSuccessor explosion");
+            throw new UnsupportedRegexException("ASTSuccessor explosion");
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table("ASTStep",
-                        new DebugUtil.Value("root", root.toStringWithID()));
-        for (ASTSuccessor s : successors) {
-            s.getMergedStates(new ASTTransitionCanonicalizer());
-            table.append(s.toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("root", root.getId()),
+                        Json.prop("successors", successors));
     }
 }

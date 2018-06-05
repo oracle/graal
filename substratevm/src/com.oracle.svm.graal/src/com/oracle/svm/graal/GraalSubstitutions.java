@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -134,7 +137,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
     static class ClearImmutableCache implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             for (Class<?> c : DebugContext.class.getDeclaredClasses()) {
                 if (c.getSimpleName().equals("Immutable")) {
                     try {
@@ -168,7 +171,7 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return GraalSupport.get().debugHandlersFactories;
         }
     }
@@ -257,7 +260,7 @@ final class Target_org_graalvm_compiler_debug_KeyRegistry {
     static class EconomicMapResetter implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return EconomicMap.create();
         }
     }
