@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.jdk9;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -245,7 +246,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     @Test
     public void testGetAndAdd() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
-        if (target.arch instanceof AMD64) {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
             testGraph("unsafeGetAndAddShort");
@@ -299,7 +300,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     @Test
     public void testGetAndSet() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
-        if (target.arch instanceof AMD64) {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetBoolean");
             testGraph("unsafeGetAndSetByte");
             testGraph("unsafeGetAndSetChar");
