@@ -45,6 +45,7 @@ import functools
 import collections
 import itertools
 import glob
+from xml.dom.minidom import parse
 
 import mx
 import mx_compiler
@@ -134,11 +135,11 @@ def classpath(args):
 def clibrary_paths():
     return (join(suite.dir, 'clibraries') for suite in svmSuites)
 
-def platform_subdir():
+def platform_name():
     return mx.get_os() + "-" + mx.get_arch()
 
 def clibrary_libpath():
-    return ','.join(join(path, platform_subdir()) for path in clibrary_paths())
+    return ','.join(join(path, platform_name()) for path in clibrary_paths())
 
 def svm_suite():
     return svmSuites[-1]
@@ -280,7 +281,7 @@ tools_map = {
 
 def native_image_path(native_image_root):
     native_image_name = 'native-image'
-    native_image_dir = join(native_image_root, platform_subdir(), 'bin')
+    native_image_dir = join(native_image_root, platform_name(), 'bin')
     return join(native_image_dir, native_image_name)
 
 def remove_option_prefix(text, prefix):
@@ -533,7 +534,7 @@ def svm_gate_body(args, tasks):
 def native_junit(native_image, unittest_args, build_args=None, run_args=None):
     build_args = build_args if not None else []
     run_args = run_args if not None else []
-    junit_native_dir = join(svmbuild_dir(), platform_subdir(), 'junit')
+    junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
     try:
@@ -772,6 +773,56 @@ def fetch_languages(args, early_exit=True):
         version = requested[language_flag]
         truffle_language_ensure(language_flag, version, early_exit=early_exit)
 
+def maven_plugin_install(args):
+    # Install native-image-maven-plugin dependencies into local repository
+    deps = []
+    def visit(dep, edge):
+        if isinstance(dep, mx.Distribution):
+            deps.append(dep)
+    mx.walk_deps([mx.dependency('substratevm:SVM_DRIVER')], visit=visit, ignoredEdges=[mx.DEP_ANNOTATION_PROCESSOR, mx.DEP_BUILD])
+    svmVersion = '{0}-SNAPSHOT'.format(suite.vc.parent(suite.vc_dir))
+    mx.maven_deploy([
+        '--version-string', svmVersion,
+        '--suppress-javadoc',
+        '--all-distributions',
+        '--validate=none',
+        '--all-suites',
+        '--skip-existing',
+        '--only', ','.join(dep.qualifiedName() for dep in deps)
+    ])
+
+    # Create native-image-maven-plugin pom with correct version info from template
+    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
+    dom = parse(join(proj_dir, 'pom_template.xml'))
+    for svmVersionElement in dom.getElementsByTagName('svmVersion'):
+        svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
+    with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
+        dom.writexml(pom_file)
+
+    # Build and install native-image-maven-plugin into local repository
+    mx.run_maven(['install', '-Dmx.platform=' + platform_name()], cwd=proj_dir)
+
+    success_message = [
+        '',
+        'Use the following plugin snippet to enable native-image building for your maven project:',
+        '',
+        '<plugin>',
+        '    <groupId>com.oracle.substratevm</groupId>',
+        '    <artifactId>native-image-maven-plugin</artifactId>',
+        '    <version>' + svmVersion + '</version>',
+        '    <executions>',
+        '        <execution>',
+        '            <goals>',
+        '                <goal>native-image</goal>',
+        '            </goals>',
+        '            <phase>package</phase>',
+        '        </execution>',
+        '    </executions>',
+        '</plugin>',
+        '',
+    ]
+    mx.log('\n'.join(success_message))
+
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
@@ -833,4 +884,5 @@ mx.update_commands(suite, {
     'fetch-languages': [lambda args: fetch_languages(args, early_exit=False), ''],
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
+    'maven-plugin-install': [maven_plugin_install, ''],
 })

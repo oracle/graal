@@ -72,7 +72,7 @@ public final class ProjectHeaderFile {
 
     /**
      * Base class for fall back resolvers registration. Extending this class will ensure that the
-     * {@link #ProjectHeaderFile()} will be added as a dependency.
+     * {@link ProjectHeaderFile} will be added as a dependency.
      */
     public abstract static class RegisterFallbackResolverFeature implements Feature {
 
