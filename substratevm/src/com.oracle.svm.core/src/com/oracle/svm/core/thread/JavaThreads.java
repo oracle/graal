@@ -415,7 +415,7 @@ public abstract class JavaThreads {
 
     protected abstract void start0(Thread thread, long stackSize);
 
-    protected abstract void setNativeName(Thread thread, String name);
+    protected abstract void setNativeName(String name);
 
     protected abstract void yield();
 
@@ -756,8 +756,9 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @SuppressWarnings({"static-method"})
     protected void setNativeName(String name) {
-        JavaThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
+        JavaThreads.singleton().setNativeName(name);
     }
 
     @Substitute
