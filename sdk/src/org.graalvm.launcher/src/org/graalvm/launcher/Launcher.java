@@ -105,7 +105,7 @@ public abstract class Launcher {
         seenPolyglot = polyglot;
     }
 
-    File getLogFile() {
+    final File getLogFile() {
         return logFile;
     }
 

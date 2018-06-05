@@ -117,7 +117,31 @@ public abstract class AbstractLanguageLauncher extends Launcher {
                 throw abort(ioe);
             }
         } else {
-            logOut = System.out;
+            logOut = new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    System.out.write(b);
+                }
+
+                @Override
+                public void write(byte[] b) throws IOException {
+                    System.out.write(b);
+                }
+
+                @Override
+                public void write(byte[] b, int off, int len) throws IOException {
+                    System.out.write(b, off, len);
+                }
+
+                @Override
+                public void flush() throws IOException {
+                    System.out.flush();
+                }
+
+                @Override
+                public void close() throws IOException {
+                }
+            };
         }
         builder.logOut(logOut);
         launch(builder);
