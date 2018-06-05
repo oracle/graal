@@ -146,6 +146,14 @@ public final class ReflectionConfigurationParser {
             Object value = entry.getValue();
             if (name.equals("name")) {
                 /* Already handled. */
+            } else if (name.equals("allDeclaredConstructors")) {
+                if (asBoolean(value, "allDeclaredConstructors")) {
+                    registry.register(clazz.getDeclaredConstructors());
+                }
+            } else if (name.equals("allPublicConstructors")) {
+                if (asBoolean(value, "allPublicConstructors")) {
+                    registry.register(clazz.getConstructors());
+                }
             } else if (name.equals("allDeclaredMethods")) {
                 if (asBoolean(value, "allDeclaredMethods")) {
                     registry.register(clazz.getDeclaredMethods());
@@ -168,7 +176,8 @@ public final class ReflectionConfigurationParser {
                 parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
             } else {
                 throw new JSONParserException("Unknown attribute '" + name +
-                                "' (supported attributes: allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " + clazz.getTypeName());
+                                "' (supported attributes: allDeclaredConstructors, allPublicConstructors, allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " +
+                                clazz.getTypeName());
             }
         }
     }
