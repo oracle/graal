@@ -72,8 +72,8 @@ public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
     }
 
     @Benchmark
-    public void createGraph() {
-        proxy.createGraph(state);
+    public StructuredGraph createGraph() {
+        return proxy.createGraph(state);
     }
 
 // @Benchmark
