@@ -246,10 +246,12 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     @Test
     public void testGetAndAdd() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+        if (target.arch instanceof AMD64) {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
             testGraph("unsafeGetAndAddShort");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddInt");
             testGraph("unsafeGetAndAddLong");
         }
@@ -300,11 +302,13 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     @Test
     public void testGetAndSet() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+        if (target.arch instanceof AMD64) {
             testGraph("unsafeGetAndSetBoolean");
             testGraph("unsafeGetAndSetByte");
             testGraph("unsafeGetAndSetChar");
             testGraph("unsafeGetAndSetShort");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
             testGraph("unsafeGetAndSetObject");

@@ -171,10 +171,10 @@ public class AArch64AtomicMove {
 
         @Def protected AllocatableValue resultValue;
         @Alive protected AllocatableValue addressValue;
-        @Use protected Value newValue;
+        @Alive protected AllocatableValue newValue;
         @Temp protected AllocatableValue scratchValue;
 
-        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value newValue, AllocatableValue scratch) {
+        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue newValue, AllocatableValue scratch) {
             super(TYPE);
             this.accessKind = kind;
             this.resultValue = result;
