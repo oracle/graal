@@ -226,7 +226,7 @@ public class PELangNCFTest extends PELangTest {
     }
 
     @Test
-    public void testNestedAdd() {
+    public void testNestedAdds() {
         PELangRootNode rootNode = PELangSample.nestedAdds();
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         assertCallResultEquals(10L, callTarget);

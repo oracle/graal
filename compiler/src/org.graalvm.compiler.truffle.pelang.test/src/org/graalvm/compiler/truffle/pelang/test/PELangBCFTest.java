@@ -236,7 +236,7 @@ public class PELangBCFTest extends PELangTest {
     }
 
     @Test
-    public void testNestedAdd() {
+    public void testNestedAdds() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.nestedAdds());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
