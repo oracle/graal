@@ -1279,6 +1279,15 @@ def graalvm_version(args):
     mx.log(_suite.release_version())
 
 
+def graalvm_home(args):
+    """print the GraalVM home dir"""
+    parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
+    args = parser.parse_args(args)
+
+    _graalvm_dist = get_graalvm_distribution()
+    mx.log(join(_graalvm_dist.output, _graalvm_dist.jdk_base))
+
+
 def _env_var_to_bool(name, default='false'):
     val = mx.get_env(name, default).lower()
     if val in ('false', '0', 'no'):
@@ -1312,4 +1321,5 @@ def _include_sources():
 mx.update_commands(_suite, {
     'graalvm-dist-name': [graalvm_dist_name, ''],
     'graalvm-version': [graalvm_version, ''],
+    'graalvm-home': [graalvm_home, ''],
 })
