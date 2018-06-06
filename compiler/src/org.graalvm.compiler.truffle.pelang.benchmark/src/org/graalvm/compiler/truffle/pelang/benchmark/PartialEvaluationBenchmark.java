@@ -22,9 +22,12 @@
  */
 package org.graalvm.compiler.truffle.pelang.benchmark;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.options.OptionValues;
@@ -40,7 +43,9 @@ import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleTreeDebugHandlersFactory;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -48,87 +53,75 @@ import org.openjdk.jmh.annotations.State;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
-@State(Scope.Thread)
+@State(Scope.Benchmark)
 public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
 
-    private final PartialEvaluatorProxy proxy = new PartialEvaluatorProxy();
-    private CompileState state;
+    private final TruffleCompilerImpl compiler = (TruffleCompilerImpl) TruffleCompilerRuntime.getRuntime().getTruffleCompiler();
+    private final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
+
+    private final OptimizedCallTarget callTarget;
+    private final OptionValues optionValues;
+    private final DebugContext debugContext;
+    private final TruffleInlining truffleInlining;
+    private final CompilationIdentifier identifier;
+    private final SpeculationLog speculationLog;
+    private final Cancellable cancellable;
+
+    private final String name;
+    private final ResolvedJavaMethod method;
+    private final PhaseContext phaseContext;
+    private final HighTierContext tierContext;
+
+    public PartialEvaluationBenchmark() {
+        callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(createRootNode());
+        optionValues = TruffleCompilerOptions.getOptions();
+        debugContext = DebugContext.create(optionValues, Arrays.asList(new TruffleTreeDebugHandlersFactory()));
+        truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
+        identifier = compiler.getCompilationIdentifier(callTarget);
+        speculationLog = callTarget.getSpeculationLog();
+        cancellable = new CancellableCompileTask();
+
+        name = callTarget.getName();
+        method = compiler.getPartialEvaluator().rootForCallTarget(callTarget);
+        phaseContext = new PhaseContext(compiler.getPartialEvaluator().getProviders());
+        tierContext = new HighTierContext(compiler.getPartialEvaluator().getProviders(), new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
+    }
+
+    @Setup(Level.Trial)
+    public void setup() {
+        // run call target so that all classes are loaded and initialized
+        callTarget.call();
+        callTarget.call();
+        callTarget.call();
+    }
 
     protected abstract RootNode createRootNode();
 
-    @Setup
-    public void setup() {
-        RootNode rootNode = createRootNode();
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
-
-        // call the target a few times
-        callTarget.call();
-        callTarget.call();
-        callTarget.call();
-
-        state = proxy.prepare(callTarget);
+    @Benchmark
+    public StructuredGraph createGraph() {
+        // @formatter:off
+        return partialEvaluator.createGraph(
+            debugContext, callTarget, truffleInlining,
+            AllowAssumptions.YES, identifier, speculationLog, cancellable);
+        // @formatter:on
     }
 
     @Benchmark
-    public StructuredGraph createGraph() {
-        return proxy.createGraph(state);
-    }
-
-// @Benchmark
-// public void fastPartialEvaluate() {
-// proxy.fastPartialEvaluation(state);
-// }
-
-    private static class PartialEvaluatorProxy {
-
-        final TruffleCompilerImpl truffleCompiler = (TruffleCompilerImpl) TruffleCompilerRuntime.getRuntime().getTruffleCompiler();
-        final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-
-        CompileState prepare(OptimizedCallTarget callTarget) {
-            CompileState state = new CompileState();
-            state.callTarget = callTarget;
-            state.debugContext = DebugContext.DISABLED;
-            state.allowAssumptions = AllowAssumptions.YES;
-            state.cancellable = new CancellableCompileTask();
-            state.optionValues = TruffleCompilerOptions.getOptions();
-            state.truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-            state.identifier = truffleCompiler.getCompilationIdentifier(callTarget);
-            state.speculationLog = callTarget.getSpeculationLog();
-            state.structuredGraph = new StructuredGraph.Builder(state.optionValues, state.debugContext, state.allowAssumptions).name(callTarget.toString()).method(
-                            partialEvaluator.rootForCallTarget(callTarget)).speculationLog(
-                                            state.speculationLog).compilationId(state.identifier).cancellable(state.cancellable).build();
-            state.phaseContext = new PhaseContext(partialEvaluator.getProviders());
-            state.tierContext = new HighTierContext(partialEvaluator.getProviders(), new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
-
-            return state;
-        }
-
-        StructuredGraph createGraph(CompileState state) {
-            return partialEvaluator.createGraph(state.debugContext, state.callTarget, state.truffleInlining, state.allowAssumptions, state.identifier, state.speculationLog, state.cancellable);
-        }
-
-        void fastPartialEvaluation(CompileState state) {
-            partialEvaluator.fastPartialEvaluation(state.callTarget, state.truffleInlining, state.structuredGraph, state.phaseContext, state.tierContext);
-        }
-
-    }
-
-    private static class CompileState {
-
-        OptimizedCallTarget callTarget;
-        DebugContext debugContext;
-        AllowAssumptions allowAssumptions;
-        CancellableCompileTask cancellable;
-        OptionValues optionValues;
-        TruffleInlining truffleInlining;
-        CompilationIdentifier identifier;
-        SpeculationLog speculationLog;
-        StructuredGraph structuredGraph;
-        PhaseContext phaseContext;
-        HighTierContext tierContext;
-
+    public void fastPartialEvaluate() {
+        // @formatter:off
+        StructuredGraph structuredGraph =
+            new StructuredGraph.Builder(optionValues, debugContext, AllowAssumptions.YES)
+                               .name(name)
+                               .method(method)
+                               .speculationLog(speculationLog)
+                               .compilationId(identifier)
+                               .cancellable(cancellable)
+                               .build();
+        // @formatter:on
+        partialEvaluator.fastPartialEvaluation(callTarget, truffleInlining, structuredGraph, phaseContext, tierContext);
     }
 
 }
