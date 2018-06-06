@@ -70,7 +70,7 @@ public class MatchFound extends Term {
     public SourceSection getSourceSection() {
         if (super.getSourceSection() == null) {
             RegexASTSubtreeRootNode parent = getSubTreeParent();
-            if (parent == null) {
+            if (parent == null || parent.getSourceSection() == null) {
                 // initial state, not part of actual AST
                 return null;
             }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -413,7 +415,7 @@ public abstract class JavaThreads {
 
     protected abstract void start0(Thread thread, long stackSize);
 
-    protected abstract void setNativeName(Thread thread, String name);
+    protected abstract void setNativeName(String name);
 
     protected abstract void yield();
 
@@ -754,8 +756,9 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @SuppressWarnings({"static-method"})
     protected void setNativeName(String name) {
-        JavaThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
+        JavaThreads.singleton().setNativeName(name);
     }
 
     @Substitute

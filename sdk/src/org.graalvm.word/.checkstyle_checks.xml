@@ -196,7 +196,7 @@
       <property name="checkFormat" value="MemberName"/>
       <property name="checkC" value="false"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable field name checks"/>
-    </module>    
+    </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="CheckStyle: stop header check"/>
       <property name="onCommentFormat" value="CheckStyle: resume header check"/>

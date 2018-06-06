@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -144,6 +146,14 @@ public final class ReflectionConfigurationParser {
             Object value = entry.getValue();
             if (name.equals("name")) {
                 /* Already handled. */
+            } else if (name.equals("allDeclaredConstructors")) {
+                if (asBoolean(value, "allDeclaredConstructors")) {
+                    registry.register(clazz.getDeclaredConstructors());
+                }
+            } else if (name.equals("allPublicConstructors")) {
+                if (asBoolean(value, "allPublicConstructors")) {
+                    registry.register(clazz.getConstructors());
+                }
             } else if (name.equals("allDeclaredMethods")) {
                 if (asBoolean(value, "allDeclaredMethods")) {
                     registry.register(clazz.getDeclaredMethods());
@@ -166,7 +176,8 @@ public final class ReflectionConfigurationParser {
                 parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
             } else {
                 throw new JSONParserException("Unknown attribute '" + name +
-                                "' (supported attributes: allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " + clazz.getTypeName());
+                                "' (supported attributes: allDeclaredConstructors, allPublicConstructors, allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " +
+                                clazz.getTypeName());
             }
         }
     }

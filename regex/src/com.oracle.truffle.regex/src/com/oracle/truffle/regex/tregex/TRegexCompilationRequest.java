@@ -281,16 +281,16 @@ final class TRegexCompilationRequest {
 
     private void debugNFA() {
         if (DebugUtil.DEBUG) {
-            NFAExport.exportDot(nfa, "./nfa.gv", true);
-            NFAExport.exportLaTex(nfa, "./nfa.tex", false);
-            NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true);
+            NFAExport.exportDot(nfa, "./nfa.gv", true, false);
+            NFAExport.exportLaTex(nfa, "./nfa.tex", false, true);
+            NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true, false);
             nfa.toJson().dump("nfa.json");
         }
     }
 
     private void debugTraceFinder() {
         if (DebugUtil.DEBUG) {
-            NFAExport.exportDotReverse(traceFinderNFA, "./trace_finder.gv", true);
+            NFAExport.exportDotReverse(traceFinderNFA, "./trace_finder.gv", true, false);
             traceFinderNFA.toJson().dump("nfa_trace_finder.json");
         }
     }
