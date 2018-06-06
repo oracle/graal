@@ -174,13 +174,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return header;
     }
 
-    protected static void writeHeaderToObjectCarefully(Object o, UnsignedWord value) {
-        VMError.guarantee(o != null, "ObjectHeader.writeHeaderToObjectCarefully:  o: null");
-        VMError.guarantee(value.notEqual(HeapPolicy.getProducedHeapChunkZapValue()), "ObjectHeader.writeHeaderToObjectCarefully:  value: producedZapValue");
-        VMError.guarantee(value.notEqual(HeapPolicy.getConsumedHeapChunkZapValue()), "ObjectHeader.writeHeaderToObjectCarefully:  value: consumedZapValue");
-        writeHeaderToObject(o, value);
-    }
-
     public static DynamicHub readDynamicHubFromObjectCarefully(Object o) {
         readHeaderFromObjectCarefully(o);
         return KnownIntrinsics.readHub(o);
@@ -221,48 +214,12 @@ public class ObjectHeaderImpl extends ObjectHeader {
      * The getters come in two forms: for Objects and for ObjectHeaders.
      */
 
-    protected boolean isNoRememberedSetAligned(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObject(o);
-        return isNoRememberedSetAlignedHeaderBits(headerBits);
-    }
-
-    protected boolean isNoRememberedSetAlignedCarefully(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObjectCarefully(o);
-        return isNoRememberedSetAlignedHeaderBits(headerBits);
-    }
-
     protected boolean isNoRememberedSetAlignedHeaderBits(UnsignedWord headerBits) {
         return ObjectHeaderImpl.headerBitsEqual(headerBits, NO_REMEMBERED_SET_ALIGNED);
     }
 
-    protected void setNoRememberedSetAligned(Object o) {
-        ObjectHeaderImpl.setHeaderBitsOnObject(o, NO_REMEMBERED_SET_ALIGNED);
-    }
-
-    protected void setNoRememberedSetAlignedCarefully(Object o) {
-        ObjectHeaderImpl.setHeaderBitsOnObjectCarefully(o, NO_REMEMBERED_SET_ALIGNED);
-    }
-
-    protected boolean isNoRememberedSetUnaligned(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObject(o);
-        return isNoRememberedSetUnalignedHeaderBits(headerBits);
-    }
-
-    protected boolean isNoRememberedSetUnalignedCarefully(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObjectCarefully(o);
-        return isNoRememberedSetUnalignedHeaderBits(headerBits);
-    }
-
     protected boolean isNoRememberedSetUnalignedHeaderBits(UnsignedWord headerBits) {
         return ObjectHeaderImpl.headerBitsEqual(headerBits, NO_REMEMBERED_SET_UNALIGNED);
-    }
-
-    protected void setNoRememberedSetUnaligned(Object o) {
-        ObjectHeaderImpl.setHeaderBitsOnObject(o, NO_REMEMBERED_SET_UNALIGNED);
-    }
-
-    protected void setNoRememberedSetUnalignedCarefully(Object o) {
-        ObjectHeaderImpl.setHeaderBitsOnObjectCarefully(o, NO_REMEMBERED_SET_UNALIGNED);
     }
 
     protected boolean isBootImage(Object o) {
@@ -293,26 +250,12 @@ public class ObjectHeaderImpl extends ObjectHeader {
         ObjectHeaderImpl.setHeaderBitsOnObject(o, CARD_REMEMBERED_SET_ALIGNED);
     }
 
-    protected boolean isCardRememberedSetUnaligned(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObject(o);
-        return isCardRememberedSetUnalignedHeaderBits(headerBits);
-    }
-
-    protected boolean isCardRememberedSetUnalignedCarefully(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObjectCarefully(o);
-        return isCardRememberedSetUnalignedHeaderBits(headerBits);
-    }
-
     protected boolean isCardRememberedSetUnalignedHeaderBits(UnsignedWord headerBits) {
         return ObjectHeaderImpl.headerBitsEqual(headerBits, CARD_REMEMBERED_SET_UNALIGNED);
     }
 
     protected void setCardRememberedSetUnaligned(Object o) {
         ObjectHeaderImpl.setHeaderBitsOnObject(o, CARD_REMEMBERED_SET_UNALIGNED);
-    }
-
-    protected void setCardRememberedSetUnalignedCarefully(Object o) {
-        ObjectHeaderImpl.setHeaderBitsOnObjectCarefully(o, CARD_REMEMBERED_SET_UNALIGNED);
     }
 
     /*
@@ -332,11 +275,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     boolean isForwardedHeaderCarefully(UnsignedWord header) {
         final UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(header);
-        return isForwardedHeaderBits(headerBits);
-    }
-
-    public boolean isForwardedObjectCarefully(Object o) {
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObjectCarefully(o);
         return isForwardedHeaderBits(headerBits);
     }
 
@@ -407,11 +345,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return (isNoRememberedSetAlignedHeaderBits(headerBits) || isCardRememberedSetAlignedHeaderBits(headerBits));
     }
 
-    protected boolean isAlignedHeaderBitsCarefully(UnsignedWord headerBits) {
-        assert isHeapAllocatedHeaderBits(headerBits);
-        return isAlignedHeaderBits(headerBits);
-    }
-
     protected boolean isAlignedHeader(UnsignedWord header) {
         final UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeader(header);
         return isAlignedHeaderBits(headerBits);
@@ -425,11 +358,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     protected boolean isUnalignedHeaderBits(UnsignedWord headerBits) {
         return (isNoRememberedSetUnalignedHeaderBits(headerBits) || isCardRememberedSetUnalignedHeaderBits(headerBits));
-    }
-
-    protected boolean isUnalignedHeaderBitsCarefully(UnsignedWord headerBits) {
-        assert isHeapAllocatedHeaderBits(headerBits);
-        return isUnalignedHeaderBits(headerBits);
     }
 
     protected boolean isUnalignedHeader(UnsignedWord header) {
@@ -571,12 +499,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
         final UnsignedWord oldHeader = ObjectHeader.readHeaderFromObject(o);
         final UnsignedWord newHeader = ObjectHeader.clearBits(oldHeader).or(headerBits);
         ObjectHeader.writeHeaderToObject(o, newHeader);
-    }
-
-    protected static void setHeaderBitsOnObjectCarefully(Object o, UnsignedWord headerBits) {
-        final UnsignedWord oldHeader = readHeaderFromObjectCarefully(o);
-        final UnsignedWord newHeader = ObjectHeader.clearBits(oldHeader).or(headerBits);
-        writeHeaderToObjectCarefully(o, newHeader);
     }
 
     /** Test if an object header has the specified bits. */

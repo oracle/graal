@@ -83,10 +83,6 @@ public abstract class ObjectHeader {
         return KnownIntrinsics.readHub(o);
     }
 
-    public static void writeDynamicHubToPointer(Pointer p, DynamicHub hub) {
-        p.writeObject(getHubOffset(), hub);
-    }
-
     /** Decode a DynamicHub from an Object header. */
     protected static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
