@@ -6,6 +6,9 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -13,16 +16,19 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument2;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import de.hpi.swa.trufflelsp.LanguageSpecificHacks;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 import de.hpi.swa.trufflelsp.exceptions.LSPIOException;
+import de.hpi.swa.trufflelsp.server.LSPFileSystem;
 import de.hpi.swa.trufflelsp.server.LSPServer;
 
 @Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1")
-public class LSPInstrument extends TruffleInstrument {
+public class LSPInstrument extends TruffleInstrument2 {
     public static final String ID = "lsp";
 
     private static final int DEFAULT_PORT = 8123;
@@ -62,12 +68,21 @@ public class LSPInstrument extends TruffleInstrument {
             HostAndPort hostAndPort = options.get(Lsp);
             InetSocketAddress socketAddress;
             try {
+                // TODO(ds)
+                Supplier<TruffleContext> sup = () -> {
+                    LanguageInfo languageInfo = env.getLanguages().get("python");
+                    com.oracle.truffle.api.TruffleLanguage.Env truffleEnv = this.getTruffleEnv(languageInfo);
+                    Path userDir = Paths.get("/home/daniel"); // TODO(ds)
+                    TruffleContext context = truffleEnv.newContextBuilder().buildWithFileSystem(LSPFileSystem.newFullIOFileSystem(userDir));
+                    return context;
+                };
+
                 socketAddress = hostAndPort.createSocket(options.get(Remote));
                 PrintWriter err = new PrintWriter(env.err());
                 PrintWriter info = new PrintWriter(env.out());
                 ServerSocket serverSocket = new ServerSocket(socketAddress.getPort(), 50, socketAddress.getAddress());
                 LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LanguageSpecificHacksOption).booleanValue();
-                LSPServer languageServer = LSPServer.create(new TruffleAdapter(env), info, err);
+                LSPServer languageServer = LSPServer.create(new TruffleAdapter(env, sup), info, err);
                 languageServer.start(serverSocket);
                 info.println("[Truffle LSP] Starting server on " + socketAddress);
                 info.flush();

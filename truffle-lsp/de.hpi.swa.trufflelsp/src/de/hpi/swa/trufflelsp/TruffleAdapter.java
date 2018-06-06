@@ -92,6 +92,8 @@ public class TruffleAdapter implements ContextsListener {
     private final SourceProvider sourceProvider;
     private DiagnosticsPublisher diagnosticsPublisher;
     private TruffleContext context;
+    private boolean isContextInitialized = false;
+    private Supplier<TruffleContext> sup;
 
     class SourceUriFilter implements SourcePredicate {
 
@@ -100,9 +102,10 @@ public class TruffleAdapter implements ContextsListener {
         }
     }
 
-    public TruffleAdapter(TruffleInstrument.Env env) {
+    public TruffleAdapter(TruffleInstrument.Env env, Supplier<TruffleContext> sup) {
         assert env != null;
         this.env = env;
+        this.sup = sup;
         this.err = new PrintWriter(env.err());
 // this.info = new PrintWriter(env.out());
         this.sourceProvider = new SourceProvider();
@@ -971,13 +974,19 @@ public class TruffleAdapter implements ContextsListener {
     }
 
     public void onContextCreated(TruffleContext truffleContext) {
-        this.context = truffleContext;
+// this.context = truffleContext;
+        System.out.println("My context: " + this.context + " onContextCreated: " + truffleContext);
+// this.context = this.sup.get();
     }
 
     public void onLanguageContextCreated(TruffleContext truffleContext, LanguageInfo language) {
     }
 
     public void onLanguageContextInitialized(TruffleContext truffleContext, LanguageInfo language) {
+        if (this.context == null && !isContextInitialized) {
+            this.isContextInitialized = true;
+            this.context = this.sup.get();
+        }
     }
 
     public void onLanguageContextFinalized(TruffleContext truffleContext, LanguageInfo language) {
