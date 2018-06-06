@@ -99,7 +99,7 @@ suite = {
         },
         "TruffleJSON" : {
           "urls" : [
-            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180130.jar",
+            "https://github.com/oracle/graal/releases/download/trufflejson-20180130/trufflejson-20180130.jar",
           ],
           "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
         },
