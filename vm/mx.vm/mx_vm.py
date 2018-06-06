@@ -1041,7 +1041,8 @@ Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
 x-GraalVM-Polyglot-Part: {polyglot}
-x-GraalVM-Working-Directories: {workdir}""".format(
+x-GraalVM-Working-Directories: {workdir}
+""".format( # GR-10249: the manifest file must end with a newline
             name=self.component.name,
             id=self.component.dir_name,
             version=_suite.release_version(),
