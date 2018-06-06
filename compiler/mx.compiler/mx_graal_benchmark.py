@@ -1,12 +1,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -90,10 +92,12 @@ def _create_temporary_workdir_parser():
     group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
     return parser
 
+
 mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
     _create_temporary_workdir_parser(),
     "\n\nFlags for benchmark suites with temporary working directories:\n"
 )
+
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
@@ -167,7 +171,7 @@ _graal_variants = [
     ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
 ]
-build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=core', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
+build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.
@@ -331,7 +335,58 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
         ] + super(CounterBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
 
 
-class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin):
+class MemUseTrackerBenchmarkMixin(DebugValueBenchmarkMixin):
+    trackers = [
+        # LIR stages
+        "LIRPhaseMemUse_AllocationStage",
+        "LIRPhaseMemUse_PostAllocationOptimizationStage",
+        "LIRPhaseMemUse_PreAllocationOptimizationStage",
+        # RA phases
+        "LIRPhaseMemUse_LinearScanPhase",
+        "LIRPhaseMemUse_GlobalLivenessAnalysisPhase",
+        "LIRPhaseMemUse_TraceBuilderPhase",
+        "LIRPhaseMemUse_TraceRegisterAllocationPhase",
+    ]
+    name_re = re.compile(r"(?P<name>\w+)_Accm")
+
+    @staticmethod
+    def counterArgs():
+        return "-Dgraal.MemUseTrackers=" + ','.join(MemUseTrackerBenchmarkMixin.trackers)
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = [MemUseTrackerBenchmarkMixin.counterArgs()] + super(MemUseTrackerBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return vmArgs
+
+    @staticmethod
+    def filterResult(r):
+        m = MemUseTrackerBenchmarkMixin.name_re.match(r['name'])
+        if m:
+            name = m.groupdict()['name']
+            if name in MemUseTrackerBenchmarkMixin.trackers:
+                r['name'] = name
+                return r
+        return None
+
+    def shorten_vm_flags(self, args):
+        # not need for timer names
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.MemUseTrackers=")]
+        return super(MemUseTrackerBenchmarkMixin, self).shorten_vm_flags(filtered_args)
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            DebugValueRule(
+                debug_value_file=self.get_csv_filename(),
+                benchmark=self.getBenchmarkName(),
+                bench_suite=self.benchSuiteName(),
+                metric_name="allocated-memory",
+                metric_unit="B",
+                vm_flags=self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                filter_fn=MemUseTrackerBenchmarkMixin.filterResult,
+            ),
+        ] + super(MemUseTrackerBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, MemUseTrackerBenchmarkMixin):
 
     def host_vm_config_name(self, host_vm, vm):
         return super(DaCapoTimingBenchmarkMixin, self).host_vm_config_name(host_vm, vm) + "-timing"
@@ -784,6 +839,167 @@ class DaCapoMoveProfilingBenchmarkSuite(DaCapoMoveProfilingBenchmarkMixin, DaCap
 
 mx_benchmark.add_bm_suite(DaCapoMoveProfilingBenchmarkSuite())
 
+class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
+    """DaCapo 9.12 Bach benchmark suite implementation with D3S modifications."""
+
+    def name(self):
+        return "dacapo-d3s"
+
+    def daCapoSuiteTitle(self):
+        return "DaCapo 9.12-D3S-20180206"
+
+    def daCapoClasspathEnvVarName(self):
+        return "DACAPO_D3S_CP"
+
+    def daCapoLibraryName(self):
+        return "DACAPO_D3S"
+
+    def successPatterns(self):
+        return []
+
+    def resultFilter(self, values, iteration, endOfWarmupIndex):
+        """Count iterations, convert iteration time to milliseconds."""
+        # Called from lambda, increment call counter
+        iteration['value'] = iteration['value'] + 1
+        # Skip warm-up?
+        if iteration['value'] < endOfWarmupIndex:
+            return None
+
+        values['iteration_time_ms'] = str(int(values['iteration_time_ns']) / 1000 / 1000)
+        return values
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        if runArgs is None:
+            return []
+        totalIterations = int(runArgs[runArgs.index("-n") + 1])
+        out = [
+          mx_benchmark.CSVFixedFileRule(
+            self.resultCsvFile,
+            None,
+            {
+              "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
+              "vm": "jvmci",
+              "config.name": "default",
+              "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+              "metric.name": "warmup",
+              "metric.value": ("<iteration_time_ms>", int),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": ("$iteration", int)
+            },
+            # Note: this lambda keeps state to count the row in the CSV file,
+            # and it assumes that it will be called only in one traversal of the rows.
+            filter_fn=lambda x, counter={'value': 0}: self.resultFilter(x, counter, 0)
+          ),
+          mx_benchmark.CSVFixedFileRule(
+            self.resultCsvFile,
+            None,
+            {
+              "benchmark": ("<benchmark>", str),
+              "bench-suite": self.benchSuiteName(),
+              "vm": "jvmci",
+              "config.name": "default",
+              "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+              "metric.name": "final-time",
+              "metric.value": ("<iteration_time_ms>", int),
+              "metric.unit": "ms",
+              "metric.type": "numeric",
+              "metric.score-function": "id",
+              "metric.better": "lower",
+              "metric.iteration": ("$iteration", int)
+            },
+            # Note: this lambda keeps state to count the row in the CSV file,
+            # and it assumes that it will be called only in one traversal of the rows.
+            filter_fn=lambda x, counter={'value': 0}: self.resultFilter(x, counter, totalIterations)
+          ),
+        ]
+
+        for ev in self.extraEvents:
+            out.append(
+              mx_benchmark.CSVFixedFileRule(
+                self.resultCsvFile,
+                None,
+                {
+                  "benchmark": ("<benchmark>", str),
+                  "bench-suite": self.benchSuiteName(),
+                  "vm": "jvmci",
+                  "config.name": "default",
+                  "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                  "metric.name": ev,
+                  "metric.value": ("<" + ev + ">", int),
+                  "metric.unit": "count",
+                  "metric.type": "numeric",
+                  "metric.score-function": "id",
+                  "metric.better": "lower",
+                  "metric.iteration": ("$iteration", int)
+                }
+              )
+            )
+
+        return out
+
+    def getUbenchAgentPaths(self):
+        archive = mx.library("UBENCH_AGENT_DIST").get_path(resolve=True)
+
+        agentExtractPath = join(os.path.dirname(archive), 'ubench-agent')
+        agentBaseDir = join(agentExtractPath, 'java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5')
+        agentPathToJar = join(agentBaseDir, 'out', 'lib', 'ubench-agent.jar')
+        agentPathNative = join(agentBaseDir, 'out', 'lib', 'libubench-agent.so')
+
+        return {
+            'archive': archive,
+            'extract': agentExtractPath,
+            'base': agentBaseDir,
+            'jar': agentPathToJar,
+            'agentpath': agentPathNative
+        }
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-o", default=None)
+        parser.add_argument("-e", default=None)
+        args, remaining = parser.parse_known_args(self.runArgs(bmSuiteArgs))
+
+        if args.o is None:
+            self.resultCsvFile = "result.csv"
+        else:
+            self.resultCsvFile = os.path.abspath(args.o)
+        remaining.append("-o")
+        remaining.append(self.resultCsvFile)
+
+        if not args.e is None:
+            remaining.append("-e")
+            remaining.append(args.e)
+            self.extraEvents = args.e.split(",")
+        else:
+            self.extraEvents = []
+
+        parentArgs = DaCapoBenchmarkSuite.createCommandLineArgs(self, benchmarks, ['--'] + remaining)
+        if parentArgs is None:
+            return None
+
+        paths = self.getUbenchAgentPaths()
+        return ['-agentpath:' + paths['agentpath']] + parentArgs
+
+    def run(self, benchmarks, bmSuiteArgs):
+        agentPaths = self.getUbenchAgentPaths()
+
+        if not exists(agentPaths['jar']):
+            if not exists(join(agentPaths['base'], 'build.xml')):
+                import zipfile
+                zf = zipfile.ZipFile(agentPaths['archive'], 'r')
+                zf.extractall(agentPaths['extract'])
+            mx.run(['ant', 'lib'], cwd=agentPaths['base'])
+
+        return DaCapoBenchmarkSuite.run(self, benchmarks, bmSuiteArgs)
+
+
+mx_benchmark.add_bm_suite(DaCapoD3SBenchmarkSuite())
+
 
 _daCapoScalaConfig = {
     "actors"      : 10,
@@ -829,7 +1045,8 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(ScalaDaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-        if mx_compiler.jdk.javaCompliance >= '9':
+        # Do not add corba module on JDK>=11 (http://openjdk.java.net/jeps/320)
+        if mx_compiler.jdk.javaCompliance >= '9' and mx_compiler.jdk.javaCompliance < '11':
             vmArgs += ["--add-modules", "java.corba"]
         return vmArgs
 

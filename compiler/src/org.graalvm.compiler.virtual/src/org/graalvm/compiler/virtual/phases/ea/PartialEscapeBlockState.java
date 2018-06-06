@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,8 +28,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -183,6 +187,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
      * This transitively also materializes all other virtual objects that are reachable from the
      * entries.
      */
+    @SuppressWarnings("try")
     public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, GraphEffectList materializeEffects) {
         PartialEscapeClosure.COUNTER_MATERIALIZATIONS.increment(fixed.getDebug());
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
@@ -209,8 +214,10 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     if (fixed.predecessor() instanceof CommitAllocationNode) {
                         commit = (CommitAllocationNode) fixed.predecessor();
                     } else {
-                        commit = graph.add(new CommitAllocationNode());
-                        graph.addBeforeFixed(fixed, commit);
+                        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.placeholder(graph.method()))) {
+                            commit = graph.add(new CommitAllocationNode());
+                            graph.addBeforeFixed(fixed, commit);
+                        }
                     }
                     for (AllocatedObjectNode obj : objects) {
                         graph.addWithoutUnique(obj);

@@ -206,7 +206,7 @@ public final class Snippet {
                             executableValue,
                             executableReturnType,
                             Collections.unmodifiableList(parameterTypes),
-                            verifier != null ? verifier : ResultVerifier.getDefaultResultVerfier());
+                            verifier != null ? verifier : ResultVerifier.getDefaultResultVerifier());
         }
     }
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.phases;
 
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -53,22 +56,25 @@ public class WriteBarrierAdditionPhase extends Phase {
         this.config = config;
     }
 
+    @SuppressWarnings("try")
     @Override
     protected void run(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof ReadNode) {
-                addReadNodeBarriers((ReadNode) n, graph);
-            } else if (n instanceof WriteNode) {
-                addWriteNodeBarriers((WriteNode) n, graph);
-            } else if (n instanceof LoweredAtomicReadAndWriteNode) {
-                LoweredAtomicReadAndWriteNode loweredAtomicReadAndWriteNode = (LoweredAtomicReadAndWriteNode) n;
-                addAtomicReadWriteNodeBarriers(loweredAtomicReadAndWriteNode, graph);
-            } else if (n instanceof AbstractCompareAndSwapNode) {
-                addCASBarriers((AbstractCompareAndSwapNode) n, graph);
-            } else if (n instanceof ArrayRangeWrite) {
-                ArrayRangeWrite node = (ArrayRangeWrite) n;
-                if (node.writesObjectArray()) {
-                    addArrayRangeBarriers(node, graph);
+            try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
+                if (n instanceof ReadNode) {
+                    addReadNodeBarriers((ReadNode) n, graph);
+                } else if (n instanceof WriteNode) {
+                    addWriteNodeBarriers((WriteNode) n, graph);
+                } else if (n instanceof LoweredAtomicReadAndWriteNode) {
+                    LoweredAtomicReadAndWriteNode loweredAtomicReadAndWriteNode = (LoweredAtomicReadAndWriteNode) n;
+                    addAtomicReadWriteNodeBarriers(loweredAtomicReadAndWriteNode, graph);
+                } else if (n instanceof AbstractCompareAndSwapNode) {
+                    addCASBarriers((AbstractCompareAndSwapNode) n, graph);
+                } else if (n instanceof ArrayRangeWrite) {
+                    ArrayRangeWrite node = (ArrayRangeWrite) n;
+                    if (node.writesObjectArray()) {
+                        addArrayRangeBarriers(node, graph);
+                    }
                 }
             }
         }
@@ -117,6 +123,8 @@ public class WriteBarrierAdditionPhase extends Phase {
                 boolean precise = barrierType == BarrierType.PRECISE;
                 if (config.useG1GC) {
                     if (!node.getLocationIdentity().isInit()) {
+                        // The pre barrier does nothing if the value being read is null, so it can
+                        // be explicitly skipped when this is an initializing store.
                         addG1PreWriteBarrier(node, node.getAddress(), null, true, node.getNullCheck(), graph);
                     }
                     addG1PostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);
@@ -174,6 +182,8 @@ public class WriteBarrierAdditionPhase extends Phase {
     private void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph) {
         if (config.useG1GC) {
             if (!write.isInitialization()) {
+                // The pre barrier does nothing if the value being read is null, so it can
+                // be explicitly skipped when this is an initializing store.
                 G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
                 graph.addBeforeFixed(write.asNode(), g1ArrayRangePreWriteBarrier);
             }

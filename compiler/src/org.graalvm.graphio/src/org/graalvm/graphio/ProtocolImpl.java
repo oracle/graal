@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,34 +24,43 @@
  */
 package org.graalvm.graphio;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collection;
 import java.util.Map;
 
-final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
-                extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> {
+final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location>
+                extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> {
     private final GraphStructure<Graph, Node, NodeClass, Port> structure;
     private final GraphTypes types;
     private final GraphBlocks<Graph, Block, Node> blocks;
     private final GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements;
+    private final GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locations;
 
     ProtocolImpl(int major, int minor, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
-                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements, WritableByteChannel channel) throws IOException {
+                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements,
+                    GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locs,
+                    WritableByteChannel channel) throws IOException {
         super(channel, major, minor);
         this.structure = structure;
         this.types = enums;
         this.blocks = blocks;
         this.elements = elements;
+        this.locations = locs;
     }
 
-    ProtocolImpl(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?> parent, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
-                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements) {
+    ProtocolImpl(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?, ?> parent, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
+                    GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements,
+                    GraphLocations<ResolvedJavaMethod, NodeSourcePosition, Location> locs) {
         super(parent);
         this.structure = structure;
         this.types = enums;
         this.blocks = blocks;
         this.elements = elements;
+        this.locations = locs;
     }
 
     @Override
@@ -69,7 +80,11 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
 
     @Override
     protected NodeClass findClassForNode(Node obj) {
-        return structure.classForNode(obj);
+        NodeClass clazz = structure.classForNode(obj);
+        if (clazz != null && (findNodeClass(clazz) == null || findNode(clazz) != null)) {
+            throw new IllegalStateException("classForNode method shall return node class representation rather than node: " + clazz);
+        }
+        return clazz;
     }
 
     @Override
@@ -285,8 +300,56 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     @Override
-    protected StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
-        return elements.methodStackTraceElement(method, bci, pos);
+    protected Iterable<Location> findLocation(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
+        return locations.methodLocation(method, bci, pos);
+    }
+
+    @Override
+    protected String findLocationFile(Location loc) throws IOException {
+        if (loc == null) {
+            return null;
+        }
+        URI u;
+        try {
+            u = locations.locationURI(loc);
+        } catch (URISyntaxException ex) {
+            throw new IOException(ex);
+        }
+        if (u == null) {
+            return null;
+        }
+        if (u.getScheme() == null) {
+            return u.getPath();
+        }
+        if ("file".equals(u.getScheme())) {
+            return new File(u).getPath();
+        }
+        return null;
+    }
+
+    @Override
+    protected int findLocationLine(Location loc) {
+        return locations.locationLineNumber(loc);
+    }
+
+    @Override
+    protected URI findLocationURI(Location loc) throws URISyntaxException {
+        return locations.locationURI(loc);
+    }
+
+    @Override
+    protected String findLocationLanguage(Location loc) {
+        return locations.locationLanguage(loc);
+    }
+
+    @Override
+    protected int findLocationStart(Location loc) {
+        return locations.locationOffsetStart(loc);
+    }
+
+    @Override
+    protected int findLocationEnd(Location loc) {
+        return locations.locationOffsetEnd(loc);
     }
 
     @Override

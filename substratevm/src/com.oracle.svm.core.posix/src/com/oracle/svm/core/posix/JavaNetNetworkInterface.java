@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,7 +31,6 @@ import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -111,9 +112,9 @@ public class JavaNetNetworkInterface {
         /** Allocate a netaddr from the Java heap, and the two sockaddrs from the C heap. */
         public static netaddr checked_malloc(int addr_size) {
             final netaddr result = new netaddr();
-            result.addrSpace = LibC.malloc(Word.unsigned(addr_size));
+            result.addrSpace = LibC.malloc(WordFactory.unsigned(addr_size));
             JavaNetNetworkInterface.checkMalloc(result.addrSpace);
-            result.brdcastSpace = LibC.malloc(Word.unsigned(addr_size));
+            result.brdcastSpace = LibC.malloc(WordFactory.unsigned(addr_size));
             JavaNetNetworkInterface.checkMalloc(result.brdcastSpace);
             return result;
         }
@@ -159,7 +160,7 @@ public class JavaNetNetworkInterface {
 
         public static netif checked_malloc(int nameSize) {
             final netif result = new netif();
-            result.name = LibC.malloc(Word.unsigned(nameSize));
+            result.name = LibC.malloc(WordFactory.unsigned(nameSize));
             JavaNetNetworkInterface.checkMalloc(result.name);
             return result;
         }
@@ -692,7 +693,7 @@ public class JavaNetNetworkInterface {
         // 926     addrP->addr = (struct sockaddr *)( (char *) addrP+sizeof(netaddr) );
         addrP.addr = addrP.addrSpace;
         // 927     memcpy(addrP->addr, ifr_addrP, addr_size);
-        LibC.memcpy(addrP.addr, ifr_addrP, Word.unsigned(addr_size));
+        LibC.memcpy(addrP.addr, ifr_addrP, WordFactory.unsigned(addr_size));
         // 928
         // 929     addrP->family = family;
         addrP.family = family;
@@ -754,7 +755,7 @@ public class JavaNetNetworkInterface {
                 // 965            // Got access to parent, so create it if necessary.
                 // 966            // Save original name to vname and truncate name by ':'
                 // 967             memcpy(vname, name, sizeof(vname) );
-                LibC.memcpy(vname, name, Word.unsigned(ifnam_size));
+                LibC.memcpy(vname, name, WordFactory.unsigned(ifnam_size));
                 // 968             vname[name_colonP - name] = ':';
                 vname.write((int) PointerUtils.absoluteDifference(name_colonP, name).rawValue(), (byte) ':');
             }
@@ -787,7 +788,7 @@ public class JavaNetNetworkInterface {
             // 990          currif->name = (char *) currif+sizeof(netif);
             /* Done as part of the checked_malloc. */
             // 991          strncpy(currif->name, name, ifnam_size);
-            LibC.strncpy(currif.name, name, Word.unsigned(ifnam_size));
+            LibC.strncpy(currif.name, name, WordFactory.unsigned(ifnam_size));
             // 992          currif->name[ifnam_size - 1] = '\0';
             currif.name.write(ifnam_size - 1, (byte) 0);
             // 993          currif->index = getIndex(sock, name);
@@ -842,12 +843,12 @@ public class JavaNetNetworkInterface {
                 // 1025             CHECKED_MALLOC3(currif, netif *, sizeof(netif) + ifnam_size);
                 /* Translating as two separate allocations, one Java one C. */
                 currif = new netif();
-                CCharPointer currifName = LibC.malloc(Word.unsigned(ifnam_size));
+                CCharPointer currifName = LibC.malloc(WordFactory.unsigned(ifnam_size));
                 checkMalloc(currifName);
                 // 1026             currif->name = (char *) currif + sizeof(netif);
                 currif.name = currifName;
                 // 1027             strncpy(currif->name, vname, ifnam_size);
-                LibC.strncpy(currif.name, vname, Word.unsigned(ifnam_size));
+                LibC.strncpy(currif.name, vname, WordFactory.unsigned(ifnam_size));
                 // 1028             currif->name[ifnam_size - 1] = '\0';
                 currif.name.write(ifnam_size - 1, (byte) 0);
                 // 1029             currif->index = getIndex(sock, vname);
@@ -874,7 +875,7 @@ public class JavaNetNetworkInterface {
             if (addrP.addr.isNonNull()) {
                 // 1041             tmpaddr->addr = (struct sockaddr *) ( (char*)tmpaddr + sizeof(netaddr) ) ;
                 // 1042             memcpy(tmpaddr->addr, addrP->addr, addr_size);
-                LibC.memcpy(tmpaddr.addr, addrP.addr, Word.unsigned(addr_size));
+                LibC.memcpy(tmpaddr.addr, addrP.addr, WordFactory.unsigned(addr_size));
             } else {
                 LibC.free(tmpaddr.addr);
                 tmpaddr.addr = WordFactory.nullPointer();
@@ -884,7 +885,7 @@ public class JavaNetNetworkInterface {
             if (addrP.brdcast.isNonNull()) {
                 // 1046             tmpaddr->brdcast = (struct sockaddr *) ((char *) tmpaddr + sizeof(netaddr)+addr_size);
                 // 1047             memcpy(tmpaddr->brdcast, addrP->brdcast, addr_size);
-                LibC.memcpy(tmpaddr.brdcast, addrP.brdcast, Word.unsigned(addr_size));
+                LibC.memcpy(tmpaddr.brdcast, addrP.brdcast, WordFactory.unsigned(addr_size));
             } else {
                 LibC.free(tmpaddr.brdcast);
                 tmpaddr.brdcast = WordFactory.nullPointer();

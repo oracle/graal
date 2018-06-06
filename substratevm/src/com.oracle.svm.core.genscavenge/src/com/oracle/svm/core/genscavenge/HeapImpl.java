@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +26,9 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.management.MalformedObjectNameException;
@@ -31,28 +36,31 @@ import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Feature.FeatureAccess;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.HeapChunkAccess;
 import com.oracle.svm.core.MemoryWalker.ImageCodeAccess;
+import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -80,6 +88,9 @@ public class HeapImpl extends Heap {
     /** A singleton instance, created during image generation. */
     private final MemoryMXBean memoryMXBean;
 
+    /** A list of all the classes, if someone asks for it. */
+    private List<Class<?>> classList;
+
     /** Constructor for subclasses. */
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(FeatureAccess access) {
@@ -101,6 +112,7 @@ public class HeapImpl extends Heap {
         this.pinnedAllocatorListHead = null;
         this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
         this.memoryMXBean = new HeapImplMemoryMXBean();
+        this.classList = null;
     }
 
     @Fold
@@ -147,7 +159,7 @@ public class HeapImpl extends Heap {
         return objectVisitorWalkerOperation;
     }
 
-    /* Walk the objects of the generations. */
+    /* Walk the objects of the heap. */
     @Override
     public void walkObjects(ObjectVisitor visitor) {
         try (ObjectVisitorWalkerOperation operation = getObjectVisitorWalkerOperation().open(visitor)) {
@@ -182,6 +194,10 @@ public class HeapImpl extends Heap {
     }
 
     private void doWalkObjects(ObjectVisitor visitor) {
+        /* Walk the native image heap. */
+        if (!NativeImageInfo.walkNativeImageHeap(visitor)) {
+            return;
+        }
         /* Walk all the Generations that might have objects in them. */
         if (!getYoungGeneration().walkObjects(visitor)) {
             return;
@@ -245,7 +261,9 @@ public class HeapImpl extends Heap {
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
     static void exitIfAllocationDisallowed(final String callSite, final String typeName) {
-        NoAllocationVerifier.DisallowedAllocationError.exitIf(HeapImpl.getHeapImpl().isAllocationDisallowed(), callSite, typeName);
+        if (HeapImpl.getHeapImpl().isAllocationDisallowed()) {
+            NoAllocationVerifier.exit(callSite, typeName);
+        }
     }
 
     /*
@@ -373,6 +391,13 @@ public class HeapImpl extends Heap {
         return false;
     }
 
+    public boolean isImageHeapObject(Object obj) {
+        return (NativeImageInfo.isObjectInReadOnlyPrimitivePartition(obj) ||
+                        NativeImageInfo.isObjectInReadOnlyReferencePartition(obj) ||
+                        NativeImageInfo.isObjectInWritablePrimitivePartition(obj) ||
+                        NativeImageInfo.isObjectInWritableReferencePartition(obj));
+    }
+
     /**
      * Returns the size (in bytes) of the heap currently used for aligned and unaligned chunks. It
      * excludes chunks that are unused.
@@ -458,6 +483,30 @@ public class HeapImpl extends Heap {
     @Override
     public MemoryMXBean getMemoryMXBean() {
         return memoryMXBean;
+    }
+
+    /** Return a list of all the classes in the heap. */
+    @Override
+    public List<Class<?>> getClassList() {
+        if (classList == null) {
+            /* Two threads might race to set classList, but they compute the same result. */
+            final List<Class<?>> list = new ArrayList<>(1024);
+            final Object firstObject = NativeImageInfo.firstReadOnlyReferenceObject;
+            final Object lastObject = NativeImageInfo.lastReadOnlyReferenceObject;
+            final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
+            final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+            Pointer currentPointer = firstPointer;
+            while (currentPointer.belowOrEqual(lastPointer)) {
+                final Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
+                if (currentObject instanceof Class<?>) {
+                    final Class<?> asClass = (Class<?>) currentObject;
+                    list.add(asClass);
+                }
+                currentPointer = LayoutEncoding.getObjectEnd(currentObject);
+            }
+            classList = Collections.unmodifiableList(list);
+        }
+        return classList;
     }
 
     /*
@@ -688,10 +737,10 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 
     public void reset() {
-        heapUsed = Word.zero();
-        heapCommitted = Word.zero();
-        nonHeapUsed = Word.zero();
-        nonHeapCommitted = Word.zero();
+        heapUsed = WordFactory.zero();
+        heapCommitted = WordFactory.zero();
+        nonHeapUsed = WordFactory.zero();
+        nonHeapCommitted = WordFactory.zero();
     }
 
     /*

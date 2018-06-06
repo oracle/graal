@@ -37,8 +37,8 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
+@SuppressWarnings("deprecation")
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
     private final PolyglotLanguage language;
@@ -47,7 +47,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final boolean host;
     private StackTraceElement stackTrace;
 
-    private PolyglotExceptionFrame(VMObject source, PolyglotLanguage language,
+    private PolyglotExceptionFrame(com.oracle.truffle.api.vm.PolyglotImpl.VMObject source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
         super(source.getImpl());
         this.language = language;
@@ -124,7 +124,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
 
-        PolyglotEngineImpl engine = exception.context.getEngine();
+        PolyglotEngineImpl engine = exception.getEngine();
         PolyglotLanguage language = engine.idToLanguage.get(info.getId());
         String rootName = targetRoot.getName();
 
@@ -146,7 +146,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.context.getEngine().hostLanguage;
+        PolyglotLanguage language = exception.getEngine().hostLanguage;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language

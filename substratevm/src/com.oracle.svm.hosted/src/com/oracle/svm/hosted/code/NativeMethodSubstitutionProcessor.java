@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,8 +31,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.word.Word.Operation;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.constant.CEnumLookup;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link SubstitutionProcessor#chainUpInOrder(SubstitutionProcessor...) chain} of them.
  */
 public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
-    private static final Class<?>[] FILTER_ANNOTATIONS = {NodeIntrinsic.class, Operation.class, CConstant.class, CEnumValue.class, CEnumLookup.class};
+    private static final Class<?>[] FILTER_ANNOTATIONS = {NodeIntrinsic.class, Operation.class, CConstant.class};
 
     private final SubstitutionProcessor processor;
     private final Replacements replacements;

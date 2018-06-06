@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -359,12 +361,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
-        this.speculationLog = speculationLog;
+        if (speculationLog != null && !(speculationLog instanceof GraphSpeculationLog)) {
+            this.speculationLog = new GraphSpeculationLog(speculationLog);
+        } else {
+            this.speculationLog = speculationLog;
+        }
         this.useProfilingInfo = useProfilingInfo;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         assert trackNodeSourcePosition != null;
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog(rootMethod, options);
+        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options));
         this.callerContext = context;
     }
 
@@ -480,7 +486,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void logInliningTree() {
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            TTY.println(getInliningLog().formatAsTree());
+            String formattedTree = getInliningLog().formatAsTree(true);
+            if (formattedTree != null) {
+                TTY.println(formattedTree);
+            }
         }
     }
 
@@ -518,6 +527,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
         copy.isAfterExpandLogic = isAfterExpandLogic;
+        copy.trackNodeSourcePosition = trackNodeSourcePosition;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;

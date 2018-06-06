@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -31,6 +33,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.FileSystem;
@@ -38,6 +41,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
@@ -52,17 +56,27 @@ import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 
 public final class ImageClassLoader {
+
+    /* { GR-8964: Add an option to control tracing. */
+    static class Options {
+        @Option(help = "Verbose tracing of image class loading for GR-8964.")//
+        public static final HostedOptionKey<Boolean> GR8964Tracing = new HostedOptionKey<>(false);
+    }
+    /* } GR-8964: Add an option to control tracing. */
 
     private static final int CLASS_LENGTH = ".class".length();
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
@@ -88,6 +102,7 @@ public final class ImageClassLoader {
         this.classLoader = classLoader;
     }
 
+    /** A public factory method that accepts a gr8964Tracing parameter. */
     public static ImageClassLoader create(Platform platform, String[] classpathAll, ClassLoader classLoader) {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
@@ -108,34 +123,97 @@ public final class ImageClassLoader {
         try {
             return p.toRealPath();
         } catch (IOException e) {
-            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p);
+            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p, e);
         }
     }
 
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
-        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(t -> toRealPath(t)));
-        uniquePaths.addAll(Arrays.stream(classpath).map(Paths::get).collect(Collectors.toList()));
+        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
+        final boolean debugGR8964 = Boolean.valueOf(System.getProperty("debug_gr_8964", "false"));
+        if (debugGR8964) {
+            System.err.print("[ImageClassLoader.initAllClasses");
+            List<Path> pathList = new ArrayList<>();
+            for (String classPathEntry : classpath) {
+                System.err.println();
+                System.err.println("  [classPathEntry: " + classPathEntry);
+                toClassPathEntries(classPathEntry).forEach(path -> {
+                    pathList.add(path);
+                    final Path absolutePath;
+                    System.err.println("             path: " + path.toString());
+                    if (!path.isAbsolute()) {
+                        absolutePath = path.toAbsolutePath();
+                        System.err.println("     absolutePath: " + path.toString());
+                    } else {
+                        absolutePath = path;
+                    }
+                    System.err.print("                 ");
+                    System.err.print(path.isAbsolute() ? "  absolute" : "");
+                    final boolean exists = Files.exists(absolutePath);
+                    System.err.print(exists ? "  exists" : "");
+                    if (exists) {
+                        System.err.print(Files.isDirectory(absolutePath) ? "  directory" : "");
+                        System.err.print(Files.isRegularFile(absolutePath, LinkOption.NOFOLLOW_LINKS) ? "  file" : "");
+                        System.err.print(Files.isSymbolicLink(absolutePath) ? "  symlink" : "");
+                        System.err.print(Files.isReadable(absolutePath) ? "  readable" : "");
+                        try {
+                            System.err.print("  " + Files.getLastModifiedTime(absolutePath).toString());
+                        } catch (IOException ioe) {
+                            System.err.print("  n/a");
+                        }
+                    }
+                    System.err.print("]");
+                });
+            }
+            System.err.println("]");
+            uniquePaths.addAll(pathList);
+        } else {
+            uniquePaths.addAll(
+                            Arrays.stream(classpath)
+                                            .flatMap(ImageClassLoader::toClassPathEntries)
+                                            .collect(Collectors.toList()));
+        }
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
         executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
     }
 
+    static Stream<Path> toClassPathEntries(String classPathEntry) {
+        Path entry = Paths.get(classPathEntry);
+        if (entry.getFileName().toString().endsWith("*")) {
+            return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
+        }
+        return Stream.of(entry);
+    }
+
+    private static Set<Path> excludeDirectories = getExcludeDirectories();
+
+    private static Set<Path> getExcludeDirectories() {
+        Path root = Paths.get("/");
+        return Arrays.asList("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
+                        .stream().map(root::resolve).collect(Collectors.toSet());
+    }
+
     private void loadClassesFromPath(ForkJoinPool executor, Path path) {
         if (Files.exists(path)) {
-            if (path.getFileName().toString().endsWith(".jar")) {
+            String name = path.toAbsolutePath().toString();
+            if (path.getNameCount() > 0 && name.endsWith(".jar")) {
                 try {
-                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(URI.create("jar:file:" + path), Collections.emptyMap())) {
-                        initAllClasses(jarFileSystem.getPath("/"), executor);
+                    name = name.replace('\\', '/');
+                    URI jarURI = new URI("jar:file:///" + name);
+                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
+                        initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
                     }
                 } catch (ClosedByInterruptException ignored) {
                     throw new InterruptImageBuilding();
                 } catch (IOException e) {
                     throw shouldNotReachHere(e);
+                } catch (URISyntaxException e) {
+                    throw shouldNotReachHere(e);
                 }
             } else {
-                initAllClasses(path, executor);
+                initAllClasses(path, excludeDirectories, executor);
             }
         }
     }
@@ -170,10 +248,21 @@ public final class ImageClassLoader {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
-    private void initAllClasses(final Path root, ForkJoinPool executor) {
+    private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
         FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
             @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (excludes.contains(dir)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return super.preVisitDirectory(dir, attrs);
+            }
+
+            @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (excludes.contains(file.getParent())) {
+                    return FileVisitResult.SKIP_SIBLINGS;
+                }
                 executor.execute(() -> {
                     String fileName = root.relativize(file).toString().replace('/', '.');
                     if (fileName.endsWith(".class")) {

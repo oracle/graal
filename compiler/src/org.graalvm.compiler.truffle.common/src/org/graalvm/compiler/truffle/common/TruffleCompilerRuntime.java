@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +23,9 @@
  * questions.
  */
 package org.graalvm.compiler.truffle.common;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 
 import java.util.Map;
 import java.util.function.Consumer;
@@ -59,6 +64,20 @@ public interface TruffleCompilerRuntime {
      */
     static TruffleCompilerRuntime getRuntime() {
         return TruffleCompilerRuntimeInstance.INSTANCE;
+    }
+
+    /**
+     * Determines whether an exception during a Truffle compilation should result in calling
+     * {@link System#exit(int)}.
+     */
+    static boolean areTruffleCompilationExceptionsFatal() {
+        /*
+         * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled but
+         * respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
+         */
+        boolean truffleCompilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
+        assert TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleCompilerOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
+        return truffleCompilationExceptionsAreFatal || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
     }
 
     /**

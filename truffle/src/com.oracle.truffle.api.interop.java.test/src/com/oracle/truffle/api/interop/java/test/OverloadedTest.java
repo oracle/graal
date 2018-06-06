@@ -36,12 +36,11 @@ import org.junit.Test;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 public class OverloadedTest {
     public static final class Data {
         public int x;
@@ -225,43 +224,5 @@ public class OverloadedTest {
         assertEquals("float", num.parameter);
         ForeignAccess.sendInvoke(n, numobj, "f", 42.5d);
         assertEquals("float", num.parameter);
-    }
-
-    @MessageResolution(receiverType = UnboxableToInt.class)
-    public static final class UnboxableToInt implements TruffleObject {
-
-        private final int value;
-
-        public UnboxableToInt(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return UnboxableToIntForeign.ACCESS;
-        }
-
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof UnboxableToInt;
-        }
-
-        @Resolve(message = "UNBOX")
-        abstract static class UnboxINode extends Node {
-            Object access(UnboxableToInt obj) {
-                return obj.getValue();
-            }
-        }
-
-        @Resolve(message = "IS_BOXED")
-        abstract static class IsBoxedINode extends Node {
-            @SuppressWarnings("unused")
-            Object access(UnboxableToInt obj) {
-                return true;
-            }
-        }
     }
 }

@@ -1,30 +1,38 @@
 # overlay version
-overlay = 6f4b88a4acc9895abdd60473e21aac1257ee8fca
+overlay = 85ba0bc3ccccad5006f8637c0489a7e0d598e6a8
 
+# oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
-# openjdk* are JDKs based on OpenJDK binaries
+# openjdk8 JDKs on Linux are built by Oracle Labs
+# openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  labsjdk8 : {name : labsjdk, version : "8u161-jvmci-0.41", platformspecific: true}
-  labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u161-jvmci-0.41-fastdebug", platformspecific: true}
+  labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.44", platformspecific: true}
+  openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.44", platformspecific: true}
+  labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.44-fastdebug", platformspecific: true}
+  oraclejdk9:    {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
+  oraclejdk10:   {name : oraclejdk, version : "10+46", platformspecific: true}
 
-  # Strictly speaking, this is labsjdk-jdk-hs-snapshot but for
-  # readability we use the java.specification.version reported by the snapshot.
-  # This means the name will change to labsjdk11 at some point.
-  labsjdk10 : {name : labsjdk, version : "20180130-162725", platformspecific: true}
+  # Snapshot of http://hg.openjdk.java.net/jdk/jdk
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180522-073957", platformspecific: true}
+
 }
 
-# Overlay placeholder for pinning mx to a specific revision
-mx : {}
+# This must always point to HEAD in the master branch but can be used to point
+# to another branch/commit in a Graal PR when mx changes are required for the PR.
+mx : {
+  packages : {
+    mx: "HEAD"
+  }
+}
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
 
-# GR-5675
-# openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-labsjdk10 :     { downloads : { JAVA_HOME : ${jdks.labsjdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},        EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10},       EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdkSNAPSHOT}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk10} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"
@@ -75,6 +83,10 @@ solaris-sparcv9 : ${solaris} {
 
 linux-sparcv9 : ${linux} {
   capabilities : [linux, sparcv9]
+}
+
+linux-aarch64 : ${linux} {
+  capabilities : [linux, aarch64]
 }
 
 eclipse : {

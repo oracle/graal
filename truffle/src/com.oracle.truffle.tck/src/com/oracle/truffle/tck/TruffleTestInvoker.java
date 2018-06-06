@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.impl.TVMCI;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
@@ -66,18 +65,13 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
         }
 
         @Override
-        protected Object getLanguageGlobal(Env context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return object instanceof TestStatement;
         }
 
         @Override
         protected void initializeContext(Env context) throws Exception {
-            context.exportSymbol("env", JavaInterop.asTruffleValue(context));
+            context.exportSymbol("env", context.asGuestValue(context));
         }
 
     }
@@ -95,14 +89,14 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
         @Override
         public void evaluate() throws Throwable {
             Context prevContext = rule.context;
-            try (Context context = Context.create()) {
+            try (Context context = rule.contextBuilder.build()) {
                 rule.context = context;
 
                 context.initialize("truffletestinvoker");
                 context.enter();
                 Env prevEnv = rule.testEnv;
                 try {
-                    rule.testEnv = context.importSymbol("env").asHostObject();
+                    rule.testEnv = context.getPolyglotBindings().getMember("env").asHostObject();
                     stmt.evaluate();
                 } catch (Throwable t) {
                     throw t;

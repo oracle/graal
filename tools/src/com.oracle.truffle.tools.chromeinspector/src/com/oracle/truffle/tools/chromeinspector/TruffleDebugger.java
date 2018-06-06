@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,11 +43,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -64,7 +64,6 @@ import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler.LoadScriptListener;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.CancellableRunnable;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.GuestLanguageException;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.NoSuspendedThreadException;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.SuspendedThreadExecutor;
 import com.oracle.truffle.tools.chromeinspector.commands.Result;
@@ -76,6 +75,8 @@ import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class TruffleDebugger extends DebuggerDomain {
 
@@ -125,8 +126,8 @@ public final class TruffleDebugger extends DebuggerDomain {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
         ds = tdbg.startSession(new SuspendedCallbackImpl());
         ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).includeInternal(false).build());
-        slh = context.getScriptsHandler();
-        bph = new BreakpointsHandler(ds, slh);
+        slh = context.acquireScriptsHandler();
+        bph = new BreakpointsHandler(ds, slh, () -> eventHandler);
     }
 
     @Override
@@ -170,14 +171,55 @@ public final class TruffleDebugger extends DebuggerDomain {
     }
 
     @Override
-    public void setPauseOnExceptions(String state) {
+    public void setPauseOnExceptions(String state) throws CommandProcessException {
+        switch (state) {
+            case "none":
+                bph.setExceptionBreakpoint(false, false);
+                break;
+            case "uncaught":
+                bph.setExceptionBreakpoint(false, true);
+                break;
+            case "all":
+                bph.setExceptionBreakpoint(true, true);
+                break;
+            default:
+                throw new CommandProcessException("Unknown Pause on exceptions mode: " + state);
+        }
 
     }
 
     @Override
-    public Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction) {
+    public Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction) throws CommandProcessException {
+        int scriptId = start.getScriptId();
+        if (scriptId != end.getScriptId()) {
+            throw new CommandProcessException("Different location scripts: " + scriptId + ", " + end.getScriptId());
+        }
+        Script script = slh.getScript(scriptId);
+        if (script == null) {
+            throw new CommandProcessException("Unknown scriptId: " + scriptId);
+        }
+        Source source = script.getSource();
+        int o1 = source.getLineStartOffset(start.getLine());
+        if (start.getColumn() > 0) {
+            o1 += start.getColumn() - 1;
+        }
+        int o2;
+        if (end.getLine() > source.getLineCount()) {
+            o2 = source.getLength();
+        } else {
+            o2 = source.getLineStartOffset(end.getLine());
+            if (end.getColumn() > 0) {
+                o2 += end.getColumn() - 1;
+            }
+        }
+        SourceSection range = source.createSection(o1, o2 - o1);
+        Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
         JSONObject json = new JSONObject();
-        json.put("locations", new JSONArray());
+        JSONArray arr = new JSONArray();
+        for (SourceSection ss : locations) {
+            arr.put(new Location(scriptId, ss.getStartLine(), ss.getStartColumn()).toJSON());
+        }
+        json.put("locations", arr);
         return new Params(json);
     }
 
@@ -356,7 +398,18 @@ public final class TruffleDebugger extends DebuggerDomain {
         if (!active.isPresent()) {
             throw new CommandProcessException("Must specify active argument.");
         }
-        ds.setBreakpointsActive(active.get());
+        ds.setBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION, active.get());
+    }
+
+    @Override
+    public void setSkipAllPauses(Optional<Boolean> skip) throws CommandProcessException {
+        if (!skip.isPresent()) {
+            throw new CommandProcessException("Must specify 'skip' argument.");
+        }
+        boolean active = !skip.get();
+        for (Breakpoint.Kind kind : Breakpoint.Kind.values()) {
+            ds.setBreakpointsActive(kind, active);
+        }
     }
 
     @Override
@@ -424,19 +477,26 @@ public final class TruffleDebugger extends DebuggerDomain {
                     }
                     CallFrame cf = suspendedInfo.getCallFrames()[frameId];
                     JSONObject json = new JSONObject();
-                    try {
-                        DebugValue value = cf.getFrame().eval(expression);
-                        RemoteObject ro = new RemoteObject(value, context.getErr());
-                        context.getRemoteObjectsHandler().register(ro);
+                    DebugValue value = cf.getFrame().eval(expression);
+                    RemoteObject ro = new RemoteObject(value, context.getErr());
+                    context.getRemoteObjectsHandler().register(ro);
+                    json.put("result", ro.toJSON());
+                    return json;
+                }
+
+                @Override
+                public JSONObject processException(DebugException dex) {
+                    JSONObject json = new JSONObject();
+                    TruffleRuntime.fillExceptionDetails(json, dex, context);
+                    DebugValue exceptionObject = dex.getExceptionObject();
+                    if (exceptionObject != null) {
+                        RemoteObject ro = context.createAndRegister(exceptionObject);
                         json.put("result", ro.toJSON());
-                    } catch (Throwable t) {
-                        if (t instanceof TruffleException && !((TruffleException) t).isInternalError()) {
-                            JSONObject err = new JSONObject();
-                            err.putOpt("value", t.getLocalizedMessage());
-                            json.put("result", err);
-                        } else {
-                            throw t;
-                        }
+                    } else {
+                        JSONObject err = new JSONObject();
+                        err.putOpt("value", dex.getLocalizedMessage());
+                        err.putOpt("type", "string");
+                        json.put("result", err);
                     }
                     return json;
                 }
@@ -446,9 +506,6 @@ public final class TruffleDebugger extends DebuggerDomain {
             JSONObject err = new JSONObject();
             err.putOpt("value", e.getLocalizedMessage());
             jsonResult.put("result", err);
-        } catch (GuestLanguageException e) {
-            jsonResult = new JSONObject();
-            TruffleRuntime.fillExceptionDetails(jsonResult, e);
         }
         return new Params(jsonResult);
     }
@@ -562,9 +619,6 @@ public final class TruffleDebugger extends DebuggerDomain {
             Params params = new Params(jsonParams);
             Event scriptParsed = new Event("Debugger.scriptParsed", params);
             eventHandler.event(scriptParsed);
-            bph.resolveURLBreakpoints(script).stream().map(locationParams -> new Event("Debugger.breakpointResolved", locationParams)).forEach(breakpointResolved -> {
-                eventHandler.event(breakpointResolved);
-            });
         }
 
         private CharSequence getSourceMapURL(Source source, int lastLine) {
@@ -603,6 +657,10 @@ public final class TruffleDebugger extends DebuggerDomain {
 
         @Override
         public void onSuspend(SuspendedEvent se) {
+            try {
+                context.waitForRunPermission();
+            } catch (InterruptedException ex) {
+            }
             SourceSection ss = se.getSourceSection();
             lock();
             onSuspendPhaser.register();
@@ -626,14 +684,20 @@ public final class TruffleDebugger extends DebuggerDomain {
                     commandLazyResponse = null;
                 } else {
                     jsonParams.put("callFrames", getFramesParam(callFrames));
-                    jsonParams.put("reason", "other");
                     List<Breakpoint> breakpoints = se.getBreakpoints();
                     JSONArray bpArr = new JSONArray();
+                    Set<Breakpoint.Kind> kinds = new HashSet<>(1);
                     for (Breakpoint bp : breakpoints) {
                         String id = bph.getId(bp);
                         if (id != null) {
                             bpArr.put(id);
                         }
+                        kinds.add(bp.getKind());
+                    }
+                    jsonParams.put("reason", getHaltReason(kinds));
+                    JSONObject data = getHaltData(se);
+                    if (data != null) {
+                        jsonParams.put("data", data);
                     }
                     jsonParams.put("hitBreakpoints", bpArr);
 
@@ -715,6 +779,38 @@ public final class TruffleDebugger extends DebuggerDomain {
         private synchronized void unlock() {
             locked = null;
             notify();
+        }
+
+        private String getHaltReason(Set<Breakpoint.Kind> kinds) {
+            if (kinds.size() > 1) {
+                return "ambiguous";
+            } else {
+                if (kinds.contains(Breakpoint.Kind.HALT_INSTRUCTION)) {
+                    return "debugCommand";
+                } else if (kinds.contains(Breakpoint.Kind.EXCEPTION)) {
+                    return "exception";
+                } else {
+                    return "other";
+                }
+            }
+        }
+
+        private JSONObject getHaltData(SuspendedEvent se) {
+            DebugException exception = se.getException();
+            if (exception == null) {
+                return null;
+            }
+            boolean uncaught = exception.getCatchLocation() == null;
+            DebugValue exceptionObject = exception.getExceptionObject();
+            JSONObject data;
+            if (exceptionObject != null) {
+                RemoteObject remoteObject = context.createAndRegister(exceptionObject);
+                data = remoteObject.toJSON();
+            } else {
+                data = new JSONObject();
+            }
+            data.put("uncaught", uncaught);
+            return data;
         }
 
         private class SchedulerThreadFactory implements ThreadFactory {

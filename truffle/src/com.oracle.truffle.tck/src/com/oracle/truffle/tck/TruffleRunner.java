@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,7 +128,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         /**
          * Defines the {@link RootNode root node} of the Truffle tree that should be tested.
-         * 
+         *
          * @since 0.25
          */
         Class<? extends RootNode> value();
@@ -159,7 +159,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         /**
          * The number of warmup iterations to run before a test is compiled.
-         * 
+         *
          * @since 0.25
          */
         int value();
@@ -217,6 +217,8 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     public static final class RunWithPolyglotRule implements TestRule {
 
+        Context.Builder contextBuilder;
+
         Context context = null;
         Env testEnv = null;
 
@@ -224,6 +226,15 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
          * @since 0.27
          */
         public RunWithPolyglotRule() {
+            this(Context.newBuilder().allowAllAccess(true));
+        }
+
+        /**
+         * @param contextBuilder a custom context builder
+         * @since 1.0
+         */
+        public RunWithPolyglotRule(Context.Builder contextBuilder) {
+            this.contextBuilder = contextBuilder;
         }
 
         /**

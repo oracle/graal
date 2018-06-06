@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -31,9 +33,11 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
@@ -41,14 +45,15 @@ public class SubstrateOptions {
 
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
-    @Option(help = "Show available options.")//
-    public static final OptionKey<Boolean> PrintFlags = new OptionKey<>(false);
+    @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
+    public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
 
-    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.")//
+    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(1) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newValue < 1);
+            SubstrateOptions.AOTInline.update(values, newValue > 0);
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
             }
@@ -73,10 +78,12 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<String> LinkerRPath = new HostedOptionKey<>("");
 
-    @Option(help = "Enable or disable Java assert statements at run time")//
+    @APIOption(name = "-ea", customHelp = "enable assertions in the generated image")//
+    @APIOption(name = "-da", kind = APIOption.APIOptionKind.Negated, customHelp = "disable assertions in the generated image")//
+    @Option(help = "Enable or disable Java assert statements at run time", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> RuntimeAssertions = new HostedOptionKey<>(false);
 
-    @Option(help = "Directory of the image file to be generated")//
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(Paths.get(".").toAbsolutePath().normalize().resolve("svmbuild").toString());
 
     @Fold
@@ -126,6 +133,9 @@ public class SubstrateOptions {
 
     @Option(help = "Prefix that is added to the names of API functions.")//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
+
+    @Option(help = "List of comma separated protocols to enable.")//
+    public static final HostedOptionKey<String> EnableURLProtocols = new HostedOptionKey<>("");
 
     /*
      * Object and array allocation options.
@@ -181,6 +191,18 @@ public class SubstrateOptions {
 
     @Option(help = "Only use Java assert statements for classes that are matching the comma-separated list of package prefixes.")//
     public static final HostedOptionKey<String> RuntimeAssertionsFilter = new HostedOptionKey<>(null);
+
+    @Option(help = "Perform method inlining in the AOT compiled native image")//
+    public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
+
+    @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
+
+    @Option(help = "Maximum number of invokes in a method so that it is considered trivial (for testing only).")//
+    public static final HostedOptionKey<Integer> MaxInvokesInTrivialMethod = new HostedOptionKey<>(1);
+
+    @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     public static FoldedPredicate makeFilter(String definedFilter) {
         if (definedFilter != null) {

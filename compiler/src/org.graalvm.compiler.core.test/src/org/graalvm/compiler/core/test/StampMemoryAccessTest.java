@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -36,21 +37,23 @@ import jdk.vm.ci.meta.MemoryAccessProvider;
  */
 public class StampMemoryAccessTest extends GraalCompilerTest {
 
-    @Ignore("not all JVMCI versions are safe yet")
     @Test
     public void testReadPrimitive() {
         MemoryAccessProvider memory = getConstantReflection().getMemoryAccessProvider();
-        JavaConstant base = getSnippetReflection().forObject("");
         Stamp stamp = StampFactory.forKind(JavaKind.Long);
-        assertTrue(stamp.readConstant(memory, base, 128) == null);
+        JavaConstant objectBase = getSnippetReflection().forObject("");
+        assertTrue(stamp.readConstant(memory, objectBase, 128) == null);
+        JavaConstant arrayBase = getSnippetReflection().forObject(new int[]{});
+        assertTrue(stamp.readConstant(memory, arrayBase, 128) == null);
     }
 
-    @Ignore("not all JVMCI versions are safe yet")
     @Test
     public void testReadObject() {
         MemoryAccessProvider memory = getConstantReflection().getMemoryAccessProvider();
-        JavaConstant base = getSnippetReflection().forObject("");
         Stamp stamp = StampFactory.forKind(JavaKind.Object);
-        assertTrue(stamp.readConstant(memory, base, 128) == null);
+        JavaConstant objectBase = getSnippetReflection().forObject("");
+        assertTrue(stamp.readConstant(memory, objectBase, 128) == null);
+        JavaConstant arrayBase = getSnippetReflection().forObject(new int[]{});
+        assertTrue(stamp.readConstant(memory, arrayBase, 128) == null);
     }
 }

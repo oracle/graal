@@ -24,23 +24,28 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
+import com.oracle.truffle.tools.chromeinspector.ScriptsHandler.LoadScriptListener;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
+import com.oracle.truffle.tools.chromeinspector.events.Event;
+import com.oracle.truffle.tools.chromeinspector.events.EventHandler;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
+import java.util.concurrent.atomic.AtomicReference;
 
 final class BreakpointsHandler {
 
@@ -48,12 +53,16 @@ final class BreakpointsHandler {
 
     private final DebuggerSession ds;
     private final ScriptsHandler slh;
+    private final ResolvedHandler resolvedHandler;
     private final Map<Breakpoint, Long> bpIDs = new HashMap<>();
-    private final Map<Long, BPInfo> urlBPs = new HashMap<>();
+    private final Map<Breakpoint, SourceSection> resolvedBreakpoints = new HashMap<>();
+    private final Map<Long, LoadScriptListener> scriptListeners = new HashMap<>();
+    private final AtomicReference<Breakpoint> exceptionBreakpoint = new AtomicReference<>();
 
-    BreakpointsHandler(DebuggerSession ds, ScriptsHandler slh) {
+    BreakpointsHandler(DebuggerSession ds, ScriptsHandler slh, Supplier<EventHandler> eventHandler) {
         this.ds = ds;
         this.slh = slh;
+        this.resolvedHandler = new ResolvedHandler(eventHandler);
     }
 
     String getId(Breakpoint bp) {
@@ -68,26 +77,31 @@ final class BreakpointsHandler {
     }
 
     Params createURLBreakpoint(Object url, int line, int column, String condition) {
+        JSONArray locations = new JSONArray();
         long id;
+        LoadScriptListener scriptListener;
         synchronized (bpIDs) {
             id = ++lastID;
-            urlBPs.put(id, new BPInfo(url, line, column, condition));
+            scriptListener = script -> {
+                if (url instanceof Pattern ? ((Pattern) url).matcher(script.getUrl()).matches() : ScriptsHandler.compareURLs((String) url, script.getUrl())) {
+                    Breakpoint bp = createBuilder(script.getSource(), line, column).resolveListener(resolvedHandler).build();
+                    if (condition != null && !condition.isEmpty()) {
+                        bp.setCondition(condition);
+                    }
+                    bp = ds.install(bp);
+                    synchronized (bpIDs) {
+                        bpIDs.put(bp, id);
+                        SourceSection section = resolvedBreakpoints.remove(bp);
+                        if (section != null) {
+                            Location resolvedLocation = new Location(script.getId(), section.getStartLine(), section.getStartColumn());
+                            locations.put(resolvedLocation.toJSON());
+                        }
+                    }
+                }
+            };
+            scriptListeners.put(id, scriptListener);
         }
-        JSONArray locations = new JSONArray();
-        slh.getScripts().stream().filter(script -> url instanceof Pattern ? ((Pattern) url).matcher(script.getUrl()).matches() : url.equals(script.getUrl())).forEach(script -> {
-            Breakpoint bp = Breakpoint.newBuilder(script.getSource()).lineIs(line).build();
-            if (column > 0) {
-                // TODO set breakpoint's column
-            }
-            if (condition != null && !condition.isEmpty()) {
-                bp.setCondition(condition);
-            }
-            bp = ds.install(bp);
-            synchronized (bpIDs) {
-                bpIDs.put(bp, id);
-            }
-            locations.put(new Location(script.getId(), line, column).toJSON());
-        });
+        slh.addLoadScriptListener(scriptListener);
         JSONObject json = new JSONObject();
         json.put("breakpointId", Long.toString(id));
         json.put("locations", locations);
@@ -99,19 +113,24 @@ final class BreakpointsHandler {
         if (script == null) {
             throw new CommandProcessException("No script with id '" + location.getScriptId() + "'");
         }
-        Breakpoint bp = Breakpoint.newBuilder(script.getSource()).lineIs(location.getLine()).build();
+        Breakpoint bp = createBuilder(script.getSource(), location.getLine(), location.getColumn()).resolveListener(resolvedHandler).build();
         if (condition != null && !condition.isEmpty()) {
             bp.setCondition(condition);
         }
         bp = ds.install(bp);
+        JSONArray locations = new JSONArray();
         long id;
         synchronized (bpIDs) {
             id = ++lastID;
             bpIDs.put(bp, id);
+            SourceSection section = resolvedBreakpoints.remove(bp);
+            if (section != null) {
+                Location resolvedLocation = new Location(location.getScriptId(), section.getStartLine(), section.getStartColumn());
+                locations.put(resolvedLocation.toJSON());
+            }
         }
         JSONObject json = new JSONObject();
         json.put("breakpointId", Long.toString(id));
-        JSONArray locations = new JSONArray();
         locations.put(location.toJSON());
         json.put("locations", locations);
         return new Params(json);
@@ -134,7 +153,9 @@ final class BreakpointsHandler {
                         bpRemoved = true;
                     }
                 }
-                if (urlBPs.remove(id) != null) {
+                LoadScriptListener scriptListener = scriptListeners.remove(id);
+                if (scriptListener != null) {
+                    slh.removeLoadScriptListener(scriptListener);
                     bpRemoved = true;
                 }
             }
@@ -148,45 +169,58 @@ final class BreakpointsHandler {
         if (script == null) {
             throw new CommandProcessException("No script with id '" + location.getScriptId() + "'");
         }
-        Breakpoint bp = Breakpoint.newBuilder(script.getSource()).lineIs(location.getLine()).oneShot().build();
+        Breakpoint bp = createBuilder(script.getSource(), location.getLine(), location.getColumn()).oneShot().build();
         ds.install(bp);
     }
 
-    List<Params> resolveURLBreakpoints(Script script) {
-        List<Params> resolvedBPLocations = new ArrayList<>();
-        urlBPs.entrySet().forEach(urlBPEntry -> {
-            BPInfo urlBP = urlBPEntry.getValue();
-            if (urlBP.url instanceof Pattern ? ((Pattern) urlBP.url).matcher(script.getUrl()).matches() : urlBP.url.equals(script.getUrl())) {
-                Breakpoint bp = Breakpoint.newBuilder(script.getSource()).lineIs(urlBP.line).build();
-                if (urlBP.condition != null && !urlBP.condition.isEmpty()) {
-                    bp.setCondition(urlBP.condition);
-                }
-                bp = ds.install(bp);
-                synchronized (bpIDs) {
-                    bpIDs.put(bp, urlBPEntry.getKey());
-                }
-                JSONObject json = new JSONObject();
-                json.put("breakpointId", Long.toString(urlBPEntry.getKey()));
-                JSONArray locations = new JSONArray();
-                locations.put(new Location(script.getId(), urlBP.line, urlBP.column).toJSON());
-                json.put("locations", locations);
-                resolvedBPLocations.add(new Params(json));
-            }
-        });
-        return resolvedBPLocations;
-    }
-
-    private static final class BPInfo {
-        private Object url;
-        private int line;
-        private int column;
-        private String condition;
-
-        private BPInfo(Object url, int line, int column, String condition) {
-            this.url = url;
-            this.line = line;
-            this.column = column;
-            this.condition = condition;
+    void setExceptionBreakpoint(boolean caught, boolean uncaught) {
+        Breakpoint newBp = null;
+        if (caught || uncaught) {
+            newBp = Breakpoint.newExceptionBuilder(caught, uncaught).build();
+            ds.install(newBp);
+        }
+        Breakpoint oldBp = exceptionBreakpoint.getAndSet(newBp);
+        if (oldBp != null) {
+            oldBp.dispose();
         }
     }
+
+    private static Breakpoint.Builder createBuilder(Source source, int line, int column) {
+        Breakpoint.Builder builder = Breakpoint.newBuilder(source).lineIs(line);
+        if (column > 0) {
+            builder.columnIs(column);
+        }
+        return builder;
+    }
+
+    private final class ResolvedHandler implements Breakpoint.ResolveListener {
+
+        private final Supplier<EventHandler> eventHandler;
+
+        private ResolvedHandler(Supplier<EventHandler> eventHandler) {
+            this.eventHandler = eventHandler;
+        }
+
+        @Override
+        public void breakpointResolved(Breakpoint breakpoint, SourceSection section) {
+            Long breakpointId;
+            synchronized (bpIDs) {
+                breakpointId = bpIDs.get(breakpoint);
+                if (breakpointId == null) {
+                    resolvedBreakpoints.put(breakpoint, section);
+                    return;
+                }
+            }
+            int scriptId = slh.getScriptId(section.getSource());
+            Location location = new Location(scriptId, section.getStartLine(), section.getStartColumn());
+            JSONObject jsonParams = new JSONObject();
+            jsonParams.put("breakpointId", Long.toString(breakpointId));
+            jsonParams.put("location", location.toJSON());
+            Params params = new Params(jsonParams);
+            Event event = new Event("Debugger.breakpointResolved", params);
+            eventHandler.get().event(event);
+        }
+
+    }
+
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -32,19 +34,22 @@ public class StructInfo extends SizableInfo {
     private final ResolvedJavaType annotatedType;
 
     private final boolean isIncomplete;
+    private String typedefName;
 
     public static StructInfo create(String typeName, ResolvedJavaType annotatedType) {
+        String typedefAnnotation = InfoTreeBuilder.getTypedefName(annotatedType);
         if (annotatedType.getAnnotation(RawStructure.class) != null) {
-            return new RawStructureInfo(typeName, annotatedType);
+            return new RawStructureInfo(typeName, typedefAnnotation, annotatedType);
         } else {
-            return new StructInfo(typeName, annotatedType, annotatedType.getAnnotation(CStruct.class).isIncomplete());
+            return new StructInfo(typeName, typedefAnnotation, annotatedType, annotatedType.getAnnotation(CStruct.class).isIncomplete());
         }
     }
 
-    public StructInfo(String typeName, ResolvedJavaType annotatedType, boolean isIncomplete) {
+    public StructInfo(String typeName, String typedefName, ResolvedJavaType annotatedType, boolean isIncomplete) {
         super(typeName, ElementKind.UNKNOWN);
         this.annotatedType = annotatedType;
         this.isIncomplete = isIncomplete;
+        this.typedefName = typedefName;
     }
 
     @Override
@@ -61,4 +66,7 @@ public class StructInfo extends SizableInfo {
         return isIncomplete;
     }
 
+    public String getTypedefName() {
+        return typedefName;
+    }
 }

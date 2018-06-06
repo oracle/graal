@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -187,7 +189,10 @@ public interface GraphElements<M, F, S, P> {
     int nodeSourcePositionBCI(P pos);
 
     /**
-     * Stack trace element for a method, index and position.
+     * Stack trace element for a method, index and position. This is the basic version of the method
+     * that works with {@link StackTraceElement} and is suitable for Java-like languages. Should you
+     * need to provide more details about the location of multiple strata, see
+     * {@link GraphLocations} interface that gives more control over the provided location data.
      *
      * @param method the method
      * @param bci the index
@@ -195,4 +200,5 @@ public interface GraphElements<M, F, S, P> {
      * @return stack trace element for the method, index and position
      */
     StackTraceElement methodStackTraceElement(M method, int bci, P pos);
+
 }

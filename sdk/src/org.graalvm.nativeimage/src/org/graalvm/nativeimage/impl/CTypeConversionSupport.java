@@ -41,4 +41,6 @@ public interface CTypeConversionSupport {
     String toJavaString(CCharPointer cString);
 
     String toJavaString(CCharPointer cString, UnsignedWord length);
+
+    String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset);
 }

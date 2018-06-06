@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -468,15 +470,12 @@ public final class ThreadLocalAllocation {
      */
     @Uninterruptible(reason = "Pops from the free list that is drained, at a safepoint, by garbage collections.")
     private static AlignedHeader popFromThreadLocalFreeList() {
-        log().string("[ThreadLocalAllocation.popFromThreadLocalFreeList:").newline();
-        log().string("  before freeList: ").hex(freeList.get()).string("]").newline();
         final AlignedHeader result = freeList.get();
         if (result.isNonNull()) {
             final AlignedHeader next = result.getNext();
             result.setNext(WordFactory.nullPointer());
             freeList.set(next);
         }
-        log().string("   after freeList: ").hex(freeList.get()).string("  result: ").hex(result).string("]").newline();
         return result;
     }
 
@@ -569,8 +568,6 @@ public final class ThreadLocalAllocation {
         if (allocationTop.isNonNull()) {
             AlignedHeader alignedChunk = tlab.getAlignedChunk();
 
-            log().string("  [ThreadLocalAllocator.retireAllocationChunk: tlab ").hex(tlab).string(" chunk ").hex(alignedChunk).string(" top ").hex(allocationTop).string(" ]").newline();
-
             assert alignedChunk.getTop().isNull();
             assert alignedChunk.getEnd().equal(tlab.getAllocationEnd(END_IDENTITY));
 
@@ -595,8 +592,6 @@ public final class ThreadLocalAllocation {
 
         AlignedHeader alignedChunk = tlab.getAlignedChunk();
         if (alignedChunk.isNonNull()) {
-            log().string("  [ThreadLocalAllocator.resumeAllocationChunk: tlab ").hex(tlab).string(" chunk ").hex(alignedChunk).string(" top ").hex(alignedChunk.getTop()).string(" ]").newline();
-
             tlab.setAllocationTop(alignedChunk.getTop(), TOP_IDENTITY);
             tlab.setAllocationEnd(alignedChunk.getEnd(), END_IDENTITY);
             alignedChunk.setTop(WordFactory.nullPointer());

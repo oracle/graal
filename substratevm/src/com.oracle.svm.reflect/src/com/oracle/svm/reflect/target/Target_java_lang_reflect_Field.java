@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -36,12 +39,16 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.FieldDeclaredAnnotationsComputer;
+import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import sun.reflect.FieldAccessor;
+import sun.reflect.generics.repository.FieldRepository;
 
 @TargetClass(value = Field.class, onlyWith = ReflectionFeature.IsEnabled.class)
 public final class Target_java_lang_reflect_Field {
+
+    @Alias FieldRepository genericInfo;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) FieldAccessor fieldAccessor;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) FieldAccessor overrideFieldAccessor;
@@ -50,7 +57,13 @@ public final class Target_java_lang_reflect_Field {
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Alias //
-    private Target_java_lang_reflect_Field root;
+    Target_java_lang_reflect_Field root;
+
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
+    int offset;
+
+    @Alias
+    native Target_java_lang_reflect_Field copy();
 
     @Substitute
     FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {

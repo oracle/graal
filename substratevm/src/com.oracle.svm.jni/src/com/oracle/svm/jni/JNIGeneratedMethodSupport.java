@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,15 +28,18 @@ package com.oracle.svm.jni;
 
 import java.lang.reflect.Array;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -72,6 +77,10 @@ public final class JNIGeneratedMethodSupport {
         return JNIObjectHandles.getObject(handle);
     }
 
+    static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
+        return JNIAccessibleField.getOffsetFromId(fieldId);
+    }
+
     static byte[] getStaticPrimitiveFieldsArray() {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
@@ -80,14 +89,19 @@ public final class JNIGeneratedMethodSupport {
         return StaticFieldsSupport.getStaticObjectFields();
     }
 
-    static void retainPendingException(Throwable t) {
+    static void setPendingException(Throwable t) {
         JNIThreadLocalPendingException.set(t);
     }
 
-    static void rethrowPendingException() throws Throwable {
+    static Throwable getAndClearPendingException() {
         Throwable t = JNIThreadLocalPendingException.get();
+        JNIThreadLocalPendingException.clear();
+        return t;
+    }
+
+    static void rethrowPendingException() throws Throwable {
+        Throwable t = getAndClearPendingException();
         if (t != null) {
-            JNIThreadLocalPendingException.clear();
             throw t;
         }
     }
@@ -99,7 +113,7 @@ public final class JNIGeneratedMethodSupport {
             }
             return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(array);
         }
-        return Word.nullPointer();
+        return WordFactory.nullPointer();
     }
 
     static boolean unpinArrayByAddress(PointerBase address) throws Throwable {

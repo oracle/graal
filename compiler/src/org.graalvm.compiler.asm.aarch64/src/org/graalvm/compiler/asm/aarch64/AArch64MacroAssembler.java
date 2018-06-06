@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,7 +39,6 @@ import static jdk.vm.ci.aarch64.AArch64.r9;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
-import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -306,9 +307,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             case EXTENDED_REGISTER_OFFSET:
                 add(64, dst, address.getBase(), address.getOffset(), address.getExtendType(), address.isScaled() ? shiftAmt : 0);
                 break;
-            case PC_LITERAL:
-                super.adr(dst, address.getImmediateRaw());
+            case PC_LITERAL: {
+                addressOf(dst);
                 break;
+            }
             case BASE_REGISTER_ONLY:
                 movx(dst, address.getBase());
                 break;
@@ -1560,8 +1562,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     @Override
-    public AbstractAddress getPlaceholder(int instructionStartPosition) {
+    public AArch64Address getPlaceholder(int instructionStartPosition) {
         return AArch64Address.PLACEHOLDER;
+    }
+
+    public void addressOf(Register dst) {
+        // This will be fixed up later.
+        super.adrp(dst);
+        super.add(64, dst, dst, 0);
     }
 
     /**

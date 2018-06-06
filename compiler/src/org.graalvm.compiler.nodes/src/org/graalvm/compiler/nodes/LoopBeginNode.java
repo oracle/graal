@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,6 +27,7 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -310,13 +313,16 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return loopEnds().first();
     }
 
+    @SuppressWarnings("try")
     public void removeExits() {
         for (LoopExitNode loopexit : loopExits().snapshot()) {
-            loopexit.removeProxies();
-            FrameState loopStateAfter = loopexit.stateAfter();
-            graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
-            if (loopStateAfter != null) {
-                GraphUtil.tryKillUnused(loopStateAfter);
+            try (DebugCloseable position = graph().withNodeSourcePosition(loopexit)) {
+                loopexit.removeProxies();
+                FrameState loopStateAfter = loopexit.stateAfter();
+                graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
+                if (loopStateAfter != null) {
+                    GraphUtil.tryKillUnused(loopStateAfter);
+                }
             }
         }
     }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -66,6 +68,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -146,7 +149,7 @@ public final class GraalFeature implements Feature {
         @Option(help = "Print truffle boundaries found during the analysis")//
         public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
 
-        @Option(help = "Maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
+        @Option(help = "Maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.", type = OptionType.User)//
         public static final HostedOptionKey<Integer> MaxRuntimeCompileMethods = new HostedOptionKey<>(0);
     }
 
@@ -237,7 +240,7 @@ public final class GraalFeature implements Feature {
 
         RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, false);
         }
 
         @Override

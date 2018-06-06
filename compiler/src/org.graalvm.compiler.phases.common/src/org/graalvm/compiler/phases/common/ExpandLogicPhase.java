@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +26,7 @@ package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -51,6 +54,7 @@ public class ExpandLogicPhase extends Phase {
     private static final double EPSILON = 1E-6;
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph) {
         for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.TYPE)) {
             processBinary(logic);
@@ -58,7 +62,9 @@ public class ExpandLogicPhase extends Phase {
         assert graph.getNodes(ShortCircuitOrNode.TYPE).isEmpty();
 
         for (NormalizeCompareNode logic : graph.getNodes(NormalizeCompareNode.TYPE)) {
-            processNormalizeCompareNode(logic);
+            try (DebugCloseable context = logic.withNodeSourcePosition()) {
+                processNormalizeCompareNode(logic);
+            }
         }
         graph.setAfterExpandLogic();
     }
@@ -84,17 +90,20 @@ public class ExpandLogicPhase extends Phase {
         normalize.replaceAtUsagesAndDelete(value);
     }
 
+    @SuppressWarnings("try")
     private static void processBinary(ShortCircuitOrNode binary) {
         while (binary.usages().isNotEmpty()) {
             Node usage = binary.usages().first();
-            if (usage instanceof ShortCircuitOrNode) {
-                processBinary((ShortCircuitOrNode) usage);
-            } else if (usage instanceof IfNode) {
-                processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, binary.getShortCircuitProbability());
-            } else if (usage instanceof ConditionalNode) {
-                processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
-            } else {
-                throw GraalError.shouldNotReachHere();
+            try (DebugCloseable nsp = usage.withNodeSourcePosition()) {
+                if (usage instanceof ShortCircuitOrNode) {
+                    processBinary((ShortCircuitOrNode) usage);
+                } else if (usage instanceof IfNode) {
+                    processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, binary.getShortCircuitProbability());
+                } else if (usage instanceof ConditionalNode) {
+                    processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
+                } else {
+                    throw GraalError.shouldNotReachHere();
+                }
             }
         }
         binary.safeDelete();
@@ -143,15 +152,21 @@ public class ExpandLogicPhase extends Phase {
         trueTargetMerge.addForwardEnd(firstTrueEnd);
         trueTargetMerge.addForwardEnd(secondTrueEnd);
         AbstractBeginNode firstTrueTarget = BeginNode.begin(firstTrueEnd);
+        firstTrueTarget.setNodeSourcePosition(trueTarget.getNodeSourcePosition());
         AbstractBeginNode secondTrueTarget = BeginNode.begin(secondTrueEnd);
+        secondTrueTarget.setNodeSourcePosition(trueTarget.getNodeSourcePosition());
         if (yNegated) {
             secondIfTrueProbability = 1.0 - secondIfTrueProbability;
         }
         if (xNegated) {
             firstIfTrueProbability = 1.0 - firstIfTrueProbability;
         }
-        AbstractBeginNode secondIf = BeginNode.begin(graph.add(new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfTrueProbability)));
-        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondIf : firstTrueTarget, xNegated ? firstTrueTarget : secondIf, firstIfTrueProbability));
+        IfNode secondIf = new IfNode(y, yNegated ? falseTarget : secondTrueTarget, yNegated ? secondTrueTarget : falseTarget, secondIfTrueProbability);
+        secondIf.setNodeSourcePosition(ifNode.getNodeSourcePosition());
+        AbstractBeginNode secondIfBegin = BeginNode.begin(graph.add(secondIf));
+        secondIfBegin.setNodeSourcePosition(falseTarget.getNodeSourcePosition());
+        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondIfBegin : firstTrueTarget, xNegated ? firstTrueTarget : secondIfBegin, firstIfTrueProbability));
+        firstIf.setNodeSourcePosition(ifNode.getNodeSourcePosition());
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
     }
@@ -169,13 +184,16 @@ public class ExpandLogicPhase extends Phase {
         return newValue;
     }
 
+    @SuppressWarnings("try")
     private static void processConditional(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, ConditionalNode conditional) {
-        ValueNode trueTarget = conditional.trueValue();
-        ValueNode falseTarget = conditional.falseValue();
-        Graph graph = conditional.graph();
-        ConditionalNode secondConditional = graph.unique(new ConditionalNode(y, yNegated ? falseTarget : trueTarget, yNegated ? trueTarget : falseTarget));
-        ConditionalNode firstConditional = graph.unique(new ConditionalNode(x, xNegated ? secondConditional : trueTarget, xNegated ? trueTarget : secondConditional));
-        conditional.replaceAndDelete(firstConditional);
+        try (DebugCloseable context = conditional.withNodeSourcePosition()) {
+            ValueNode trueTarget = conditional.trueValue();
+            ValueNode falseTarget = conditional.falseValue();
+            Graph graph = conditional.graph();
+            ConditionalNode secondConditional = graph.unique(new ConditionalNode(y, yNegated ? falseTarget : trueTarget, yNegated ? trueTarget : falseTarget));
+            ConditionalNode firstConditional = graph.unique(new ConditionalNode(x, xNegated ? secondConditional : trueTarget, xNegated ? trueTarget : secondConditional));
+            conditional.replaceAndDelete(firstConditional);
+        }
     }
 
     @Override

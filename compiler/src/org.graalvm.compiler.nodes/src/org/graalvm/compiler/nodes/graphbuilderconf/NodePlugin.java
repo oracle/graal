@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,6 +25,7 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -106,10 +109,12 @@ public interface NodePlugin extends GraphBuilderPlugin {
      * @param b the context
      * @param array the accessed array
      * @param index the index for the array access
+     * @param boundsCheck the explicit bounds check already emitted, or null if no bounds check was
+     *            emitted yet
      * @param elementKind the element kind of the accessed array
      * @return true if the plugin handles the array access, false otherwise.
      */
-    default boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind) {
+    default boolean handleLoadIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, GuardingNode boundsCheck, JavaKind elementKind) {
         return false;
     }
 
@@ -119,11 +124,15 @@ public interface NodePlugin extends GraphBuilderPlugin {
      * @param b the context
      * @param array the accessed array
      * @param index the index for the array access
+     * @param boundsCheck the explicit array bounds check already emitted, or null if no array
+     *            bounds check was emitted yet
+     * @param storeCheck the explicit array store check already emitted, or null if no array store
+     *            check was emitted yet
      * @param elementKind the element kind of the accessed array
      * @param value the value to be stored into the array
      * @return true if the plugin handles the array access, false otherwise.
      */
-    default boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, JavaKind elementKind, ValueNode value) {
+    default boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, GuardingNode boundsCheck, GuardingNode storeCheck, JavaKind elementKind, ValueNode value) {
         return false;
     }
 

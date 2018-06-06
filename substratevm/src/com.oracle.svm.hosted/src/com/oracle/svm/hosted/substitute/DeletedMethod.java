@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,6 +25,7 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -31,14 +34,13 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.replacements.GraphKit;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -47,7 +49,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
     public static final String NATIVE_MESSAGE = String.format(
                     "Native method. If you intend to use the Java Native Interface (JNI), specify %1$s+JNI and see also %1$sJNIConfigurationFiles=<path> (use %1$s+PrintFlags for details)",
-                    HostedOptionParser.HOSTED_OPTION_PREFIX);
+                    SubstrateOptionsParser.HOSTED_OPTION_PREFIX);
 
     private final Delete deleteAnnotation;
 
@@ -67,12 +69,21 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     @Override
+    public int getModifiers() {
+        /*
+         * We remove the synchonized modifier because our manually constructed graph does not need
+         * to do synchronization (since it is reporting a fatal error anyway).
+         */
+        return original.getModifiers() & ~Modifier.SYNCHRONIZED;
+    }
+
+    @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         return buildGraph(debug, method, providers, deleteAnnotation.value());
     }
 
     public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message) {
-        GraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
@@ -86,9 +97,10 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(method, message, false);
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
-        ValueNode exceptionNode = kit.createInvoke(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, msgNode);
+        ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, bci++, msgNode);
 
         kit.append(new UnwindNode(exceptionNode));
+        kit.mergeUnwinds();
 
         assert graph.verify();
         return graph;

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -44,6 +46,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitutionRegistry;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -678,7 +681,9 @@ public class InvocationPlugins {
                     }
                 }
                 if (res != null) {
-                    if (canBeIntrinsified(declaringClass)) {
+                    // A decorator plugin is trusted since it does not replace
+                    // the method it intrinsifies.
+                    if (res.isDecorator() || canBeIntrinsified(declaringClass)) {
                         return res;
                     }
                 }
@@ -862,6 +867,7 @@ public class InvocationPlugins {
         lateRegistrations = lateClassPlugins;
     }
 
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "string literal object identity used as sentinel")
     private synchronized boolean closeLateRegistrations() {
         if (lateRegistrations == null || lateRegistrations.className != CLOSED_LATE_CLASS_PLUGIN) {
             lateRegistrations = new LateClassPlugins(lateRegistrations, CLOSED_LATE_CLASS_PLUGIN);

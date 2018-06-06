@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +23,8 @@
  * questions.
  */
 package org.graalvm.compiler.debug;
+
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * Tracks memory usage within a scope using {@link com.sun.management.ThreadMXBean}. This facility
@@ -52,6 +56,6 @@ public interface MemUseTrackerKey extends MetricKey {
     MemUseTrackerKey doc(String string);
 
     static long getCurrentThreadAllocatedBytes() {
-        return Management.getCurrentThreadAllocatedBytes();
+        return GraalServices.getCurrentThreadAllocatedBytes();
     }
 }

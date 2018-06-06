@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -190,12 +192,17 @@ public class SourceSectionTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange13() {
-        longSource.createSection(4);
+        shortSource.createSection(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange14() {
         longSource.createSection(-1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testOutOfRange15() {
+        longSource.createSection(5);
     }
 
     @Test
@@ -224,6 +231,55 @@ public class SourceSectionTest {
         SourceSection other2 = shortSource.createUnavailableSection();
         assertFalse(section.equals(other2));
         assertNotEquals(other2.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void testEOF1() {
+        SourceSection section = shortSource.createSection(shortSource.getLength(), 0);
+        assertNotNull(section);
+        assertEquals(section.getCharIndex(), shortSource.getLength());
+        assertEquals(section.getCharLength(), 0);
+        assertEquals(section.getStartLine(), 1);
+        assertEquals(section.getEndLine(), 1);
+        assertEquals(section.getStartColumn(), 3);
+        assertEquals(section.getEndColumn(), 3);
+        assertEquals("", section.getCharacters());
+
+        SourceSection other = shortSource.createSection(shortSource.getLength(), 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void testEOF2() {
+        SourceSection section = longSource.createSection(longSource.getLength(), 0);
+        assertNotNull(section);
+        assertEquals(section.getCharIndex(), longSource.getLength());
+        assertEquals(section.getCharLength(), 0);
+        assertEquals(section.getStartLine(), 4);
+        assertEquals(section.getEndLine(), 4);
+        assertEquals(section.getStartColumn(), 1);
+        assertEquals(section.getEndColumn(), 1);
+        assertEquals("", section.getCharacters());
+
+        SourceSection other = longSource.createSection(longSource.getLength(), 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void testFinalNL() {
+        int sourceLength = longSource.getCharacters().length();
+        SourceSection section = longSource.createSection(4);
+        assertNotNull(section);
+        assertEquals(sourceLength, section.getCharIndex());
+        assertEquals(0, section.getCharLength());
+        assertEquals(4, section.getStartLine());
+        assertEquals(4, section.getEndLine());
+        assertEquals(1, section.getStartColumn());
+        assertEquals(1, section.getEndColumn());
+        assertEquals("", section.getCharacters());
+        assertTrue(section.isAvailable());
     }
 
     @Test

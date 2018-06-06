@@ -45,7 +45,6 @@ import java.io.IOException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -69,15 +68,13 @@ public class SLInteropControlFlowTest {
         final Source src = Source.newBuilder("sl", "function testWhile(a) {while(a) {break;}} function main() {return testWhile;}", "testWhile.sl").build();
         final Value fnc = context.eval(src);
         Assert.assertTrue(fnc.canExecute());
-        ProxyPrimitive boolProxy = () -> false;
-        fnc.execute(boolProxy);
+        fnc.execute(false);
     }
 
     @Test
     public void testIf() throws IOException {
         final Source src = Source.newBuilder("sl", "function testIf(a) {if(a) {return 1;} else {return 0;}} function main() {return testIf;}", "testIf.sl").build();
         final Value fnc = context.eval(src);
-        ProxyPrimitive boolProxy = () -> false;
-        fnc.execute(boolProxy);
+        fnc.execute(false);
     }
 }

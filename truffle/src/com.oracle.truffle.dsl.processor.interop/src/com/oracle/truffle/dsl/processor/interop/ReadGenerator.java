@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,24 +43,23 @@ final class ReadGenerator extends MessageGenerator {
     private static final int NUMBER_OF_READ = 2; // TruffleObject receiver,
                                                  // Object identifier
     private final String targetablePropReadNode;
-    private final String propReadRootNode;
 
     ReadGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetablePropReadNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
-        this.propReadRootNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("RootNode").toString();
     }
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append(indent).append("    private static final class ").append(propReadRootNode).append(" extends RootNode {\n");
-        w.append(indent).append("        protected ").append(propReadRootNode).append("() {\n");
+        w.append(indent).append("    private static final class ").append(rootNodeName).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(rootNodeName).append("() {\n");
         w.append(indent).append("            super(null);\n");
         w.append(indent).append("        }\n");
         w.append("\n");
         w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
+        appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
@@ -81,11 +82,6 @@ final class ReadGenerator extends MessageGenerator {
     @Override
     String getTargetableNodeName() {
         return targetablePropReadNode;
-    }
-
-    @Override
-    String getRootNodeName() {
-        return propReadRootNode;
     }
 
     @Override

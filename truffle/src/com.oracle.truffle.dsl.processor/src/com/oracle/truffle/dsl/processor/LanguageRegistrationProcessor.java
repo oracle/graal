@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -51,6 +53,7 @@ import javax.tools.StandardLocation;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -129,7 +132,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     emitError("Registered language inner-class must be static", e);
                     continue;
                 }
-                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(processingEnv.getElementUtils().getTypeElement(TruffleLanguage.class.getName()).asType());
+                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(ElementUtils.getTypeElement(processingEnv, TruffleLanguage.class.getName()).asType());
                 if (!processingEnv.getTypeUtils().isAssignable(e.asType(), truffleLang)) {
                     emitError("Registered language class must subclass TruffleLanguage", e);
                     continue;

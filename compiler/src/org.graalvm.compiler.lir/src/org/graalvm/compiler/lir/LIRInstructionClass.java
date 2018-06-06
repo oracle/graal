@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -96,7 +98,11 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         try {
             Field field = clazz.getDeclaredField("TYPE");
             field.setAccessible(true);
-            return (LIRInstructionClass<T>) field.get(null);
+            LIRInstructionClass<T> result = (LIRInstructionClass<T>) field.get(null);
+            if (result == null) {
+                throw GraalError.shouldNotReachHere("TYPE field not initialized for class " + clazz.getTypeName());
+            }
+            return result;
         } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
             throw new RuntimeException(e);
         }

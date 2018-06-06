@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -42,12 +44,12 @@ import com.oracle.svm.core.util.VMError;
  */
 public class NativeImageHeaderPreamble {
 
-    public static List<String> read() {
-        return getResource("/nativeimage.h.preamble");
+    public static List<String> read(ClassLoader imageClassloader, String preambleResource) {
+        return getResource(imageClassloader, preambleResource);
     }
 
-    private static List<String> getResource(String resourceName) {
-        try (InputStream input = NativeImageHeaderPreamble.class.getResourceAsStream(resourceName)) {
+    private static List<String> getResource(ClassLoader imageClassloader, String resourceName) {
+        try (InputStream input = imageClassloader.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
             return reader.lines().collect(Collectors.toList());
         } catch (IOException e) {

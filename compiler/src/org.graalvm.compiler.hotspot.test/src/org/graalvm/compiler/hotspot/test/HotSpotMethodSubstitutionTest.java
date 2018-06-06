@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -46,6 +48,17 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 
         test("getClass0", "a string");
         test("objectHashCode", obj);
+
+        testGraph("objectNotify", "Object.notify");
+        testGraph("objectNotifyAll", "Object.notifyAll");
+
+        synchronized (obj) {
+            test("objectNotify", obj);
+            test("objectNotifyAll", obj);
+        }
+        // Test with IllegalMonitorStateException (no synchronized block)
+        test("objectNotify", obj);
+        test("objectNotifyAll", obj);
     }
 
     @SuppressWarnings("all")
@@ -56,6 +69,16 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     @SuppressWarnings("all")
     public static int objectHashCode(TestClassA obj) {
         return obj.hashCode();
+    }
+
+    @SuppressWarnings("all")
+    public static void objectNotify(Object obj) {
+        obj.notify();
+    }
+
+    @SuppressWarnings("all")
+    public static void objectNotifyAll(Object obj) {
+        obj.notifyAll();
     }
 
     @Test

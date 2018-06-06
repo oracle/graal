@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -53,10 +56,12 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
     public static final NodeClass<LoweredAtomicReadAndWriteNode> TYPE = NodeClass.create(LoweredAtomicReadAndWriteNode.class);
     @Input ValueNode newValue;
     @OptionalInput(State) FrameState stateAfter;
+    private final ValueKind<?> valueKind;
 
-    public LoweredAtomicReadAndWriteNode(AddressNode address, LocationIdentity location, ValueNode newValue, BarrierType barrierType) {
+    public LoweredAtomicReadAndWriteNode(AddressNode address, LocationIdentity location, ValueNode newValue, ValueKind<?> valueKind, BarrierType barrierType) {
         super(TYPE, address, location, newValue.stamp(NodeView.DEFAULT).unrestricted(), barrierType);
         this.newValue = newValue;
+        this.valueKind = valueKind;
     }
 
     @Override
@@ -78,7 +83,10 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(gen.operand(getAddress()), gen.operand(getNewValue()));
+        Value emitted = gen.operand(getNewValue());
+        // In case this node works with compressed objects, the newValue's kind must be used.
+        ValueKind<? extends ValueKind<?>> actualKind = newValue.stamp(NodeView.DEFAULT).getStackKind().isObject() ? emitted.getValueKind() : this.valueKind;
+        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(gen.operand(getAddress()), actualKind, emitted);
         gen.setResult(this, result);
     }
 

@@ -24,7 +24,7 @@ suite = {
                 "TRUFFLE_PROFILER",
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
-                "org.json",
+                "TruffleJSON",
             ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.api",
@@ -37,10 +37,13 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.chromeinspector",
+                "truffle:TRUFFLE_TEST",
+                "truffle:TRUFFLE_SL",
                 "mx:JUNIT",
             ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector.test",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
             "license" : "GPLv2-CPE",
@@ -94,17 +97,11 @@ suite = {
             "version" : "2.3.1",
           }
         },
-        "org.json" : {
-          "path" : "lib/json-20160810.jar",
+        "TruffleJSON" : {
           "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/json/json/20160810/json-20160810.jar",
+            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180130.jar",
           ],
-          "sha1" : "aca5eb39e2a12fddd6c472b240afe9ebea3a6733",
-          "maven" : {
-            "groupId" : "org.json",
-            "artifactId" : "json",
-            "version" : "20160810",
-          }
+          "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
         },
     },
 
@@ -115,12 +112,16 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
             ],
+            "exclude": [
+                "TruffleJSON",
+            ],
         },
         "CHROMEINSPECTOR_TEST": {
             "dependencies": ["com.oracle.truffle.tools.chromeinspector.test"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
                 "CHROMEINSPECTOR",
+                "truffle:TRUFFLE_TEST",
                 "truffle:TRUFFLE_SL",
             ],
             "exclude": [
@@ -128,6 +129,13 @@ suite = {
               "mx:JUNIT",
               "truffle:JLINE",
             ],
+        },
+        "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Chrome Inspector support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-chromeinspector.properties",
+            },
         },
         "TRUFFLE_PROFILER": {
             "dependencies": [
@@ -149,6 +157,13 @@ suite = {
             ],
             "description" : "Tests for the truffle profiler.",
             "maven" : False,
+        },
+        "TRUFFLE_PROFILER_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Profiler support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-profiler.properties",
+            },
         },
     },
 }

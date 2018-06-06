@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -112,10 +114,10 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
         ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.object(typeRef, true)));
         ConstantNode rawIndex = graph.unique(ConstantNode.forInt(slotIndex));
-        LoadIndexedNode load = graph.add(new LoadIndexedNode(null, table, rawIndex, JavaKind.Long));
+        LoadIndexedNode load = graph.add(new LoadIndexedNode(null, table, rawIndex, null, JavaKind.Long));
         ConstantNode one = graph.unique(ConstantNode.forLong(1L));
         ValueNode add = graph.unique(new AddNode(load, one));
-        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Long, add));
+        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, null, null, JavaKind.Long, add));
 
         graph.addAfterFixed(targetNode, load);
         graph.addAfterFixed(load, store);

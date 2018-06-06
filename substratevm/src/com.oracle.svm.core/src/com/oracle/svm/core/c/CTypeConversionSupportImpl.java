@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -68,6 +70,23 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
         } else {
             return toJavaStringUnchecked(cString, length);
         }
+    }
+
+    @Override
+    public String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset) {
+        if (cString.isNull()) {
+            return null;
+        } else {
+            return toJavaStringWithCharset(cString, length, charset);
+        }
+    }
+
+    private static String toJavaStringWithCharset(CCharPointer cString, UnsignedWord length, Charset charset) {
+        byte[] bytes = new byte[(int) length.rawValue()];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = ((Pointer) cString).readByte(i);
+        }
+        return new String(bytes, charset);
     }
 
     private static String toJavaStringUnchecked(CCharPointer cString, UnsignedWord length) {

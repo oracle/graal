@@ -25,12 +25,32 @@ To run just the TCK tests use:
 
 `mx unittest com.oracle.truffle.tck.tests`
 
+or simply:
+
+`mx tck`
+
 To restrict the TCK tests to test certain language use the `tck.language` property. The following
 example tests JavaScript with data types from all available languages:
 
-`mx unittest -Dtck.language=js com.oracle.truffle.tck.tests`
+`mx tck -Dtck.language=js`
 
 To restrict the data types to certain language use the `tck.values` property. The following
 example tests JavaScript with Java types:
 
-`mx unittest -Dtck.values=java-host -Dtck.language=js com.oracle.truffle.tck.tests`
+`mx tck -Dtck.values=java-host -Dtck.language=js`
+
+To run the TCK tests on the GraalVM it's enough to set the mx `--java-home` to point to the GraalVM:
+
+`mx --java-home=<path_to_graalvm> tck`
+
+To enable output and error output use the `tck.verbose` property:
+
+`mx tck -Dtck.verbose=true`
+
+To enable output and error output only for a certain test use the `tck.{TestSimpleName}.verbose` property:
+
+`mx tck -Dtck.ErrorTypeTest.verbose=true`
+
+You can also enable output and error output for all tests but one:
+
+`mx tck -Dtck.verbose=true -Dtck.ErrorTypeTest.verbose=false`

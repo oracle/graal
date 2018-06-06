@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -262,6 +264,9 @@ public final class GraalOptions {
     @Option(help = "Track the NodeSourcePosition.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TrackNodeSourcePosition = new OptionKey<>(false);
 
+    @Option(help = "Track source stack trace where a node was inserted into the graph.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TrackNodeInsertion = new OptionKey<>(false);
+
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> MatchExpressions = new OptionKey<>(true);
 
@@ -276,7 +281,10 @@ public final class GraalOptions {
 
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
-    @Option(help = "Enable tracing of inlining decision.", type = OptionType.Debug)
+
+    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
+    @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,6 +24,7 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +42,7 @@ public class ExpectError {
 
     public static void assertNoErrorExpected(ProcessingEnvironment processingEnv, Element element) {
         for (String errorType : EXPECT_ERROR_TYPES) {
-            assertNoErrorExpectedImpl(processingEnv, element, processingEnv.getElementUtils().getTypeElement(errorType));
+            assertNoErrorExpectedImpl(processingEnv, element, ElementUtils.getTypeElement(processingEnv, errorType));
         }
     }
 
@@ -55,7 +58,7 @@ public class ExpectError {
 
     public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String message) {
         for (String errorType : EXPECT_ERROR_TYPES) {
-            if (isExpectedErrorImpl(element, message, processingEnv.getElementUtils().getTypeElement(errorType))) {
+            if (isExpectedErrorImpl(element, message, ElementUtils.getTypeElement(processingEnv, errorType))) {
                 return true;
             }
         }

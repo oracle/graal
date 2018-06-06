@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package com.oracle.svm.core.posix.linux;
 
 import java.io.IOException;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -133,7 +134,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static int epollWait(int epfd, long address, int numfds) throws IOException {
             // 089     struct epoll_event *events = jlong_to_ptr(address);
-            LinuxEPoll.epoll_event events = Word.pointer(address);
+            LinuxEPoll.epoll_event events = WordFactory.pointer(address);
             // 090     int res;
             int res;
             // 091
@@ -276,7 +277,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         int epollWait(long address, int numfds, long timeout, int epfd) throws IOException {
             // 137     struct epoll_event *events = jlong_to_ptr(address);
-            LinuxEPoll.epoll_event events = Word.pointer(address);
+            LinuxEPoll.epoll_event events = WordFactory.pointer(address);
             // 138     int res;
             int res;
             // 139
@@ -311,7 +312,7 @@ public final class LinuxNIOSubstitutions {
             // 156     fakebuf[0] = 1;
             fakebuf.write(0, 1);
             // 157     if (write(fd, fakebuf, 1) < 0) {
-            if (Unistd.write(fd, fakebuf, Word.unsigned(1)).lessThan(0)) {
+            if (Unistd.write(fd, fakebuf, WordFactory.unsigned(1)).lessThan(0)) {
                 // 158         JNU_ThrowIOExceptionWithLastError(env,"write to interrupt fd failed");
                 throw new IOException("write to interrupt fd failed");
             }
@@ -416,7 +417,7 @@ public final class LinuxNIOSubstitutions {
             // 056     RESTARTABLE(write(fd, buf, 1), res);
             do {
                 do {
-                    res = (int) Unistd.write(fd, buf, Word.unsigned(1)).rawValue();
+                    res = (int) Unistd.write(fd, buf, WordFactory.unsigned(1)).rawValue();
                 } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             } while (false);
             // 057     if (res < 0) {
@@ -437,7 +438,7 @@ public final class LinuxNIOSubstitutions {
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
                 do {
-                    res = (int) Unistd.read(fd, buf, Word.unsigned(1)).rawValue();
+                    res = (int) Unistd.read(fd, buf, WordFactory.unsigned(1)).rawValue();
                 } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             } while (false);
             // 067     if (res < 0) {

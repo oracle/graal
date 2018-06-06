@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,9 +26,7 @@ package com.oracle.svm.jni.hosted;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 
@@ -46,8 +46,8 @@ class JNIGraphKit extends HostedGraphKit {
         super(debug, providers, method);
     }
 
-    private InvokeNode createStaticInvoke(String name, ValueNode... args) {
-        return createInvoke(JNIGeneratedMethodSupport.class, name, InvokeKind.Static, getFrameState(), bci(), args);
+    private InvokeWithExceptionNode createStaticInvoke(String name, ValueNode... args) {
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIGeneratedMethodSupport.class, name, true), InvokeKind.Static, getFrameState(), bci(), bci(), args);
     }
 
     private InvokeWithExceptionNode createStaticInvokeRetainException(String name, ValueNode... args) {
@@ -57,7 +57,7 @@ class JNIGraphKit extends HostedGraphKit {
         InvokeWithExceptionNode invoke = startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, args);
         exceptionPart();
         ExceptionObjectNode exception = exceptionObject();
-        retainPendingException(exception);
+        setPendingException(exception);
         endInvokeWithException();
         return invoke;
     }
@@ -66,63 +66,61 @@ class JNIGraphKit extends HostedGraphKit {
         ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "nativeCallAddress", true);
         int invokeBci = bci();
         int exceptionEdgeBci = bci();
-        InvokeWithExceptionNode invoke = startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, linkage);
-        exceptionPart();
-        ExceptionObjectNode exception = exceptionObject();
-        append(new UnwindNode(exception));
-        endInvokeWithException();
-        return invoke;
+        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci, linkage);
     }
 
-    public InvokeNode nativeCallPrologue() {
+    public InvokeWithExceptionNode nativeCallPrologue() {
         return createStaticInvoke("nativeCallPrologue");
     }
 
-    public InvokeNode nativeCallEpilogue(ValueNode handleFrame) {
+    public InvokeWithExceptionNode nativeCallEpilogue(ValueNode handleFrame) {
         return createStaticInvoke("nativeCallEpilogue", handleFrame);
     }
 
-    public InvokeNode environment() {
+    public InvokeWithExceptionNode environment() {
         return createStaticInvoke("environment");
     }
 
-    public InvokeNode boxObjectInLocalHandle(ValueNode obj) {
+    public InvokeWithExceptionNode boxObjectInLocalHandle(ValueNode obj) {
         return createStaticInvoke("boxObjectInLocalHandle", obj);
     }
 
-    public InvokeNode unboxHandle(ValueNode handle) {
+    public InvokeWithExceptionNode unboxHandle(ValueNode handle) {
         return createStaticInvoke("unboxHandle", handle);
     }
 
-    public InvokeNode getStaticPrimitiveFieldsArray() {
+    public InvokeWithExceptionNode getFieldOffsetFromId(ValueNode fieldId) {
+        return createStaticInvoke("getFieldOffsetFromId", fieldId);
+    }
+
+    public InvokeWithExceptionNode getStaticPrimitiveFieldsArray() {
         return createStaticInvoke("getStaticPrimitiveFieldsArray");
     }
 
-    public InvokeNode getStaticObjectFieldsArray() {
+    public InvokeWithExceptionNode getStaticObjectFieldsArray() {
         return createStaticInvoke("getStaticObjectFieldsArray");
     }
 
-    public InvokeNode retainPendingException(ValueNode obj) {
-        return createStaticInvoke("retainPendingException", obj);
+    public InvokeWithExceptionNode setPendingException(ValueNode obj) {
+        return createStaticInvoke("setPendingException", obj);
+    }
+
+    public InvokeWithExceptionNode getAndClearPendingException() {
+        return createStaticInvoke("getAndClearPendingException");
     }
 
     public InvokeWithExceptionNode rethrowPendingException() {
         ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "rethrowPendingException", true);
         int invokeBci = bci();
         int exceptionEdgeBci = bci();
-        InvokeWithExceptionNode invoke = startInvokeWithException(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci);
-        exceptionPart();
-        ExceptionObjectNode exception = exceptionObject();
-        append(new UnwindNode(exception));
-        endInvokeWithException();
-        return invoke;
+        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, exceptionEdgeBci);
     }
 
-    public InvokeNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {
+    public InvokeWithExceptionNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {
         return createStaticInvoke("pinArrayAndGetAddress", array, isCopy);
     }
 
-    public InvokeNode unpinArrayByAddress(ValueNode address) {
+    public InvokeWithExceptionNode unpinArrayByAddress(ValueNode address) {
         return createStaticInvoke("unpinArrayByAddress", address);
     }
 

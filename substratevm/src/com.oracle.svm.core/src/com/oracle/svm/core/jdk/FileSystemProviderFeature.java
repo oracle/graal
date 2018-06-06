@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,7 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,7 +46,13 @@ public final class FileSystemProviderFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(FileSystemProviderSupport.class, new FileSystemProviderSupport());
-        addFileSystemProvider(FileSystems.getDefault().provider());
+        /*
+         * The first invocation of FileSystemProvider.installedProviders() causes the default
+         * provider to be initialized (if not already initialized) and loads any other installed
+         * providers as described by the {@link FileSystems} class.
+         */
+        List<FileSystemProvider> providers = FileSystemProvider.installedProviders();
+        providers.forEach(p -> addFileSystemProvider(p));
     }
 
     public static void addFileSystemProvider(FileSystemProvider fileSystemProvider) {

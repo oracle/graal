@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -75,8 +77,8 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
         context.eval("sl", "function test() {}");
 
-        Value test = context.lookup("sl", "test");
-        Value isOptimized = context.lookup("sl", "isOptimized");
+        Value test = context.getBindings("sl").getMember("test");
+        Value isOptimized = context.getBindings("sl").getMember("isOptimized");
         Assert.assertFalse(isOptimized.execute(test).asBoolean());
         for (int i = 0; i < value - 1; i++) {
             Assert.assertFalse(isOptimized.execute(test).asBoolean());
@@ -94,7 +96,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
     private static void installSLBuiltin(Context context, NodeFactory<? extends SLBuiltinNode> builtin) {
         context.eval("sl", "function installBuiltin(e) { return e(); }");
-        context.lookup("sl", "installBuiltin").execute(new ProxyExecutable() {
+        context.getBindings("sl").getMember("installBuiltin").execute(new ProxyExecutable() {
             @Override
             public Object execute(Value... t) {
                 SLContext.getCurrent().installBuiltin(builtin);

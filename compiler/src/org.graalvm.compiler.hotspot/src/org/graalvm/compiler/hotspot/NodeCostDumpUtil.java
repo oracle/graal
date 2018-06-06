@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package org.graalvm.compiler.hotspot;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -114,14 +115,9 @@ public class NodeCostDumpUtil {
         }
         System.err.printf("Loaded %s node classes...\n", nodeClasses.size());
         List<NodeClass<?>> nc = new ArrayList<>();
-        for (Class<?> nodeClass : nodeClasses) {
-            Field f;
+        for (Class<?> c : nodeClasses) {
             try {
-                f = nodeClass.getField("TYPE");
-                f.setAccessible(true);
-                Object val = f.get(null);
-                NodeClass<?> nodeType = (NodeClass<?>) val;
-                nc.add(nodeType);
+                nc.add(NodeClass.get(c));
             } catch (Throwable t) {
                 // Silently ignore problems here
             }

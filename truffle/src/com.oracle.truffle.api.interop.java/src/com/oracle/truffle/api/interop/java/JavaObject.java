@@ -29,24 +29,31 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 final class JavaObject implements TruffleObject {
 
-    static final JavaObject NULL = new JavaObject(null, null);
+    static final JavaObject NULL = new JavaObject(null, null, false);
 
     final Object obj;
     final Object languageContext;
+    private final boolean staticClass;
 
-    private JavaObject(Object obj, Object languageContext) {
+    private JavaObject(Object obj, Object languageContext, boolean staticClass) {
         this.obj = obj;
         this.languageContext = languageContext;
+        this.staticClass = staticClass;
     }
 
     static JavaObject forClass(Class<?> clazz, Object languageContext) {
         assert clazz != null;
-        return new JavaObject(clazz, languageContext);
+        return new JavaObject(clazz, languageContext, false);
+    }
+
+    static JavaObject forStaticClass(Class<?> clazz, Object languageContext) {
+        assert clazz != null;
+        return new JavaObject(clazz, languageContext, true);
     }
 
     static JavaObject forObject(Object object, Object languageContext) {
         assert object != null && !(object instanceof Class<?>);
-        return new JavaObject(object, languageContext);
+        return new JavaObject(object, languageContext, false);
     }
 
     static boolean isInstance(TruffleObject obj) {
@@ -89,15 +96,32 @@ final class JavaObject implements TruffleObject {
         return obj == null;
     }
 
+    boolean isStaticClass() {
+        return staticClass;
+    }
+
     Class<?> getObjectClass() {
         return obj == null ? null : obj.getClass();
     }
 
+    Class<?> asStaticClass() {
+        assert isStaticClass();
+        return (Class<?>) obj;
+    }
+
+    Class<?> asClass() {
+        assert isClass();
+        return (Class<?>) obj;
+    }
+
+    /**
+     * Gets the {@link Class} for member lookups.
+     */
     Class<?> getLookupClass() {
         if (obj == null) {
             return null;
-        } else if (obj instanceof Class) {
-            return (Class<?>) obj;
+        } else if (isStaticClass()) {
+            return asStaticClass();
         } else {
             return obj.getClass();
         }
@@ -118,8 +142,9 @@ final class JavaObject implements TruffleObject {
             return "null";
         }
         if (isClass()) {
-            return "JavaClass[" + getLookupClass().getTypeName() + "]";
+            return "JavaClass[" + asClass().getTypeName() + "]";
         }
-        return "JavaObject[" + obj + " (" + getLookupClass().getTypeName() + ")" + "]";
+        return "JavaObject[" + obj + " (" + getObjectClass().getTypeName() + ")" + "]";
     }
+
 }

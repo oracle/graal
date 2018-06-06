@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -53,7 +55,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
@@ -216,7 +217,6 @@ public class OptionProcessor extends AbstractProcessor {
         VariableElement field = (VariableElement) element;
         String fieldName = field.getSimpleName().toString();
 
-        Elements elements = processingEnv.getElementUtils();
         Types types = processingEnv.getTypeUtils();
 
         TypeMirror fieldType = field.asType();
@@ -224,7 +224,7 @@ public class OptionProcessor extends AbstractProcessor {
             error(element, elementAnnotation, "Option field must be of type " + OptionKey.class.getName());
             return false;
         }
-        TypeMirror optionKeyType = elements.getTypeElement(OptionKey.class.getName()).asType();
+        TypeMirror optionKeyType = ElementUtils.getTypeElement(processingEnv, OptionKey.class.getName()).asType();
         if (!types.isSubtype(fieldType, types.erasure(optionKeyType))) {
             error(element, elementAnnotation, "Option field type %s is not a subclass of %s", fieldType, optionKeyType);
             return false;
@@ -303,9 +303,9 @@ public class OptionProcessor extends AbstractProcessor {
 
         CodeTypeElement unit = generateDescriptors(context, element, info);
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-        DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
+        DeclaredType suppressedWarnings = (DeclaredType) context.getType(SuppressWarnings.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+        unit.accept(new FixWarningsVisitor(context.getEnvironment(), suppressedWarnings, overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {

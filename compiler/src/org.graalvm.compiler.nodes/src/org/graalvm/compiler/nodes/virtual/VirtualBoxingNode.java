@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -53,14 +55,19 @@ public class VirtualBoxingNode extends VirtualInstanceNode {
 
     @Override
     public VirtualBoxingNode duplicate() {
-        return new VirtualBoxingNode(type(), boxingKind);
+        VirtualBoxingNode node = new VirtualBoxingNode(type(), boxingKind);
+        node.setNodeSourcePosition(this.getNodeSourcePosition());
+        return node;
     }
 
     @Override
     public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
         assert entries.length == 1;
         assert locks == null;
-        return new BoxNode(entries[0], type(), boxingKind);
+
+        BoxNode node = new BoxNode(entries[0], type(), boxingKind);
+        node.setNodeSourcePosition(this.getNodeSourcePosition());
+        return node;
     }
 
     public ValueNode getBoxedValue(VirtualizerTool tool) {

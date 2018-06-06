@@ -28,6 +28,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 @Registration(id = ProfilerInstrument.ID, services = Profiler.class)
+@SuppressWarnings("deprecation")
 public class ProfilerInstrument extends TruffleInstrument {
     static final String ID = "profiler";
 

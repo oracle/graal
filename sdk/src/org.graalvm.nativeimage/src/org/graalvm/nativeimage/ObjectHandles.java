@@ -30,38 +30,49 @@ import org.graalvm.nativeimage.impl.ObjectHandlesSupport;
  * Manages a set of {@link ObjectHandles}. The handles returned by {@link #create} are bound to the
  * creating handle set, i.e., the handle can only be {@link #get accessed} and {@link #destroy
  * destroyed} using the exact same handle set used for creation.
+ *
+ * @since 1.0
  */
-public abstract class ObjectHandles {
+public interface ObjectHandles {
 
     /**
      * A set of handles that is kept alive globally.
+     *
+     * @since 1.0
      */
-    public static ObjectHandles getGlobal() {
+    static ObjectHandles getGlobal() {
         return ImageSingletons.lookup(ObjectHandlesSupport.class).getGlobalHandles();
     }
 
     /**
      * Creates a new set of handles. Objects are kept alive until the returned {@link ObjectHandles}
      * instance gets unreachable.
+     *
+     * @since 1.0
      */
-    public static ObjectHandles create() {
+    static ObjectHandles create() {
         return ImageSingletons.lookup(ObjectHandlesSupport.class).createHandles();
     }
 
     /**
      * Creates a handle to the specified object. The object is kept alive by the garbage collector
      * at least until {@link #destroy} is called for the returned handle. The object can be null.
+     *
+     * @since 1.0
      */
-    public abstract ObjectHandle create(Object object);
+    ObjectHandle create(Object object);
 
     /**
      * Extracts the object from a given handle.
+     *
+     * @since 1.0
      */
-    public abstract <T> T get(ObjectHandle handle);
+    <T> T get(ObjectHandle handle);
 
     /**
-     * Destroys the given global handle. After calling this method, the handle must not be used
-     * anymore.
+     * Destroys the given handle. After calling this method, the handle must not be used anymore.
+     *
+     * @since 1.0
      */
-    public abstract void destroy(ObjectHandle handle);
+    void destroy(ObjectHandle handle);
 }

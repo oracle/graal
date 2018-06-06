@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,8 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -104,6 +108,7 @@ public class GraalCompiler {
         public final LIRSuites lirSuites;
         public final T compilationResult;
         public final CompilationResultBuilderFactory factory;
+        public final boolean verifySourcePositions;
 
         /**
          * @param graph the graph to be compiled
@@ -120,7 +125,8 @@ public class GraalCompiler {
          * @param factory
          */
         public Request(StructuredGraph graph, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend, PhaseSuite<HighTierContext> graphBuilderSuite,
-                        OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory) {
+                        OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, Suites suites, LIRSuites lirSuites, T compilationResult, CompilationResultBuilderFactory factory,
+                        boolean verifySourcePositions) {
             this.graph = graph;
             this.installedCodeOwner = installedCodeOwner;
             this.providers = providers;
@@ -132,6 +138,7 @@ public class GraalCompiler {
             this.lirSuites = lirSuites;
             this.compilationResult = compilationResult;
             this.factory = factory;
+            this.verifySourcePositions = verifySourcePositions;
         }
 
         /**
@@ -154,8 +161,9 @@ public class GraalCompiler {
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     PhaseSuite<HighTierContext> graphBuilderSuite, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, Suites suites, LIRSuites lirSuites, T compilationResult,
-                    CompilationResultBuilderFactory factory) {
-        return compile(new Request<>(graph, installedCodeOwner, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory));
+                    CompilationResultBuilderFactory factory, boolean verifySourcePositions) {
+        return compile(new Request<>(graph, installedCodeOwner, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, compilationResult, factory,
+                        verifySourcePositions));
     }
 
     /**
@@ -171,6 +179,9 @@ public class GraalCompiler {
             try (DebugContext.Scope s0 = debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start(debug)) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
                 emitBackEnd(r.graph, null, r.installedCodeOwner, r.backend, r.compilationResult, r.factory, null, r.lirSuites);
+                if (r.verifySourcePositions) {
+                    assert r.graph.verifySourcePositions(true);
+                }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -188,8 +199,18 @@ public class GraalCompiler {
      *             {@code graph.method()} or {@code graph.name}
      */
     private static void checkForRequestedCrash(StructuredGraph graph) {
-        String methodPattern = GraalCompilerOptions.CrashAt.getValue(graph.getOptions());
-        if (methodPattern != null) {
+        String value = GraalCompilerOptions.CrashAt.getValue(graph.getOptions());
+        if (value != null) {
+            boolean bailout = false;
+            boolean permanentBailout = false;
+            String methodPattern = value;
+            if (value.endsWith(":Bailout")) {
+                methodPattern = value.substring(0, value.length() - ":Bailout".length());
+                bailout = true;
+            } else if (value.endsWith(":PermanentBailout")) {
+                methodPattern = value.substring(0, value.length() - ":PermanentBailout".length());
+                permanentBailout = true;
+            }
             String crashLabel = null;
             if (graph.name != null && graph.name.contains(methodPattern)) {
                 crashLabel = graph.name;
@@ -204,6 +225,12 @@ public class GraalCompiler {
                 }
             }
             if (crashLabel != null) {
+                if (permanentBailout) {
+                    throw new PermanentBailoutException("Forced crash after compiling " + crashLabel);
+                }
+                if (bailout) {
+                    throw new RetryableBailoutException("Forced crash after compiling " + crashLabel);
+                }
                 throw new RuntimeException("Forced crash after compiling " + crashLabel);
             }
         }

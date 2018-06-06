@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -81,6 +83,15 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      */
     default boolean inlineOnly() {
         return isSignaturePolymorphic();
+    }
+
+    /**
+     * Determines if this plugin only decorates the method is it associated with. That is, it
+     * inserts nodes prior to the invocation (e.g. some kind of marker nodes) but still expects the
+     * parser to process the invocation further.
+     */
+    default boolean isDecorator() {
+        return false;
     }
 
     /**
@@ -167,7 +178,8 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      * @return {@code true} if this plugin handled the invocation of {@code targetMethod}
      *         {@code false} if the graph builder should process the invoke further (e.g., by
      *         inlining it or creating an {@link Invoke} node). A plugin that does not handle an
-     *         invocation must not modify the graph being constructed.
+     *         invocation must not modify the graph being constructed unless it is a
+     *         {@linkplain InvocationPlugin#isDecorator() decorator}.
      */
     default boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
         if (isSignaturePolymorphic()) {

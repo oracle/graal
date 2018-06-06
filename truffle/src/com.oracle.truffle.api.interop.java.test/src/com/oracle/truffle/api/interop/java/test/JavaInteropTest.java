@@ -73,12 +73,17 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
 
+/**
+ * Important: This test was migrated to {@link ValueHostInteropTest} and
+ * {@link LanguageSPIHostInteropTest}. Please maintain new tests there.
+ */
+@SuppressWarnings("deprecation")
 public class JavaInteropTest {
 
     public class Data {
@@ -126,7 +131,8 @@ public class JavaInteropTest {
     public void testRecursiveListMarshalling() throws UnknownIdentifierException, UnsupportedMessageException {
         List<GregorianCalendar> testList = Arrays.asList(new GregorianCalendar());
         TruffleObject list = JavaInterop.asTruffleObject(testList);
-        assertTrue(JavaInterop.isJavaObject(ForeignAccess.sendRead(Message.READ.createNode(), list, 0)));
+        Object firstElement = ForeignAccess.sendRead(Message.READ.createNode(), list, 0);
+        assertTrue(JavaInterop.isJavaObject(firstElement));
     }
 
     @Test
@@ -360,14 +366,14 @@ public class JavaInteropTest {
         assertEquals(10, value);
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void noNonStaticPropertiesForAClass() {
         TruffleObject pojo = JavaInterop.asTruffleObject(PublicPOJO.class);
         TruffleObject result = sendKeys(pojo);
-        List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
-        assertEquals("One static field and one method", 2, propertyNames.size());
-        assertEquals("One field y", "y", propertyNames.get(0));
-        assertEquals("One method to read y", "readY", propertyNames.get(1));
+        List<Object> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        assertEquals("3 members: static field 'y', static method 'readY', plus 'class'", 3, propertyNames.size());
+        assertThat(propertyNames, CoreMatchers.hasItems("y", "readY", "class"));
     }
 
     @Test
@@ -1566,7 +1572,20 @@ public class JavaInteropTest {
                     boolean writable = (receiver.wBits & (1 << d)) > 0;
                     boolean invocable = (receiver.iBits & (1 << d)) > 0;
                     boolean internal = (receiver.nBits & (1 << d)) > 0;
-                    return KeyInfo.newBuilder().setReadable(readable).setWritable(writable).setInvocable(invocable).setInternal(internal).build();
+                    int info = KeyInfo.NONE;
+                    if (readable) {
+                        info |= KeyInfo.READABLE;
+                    }
+                    if (writable) {
+                        info |= KeyInfo.MODIFIABLE;
+                    }
+                    if (invocable) {
+                        info |= KeyInfo.INVOCABLE;
+                    }
+                    if (internal) {
+                        info |= KeyInfo.INTERNAL;
+                    }
+                    return info;
                 }
             }
         }

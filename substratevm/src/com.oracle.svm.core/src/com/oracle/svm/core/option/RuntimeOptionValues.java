@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -86,10 +88,10 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         if (descriptor.isPresent()) {
             OptionDescriptor desc = descriptor.get();
             Class<?> valueType = value.getClass();
-            if (desc.getType().isAssignableFrom(valueType)) {
+            if (desc.getOptionValueType().isAssignableFrom(valueType)) {
                 RuntimeOptionValues.singleton().update(desc.getOptionKey(), value);
             } else {
-                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + desc.getType().getSimpleName() + ", provided " + valueType);
+                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", provided " + valueType);
             }
         }
     }
@@ -121,7 +123,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static <T> org.graalvm.options.OptionKey<T> asGraalVMOptionKey(OptionDescriptor descriptor) {
-        Class<T> clazz = (Class<T>) descriptor.getType();
+        Class<T> clazz = (Class<T>) descriptor.getOptionValueType();
         OptionType<T> type;
         if (clazz.isEnum()) {
             type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(c.getSimpleName(), null, s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));

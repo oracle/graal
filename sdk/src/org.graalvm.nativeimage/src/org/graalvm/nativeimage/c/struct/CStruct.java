@@ -42,6 +42,8 @@ import org.graalvm.word.PointerBase;
  * <p>
  * The annotated interface, or an outer class that contains the interface, must be annotated with
  * {@link CContext}.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -50,16 +52,22 @@ public @interface CStruct {
     /**
      * Specifies the name of the imported C struct type. If no name is provided, the type name is
      * used as the struct name.
+     *
+     * @since 1.0
      */
     String value() default "";
 
     /**
      * If marked as incomplete, we will not try to determine the size of the struct.
+     *
+     * @since 1.0
      */
     boolean isIncomplete() default false;
 
     /**
      * Add the C "struct" keyword to the name specified in {@link #value()}.
+     *
+     * @since 1.0
      */
     boolean addStructKeyword() default false;
 }

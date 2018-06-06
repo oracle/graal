@@ -25,7 +25,7 @@
 
 /*
  @ApiInfo(
- group="Stable"
+ group="Truffle"
  )
  */
 
@@ -33,9 +33,9 @@
  * The instrumentation API provides a way to introspect and inject behavior into interpreters
  * written using the Truffle framework.
  *
- * To adopt instrumentation support for a guest language implementation you need to annotate syntax
- * nodes of your language with {@link com.oracle.truffle.api.instrumentation.Instrumentable}. For
- * details please refer to {@link com.oracle.truffle.api.instrumentation.Instrumentable}.
+ * To adopt instrumentation support for a guest language implementation you need to subclass syntax
+ * nodes of your language with {@link com.oracle.truffle.api.instrumentation.InstrumentableNode}.
+ * For details please refer to {@link com.oracle.truffle.api.instrumentation.InstrumentableNode}.
  *
  * To use the instrumentation framework implementors must implement the
  * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument} interface. Please refer to
@@ -47,8 +47,6 @@
  * {@link com.oracle.truffle.api.TruffleLanguage.Env#lookup(Class)}.
  * {@link com.oracle.truffle.api.instrumentation.SourceSectionFilter} created using guest languages
  * may be used to implement guest language features that require meta-programming capabilities.
- *
- * Instruments can be enabled/disabled using PolyglotEngine.
  *
  * @see com.oracle.truffle.api.instrumentation.TruffleInstrument
  * @see com.oracle.truffle.api.instrumentation.Instrumentable

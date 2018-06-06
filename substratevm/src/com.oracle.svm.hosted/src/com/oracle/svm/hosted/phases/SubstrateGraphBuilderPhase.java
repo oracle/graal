@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,10 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -36,12 +41,14 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
@@ -71,13 +78,13 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new SubstrateBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        return new SubstrateBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, false);
     }
 
     public static class SubstrateBytecodeParser extends SharedBytecodeParser {
         public SubstrateBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
         }
 
         @Override
@@ -128,6 +135,21 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
             } finally {
                 curDeoptimizeOnException = false;
             }
+        }
+
+        /**
+         * {@link Fold} and {@link NodeIntrinsic} can be deferred during parsing/decoding. Only by
+         * the end of {@linkplain SnippetTemplate#instantiate Snippet instantiation} do they need to
+         * have been processed.
+         *
+         * This is how SVM handles snippets. They are parsed with plugins disabled and then encoded
+         * and stored in the image. When the snippet is needed at runtime the graph is decoded and
+         * the plugins are run during the decoding process. If they aren't handled at this point
+         * then they will never be handled.
+         */
+        @Override
+        public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
+            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
         }
 
         public InvokeWithExceptionNode handleInvokeWithException(CallTargetNode callTarget, JavaKind resultType) {

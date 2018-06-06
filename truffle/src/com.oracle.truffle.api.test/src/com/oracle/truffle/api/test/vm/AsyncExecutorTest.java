@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,16 +40,16 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings("deprecation")
 public class AsyncExecutorTest {
 
     @Test
     public void testSynchronousLanguageAccess() {
         PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         Source s = Source.newBuilder("").mimeType("application/x-test-async").name("").build();
-        List<Value> values = new ArrayList<>();
+        List<PolyglotEngine.Value> values = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             values.add(engine.eval(s));
         }
@@ -61,7 +63,7 @@ public class AsyncExecutorTest {
         ExecutorService service = Executors.newFixedThreadPool(10);
         PolyglotEngine engine = PolyglotEngine.newBuilder().executor(service).build();
         Source s = Source.newBuilder("").mimeType("application/x-test-async").name("").build();
-        List<Value> values = new ArrayList<>();
+        List<PolyglotEngine.Value> values = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             values.add(engine.eval(s));
         }
@@ -113,11 +115,6 @@ public class AsyncExecutorTest {
                     return getContextReference().get().operationWithSideEffects();
                 }
             });
-        }
-
-        @Override
-        protected Object getLanguageGlobal(AsyncContext context) {
-            return null;
         }
 
         @Override

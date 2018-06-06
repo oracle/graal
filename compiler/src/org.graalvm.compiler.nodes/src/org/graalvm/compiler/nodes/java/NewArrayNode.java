@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
@@ -118,6 +121,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     }
 
     @Override
+    @SuppressWarnings("try")
     public void simplify(SimplifierTool tool) {
         if (hasNoUsages()) {
             NodeView view = NodeView.from(tool);
@@ -132,10 +136,12 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
             // Should be areFrameStatesAtSideEffects but currently SVM will complain about
             // RuntimeConstraint
             if (graph().getGuardsStage().allowsFloatingGuards()) {
-                LogicNode lengthNegativeCondition = CompareNode.createCompareNode(graph(), CanonicalCondition.LT, length(), ConstantNode.forInt(0, graph()), tool.getConstantReflection(), view);
-                // we do not have a non-deopting path for that at the moment so action=None.
-                FixedGuardNode guard = graph().add(new FixedGuardNode(lengthNegativeCondition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.None, true));
-                graph().replaceFixedWithFixed(this, guard);
+                try (DebugCloseable context = this.withNodeSourcePosition()) {
+                    LogicNode lengthNegativeCondition = CompareNode.createCompareNode(graph(), CanonicalCondition.LT, length(), ConstantNode.forInt(0, graph()), tool.getConstantReflection(), view);
+                    // we do not have a non-deopting path for that at the moment so action=None.
+                    FixedGuardNode guard = graph().add(new FixedGuardNode(lengthNegativeCondition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.None, true));
+                    graph().replaceFixedWithFixed(this, guard);
+                }
             }
         }
     }

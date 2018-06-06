@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -57,6 +60,9 @@ public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
         return new ArrayCopyTypeFlow(bb, this, methodFlows);
     }
 
+    private TypeState lastSrc;
+    private TypeState lastDst;
+
     @Override
     public void onObservedUpdate(BigBang bb) {
         assert this.isClone();
@@ -69,6 +75,52 @@ public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
         TypeState srcArrayState = srcArrayFlow.getState();
         TypeState dstArrayState = dstArrayFlow.getState();
 
+        /*
+         * The handling in processStates() has quadratic complexity because source and destination
+         * types states are iterated in nested loops. That was visible in profiling runs of large
+         * applications. So we optimize it as much as possible: We compute the delta of added source
+         * and destination types, to avoid re-processing the same elements over and over.
+         */
+        if (lastSrc == null || lastDst == null || PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions())) {
+            /*
+             * No previous state available, process the full type states. We also need to do that
+             * when using the allocation site context, because TypeState.forSubtraction does not
+             * work for that yet.
+             */
+            processStates(bb, srcArrayState, dstArrayState);
+
+        } else {
+            TypeState addedSrcState = TypeState.forSubtraction(bb, srcArrayState, lastSrc);
+            TypeState addedDstState = TypeState.forSubtraction(bb, dstArrayState, lastDst);
+            int addedSrcSize = addedSrcState.objectsCount();
+            int addedDstSize = addedDstState.objectsCount();
+
+            if (addedSrcSize == 0 && addedDstSize == 0) {
+                /* Source and destination did not change. There is nothing to do. */
+            } else if (addedSrcSize == 0) {
+                processStates(bb, srcArrayState, addedDstState);
+            } else if (addedDstSize == 0) {
+                processStates(bb, addedSrcState, dstArrayState);
+
+            } else if ((long) srcArrayState.objectsCount() * addedDstSize + (long) addedSrcSize * dstArrayState.objectsCount() < (long) srcArrayState.objectsCount() * dstArrayState.objectsCount()) {
+                /*
+                 * We process some elements twice. But overall, we estimate to process fewer total
+                 * elements. It is only an estimate because we look at the size of the type state,
+                 * which can contain AnalysisObjects that are immediately filtered out in the nested
+                 * loops of processStates().
+                 */
+                processStates(bb, srcArrayState, addedDstState);
+                processStates(bb, addedSrcState, dstArrayState);
+            } else {
+                processStates(bb, srcArrayState, dstArrayState);
+            }
+        }
+
+        lastSrc = srcArrayState;
+        lastDst = dstArrayState;
+    }
+
+    private static void processStates(BigBang bb, TypeState srcArrayState, TypeState dstArrayState) {
         /*
          * The source and destination array can have reference types which, although must be
          * compatible, can be different.

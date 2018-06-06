@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.CallTarget;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
@@ -59,6 +61,10 @@ public final class StandardTags {
      * The StatemenTag uses the {@link Tag.Identifier identifier} <code>"STATEMENT"</code>. A node
      * tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if
      * its root node provides a source section.
+     * <p>
+     * If the a node tagged with {@link StatementTag statement} returns a non <code>null</code>
+     * value then it must be an interop value. There are assertions in place verifying this when
+     * Java assertions are enabled (-ea).
      *
      * @since 0.12
      */
@@ -83,6 +89,10 @@ public final class StandardTags {
      * The CallTag uses the {@link Tag.Identifier identifier} <code>"CALL"</code>. A node tagged
      * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
      * root node provides a source section.
+     * <p>
+     * If the a node tagged with {@link CallTarget call} returns a non <code>null</code> value then
+     * it must be an interop value. There are assertions in place verifying this when Java
+     * assertions are enabled (-ea).
      *
      * @since 0.12
      */
@@ -107,6 +117,10 @@ public final class StandardTags {
      * The RootTag uses the {@link Tag.Identifier identifier} <code>"ROOT"</code>. A node tagged
      * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
      * root node provides a source section.
+     * <p>
+     * If the a node tagged with {@link RootTag root} returns a non <code>null</code> value then it
+     * must be an interop value. There are assertions in place verifying this when Java assertions
+     * are enabled (-ea).
      *
      * @since 0.12
      */
@@ -137,7 +151,11 @@ public final class StandardTags {
      *
      * The ExpressionTag uses the {@link Tag.Identifier identifier} <code>"EXPRESSION"</code>. A
      * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source
-     * section}, if its root node provides a source section.
+     * section}, if its root node provides a source section. *
+     * <p>
+     * If the a node tagged with {@link RootTag root} returns a non <code>null</code> value then it
+     * must be an interop value. There are assertions in place verifying this when Java assertions
+     * are enabled (-ea).
      *
      * @since 0.33
      */
@@ -150,4 +168,30 @@ public final class StandardTags {
 
     }
 
+    /**
+     * Marks program locations to be considered as try blocks, that are followed by catch. To
+     * determine which exceptions are caught by {@link InstrumentableNode} tagged with this tag, the
+     * node might provide a {@link InstrumentableNode#getNodeObject() node object} that has
+     * <code>catches</code> function, which takes a {@link TruffleException#getExceptionObject()}
+     * and returns a boolean return value indicating whether the try block catches the exception, or
+     * not. When this block catches all exceptions, no special node object or catches function needs
+     * to be provided.
+     *
+     * @since 1.0
+     */
+    @Tag.Identifier("TRY_BLOCK")
+    public static final class TryBlockTag extends Tag {
+
+        /**
+         * Name of the <code>catches</code> function.
+         *
+         * @since 1.0
+         */
+        public static final String CATCHES = "catches";
+
+        private TryBlockTag() {
+            /* No instances */
+        }
+
+    }
 }

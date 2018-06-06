@@ -30,17 +30,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.debug.DebugException;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.SourceLoadInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
 /**
  * The Truffle engine execution context.
@@ -54,7 +55,7 @@ public final class TruffleExecutionContext {
     private final PrintWriter err;
     private final List<Listener> listeners = Collections.synchronizedList(new ArrayList<>(3));
     private final long id = LAST_ID.incrementAndGet();
-    private final Semaphore runPermission = new Semaphore(1);
+    private final boolean[] runPermission = new boolean[]{false};
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
@@ -68,7 +69,6 @@ public final class TruffleExecutionContext {
         this.name = name;
         this.env = env;
         this.err = err;
-        runPermission.drainPermits();
     }
 
     public static TruffleExecutionContext create(String name, TruffleInstrument.Env env, PrintWriter err) {
@@ -89,10 +89,13 @@ public final class TruffleExecutionContext {
 
     public void doRunIfWaitingForDebugger() {
         fireContextCreated();
-        runPermission.release();
+        synchronized (runPermission) {
+            runPermission[0] = true;
+            runPermission.notifyAll();
+        }
     }
 
-    public ScriptsHandler getScriptsHandler() {
+    public ScriptsHandler acquireScriptsHandler() {
         if (sch == null) {
             InstrumentInfo instrumentInfo = getEnv().getInstruments().get(SourceLoadInstrument.ID);
             getEnv().lookup(instrumentInfo, Enabler.class).enable();
@@ -127,7 +130,11 @@ public final class TruffleExecutionContext {
     }
 
     public void waitForRunPermission() throws InterruptedException {
-        runPermission.acquire();
+        synchronized (runPermission) {
+            while (!runPermission[0]) {
+                runPermission.wait();
+            }
+        }
     }
 
     synchronized RemoteObjectsHandler getRemoteObjectsHandler() {
@@ -137,11 +144,19 @@ public final class TruffleExecutionContext {
         return roh;
     }
 
+    public RemoteObject createAndRegister(DebugValue value) {
+        RemoteObject ro = new RemoteObject(value, getErr());
+        if (ro.getId() != null) {
+            getRemoteObjectsHandler().register(ro);
+        }
+        return ro;
+    }
+
     void setSuspendThreadExecutor(SuspendedThreadExecutor suspendThreadExecutor) {
         this.suspendThreadExecutor = suspendThreadExecutor;
     }
 
-    <T> T executeInSuspendThread(SuspendThreadExecutable<T> executable) throws NoSuspendedThreadException, GuestLanguageException, CommandProcessException {
+    <T> T executeInSuspendThread(SuspendThreadExecutable<T> executable) throws NoSuspendedThreadException, CommandProcessException {
         CompletableFuture<T> cf = new CompletableFuture<>();
         suspendThreadExecutor.execute(new CancellableRunnable() {
             @Override
@@ -153,6 +168,12 @@ public final class TruffleExecutionContext {
                 } catch (ThreadDeath td) {
                     cf.completeExceptionally(td);
                     throw td;
+                } catch (DebugException dex) {
+                    if (!dex.isInternalError()) {
+                        cf.complete(executable.processException(dex));
+                    } else {
+                        cf.completeExceptionally(dex);
+                    }
                 } catch (Throwable t) {
                     cf.completeExceptionally(t);
                 }
@@ -168,9 +189,6 @@ public final class TruffleExecutionContext {
             params = cf.get();
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
-            if (cause instanceof TruffleException && !((TruffleException) cause).isInternalError()) {
-                throw new GuestLanguageException((TruffleException) cause);
-            }
             if (cause instanceof CommandProcessException) {
                 throw (CommandProcessException) cause;
             }
@@ -215,6 +233,16 @@ public final class TruffleExecutionContext {
         LAST_ID.set(0);
     }
 
+    public void reset() {
+        this.suspendedInfo = null;
+        this.suspendThreadExecutor = null;
+        this.roh = null;
+        assert sch == null;
+        synchronized (runPermission) {
+            runPermission[0] = false;
+        }
+    }
+
     public interface Listener {
 
         void contextCreated(long id, String name);
@@ -247,18 +275,11 @@ public final class TruffleExecutionContext {
         static void raiseResuming() throws NoSuspendedThreadException {
             throw new NoSuspendedThreadException("<Resuming...>");
         }
-    }
 
-    static final class GuestLanguageException extends Exception {
-
-        private static final long serialVersionUID = 7386388514508637851L;
-
-        private GuestLanguageException(TruffleException truffleException) {
-            super((Throwable) truffleException);
-        }
-
-        TruffleException getTruffleException() {
-            return (TruffleException) getCause();
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
         }
     }
+
 }

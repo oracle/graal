@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -116,6 +118,7 @@ public class MarkUnsafeAccessTest extends GraalCompilerTest {
 
     @Test
     public void testCompiled() throws IOException {
+        Assume.assumeFalse("Crashes on AArch64 (GR-8351)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
         ResolvedJavaMethod getMethod = asResolvedJavaMethod(getMethod(ByteBuffer.class, "get", new Class<?>[]{}));
         ResolvedJavaType mbbClass = getMetaAccess().lookupJavaType(MappedByteBuffer.class);
         ResolvedJavaMethod getMethodImpl = mbbClass.findUniqueConcreteMethod(getMethod).getResult();

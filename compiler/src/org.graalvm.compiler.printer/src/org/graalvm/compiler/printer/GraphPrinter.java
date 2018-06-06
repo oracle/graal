@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,15 +39,13 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.JavaConstantFormatter;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.compiler.serviceprovider.JDK9Method;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.services.Services;
 
 interface GraphPrinter extends Closeable, JavaConstantFormatter {
 
@@ -72,16 +72,6 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
     void close();
 
     /**
-     * A JVMCI package dynamically exported to trusted modules.
-     */
-    String JVMCI_RUNTIME_PACKAGE = JVMCI.class.getPackage().getName();
-
-    /**
-     * {@code jdk.vm.ci} module.
-     */
-    Object JVMCI_MODULE = JDK9Method.JAVA_SPECIFICATION_VERSION < 9 ? null : JDK9Method.getModule(Services.class);
-
-    /**
      * Classes whose {@link #toString()} method does not run any untrusted code.
      */
     List<Class<?>> TRUSTED_CLASSES = Arrays.asList(
@@ -105,17 +95,8 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
         if (TRUSTED_CLASSES.contains(c)) {
             return true;
         }
-        if (JDK9Method.JAVA_SPECIFICATION_VERSION < 9) {
-            if (c.getClassLoader() == Services.class.getClassLoader()) {
-                // Loaded by the JVMCI class loader
-                return true;
-            }
-        } else {
-            Object module = JDK9Method.getModule(c);
-            if (JVMCI_MODULE == module || JDK9Method.isOpenTo(JVMCI_MODULE, JVMCI_RUNTIME_PACKAGE, module)) {
-                // Can access non-statically-exported package in JVMCI
-                return true;
-            }
+        if (GraalServices.isToStringTrusted(c)) {
+            return true;
         }
         if (c.getClassLoader() == GraphPrinter.class.getClassLoader()) {
             return true;
@@ -132,7 +113,14 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
         SnippetReflectionProvider snippetReflection = getSnippetReflectionProvider();
         if (snippetReflection != null) {
             if (constant.getJavaKind() == JavaKind.Object) {
-                Object obj = snippetReflection.asObject(Object.class, constant);
+                Object obj = null;
+                /*
+                 * Ignore any exceptions on unknown JavaConstant implementations in debugging code.
+                 */
+                try {
+                    obj = snippetReflection.asObject(Object.class, constant);
+                } catch (Throwable ex) {
+                }
                 if (obj != null) {
                     return GraphPrinter.constantToString(obj);
                 }

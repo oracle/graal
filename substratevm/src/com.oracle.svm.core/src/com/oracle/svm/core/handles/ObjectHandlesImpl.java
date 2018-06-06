@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -57,7 +59,7 @@ import sun.misc.Unsafe;
  * array is created. This array has twice the capacity of the previous array, which plays a
  * significant role in how indexing is implemented.
  */
-public final class ObjectHandlesImpl extends ObjectHandles {
+public final class ObjectHandlesImpl implements ObjectHandles {
     /**
      * Internal weak reference. Other code can create its own {@link WeakReference} objects and
      * handles to them, which we should distinguish from explicit weak references. Therefore, we

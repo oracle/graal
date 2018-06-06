@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -82,6 +84,9 @@ final class ForeignAccessFactoryGenerator {
         w.append("package ").append(packageName).append(";\n\n");
         appendImports(w);
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
+        if (ElementUtils.isDeprecated(element)) {
+            Utils.suppressDeprecationWarnings(w, "");
+        }
         Utils.appendVisibilityModifier(w, element);
         w.append("final class ").append(simpleClassName);
         w.append(" implements StandardFactory, Factory {\n");

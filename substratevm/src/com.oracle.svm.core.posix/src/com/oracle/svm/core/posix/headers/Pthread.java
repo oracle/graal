@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,11 +27,10 @@ package com.oracle.svm.core.posix.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
@@ -442,14 +443,6 @@ public class Pthread {
     /** Set the scheduling priority for TARGET_THREAD. */
     @CFunction
     public static native int pthread_setschedprio(pthread_t target_thread, int prio);
-
-    /** Get thread name visible in the kernel and its interfaces. */
-    @CFunction
-    public static native int pthread_getname_np(pthread_t target_thread, CCharPointer buf, UnsignedWord buflen);
-
-    /** Set thread name visible in the kernel and its interfaces. */
-    @CFunction
-    public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
 
     /** Determine level of concurrency. */
     @CFunction

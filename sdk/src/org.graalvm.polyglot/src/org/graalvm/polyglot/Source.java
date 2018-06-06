@@ -235,30 +235,12 @@ public final class Source {
     }
 
     /**
-     * @since 1.0
-     * @deprecated use {@link #getCharacters()}
-     */
-    @Deprecated
-    public CharSequence getCode() {
-        return getImpl().getCode(impl);
-    }
-
-    /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @since 1.0
      */
     public CharSequence getCharacters(int lineNumber) {
-        return getImpl().getCode(impl, lineNumber);
-    }
-
-    /**
-     * @since 1.0
-     * @deprecated use {@link #getCharacters(int)}
-     */
-    @Deprecated
-    public CharSequence getCode(int lineNumber) {
         return getImpl().getCode(impl, lineNumber);
     }
 
@@ -382,7 +364,8 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new source builder from language and file. To detect the language of a file use
+     * {@link #findLanguage(File)}.
      *
      * @since 1.0
      */
@@ -391,7 +374,7 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new source builder from language and URL.
      *
      * @since 1.0
      */
@@ -400,7 +383,7 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new source builder from language and reader.
      *
      * @since 1.0
      */
@@ -409,7 +392,8 @@ public final class Source {
     }
 
     /**
-     *
+     * Shortcut for creating a source object from a language and char sequence. The given characters
+     * must not mutate after they were accessed for the first time.
      *
      * @since 1.0
      */
@@ -442,7 +426,7 @@ public final class Source {
     private static final Source EMPTY = new Source(null, null);
 
     /**
-     *
+     * Represents a builder to build {@link Source} objects.
      *
      * @since 1.0
      */
@@ -454,6 +438,7 @@ public final class Source {
         private String name;
         private boolean interactive;
         private boolean internal;
+        private boolean cached = true;
         private CharSequence content;
 
         Builder(String language, Object origin) {
@@ -538,6 +523,25 @@ public final class Source {
         }
 
         /**
+         * Enables or disables code caching for this source. By default code caching is enabled. If
+         * <code>true</code> then the source does not require parsing every time this source is
+         * {@link Context#eval(Source) evaluated}. If <code>false</code> then the source requires
+         * parsing every time the source is evaluated but does not remember any state. Disabling
+         * caching may be useful if the source is known to only be evaluated once.
+         * <p>
+         * If a source instance is no longer referenced by the client then all code caches will be
+         * freed automatically. Also, if the underlying context or engine is no longer referenced
+         * then cached code for evaluated sources will be freed automatically.
+         *
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 1.0
+         */
+        public Builder cached(@SuppressWarnings("hiding") boolean cached) {
+            this.cached = cached;
+            return this;
+        }
+
+        /**
          * Assigns new {@link URI} to the {@link #build() to-be-created} {@link Source}. Each source
          * provides {@link Source#getURI()} as a persistent identification of its location. A
          * default value for the method is deduced from the location or content, but one can change
@@ -561,7 +565,7 @@ public final class Source {
          * @since 1.0
          */
         public Source build() throws IOException {
-            return getImpl().build(language, origin, uri, name, content, interactive, internal);
+            return getImpl().build(language, origin, uri, name, content, interactive, internal, cached);
         }
 
         /**

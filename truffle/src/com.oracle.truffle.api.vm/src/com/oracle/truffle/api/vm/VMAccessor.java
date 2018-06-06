@@ -29,8 +29,8 @@ import java.util.Collections;
 
 import org.graalvm.options.OptionDescriptors;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 
@@ -39,6 +39,7 @@ class VMAccessor extends Accessor {
     @CompilationFinal static VMAccessor SPI;
 
     @CompilationFinal static Nodes NODES;
+    @CompilationFinal static SourceSupport SOURCE;
     @CompilationFinal static InstrumentSupport INSTRUMENT;
     @CompilationFinal static JavaInteropSupport JAVAINTEROP;
     @CompilationFinal static LanguageSupport LANGUAGE;
@@ -53,8 +54,13 @@ class VMAccessor extends Accessor {
         return SPI.instrumentSupport();
     }
 
-    Collection<ClassLoader> allLoaders() {
-        return TruffleOptions.AOT ? Collections.emptyList() : loaders();
+    static Collection<ClassLoader> allLoaders() {
+        return TruffleOptions.AOT ? Collections.emptyList() : SPI.loaders();
+    }
+
+    @Override
+    protected void initializeNativeImageTruffleLocator() {
+        super.initializeNativeImageTruffleLocator();
     }
 
     @Override
@@ -74,6 +80,7 @@ class VMAccessor extends Accessor {
         INSTRUMENT = SPI.instrumentSupport();
         JAVAINTEROP = SPI.javaInteropSupport();
         LANGUAGE = SPI.languageSupport();
+        SOURCE = SPI.sourceSupport();
     }
 
     @Override

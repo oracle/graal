@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,8 +27,12 @@ package com.oracle.svm.core.posix.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.SignedWord;
 
 //Checkstyle: stop
 
@@ -71,4 +77,21 @@ public class Stdio {
 
     @CFunction
     public static native int remove(CCharPointer path);
+
+    public static class NoTransitions {
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native FILE fopen(CCharPointer filename, CCharPointer modes);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int fclose(FILE stream);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int fgetc(FILE f);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int ungetc(int c, FILE f);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native SignedWord getline(CCharPointerPointer lineptr, WordPointer n, FILE f);
+    }
 }

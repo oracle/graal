@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -33,6 +35,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -47,6 +50,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -161,7 +165,7 @@ public class ContextPreInitializationTest {
     }
 
     @Test
-    public void testArgumentsSingleLanguPreInitialization() throws Exception {
+    public void testArgumentsSingleLanguagePreInitialization2() throws Exception {
         setPatchable(FIRST);
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -425,7 +429,7 @@ public class ContextPreInitializationTest {
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         final CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
-        assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
+        assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
         System.getProperties().remove(SYS_OPTION1_KEY);
@@ -452,7 +456,7 @@ public class ContextPreInitializationTest {
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         final CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
-        assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
+        assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
         System.getProperties().remove(SYS_OPTION1_KEY);
@@ -789,6 +793,65 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.disposeThreadCount);       // Close initializes thread
     }
 
+    @Test
+    public void testLanguageHome() throws Exception {
+        setPatchable(FIRST);
+        String expectedPath = Paths.get(String.format("/compile-graalvm/languages/%s", FIRST)).toString();
+        System.setProperty(String.format("%s.home", FIRST), expectedPath);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        Assert.assertEquals(expectedPath, firstLangCtx.languageHome);
+
+        expectedPath = Paths.get(String.format("/run-graalvm/languages/%s", FIRST)).toString();
+        System.setProperty(String.format("%s.home", FIRST), expectedPath);
+        try (Context ctx = Context.newBuilder().build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            Assert.assertEquals(expectedPath, firstLangCtx.languageHome);
+        }
+    }
+
+    @Test
+    public void testTemporaryEngine() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        assertEquals(0, firstLangCtx.disposeContextCount);
+        assertEquals(0, firstLangCtx.initializeThreadCount);
+        assertEquals(0, firstLangCtx.disposeThreadCount);
+        Engine.create();
+        final Context ctx = Context.create();
+        Value res = ctx.eval(Source.create(FIRST, "test"));
+        assertEquals("test", res.asString());
+        contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(1, firstLangCtx.patchContextCount);
+        assertEquals(0, firstLangCtx.disposeContextCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(0, firstLangCtx.disposeThreadCount);
+        ctx.close();
+        contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(1, firstLangCtx.patchContextCount);
+        assertEquals(1, firstLangCtx.disposeContextCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
+    }
+
     private static void resetSystemPropertiesOptions() {
         System.getProperties().remove("polyglot.engine.PreinitializeContexts");
         System.getProperties().remove(SYS_OPTION1_KEY);
@@ -858,6 +921,7 @@ public class ContextPreInitializationTest {
         int disposeThreadOrder = -1;
         final Map<OptionKey<Boolean>, Boolean> optionValues;
         final List<String> arguments;
+        String languageHome;
 
         CountingContext(final String id, final TruffleLanguage.Env env) {
             this.id = id;
@@ -894,6 +958,7 @@ public class ContextPreInitializationTest {
             final CountingContext ctx = new CountingContext(languageId, env);
             ctx.createContextCount++;
             ctx.createContextOrder = nextId();
+            ctx.languageHome = getLanguageHome();
             Collections.addAll(ctx.arguments, env.getApplicationArguments());
             emittedContexts.add(ctx);
             return ctx;
@@ -911,6 +976,7 @@ public class ContextPreInitializationTest {
             assertNotNull(getContextReference().get());
             context.patchContextCount++;
             context.patchContextOrder = nextId();
+            context.languageHome = getLanguageHome();
             context.environment(newEnv);
             context.arguments.clear();
             Collections.addAll(context.arguments, newEnv.getApplicationArguments());
@@ -933,11 +999,6 @@ public class ContextPreInitializationTest {
         protected void disposeThread(CountingContext context, Thread thread) {
             context.disposeThreadCount++;
             context.disposeThreadOrder = nextId();
-        }
-
-        @Override
-        protected Object getLanguageGlobal(CountingContext context) {
-            return null;
         }
 
         @Override

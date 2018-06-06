@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,18 +29,20 @@ package com.oracle.svm.core;
  */
 public enum OS {
 
-    DARWIN("Darwin"),
-    LINUX("Linux"),
-    SOLARIS("Solaris"),
-    WINDOWS("Windows"),;
+    DARWIN("Darwin", false),
+    LINUX("Linux", true),
+    SOLARIS("Solaris", true),
+    WINDOWS("Windows", false);
 
     /**
      * The identifier of this OS as part of a class name.
      */
     public final String className;
+    public final boolean hasProcFS;
 
-    OS(String className) {
+    OS(String className, boolean hasProcFS) {
         this.className = className;
+        this.hasProcFS = hasProcFS;
     }
 
     /**

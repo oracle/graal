@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,6 +30,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -47,24 +51,25 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.Set;
+import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.genscavenge.HeapPolicyOptions;
-import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.LocalizationSupport;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixExecutableName;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
@@ -77,38 +82,24 @@ import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
 import com.oracle.svm.jni.hosted.JNIFeature;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-class NativeImage {
+public class NativeImage {
 
-    private static String getPlatform() {
-        if (Platform.includedIn(Platform.DARWIN_AMD64.class)) {
-            return "darwin-amd64";
-        }
-        if (Platform.includedIn(Platform.LINUX_AMD64.class)) {
-            return "linux-amd64";
-        }
-        throw VMError.shouldNotReachHere();
-    }
+    static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     static final String platform = getPlatform();
-    static final String svmVersion = System.getProperty("substratevm.version");
 
-    private static String getGraalVMVersion() {
-        String tmpGraalVmVersion = System.getProperty("org.graalvm.version");
-        if (tmpGraalVmVersion == null) {
-            tmpGraalVmVersion = System.getProperty("graalvm.version");
-        }
-        if (tmpGraalVmVersion == null) {
-            throw new RuntimeException("Could not find GraalVM version in graalvm.version or org.graalvm.version");
-        }
-        return tmpGraalVmVersion;
+    private static String getPlatform() {
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String graalvmVersion = getGraalVMVersion();
+    static final String svmVersion = System.getProperty("substratevm.version", "dev");
+    static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
 
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-            return reader.lines().collect(Collectors.joining("\n"));
+            String resourceString = reader.lines().collect(Collectors.joining("\n"));
+            return resourceString.replace("%pathsep%", File.pathSeparator);
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
@@ -127,12 +118,12 @@ class NativeImage {
         abstract boolean consume(Queue<String> args);
     }
 
+    final APIOptionHandler apiOptionHandler;
+
     static final String oH = "-H:";
     static final String oR = "-R:";
 
-    /* Boolean arguments */
-    static final String enableRuntimeAssertions = "+" + SubstrateOptions.RuntimeAssertions.getName();
-    static final String enablePrintFlags = "+" + SubstrateOptions.PrintFlags.getName();
+    static final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";
@@ -144,7 +135,6 @@ class NativeImage {
     static final String oHKind = oH(NativeImageOptions.Kind);
     static final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     static final String oHOptimize = oH(SubstrateOptions.Optimize);
-    static final String oHDebug = oH + "Debug=";
 
     /* List arguments */
     static final String oHFeatures = oH(FeatureHandler.Options.Features);
@@ -159,18 +149,12 @@ class NativeImage {
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
-
-    private static <T> String oR(OptionKey<T> option) {
-        return oR + option.getName() + "=";
-    }
-
-    static final String oRYoungGenerationSize = oR(HeapPolicyOptions.YoungGenerationSize);
-    static final String oROldGenerationSize = oR(HeapPolicyOptions.OldGenerationSize);
+    static final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
+    static final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
 
-    private static final String defaultProperties = "default.properties";
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
     private final LinkedHashSet<String> imageBuilderArgs = new LinkedHashSet<>();
@@ -178,39 +162,84 @@ class NativeImage {
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> imageBuilderJavaArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> customJavaArgs = new LinkedHashSet<>();
     private final LinkedHashSet<String> customImageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
     private final ArrayList<OptionHandler<? extends NativeImage>> optionHandlers = new ArrayList<>();
 
-    private final Path executablePath;
     private final Path workDir;
     private final Path rootDir;
-    private final Path homeDir;
-    private final Map<String, String> userConfigProperties;
+    private final Map<String, String> userConfigProperties = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean dryRun = false;
 
     final Registry optionRegistry;
-    private final MacroOption truffleOption;
+    private LinkedHashSet<EnabledOption> enabledLanguages;
 
-    protected NativeImage() {
-        workDir = Paths.get(".").toAbsolutePath().normalize();
-        assert workDir != null;
-        executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
-        assert executablePath != null;
-        Path binDir = executablePath.getParent();
-        Path rootDirCandidate = binDir.getParent();
-        if (rootDirCandidate.endsWith(platform)) {
-            rootDirCandidate = rootDirCandidate.getParent();
+    public interface PathsProvider {
+        Path getWorkDir();
+
+        Path getRootDir();
+    }
+
+    private static class DefaultPathsProvider implements PathsProvider {
+        private final Path workDir;
+        private final Path rootDir;
+
+        DefaultPathsProvider() {
+            workDir = Paths.get(".").toAbsolutePath().normalize();
+            if (IS_AOT) {
+                Path executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
+                assert executablePath != null;
+                Path binDir = executablePath.getParent();
+                Path rootDirCandidate = binDir.getParent();
+                if (rootDirCandidate.endsWith(platform)) {
+                    rootDirCandidate = rootDirCandidate.getParent();
+                }
+                if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
+                    rootDirCandidate = rootDirCandidate.getParent().getParent();
+                }
+                rootDir = rootDirCandidate;
+            } else {
+                String rootDirProperty = "native-image.root";
+                String rootDirString = System.getProperty(rootDirProperty);
+                if (rootDirString == null) {
+                    throw showError("Running on JVM requires setting " + rootDirProperty + " system property");
+                }
+                rootDir = Paths.get(rootDirString);
+            }
         }
-        rootDir = rootDirCandidate;
-        assert rootDir != null;
-        String homeDirString = System.getProperty("user.home");
-        homeDir = Paths.get(homeDirString);
-        assert homeDir != null;
-        userConfigProperties = loadProperties(getUserConfigDir().resolve(defaultProperties));
+
+        @Override
+        public Path getWorkDir() {
+            return workDir;
+        }
+
+        @Override
+        public Path getRootDir() {
+            return rootDir;
+        }
+    }
+
+    protected NativeImage(PathsProvider pathsProvider) {
+        workDir = pathsProvider.getWorkDir();
+        try {
+            rootDir = canonicalize(pathsProvider.getRootDir());
+        } catch (NativeImageError e) {
+            throw showError("PathsProvider provides invalid rootDir " + pathsProvider.getRootDir() + "\n" + e.getMessage());
+        }
+
+        String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
+        String configFile = System.getenv(configFileEnvVarKey);
+        if (configFile != null && !configFile.isEmpty()) {
+            try {
+                userConfigProperties.putAll(loadProperties(canonicalize(Paths.get(configFile))));
+            } catch (NativeImageError | Exception e) {
+                showError("Invalid environment variable " + configFileEnvVarKey, e);
+            }
+        }
 
         // Default javaArgs needed for image building
         addImageBuilderJavaArgs("-server", "-d64", "-noverify");
@@ -230,10 +259,8 @@ class NativeImage {
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
 
         addImageBuilderJavaArgs("-Dsubstratevm.version=" + svmVersion);
-        if (graalvmVersion != null) {
-            addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
-            addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-        }
+        addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
+        addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
 
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
 
@@ -241,24 +268,21 @@ class NativeImage {
         addImageBuilderArg(oHPath + workDir);
 
         /* Discover supported MacroOptions */
-        optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
-        truffleOption = optionRegistry.addBuiltin("truffle");
+        optionRegistry = new MacroOption.Registry(canonicalize(rootDir));
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
+        apiOptionHandler = new APIOptionHandler(this);
+        registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
+    }
+
+    void addMacroOptionRoot(Path configDir) {
+        optionRegistry.addMacroOptionRoot(canonicalize(configDir));
     }
 
     protected void registerOptionHandler(OptionHandler<? extends NativeImage> handler) {
         optionHandlers.add(handler);
-    }
-
-    protected Path getRootDir() {
-        return rootDir;
-    }
-
-    protected Path getHomeDir() {
-        return homeDir;
     }
 
     protected Map<String, String> getUserConfigProperties() {
@@ -266,7 +290,12 @@ class NativeImage {
     }
 
     protected Path getUserConfigDir() {
-        return getHomeDir().resolve(".native-image");
+        String envVarKey = "NATIVE_IMAGE_USER_HOME";
+        String userHomeStr = System.getenv(envVarKey);
+        if (userHomeStr == null || userHomeStr.isEmpty()) {
+            return Paths.get(System.getProperty("user.home"), ".native-image");
+        }
+        return Paths.get(userHomeStr);
     }
 
     protected static void ensureDirectoryExists(Path dir) {
@@ -284,16 +313,16 @@ class NativeImage {
     }
 
     private void prepareImageBuildArgs() {
-        Path svmDir = getRootDir().resolve("lib/svm");
+        Path svmDir = rootDir.resolve(Paths.get("lib", "svm"));
         getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
-        getJars(svmDir).forEach(this::addImageClasspath);
+        getJars(svmDir).forEach(this::addImageProvidedClasspath);
         Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
         addImageBuilderArg(oHCLibraryPath + clibrariesDir);
         if (Files.isDirectory(svmDir.resolve("inspect"))) {
             addImageBuilderArg(oHInspectServerContentPath + svmDir.resolve("inspect"));
         }
 
-        Path jvmciDir = getRootDir().resolve("lib/jvmci");
+        Path jvmciDir = rootDir.resolve(Paths.get("lib", "jvmci"));
         getJars(jvmciDir).forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
         try {
             addImageBuilderJavaArgs(Files.list(jvmciDir)
@@ -305,15 +334,13 @@ class NativeImage {
             showError("Unable to use jar-files from directory " + jvmciDir, e);
         }
 
-        Path bootDir = getRootDir().resolve("lib/boot");
+        Path bootDir = rootDir.resolve(Paths.get("lib", "boot"));
         getJars(bootDir).forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
     }
 
-    private void applyOptionArgs() {
-        optionRegistry.applyOptions(this);
-
+    private void completeOptionArgs() {
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
-        LinkedHashSet<EnabledOption> enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
+        enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
         for (EnabledOption enabledOption : optionRegistry.getEnabledOptions()) {
             if (!MacroOptionKind.Language.equals(enabledOption.getOption().kind) && enabledOption.getProperty("LauncherClass") != null) {
                 /* Also identify non-Language MacroOptions as Language if LauncherClass is set */
@@ -321,41 +348,54 @@ class NativeImage {
             }
         }
 
-        if (!enabledLanguages.isEmpty() || optionRegistry.getEnabledOption(truffleOption) != null) {
-            enableTruffle();
-        }
-
         /* Create a polyglot image if we have more than one LauncherClass. */
-        Set<String> launcherClasses = enabledLanguages.stream()
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).collect(Collectors.toSet());
-        if (launcherClasses.size() > 1) {
-            /* Use polyglot as image name */
-            replaceArg(imageBuilderArgs, oHName, "polyglot");
-            /* and the PolyglotLauncher as main class */
-            replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
-            /* Collect the launcherClasses for enabledLanguages. */
-            addImageBuilderJavaArgs("-Dcom.oracle.graalvm.launcher.launcherclasses=" + launcherClasses.stream().collect(Collectors.joining(",")));
+        if (getLauncherClasses().limit(2).count() > 1) {
+            /* Use polyglot as image name if not defined on command line */
+            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
+                replaceArg(imageBuilderArgs, oHName, "polyglot");
+            }
+            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHClass))) {
+                /* and the PolyglotLauncher as main class if not defined on command line */
+                replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
+            }
         }
 
         /* Provide more memory for image building if we have more than one language. */
         if (enabledLanguages.size() > 1) {
-            long baseMemRequirements = parseSize("4g");
-            long memRequirements = baseMemRequirements + enabledLanguages.size() * parseSize("1g");
+            long baseMemRequirements = SubstrateOptionsParser.parseLong("4g");
+            long memRequirements = baseMemRequirements + enabledLanguages.size() * SubstrateOptionsParser.parseLong("1g");
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
+
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
-    private void enableTruffle() {
-        Path truffleDir = getRootDir().resolve("lib/truffle");
-        addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
-        addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
-        addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
+    private Stream<String> getLanguageLauncherClasses() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language)
+                        .map(lang -> lang.getProperty("LauncherClass"))
+                        .filter(Objects::nonNull).distinct();
+    }
 
-        Path graalvmDir = getRootDir().resolve("lib/graalvm");
-        getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
-        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
+    private Stream<String> getLauncherClasses() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
+                        .map(lang -> lang.getProperty("LauncherClass"))
+                        .filter(Objects::nonNull).distinct();
+    }
+
+    private Stream<String> getRelativeLauncherClassPath() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
+                        .map(lang -> lang.getProperty("LauncherClassPath"))
+                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
+    }
+
+    private Stream<Path> getAbsoluteLauncherClassPath() {
+        return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> rootDir.resolve(p));
+    }
+
+    protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
+        BiFunction<String, String, String> takeLast = (a, b) -> b;
+        return consolidateArgs(args, argPrefix, Function.identity(), Function.identity(), () -> null, takeLast);
     }
 
     protected static boolean replaceArg(Collection<String> args, String argPrefix, String argSuffix) {
@@ -368,15 +408,18 @@ class NativeImage {
                     Function<String, T> fromSuffix, Function<T, String> toSuffix,
                     Supplier<T> init, BiFunction<T, T, T> combiner) {
         T consolidatedValue = null;
+        boolean needsConsolidate = false;
         for (String arg : args) {
             if (arg.startsWith(argPrefix)) {
                 if (consolidatedValue == null) {
                     consolidatedValue = init.get();
+                } else {
+                    needsConsolidate = true;
                 }
                 consolidatedValue = combiner.apply(consolidatedValue, fromSuffix.apply(arg.substring(argPrefix.length())));
             }
         }
-        if (consolidatedValue != null) {
+        if (consolidatedValue != null && needsConsolidate) {
             replaceArg(args, argPrefix, toSuffix.apply(consolidatedValue));
         }
         return consolidatedValue;
@@ -405,28 +448,28 @@ class NativeImage {
     private void completeImageBuildArgs(String[] args) {
         List<String> leftoverArgs = processNativeImageArgs(args);
 
-        applyOptionArgs();
+        completeOptionArgs();
 
         /* If no customImageClasspath was specified put "." on classpath */
         if (customImageClasspath.isEmpty()) {
-            addCustomImageClasspath(Paths.get("."));
+            addImageProvidedClasspath(Paths.get("."));
+        } else {
+            imageClasspath.addAll(customImageClasspath);
         }
-        imageClasspath.addAll(customImageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        consolidateArgs(imageBuilderJavaArgs, oXmx, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
-        consolidateArgs(imageBuilderJavaArgs, oXms, NativeImage::parseSize, String::valueOf, () -> parseSize(getXmsValue()), Math::min);
+        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
+        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
+        if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
+            replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
+        }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
-        /* Append user provided imageBuilderArgs to imageBuilderArgs */
-        imageBuilderArgs.addAll(customImageBuilderArgs);
 
         /* Perform option consolidation of imageBuilderArgs */
         Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
         consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
-        consolidateArgs(imageBuilderArgs, oRYoungGenerationSize, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
-        consolidateArgs(imageBuilderArgs, oROldGenerationSize, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
@@ -439,10 +482,10 @@ class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
-        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), Function.identity(), () -> null, takeLast);
+        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
-        String mainClass = consolidateArgs(imageBuilderArgs, oHClass, Function.identity(), Function.identity(), () -> null, takeLast);
-        String imageKind = consolidateArgs(imageBuilderArgs, oHKind, Function.identity(), Function.identity(), () -> null, takeLast);
+        String mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
+        String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
         boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
@@ -456,16 +499,13 @@ class NativeImage {
                     extraImageArgs.add(leftoverArg);
                 }
             }
-            if (!leftoverArgs.isEmpty()) {
-                showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unhandled leftover args: [", "]")));
-            }
 
             /* Main-class from customImageBuilderArgs counts as explicitMainClass */
             boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
 
             if (extraImageArgs.isEmpty()) {
                 if (mainClass == null || mainClass.isEmpty()) {
-                    showError("Please specify class containing the main entry point method. (see -help)");
+                    showError("Please specify class containing the main entry point method. (see --help)");
                 }
             } else {
                 /* extraImageArgs main-class overrules previous main-class specification */
@@ -483,7 +523,7 @@ class NativeImage {
                         replaceArg(imageBuilderArgs, oHName, mainClass.toLowerCase());
                     } else if (imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
                         /* Although very unlikely, report missing image-name if needed. */
-                        showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                        throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
                     }
                 }
             } else {
@@ -492,9 +532,52 @@ class NativeImage {
             }
         }
 
+        boolean isGraalVMLauncher = false;
+        if ("org.graalvm.launcher.PolyglotLauncher".equals(mainClass) && consolidateSingleValueArg(imageBuilderJavaArgs, oDPolyglotLauncherClasses) == null) {
+            /* Collect the launcherClasses for enabledLanguages. */
+            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLanguageLauncherClasses().collect(Collectors.joining(",")));
+            isGraalVMLauncher = true;
+        }
+
+        if (!isGraalVMLauncher && mainClass != null) {
+            isGraalVMLauncher = getLauncherClasses().anyMatch(mainClass::equals);
+        }
+
+        if (isGraalVMLauncher) {
+            showVerboseMessage(verbose || dryRun, "Automatically appending LauncherClassPath");
+            getAbsoluteLauncherClassPath().forEach(p -> {
+                if (!Files.isRegularFile(p)) {
+                    showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
+                } else {
+                    addImageClasspath(p);
+                }
+            });
+            addImageClasspath(rootDir.resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
+        }
+
+        if (!leftoverArgs.isEmpty()) {
+            String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
+            showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
+        }
+
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
         finalImageClasspath.addAll(imageBuilderClasspath);
+        finalImageClasspath.addAll(imageProvidedClasspath);
         finalImageClasspath.addAll(imageClasspath);
+
+        if (isGraalVMLauncher && collectListArgs(imageBuilderJavaArgs, oDLauncherClasspath, File.pathSeparator).isEmpty()) {
+            StringJoiner sj = new StringJoiner(File.pathSeparator, oDLauncherClasspath, "");
+            for (Path p : imageClasspath) {
+                Path canonical = canonicalize(p);
+                if (!canonical.startsWith(rootDir)) {
+                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", canonical, rootDir));
+                    continue;
+                }
+                sj.add(Paths.get("jre").resolve(rootDir.relativize(canonical)).toString());
+            }
+            addImageBuilderJavaArgs(sj.toString());
+        }
+
         buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
@@ -510,6 +593,13 @@ class NativeImage {
         command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+        if (IS_AOT && OS.getCurrent().hasProcFS) {
+            /*
+             * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
+             * (e.g. using CTRL-C in Gradle daemon mode)
+             */
+            command.addAll(Arrays.asList("-watchpid", "" + PosixUtils.getpid()));
+        }
         command.addAll(imageArgs);
 
         showVerboseMessage(verbose || dryRun, "Executing [");
@@ -521,42 +611,58 @@ class NativeImage {
                 Process p = pb.inheritIO().start();
                 int exitStatus = p.waitFor();
                 if (exitStatus != 0) {
-                    showError("Image building with exit status " + exitStatus);
+                    throw showError("Image building with exit status " + exitStatus);
                 }
             } catch (IOException | InterruptedException e) {
-                showError(e.getMessage());
+                throw showError(e.getMessage());
             }
         }
     }
 
     public static void main(String[] args) {
-        NativeImage nativeImage = new NativeImageServer();
-
         try {
-            if (args.length == 0) {
-                nativeImage.showMessage(usageText);
-                System.exit(0);
-            }
-
-            nativeImage.prepareImageBuildArgs();
-            nativeImage.completeImageBuildArgs(args);
+            build(new DefaultPathsProvider(), args);
         } catch (NativeImageError e) {
+            boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
             NativeImage.show(System.err::println, "Error: " + e.getMessage());
             Throwable cause = e.getCause();
             while (cause != null) {
                 NativeImage.show(System.err::println, "Caused by: " + cause);
                 cause = cause.getCause();
             }
+            if (verbose) {
+                e.printStackTrace();
+            }
             System.exit(1);
         }
     }
 
-    private Path canonicalize(Path path) {
+    public static void build(PathsProvider pathsProvider, String[] args) {
+        NativeImage nativeImage = IS_AOT ? new NativeImageServer(pathsProvider) : new NativeImage(pathsProvider);
+        if (args.length == 0) {
+            nativeImage.showMessage(usageText);
+        } else {
+            nativeImage.prepareImageBuildArgs();
+            nativeImage.completeImageBuildArgs(args);
+        }
+    }
+
+    Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : workDir.resolve(path);
+        boolean hasWildcard = absolutePath.endsWith("*");
+        if (hasWildcard) {
+            absolutePath = absolutePath.getParent();
+        }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + path.toString() + " is not readable");
+            }
+            if (hasWildcard) {
+                if (!Files.isDirectory(realPath)) {
+                    showError("Path entry with wildcard " + path.toString() + " is not a directory");
+                }
+                realPath = realPath.resolve("*");
             }
             return realPath;
         } catch (IOException e) {
@@ -565,8 +671,9 @@ class NativeImage {
     }
 
     Path getJavaHome() {
-        Path javaHomePath = getRootDir().getParent();
-        if (Files.isExecutable(javaHomePath.resolve(Paths.get("bin/java")))) {
+        Path javaHomePath = rootDir.getParent();
+        Path binJava = Paths.get("bin", "java");
+        if (Files.isExecutable(javaHomePath.resolve(binJava))) {
             return javaHomePath;
         }
 
@@ -575,8 +682,8 @@ class NativeImage {
             throw showError("Environment variable JAVA_HOME is not set");
         }
         javaHomePath = Paths.get(javaHome);
-        if (!Files.isExecutable(javaHomePath.resolve(Paths.get("bin/java")))) {
-            throw showError("Environment variable JAVA_HOME does not refer to a directory with a bin/java executable");
+        if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
+            throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
         }
         return javaHomePath;
     }
@@ -598,11 +705,20 @@ class NativeImage {
     }
 
     void addImageBuilderArg(String arg) {
+        imageBuilderArgs.remove(arg);
         imageBuilderArgs.add(arg);
     }
 
     void addImageClasspath(Path classpath) {
         imageClasspath.add(canonicalize(classpath));
+    }
+
+    /**
+     * For adding classpath elements that are not normally on the classpath in the Java version: svm
+     * jars, truffle jars etc.
+     */
+    void addImageProvidedClasspath(Path classpath) {
+        imageProvidedClasspath.add(canonicalize(classpath));
     }
 
     void addCustomImageClasspath(Path classpath) {
@@ -614,6 +730,7 @@ class NativeImage {
     }
 
     void addCustomImageBuilderArgs(String arg) {
+        addImageBuilderArg(arg);
         customImageBuilderArgs.add(arg);
     }
 
@@ -643,6 +760,10 @@ class NativeImage {
         show(System.out::println, message);
     }
 
+    void showNewline() {
+        System.out.println();
+    }
+
     void showMessagePart(String message) {
         show(s -> {
             System.out.print(s);
@@ -655,7 +776,7 @@ class NativeImage {
     }
 
     @SuppressWarnings("serial")
-    static final class NativeImageError extends Error {
+    public static final class NativeImageError extends Error {
         private NativeImageError(String message) {
             super(message);
         }
@@ -681,9 +802,8 @@ class NativeImage {
         try {
             return Files.list(dir).filter(f -> f.getFileName().toString().toLowerCase().endsWith(".jar")).collect(Collectors.toList());
         } catch (IOException e) {
-            showError("Unable to use jar-files from directory " + dir, e);
+            throw showError("Unable to use jar-files from directory " + dir, e);
         }
-        return Collections.emptyList();
     }
 
     private List<String> processNativeImageArgs(String[] args) {
@@ -693,7 +813,24 @@ class NativeImage {
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
             arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
         }
-        arguments.addAll(Arrays.asList(args));
+        for (String arg : args) {
+
+            switch (arg) {
+                case "--language:all":
+                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
+                        arguments.add("--language:" + lang);
+                    }
+                    break;
+                case "--tool:all":
+                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
+                        arguments.add("--tool:" + lang);
+                    }
+                    break;
+                default:
+                    arguments.add(arg);
+                    break;
+            }
+        }
         while (!arguments.isEmpty()) {
             boolean consumed = false;
             for (int index = optionHandlers.size() - 1; index >= 0; --index) {
@@ -716,35 +853,19 @@ class NativeImage {
         return "1g";
     }
 
-    protected String getXmxValue(int maxInstances) {
-        UnsignedWord memMax = PhysicalMemory.size().unsignedDivide(10).multiply(8).unsignedDivide(maxInstances);
-        String maxXmx = "14g";
-        if (memMax.aboveOrEqual(Word.unsigned(parseSize(maxXmx)))) {
-            return maxXmx;
-        }
-        return Long.toUnsignedString(memMax.rawValue());
+    private static long getPhysicalMemorySize() {
+        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
+        long totalPhysicalMemorySize = ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();
+        return totalPhysicalMemorySize;
     }
 
-    /* Taken from org.graalvm.compiler.options.OptionsParser.parseLong(String) */
-    private static long parseSize(String v) {
-        String valueString = v.toLowerCase();
-        long scale = 1;
-        if (valueString.endsWith("k")) {
-            scale = 1024L;
-        } else if (valueString.endsWith("m")) {
-            scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
-            scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
-            scale = 1024L * 1024L * 1024L * 1024L;
+    protected String getXmxValue(int maxInstances) {
+        Long memMax = Long.divideUnsigned(Long.divideUnsigned(getPhysicalMemorySize(), 10) * 8, maxInstances);
+        String maxXmx = "14g";
+        if (Long.compareUnsigned(memMax, SubstrateOptionsParser.parseLong(maxXmx)) >= 0) {
+            return maxXmx;
         }
-
-        if (scale != 1) {
-            /* Remove trailing scale character. */
-            valueString = valueString.substring(0, valueString.length() - 1);
-        }
-
-        return Long.parseLong(valueString) * scale;
+        return Long.toUnsignedString(memMax);
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
@@ -764,9 +885,20 @@ class NativeImage {
         return Collections.unmodifiableMap(map);
     }
 
+    private static String deletedFileSuffix = ".deleted";
+
+    protected static boolean isDeletedPath(Path toDelete) {
+        return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
+    }
+
     protected void deleteAllFiles(Path toDelete) {
         try {
-            Files.walk(toDelete).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            Path deletedPath = toDelete;
+            if (!isDeletedPath(deletedPath)) {
+                deletedPath = toDelete.resolveSibling(toDelete.getFileName() + deletedFileSuffix);
+                Files.move(toDelete, deletedPath);
+            }
+            Files.walk(deletedPath).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         } catch (IOException e) {
             if (isVerbose()) {
                 showMessage("Could not recursively delete path: " + toDelete);

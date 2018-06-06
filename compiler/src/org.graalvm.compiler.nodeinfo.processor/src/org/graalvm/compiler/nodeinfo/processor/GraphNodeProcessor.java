@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -31,13 +33,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
@@ -45,11 +46,16 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
-import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.processor.AbstractProcessor;
 
+/**
+ * Processor for {@value #NODE_INFO_CLASS_NAME} annotation.
+ */
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedAnnotationTypes({"org.graalvm.compiler.nodeinfo.NodeInfo"})
 public class GraphNodeProcessor extends AbstractProcessor {
+    private static final String NODE_INFO_CLASS_NAME = "org.graalvm.compiler.nodeinfo.NodeInfo";
+
     @Override
     public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latest();
@@ -106,10 +112,6 @@ public class GraphNodeProcessor extends AbstractProcessor {
         message(kind, element, "Exception thrown during processing: %s", buf.toString());
     }
 
-    ProcessingEnvironment getProcessingEnv() {
-        return processingEnv;
-    }
-
     boolean isNodeType(Element element) {
         if (element.getKind() != ElementKind.CLASS) {
             return false;
@@ -134,17 +136,17 @@ public class GraphNodeProcessor extends AbstractProcessor {
 
         GraphNodeVerifier verifier = new GraphNodeVerifier(this);
 
-        for (Element element : roundEnv.getElementsAnnotatedWith(NodeInfo.class)) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(NODE_INFO_CLASS_NAME))) {
             scope = element;
             try {
                 if (!isNodeType(element)) {
-                    errorMessage(element, "%s can only be applied to Node subclasses", NodeInfo.class.getSimpleName());
+                    errorMessage(element, "%s can only be applied to Node subclasses", getSimpleName(NODE_INFO_CLASS_NAME));
                     continue;
                 }
 
-                NodeInfo nodeInfo = element.getAnnotation(NodeInfo.class);
+                AnnotationMirror nodeInfo = getAnnotation(element, getType(NODE_INFO_CLASS_NAME));
                 if (nodeInfo == null) {
-                    errorMessage(element, "Cannot get %s annotation from annotated element", NodeInfo.class.getSimpleName());
+                    errorMessage(element, "Cannot get %s annotation from annotated element", getSimpleName(NODE_INFO_CLASS_NAME));
                     continue;
                 }
 
@@ -154,7 +156,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
                 if (!modifiers.contains(Modifier.FINAL) && !modifiers.contains(Modifier.ABSTRACT)) {
                     // TODO(thomaswue): Reenable this check.
                     // errorMessage(element, "%s annotated class must be either final or abstract",
-                    // NodeInfo.class.getSimpleName());
+                    // getSimpleName(NODE_INFO_CLASS_NAME));
                     // continue;
                 }
                 boolean found = false;
@@ -167,7 +169,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
                     }
                 }
                 if (!found) {
-                    errorMessage(element, "%s annotated class must have a field named TYPE", NodeInfo.class.getSimpleName());
+                    errorMessage(element, "%s annotated class must have a field named TYPE", getSimpleName(NODE_INFO_CLASS_NAME));
                 }
 
                 if (!typeElement.equals(verifier.Node) && !modifiers.contains(Modifier.ABSTRACT)) {

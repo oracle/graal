@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -90,13 +92,13 @@ public final class UninterruptibleAnnotationChecker {
                         Uninterruptible implAnnotation = impl.getAnnotation(Uninterruptible.class);
                         if (implAnnotation != null) {
                             if (methodAnnotation.callerMustBe() != implAnnotation.callerMustBe()) {
-                                postUninterruptibleWarning("callerMustBe: " + method.format("%h.%n(%p)") + " != " + impl.format("%h.%n(%p)"));
+                                postUninterruptibleWarning("callerMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
                             }
                             if (methodAnnotation.calleeMustBe() != implAnnotation.calleeMustBe()) {
-                                postUninterruptibleWarning("calleeMustBe: " + method.format("%h.%n(%p)") + " != " + impl.format("%h.%n(%p)"));
+                                postUninterruptibleWarning("calleeMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
                             }
                         } else {
-                            postUninterruptibleWarning("method " + method.format("%h.%n(%p)") + " is annotated but " + impl.format("%h.%n(%p)" + " is not"));
+                            postUninterruptibleWarning("method " + method.format("%H.%n(%p)") + " is annotated but " + impl.format("%H.%n(%p)" + " is not"));
                         }
                     }
                 }
@@ -132,7 +134,7 @@ public final class UninterruptibleAnnotationChecker {
                                     printDotGraphEdge(caller, callee);
                                 }
                                 if (!isNotInterruptible(callee)) {
-                                    postUninterruptibleWarning("Unannotated callee: " + callee.format("%h.%n(%p)") + " called by annotated caller " + caller.format("%h.%n(%p)"));
+                                    postUninterruptibleWarning("Unannotated callee: " + callee.format("%H.%n(%p)") + " called by annotated caller " + caller.format("%H.%n(%p)"));
                                 }
                             }
                         }
@@ -171,7 +173,7 @@ public final class UninterruptibleAnnotationChecker {
                     for (Invoke invoke : graph.getInvokes()) {
                         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
                         if (isCallerMustBe(callee)) {
-                            postUninterruptibleWarning("Unannotated caller: " + caller.format("%h.%n(%p)") + " calls annotated callee " + callee.format("%h.%n(%p)"));
+                            postUninterruptibleWarning("Unannotated caller: " + caller.format("%H.%n(%p)") + " calls annotated callee " + callee.format("%H.%n(%p)"));
                         }
                     }
                 }
@@ -194,7 +196,7 @@ public final class UninterruptibleAnnotationChecker {
                 if (methodAnnotation != null && graph != null) {
                     for (Node node : graph.getNodes()) {
                         if (node instanceof AbstractNewObjectNode) {
-                            postUninterruptibleWarning("Annotated method: " + method.format("%h.%n(%p)") + " allocates.");
+                            postUninterruptibleWarning("Annotated method: " + method.format("%H.%n(%p)") + " allocates.");
                         }
                     }
                 }

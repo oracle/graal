@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,7 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -47,11 +50,21 @@ public class StringCompareToTest extends MethodSubstitutionTest {
                     "ABCDEFGH\uFF21\uFF21", "\uFF22", "\uFF21\uFF22", "\uFF21A",
                     "\uFF21\uFF21",
                     "\u043c\u0430\u043c\u0430\u0020\u043c\u044b\u043b\u0430\u0020\u0440\u0430\u043c\u0443\u002c\u0020\u0440\u0430\u043c\u0430\u0020\u0441\u044a\u0435\u043b\u0430\u0020\u043c\u0430\u043c\u0443",
-                    "crazy dog jumps over laszy fox"
+                    "crazy dog jumps over laszy fox",
+                    "some-string\0xff",
+                    "XMM-XMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM+YMM-YMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-YMM-YMM+ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM+",
+                    "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-XMM-XMM+YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM+ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM+",
+                    ""
     };
 
     public StringCompareToTest() {
-        Assume.assumeTrue(getTarget().arch instanceof AMD64);
+        Assume.assumeTrue((getTarget().arch instanceof AMD64) || (getTarget().arch instanceof AArch64));
 
         realMethod = getResolvedJavaMethod(String.class, "compareTo", String.class);
         testMethod = getResolvedJavaMethod("stringCompareTo");
@@ -88,14 +101,28 @@ public class StringCompareToTest extends MethodSubstitutionTest {
 
     @Test
     public void testDifferentString() {
-        executeStringCompareTo("some-string", "different-string");
+        // Smoke test for primary cases
+        executeStringCompareTo("AAAAAAAA", "");
+        // LL
+        executeStringCompareTo("some-stringA", "some-string\0xff");
+        // UU
+        executeStringCompareTo("\u2241AAAAAAAB", "\u2241\u0041\u0041\u0041\u0041\u0041\u0041\u0041\uFF41");
+        // LU
+        executeStringCompareTo("AAAAAAAAB", "\u0041\u0041\u0041\u0041\u0041\u0041\u0041\u0041\uFF41");
     }
 
     @Test
     public void testAllStrings() {
         for (String s0 : testData) {
             for (String s1 : testData) {
-                executeStringCompareTo(s0, s1);
+                try {
+                    executeStringCompareTo(s0, s1);
+                } catch (AssertionError ex) {
+                    System.out.println("FAIL: '" + ex + "'");
+                    System.out.println(" ***: s0 '" + s0 + "'");
+                    System.out.println(" ***: s1 '" + s1 + "'");
+                    throw ex;
+                }
             }
         }
     }

@@ -35,8 +35,10 @@ import org.graalvm.polyglot.PolyglotException;
  * @see #asPrimitive()
  * @see Proxy
  * @since 1.0
+ * @deprecated without replacement.
  */
 @FunctionalInterface
+@Deprecated
 public interface ProxyPrimitive extends Proxy {
 
     /**

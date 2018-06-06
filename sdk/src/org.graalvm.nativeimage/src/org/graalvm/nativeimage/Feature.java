@@ -58,24 +58,32 @@ import java.util.function.Predicate;
  * called after invoking the constructor and {@link #isInConfiguration} of the requiring features
  * (unless the feature dependencies are cyclic).
  * </ul>
+ *
+ * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface Feature {
 
     /**
      * Access methods that are available for all feature methods.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface FeatureAccess {
 
         /**
          * Returns a class if it is present on the classpath.
+         *
+         * @since 1.0
          */
         Class<?> findClassByName(String className);
     }
 
     /**
      * Access methods available for {@link Feature#isInConfiguration}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface IsInConfigurationAccess extends FeatureAccess {
@@ -83,6 +91,8 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#afterRegistration}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterRegistrationAccess extends FeatureAccess {
@@ -90,22 +100,28 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#duringSetup}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface DuringSetupAccess extends FeatureAccess {
 
         /**
          * Registers the provided function to replace objects.
-         *
+         * <p>
          * The function checks if an object should be replaced. In such a case, the function creates
          * the new object and returns it. The function must return the original object if the object
          * should not be replaced.
+         *
+         * @since 1.0
          */
         void registerObjectReplacer(Function<Object, Object> replacer);
     }
 
     /**
      * Access methods available for {@link Feature#beforeAnalysis}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface BeforeAnalysisAccess extends FeatureAccess {
@@ -113,6 +129,8 @@ public interface Feature {
         /**
          * Registers the provided type a used, i.e., metadata for the type is put into the native
          * image.
+         *
+         * @since 1.0
          */
         void registerAsUsed(Class<?> type);
 
@@ -120,35 +138,51 @@ public interface Feature {
          * Registers the provided type as instantiated, i.e., the static analysis assumes that
          * instances of this type exist at run time even if there is no explicit instantiation in
          * the bytecodes.
-         *
+         * <p>
          * This implies that the type is also marked as {@link #registerAsUsed used}.
+         *
+         * @since 1.0
          */
         void registerAsInHeap(Class<?> type);
 
         /**
          * Registers the provided field as accesses, i.e., the static analysis assumes the field is
          * used even if there are no explicit reads or writes in the bytecodes.
+         *
+         * @since 1.0
          */
         void registerAsAccessed(Field field);
 
         /**
+         * This method is now @Deprecated. Please use registerAsUnsafeAccessed instead.
+         * 
          * Registers the provided field as written by {@link sun.misc.Unsafe}, i.e., the static
          * analysis merges together all values of unsafe accessed fields of a specific type.
-         *
+         * <p>
          * This implies that the field is also marked as {@link #registerAsAccessed accessed}.
+         *
+         * @since 1.0
          */
-        void registerAsUnsafeWritten(Field field);
+        @Deprecated
+        default void registerAsUnsafeWritten(Field field) {
+            registerAsUnsafeAccessed(field);
+        }
 
         /**
-         * Registers the type for usage with the {@code Class.newInstance} method.
+         * Registers the provided field as written or read by {@link sun.misc.Unsafe}, i.e., the
+         * static analysis merges together all values of unsafe accessed fields of a specific type.
+         * <p>
+         * This implies that the field is also marked as {@link #registerAsAccessed accessed}.
          *
-         * @param type Type to register for `Class.newInstance`.
+         * @since 1.0
          */
-        void registerForReflectiveInstantiation(Class<?> type);
+        void registerAsUnsafeAccessed(Field field);
     }
 
     /**
      * Access methods available for {@link Feature#duringAnalysis}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface DuringAnalysisAccess extends BeforeAnalysisAccess {
@@ -156,12 +190,16 @@ public interface Feature {
         /**
          * Notifies the static analysis that changes are made that enforce a new iteration of the
          * analysis.
+         *
+         * @since 1.0
          */
         void requireAnalysisIteration();
     }
 
     /**
      * Access methods available for {@link Feature#afterAnalysis}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterAnalysisAccess extends FeatureAccess {
@@ -169,7 +207,9 @@ public interface Feature {
     }
 
     /**
-     * Access methods available for {@link Feature#onAnalysisExit()}.
+     * Access methods available for {@link Feature#onAnalysisExit}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface OnAnalysisExitAccess extends FeatureAccess {
@@ -179,18 +219,24 @@ public interface Feature {
     /**
      * Access methods available for {@link Feature#beforeCompilation} and
      * {@link Feature#afterCompilation}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface CompilationAccess extends FeatureAccess {
 
         /**
          * Returns the field offset of the provided instance field.
+         *
+         * @since 1.0
          */
         long objectFieldOffset(Field field);
 
         /**
          * Hint to the native image generator that the given object is immutable at runtime, i.e.,
          * can be placed in a read-only section of the native image heap.
+         *
+         * @since 1.0
          */
         void registerAsImmutable(Object object);
 
@@ -198,12 +244,16 @@ public interface Feature {
          * Register the object, and everything it transitively references, as immutable. When the
          * provided predicate returns false for an object, the object is not marked as immutable and
          * the transitive iteration is stopped.
+         *
+         * @since 1.0
          */
         void registerAsImmutable(Object root, Predicate<Object> includeObject);
     }
 
     /**
      * Access methods available for {@link Feature#beforeCompilation}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface BeforeCompilationAccess extends CompilationAccess {
@@ -211,6 +261,8 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#afterCompilation}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterCompilationAccess extends CompilationAccess {
@@ -218,6 +270,8 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#afterHeapLayout}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterHeapLayoutAccess extends FeatureAccess {
@@ -225,6 +279,8 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#beforeImageWrite}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface BeforeImageWriteAccess extends FeatureAccess {
@@ -232,13 +288,15 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#afterImageWrite}.
+     *
+     * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     interface AfterImageWriteAccess extends FeatureAccess {
         /**
-         * A path to the created native-image file.
+         * Returns the path to the created native-image file (includes the native-image file name).
          *
-         * @return the path to the created native-image file (includes the native-image file name)
+         * @since 1.0
          */
         Path getImagePath();
     }
@@ -250,6 +308,8 @@ public interface Feature {
      * {@link #getRequiredFeatures required features} are not processed).
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default boolean isInConfiguration(IsInConfigurationAccess access) {
         return true;
@@ -258,6 +318,8 @@ public interface Feature {
     /**
      * Returns the list of features that this feature depends on. As long as the dependency chain is
      * non-cyclic, all required features are processed before this feature.
+     *
+     * @since 1.0
      */
     default List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.emptyList();
@@ -268,6 +330,8 @@ public interface Feature {
      * parsed; but before any initializations for the static analysis have happened.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void afterRegistration(AfterRegistrationAccess access) {
     }
@@ -277,6 +341,8 @@ public interface Feature {
      * setup.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void duringSetup(DuringSetupAccess access) {
     }
@@ -285,6 +351,8 @@ public interface Feature {
      * Handler for initializations before the static analysis.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void beforeAnalysis(BeforeAnalysisAccess access) {
     }
@@ -297,6 +365,8 @@ public interface Feature {
      * analysis is performed again and the handler is called again.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void duringAnalysis(DuringAnalysisAccess access) {
     }
@@ -305,6 +375,8 @@ public interface Feature {
      * Handler for initializations after analysis and before universe creation.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void afterAnalysis(AfterAnalysisAccess access) {
     }
@@ -314,6 +386,8 @@ public interface Feature {
      * like reporting code.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void onAnalysisExit(OnAnalysisExitAccess access) {
     }
@@ -322,6 +396,8 @@ public interface Feature {
      * Handler for initializations before compilation.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void beforeCompilation(BeforeCompilationAccess access) {
     }
@@ -330,6 +406,8 @@ public interface Feature {
      * Handler for initializations after compilation, i.e., before the native image is written.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void afterCompilation(AfterCompilationAccess access) {
     }
@@ -341,6 +419,8 @@ public interface Feature {
      * image heap is not allowed at this point.
      *
      * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 1.0
      */
     default void afterHeapLayout(AfterHeapLayoutAccess access) {
     }
@@ -350,6 +430,8 @@ public interface Feature {
      * is written.
      *
      * @param access The supported operations that the feature can perform at this time.
+     *
+     * @since 1.0
      */
     default void beforeImageWrite(BeforeImageWriteAccess access) {
     }
@@ -358,6 +440,8 @@ public interface Feature {
      * Handler for altering the image (or shared object) that the linker command produced.
      *
      * @param access The supported operations that the feature can perform at this time.
+     *
+     * @since 1.0
      */
     default void afterImageWrite(AfterImageWriteAccess access) {
     }
@@ -365,9 +449,11 @@ public interface Feature {
     /**
      * Handler for cleanup. Can be used to cleanup static data. This can avoid memory leaks if
      * native image generation is done many times, e.g. during unit tests.
-     *
+     * <p>
      * Usually, overriding this method can be avoided by putting a configuration object into the
      * {@link ImageSingletons}.
+     *
+     * @since 1.0
      */
     default void cleanup() {
     }

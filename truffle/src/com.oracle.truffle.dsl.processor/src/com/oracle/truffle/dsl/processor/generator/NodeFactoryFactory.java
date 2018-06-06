@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,6 +39,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -141,7 +144,12 @@ class NodeFactoryFactory {
 
         builder.startStaticCall(context.getType(Arrays.class), "asList");
         for (NodeExecutionData execution : node.getChildExecutions()) {
-            builder.typeLiteral(execution.getNodeType());
+            TypeMirror nodeType = execution.getNodeType();
+            if (nodeType != null) {
+                builder.typeLiteral(nodeType);
+            } else {
+                builder.typeLiteral(context.getType(Node.class));
+            }
         }
         builder.end();
 

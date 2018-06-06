@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -32,8 +34,8 @@ import org.graalvm.compiler.core.common.PermanentBailoutException;
 public abstract class SourceStackTraceBailoutException extends PermanentBailoutException {
     private static final long serialVersionUID = 2144811793442316776L;
 
-    public static SourceStackTraceBailoutException create(Throwable cause, String format, StackTraceElement[] elements) {
-        return new SourceStackTraceBailoutException(cause, format) {
+    public static SourceStackTraceBailoutException create(Throwable cause, String reason, StackTraceElement[] elements) {
+        return new SourceStackTraceBailoutException(cause, reason) {
 
             private static final long serialVersionUID = 6279381376051787907L;
 
@@ -46,7 +48,7 @@ public abstract class SourceStackTraceBailoutException extends PermanentBailoutE
         };
     }
 
-    private SourceStackTraceBailoutException(Throwable cause, String format) {
-        super(cause, format);
+    private SourceStackTraceBailoutException(Throwable cause, String reason) {
+        super(cause, "%s", reason);
     }
 }

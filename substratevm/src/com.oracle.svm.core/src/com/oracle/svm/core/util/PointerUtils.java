@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,6 +28,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * Utility methods on Pointers.
  */
@@ -42,6 +46,7 @@ public final class PointerUtils {
      * @param multiple The multiple to which that Pointer should be decreased.
      * @return That Pointer, but rounded down.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static Pointer roundDown(PointerBase that, UnsignedWord multiple) {
         return (Pointer) UnsignedUtils.roundDown((UnsignedWord) that, multiple);
     }
@@ -53,6 +58,7 @@ public final class PointerUtils {
      * @param multiple The multiple to which that Pointer should be increased.
      * @return That Pointer, but rounded up.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static Pointer roundUp(PointerBase that, UnsignedWord multiple) {
         return (Pointer) UnsignedUtils.roundUp((UnsignedWord) that, multiple);
     }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,9 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+
+import java.util.Collection;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
@@ -92,6 +97,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.options.OptionValues;
@@ -435,6 +441,27 @@ public class SubstrateAMD64Backend extends Backend {
         }
 
         @Override
+        public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
+            Value[] values = super.visitInvokeArguments(invokeCc, arguments);
+
+            SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
+            if (type.nativeABI) {
+                // Native functions might have varargs, in which case we need to set %al to the
+                // number of XMM registers used for passing arguments
+                int xmmCount = 0;
+                for (Value v : values) {
+                    if (isRegister(v) && asRegister(v).getRegisterCategory().equals(AMD64.XMM)) {
+                        xmmCount++;
+                    }
+                }
+                assert xmmCount <= 8;
+                AllocatableValue xmmCountRegister = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+                gen.emitMoveConstant(xmmCountRegister, JavaConstant.forInt(xmmCount));
+            }
+            return values;
+        }
+
+        @Override
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             append(new SubstrateAMD64DirectCallOp(targetMethod, result, parameters, temps, callState));
@@ -442,9 +469,13 @@ public class SubstrateAMD64Backend extends Backend {
 
         @Override
         protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-            // The current register allocator cannot handle variables at call sites, need a fixed
-            // register.
-            AllocatableValue targetAddress = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
+            // The register allocator cannot handle variables at call sites, need a fixed register.
+            Register targetRegister = AMD64.rax;
+            if (((SubstrateCallingConventionType) callTarget.callType()).nativeABI) {
+                // Do not use RAX for C calls, it contains the number of XMM registers for varargs.
+                targetRegister = AMD64.r10;
+            }
+            AllocatableValue targetAddress = targetRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             append(new AMD64Call.IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState));

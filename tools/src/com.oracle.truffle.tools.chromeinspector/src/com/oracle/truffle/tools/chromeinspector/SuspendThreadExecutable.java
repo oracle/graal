@@ -24,9 +24,12 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 
 interface SuspendThreadExecutable<T> {
 
     T executeCommand() throws CommandProcessException;
+
+    T processException(DebugException dex);
 }

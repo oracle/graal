@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -51,6 +53,7 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges.Type;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -104,7 +107,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      * Gets the {@link NodeClass} associated with a given {@link Class}.
      */
     public static <T> NodeClass<T> create(Class<T> c) {
-        assert get(c) == null;
+        assert getUnchecked(c) == null;
         Class<? super T> superclass = c.getSuperclass();
         NodeClass<? super T> nodeSuperclass = null;
         if (superclass != NODE_CLASS) {
@@ -114,13 +117,43 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> NodeClass<T> get(Class<T> superclass) {
+    private static <T> NodeClass<T> getUnchecked(Class<T> clazz) {
         try {
-            Field field = superclass.getDeclaredField("TYPE");
+            Field field = clazz.getDeclaredField("TYPE");
             field.setAccessible(true);
             return (NodeClass<T>) field.get(null);
         } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> NodeClass<T> get(Class<T> clazz) {
+        int numTries = 0;
+        while (true) {
+            boolean shouldBeInitializedBefore = UnsafeAccess.UNSAFE.shouldBeInitialized(clazz);
+
+            NodeClass<T> result = getUnchecked(clazz);
+            if (result != null || clazz == NODE_CLASS) {
+                return result;
+            }
+
+            /*
+             * GR-9537: We observed a transient problem with TYPE fields being null. Retry a couple
+             * of times and print something to the log so that we can gather more diagnostic
+             * information without failing gates.
+             */
+            numTries++;
+            boolean shouldBeInitializedAfter = UnsafeAccess.UNSAFE.shouldBeInitialized(clazz);
+            String msg = "GR-9537 Reflective field access of TYPE field returned null. This is probably a bug in HotSpot class initialization. " +
+                            " clazz: " + clazz.getTypeName() + ", numTries: " + numTries +
+                            ", shouldBeInitializedBefore: " + shouldBeInitializedBefore + ", shouldBeInitializedAfter: " + shouldBeInitializedAfter;
+            if (numTries <= 100) {
+                TTY.println(msg);
+                UnsafeAccess.UNSAFE.ensureClassInitialized(clazz);
+            } else {
+                throw GraalError.shouldNotReachHere(msg);
+            }
+            return result;
         }
     }
 

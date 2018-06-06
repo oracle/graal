@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,8 +43,8 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
- * value matched the expected value.
+ * Represents an atomic compare-and-swap operation. The result is a boolean that contains whether
+ * the value matched the expected value.
  */
 @NodeInfo(allowedUsageTypes = {Value, Memory}, cycles = CYCLES_8, size = SIZE_8)
 public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
@@ -53,8 +55,8 @@ public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint imp
     @Input ValueNode expected;
     @Input ValueNode newValue;
 
-    protected final JavaKind valueKind;
-    protected final LocationIdentity locationIdentity;
+    private final JavaKind valueKind;
+    private final LocationIdentity locationIdentity;
 
     public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean.getStackKind()));

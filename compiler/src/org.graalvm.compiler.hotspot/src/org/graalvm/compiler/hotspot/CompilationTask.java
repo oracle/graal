@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,7 +24,9 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
@@ -140,17 +144,25 @@ public class CompilationTask {
         }
 
         @Override
-        protected ExceptionAction lookupAction(OptionValues values, EnumOptionKey<ExceptionAction> actionKey) {
-            /*
-             * Automatically exit VM on non-bailout during bootstrap or when asserts are enabled but
-             * respect CompilationFailureAction if it has been explicitly set.
-             */
-            if (actionKey == CompilationFailureAction && !actionKey.hasBeenSet(values)) {
-                if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
-                    return ExitVM;
+        protected ExceptionAction lookupAction(OptionValues values, EnumOptionKey<ExceptionAction> actionKey, Throwable cause) {
+            // Respect current action if it has been explicitly set.
+            if (!actionKey.hasBeenSet(values)) {
+                if (actionKey == CompilationFailureAction) {
+                    // Automatically exit on non-bailout during bootstrap
+                    // or when assertions are enabled.
+                    if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
+                        return ExitVM;
+                    }
+                } else if (actionKey == CompilationBailoutAction && ((BailoutException) cause).isPermanent()) {
+                    // Get more info for permanent bailouts during bootstrap
+                    // or when assertions are enabled.
+                    assert CompilationBailoutAction.getDefaultValue() == ExceptionAction.Silent;
+                    if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
+                        return Diagnose;
+                    }
                 }
             }
-            return super.lookupAction(values, actionKey);
+            return super.lookupAction(values, actionKey, cause);
         }
 
         @SuppressWarnings("try")
@@ -187,6 +199,7 @@ public class CompilationTask {
             }
             return null;
         }
+
     }
 
     public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault,

@@ -68,6 +68,10 @@ final class ObjectStructures {
         return new ObjectList(nodes, object);
     }
 
+    static boolean canExecute(MessageNodes nodes, TruffleObject object) {
+        return ForeignAccess.sendIsExecutable(nodes.isExecutable, object);
+    }
+
     private static class ObjectMap extends AbstractMap<Object, Object> {
 
         private final MessageNodes nodes;
@@ -153,7 +157,7 @@ final class ObjectStructures {
                     } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
                         throw ex.raise();
                     }
-                    return new TruffleEntry(key);
+                    return new TruffleEntry(nodes, object, key);
                 }
 
                 @Override
@@ -163,38 +167,43 @@ final class ObjectStructures {
 
             }
         }
+    }
 
-        private final class TruffleEntry implements Entry<Object, Object> {
-            private final Object key;
+    static final class TruffleEntry implements Map.Entry<Object, Object> {
 
-            TruffleEntry(Object key) {
-                this.key = key;
+        private final MessageNodes nodes;
+        private final TruffleObject object;
+        private final Object key;
+
+        TruffleEntry(MessageNodes nodes, TruffleObject object, Object key) {
+            this.nodes = nodes;
+            this.object = object;
+            this.key = key;
+        }
+
+        @Override
+        public Object getKey() {
+            return key;
+        }
+
+        @Override
+        public Object getValue() {
+            try {
+                return ForeignAccess.sendRead(nodes.read, object, key);
+            } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                throw ex.raise();
             }
+        }
 
-            @Override
-            public Object getKey() {
-                return key;
+        @Override
+        public Object setValue(Object value) {
+            Object prev = getValue();
+            try {
+                ForeignAccess.sendWrite(nodes.write, object, key, value);
+            } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException ex) {
+                throw ex.raise();
             }
-
-            @Override
-            public Object getValue() {
-                try {
-                    return ForeignAccess.sendRead(nodes.read, object, key);
-                } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
-                    throw ex.raise();
-                }
-            }
-
-            @Override
-            public Object setValue(Object value) {
-                Object prev = getValue();
-                try {
-                    ForeignAccess.sendWrite(nodes.write, object, key, value);
-                } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException ex) {
-                    throw ex.raise();
-                }
-                return prev;
-            }
+            return prev;
         }
     }
 
@@ -250,6 +259,8 @@ final class ObjectStructures {
         final Node write;
         final Node isBoxed;
         final Node unbox;
+        final Node isExecutable;
+        final Node invoke1;
 
         MessageNodes() {
             keyInfo = Message.KEY_INFO.createNode();
@@ -260,6 +271,8 @@ final class ObjectStructures {
             write = Message.WRITE.createNode();
             isBoxed = Message.IS_BOXED.createNode();
             unbox = Message.UNBOX.createNode();
+            isExecutable = Message.IS_EXECUTABLE.createNode();
+            invoke1 = Message.createInvoke(1).createNode();
         }
     }
 }

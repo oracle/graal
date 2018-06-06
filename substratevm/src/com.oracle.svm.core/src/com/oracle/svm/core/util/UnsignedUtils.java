@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +26,8 @@ package com.oracle.svm.core.util;
 
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * Utility methods on Unsigned values.
  */
@@ -40,6 +44,7 @@ public final class UnsignedUtils {
      * @param multiple The multiple to which that Unsigned should be decreased.
      * @return That Unsigned, but rounded down.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord roundDown(UnsignedWord that, UnsignedWord multiple) {
         return that.unsignedDivide(multiple).multiply(multiple);
     }
@@ -51,6 +56,7 @@ public final class UnsignedUtils {
      * @param multiple The multiple to which that Unsigned should be increased.
      * @return That Unsigned, but rounded up.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord roundUp(UnsignedWord that, UnsignedWord multiple) {
         return UnsignedUtils.roundDown(that.add(multiple.subtract(1)), multiple);
     }

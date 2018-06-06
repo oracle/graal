@@ -32,21 +32,21 @@ bench-common : ${compilerCommon} {
   ]
 }
 
-bench-dacapo: ${bench-common} {
+bench-dacapo: ${bench-common} ${dacapo-bench-notifications} {
   targets : [bench, post-merge]
   run: [
     ${bench-jvmci.mx-dacapo} ${bench-arguments}
   ]
 }
 
-bench-dacapo-timing: ${bench-common} {
+bench-dacapo-timing: ${bench-common} ${dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
   ]
 }
 
-bench-dacapo-move-profiling: ${bench-common} {
+bench-dacapo-move-profiling: ${bench-common} ${dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments}
@@ -55,21 +55,21 @@ bench-dacapo-move-profiling: ${bench-common} {
 
 # Scala DaCapo-related targets
 
-bench-scala-dacapo: ${bench-common} {
+bench-scala-dacapo: ${bench-common} ${scala-dacapo-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
   ]
 }
 
-bench-scala-dacapo-timing: ${bench-common} {
+bench-scala-dacapo-timing: ${bench-common} ${scala-dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
   ]
 }
 
-bench-scala-dacapo-move-profiling: ${bench-common} {
+bench-scala-dacapo-move-profiling: ${bench-common} ${scala-dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
@@ -78,7 +78,7 @@ bench-scala-dacapo-move-profiling: ${bench-common} {
 
 # SPECjbb2005-related targets
 
-bench-specjbb2005: ${bench-common} {
+bench-specjbb2005: ${bench-common} ${specjbb-bench-notifications} {
   targets: [bench, post-merge]
   downloads: {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
@@ -90,7 +90,7 @@ bench-specjbb2005: ${bench-common} {
 }
 
 # SPECJvm2008-related targets
-bench-specjvm2008: ${bench-common} {
+bench-specjvm2008: ${bench-common} ${specjvm-bench-notifications} {
   downloads: {
     SPECJVM2008: { name: specjvm2008, version: "1.01" }
   }
@@ -100,7 +100,7 @@ bench-specjvm2008: ${bench-common} {
   timelimit: "2:50:00"
 }
 
-bench-specjvm2008-Single: ${bench-specjvm2008} {
+bench-specjvm2008-Single: ${bench-specjvm2008} ${specjvm-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-specjvm2008-Single} ${bench-arguments} [
@@ -109,7 +109,7 @@ bench-specjvm2008-Single: ${bench-specjvm2008} {
   ]
 }
 
-bench-specjvm2008-OneVM: ${bench-specjvm2008} {
+bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
   targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-specjvm2008-OneVM} ${bench-arguments} [
@@ -120,7 +120,7 @@ bench-specjvm2008-OneVM: ${bench-specjvm2008} {
 
 # SPECjbb2015-related targets
 
-bench-specjbb2015: ${bench-common} {
+bench-specjbb2015: ${bench-common} ${specjbb-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
@@ -133,25 +133,25 @@ bench-specjbb2015: ${bench-common} {
 
 # JMH micros graal
 
-bench-micros-graal-whitebox: ${bench-common} {
+bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
   targets: [weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
   ]
-  timelimit: "1:00:00"
+  timelimit: "3:00:00"
 }
 
-bench-micros-graal-dist: ${bench-common} {
+bench-micros-graal-dist: ${bench-common} ${micros-bench-notifications} {
   targets: [weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
   ]
-  timelimit: "1:00:00"
+  timelimit: "3:00:00"
 }
 
 # Renaissance-related targets
 
-bench-renaissance: ${bench-common} {
+bench-renaissance: ${bench-common} ${renaissance-bench-notifications} {
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
@@ -159,5 +159,5 @@ bench-renaissance: ${bench-common} {
   downloads: {
     RENAISSANCE: { name: renaissance, version: "0.1" }
   }
-  timelimit: "2:15:00"
+  timelimit: "2:45:00"
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -160,6 +162,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
          * later use in AnalysisType.getDeclaredConstructors().
          */
         wrapped.getDeclaredConstructors();
+        /*
+         * Eagerly resolve the enclosing type. It is possible that we are dealing with an incomplete
+         * classpath. While normally JVM doesn't care about missing classes unless they are really
+         * used the analysis is eager to load all reachable classes. The analysis client should deal
+         * with type resolution problems.
+         * 
+         * We cannot cache the result as an AnalysisType, i.e., by calling
+         * universe.lookup(JavaType), because that could lead to a deadlock.
+         */
+        wrapped.getEnclosingType();
 
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         getSuperclass();

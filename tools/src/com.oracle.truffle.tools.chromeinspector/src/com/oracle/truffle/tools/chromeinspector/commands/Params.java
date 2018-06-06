@@ -26,8 +26,8 @@ package com.oracle.truffle.tools.chromeinspector.commands;
 
 import java.util.Optional;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class Params {
 
@@ -111,9 +111,9 @@ public final class Params {
         }
     }
 
-    public Optional<Boolean> getBreakpointsActive() {
-        if (json.has("active")) {
-            return Optional.of(json.getBoolean("active"));
+    public Optional<Boolean> getBoolean(String name) {
+        if (json.has(name)) {
+            return Optional.of(json.getBoolean(name));
         } else {
             return Optional.empty();
         }

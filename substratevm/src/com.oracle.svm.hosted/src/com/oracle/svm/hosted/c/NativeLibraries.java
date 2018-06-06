@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -90,6 +92,8 @@ public final class NativeLibraries {
 
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
+
+    private final CAnnotationProcessorCache cache;
 
     static final class SizeOfSupportImpl implements SizeOfSupport {
         private final NativeLibraries nativeLibraries;
@@ -193,6 +197,8 @@ public final class NativeLibraries {
 
         ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(this));
         ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(this));
+
+        this.cache = new CAnnotationProcessorCache();
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -337,7 +343,7 @@ public final class NativeLibraries {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
 
-                new CAnnotationProcessor(this, context, tempDirectory).process();
+                new CAnnotationProcessor(this, context, tempDirectory).process(cache);
             }
         }
     }

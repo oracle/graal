@@ -4,7 +4,9 @@
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -34,33 +36,31 @@
 # (This suggests a TODO: clean up the needlessly complex makefiles in
 # this project. It should not be necessary to copy makefiles around.)
 
-UNAME := $(shell uname)
-UNAME_MACHINE := $(shell uname -m)
-
 .PHONY: all strictmath libchelper jni clean
 
-
-ifeq ($(UNAME), SunOS)
+ifeq (${OS}, solaris)
 all :	nop # Solaris is unsupported
-else ifeq ($(UNAME_MACHINE), sparc64)
+else ifeq (${ARCH}, sparcv9)
 all :	nop # SPARC64 is unsupported
 else
 all :	strictmath libchelper jni
 endif
 
+export TARGET_DIR := $(shell pwd)/${OS}-${ARCH}
+
 strictmath:
-	$(MAKE) -C strictmath
+	$(MAKE) -C $(VPATH)/strictmath
 
 libchelper:
-	$(MAKE) -C libchelper
+	$(MAKE) -C $(VPATH)/libchelper
 
 jni:
-	$(MAKE) -C jni
+	$(MAKE) -C $(VPATH)/jni
 
 clean:
-	$(MAKE) -C strictmath $@
-	$(MAKE) -C libchelper $@
-	$(MAKE) -C jni $@
+	$(MAKE) -C $(VPATH)/strictmath $@
+	$(MAKE) -C $(VPATH)/libchelper $@
+	$(MAKE) -C $(VPATH)/jni $@
 
 # for unsupported platforms
 nop:

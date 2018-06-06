@@ -34,8 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -47,6 +47,7 @@ import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.domains.ProfilerDomain;
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.TypeProfileInstrument;
+import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.types.CoverageRange;
 import com.oracle.truffle.tools.chromeinspector.types.FunctionCoverage;
 import com.oracle.truffle.tools.chromeinspector.types.Profile;
@@ -74,13 +75,15 @@ public final class TruffleProfiler extends ProfilerDomain {
     private boolean oldGatherSelfHitTimes;
 
     private final TruffleExecutionContext context;
+    private final ConnectionWatcher connectionWatcher;
 
-    public TruffleProfiler(TruffleExecutionContext context) {
+    public TruffleProfiler(TruffleExecutionContext context, ConnectionWatcher connectionWatcher) {
         this.context = context;
+        this.connectionWatcher = connectionWatcher;
     }
 
     private void doEnable() {
-        slh = context.getScriptsHandler();
+        slh = context.acquireScriptsHandler();
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
         tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
         InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(TypeProfileInstrument.ID);
@@ -114,6 +117,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     @Override
     public void start() {
+        connectionWatcher.setWaitForClose();
         synchronized (sampler) {
             oldGatherSelfHitTimes = sampler.isGatherSelfHitTimes();
             sampler.setGatherSelfHitTimes(true);
@@ -139,6 +143,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     @Override
     public void startPreciseCoverage(boolean callCount, boolean detailed) {
+        connectionWatcher.setWaitForClose();
         synchronized (tracer) {
             tracer.setFilter(SourceSectionFilter.newBuilder().tagIs(detailed ? StandardTags.StatementTag.class : StandardTags.RootTag.class).includeInternal(false).build());
             tracer.setCollecting(true);
@@ -173,6 +178,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     @Override
     public void startTypeProfile() {
+        connectionWatcher.setWaitForClose();
         typeHandler.start();
     }
 
@@ -195,7 +201,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private Params getCoverage(Collection<CPUTracer.Payload> payloads) {
         JSONObject json = new JSONObject();
-        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new HashMap<>();
+        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new LinkedHashMap<>();
         payloads.forEach(payload -> {
             Map<String, Collection<CPUTracer.Payload>> rootsToPayloads = sourceToRoots.computeIfAbsent(payload.getSourceSection().getSource(), s -> new LinkedHashMap<>());
             Collection<CPUTracer.Payload> pls = rootsToPayloads.computeIfAbsent(payload.getRootName(), t -> new LinkedList<>());
@@ -263,7 +269,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private Params getTypeProfile(Collection<TypeHandler.SectionTypeProfile> profiles) {
         JSONObject json = new JSONObject();
-        Map<Source, Collection<TypeHandler.SectionTypeProfile>> sourceToProfiles = new HashMap<>();
+        Map<Source, Collection<TypeHandler.SectionTypeProfile>> sourceToProfiles = new LinkedHashMap<>();
         profiles.forEach(profile -> {
             Collection<TypeHandler.SectionTypeProfile> pfs = sourceToProfiles.computeIfAbsent(profile.getSourceSection().getSource(), t -> new LinkedList<>());
             pfs.add(profile);

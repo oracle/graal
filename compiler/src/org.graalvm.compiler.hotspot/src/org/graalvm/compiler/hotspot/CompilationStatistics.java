@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -42,10 +44,10 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.graalvm.compiler.debug.CSVUtil;
-import org.graalvm.compiler.debug.Management;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -87,8 +89,7 @@ public final class CompilationStatistics {
     private static long zeroTime = System.nanoTime();
 
     private static long getThreadAllocatedBytes() {
-        com.sun.management.ThreadMXBean thread = (com.sun.management.ThreadMXBean) Management.getThreadMXBean();
-        return thread.getThreadAllocatedBytes(currentThread().getId());
+        return GraalServices.getCurrentThreadAllocatedBytes();
     }
 
     @NotReported private final long startTime;

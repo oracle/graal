@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -39,6 +41,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -405,6 +408,8 @@ public class EscapeAnalysisTest extends EATestBase {
      */
     @Test
     public void testNewNode() {
+        // Trackking of creation interferes with escape analysis
+        Assume.assumeFalse(Node.TRACK_CREATION_POSITION);
         testEscapeAnalysis("testNewNodeSnippet", null, false);
     }
 

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -55,7 +57,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -203,7 +204,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
         final Integer intValue = 42;
-        final Value hostValue = context.importSymbol("context");
+        final Value hostValue = context.getPolyglotBindings().getMember("context");
 
         @TearDown
         public void tearDown() {
@@ -265,7 +266,7 @@ public class EngineBenchmark extends TruffleBenchmark {
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);
-        final Value hostValue = context.lookup(TEST_LANGUAGE, "context");
+        final Value hostValue = context.getBindings(TEST_LANGUAGE).getMember("context");
         final BenchmarkContext internalContext = hostValue.asHostObject();
         final Node executeNode = Message.createExecute(0).createNode();
         final Integer intValue = 42;
@@ -370,7 +371,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected void initializeContext(BenchmarkContext context) throws Exception {
-            context.env.exportSymbol("context", JavaInterop.asTruffleValue(context));
+            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", context.env.asGuestValue(context));
         }
 
         @Override
@@ -408,11 +409,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         @Override
         protected Iterable<Scope> findTopScopes(BenchmarkContext context) {
             return context.topScopes;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(BenchmarkContext context) {
-            return context.object;
         }
 
         @Override
@@ -480,20 +476,19 @@ public class EngineBenchmark extends TruffleBenchmark {
                 @TruffleBoundary
                 public Object access(TopScopeObject ts, String name) {
                     if ("context".equals(name)) {
-                        return JavaInterop.asTruffleObject(ts.context);
+                        return ts.context.env.asGuestValue(ts.context);
                     } else {
-                        return JavaInterop.asTruffleObject(ts.context.object);
+                        return ts.context.env.asGuestValue(ts.context.object);
                     }
                 }
             }
 
             @Resolve(message = "KEY_INFO")
             abstract static class VarsMapKeyInfoNode extends Node {
-                private static final int EXISTING = KeyInfo.newBuilder().setReadable(true).build();
 
                 public int access(@SuppressWarnings("unused") TopScopeObject ts, String propertyName) {
                     if ("context".equals(propertyName)) {
-                        return EXISTING;
+                        return KeyInfo.READABLE;
                     }
                     return 0;
                 }

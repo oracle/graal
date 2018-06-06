@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -36,6 +38,7 @@ import static org.junit.Assert.assertEquals;
 import org.graalvm.compiler.options.ModifiableOptionValues;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -51,7 +54,7 @@ public class TestOptionKey {
 
     @Test
     public void toStringTest() {
-        OptionDescriptor.create("MyOption", String.class, "", Options.class, "MyOption", MyOption);
+        OptionDescriptor.create("MyOption", OptionType.Debug, String.class, "", Options.class, "MyOption", MyOption);
         assertEquals("MyOption", MyOption.toString());
     }
 

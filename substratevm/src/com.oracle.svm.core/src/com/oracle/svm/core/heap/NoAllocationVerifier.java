@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
@@ -42,36 +43,21 @@ import com.oracle.svm.core.util.VMError;
  */
 public class NoAllocationVerifier implements AutoCloseable {
 
-    /**
-     * Throw one of these to signal that allocation is disallowed. Since we cannot allocate the
-     * error (remember that allocation is disallowed) region), we have a pre-allocated singleton
-     * available.
-     */
-    public static final class DisallowedAllocationError extends Error {
+    public static final String ERROR_MSG = "Attempt to allocate while allocation was explicitly disabled using a NoAllocationVerifier";
 
-        /** A guard to place before an allocation, giving the call site and the allocation type. */
-        public static void exitIf(final boolean state, final String callSite, final String typeName) {
-            if (state) {
-                // Throw an error to capture the stack backtrace.
-                Log.log().string("[NoAllocationVerifier.DisallowedAllocationError: ").string(callSite).string(": ").string(typeName).newline();
-                ThreadStackPrinter.printBacktrace();
-                Log.log().string("]").newline();
-                NoAllocationVerifier.logReasons(Log.log());
-                throw DisallowedAllocationError.SINGLETON;
+    /** A guard to place before an allocation, giving the call site and the allocation type. */
+    public static void exit(final String callSite, final String typeName) {
+        Log.log().string("[NoAllocationVerifier detected disallowed allocation: ").string(callSite).string(": ").string(typeName).newline();
+        if (openVerifiers.get() != null) {
+            Log.log().string("[NoAllocationVerifier stack: ");
+            for (NoAllocationVerifier rest = openVerifiers.get(); rest != null; rest = rest.next) {
+                Log.log().newline().string("  ").string("  reason: ").string(rest.reason).newline();
             }
-            return;
+            Log.log().string("]").newline();
         }
+        Log.log().string("]").newline();
 
-        /** A singleton instance. */
-        private static final DisallowedAllocationError SINGLETON = new DisallowedAllocationError();
-
-        /** A private constructor because there is only the singleton instance. */
-        private DisallowedAllocationError() {
-            super();
-        }
-
-        /** Every error needs one of these. */
-        private static final long serialVersionUID = -4649183827933685657L;
+        throw VMError.shouldNotReachHere(ERROR_MSG);
     }
 
     private static final FastThreadLocalObject<NoAllocationVerifier> openVerifiers = FastThreadLocalFactory.createObject(NoAllocationVerifier.class);
@@ -159,16 +145,6 @@ public class NoAllocationVerifier implements AutoCloseable {
         if (!isActive()) {
             /* No other verifier open anymore, so resume allocation. */
             Heap.getHeap().resumeAllocation();
-        }
-    }
-
-    protected static void logReasons(Log log) {
-        if (openVerifiers.get() != null) {
-            log.string("[NoAllocationVerifier stack: ");
-            for (NoAllocationVerifier rest = openVerifiers.get(); rest != null; rest = rest.next) {
-                log.newline().string("  ").string("  reason: ").string(rest.reason);
-            }
-            log.string("]").newline();
         }
     }
 }

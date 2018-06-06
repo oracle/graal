@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -133,7 +134,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException;
 
         public abstract String getName(Object impl);
 
@@ -218,26 +219,23 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Value lookup(String language, String key);
-
-        public abstract Value importSymbol(String key);
-
-        public abstract void exportSymbol(String key, Object value);
-
         public abstract boolean initializeLanguage(String languageId);
 
         public abstract Value eval(String language, Object sourceImpl);
 
-        public abstract Engine getEngineImpl();
+        public abstract Engine getEngineImpl(Context sourceContext);
 
-        public abstract void close(boolean interuptExecution);
+        public abstract void close(Context sourceContext, boolean interuptExecution);
 
         public abstract Value asValue(Object hostValue);
 
-        public abstract void explicitEnter();
+        public abstract void explicitEnter(Context sourceContext);
 
-        public abstract void explicitLeave();
+        public abstract void explicitLeave(Context sourceContext);
 
+        public abstract Value getBindings(String language);
+
+        public abstract Value getPolyglotBindings();
     }
 
     public abstract static class AbstractEngineImpl {
@@ -252,7 +250,7 @@ public abstract class AbstractPolyglotImpl {
 
         // Runtime
 
-        public abstract void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure);
+        public abstract void close(Engine sourceEngine, boolean cancelIfExecuting);
 
         public abstract Map<String, Instrument> getInstruments();
 
@@ -262,8 +260,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                        boolean allowCreateThread, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
+                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
+                        String[] onlyLanguages, FileSystem fileSystem);
+
+        public abstract String getImplementationName();
 
     }
 
@@ -362,10 +363,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getId();
 
         public abstract OptionDescriptors getOptions();
-
-        public abstract Engine getEngineAPI();
-
-        public abstract boolean isHost();
 
     }
 
@@ -633,8 +630,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
 
+        public abstract SourceSection getSourceLocation(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);
+
+    public Context getCurrentContext() {
+        throw new IllegalStateException("No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
+    }
 
 }

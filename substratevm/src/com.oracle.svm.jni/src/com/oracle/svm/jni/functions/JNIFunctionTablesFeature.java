@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -195,7 +197,10 @@ public class JNIFunctionTablesFeature implements Feature {
             index++;
         }
         VMError.guarantee(index == offsets.length && index == pointers.length);
-        return new JNIStructFunctionsInitializer<>(JNIInvokeInterface.class, offsets, pointers, unimplemented);
+        JNIStructFunctionsInitializer<JNIInvokeInterface> initializer = new JNIStructFunctionsInitializer<>(JNIInvokeInterface.class, offsets, pointers, unimplemented);
+        access.registerAsImmutable(pointers);
+        access.registerAsImmutable(initializer);
+        return initializer;
     }
 
     private JNIStructFunctionsInitializer<JNINativeInterface> buildFunctionsInitializer(CompilationAccessImpl access, CFunctionPointer unimplemented) {
@@ -209,6 +214,7 @@ public class JNIFunctionTablesFeature implements Feature {
         count += (jniKinds.size() * 3 + 1) * 3;
         int[] offsets = new int[count];
         CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
+        access.registerAsImmutable(pointers);
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
             offsets[index] = field.getOffsetInfo().getProperty();
@@ -249,7 +255,10 @@ public class JNIFunctionTablesFeature implements Feature {
             index++;
         }
         VMError.guarantee(index == offsets.length && index == pointers.length);
-        return new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);
+        JNIStructFunctionsInitializer<JNINativeInterface> initializer = new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);
+        access.registerAsImmutable(pointers);
+        access.registerAsImmutable(initializer);
+        return initializer;
     }
 
     private static StructFieldInfo findFieldFor(StructInfo info, String name) {

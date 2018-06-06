@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -269,6 +271,8 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
     private Map<String, Entry> entriesByName = new HashMap<>();
 
+    private Map<Entry, Integer> entriesToIndex;
+
     private void createNullEntry() {
         assert entries.size() == 0;
         addEntry(new Entry());
@@ -343,7 +347,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
         // our strtab's content is already decided; get the string table
         byte[] strtabContent = (byte[]) alreadyDecided.get(strtab).getDecidedValue(LayoutDecision.Kind.CONTENT);
-        StringTable table = new StringTable(AssemblyBuffer.createInputDisassembler(ByteBuffer.wrap(strtabContent).order(getOwner().getByteOrder())), strtabContent.length);
+        StringTable table = new StringTable(ByteBuffer.wrap(strtabContent).order(getOwner().getByteOrder()));
         ByteBuffer outBuffer = ByteBuffer.allocate(getWrittenSize()).order(getOwner().getByteOrder());
         OutputAssembler out = AssemblyBuffer.createOutputAssembler(outBuffer);
 
@@ -438,6 +442,9 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     }
 
     private Entry addEntry(Entry entry) {
+        if (entriesToIndex != null) {
+            throw new IllegalArgumentException("Symbol table already sealed");
+        }
         entries.add(entry);
         entriesByName.put(entry.getName(), entry);
         return entry;
@@ -448,14 +455,25 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     }
 
     public int indexOf(Symbol sym) {
-        int i = 0;
-        for (Entry entry : entries) {
-            if (entry.equals(sym)) {
-                return i;
-            }
-            i++;
+        if (entriesToIndex == null) {
+            initializeEntriesToIndex();
         }
-        return -1;
+        Integer result = entriesToIndex.get(sym);
+        if (result == null) {
+            return -1;
+        } else {
+            return result;
+        }
+    }
+
+    private void initializeEntriesToIndex() {
+        entriesToIndex = new HashMap<>(entries.size());
+        int index = 0;
+        for (Entry entry : entries) {
+            entriesToIndex.put(entry, index);
+            index++;
+        }
+        assert entriesToIndex.size() == entries.size();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

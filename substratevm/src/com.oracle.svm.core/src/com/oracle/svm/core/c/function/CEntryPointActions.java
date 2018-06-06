@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,12 +24,12 @@
  */
 package com.oracle.svm.core.c.function;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 
@@ -141,10 +143,15 @@ public final class CEntryPointActions {
      * Fail in a fatal manner, such as by terminating the executing process. This method is intended
      * for situations in which recovery is not possible, or in which reporting a severe error in any
      * other way is not possible. This method does not return.
-     * 
+     *
      * @param code An integer representing the cause (should be non-zero by convention).
      * @param message A message describing the cause (may be omitted by passing
-     *            {@link Word#nullPointer() null}).
+     *            {@link WordFactory#nullPointer() null}).
      */
     public static native void failFatally(int code, CCharPointer message);
+
+    /**
+     * @return whether the current thread is attached to the specified isolate.
+     */
+    public static native boolean isCurrentThreadAttachedTo(Isolate isolate);
 }

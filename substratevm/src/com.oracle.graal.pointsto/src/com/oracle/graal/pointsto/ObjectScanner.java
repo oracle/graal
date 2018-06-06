@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,6 +39,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -109,6 +112,11 @@ public abstract class ObjectScanner {
     protected final void scanField(AnalysisField field, JavaConstant receiver, Object reason) {
         try {
             JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+
+            if (fieldValue == null) {
+                throw AnalysisError.shouldNotReachHere("Could not find field " + field.format("%H.%n") +
+                                (receiver == null ? "" : " on " + bb.getSnippetReflectionProvider().asObject(Object.class, receiver).getClass()));
+            }
 
             if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(bb.getSnippetReflectionProvider().asObject(Object.class, fieldValue))) {
                 forRelocatedPointerFieldValue(receiver, field, fieldValue);

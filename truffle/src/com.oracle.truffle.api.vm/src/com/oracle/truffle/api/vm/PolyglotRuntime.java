@@ -27,10 +27,10 @@ package com.oracle.truffle.api.vm;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
-import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -41,39 +41,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
-import com.oracle.truffle.api.vm.PolyglotEngine.Language;
-import java.io.PrintStream;
 
 /**
- * A runtime environment for one or more {@link PolyglotEngine} instances. By default a constructed
- * {@link PolyglotEngine} provides data and code isolation. However, if the same runtime is used to
- * construct multiple engines then code can be shared between them. Languages can also decide to
- * share immutable parts of their data between engines of a runtime. As a consequence memory
- * consumption for an engine is expected to be lower if they are constructed with the same runtime.
- * Methods of {@link PolyglotRuntime} can be safely used from multiple-threads.
- *
- * Usage:
- * <p>
- * {@codesnippet com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines}
- * <p>
- * The above example prepares three engines that share the {@link PolyglotRuntime runtime}.
- *
  * @since 0.25
- * @see PolyglotEngine
- * @see TruffleLanguage More information for language implementors.
+ * @deprecated use {@link Engine} instead.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class PolyglotRuntime {
     private final List<LanguageShared> languages;
     final Object instrumentationHandler;
-    @SuppressWarnings("deprecation") final Map<String, PolyglotEngine.Instrument> instruments;
+    final Map<String, PolyglotEngine.Instrument> instruments;
     final Object[] debugger = {null};
     final PolyglotEngineProfile engineProfile;
     private final AtomicInteger instanceCount = new AtomicInteger(0);
@@ -118,7 +103,7 @@ public final class PolyglotRuntime {
         }
         this.automaticDispose = automaticDispose;
         this.languages = languageList;
-        this.instruments = createInstruments(InstrumentCache.load(SPI.allLoaders()));
+        this.instruments = createInstruments(InstrumentCache.load(VMAccessor.allLoaders()));
         for (Instrument instrument : instruments.values()) {
             instInfos.put(instrument.getId(), LANGUAGE.createInstrument(instrument, instrument.getId(), instrument.getName(), instrument.getVersion()));
         }
@@ -149,7 +134,6 @@ public final class PolyglotRuntime {
         instanceCount.incrementAndGet();
     }
 
-    @SuppressWarnings("deprecation")
     private Map<String, PolyglotEngine.Instrument> createInstruments(List<InstrumentCache> instrumentCaches) {
         Map<String, PolyglotEngine.Instrument> instr = new LinkedHashMap<>();
         for (InstrumentCache cache : instrumentCaches) {
@@ -160,11 +144,6 @@ public final class PolyglotRuntime {
     }
 
     /**
-     * Gets the map: {@linkplain Instrument#getId() Instrument ID} --> {@link Instrument} loaded in
-     * this {@linkplain PolyglotRuntime runtime}, whether the instrument is
-     * {@linkplain Instrument#isEnabled() enabled} or not.
-     *
-     * @return map of currently loaded instruments
      * @since 0.25
      */
     public Map<String, ? extends Instrument> getInstruments() {
@@ -172,12 +151,6 @@ public final class PolyglotRuntime {
     }
 
     /**
-     * Disposes the runtime and with it all created instruments. Throws
-     * {@link IllegalStateException} if not all engines created using this runtime are not yet
-     * {@link PolyglotEngine#dispose() disposed}.
-     * {@link PolyglotEngine.Builder#runtime(PolyglotRuntime) Default/private} runtimes of an engine
-     * are disposed automatically with the engine.
-     *
      * @since 0.25
      */
     public synchronized void dispose() {
@@ -200,10 +173,6 @@ public final class PolyglotRuntime {
     }
 
     /**
-     * Starts creation of a new runtime instance. Call any methods of the {@link Builder} and finish
-     * the creation by calling {@link Builder#build()}.
-     *
-     * @return new instance of a builder
      * @since 0.25
      */
     public static Builder newBuilder() {
@@ -230,7 +199,7 @@ public final class PolyglotRuntime {
             this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal());
         }
 
-        Language currentLanguage() {
+        com.oracle.truffle.api.vm.PolyglotEngine.Language currentLanguage() {
             return runtime.currentVM().findLanguage(this);
         }
 
@@ -270,10 +239,10 @@ public final class PolyglotRuntime {
     }
 
     /**
-     * Builder for creating new instance of a {@link PolyglotRuntime}.
-     *
      * @since 0.25
+     * @deprecated use {@link Engine#newBuilder()} instead.
      */
+    @Deprecated
     public final class Builder {
         private OutputStream out;
         private OutputStream err;
@@ -283,11 +252,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Configures default output for languages running in the {@link PolyglotEngine engine}
-         * being built, defaults to {@link System#out}.
-         *
-         * @param os the stream to use as output
-         * @return this builder
          * @since 0.25
          */
         public PolyglotRuntime.Builder setOut(OutputStream os) {
@@ -296,11 +260,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Configures error output for languages running in the {@link PolyglotRuntime runtime}
-         * being built, defaults to {@link System#err}.
-         *
-         * @param os the stream to use as output
-         * @return this builder
          * @since 0.25
          */
         public PolyglotRuntime.Builder setErr(OutputStream os) {
@@ -309,11 +268,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Configures default input for languages running in the {@link PolyglotRuntime runtime}
-         * being built, defaults to {@link System#in}.
-         *
-         * @param is the stream to use as input
-         * @return this builder
          * @since 0.25
          */
         public PolyglotRuntime.Builder setIn(InputStream is) {
@@ -322,11 +276,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Creates new instance of a runtime. Uses data stored in this builder to configure it. Once
-         * the instance is obtained, pass it to
-         * {@link PolyglotEngine.Builder#runtime(com.oracle.truffle.api.vm.PolyglotRuntime)} method.
-         *
-         * @return new instances of the {@link PolyglotRuntime}
          * @since 0.25
          */
         public PolyglotRuntime build() {
@@ -345,20 +294,10 @@ public final class PolyglotRuntime {
     }
 
     /**
-     * A handle for an <em>instrument</em> installed in the {@linkplain PolyglotRuntime runtime},
-     * usable from other threads, that can observe and inject behavior into language execution. The
-     * handle provides access to the instrument's metadata and allows the instrument to be
-     * dynamically {@linkplain Instrument#setEnabled(boolean) enabled/disabled} in the runtime.
-     * <p>
-     * All methods here, as well as instrumentation services in general, can be used safely from
-     * threads other than the engine's single execution thread.
-     * <p>
-     * Refer to {@link TruffleInstrument} for information about implementing and installing
-     * instruments.
-     *
-     * @see PolyglotRuntime#getInstruments()
      * @since 0.25
+     * @deprecated use {@link Engine#getInstruments()} instead.
      */
+    @Deprecated
     public class Instrument {
 
         private final InstrumentCache cache;
@@ -371,9 +310,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Gets the id clients can use to acquire this instrument.
-         *
-         * @return this instrument's unique id
          * @since 0.9
          */
         public String getId() {
@@ -381,9 +317,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Gets a human readable name of this instrument.
-         *
-         * @return this instrument's user-friendly name
          * @since 0.9
          */
         public String getName() {
@@ -391,9 +324,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Gets the version of this instrument.
-         *
-         * @return this instrument's version
          * @since 0.9
          */
         public String getVersion() {
@@ -409,9 +339,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Returns whether this instrument is currently enabled in the engine.
-         *
-         * @return this instrument's status in the engine
          * @since 0.9
          */
         public boolean isEnabled() {
@@ -419,15 +346,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Returns an additional service provided by this instrument, specified by type.
-         * <p>
-         * Here is an example for locating a hypothetical <code>DebuggerController</code>:
-         *
-         * {@codesnippet DebuggerExampleTest}
-         *
-         * @param <T> the type of the service
-         * @param type class of the service that is being requested
-         * @return instance of requested type, <code>null</code> if no such service is available
          * @since 0.9
          */
         public <T> T lookup(Class<T> type) {
@@ -441,9 +359,6 @@ public final class PolyglotRuntime {
         }
 
         /**
-         * Enables/disables this instrument in the engine.
-         *
-         * @param enabled <code>true</code> to enable <code>false</code> to disable
          * @since 0.9
          */
         public void setEnabled(final boolean enabled) {

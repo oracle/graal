@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
@@ -52,6 +55,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
         ControlFlowGraph cfg = null;
         for (FrameState fs : graph.getNodes(FrameState.TYPE)) {
@@ -80,8 +84,9 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                         target.replaceAtPredecessor(firstEnd);
 
                         exitLoops((AbstractDeoptimizeNode) target, firstEnd, cfg);
-
-                        merge.setNext(graph.add(new DynamicDeoptimizeNode(reasonActionPhi, speculationPhi)));
+                        try (DebugCloseable position = target.withNodeSourcePosition()) {
+                            merge.setNext(graph.add(new DynamicDeoptimizeNode(reasonActionPhi, speculationPhi)));
+                        }
                         obsoletes = new LinkedList<>();
                         obsoletes.add((AbstractDeoptimizeNode) target);
                         target = merge;

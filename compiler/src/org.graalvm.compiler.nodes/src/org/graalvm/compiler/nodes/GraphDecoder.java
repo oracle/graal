@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -1022,7 +1024,11 @@ public class GraphDecoder {
             }
         }
         if (graph.trackNodeSourcePosition() && position != null) {
-            node.setNodeSourcePosition(methodScope.getCallerBytecodePosition(position));
+            NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition(position);
+            node.setNodeSourcePosition(callerBytecodePosition);
+            if (node instanceof DeoptimizingGuard) {
+                ((DeoptimizingGuard) node).addCallerToNoDeoptSuccessorPosition(callerBytecodePosition.getCaller());
+            }
         }
     }
 
@@ -1395,6 +1401,15 @@ class LoopDetector implements Runnable {
     public void run() {
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "Before loop detection");
+
+        if (methodScope.loopExplosionHead == null) {
+            /*
+             * The to-be-exploded loop was not reached during partial evaluation (e.g., because
+             * there was a deoptimization beforehand), or the method might not even contain a loop.
+             * This is an uncommon case, but not an error.
+             */
+            return;
+        }
 
         List<Loop> orderedLoops = findLoops();
         assert orderedLoops.get(orderedLoops.size() - 1) == irreducibleLoopHandler : "outermost loop must be the last element in the list";

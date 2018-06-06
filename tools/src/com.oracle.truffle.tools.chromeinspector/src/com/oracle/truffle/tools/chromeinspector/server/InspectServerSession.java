@@ -25,19 +25,12 @@
 package com.oracle.truffle.tools.chromeinspector.server;
 
 import java.io.PrintWriter;
-import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONException;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.commands.Command;
@@ -58,8 +51,6 @@ public final class InspectServerSession {
     private final DebuggerDomain debugger;
     private final ProfilerDomain profiler;
     private final TruffleExecutionContext context;
-    private final EventBinding<?> binding;
-    private final Semaphore endPermission = new Semaphore(1);
     private volatile MessageListener messageListener;
     private CommandProcessThread processThread;
 
@@ -69,52 +60,13 @@ public final class InspectServerSession {
         this.debugger = debugger;
         this.profiler = profiler;
         this.context = context;
-        endPermission.drainPermits();
-        this.binding = context.getEnv().getInstrumenter().attachContextsListener(new ContextsListener() {
-            private HashSet<TruffleContext> contexts = new HashSet<>();
-
-            @Override
-            public void onContextCreated(TruffleContext ctx) {
-                contexts.add(ctx);
-            }
-
-            @Override
-            public void onLanguageContextCreated(TruffleContext ctx, LanguageInfo language) {
-            }
-
-            @Override
-            public void onLanguageContextInitialized(TruffleContext ctx, LanguageInfo language) {
-            }
-
-            @Override
-            public void onLanguageContextFinalized(TruffleContext ctx, LanguageInfo language) {
-            }
-
-            @Override
-            public void onLanguageContextDisposed(TruffleContext ctx, LanguageInfo language) {
-            }
-
-            @Override
-            public void onContextClosed(TruffleContext ctx) {
-                if (contexts.remove(ctx) && contexts.isEmpty() && !endPermission.tryAcquire()) {
-                    PrintWriter info = new PrintWriter(context.getEnv().out());
-                    info.println("Waiting for the debugger to disconnect...");
-                    info.flush();
-                    try {
-                        endPermission.acquire();
-                    } catch (InterruptedException ex) {
-                    }
-                }
-            }
-        }, true);
     }
 
     public void dispose() {
         runtime.disable();
         debugger.disable();
         profiler.disable();
-        endPermission.release();
-        binding.dispose();
+        context.reset();
         messageListener = null;
         processThread.dispose();
     }
@@ -242,7 +194,10 @@ public final class InspectServerSession {
                 debugger.setPauseOnExceptions(cmd.getParams().getState());
                 break;
             case "Debugger.setBreakpointsActive":
-                debugger.setBreakpointsActive(cmd.getParams().getBreakpointsActive());
+                debugger.setBreakpointsActive(cmd.getParams().getBoolean("active"));
+                break;
+            case "Debugger.setSkipAllPauses":
+                debugger.setSkipAllPauses(cmd.getParams().getBoolean("skip"));
                 break;
             case "Debugger.setBreakpointByUrl":
                 json = cmd.getParams().getJSONObject();

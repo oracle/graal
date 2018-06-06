@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -30,6 +32,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -103,14 +106,19 @@ public class DiscoverableReference {
         ObjectAccess.writeObject(this, WordFactory.signed(RAW_REFERENT_OFFSET), value.toObject());
     }
 
-    /** Read access to the next field. */
+    /**
+     * Read access to the next field. Must use ObjectAccess to read the field because it is written
+     * with ObjectAccess only.
+     */
     public DiscoverableReference getNextDiscoverableReference() {
-        return next;
+        return KnownIntrinsics.convertUnknownValue(ObjectAccess.readObject(this, WordFactory.signed(NEXT_FIELD_OFFSET)), DiscoverableReference.class);
     }
 
-    /** Write access to the next field. */
+    /**
+     * Write access to the next field. Must use ObjectAccess to bypass the write barrier.
+     */
     private void setNextDiscoverableReference(DiscoverableReference newNext, boolean newIsDiscovered) {
-        next = newNext;
+        ObjectAccess.writeObject(this, WordFactory.signed(NEXT_FIELD_OFFSET), newNext);
         isDiscovered = newIsDiscovered;
     }
 
@@ -157,18 +165,14 @@ public class DiscoverableReference {
     private Object rawReferent;
 
     /**
-     * The offset of the field {@link #rawReferent} for Pointer-level access to the field.
+     * The offset of the fields for Pointer-level access to the field.
      */
-    private static final long RAW_REFERENT_OFFSET;
+    private static final long RAW_REFERENT_OFFSET = getFieldOffset("rawReferent");
+    private static final long NEXT_FIELD_OFFSET = getFieldOffset("next");
 
-    static {
+    private static long getFieldOffset(String fieldName) {
         try {
-            /*
-             * This computes the offset on the hosting VM during native image generation. It is not
-             * yet the correct offset at run time. It will be automatically recomputed to the offset
-             * used at run time.
-             */
-            RAW_REFERENT_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField("rawReferent"));
+            return UnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
         } catch (NoSuchFieldException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -182,8 +186,9 @@ public class DiscoverableReference {
      * promoted, but the next field has not yet been updated, so this == next fails.
      */
     private boolean isDiscovered;
+
     /** The next element in whichever list of DiscoverableReferences. */
-    private DiscoverableReference next;
+    @SuppressWarnings("unused") private DiscoverableReference next;
 
     /** For testing and debugging. */
     public static final class TestingBackDoor {

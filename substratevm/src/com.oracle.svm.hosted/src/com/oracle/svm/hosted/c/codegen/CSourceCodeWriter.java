@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,6 +25,7 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -32,22 +35,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
+import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CSourceCodeWriter {
@@ -166,51 +176,88 @@ public class CSourceCodeWriter {
         return outputFile;
     }
 
-    public static String findCTypeName(MetaAccessProvider metaAccess, NativeLibraries nativeLibs, ResolvedJavaType type) {
+    public static String toCTypeName(ResolvedJavaMethod method, ResolvedJavaType type, boolean isConst, boolean isUnsigned, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+        if (type.getJavaKind().isNumericInteger()) {
+            return toCIntegerType(type, isUnsigned);
+        }
+        UserError.guarantee(!isUnsigned,
+                        "Only integer types can be unsigned. " + type.getJavaKind().getJavaName() + " is not an integer type in " + method.format("%H.%n(%p)"));
+
+        if (type.getJavaKind() == JavaKind.Object) {
+            return cTypeForObject(type, isConst, metaAccess, nativeLibs);
+        }
+
+        UserError.guarantee(!isConst,
+                        "Only pointer types can be const. " + type.getJavaKind().getJavaName() + " in method " + method.format("%H.%n(%p)") + " is not an pointer type.");
+
         switch (type.getJavaKind()) {
-            case Boolean:
-                if (NativeImageOptions.getCStandard() == CStandards.C89) {
-                    return "int";
-                } else {
-                    return "bool";
-                }
-            case Byte:
-                return "char";
-            case Char:
-                return "short";
             case Double:
                 return "double";
             case Float:
                 return "float";
-            case Int:
-                return "int"; // will be at least 32 bits; use uint32_t instead?
-            case Long:
-                return "long long int";
-            case Short:
-                return "short";
             case Void:
                 return "void";
-            case Object:
-                ElementInfo elementInfo = nativeLibs.findElementInfo(type);
-                if (elementInfo instanceof PointerToInfo || elementInfo instanceof StructInfo) {
-                    return elementInfo.getName() + "*";
-                } else if (elementInfo instanceof EnumInfo) {
-                    return elementInfo.getName();
-                } else if (metaAccess.lookupJavaType(UnsignedWord.class).isAssignableFrom(type)) {
-                    return "size_t";
-                } else if (metaAccess.lookupJavaType(SignedWord.class).isAssignableFrom(type)) {
-                    return "ssize_t";
-                }
-                return "void *";
             default:
                 throw shouldNotReachHere();
         }
     }
 
+    private static String cTypeForObject(ResolvedJavaType type, boolean isConst, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+        String prefix = isConst ? "const " : "";
+        ElementInfo elementInfo = nativeLibs.findElementInfo(type);
+        if (elementInfo instanceof PointerToInfo) {
+            PointerToInfo pointerToInfo = (PointerToInfo) elementInfo;
+            return (pointerToInfo.getTypedefName() != null ? pointerToInfo.getTypedefName() : prefix + pointerToInfo.getName() + "*");
+        } else if (elementInfo instanceof StructInfo) {
+            StructInfo structInfo = (StructInfo) elementInfo;
+            return structInfo.getTypedefName() != null ? structInfo.getTypedefName() : prefix + structInfo.getName() + "*";
+        } else if (elementInfo instanceof EnumInfo) {
+            return elementInfo.getName();
+        } else if (metaAccess.lookupJavaType(UnsignedWord.class).isAssignableFrom(type)) {
+            return "size_t";
+        } else if (metaAccess.lookupJavaType(SignedWord.class).isAssignableFrom(type)) {
+            return "ssize_t";
+        } else if (isFunctionPointer(metaAccess, type)) {
+            return InfoTreeBuilder.getTypedefName(type) != null ? InfoTreeBuilder.getTypedefName(type) : prefix + "void *";
+        }
+        return prefix + "void *";
+    }
+
+    private static String toCIntegerType(ResolvedJavaType type, boolean isUnsigned) {
+        boolean c11Compatible = NativeImageOptions.getCStandard().compatibleWith(C11);
+        String prefix = "";
+        if (isUnsigned) {
+            prefix = c11Compatible ? "u" : "unsigned ";
+        }
+        switch (type.getJavaKind()) {
+            case Boolean:
+                if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C99)) {
+                    return "bool";
+                } else {
+                    return "int";
+                }
+            case Byte:
+                return prefix + (c11Compatible ? "int8_t" : "char");
+            case Char:
+                return prefix + (c11Compatible ? "int16_t" : "short");
+            case Short:
+                return prefix + (c11Compatible ? "int16_t" : "short");
+            case Int:
+                return prefix + (c11Compatible ? "int32_t" : "int");
+            case Long:
+                return prefix + (c11Compatible ? "int64_t" : "long long int");
+        }
+        throw VMError.shouldNotReachHere("All types integer types should be covered. Got " + type.getJavaKind());
+    }
+
+    private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
+        boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
+        return functionPointer &&
+                        Arrays.stream(type.getDeclaredMethods()).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
+    }
+
     /**
      * Appends definition of "flags" like macro.
-     *
-     * @param preDefine
      */
     public void appendMacroDefinition(String preDefine) {
         appendln("#define " + preDefine);

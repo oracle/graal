@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,6 +28,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Predicate;
 
 /**
  * Specifies additional properties for an element also annotated with {@link Alias}, {@link Delete},
@@ -48,11 +51,15 @@ public @interface TargetElement {
     String name() default "";
 
     /**
-     * Specifies if the aliased target must exist. If the property is false (the default value), a
-     * non-existing target element raises an error. If the property is true, a non-existing target
-     * element is silently ignored.
-     *
-     * This property is useful, e.g., to handle differences in JDK versions.
+     * Substitute only if predicates are true (default: unconditional substitutions). The parameter
+     * to the predicate is the "original" class as specified by the {@link TargetClass} annotation.
      */
-    boolean optional() default false;
+    Class<? extends Predicate<Class<?>>>[] onlyWith() default AlwaysIncluded.class;
+
+    class AlwaysIncluded implements Predicate<Class<?>> {
+        @Override
+        public boolean test(Class<?> originalClass) {
+            return true;
+        }
+    }
 }

@@ -12,11 +12,14 @@
   <property name="severity" value="error"/>
   <module name="TreeWalker">
     <module name="AvoidStarImport">
-      <property name="allowClassImports" value="false"/>
+      <!-- After GR-8623 is fixed this should be disabled again.
+           We should allow star class imports as it allows us to import deprecated API without 
+           triggering the javac bug for deprecated warnings for imports:
+           https://stackoverflow.com/questions/1858021/suppress-deprecated-import-warning-in-java/20909204#20909204 -->
+      <property name="allowClassImports" value="true"/>
       <property name="allowStaticMemberImports" value="false"/>
     </module>
     <property name="tabWidth" value="4"/>
-    <module name="FileContentsHolder"/>
     <module name="JavadocStyle">
       <property name="checkHtml" value="false"/>
     </module>
@@ -136,6 +139,62 @@
       <property name="message" value="Don't use old synchronized collection classes"/>
     </module>
     <module name="Regexp"/>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop constant name check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume constant name check"/>
+      <property name="checkFormat" value="ConstantNameCheck"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Allow non-conforming constant names"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop method name check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume method name check"/>
+      <property name="checkFormat" value="MethodName"/>
+      <property name="checkC" value="false"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable method name checks"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="CheckStyle: stop parameter assignment check"/>
+      <property name="onCommentFormat" value="CheckStyle: resume parameter assignment check"/>
+      <property name="checkFormat" value="ParameterAssignment"/>
+      <property name="checkC" value="false"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Parameter Assignment"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop final variable check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume final variable check"/>
+      <property name="checkFormat" value="FinalLocalVariable"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable final variable checks"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="CheckStyle: stop inner assignment check"/>
+      <property name="onCommentFormat" value="CheckStyle: resume inner assignment check"/>
+      <property name="checkFormat" value="InnerAssignment"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable inner assignment checks"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop field name check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume field name check"/>
+      <property name="checkFormat" value="MemberName"/>
+      <property name="checkC" value="false"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable field name checks"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="CheckStyle: stop system..print check"/>
+      <property name="onCommentFormat" value="CheckStyle: resume system..print check"/>
+      <property name="checkFormat" value="RegexpSingleline"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.(out|err).print checks"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="CheckStyle: stop header check"/>
+      <property name="onCommentFormat" value="CheckStyle: resume header check"/>
+      <property name="checkFormat" value=".*Header"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable header checks"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="CheckStyle: start generated"/>
+      <property name="onCommentFormat" value="CheckStyle: stop generated"/>
+      <property name="checkFormat" value=".*Name|.*LineLength|.*Header"/>
+    </module>
   </module>
   <module name="RegexpHeader">
     <property name="header" value="/\*\n \* Copyright \(c\) (?:(20[0-9][0-9]), )?(20[0-9][0-9]), Oracle and/or its affiliates\. All rights reserved\.\n \* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER\.\n \*\n \* The Universal Permissive License \(UPL\), Version 1\.0\n \*\n \* Subject to the condition set forth below, permission is hereby granted to any\n \* person obtaining a copy of this software, associated documentation and/or\n \* data \(collectively the &quot;Software&quot;\), free of charge and under any and all\n \* copyright rights in the Software, and any and all patent rights owned or\n \* freely licensable by each licensor hereunder covering either \(i\) the\n \* unmodified Software as contributed to or provided by such licensor, or \(ii\)\n \* the Larger Works \(as defined below\), to deal in both\n \*\n \* \(a\) the Software, and\n \*\n \* \(b\) any piece of software and/or hardware listed in the lrgrwrks\.txt file if\n \* one is included with the Software each a &quot;Larger Work&quot; to which the Software\n \* is contributed by such licensors\),\n \*\n \* without restriction, including without limitation the rights to copy, create\n \* derivative works of, display, perform, and distribute the Software and make,\n \* use, sell, offer for sale, import, export, have made, and have sold the\n \* Software and the Larger Work\(s\), and to sublicense the foregoing rights on\n \* either these or other terms\.\n \*\n \* This license is subject to the following condition:\n \*\n \* The above copyright notice and either this complete permission notice or at a\n \* minimum a reference to the UPL must be included in all copies or substantial\n \* portions of the Software\.\n \*\n \* THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n \* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n \* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\. IN NO EVENT SHALL THE\n \* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n \* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n \* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n \* SOFTWARE\.\n \*/\n"/>
@@ -148,74 +207,18 @@
     <property name="lineSeparator" value="lf"/>
   </module>
   <module name="Translation"/>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="Checkstyle: stop constant name check"/>
-    <property name="onCommentFormat" value="Checkstyle: resume constant name check"/>
-    <property name="checkFormat" value="ConstantNameCheck"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Allow non-conforming constant names"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="Checkstyle: stop method name check"/>
-    <property name="onCommentFormat" value="Checkstyle: resume method name check"/>
-    <property name="checkFormat" value="MethodName"/>
-    <property name="checkC" value="false"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable method name checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="CheckStyle: stop parameter assignment check"/>
-    <property name="onCommentFormat" value="CheckStyle: resume parameter assignment check"/>
-    <property name="checkFormat" value="ParameterAssignment"/>
-    <property name="checkC" value="false"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Parameter Assignment"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="Checkstyle: stop final variable check"/>
-    <property name="onCommentFormat" value="Checkstyle: resume final variable check"/>
-    <property name="checkFormat" value="FinalLocalVariable"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable final variable checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="Checkstyle: stop"/>
-    <property name="onCommentFormat" value="Checkstyle: resume"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable all checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="CheckStyle: stop inner assignment check"/>
-    <property name="onCommentFormat" value="CheckStyle: resume inner assignment check"/>
-    <property name="checkFormat" value="InnerAssignment"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable inner assignment checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="Checkstyle: stop field name check"/>
-    <property name="onCommentFormat" value="Checkstyle: resume field name check"/>
-    <property name="checkFormat" value="MemberName"/>
-    <property name="checkC" value="false"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable field name checks"/>
-  </module>
   <module name="RegexpMultiline">
     <metadata name="net.sf.eclipsecs.core.comment" value="illegal Windows line ending"/>
     <property name="format" value="\r\n"/>
     <property name="message" value="illegal Windows line ending"/>
   </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="CheckStyle: stop system..print check"/>
-    <property name="onCommentFormat" value="CheckStyle: resume system..print check"/>
-    <property name="checkFormat" value="RegexpSingleline"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.(out|err).print checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="CheckStyle: stop header check"/>
-    <property name="onCommentFormat" value="CheckStyle: resume header check"/>
-    <property name="checkFormat" value=".*Header"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable header checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="CheckStyle: start generated"/>
-    <property name="onCommentFormat" value="CheckStyle: stop generated"/>
-    <property name="checkFormat" value=".*Name|.*LineLength|.*Header"/>
-  </module>
   <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
+  </module>
+  <module name="SuppressWithPlainTextCommentFilter">
+    <property name="offCommentFormat" value="Checkstyle: stop"/>
+    <property name="onCommentFormat" value="Checkstyle: resume"/>
+    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable all checks"/>
   </module>
 </module>

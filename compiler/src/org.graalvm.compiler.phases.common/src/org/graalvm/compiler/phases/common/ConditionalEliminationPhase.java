@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -172,7 +174,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
                 for (GuardNode guard : mergeNode.guards().snapshot()) {
                     try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
-                        GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
+                        GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation(),
+                                        guard.getNoDeoptSuccessorPosition());
                         GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
                         guard.replaceAndDelete(newGuard);
                     }
@@ -205,7 +208,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                                 continue;
                             }
                             try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
-                                GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
+                                GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation,
+                                                guard.getNoDeoptSuccessorPosition());
                                 GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
                                 if (otherGuard.isAlive()) {
                                     otherGuard.replaceAndDelete(newGuard);
@@ -245,7 +249,41 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    public static class Instance implements ControlFlowGraph.RecursiveVisitor<Integer> {
+    public static final class Marks {
+        final int infoElementOperations;
+        final int conditions;
+
+        public Marks(int infoElementOperations, int conditions) {
+            this.infoElementOperations = infoElementOperations;
+            this.conditions = conditions;
+        }
+    }
+
+    protected static final class GuardedCondition {
+        private final GuardingNode guard;
+        private final LogicNode condition;
+        private final boolean negated;
+
+        public GuardedCondition(GuardingNode guard, LogicNode condition, boolean negated) {
+            this.guard = guard;
+            this.condition = condition;
+            this.negated = negated;
+        }
+
+        public GuardingNode getGuard() {
+            return guard;
+        }
+
+        public LogicNode getCondition() {
+            return condition;
+        }
+
+        public boolean isNegated() {
+            return negated;
+        }
+    }
+
+    public static class Instance implements ControlFlowGraph.RecursiveVisitor<Marks> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
         protected final NodeMap<Block> nodeToBlock;
@@ -254,6 +292,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected final StructuredGraph graph;
         protected final DebugContext debug;
         protected final EconomicMap<MergeNode, EconomicMap<ValuePhiNode, PhiInfoElement>> mergeMaps;
+
+        protected final ArrayDeque<GuardedCondition> conditions;
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
@@ -267,7 +307,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             this.nodeToBlock = nodeToBlock;
             this.undoOperations = new NodeStack();
             this.map = graph.createNodeMap();
-            pendingTests = new ArrayDeque<>();
+            this.pendingTests = new ArrayDeque<>();
+            this.conditions = new ArrayDeque<>();
             tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
                             context.getLowerer());
             mergeMaps = EconomicMap.create();
@@ -337,13 +378,14 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public Integer enter(Block block) {
-            int mark = undoOperations.size();
+        public Marks enter(Block block) {
+            int infoElementsMark = undoOperations.size();
+            int conditionsMark = conditions.size();
             debug.log("[Pre Processing block %s]", block);
             // For now conservatively collect guards only within the same block.
             pendingTests.clear();
             processNodes(block);
-            return mark;
+            return new Marks(infoElementsMark, conditionsMark);
         }
 
         protected void processNodes(Block block) {
@@ -531,8 +573,10 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                 ValueNode value = unaryLogicNode.getValue();
                 if (maybeMultipleUsages(value)) {
+                    // getSucceedingStampForValue doesn't take the (potentially a Pi Node) input
+                    // stamp into account, so it can be safely propagated.
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(negated);
-                    registerNewStamp(value, newStamp, guard);
+                    registerNewStamp(value, newStamp, guard, true);
                 }
             } else if (condition instanceof BinaryOpLogicNode) {
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
@@ -753,17 +797,21 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void registerCondition(LogicNode condition, boolean negated, GuardingNode guard) {
-            if (condition.getUsageCount() > 1) {
+            if (condition.hasMoreThanOneUsage()) {
                 registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology(), guard);
             }
+            conditions.push(new GuardedCondition(guard, condition, negated));
         }
 
         protected InfoElement getInfoElements(ValueNode proxiedValue) {
-            ValueNode value = GraphUtil.skipPi(proxiedValue);
-            if (value == null) {
+            if (proxiedValue == null) {
                 return null;
             }
-            return map.getAndGrow(value);
+            InfoElement infoElement = map.getAndGrow(proxiedValue);
+            if (infoElement == null) {
+                infoElement = map.getAndGrow(GraphUtil.skipPi(proxiedValue));
+            }
+            return infoElement;
         }
 
         protected boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
@@ -799,6 +847,13 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     return rewireGuards(infoElement.getGuard(), constant.asBoolean(), null, null, rewireGuardFunction);
                 }
                 infoElement = nextElement(infoElement);
+            }
+
+            for (GuardedCondition guardedCondition : this.conditions) {
+                TriState result = guardedCondition.getCondition().implies(guardedCondition.isNegated(), node);
+                if (result.isKnown()) {
+                    return rewireGuards(guardedCondition.guard, result.toBoolean(), null, null, rewireGuardFunction);
+                }
             }
 
             if (node instanceof UnaryOpLogicNode) {
@@ -943,30 +998,40 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void registerNewStamp(ValueNode maybeProxiedValue, Stamp newStamp, GuardingNode guard) {
+            registerNewStamp(maybeProxiedValue, newStamp, guard, false);
+        }
+
+        protected void registerNewStamp(ValueNode maybeProxiedValue, Stamp newStamp, GuardingNode guard, boolean propagateThroughPis) {
             assert maybeProxiedValue != null;
             assert guard != null;
-            if (newStamp != null) {
-                ValueNode value = maybeProxiedValue;
-                Stamp stamp = newStamp;
+
+            if (newStamp == null || newStamp.isUnrestricted()) {
+                return;
+            }
+
+            ValueNode value = maybeProxiedValue;
+            Stamp stamp = newStamp;
+
+            while (stamp != null && value != null) {
                 ValueNode proxiedValue = null;
                 if (value instanceof PiNode) {
                     proxiedValue = value;
                 }
-                do {
-                    counterStampsRegistered.increment(debug);
-                    debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
-                    assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
-                    map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
-                    undoOperations.push(value);
-                    if (value instanceof StampInverter) {
-                        StampInverter stampInverter = (StampInverter) value;
-                        value = stampInverter.getValue();
-                        stamp = stampInverter.invertStamp(stamp);
-                    } else {
-                        value = null;
-                        stamp = null;
-                    }
-                } while (value != null && stamp != null);
+                counterStampsRegistered.increment(debug);
+                debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
+                assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
+                map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
+                undoOperations.push(value);
+                if (propagateThroughPis && value instanceof PiNode) {
+                    PiNode piNode = (PiNode) value;
+                    value = piNode.getOriginalNode();
+                } else if (value instanceof StampInverter) {
+                    StampInverter stampInverter = (StampInverter) value;
+                    value = stampInverter.getValue();
+                    stamp = stampInverter.invertStamp(stamp);
+                } else {
+                    break;
+                }
             }
         }
 
@@ -990,7 +1055,9 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
-                return value instanceof ProxyNode;
+                return value instanceof ProxyNode ||
+                                value instanceof PiNode ||
+                                value instanceof StampInverter;
             }
         }
 
@@ -1019,13 +1086,18 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public void exit(Block b, Integer state) {
-            int mark = state;
-            while (undoOperations.size() > mark) {
+        public void exit(Block b, Marks marks) {
+            int infoElementsMark = marks.infoElementOperations;
+            while (undoOperations.size() > infoElementsMark) {
                 Node node = undoOperations.pop();
                 if (node.isAlive()) {
                     map.set(node, map.get(node).getParent());
                 }
+            }
+
+            int conditionsMark = marks.conditions;
+            while (conditions.size() > conditionsMark) {
+                conditions.pop();
             }
         }
     }

@@ -28,6 +28,8 @@ import org.graalvm.word.PointerBase;
 
 /**
  * Contains static methods for memory allocation in the stack frame.
+ *
+ * @since 1.0
  */
 public final class StackValue {
 
@@ -42,6 +44,8 @@ public final class StackValue {
      * memory; it returns the address of a fixed-size block of memory that is reserved in the stack
      * frame when the method starts execution. The memory is not initialized. Two distinct calls of
      * this method return different pointers.
+     *
+     * @since 1.0
      */
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int size) {
@@ -50,6 +54,8 @@ public final class StackValue {
 
     /**
      * Utility method that performs size arithmetic, otherwise equivalent to {@link #get(int)}.
+     *
+     * @since 1.0
      */
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int numberOfElements, int elementSize) {

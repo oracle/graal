@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,19 +25,19 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Queue;
 import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
+import org.graalvm.compiler.options.OptionType;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
-    static final String helpTextAdvanced = NativeImage.getResource("/HelpAdvanced.txt");
+    static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -45,35 +47,48 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
-            case "-?":
-            case "-help":
+            case "--help":
                 args.poll();
                 nativeImage.showMessage(helpText);
+                nativeImage.showNewline();
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage);
+                nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
-                nativeImage.showMessage("");
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
-            case "-version":
+            case "--version":
                 args.poll();
                 nativeImage.showMessage("SubstrateVM Version Info");
                 nativeImage.showMessage(NativeImage.svmVersion.replace(',', '\n'));
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
-            case "-help-advanced":
+            case "--help-extra":
                 args.poll();
-                nativeImage.showMessage(helpTextAdvanced);
+                nativeImage.showMessage(helpExtraText);
                 System.exit(0);
                 return true;
             case "-cp":
             case "-classpath":
+            case "--class-path":
                 args.poll();
                 String cpArgs = args.poll();
                 if (cpArgs == null) {
-                    NativeImage.showError("-cp requires class path specification");
+                    NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(":")) {
+                for (String cp : cpArgs.split(File.pathSeparator)) {
                     nativeImage.addCustomImageClasspath(Paths.get(cp));
+                }
+                return true;
+            case "--configurations-path":
+                args.poll();
+                String configPath = args.poll();
+                if (configPath == null) {
+                    NativeImage.showError(headArg + " requires a " + File.pathSeparator + " separated list of directories");
+                }
+                for (String configDir : configPath.split(File.pathSeparator)) {
+                    nativeImage.addMacroOptionRoot(Paths.get(configDir));
                 }
                 return true;
             case "-jar":
@@ -82,36 +97,30 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (jarFilePathStr == null) {
                     NativeImage.showError("-jar requires jar file specification");
                 }
-                handleJarFileArg(Paths.get(jarFilePathStr).toFile());
+                handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
                 return true;
-            case "-verbose":
+            case "--verbose":
                 args.poll();
                 nativeImage.setVerbose(true);
                 return true;
-            case "-dry-run":
+            case "--dry-run":
                 args.poll();
                 nativeImage.setDryRun(true);
                 return true;
-            case "-shared":
+            case "--expert-options":
                 args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oHKind + NativeImageKind.SHARED_LIBRARY.name());
+                String expertUserOption = OptionType.User.name();
+                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + expertUserOption);
+                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + expertUserOption);
                 return true;
-            case "-ea":
-                args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enableRuntimeAssertions);
-                return true;
-            case "-g":
-                args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
-                return true;
-            case "-expert-options":
+            case "--expert-options-all":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
                 nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
                 return true;
         }
 
-        String debugAttach = "-debug-attach";
+        String debugAttach = "--debug-attach";
         if (headArg.startsWith(debugAttach)) {
             String debugAttachArg = args.poll();
             String portSuffix = debugAttachArg.substring(debugAttach.length());
@@ -120,7 +129,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 try {
                     debugPort = Integer.parseInt(portSuffix.substring(1));
                 } catch (NumberFormatException e) {
-                    NativeImage.showError("Invalid -debug-attach option: " + debugAttachArg);
+                    NativeImage.showError("Invalid --debug-attach option: " + debugAttachArg);
                 }
             }
             nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
@@ -160,28 +169,27 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return false;
     }
 
-    private void handleJarFileArg(File file) {
-        try {
-            Manifest manifest = null;
-            for (FastJar.Entry entry : FastJar.list(file)) {
-                if ("META-INF/MANIFEST.MF".equals(entry.name)) {
-                    manifest = new Manifest(FastJar.getInputStream(file, entry));
-                }
-            }
-            if (manifest == null) {
-                return;
-            }
+    private void handleJarFileArg(Path filePath) {
+        try (JarFile jarFile = new JarFile(filePath.toFile())) {
+            Manifest manifest = jarFile.getManifest();
             Attributes mainAttributes = manifest.getMainAttributes();
             String mainClass = mainAttributes.getValue("Main-Class");
             if (mainClass == null) {
-                return;
+                NativeImage.showError("No main manifest attribute, in " + filePath);
             }
-            nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
-            String jarFileName = file.getName().toString();
-            String jarFileNameBase = jarFileName.substring(0, jarFileName.length() - 4);
-            nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
-            Path filePath = file.toPath();
             nativeImage.addImageClasspath(filePath);
+            nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
+            String jarFileName = filePath.getFileName().toString();
+            String jarSuffix = ".jar";
+            String jarFileNameBase;
+            if (jarFileName.endsWith(jarSuffix)) {
+                jarFileNameBase = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+            } else {
+                jarFileNameBase = jarFileName;
+            }
+            if (!jarFileNameBase.isEmpty()) {
+                nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
+            }
             String classPath = mainAttributes.getValue("Class-Path");
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
@@ -191,11 +199,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
                     }
-                    nativeImage.addImageClasspath(manifestClassPath);
+                    nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
-        } catch (IOException e) {
-            NativeImage.showError("Given file does not appear to be a jar-file: " + file, e);
+        } catch (NativeImage.NativeImageError ex) {
+            throw ex;
+        } catch (Throwable ex) {
+            throw NativeImage.showError("Invalid or corrupt jarfile " + filePath);
         }
     }
 }

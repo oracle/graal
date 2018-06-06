@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,7 @@ import static org.graalvm.compiler.loop.MathUtil.unsignedDivBefore;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -117,7 +120,7 @@ public class CountedLoopInfo {
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
         ValueNode denominator = add(graph, range, sub(graph, absStride, one));
-        ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride);
+        ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride, null);
 
         if (assumePositive) {
             return div;
@@ -223,34 +226,37 @@ public class CountedLoopInfo {
         return loop.loopBegin().getOverflowGuard();
     }
 
+    @SuppressWarnings("try")
     public GuardingNode createOverFlowGuard() {
         GuardingNode overflowGuard = getOverFlowGuard();
         if (overflowGuard != null) {
             return overflowGuard;
         }
-        IntegerStamp stamp = (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);
-        StructuredGraph graph = iv.valueNode().graph();
-        CompareNode cond; // we use a negated guard with a < condition to achieve a >=
-        ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
-        if (iv.direction() == Direction.Up) {
-            ValueNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.maxValue(stamp.getBits()), graph), sub(graph, iv.strideNode(), one));
-            if (oneOff) {
-                v1 = sub(graph, v1, one);
+        try (DebugCloseable position = loop.loopBegin().withNodeSourcePosition()) {
+            IntegerStamp stamp = (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);
+            StructuredGraph graph = iv.valueNode().graph();
+            CompareNode cond; // we use a negated guard with a < condition to achieve a >=
+            ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
+            if (iv.direction() == Direction.Up) {
+                ValueNode v1 = sub(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.maxValue(stamp.getBits()), graph), sub(graph, iv.strideNode(), one));
+                if (oneOff) {
+                    v1 = sub(graph, v1, one);
+                }
+                cond = graph.unique(new IntegerLessThanNode(v1, end));
+            } else {
+                assert iv.direction() == Direction.Down;
+                ValueNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.minValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
+                if (oneOff) {
+                    v1 = add(graph, v1, one);
+                }
+                cond = graph.unique(new IntegerLessThanNode(end, v1));
             }
-            cond = graph.unique(new IntegerLessThanNode(v1, end));
-        } else {
-            assert iv.direction() == Direction.Down;
-            ValueNode v1 = add(graph, ConstantNode.forIntegerStamp(stamp, CodeUtil.minValue(stamp.getBits()), graph), sub(graph, one, iv.strideNode()));
-            if (oneOff) {
-                v1 = add(graph, v1, one);
-            }
-            cond = graph.unique(new IntegerLessThanNode(end, v1));
+            assert graph.getGuardsStage().allowsFloatingGuards();
+            overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
+                            JavaConstant.NULL_POINTER, null)); // TODO gd: use speculation
+            loop.loopBegin().setOverflowGuard(overflowGuard);
+            return overflowGuard;
         }
-        assert graph.getGuardsStage().allowsFloatingGuards();
-        overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
-                        JavaConstant.NULL_POINTER)); // TODO gd: use speculation
-        loop.loopBegin().setOverflowGuard(overflowGuard);
-        return overflowGuard;
     }
 
     public IntegerStamp getStamp() {

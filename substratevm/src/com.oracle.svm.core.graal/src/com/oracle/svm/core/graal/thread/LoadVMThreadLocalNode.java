@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -30,19 +32,14 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
-import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
-import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -67,20 +64,10 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements Lowerabl
     public void lower(LoweringTool tool) {
         assert threadLocalInfo.offset >= 0;
 
-        ConstantNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), threadLocalInfo.offset, holder.graph());
+        ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-
-        FixedAccessNode read;
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            read = new CInterfaceReadNode(address, threadLocalInfo.locationIdentity, stamp(NodeView.DEFAULT), barrierType, threadLocalInfo.name);
-        } else {
-            read = new JavaReadNode(threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true);
-        }
-        read = graph().add(read);
+        JavaReadNode read = graph().add(new JavaReadNode(threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
         graph().replaceFixedWithFixed(this, read);
-
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            tool.getLowerer().lower(read, tool);
-        }
+        tool.getLowerer().lower(read, tool);
     }
 }

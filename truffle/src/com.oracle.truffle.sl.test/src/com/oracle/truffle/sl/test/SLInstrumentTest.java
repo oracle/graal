@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,6 @@ import java.io.PrintStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Semaphore;
 
 import org.graalvm.polyglot.Context;
@@ -66,6 +65,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -82,10 +82,13 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -455,20 +458,43 @@ public class SLInstrumentTest {
         assertFalse(node.getClass().getName(), node instanceof RootNode);
     }
 
-    @SuppressWarnings("rawtypes")
+    private static boolean contains(TruffleObject vars, String key) {
+        return KeyInfo.isExisting(ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), vars, key));
+    }
+
+    private static Object read(TruffleObject vars, String key) {
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), vars, key);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static boolean isNull(TruffleObject vars) {
+        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), vars);
+    }
+
+    private static int keySize(TruffleObject vars) {
+        try {
+            Object keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), vars);
+            return ((Number) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), (TruffleObject) keys)).intValue();
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     private static void checkVars(TruffleObject vars, Object... expected) {
-        Map map = JavaInterop.asJavaObject(Map.class, vars);
         for (int i = 0; i < expected.length; i += 2) {
             String name = (String) expected[i];
             Object value = expected[i + 1];
-            assertTrue(name, map.containsKey(name));
+            assertTrue(name, contains(vars, name));
             if (value != null) {
-                assertEquals(name, value, map.get(name));
+                assertEquals(name, value, read(vars, name));
             } else {
-                assertNull(map.get(name));
+                assertTrue(isNull((TruffleObject) read(vars, name)));
             }
         }
-        assertEquals(map.keySet().toString(), expected.length / 2, map.size());
+        assertEquals(expected.length / 2, keySize(vars));
     }
 
     @Test
@@ -664,6 +690,7 @@ public class SLInstrumentTest {
      */
     @Test
     public void testEarlyReturn() throws Exception {
+        Assume.assumeFalse("Crashes on AArch64 in C2 (GR-8733)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
         String code = "function main() {\n" +
                         "  a = 10;\n" +
                         "  b = a;\n" +
@@ -860,7 +887,7 @@ public class SLInstrumentTest {
 
                     @SuppressWarnings("unused")
                     public Object access(ReplacedTruffleObject ato) {
-                        return JavaInterop.asTruffleObject(new String[]{"rp1, rp2"});
+                        return new KeysArray(new String[]{"rp1, rp2"});
                     }
                 }
 
@@ -874,6 +901,55 @@ public class SLInstrumentTest {
                 }
             }
         }
+    }
+
+    @MessageResolution(receiverType = KeysArray.class)
+    static final class KeysArray implements TruffleObject {
+
+        private final String[] keys;
+
+        KeysArray(String[] keys) {
+            this.keys = keys;
+        }
+
+        @Resolve(message = "HAS_SIZE")
+        abstract static class HasSize extends Node {
+
+            public Object access(@SuppressWarnings("unused") KeysArray receiver) {
+                return true;
+            }
+        }
+
+        @Resolve(message = "GET_SIZE")
+        abstract static class GetSize extends Node {
+
+            public Object access(KeysArray receiver) {
+                return receiver.keys.length;
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class Read extends Node {
+
+            public Object access(KeysArray receiver, int index) {
+                try {
+                    return receiver.keys[index];
+                } catch (IndexOutOfBoundsException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(String.valueOf(index));
+                }
+            }
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return KeysArrayForeign.ACCESS;
+        }
+
+        static boolean isInstance(TruffleObject array) {
+            return array instanceof KeysArray;
+        }
+
     }
 
     /**

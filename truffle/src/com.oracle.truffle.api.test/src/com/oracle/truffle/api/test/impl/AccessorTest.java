@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,16 +24,11 @@
  */
 package com.oracle.truffle.api.test.impl;
 
-import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L1;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.concurrent.Executors;
 
-import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -40,15 +37,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class AccessorTest {
     private static Method find;
     private static Field instrumenthandler;
-    private PolyglotEngine engine;
 
     /**
      * Reflection access to package-private members.
@@ -62,27 +55,6 @@ public class AccessorTest {
         ReflectionUtils.setAccessible(find, true);
         instrumenthandler = Accessor.class.getDeclaredField("INSTRUMENTHANDLER");
         ReflectionUtils.setAccessible(instrumenthandler, true);
-    }
-
-    @After
-    public void dispose() {
-        if (engine != null) {
-            engine.dispose();
-        }
-    }
-
-    @Test
-    public void canGetAccessToOwnLanguageInstance() throws Exception {
-        engine = PolyglotEngine.newBuilder().executor(Executors.newSingleThreadExecutor()).build();
-        PolyglotEngine.Language language = engine.getLanguages().get(L1);
-        assertNotNull("L1 language is defined", language);
-
-        Source s = Source.newBuilder("return nothing").name("nothing").mimeType("content/unknown").build();
-        Object ret = language.eval(s).get();
-        assertNull("nothing is returned", ret);
-
-        ExportImportLanguage1 afterInitialization = (ExportImportLanguage1) find.invoke(null, engine, ExportImportLanguage1.class);
-        assertNotNull("Language found", afterInitialization);
     }
 
     /**

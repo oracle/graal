@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -51,6 +53,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -151,7 +154,7 @@ public final class TruffleTypes {
     }
 
     private static TypeElement getOptional(ProcessorContext context, String name) {
-        return context.getEnvironment().getElementUtils().getTypeElement(name);
+        return ElementUtils.getTypeElement(context.getEnvironment(), name);
     }
 
     public TypeMirror getInvalidAssumption() {

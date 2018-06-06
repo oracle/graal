@@ -43,6 +43,8 @@ import org.graalvm.word.Pointer;
  * {@link LocationIdentity}. If you need a field access with a particular {@link LocationIdentity},
  * do not use this annotation. Instead, add a {@link LocationIdentity} as the last parameter to the
  * accessor methods.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})

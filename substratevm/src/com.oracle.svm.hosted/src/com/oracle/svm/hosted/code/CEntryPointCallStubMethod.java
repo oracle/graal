@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -360,11 +362,17 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                                     targetMethod.format("%H.%n(%p)") + " -> " + handlerMethods[0].format("%H.%n(%p)"));
                 }
             }
+
+            /* The exception is handled, we can continue with the normal epilogue. */
+            InvokeNode epilogueInvoke = generateEpilogue(providers, kit);
+
             kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
             kit.append(new DeadEndNode());
             kit.endInvokeWithException();
+
+            kit.inline(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
         }
     }
 
@@ -390,7 +398,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             Iterator<ResolvedJavaMethod> enumExceptionCtor = Arrays.stream(enumExceptionType.getDeclaredConstructors()).filter(
                             c -> c.getSignature().getParameterCount(false) == 1 && c.getSignature().getParameterType(0, null).equals(metaAccess.lookupJavaType(String.class))).iterator();
             ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
-            kit.createJavaCall(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
+            kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
             assert !enumExceptionCtor.hasNext();
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException));
             kit.append(new DeadEndNode());
@@ -428,7 +436,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     private static void inlinePrologueAndEpilogue(SubstrateGraphKit kit, InvokeNode prologueInvoke, InvokeNode epilogueInvoke, JavaKind returnKind) {
         assert (prologueInvoke != null) == (epilogueInvoke != null);
         if (prologueInvoke != null) {
-            kit.inline(prologueInvoke);
+            kit.inline(prologueInvoke, "Inline prologue.", "GraphBuilding");
             NodeIterable<CEntryPointPrologueBailoutNode> bailoutNodes = kit.getGraph().getNodes().filter(CEntryPointPrologueBailoutNode.class);
             for (CEntryPointPrologueBailoutNode node : bailoutNodes) {
                 ValueNode result = node.getResult();
@@ -452,7 +460,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                 node.replaceAndDelete(returnNode);
             }
             if (epilogueInvoke.isAlive()) {
-                kit.inline(epilogueInvoke);
+                kit.inline(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
             }
         }
     }
@@ -525,7 +533,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     @Override
     public StackTraceElement asStackTraceElement(int bci) {
         if (stackTraceElement == null) {
-            stackTraceElement = new StackTraceElement(getDeclaringClass().getName(), getName(), "generated", 0);
+            stackTraceElement = new StackTraceElement(getDeclaringClass().toJavaName(true), getName(), "generated", 0);
         }
         return stackTraceElement;
     }

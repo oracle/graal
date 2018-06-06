@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -34,7 +36,7 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -46,7 +48,6 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.hub.ClassSynchronizationSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
@@ -126,7 +127,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
 
-        InvokeNode handleFrame = kit.nativeCallPrologue();
+        InvokeWithExceptionNode handleFrame = kit.nativeCallPrologue();
 
         ValueNode callAddress = kit.nativeCallAddress(kit.createObject(linkage));
         ValueNode environment = kit.environment();
@@ -170,8 +171,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             if (method.isStatic()) {
                 Constant hubConstant = providers.getConstantReflection().asObjectHub(method.getDeclaringClass());
                 DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(hubConstant);
-                Object synchronizationTarget = ClassSynchronizationSupport.synchronizationTarget(hub);
-                monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(synchronizationTarget), providers.getMetaAccess(), graph);
+                monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
             } else {
                 monitorObject = javaArguments.get(0);
             }

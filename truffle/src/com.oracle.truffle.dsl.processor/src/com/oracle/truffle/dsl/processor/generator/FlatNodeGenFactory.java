@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,46 +23,6 @@
  * questions.
  */
 package com.oracle.truffle.dsl.processor.generator;
-
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.isObject;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.isSubtypeBoxed;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.isVoid;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.needsCastTo;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.setVisibility;
-import static javax.lang.model.element.Modifier.ABSTRACT;
-import static javax.lang.model.element.Modifier.FINAL;
-import static javax.lang.model.element.Modifier.PRIVATE;
-import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -113,6 +75,45 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isObject;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isSubtypeBoxed;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isVoid;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.needsCastTo;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.setVisibility;
+import static javax.lang.model.element.Modifier.ABSTRACT;
+import static javax.lang.model.element.Modifier.FINAL;
+import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STATIC;
 
 class FlatNodeGenFactory {
 
@@ -392,6 +393,12 @@ class FlatNodeGenFactory {
         }
 
         clazz.addOptional(createExecuteAndSpecialize());
+        if (shouldReportPolymorphism(node, reachableSpecializations)) {
+            clazz.addOptional(createCheckForPolymorphicSpecialize());
+            if (requiresCacheCheck()) {
+                clazz.addOptional(createCountCaches());
+            }
+        }
 
         NodeInfo nodeInfo = node.getTemplateType().getAnnotation(NodeInfo.class);
         if (nodeInfo == null || nodeInfo.cost() == NodeCost.MONOMORPHIC /* the default */) {
@@ -425,6 +432,13 @@ class FlatNodeGenFactory {
         }
 
         return clazz;
+    }
+
+    private static boolean shouldReportPolymorphism(NodeData node, List<SpecializationData> reachableSpecializations) {
+        if (reachableSpecializations.size() == 1 && reachableSpecializations.get(0).getMaximumNumberOfInstances() == 1) {
+            return false;
+        }
+        return node.isReportPolymorphism();
     }
 
     private void generateReflectionInfo(CodeTypeElement clazz) {
@@ -1084,18 +1098,18 @@ class FlatNodeGenFactory {
         TypeMirror returnType = executeAndSpecializeType.getReturnType();
 
         CodeExecutableElement method = frameState.createMethod(modifiers(PRIVATE), returnType, "executeAndSpecialize", frame);
-
         final CodeTreeBuilder builder = method.createBuilder();
-
         builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         builder.declaration(context.getType(boolean.class), "hasLock", "true");
         builder.statement("lock.lock()");
-        builder.startTryBlock();
-
         builder.tree(state.createLoad(frameState));
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
         }
+        if (shouldReportPolymorphism(node, reachableSpecializations)) {
+            generateSaveOldPolymorphismState(builder, frameState);
+        }
+        builder.startTryBlock();
 
         FrameState originalFrameState = frameState.copy();
         SpecializationGroup group = createSpecializationGroups();
@@ -1108,12 +1122,118 @@ class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
         builder.end().startFinallyBlock();
+        if (shouldReportPolymorphism(node, reachableSpecializations)) {
+            generateCheckNewPolymorphismState(builder);
+        }
         builder.startIf().string("hasLock").end().startBlock();
         builder.statement("lock.unlock()");
         builder.end();
         builder.end();
 
         return method;
+    }
+
+    // Polymorphism reporting constants
+    private static final String OLD_PREFIX = "old";
+    private static final String NEW_PREFIX = "new";
+    private static final String COUNT_SUFIX = "Count";
+    private static final String OLD_STATE = OLD_PREFIX + "State";
+    private static final String OLD_EXCLUDE = OLD_PREFIX + "Exclude";
+    private static final String OLD_CACHE_COUNT = OLD_PREFIX + "Cache" + COUNT_SUFIX;
+    private static final String NEW_STATE = NEW_PREFIX + "State";
+    private static final String NEW_EXCLUDE = NEW_PREFIX + "Exclude";
+    private static final String REPORT_POLYMORPHIC_SPECIALIZE = "reportPolymorphicSpecialize";
+    private static final String CHECK_FOR_POLYMORPHIC_SPECIALIZE = "checkForPolymorphicSpecialize";
+    private static final String COUNT_CACHES = "countCaches";
+
+    private boolean requiresCacheCheck() {
+        for (SpecializationData specialization : reachableSpecializations) {
+            if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Element createCheckForPolymorphicSpecialize() {
+        final boolean requiresExclude = requiresExclude();
+        final boolean requiresCacheCheck = requiresCacheCheck();
+        TypeMirror returnType = getType(void.class);
+        CodeExecutableElement executable = new CodeExecutableElement(modifiers(PRIVATE), returnType, CHECK_FOR_POLYMORPHIC_SPECIALIZE);
+        executable.addParameter(new CodeVariableElement(state.bitSetType, OLD_STATE));
+        if (requiresExclude) {
+            executable.addParameter(new CodeVariableElement(exclude.bitSetType, OLD_EXCLUDE));
+        }
+        if (requiresCacheCheck) {
+            executable.addParameter(new CodeVariableElement(getType(int.class), OLD_CACHE_COUNT));
+        }
+        CodeTreeBuilder builder = executable.createBuilder();
+        builder.declaration(state.bitSetType, NEW_STATE, state.createMaskedReference(FrameState.load(this), reachableSpecializations.toArray()));
+        if (requiresExclude) {
+            builder.declaration(exclude.bitSetType, NEW_EXCLUDE, exclude.createReference(FrameState.load(this)));
+        }
+        builder.startIf().string("(" + OLD_STATE + " ^ " + NEW_STATE + ") != 0");
+        if (requiresExclude) {
+            builder.string(" || ");
+            builder.string("(" + OLD_EXCLUDE + " ^ " + NEW_EXCLUDE + ") != 0");
+        }
+        if (requiresCacheCheck) {
+            builder.string(" || " + OLD_CACHE_COUNT + " < " + COUNT_CACHES + "()");
+        }
+        builder.end(); // if
+        builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2);
+        builder.end(); // true block
+        return executable;
+    }
+
+    private Element createCountCaches() {
+        TypeMirror returnType = getType(int.class);
+        CodeExecutableElement executable = new CodeExecutableElement(modifiers(PRIVATE), returnType, COUNT_CACHES);
+        CodeTreeBuilder builder = executable.createBuilder();
+        final String cacheCount = "cache" + COUNT_SUFIX;
+        builder.declaration(context.getType(int.class), cacheCount, "0");
+        for (SpecializationData specialization : reachableSpecializations) {
+            if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
+                String typeName = createSpecializationTypeName(specialization);
+                String fieldName = createSpecializationFieldName(specialization);
+                String localName = createSpecializationLocalName(specialization);
+                builder.declaration(typeName, localName, "this." + fieldName);
+                builder.startWhile().string(localName, " != null");
+                builder.end();
+                builder.startBlock().statement(cacheCount + "++").statement(localName + "= " + localName + ".next_");
+                builder.end();
+            }
+        }
+        builder.startReturn().statement(cacheCount);
+        return executable;
+    }
+
+    private void generateCheckNewPolymorphismState(CodeTreeBuilder builder) {
+        builder.startIf().string(OLD_STATE + " != 0");
+        if (requiresExclude()) {
+            builder.string(" || " + OLD_EXCLUDE + " != 0");
+        }
+        builder.end();
+        builder.startBlock();
+        builder.string(CHECK_FOR_POLYMORPHIC_SPECIALIZE + "(" + OLD_STATE);
+        if (requiresExclude()) {
+            builder.string(", " + OLD_EXCLUDE);
+        }
+        if (requiresCacheCheck()) {
+            builder.string(", " + OLD_CACHE_COUNT);
+        }
+        builder.string(");").newLine();
+        builder.end(); // block
+    }
+
+    private void generateSaveOldPolymorphismState(CodeTreeBuilder builder, FrameState frameState) {
+        builder.declaration(state.bitSetType, OLD_STATE, state.createMaskedReference(frameState, reachableSpecializations.toArray()));
+        if (requiresExclude()) {
+            builder.declaration(exclude.bitSetType, OLD_EXCLUDE, "exclude");
+        }
+        if (requiresCacheCheck()) {
+            builder.declaration(context.getType(int.class), OLD_CACHE_COUNT, "state == 0 ? 0 : " + COUNT_CACHES + "()");
+        }
     }
 
     private CodeTree createThrowUnsupported(final CodeTreeBuilder parent, final FrameState frameState) {
@@ -3582,7 +3702,7 @@ class FlatNodeGenFactory {
                 offsets.put(specialization, bitIndex);
                 bitIndex += specializationSize;
             }
-            return bitIndex - 1;
+            return bitIndex;
         }
 
         public CodeVariableElement declareFields(CodeTypeElement clazz) {

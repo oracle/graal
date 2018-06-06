@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,6 +30,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
 
 import jdk.vm.ci.meta.TriState;
 
@@ -52,7 +55,58 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
     public void generate(NodeLIRBuilderTool gen) {
     }
 
+    /**
+     * In general the input stamp cannot be trusted, this method is reserved for the cases when it's
+     * "safe" to use the input stamp. To ensure safety use
+     * {@link #getSucceedingStampForValue(boolean)} instead.
+     */
+    public Stamp getSucceedingStampForValue(boolean negated, Stamp valueStamp) {
+        Stamp succStamp = getSucceedingStampForValue(negated);
+        if (succStamp != null) {
+            succStamp = succStamp.join(valueStamp);
+        }
+        return succStamp;
+    }
+
+    /**
+     * The input stamp cannot be trusted, the returned stamp cannot use the input stamp to narrow
+     * itself or derive any assumptions. This method does not use the input stamp and is considered
+     * safe.
+     *
+     * It's responsibility of the caller to determine when it's "safe" to "trust" the input stamp
+     * and use {@link #getSucceedingStampForValue(boolean, Stamp)} instead.
+     */
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 
     public abstract TriState tryFold(Stamp valueStamp);
+
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (other instanceof UnaryOpLogicNode) {
+            UnaryOpLogicNode unaryY = (UnaryOpLogicNode) other;
+            if (this.getValue() == unaryY.getValue() || // fast path
+                            skipThroughPisAndProxies(this.getValue()) == skipThroughPisAndProxies(unaryY.getValue())) {
+                Stamp succStamp = this.getSucceedingStampForValue(thisNegated);
+                TriState fold = unaryY.tryFold(succStamp);
+                if (fold.isKnown()) {
+                    return fold;
+                }
+            }
+        }
+        return super.implies(thisNegated, other);
+    }
+
+    private static ValueNode skipThroughPisAndProxies(ValueNode node) {
+        ValueNode n = node;
+        while (n != null) {
+            if (n instanceof PiNode) {
+                n = ((PiNode) n).getOriginalNode();
+            } else if (n instanceof ValueProxy) {
+                n = ((ValueProxy) n).getOriginalNode();
+            } else {
+                break;
+            }
+        }
+        return n;
+    }
 }

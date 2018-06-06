@@ -38,7 +38,7 @@ import com.oracle.truffle.api.source.Source;
 public interface LoadSourceListener {
 
     /**
-     * Invoked whenever a new {@link Source source} is loaded.The order in which multiple source
+     * Invoked whenever a new {@link Source source} is loaded. The order in which multiple source
      * event listeners are notified matches the order they are
      * {@link Instrumenter#attachLoadSourceListener(SourceFilter, LoadSourceListener, boolean)
      * attached}.

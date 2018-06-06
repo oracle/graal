@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -116,12 +118,14 @@ public abstract class LoopTransformations {
         Position firstPosition = successors.next();
         AbstractBeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
         firstPosition.set(newControlSplit, originalLoopBegin);
+        originalLoopBegin.setNodeSourcePosition(firstPosition.get(firstNode).getNodeSourcePosition());
 
         while (successors.hasNext()) {
             Position position = successors.next();
             // create a new loop duplicate and connect it.
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
             AbstractBeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());
+            newBegin.setNodeSourcePosition(position.get(firstNode).getNodeSourcePosition());
             position.set(newControlSplit, newBegin);
 
             // For each cloned ControlSplitNode, simplify the proper path

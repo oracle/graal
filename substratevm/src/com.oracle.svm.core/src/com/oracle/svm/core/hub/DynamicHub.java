@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -106,17 +108,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * instance is locked.
      */
     private int monitorOffset;
-
-    /**
-     * The offset of the synthetic field which stores whatever is used for {@link Object#wait()} or
-     * {@link Object#notify()} by an instance of this class. If 0, then instances of this class can
-     * not call {@link Object#wait()} or {@link Object#notify()}.
-     * <p>
-     * The current implementation stores a reference to a
-     * {@link java.util.concurrent.locks.Condition}, which will be allocated the first time an
-     * instance needs it.
-     */
-    private int waitNotifyOffset;
 
     /**
      * The offset of the synthetic hash-code field which stores the identity hash-code for an
@@ -253,12 +244,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int waitNotifyOffset, int hashCodeOffset, int[] assignableFromMatches, BitSet instanceOfBits,
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int hashCodeOffset, int[] assignableFromMatches, BitSet instanceOfBits,
                     CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = monitorOffset;
-        this.waitNotifyOffset = waitNotifyOffset;
         this.hashCodeOffset = hashCodeOffset;
         this.assignableFromMatches = assignableFromMatches;
         this.instanceOfBits = instanceOfBits;
@@ -350,10 +340,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public int getMonitorOffset() {
         return monitorOffset;
-    }
-
-    public int getWaitNotifyOffset() {
-        return waitNotifyOffset;
     }
 
     public int getHashCodeOffset() {
@@ -453,10 +439,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(name = "isAssignableFrom")
     private boolean isAssignableFromClass(Class<?> cls) {
-        return isAssignableFrom(KnownIntrinsics.unsafeCast(cls, DynamicHub.class));
+        return isAssignableFromHub(KnownIntrinsics.unsafeCast(cls, DynamicHub.class));
     }
 
-    public boolean isAssignableFrom(DynamicHub hub) {
+    public boolean isAssignableFromHub(DynamicHub hub) {
         int checkTypeID = hub.getTypeID();
         for (int i = 0; i < assignableFromMatches.length; i += 2) {
             if (UnsignedMath.belowThan(checkTypeID - assignableFromMatches[i], assignableFromMatches[i + 1])) {

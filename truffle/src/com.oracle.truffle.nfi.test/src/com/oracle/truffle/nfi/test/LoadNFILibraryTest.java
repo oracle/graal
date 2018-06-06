@@ -24,20 +24,21 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class LoadNFILibraryTest {
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.Source;
+
+public class LoadNFILibraryTest extends NFITest {
 
     private final String nativeTestLib = System.getProperty("native.test.lib");
 
     private static TruffleObject eval(String format, Object... args) {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         Source source = Source.newBuilder(String.format(format, args)).name("LoadLibraryTest").mimeType("application/x-native").build();
-        return engine.eval(source).as(TruffleObject.class);
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        return (TruffleObject) target.call();
     }
 
     @Test

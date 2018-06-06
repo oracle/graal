@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -33,7 +36,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -109,7 +111,7 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
         /* Capture "this", the tlab, and the current VMThread for the VMOperation. */
         final PinnedAllocatorImpl pinnedAllocatorImpl = this;
         final ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.pinnedTLAB.getAddress();
-        final IsolateThread requestingVMThread = KnownIntrinsics.currentVMThread();
+        final IsolateThread requestingVMThread = CEntryPointContext.getCurrentIsolateThread();
         VMOperation.enqueueBlockingSafepoint("PinnedAllocatorImpl.open", () -> {
             openPinnedAllocator.set(requestingVMThread, this);
             pinnedAllocatorImpl.phase = LifeCyclePhase.OPENED;
@@ -234,7 +236,7 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
         /* Capture "this", the tlab and the VMThread for the VMOperation. */
         final PinnedAllocatorImpl pinnedAllocatorImpl = this;
         final ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.pinnedTLAB.getAddress();
-        final IsolateThread requestingVMThread = KnownIntrinsics.currentVMThread();
+        final IsolateThread requestingVMThread = CEntryPointContext.getCurrentIsolateThread();
         VMOperation.enqueueBlockingSafepoint("PinnedAllocatorImpl.close", () -> {
             ThreadLocalAllocation.retireToSpace(tlab, HeapImpl.getHeapImpl().getOldGeneration().getPinnedFromSpace());
             assert ThreadLocalAllocation.verifyUninitialized(tlab);

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -33,10 +35,9 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueProxyNode;
+import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -91,38 +92,14 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     /**
-     * Replicate the {@link ValueProxyNode}s from {@code originalValue} onto {@code value}.
-     *
-     * @param originalValue a possibly proxied value
-     * @param value a value needing proxies
-     * @return proxies wrapping {@code value}
-     */
-    private static ValueNode reproxyValue(ValueNode originalValue, ValueNode value) {
-        if (value.isConstant()) {
-            // No proxy needed
-            return value;
-        }
-        if (originalValue instanceof ValueProxyNode) {
-            ValueProxyNode proxy = (ValueProxyNode) originalValue;
-            return new ValueProxyNode(reproxyValue(proxy.getOriginalNode(), value), proxy.proxyPoint());
-        } else if (originalValue instanceof ValueProxy) {
-            ValueProxy proxy = (ValueProxy) originalValue;
-            return reproxyValue(proxy.getOriginalNode(), value);
-        } else {
-            return value;
-        }
-    }
-
-    /**
      * Gets the length of an array if possible.
      *
      * @return a node representing the length of {@code array} or null if it is not available
      */
     public static ValueNode readArrayLength(ValueNode originalArray, ConstantReflectionProvider constantReflection) {
-        ValueNode length = GraphUtil.arrayLength(originalArray);
+        ValueNode length = GraphUtil.arrayLength(originalArray, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ);
         if (length != null) {
-            // Ensure that any proxies on the original value end up on the length value
-            return reproxyValue(originalArray, length);
+            return length;
         }
         return readArrayLengthConstant(originalArray, constantReflection);
     }

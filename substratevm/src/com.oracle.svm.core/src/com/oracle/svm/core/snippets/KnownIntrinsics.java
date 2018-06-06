@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,7 +24,6 @@
  */
 package com.oracle.svm.core.snippets;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -33,14 +34,6 @@ import com.oracle.svm.core.hub.DynamicHub;
  * SubstrateGraphBuilderPlugins.registerKnownIntrinsicsPlugins().
  */
 public class KnownIntrinsics {
-
-    /**
-     * Returns the current VMThread, i.e., the current VM-level thread information block.
-     *
-     * When (@link SubstrateOptions#MultiThreaded} is false, there is no VMThread available. This
-     * method can still be called, but it always returns {@code null}.
-     */
-    public static native IsolateThread currentVMThread();
 
     /**
      * Returns the value of the heap base.

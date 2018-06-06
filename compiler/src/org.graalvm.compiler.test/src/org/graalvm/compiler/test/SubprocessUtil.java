@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -35,6 +37,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.util.CollectionsUtil;
 
 /**
@@ -236,7 +239,7 @@ public final class SubprocessUtil {
         return new Subprocess(command, process.waitFor(), output);
     }
 
-    private static final boolean isJava8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+    private static final boolean isJava8OrEarlier = GraalServices.Java8OrEarlier;
 
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") || optionName.equals("-classpath")) {

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -51,10 +53,16 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
     private final LocalVariableTable localVariableTable;
+    private final boolean inClassSubstitution;
 
     public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
+        this(original, annotated, false);
+    }
+
+    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution) {
         this.original = original;
         this.annotated = annotated;
+        this.inClassSubstitution = inClassSubstitution;
 
         LocalVariableTable newLocalVariableTable = null;
         if (annotated.getLocalVariableTable() != null) {
@@ -113,7 +121,7 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
 
     @Override
     public ResolvedJavaType getDeclaringClass() {
-        return original.getDeclaringClass();
+        return (inClassSubstitution ? annotated.getDeclaringClass() : original.getDeclaringClass());
     }
 
     @Override

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -40,12 +42,13 @@ public abstract class AbstractBootImage {
     protected final HostedUniverse universe;
     protected final NativeLibraries nativeLibs;
     protected final NativeImageHeap heap;
+    protected final ClassLoader imageClassLoader;
     protected final NativeImageCodeCache codeCache;
     protected final List<HostedMethod> entryPoints;
     protected int resultingImageSize; // for statistical output
 
     public enum NativeImageKind {
-        SHARED_LIBRARY {
+        SHARED_LIBRARY(false) {
             @Override
             public String getFilenameSuffix() {
                 switch (ObjectFile.getNativeFormat()) {
@@ -53,6 +56,8 @@ public abstract class AbstractBootImage {
                         return ".so";
                     case MACH_O:
                         return ".dylib";
+                    case PECOFF:
+                        return ".dll";
                     default:
                         throw new AssertionError("unreachable");
                 }
@@ -60,24 +65,28 @@ public abstract class AbstractBootImage {
 
             @Override
             public String getFilenamePrefix() {
-                return "lib";
+                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? "" : "lib";
             }
         },
-        EXECUTABLE {
-            @Override
-            public String getFilenameSuffix() {
-                return "";
+        EXECUTABLE(true),
+        STATIC_EXECUTABLE(true);
+
+        public final boolean executable;
+
+        NativeImageKind(boolean executable) {
+            this.executable = executable;
+        }
+
+        public String getFilenameSuffix() {
+            if (executable) {
+                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
             }
+            return "";
+        }
 
-            @Override
-            public String getFilenamePrefix() {
-                return "";
-            }
-        };
-
-        public abstract String getFilenameSuffix();
-
-        public abstract String getFilenamePrefix();
+        public String getFilenamePrefix() {
+            return "";
+        }
 
         public String getFilename(String basename) {
             return getFilenamePrefix() + basename + getFilenameSuffix();
@@ -87,7 +96,7 @@ public abstract class AbstractBootImage {
     protected final NativeImageKind kind;
 
     protected AbstractBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints) {
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         this.kind = k;
         this.universe = universe;
         this.metaAccess = metaAccess;
@@ -95,6 +104,7 @@ public abstract class AbstractBootImage {
         this.heap = heap;
         this.codeCache = codeCache;
         this.entryPoints = entryPoints;
+        this.imageClassLoader = imageClassLoader;
     }
 
     public NativeImageKind getBootImageKind() {
@@ -130,14 +140,13 @@ public abstract class AbstractBootImage {
 
     // factory method
     public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint) {
+                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:
-                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints);
-            case EXECUTABLE:
-                return new ExecutableViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint);
+                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+            default:
+                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
         }
-        return null;
     }
 
     public abstract String[] makeLaunchCommand(AbstractBootImage.NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);

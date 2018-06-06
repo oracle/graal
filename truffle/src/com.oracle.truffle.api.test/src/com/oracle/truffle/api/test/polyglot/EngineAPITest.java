@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
@@ -42,6 +45,9 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class EngineAPITest {
 
@@ -95,16 +101,9 @@ public class EngineAPITest {
         Assert.assertNotNull(Engine.newBuilder().useSystemProperties(false).build());
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void getGetLanguageUnknown() {
         Engine engine = Engine.create();
-
-        try {
-            engine.getLanguage("someUnknownId");
-            fail();
-        } catch (IllegalStateException e) {
-        }
 
         assertNull(engine.getLanguages().get("someUnknownId"));
         assertFalse(engine.getLanguages().containsKey("someUnknownId"));
@@ -113,11 +112,10 @@ public class EngineAPITest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void getLanguageMeta() {
         Engine engine = Engine.create();
 
-        Language language = engine.getLanguage(EngineAPITestLanguage.ID);
+        Language language = engine.getLanguages().get(EngineAPITestLanguage.ID);
         assertNotNull(language);
         assertEquals(EngineAPITestLanguage.ID, language.getId());
         assertEquals(EngineAPITestLanguage.NAME, language.getName());
@@ -130,11 +128,10 @@ public class EngineAPITest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void getLanguageOptions() {
         Engine engine = Engine.create();
 
-        Language language = engine.getLanguage(EngineAPITestLanguage.ID);
+        Language language = engine.getLanguages().get(EngineAPITestLanguage.ID);
         OptionDescriptor descriptor1 = language.getOptions().get(EngineAPITestLanguage.Option1_NAME);
         OptionDescriptor descriptor2 = language.getOptions().get(EngineAPITestLanguage.Option2_NAME);
         OptionDescriptor descriptor3 = language.getOptions().get(EngineAPITestLanguage.Option3_NAME);
@@ -196,13 +193,25 @@ public class EngineAPITest {
     @Test
     public void testCreateContextWithAutomaticEngine() {
         Context context = Context.create();
-
         try {
             Context.newBuilder().engine(context.getEngine()).build();
             fail();
         } catch (IllegalArgumentException e) {
 
         }
-
     }
+
+    @Test
+    public void testEngineName() {
+        Engine engine = Engine.create();
+        String implName = engine.getImplementationName();
+        assertEquals(Truffle.getRuntime().getName(), engine.getImplementationName());
+        String name = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0)).getClass().getSimpleName();
+        if (name.equals("DefaultCallTarget")) {
+            assertEquals(implName, "Interpreted");
+        } else if (name.endsWith("OptimizedCallTarget")) {
+            assertTrue(implName, implName.equals("GraalVM EE") || implName.equals("GraalVM CE"));
+        }
+    }
+
 }

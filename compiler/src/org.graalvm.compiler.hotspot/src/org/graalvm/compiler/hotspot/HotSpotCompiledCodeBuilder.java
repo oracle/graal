@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +23,8 @@
  * questions.
  */
 package org.graalvm.compiler.hotspot;
+
+import static org.graalvm.util.CollectionsUtil.anyMatch;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -216,12 +220,28 @@ public class HotSpotCompiledCodeBuilder {
              * results and corresponds with what C1 and C2 do. HotSpot doesn't like to see these
              * unless -XX:+DebugNonSafepoints is enabled, so don't emit them in that case.
              */
+            List<Site> sourcePositionSites = new ArrayList<>();
             for (SourceMapping source : target.getSourceMappings()) {
                 NodeSourcePosition sourcePosition = source.getSourcePosition();
+                if (sourcePosition.isPlaceholder() || sourcePosition.isSubstitution()) {
+                    // HotSpot doesn't understand any of the special positions so just drop them.
+                    continue;
+                }
                 assert sourcePosition.verify();
                 sourcePosition = sourcePosition.trim();
-                sites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
+                /*
+                 * Don't add BYTECODE_POSITION info points that would potentially create conflicts.
+                 * Under certain conditions the site's pc is not the pc that gets recorded by
+                 * HotSpot (see @code {CodeInstaller::site_Call}). So, avoid adding any source
+                 * positions that can potentially map to the same pc. To do that make sure that the
+                 * source mapping doesn't contain a pc of any important Site.
+                 */
+                if (sourcePosition != null && !anyMatch(sites, s -> source.contains(s.pcOffset))) {
+                    sourcePositionSites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
+
+                }
             }
+            sites.addAll(sourcePositionSites);
         }
 
         SiteComparator c = new SiteComparator();

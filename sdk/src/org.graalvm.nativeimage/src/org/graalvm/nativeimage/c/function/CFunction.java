@@ -42,21 +42,32 @@ import org.graalvm.nativeimage.c.CContext;
  * taken regarding its integrity as a pointer.
  * <p>
  * The class containing the annotated method must be annotated with {@link CContext}.
+ *
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface CFunction {
 
+    /**
+     * Describes the thread state transition performed when the C function is invoked.
+     *
+     * @since 1.0
+     */
     enum Transition {
         /**
          * The thread state is transitioned from Java to C, and the Java parts of the stack are made
          * walkable. The C code can block and call back to Java.
+         * 
+         * @since 1.0
          */
         TO_NATIVE,
         /**
          * No prologue and epilogue is emitted. The C code must not block and must not call back to
          * Java. Also, long running C code delays safepoints (and therefore garbage collection) of
          * other threads until the call returns.
+         * 
+         * @since 1.0
          */
         NO_TRANSITION,
     }
@@ -64,11 +75,15 @@ public @interface CFunction {
     /**
      * The symbol name to use to link this method. If no value is specified, the name of the method
      * (without name mangling or a class name prefix) is used.
+     *
+     * @since 1.0
      */
     String value() default "";
 
     /**
      * The Java-to-C thread transition code used when calling the function.
+     *
+     * @since 1.0
      */
     Transition transition() default Transition.TO_NATIVE;
 }

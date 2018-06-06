@@ -24,20 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler;
 
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
-import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,6 +33,21 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
+import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
 /**
  * Implementation of a sampling based profiler for
@@ -247,7 +248,7 @@ public final class CPUSampler implements Closeable {
             public void onContextClosed(TruffleContext context) {
 
             }
-        }, false);
+        }, true);
     }
 
     /**
@@ -256,8 +257,20 @@ public final class CPUSampler implements Closeable {
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link CPUSampler}
      * @since 0.30
+     * @deprecated use {@link #find(Engine)} instead
      */
-    public static CPUSampler find(PolyglotEngine engine) {
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static CPUSampler find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
+        return CPUSamplerInstrument.getSampler(engine);
+    }
+
+    /**
+     * Finds {@link CPUSampler} associated with given engine.
+     *
+     * @since 1.0
+     */
+    public static CPUSampler find(Engine engine) {
         return CPUSamplerInstrument.getSampler(engine);
     }
 
@@ -622,14 +635,11 @@ class CPUSamplerSnippets {
     public void example() {
         // @formatter:off
         // BEGIN: CPUSamplerSnippets#example
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        Context context = Context.create();
 
-        CPUSampler sampler = CPUSampler.find(engine);
+        CPUSampler sampler = CPUSampler.find(context.getEngine());
         sampler.setCollecting(true);
-        Source someCode = Source.newBuilder("...").
-                mimeType("...").
-                name("example").build();
-        engine.eval(someCode);
+        context.eval("...", "...");
         sampler.setCollecting(false);
         sampler.close();
         // Read information about the roots of the tree.

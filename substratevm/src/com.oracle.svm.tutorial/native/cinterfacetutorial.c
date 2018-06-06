@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ # particular file as subject to the "Classpath" exception as provided
+ # by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -93,11 +95,11 @@ long long getUB1(sudata_t *sudata) {
 
 int main(void) {
   graal_isolate_t *isolate = NULL;
-  graal_isolatethread_t *thread = NULL;
-  if (graal_create_isolate(NULL, &isolate) != 0 || (thread = graal_current_thread(isolate)) == NULL) {
-    fprintf(stderr, "initialization error\n");
+  if (graal_create_isolate(NULL, &isolate) != 0) {
+    fprintf(stderr, "error on isolate creation or attach\n");
     return 1;
   }
+  graal_isolatethread_t *thread = graal_current_thread(isolate);
 
   my_data data;
   fill(&data);
@@ -106,7 +108,7 @@ int main(void) {
   java_entry_point(thread, &data);
 
   dump(thread, &data);
-  
+
   /* Call a Java function indirectly by looking it up dynamically. */
   void (*java_release_data)(void *thread, my_data* data) = dlsym(RTLD_DEFAULT, "java_release_data");
   java_release_data(thread, &data);

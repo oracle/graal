@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,6 +28,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -35,8 +38,8 @@ public final class LoadIndexedPointerNode extends LoadIndexedNode {
 
     public static final NodeClass<LoadIndexedPointerNode> TYPE = NodeClass.create(LoadIndexedPointerNode.class);
 
-    public LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index) {
-        super(TYPE, stamp, array, index, JavaKind.Illegal);
+    public LoadIndexedPointerNode(Stamp stamp, ValueNode array, ValueNode index, GuardingNode boundsCheck) {
+        super(TYPE, stamp, array, index, boundsCheck, JavaKind.Illegal);
     }
 
     @Override

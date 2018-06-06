@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,13 +26,17 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,14 +48,13 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
+import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 public class ContextAPITest {
 
@@ -80,10 +85,11 @@ public class ContextAPITest {
         }
 
         try {
-            context.lookup(ContextAPITestInternalLanguage.ID, "foobar");
+            context.getBindings(ContextAPITestInternalLanguage.ID);
             fail();
         } catch (IllegalStateException e) {
         }
+
         assertFalse(context.getEngine().getLanguages().containsKey(ContextAPITestInternalLanguage.ID));
     }
 
@@ -99,17 +105,18 @@ public class ContextAPITest {
     @Test
     public void testImportExport() {
         Context context = Context.create();
-        context.exportSymbol("string", "bar");
-        context.exportSymbol("null", null);
-        context.exportSymbol("int", 42);
+        Value polyglotBindings = context.getPolyglotBindings();
+        polyglotBindings.putMember("string", "bar");
+        polyglotBindings.putMember("null", null);
+        polyglotBindings.putMember("int", 42);
         Object object = new Object();
-        context.exportSymbol("object", object);
+        polyglotBindings.putMember("object", object);
 
-        assertEquals("bar", context.importSymbol("string").asString());
-        assertTrue(context.importSymbol("null").isNull());
-        assertEquals(42, context.importSymbol("int").asInt());
-        assertSame(object, context.importSymbol("object").asHostObject());
-        assertNull(context.importSymbol("notexisting"));
+        assertEquals("bar", polyglotBindings.getMember("string").asString());
+        assertTrue(polyglotBindings.getMember("null").isNull());
+        assertEquals(42, polyglotBindings.getMember("int").asInt());
+        assertSame(object, polyglotBindings.getMember("object").asHostObject());
+        assertNull(polyglotBindings.getMember("notexisting"));
         context.close();
     }
 
@@ -166,7 +173,7 @@ public class ContextAPITest {
         } catch (IllegalStateException e) {
         }
 
-        context.importSymbol("");
+        context.getPolyglotBindings().getMember("");
         context.enter();
 
         try {
@@ -175,7 +182,7 @@ public class ContextAPITest {
         } catch (IllegalStateException e) {
         }
 
-        context.importSymbol("");
+        context.getPolyglotBindings().getMember("");
         context.enter();
 
         try {
@@ -273,7 +280,17 @@ public class ContextAPITest {
     }
 
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new MyTruffleObject();
+        ContextAPITestLanguage.runinside = (env) -> new ProxyInteropObject() {
+            @Override
+            public boolean isExecutable() {
+                return true;
+            }
+
+            @Override
+            public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                return 42;
+            }
+        };
         Value executable = context.eval(ContextAPITestLanguage.ID, "");
         assertEquals(42, executable.execute().asInt());
         assertEquals(42, executable.execute(42).asInt());
@@ -281,73 +298,168 @@ public class ContextAPITest {
         executable.executeVoid(42);
     }
 
-    private static class MyTruffleObject implements TruffleObject {
+    private static void testPolyglotBindings(Context context) {
+        assertSame("is stable", context.getPolyglotBindings(), context.getPolyglotBindings());
 
-        public ForeignAccess getForeignAccess() {
-            return MyTruffleObjectFactory.INSTANCE;
+        Value bindings = context.getPolyglotBindings();
+        testWritableBindings(bindings);
+
+        ValueAssert.assertValue(context, bindings, Trait.MEMBERS);
+    }
+
+    public static class MyClass {
+
+        public Object field = "bar";
+
+        public int bazz() {
+            return 42;
         }
 
     }
 
-    private static class MyTruffleObjectFactory implements StandardFactory {
+    private static void testWritableBindings(Value bindings) {
+        bindings.putMember("int", 42);
+        assertEquals(42, bindings.getMember("int").asInt());
 
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(MyTruffleObject.class, new MyTruffleObjectFactory());
+        bindings.putMember("int", (byte) 43);
+        assertEquals(43, bindings.getMember("int").asInt());
 
-        public CallTarget accessIsExecutable() {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-        }
+        bindings.putMember("string", "foo");
+        assertEquals("foo", bindings.getMember("string").asString());
 
-        public CallTarget accessExecute(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-        }
+        bindings.putMember("obj", new MyClass());
+        assertEquals("bar", bindings.getMember("obj").getMember("field").asString());
 
-        public CallTarget accessIsNull() {
-            return null;
-        }
-
-        public CallTarget accessIsBoxed() {
-            return null;
-        }
-
-        public CallTarget accessHasSize() {
-            return null;
-        }
-
-        public CallTarget accessGetSize() {
-            return null;
-        }
-
-        public CallTarget accessUnbox() {
-            return null;
-        }
-
-        public CallTarget accessRead() {
-            return null;
-        }
-
-        public CallTarget accessWrite() {
-            return null;
-        }
-
-        public CallTarget accessInvoke(int argumentsLength) {
-            return null;
-        }
-
-        public CallTarget accessNew(int argumentsLength) {
-            return null;
-        }
-
-        public CallTarget accessKeys() {
-            return null;
-        }
-
-        public CallTarget accessKeyInfo() {
-            return null;
-        }
-
-        public CallTarget accessMessage(Message unknown) {
-            return null;
-        }
-
+        bindings.putMember("obj", new MyClass());
+        assertEquals(42, bindings.getMember("obj").getMember("bazz").execute().asInt());
     }
+
+    private static void testBindings(Context context) {
+        Map<String, Object> values = new HashMap<>();
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected Iterable<Scope> findTopScopes(LanguageContext env) {
+                return Arrays.asList(Scope.newBuilder("top", new ProxyInteropObject() {
+                    @Override
+                    public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
+                        return values.get(key);
+                    }
+
+                    @Override
+                    public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+                        values.put(key, value);
+                        return value;
+                    }
+
+                    @Override
+                    public boolean hasKeys() {
+                        return true;
+                    }
+                }).build());
+            }
+        });
+        Value bindings = context.getBindings(ProxyLanguage.ID);
+
+        testWritableBindings(bindings);
+
+        ValueAssert.assertValue(context, bindings, Trait.MEMBERS);
+    }
+
+    @Test
+    public void testEnteredContext() {
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+
+        Context context = Context.create();
+
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+
+        context.enter();
+
+        testGetContext(context);
+
+        context.leave();
+
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+
+        context.close();
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+    }
+
+    @Test
+    public void testEnteredContextInJava() {
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        Context context = Context.create();
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        Value v = context.asValue(new Runnable() {
+            public void run() {
+                testGetContext(context);
+
+                Value.asValue(new Runnable() {
+                    public void run() {
+                        testGetContext(context);
+                    }
+                }).execute();
+            }
+        });
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        v.execute();
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+        context.close();
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
+    }
+
+    @Test
+    public void testChangeContextInJava() {
+        Context context = Context.create();
+        Value v = context.asValue(new Runnable() {
+            public void run() {
+                Context innerContext = Context.create();
+                testGetContext(context);
+                innerContext.enter();
+                testGetContext(innerContext);
+                innerContext.leave();
+
+                testGetContext(context);
+                innerContext.close();
+            }
+        });
+        v.execute();
+        context.close();
+    }
+
+    private static void testGetContext(Context creatorContext) {
+        assertNotSame("needs to be wrapped", creatorContext, Context.getCurrent());
+        assertSame("needs to be stable", Context.getCurrent(), Context.getCurrent());
+
+        // assert that creator context and current context refer
+        // to the same context.
+        assertNull(creatorContext.getPolyglotBindings().getMember("foo"));
+        creatorContext.getPolyglotBindings().putMember("foo", "bar");
+        assertEquals("bar", creatorContext.getPolyglotBindings().getMember("foo").asString());
+        assertEquals("bar", Context.getCurrent().getPolyglotBindings().getMember("foo").asString());
+        creatorContext.getPolyglotBindings().removeMember("foo");
+
+        Context context = Context.getCurrent();
+        testExecute(context);
+        testPolyglotBindings(context);
+        testBindings(context);
+
+        assertFails(() -> context.leave(), IllegalStateException.class);
+        assertFails(() -> context.close(), IllegalStateException.class);
+        assertFails(() -> context.enter(), IllegalStateException.class);
+        assertFails(() -> context.close(true), IllegalStateException.class);
+        assertFails(() -> context.close(false), IllegalStateException.class);
+        assertFails(() -> context.getEngine().close(), IllegalStateException.class);
+        assertFails(() -> context.getEngine().close(true), IllegalStateException.class);
+        assertFails(() -> context.getEngine().close(false), IllegalStateException.class);
+    }
+
+    private static void assertFails(Runnable r, Class<?> exceptionType) {
+        try {
+            r.run();
+        } catch (Exception e) {
+            assertTrue(e.getClass().getName(), exceptionType.isInstance(e));
+        }
+    }
+
 }

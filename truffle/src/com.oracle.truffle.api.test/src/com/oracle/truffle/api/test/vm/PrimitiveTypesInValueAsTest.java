@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,7 +24,7 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
@@ -30,6 +32,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class PrimitiveTypesInValueAsTest {
 

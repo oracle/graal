@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,6 +31,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.graph.Edges;
@@ -66,7 +69,7 @@ public class FieldsOffsetsFeature implements Feature {
 
     abstract static class IterationMaskRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Edges edges = getEdges((NodeClass<?>) receiver);
             FieldsOffsetsReplacement replacement = FieldsOffsetsFeature.getReplacements().get(edges.getOffsets());
             assert replacement.fields == edges;

@@ -31,7 +31,6 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.PointerBindSignatureNodeGen;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsStringNode;
@@ -101,17 +100,16 @@ class NativePointerMessageResolution {
     @Resolve(message = "KEYS")
     abstract static class NativePointerKeysNode extends Node {
 
+        private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
+
         @SuppressWarnings("unused")
         public TruffleObject access(NativePointer receiver) {
-            return JavaInterop.asTruffleObject(new String[]{"bind"});
+            return KEYS;
         }
     }
 
     @Resolve(message = "KEY_INFO")
     abstract static class NativePointerKeyInfoNode extends Node {
-
-        private static final int INVOCABLE = KeyInfo.newBuilder().setInvocable(true).build();
-        private static final int NOT_EXISTING = 0;
 
         @Child private AsStringNode asString = AsStringNodeGen.create(true);
 
@@ -119,9 +117,9 @@ class NativePointerMessageResolution {
         public int access(NativePointer receiver, Object arg) {
             String identifier = asString.execute(arg);
             if ("bind".equals(identifier)) {
-                return INVOCABLE;
+                return KeyInfo.INVOCABLE;
             } else {
-                return NOT_EXISTING;
+                return KeyInfo.NONE;
             }
         }
     }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,7 +25,6 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
-import static com.oracle.svm.core.posix.PosixOSInterface.lastErrorString;
 import static com.oracle.svm.core.posix.headers.Dirent.closedir;
 import static com.oracle.svm.core.posix.headers.Dirent.opendir;
 import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
@@ -80,6 +81,7 @@ import static com.oracle.svm.core.posix.headers.Unistd.close;
 import static com.oracle.svm.core.posix.headers.Unistd.ftruncate;
 import static com.oracle.svm.core.posix.headers.Unistd.lseek;
 
+import java.io.Console;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
@@ -88,7 +90,9 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -105,18 +109,18 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.posix.PosixOSInterface.Util_java_io_FileDescriptor;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.io.ExpiringCache")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_ExpiringCache {
 }
 
@@ -267,7 +271,7 @@ final class Target_java_io_UnixFileSystem {
                 // Other I/O problems cause an error return.
                 continue;
             } else {
-                throw new IOException(lastErrorString("Bad pathname"));
+                throw new IOException(PosixUtils.lastErrorString("Bad pathname"));
             }
         }
 
@@ -275,7 +279,7 @@ final class Target_java_io_UnixFileSystem {
             // append unresolved subpath to resolved subpath
             String rs = CTypeConversion.toJavaString(r);
             if (rs.length() + 1 + unresolvedPart.length() > maxPathLen) {
-                throw new IOException(lastErrorString("Bad pathname"));
+                throw new IOException(PosixUtils.lastErrorString("Bad pathname"));
             }
             return PosixUtils.collapse(rs + "/" + unresolvedPart);
         } else {
@@ -296,8 +300,10 @@ final class Target_java_io_UnixFileSystem {
     @Substitute
     public boolean checkAccess(File f, int access) {
         // can't use a switch because fields are aliased
-        int mode = access == Target_java_io_FileSystem.ACCESS_READ ? R_OK() : access == Target_java_io_FileSystem.ACCESS_WRITE ? W_OK() : access == Target_java_io_FileSystem.ACCESS_EXECUTE ? X_OK()
-                        : -1;
+        int mode = access == Target_java_io_FileSystem.ACCESS_READ ? R_OK()
+                        : access == Target_java_io_FileSystem.ACCESS_WRITE ? W_OK()
+                                        : access == Target_java_io_FileSystem.ACCESS_EXECUTE ? X_OK()
+                                                        : -1;
         if (mode == -1) {
             throw VMError.shouldNotReachHere("illegal access mode");
         }
@@ -388,7 +394,7 @@ final class Target_java_io_UnixFileSystem {
         }
         if (fd < 0) {
             if (fd != EEXIST()) {
-                throw new IOException(lastErrorString(path));
+                throw new IOException(PosixUtils.lastErrorString(path));
             }
         } else {
             close(fd);
@@ -502,7 +508,7 @@ final class Target_java_io_FileInputStream {
             }
             return (int) r;
         }
-        throw new IOException(lastErrorString(""));
+        throw new IOException(PosixUtils.lastErrorString(""));
     }
 
     @Substitute
@@ -512,9 +518,9 @@ final class Target_java_io_FileInputStream {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek error"));
+            throw new IOException(PosixUtils.lastErrorString("Seek error"));
         } else if ((end = lseek(handle, WordFactory.signed(n), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek error"));
+            throw new IOException(PosixUtils.lastErrorString("Seek error"));
         }
 
         return end.subtract(cur).rawValue();
@@ -542,17 +548,7 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        if (bytes == null) {
-            throw new NullPointerException();
-        } else if (PosixUtils.outOfBounds(off, len, bytes)) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len != 0) {
-            final PosixOSInterface os = (PosixOSInterface) ConfigurationValues.getOSInterface();
-            if (!os.writeBytes0(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append)) {
-                throw new IOException("Write failed");
-            }
-        }
+        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
@@ -602,10 +598,7 @@ final class Target_java_io_RandomAccessFile {
 
     @Substitute
     private void writeBytes(byte[] b, int off, int len) throws IOException {
-        final PosixOSInterface os = (PosixOSInterface) ConfigurationValues.getOSInterface();
-        if (!os.writeBytes0(fd, b, off, len, false)) {
-            throw new IOException("Write failed");
-        }
+        PosixUtils.writeBytes(fd, b, off, len, false);
     }
 
     @Substitute
@@ -614,7 +607,7 @@ final class Target_java_io_RandomAccessFile {
         if (pos < 0L) {
             throw new IOException("Negative seek offset");
         } else if (lseek(handle, WordFactory.signed(pos), SEEK_SET()).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         }
 
     }
@@ -624,7 +617,7 @@ final class Target_java_io_RandomAccessFile {
         SignedWord ret;
         int handle = PosixUtils.getFDHandle(fd);
         if ((ret = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         }
         return ret.rawValue();
     }
@@ -658,11 +651,11 @@ final class Target_java_io_RandomAccessFile {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         } else if ((end = lseek(handle, WordFactory.zero(), SEEK_END())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         } else if (lseek(handle, cur, SEEK_SET()).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         }
         return end.rawValue();
     }
@@ -673,18 +666,18 @@ final class Target_java_io_RandomAccessFile {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("setLength failed"));
+            throw new IOException(PosixUtils.lastErrorString("setLength failed"));
         }
         if (ftruncate(handle, newLength) == -1) {
-            throw new IOException(lastErrorString("setLength failed"));
+            throw new IOException(PosixUtils.lastErrorString("setLength failed"));
         }
         if (cur.greaterThan(WordFactory.signed(newLength))) {
             if (lseek(handle, WordFactory.zero(), SEEK_END()).equal(WordFactory.signed(-1))) {
-                throw new IOException(lastErrorString("setLength failed"));
+                throw new IOException(PosixUtils.lastErrorString("setLength failed"));
             }
         } else {
             if (lseek(handle, cur, SEEK_SET()).equal(WordFactory.signed(-1))) {
-                throw new IOException(lastErrorString("setLength failed"));
+                throw new IOException(PosixUtils.lastErrorString("setLength failed"));
             }
         }
     }
@@ -694,10 +687,16 @@ final class Target_java_io_RandomAccessFile {
 @TargetClass(java.io.Console.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_Console {
-    @Alias Charset cs;
+
+    @Alias //
+    Charset cs;
+
+    @Alias //
+    static boolean echoOff;
 
     @Alias
     Target_java_io_Console() {
+        /* The empty body on an alias does not substitute. */
     }
 
     @Substitute
@@ -707,7 +706,107 @@ final class Target_java_io_Console {
 
     @Substitute
     static boolean istty() {
-        return Unistd.isatty(Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.in)) == 1 && Unistd.isatty(Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.out)) == 1;
+        return Unistd.isatty(PosixUtils.getFD(java.io.FileDescriptor.in)) == 1 && Unistd.isatty(PosixUtils.getFD(java.io.FileDescriptor.out)) == 1;
+    }
+
+    /* { Do not re-format commented out C code: @formatter:off */
+    // 047 JNIEXPORT jboolean JNICALL
+    // 048 Java_java_io_Console_echo(JNIEnv *env,
+    // 049                           jclass cls,
+    // 050                           jboolean on) {
+    @Substitute
+    static boolean echo(boolean on) throws IOException {
+        /* Initialize the echo shut down hook, once. */
+        Util_java_io_Console.addShutdownHook();
+        // 052     struct termios tio;
+        final Termios.termios tio = StackValue.get(SizeOf.get(Termios.termios.class));
+        // 053     jboolean old;
+        boolean old;
+        // 054     int tty = fileno(stdin);
+        /* TODO: Cf. in istty(): Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.in). */
+        final int tty = Unistd.STDIN_FILENO();
+        // 055     if (tcgetattr(tty, &tio) == -1) {
+        if (Termios.tcgetattr(tty, tio) == -1) {
+            // 056         JNU_ThrowIOExceptionWithLastError(env, "tcgetattr failed");
+            throw new IOException("tcgetattr failed");
+            // 057         return !on;
+            /* Unreachable code. */
+        }
+        // 059     old = (tio.c_lflag & ECHO);
+        old = (tio.get_c_lflag() & Termios.ECHO()) != 0;
+        // 060     if (on) {
+        if (on) {
+            // 061         tio.c_lflag |= ECHO;
+            tio.set_c_lflag(tio.get_c_lflag() | Termios.ECHO());
+        } else {
+            // 063         tio.c_lflag &= ~ECHO;
+            tio.set_c_lflag(tio.get_c_lflag() & ~Termios.ECHO());
+        }
+        // 065     if (tcsetattr(tty, TCSANOW, &tio) == -1) {
+        if (Termios.tcsetattr(tty, Termios.TCSANOW(), tio) == -1) {
+            // 066         JNU_ThrowIOExceptionWithLastError(env, "tcsetattr failed");
+            throw new IOException("tcsetattr failed");
+        }
+        // 068     return old;
+        return old;
+    }
+    /* } Do not re-format commented out C code: @formatter:on */
+}
+
+/** Utility methods for {@link Target_java_io_Console}. */
+class Util_java_io_Console {
+
+    @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
+    static Console fromTarget(Target_java_io_Console tjic) {
+        return Console.class.cast(tjic);
+    }
+
+    public static Console toConsole(Target_java_io_Console tjic) {
+        return fromTarget(tjic);
+    }
+
+    /** An initialization flag. */
+    static volatile boolean initialized = false;
+
+    /** A lock to protect the initialization flag. */
+    static ReentrantLock lock = new ReentrantLock();
+
+    static void addShutdownHook() {
+        if (!initialized) {
+            lock.lock();
+            try {
+                if (!initialized) {
+                    try {
+                        /*
+                         * Compare this code to the static initialization code of {@link
+                         * java.io.Console}.
+                         */
+                        Target_sun_misc_SharedSecrets.getJavaLangAccess().registerShutdownHook(
+                                        0 /* shutdown hook invocation order */,
+                                        false /* only register if shutdown is not in progress */,
+                                        new Runnable() {/* hook */
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    if (Target_java_io_Console.echoOff) {
+                                                        Target_java_io_Console.echo(true);
+                                                    }
+                                                } catch (IOException x) {
+                                                    /* Ignored. */
+                                                }
+                                            }
+                                        });
+                        initialized = true;
+                    } catch (InternalError ie) {
+                        /* Someone already registered the shutdown hook at slot 0. */
+                    } catch (IllegalStateException e) {
+                        /* Too late to register this shutdown hook. */
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
     }
 }
 

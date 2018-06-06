@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,9 +24,12 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import java.util.EnumMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -41,12 +46,15 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -67,8 +75,7 @@ import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.TargetDescription;
@@ -76,21 +83,23 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class NonSnippetLowerings {
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new NonSnippetLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Iterable<DebugHandlersFactory> factories,
+                    Providers providers, SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new NonSnippetLowerings(runtimeConfig, mustNotAllocatePredicate, options, factories, providers, snippetReflection, lowerings);
     }
 
     private final RuntimeConfiguration runtimeConfig;
+    private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
-    private NonSnippetLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    private NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Iterable<DebugHandlersFactory> factories,
+                    Providers providers, SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         this.runtimeConfig = runtimeConfig;
+        this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
         lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
         lowerings.put(GetClassNode.class, new GetClassLowering());
@@ -99,19 +108,44 @@ public final class NonSnippetLowerings {
         lowerings.put(FloatConvertNode.class, new FloatConvertLowering(options, factories, providers, snippetReflection, ConfigurationValues.getTarget()));
     }
 
-    private static class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
+    private static final EnumMap<BytecodeExceptionKind, RuntimeException> cachedExceptions;
+    private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> callDescriptors;
+
+    static {
+        cachedExceptions = new EnumMap<>(BytecodeExceptionKind.class);
+        cachedExceptions.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CACHED_NULL_POINTER_EXCEPTION);
+        cachedExceptions.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.CACHED_OUT_OF_BOUNDS_EXCEPTION);
+        cachedExceptions.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION);
+        cachedExceptions.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CACHED_ARRAY_STORE_EXCEPTION);
+        cachedExceptions.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CACHED_ARITHMETIC_EXCEPTION);
+
+        callDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
+        callDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
+        callDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.CREATE_OUT_OF_BOUNDS_EXCEPTION);
+        callDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CREATE_CLASS_CAST_EXCEPTION);
+        callDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CREATE_ARRAY_STORE_EXCEPTION);
+        callDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
+    }
+
+    private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
-            Throwable exception;
-            if (node.getExceptionClass() == NullPointerException.class) {
-                exception = SnippetRuntime.cachedNullPointerException;
-            } else if (node.getExceptionClass() == ArrayIndexOutOfBoundsException.class) {
-                exception = SnippetRuntime.cachedArrayIndexOutOfBoundsException;
+            if (mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(node.graph().method())) {
+                RuntimeException exception = cachedExceptions.get(node.getExceptionKind());
+                assert exception != null;
+
+                ConstantNode exceptionNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(exception), tool.getMetaAccess(), node.graph());
+                node.graph().replaceFixedWithFloating(node, exceptionNode);
+
             } else {
-                throw VMError.shouldNotReachHere();
+                ForeignCallDescriptor descriptor = callDescriptors.get(node.getExceptionKind());
+                assert descriptor != null && descriptor.getArgumentTypes().length == node.getArguments().size();
+
+                StructuredGraph graph = node.graph();
+                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
+                foreignCallNode.setStateAfter(node.stateAfter());
+                graph.replaceFixedWithFixed(node, foreignCallNode);
             }
-            ConstantNode exceptionNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(exception), tool.getMetaAccess(), node.graph());
-            node.graph().replaceFixedWithFloating(node, exceptionNode);
         }
     }
 

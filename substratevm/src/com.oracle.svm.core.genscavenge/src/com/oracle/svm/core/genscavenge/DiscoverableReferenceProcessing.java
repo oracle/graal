@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,6 +28,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.FeebleReferenceList;
@@ -216,6 +219,7 @@ public class DiscoverableReferenceProcessing {
         private Scatterer() {
         }
 
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during a collection.")
         static void distributeReferences() {
             final Log trace = Log.noopLog().string("[FeebleReferenceScatterer.distributeReferences:").newline();
             /*

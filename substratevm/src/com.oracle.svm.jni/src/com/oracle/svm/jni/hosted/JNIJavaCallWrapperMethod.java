@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -222,17 +224,17 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
         kit.elsePart(); // illegal parameter types
         ConstantNode exceptionObject = kit.createObject(cachedArgumentClassCastException);
-        kit.retainPendingException(exceptionObject);
-        ValueNode typeMismatchValue = null;
+        kit.setPendingException(exceptionObject);
+        ValueNode typeMismatchResult = null;
         if (returnKind != JavaKind.Void) {
-            typeMismatchValue = kit.unique(ConstantNode.defaultForKind(returnKind.getStackKind()));
+            typeMismatchResult = kit.unique(ConstantNode.defaultForKind(returnKind.getStackKind()));
         }
 
         AbstractMergeNode merge = kit.endIf();
 
         ValueNode returnValue = null;
         if (returnKind != JavaKind.Void) {
-            ValueNode[] inputs = {invokeResult, typeMismatchValue};
+            ValueNode[] inputs = {invokeResult, typeMismatchResult};
             returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(invokeResult.stamp(NodeView.DEFAULT), merge, inputs));
             state.push(returnKind, returnValue);
         }
@@ -251,12 +253,17 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     }
 
     private static ValueNode createInvoke(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
+        ValueNode formerPendingException = kit.getAndClearPendingException();
+
         int exceptionEdgeBci = kit.bci();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, exceptionEdgeBci, args);
 
+        kit.noExceptionPart(); // no new exception was thrown, restore the formerly pending one
+        kit.setPendingException(formerPendingException);
+
         kit.exceptionPart();
         ExceptionObjectNode exceptionObject = kit.exceptionObject();
-        kit.retainPendingException(exceptionObject);
+        kit.setPendingException(exceptionObject);
         ValueNode exceptionValue = null;
         if (invoke.getStackKind() != JavaKind.Void) {
             exceptionValue = kit.unique(ConstantNode.defaultForKind(invoke.getStackKind()));

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -71,8 +73,10 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value array1Value;
     @Alive({REG}) protected Value array2Value;
-    @Alive({REG}) protected Value length1Value;
-    @Alive({REG}) protected Value length2Value;
+    @Use({REG}) protected Value length1Value;
+    @Use({REG}) protected Value length2Value;
+    @Temp({REG}) protected Value length1ValueTemp;
+    @Temp({REG}) protected Value length2ValueTemp;
     @Temp({REG}) protected Value temp1;
     @Temp({REG}) protected Value temp2;
 
@@ -92,8 +96,14 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         this.resultValue = result;
         this.array1Value = array1;
         this.array2Value = array2;
+        /*
+         * The length values are inputs but are also killed like temporaries so need both Use and
+         * Temp annotations, which will only work with fixed registers.
+         */
         this.length1Value = length1;
         this.length2Value = length2;
+        this.length1ValueTemp = length1;
+        this.length2ValueTemp = length2;
 
         // Allocate some temporaries.
         this.temp1 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));

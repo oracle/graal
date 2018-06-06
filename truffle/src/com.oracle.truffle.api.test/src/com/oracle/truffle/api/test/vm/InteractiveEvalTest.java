@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,8 +43,9 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings("deprecation")
 public class InteractiveEvalTest {
 
     @Test
@@ -165,11 +168,6 @@ public class InteractiveEvalTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(InteractiveContext context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
@@ -212,11 +210,6 @@ public class InteractiveEvalTest {
         @Override
         protected boolean isVisible(InteractiveContext context, Object value) {
             return false;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(InteractiveContext context) {
-            return null;
         }
 
         @Override

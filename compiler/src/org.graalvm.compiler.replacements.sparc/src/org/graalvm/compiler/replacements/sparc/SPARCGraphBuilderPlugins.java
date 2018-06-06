@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,6 +40,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.IntegerSubstitutions;
 import org.graalvm.compiler.replacements.LongSubstitutions;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BitCountNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -56,6 +59,10 @@ public class SPARCGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
                 registerMathPlugins(invocationPlugins);
+                // This is temporarily disabled until we implement correct emitting of the CAS
+                // instructions of the proper width.
+                StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins(invocationPlugins, bytecodeProvider,
+                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }

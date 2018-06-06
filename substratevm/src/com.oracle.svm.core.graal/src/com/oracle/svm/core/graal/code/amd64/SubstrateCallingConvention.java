@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,14 +29,17 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SubstrateCallingConvention extends CallingConvention {
-    private JavaKind[] kinds;
+    private final Type type;
+    private final JavaKind[] kinds;
 
-    SubstrateCallingConvention(int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
+    SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
         super(stackSize, returnLocation, argumentLocations);
+        this.type = type;
+        this.kinds = kinds;
     }
 
-    void setArgumentStorageKinds(JavaKind[] kinds) {
-        this.kinds = kinds;
+    public Type getType() {
+        return type;
     }
 
     public JavaKind[] getArgumentStorageKinds() {

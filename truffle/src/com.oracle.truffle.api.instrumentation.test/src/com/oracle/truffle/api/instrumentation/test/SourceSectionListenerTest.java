@@ -212,6 +212,34 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testVisitLoadedSourceSections() throws IOException {
+        SourceSection[] sourceSections = sections("STATEMENT(EXPRESSION)\n", "STATEMENT(EXPRESSION)", "EXPRESSION");
+        run(sourceSections[0].getSource());
+        TestVisitLoadedSourceSections test = engine.getInstruments().get("testVisitLoadedSourceSections").lookup(TestVisitLoadedSourceSections.class);
+        assertEvents(test.visitedEvents, sourceSections);
+        // No more sections visited
+        run("EXPRESSION(EXPRESSION,EXPRESSION)");
+        Assert.assertEquals(sourceSections.length, test.visitedEvents.size());
+    }
+
+    @Registration(id = "testVisitLoadedSourceSections", services = {TestVisitLoadedSourceSections.class, Object.class})
+    public static class TestVisitLoadedSourceSections extends TruffleInstrument {
+
+        List<LoadSourceSectionEvent> visitedEvents = new ArrayList<>();
+
+        @Override
+        protected void onCreate(Env env) {
+            env.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
+                @Override
+                public void onLoad(LoadSourceSectionEvent event) {
+                    visitedEvents.add(event);
+                }
+            });
+            env.registerService(this);
+        }
+    }
+
+    @Test
     public void testLoadSourceSectionException() throws IOException {
         assureEnabled(engine.getInstruments().get("testLoadSourceSectionException"));
         run("STATEMENT");

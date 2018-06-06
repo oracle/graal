@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -116,38 +118,38 @@ class CFGPrinter extends CompilationPrinter {
     }
 
     private void printBlock(BciBlockMapping.BciBlock block) {
-        out.print("name \"B").print(block.startBci).println('"');
-        out.print("from_bci ").println(block.startBci);
-        out.print("to_bci ").println(block.endBci);
+        out.print("name \"B").print(block.getStartBci()).println('"');
+        out.print("from_bci ").println(block.getStartBci());
+        out.print("to_bci ").println(block.getEndBci());
 
         out.println("predecessors ");
 
         out.print("successors ");
         for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
-            if (!succ.isExceptionEntry) {
-                out.print("\"B").print(succ.startBci).print("\" ");
+            if (!succ.isExceptionEntry()) {
+                out.print("\"B").print(succ.getStartBci()).print("\" ");
             }
         }
         out.println();
 
         out.print("xhandlers");
         for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
-            if (succ.isExceptionEntry) {
-                out.print("\"B").print(succ.startBci).print("\" ");
+            if (succ.isExceptionEntry()) {
+                out.print("\"B").print(succ.getStartBci()).print("\" ");
             }
         }
         out.println();
 
         out.print("flags ");
-        if (block.isExceptionEntry) {
+        if (block.isExceptionEntry()) {
             out.print("\"ex\" ");
         }
-        if (block.isLoopHeader) {
+        if (block.isLoopHeader()) {
             out.print("\"plh\" ");
         }
         out.println();
 
-        out.print("loop_depth ").println(Long.bitCount(block.loops));
+        out.print("loop_depth ").println(Long.bitCount(block.getLoops()));
     }
 
     private NodeMap<Block> latestScheduling;

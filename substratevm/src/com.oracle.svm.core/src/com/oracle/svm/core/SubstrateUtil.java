@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,10 +28,16 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.util.Arrays;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -151,27 +159,6 @@ public class SubstrateUtil {
         public native long address();
     }
 
-    @TargetClass(java.lang.String.class)
-    private static final class Target_java_lang_String {
-        @Alias//
-        char[] value;
-
-        @SuppressWarnings("unused")
-        @Alias
-        Target_java_lang_String(char[] value, boolean share) {
-        }
-    }
-
-    /**
-     * Returns the char[] arrays used to store the characters in a {@link String} without any
-     * copying. You must not modify the returned array, otherwise you violate the immutability of
-     * strings.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static char[] getRawStringChars(String s) {
-        return KnownIntrinsics.unsafeCast(s, Target_java_lang_String.class).value;
-    }
-
     /**
      * Wraps a pointer to C memory into a {@link ByteBuffer}.
      *
@@ -227,7 +214,6 @@ public class SubstrateUtil {
      * Prints extensive diagnostic information to the given Log.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    @Uninterruptible(reason = "Allow printDiagnostics to be used in uninterruptible code.", calleeMustBe = false)
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
         if (diagnosticsInProgress) {
             log.string("Error: printDiagnostics already in progress.").newline();
@@ -261,7 +247,7 @@ public class SubstrateUtil {
             dumpException(log, "dumpVMThreads", e);
         }
 
-        IsolateThread currentThread = KnownIntrinsics.currentVMThread();
+        IsolateThread currentThread = CEntryPointContext.getCurrentIsolateThread();
         try {
             dumpVMThreadState(log, currentThread);
         } catch (Exception e) {
@@ -308,7 +294,7 @@ public class SubstrateUtil {
 
         if (VMOperationControl.isFrozen()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == KnownIntrinsics.currentVMThread()) {
+                if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
                     continue;
                 }
                 try {
@@ -317,6 +303,12 @@ public class SubstrateUtil {
                     dumpException(log, "dumpStacktrace", e);
                 }
             }
+        }
+
+        try {
+            DiagnosticThunkRegister.getSingleton().callDiagnosticThunks();
+        } catch (Exception e) {
+            dumpException(log, "callThunks", e);
         }
 
         diagnosticsInProgress = false;
@@ -495,5 +487,56 @@ public class SubstrateUtil {
         log.indent(true);
         JavaStackWalker.walkThread(vmThread, ThreadStackPrinter.AllocationFreeStackFrameVisitor);
         log.indent(false);
+    }
+
+    /** The functional interface for a "thunk" that does not allocate. */
+    @FunctionalInterface
+    public interface DiagnosticThunk {
+
+        /** The method to be supplied by the implementor. */
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+        void invokeWithoutAllocation();
+    }
+
+    public static class DiagnosticThunkRegister {
+
+        DiagnosticThunk[] diagnosticThunkRegistry;
+
+        /**
+         * Get the register.
+         *
+         * This method is @Fold so anyone who uses it ensures there is a register.
+         */
+        @Fold
+        /* { Checkstyle: allow synchronization. */
+        public static synchronized DiagnosticThunkRegister getSingleton() {
+            if (!ImageSingletons.contains(SubstrateUtil.DiagnosticThunkRegister.class)) {
+                ImageSingletons.add(SubstrateUtil.DiagnosticThunkRegister.class, new DiagnosticThunkRegister());
+            }
+            return ImageSingletons.lookup(SubstrateUtil.DiagnosticThunkRegister.class);
+        }
+        /* } Checkstyle: disallow synchronization. */
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        DiagnosticThunkRegister() {
+            this.diagnosticThunkRegistry = new DiagnosticThunk[0];
+        }
+
+        /** Register a diagnostic thunk to be called after a segfault. */
+        @Platforms(Platform.HOSTED_ONLY.class)
+        /* { Checkstyle: allow synchronization. */
+        public synchronized void register(DiagnosticThunk diagnosticThunk) {
+            final DiagnosticThunk[] newArray = Arrays.copyOf(diagnosticThunkRegistry, diagnosticThunkRegistry.length + 1);
+            newArray[newArray.length - 1] = diagnosticThunk;
+            diagnosticThunkRegistry = newArray;
+        }
+        /* } Checkstyle: disallow synchronization. */
+
+        /** Call each registered diagnostic thunk. */
+        void callDiagnosticThunks() {
+            for (int i = 0; i < diagnosticThunkRegistry.length; i += 1) {
+                diagnosticThunkRegistry[i].invokeWithoutAllocation();
+            }
+        }
     }
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -55,12 +57,12 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
     private final Set<String> symbolsUsed = new HashSet<>();
 
     private final ProcessingEnvironment processingEnv;
-    private final DeclaredType unusedAnnotation;
+    private final DeclaredType suppressWarnings;
     private final DeclaredType overrideType;
 
-    public FixWarningsVisitor(ProcessingEnvironment processingEnv, DeclaredType unusedAnnotation, DeclaredType overrideType) {
+    public FixWarningsVisitor(ProcessingEnvironment processingEnv, DeclaredType suppressWarnings, DeclaredType overrideType) {
         this.processingEnv = processingEnv;
-        this.unusedAnnotation = unusedAnnotation;
+        this.suppressWarnings = suppressWarnings;
         this.overrideType = overrideType;
     }
 
@@ -76,7 +78,11 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
                 break;
             }
         }
-
+        if (ElementUtils.isDeprecated(e)) {
+            if (e.getEnclosingClass() == null) {
+                e.getAnnotationMirrors().add(createIgnoreDeprecations());
+            }
+        }
         return super.visitType(e, p);
     }
 
@@ -95,7 +101,7 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
         for (VariableElement parameter : e.getParameters()) {
             if (!symbolsUsed.contains(parameter.getSimpleName().toString())) {
-                e.getAnnotationMirrors().add(createUnusedAnnotationMirror());
+                e.getAnnotationMirrors().add(createUnused());
                 break;
             }
         }
@@ -111,9 +117,15 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
         return false;
     }
 
-    private CodeAnnotationMirror createUnusedAnnotationMirror() {
-        CodeAnnotationMirror mirror = new CodeAnnotationMirror(unusedAnnotation);
+    private CodeAnnotationMirror createUnused() {
+        CodeAnnotationMirror mirror = new CodeAnnotationMirror(suppressWarnings);
         mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue("unused"));
+        return mirror;
+    }
+
+    private CodeAnnotationMirror createIgnoreDeprecations() {
+        CodeAnnotationMirror mirror = new CodeAnnotationMirror(suppressWarnings);
+        mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue("deprecation"));
         return mirror;
     }
 

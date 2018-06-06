@@ -4,7 +4,9 @@
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,14 +26,6 @@
 INCLUDE_DIR = include
 HEADER_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
 
-TARGETOS ?= $(shell uname -s)
-ifeq ($(TARGETOS),Linux)
-    OS:=linux
-endif
-ifeq ($(TARGETOS),Darwin)
-    OS:=darwin
-endif
-TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET_HEADERS = $(patsubst %,$(TARGET_DIR)/%,$(HEADER_FILES))
 
 all : $(TARGET_HEADERS)

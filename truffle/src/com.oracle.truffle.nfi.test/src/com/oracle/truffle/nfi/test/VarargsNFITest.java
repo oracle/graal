@@ -24,6 +24,13 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -33,18 +40,12 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class VarargsNFITest extends NFITest {
@@ -57,7 +58,7 @@ public class VarargsNFITest extends NFITest {
         private String execute(TruffleObject formatString, Object... args) {
             assert args[0] == null && args[1] == null;
             byte[] buffer = new byte[128];
-            args[0] = JavaInterop.asTruffleObject(buffer);
+            args[0] = runWithPolyglot.getTruffleTestEnv().asGuestValue(buffer);
             args[1] = buffer.length;
 
             int size;

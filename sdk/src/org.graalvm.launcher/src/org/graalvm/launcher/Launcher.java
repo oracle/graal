@@ -55,6 +55,7 @@ import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
@@ -119,11 +120,18 @@ public abstract class Launcher {
         System.exit(e.getExitCode());
     }
 
-    /**
-     * Sets the version action that will be executed before launching.
-     */
-    protected void setVersionAction(VersionAction versionAction) {
-        this.versionAction = versionAction;
+    static void handlePolyglotException(PolyglotException e) {
+        if (e.getMessage() != null) {
+            System.err.println("ERROR: " + e.getMessage());
+        }
+        if (e.isInternalError()) {
+            e.printStackTrace();
+        }
+        if (e.isExit()) {
+            System.exit(e.getExitStatus());
+        } else {
+            System.exit(1);
+        }
     }
 
     protected static class AbortException extends RuntimeException {
@@ -369,13 +377,28 @@ public abstract class Launcher {
     }
 
     private static final Path FORCE_GRAAL_HOME;
+    private static final Path GRAAL_HOME_RELATIVE_PATH;
+    private static final Path LANGUAGE_HOME_RELATIVE_PATH;
     static {
         String forcedHome = System.getProperty("org.graalvm.launcher.home");
-        if (forcedHome != null) {
+        String relativeHome = System.getProperty("org.graalvm.launcher.relative.home");
+        String relativeLanguageHome = System.getProperty("org.graalvm.launcher.relative.language.home");
+        if (forcedHome != null && forcedHome.length() > 0) {
             FORCE_GRAAL_HOME = Paths.get(forcedHome);
         } else {
             FORCE_GRAAL_HOME = null;
         }
+        if (relativeHome != null && relativeHome.length() > 0) {
+            GRAAL_HOME_RELATIVE_PATH = Paths.get(relativeHome);
+        } else {
+            GRAAL_HOME_RELATIVE_PATH = null;
+        }
+        if (relativeLanguageHome != null && relativeLanguageHome.length() > 0) {
+            LANGUAGE_HOME_RELATIVE_PATH = Paths.get(relativeLanguageHome);
+        } else {
+            LANGUAGE_HOME_RELATIVE_PATH = null;
+        }
+        assert !(GRAAL_HOME_RELATIVE_PATH != null && LANGUAGE_HOME_RELATIVE_PATH != null) : "Can not set both org.graalvm.launcher.relative.home and org.graalvm.launcher.relative.language.home";
     }
 
     /**
@@ -411,18 +434,22 @@ public abstract class Launcher {
         return verbose;
     }
 
+    protected boolean isGraalVMAvailable() {
+        return System.getProperty("org.graalvm.home") != null;
+    }
+
     @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
         OptionCategory helpCategory = helpDebug ? OptionCategory.DEBUG : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
 
         switch (versionAction) {
             case PrintAndContinue:
-                printVersion();
+                printPolyglotVersions();
                 // fall through
             case None:
                 break;
             case PrintAndExit:
-                printVersion();
+                printPolyglotVersions();
                 return true;
         }
         boolean printDefaultHelp = help || ((helpExpert || helpDebug) && !helpTools && !helpLanguages);
@@ -430,12 +457,16 @@ public abstract class Launcher {
             printHelp(helpCategory);
             // @formatter:off
             System.out.println();
-            System.out.println("Runtime Options:");
-            printOption("--polyglot",                   "Run with all other guest languages accessible.");
-            printOption("--native",                     "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
-            printOption("--native.[option]",            "Pass options to the native image. To see available options, use '--native.help'.");
-            printOption("--jvm",                        "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
-            printOption("--jvm.[option]",               "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
+            System.out.println("Runtime options:");
+            if (isGraalVMAvailable()) {
+                printOption("--polyglot", "Run with all other guest languages accessible.");
+            }
+            printOption("--native", "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
+            printOption("--native.[option]", "Pass options to the native image. To see available options, use '--native.help'.");
+            if (isGraalVMAvailable()) {
+                printOption("--jvm", "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
+                printOption("--jvm.[option]", "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
+            }
             printOption("--help",                       "Print this help message.");
             printOption("--help:languages",             "Print options for all installed languages.");
             printOption("--help:tools",                 "Print options for all installed tools.");
@@ -443,8 +474,8 @@ public abstract class Launcher {
             if (helpExpert || helpDebug) {
                 printOption("--help:debug",             "Print additional options for debugging.");
             }
-            printOption("--version",                    "Print version information and exit.");
-            printOption("--show-version",               "Print version information and continue execution.");
+            printOption("--version:graalvm",            "Print GraalVM version information and exit.");
+            printOption("--show-version:graalvm",       "Print GraalVM version information and continue execution.");
             // @formatter:on
             List<PrintableOption> engineOptions = new ArrayList<>();
             for (OptionDescriptor descriptor : getTempEngine().getOptions()) {
@@ -518,7 +549,7 @@ public abstract class Launcher {
         }
         if (!languagesOptions.isEmpty()) {
             System.out.println();
-            System.out.println("Language Options:");
+            System.out.println("Language options:");
             for (Language language : languages) {
                 List<PrintableOption> options = languagesOptions.get(language);
                 if (options != null) {
@@ -545,10 +576,10 @@ public abstract class Launcher {
             case "--help:languages":
                 helpLanguages = true;
                 return true;
-            case "--version":
+            case "--version:graalvm":
                 versionAction = VersionAction.PrintAndExit;
                 return true;
-            case "--show-version":
+            case "--show-version:graalvm":
                 versionAction = VersionAction.PrintAndContinue;
                 return true;
             case "--polyglot":
@@ -603,7 +634,8 @@ public abstract class Launcher {
                 } catch (IllegalArgumentException e) {
                     throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
                 }
-                options.put(key, value);
+                // use the full name of the found descriptor
+                options.put(descriptor.getName(), value);
                 return true;
         }
     }
@@ -635,15 +667,17 @@ public abstract class Launcher {
         Engine engine = getTempEngine();
         Set<String> options = new LinkedHashSet<>();
         collectArguments(options);
-        options.add("--polylgot");
+        if (isGraalVMAvailable()) {
+            options.add("--polylgot");
+            options.add("--jvm");
+        }
         options.add("--native");
-        options.add("--jvm");
         options.add("--help");
         options.add("--help:languages");
         options.add("--help:tools");
         options.add("--help:expert");
-        options.add("--version");
-        options.add("--show-version");
+        options.add("--version:graalvm");
+        options.add("--show-version:graalvm");
         if (helpExpert || helpDebug) {
             options.add("--help:debug");
         }
@@ -942,6 +976,9 @@ public abstract class Launcher {
                     if (vmType == VMType.Native) {
                         throw abort("`--jvm` and `--native` options can not be used together.");
                     }
+                    if (!isGraalVMAvailable()) {
+                        throw abort("--jvm.* options are only supported when this launcher is part of a GraalVM.");
+                    }
                     if (arg.equals("--jvm.help")) {
                         printJvmHelp();
                         throw exit();
@@ -990,9 +1027,13 @@ public abstract class Launcher {
                 if (!isPolyglot && polyglot) {
                     remainingArgs.add(0, "--polyglot");
                 }
+                assert isGraalVMAvailable();
                 execJVM(jvmArgs, remainingArgs, polyglotOptions);
             } else if (!isPolyglot && polyglot) {
                 assert jvmArgs.isEmpty();
+                if (!isGraalVMAvailable()) {
+                    throw abort("--polyglot option is only supported when this launcher is part of a GraalVM.");
+                }
                 execNativePolyglot(remainingArgs, polyglotOptions);
             }
         }
@@ -1118,7 +1159,7 @@ public abstract class Launcher {
         }
 
         private void printJvmHelp() {
-            System.out.print("JVM options:");
+            System.out.println("JVM options:");
             printOption("--jvm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
             printOption("--jvm.D<name>=<value>", "Set a system property");
             printOption("--jvm.esa", "Enable system assertions");
@@ -1201,14 +1242,19 @@ public abstract class Launcher {
             assert isAOT();
             assert CLASSPATH != null;
             StringBuilder sb = new StringBuilder();
-            Path graalVMHome = getGraalVMHome();
-            for (String entry : CLASSPATH.split(File.pathSeparator)) {
-                Path resolved = graalVMHome.resolve(entry);
-                if (isVerbose() && !Files.exists(resolved)) {
-                    System.err.println(String.format("Warning: %s does not exit", resolved));
+            if (!CLASSPATH.isEmpty()) {
+                Path graalVMHome = getGraalVMHome();
+                if (graalVMHome == null) {
+                    throw abort("Can not resolve classpath: could not get GraalVM home");
                 }
-                sb.append(resolved);
-                sb.append(File.pathSeparatorChar);
+                for (String entry : CLASSPATH.split(File.pathSeparator)) {
+                    Path resolved = graalVMHome.resolve(entry);
+                    if (isVerbose() && !Files.exists(resolved)) {
+                        System.err.println(String.format("Warning: %s does not exit", resolved));
+                    }
+                    sb.append(resolved);
+                    sb.append(File.pathSeparatorChar);
+                }
             }
             String classpathFromArgs = null;
             Iterator<String> iterator = jvmArgs.iterator();
@@ -1237,22 +1283,58 @@ public abstract class Launcher {
             return sb.substring(0, sb.length() - 1);
         }
 
-        void setGraalVMProperties() {
+        void setGraalVMProperties(String languageId) {
             assert GRAALVM_VERSION != null;
             System.setProperty(GRAALVM_VERSION_PROPERTY, GRAALVM_VERSION);
             System.setProperty(ALT_GRAALVM_VERSION_PROPERTY, GRAALVM_VERSION);
-            String home = getGraalVMHome().toString();
-            System.setProperty("graalvm.home", home);
-            System.setProperty("org.graalvm.home", home);
+            Path executable = getCurrentExecutablePath();
+            Path languageHome = getLanguageHome(executable);
+            Path graalVmHome = null;
+            if (languageHome != null) {
+                if (languageId != null) {
+                    System.setProperty(languageId + ".home", languageHome.toString());
+                }
+                graalVmHome = getGraalVMHomeFromLanguageHome(languageHome);
+            }
+            if (graalVmHome == null) {
+                graalVmHome = getGraalVMHome(executable);
+            }
+            if (graalVmHome != null) {
+                String home = graalVmHome.toString();
+                System.setProperty("graalvm.home", home);
+                System.setProperty("org.graalvm.home", home);
+                setLanguagesOrToolsHomes(graalVmHome, "languages");
+                setLanguagesOrToolsHomes(graalVmHome, "tools");
+            }
+        }
+
+        void setLanguagesOrToolsHomes(Path graalVmHome, String kind) {
+            Path directory = graalVmHome.resolve(Paths.get("jre", kind));
+            if (Files.isDirectory(directory)) {
+                try {
+                    for (Path p : Files.newDirectoryStream(directory)) {
+                        if (!Files.isDirectory(p)) {
+                            continue;
+                        }
+                        System.setProperty(p.getFileName().toString() + ".home", p.toString());
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
         private Path getGraalVMBinaryPath(String binaryName) {
             String executableName = executableName(binaryName);
-            Path siblingBinary = getCurrentExecutablePath().resolveSibling(executableName);
+            Path executablePath = getCurrentExecutablePath();
+            Path siblingBinary = executablePath.resolveSibling(executableName);
             if (Files.exists(siblingBinary)) {
                 return siblingBinary;
             }
-            Path graalVMHome = getGraalVMHome();
+            Path graalVMHome = getGraalVMHome(executablePath);
+            if (graalVMHome == null) {
+                throw abort("Can not exec to GraalVM binary: could not find GraalVM home");
+            }
             Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
             if (Files.exists(jdkBin)) {
                 return jdkBin;
@@ -1260,26 +1342,144 @@ public abstract class Launcher {
             return graalVMHome.resolve("jre").resolve("bin").resolve(executableName);
         }
 
+        /**
+         * @return the absolute resolved path to the current executable.
+         */
         private Path getCurrentExecutablePath() {
             return Paths.get((String) Compiler.command(new String[]{"com.oracle.svm.core.posix.GetExecutableName"}));
         }
 
-        Path getGraalVMHome() {
-            if (FORCE_GRAAL_HOME != null) {
-                return FORCE_GRAAL_HOME;
+        Path trimAbsolutePath(Path absolute, Path expectedRelative) {
+            Path p = expectedRelative;
+            Path result = absolute;
+            while (p != null) {
+                if (result == null) {
+                    return null;
+                }
+                if (!result.getFileName().equals(p.getFileName())) {
+                    System.err.println(String.format("WARNING: It seems that this launcher has been moved! Expected its path to end with %s but it was in %s", expectedRelative, absolute));
+                }
+                result = result.getParent();
+                p = p.getParent();
             }
-            assert isAOT();
-            Path executable = getCurrentExecutablePath();
-            Path bin = executable.getParent();
-            assert bin.getFileName().toString().equals("bin");
-            Path jreOrJdk = bin.getParent();
+            return result;
+        }
+
+        Path getLanguageHome(Path executable) {
+            if (LANGUAGE_HOME_RELATIVE_PATH == null) {
+                return null;
+            }
+            Path result = trimAbsolutePath(executable, LANGUAGE_HOME_RELATIVE_PATH);
+            if (result == null) {
+                abort(String.format("Error while getting the GraalVM home: getCurrentExecutablePath()=%s and LANGUAGE_HOME_RELATIVE_PATH=%s", executable, LANGUAGE_HOME_RELATIVE_PATH));
+            }
+            if (verbose) {
+                System.out.println(String.format("Resolving language home: executable=%s, LANGUAGE_HOME_RELATIVE_PATH=%s -> languageHome=%s", executable, LANGUAGE_HOME_RELATIVE_PATH, result));
+            }
+            return result;
+        }
+
+        Path getGraalVMHomeFromLanguageHome(Path languageHome) {
+            // jre/<languages_or_tools>/<comp_id>
+            Path languagesOrTools = languageHome.getParent();
+            String languagesOrToolsString = languagesOrTools.getFileName().toString();
+            if (!languagesOrToolsString.equals("languages") && !languagesOrToolsString.equals("tools")) {
+                return null;
+            }
+            Path jreOrJdk = languagesOrTools.getParent();
             Path home;
             if (jreOrJdk.getFileName().toString().equals("jre")) {
                 home = jreOrJdk.getParent();
             } else {
                 home = jreOrJdk;
             }
+            if (verbose) {
+                System.out.println(String.format("Resolving GraalVM home from language home: languageHome=%s -> home=%s", languageHome, home));
+            }
             return home;
+        }
+
+        Path getGraalVMHome() {
+            if (FORCE_GRAAL_HOME != null) {
+                return FORCE_GRAAL_HOME;
+            }
+            String home = System.getProperty("org.graalvm.home");
+            if (home != null) {
+                return Paths.get(home);
+            }
+            return getGraalVMHome(getCurrentExecutablePath());
+        }
+
+        Path getGraalVMHome(Path executable) {
+            if (FORCE_GRAAL_HOME != null) {
+                return FORCE_GRAAL_HOME;
+            }
+            String systemPropertyHome = System.getProperty("org.graalvm.home");
+            if (systemPropertyHome != null) {
+                return Paths.get(systemPropertyHome);
+            }
+            assert isAOT();
+            Path languageHome = getLanguageHome(executable);
+            if (languageHome != null) {
+                Path graalVmHome = getGraalVMHomeFromLanguageHome(languageHome);
+                if (graalVmHome != null) {
+                    return graalVmHome;
+                }
+            }
+            if (GRAAL_HOME_RELATIVE_PATH != null) {
+                Path result = trimAbsolutePath(executable, GRAAL_HOME_RELATIVE_PATH);
+                if (result == null) {
+                    abort(String.format("Error while getting the GraalVM home: getCurrentExecutablePath()=%s and GRAAL_HOME_RELATIVE_PATH=%s", executable, GRAAL_HOME_RELATIVE_PATH));
+                }
+                if (verbose) {
+                    System.out.println(String.format("Resolving GraalVM home: executable=%s, GRAAL_HOME_RELATIVE_PATH=%s -> home=%s", executable, GRAAL_HOME_RELATIVE_PATH, result));
+                }
+                return result;
+            }
+            // Fallback, should probably be removed after a while
+            Path bin = executable.getParent();
+            assert bin.getFileName().toString().equals("bin");
+            Path jreOrJdk = bin.getParent();
+            Path home;
+            if (jreOrJdk != null && jreOrJdk.getFileName().toString().equals("jre")) {
+                home = jreOrJdk.getParent();
+            } else if (jreOrJdk != null) {
+                if (isJdkHome(jreOrJdk)) {
+                    home = jreOrJdk;
+                } else {
+                    // maybe we are in the language home?
+                    Path languages = jreOrJdk.getParent();
+                    if (languages != null && languages.getFileName().toString().equals("languages")) {
+                        Path jre = languages.getParent();
+                        if (jre != null && jre.getFileName().toString().equals("jre")) {
+                            home = jre.getParent();
+                        } else {
+                            home = null;
+                        }
+                    } else {
+                        home = null;
+                    }
+                }
+            } else {
+                home = null;
+            }
+            if (home != null && !isJreHome(home)) {
+                System.err.println(String.format("WARNING: %s was found as GraalVM home but it does not contain `bin/java`", home));
+            }
+            if (verbose) {
+                System.out.println(String.format("Resolving GraalVM home with fallback: executable=%s -> home=%s", executable, home));
+            }
+            return home;
+        }
+
+        private boolean isJdkHome(Path path) {
+            Path javac = path.resolve(Paths.get("bin", "javac"));
+            return isJreHome(path) && Files.isRegularFile(javac) && Files.isExecutable(javac);
+        }
+
+        private boolean isJreHome(Path path) {
+            Path java = path.resolve(Paths.get("bin", "java"));
+            return Files.isRegularFile(java) && Files.isExecutable(java);
         }
 
         private void exec(Path executable, List<String> command) {

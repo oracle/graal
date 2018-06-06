@@ -32,6 +32,8 @@ import java.lang.annotation.Target;
 /**
  * Annotation for an invocation method defined in a sub-interface of {@link CFunctionPointer}. The
  * method is called with C calling conventions.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})

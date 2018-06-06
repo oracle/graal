@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -244,7 +246,7 @@ public final class DeoptimizedFrame {
     private final Deoptimizer.TargetContent targetContent;
     private final PinnedObject pin;
     private final CodePointer sourcePC;
-    private final String completedMessage;
+    private final char[] completedMessage;
 
     private DeoptimizedFrame(long sourceTotalFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame, Deoptimizer.TargetContent targetContent,
                     CodePointer sourcePC) {
@@ -256,7 +258,7 @@ public final class DeoptimizedFrame {
         this.pin = PinnedObject.create(this);
         StringBuilderLog sbl = new StringBuilderLog();
         sbl.string("deoptStub: completed for DeoptimizedFrame at ").hex(pin.addressOfObject()).newline();
-        this.completedMessage = sbl.getResult();
+        this.completedMessage = sbl.getResult().toCharArray();
     }
 
     /**
@@ -311,7 +313,7 @@ public final class DeoptimizedFrame {
     }
 
     @Uninterruptible(reason = "Called from Deoptimizer.deoptStub.")
-    String getCompletedMessage() {
+    char[] getCompletedMessage() {
         return completedMessage;
     }
 

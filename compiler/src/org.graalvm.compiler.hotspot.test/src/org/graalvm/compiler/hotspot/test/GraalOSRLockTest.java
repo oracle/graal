@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package org.graalvm.compiler.hotspot.test;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
-import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.Collection;
@@ -41,6 +42,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.phases.OnStackReplacementPhase;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -58,11 +60,6 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
 
     @BeforeClass
     public static void checkVMArguments() {
-        try {
-            Class.forName("java.lang.management.ManagementFactory");
-        } catch (ClassNotFoundException ex) {
-            Assume.assumeNoException("cannot check for monitors without java.management JDK9 module", ex);
-        }
         /*
          * Note: The -Xcomp execution mode of the VM will stop most of the OSR test cases from
          * working as every method is compiled at level3 (followed by level4 on the second
@@ -71,8 +68,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
          * installed nmethod at a given BCI.
          *
          */
-        RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
-        List<String> arguments = runtimeMxBean.getInputArguments();
+        List<String> arguments = GraalServices.getInputArguments();
+        Assume.assumeTrue("cannot check for monitors without", arguments != null);
         for (String arg : arguments) {
             Assume.assumeFalse(arg.equals(COMPILE_ONLY_FLAG));
         }

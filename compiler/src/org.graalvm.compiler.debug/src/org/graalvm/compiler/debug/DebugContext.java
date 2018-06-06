@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -61,6 +63,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.graphio.GraphOutput;
 
 import jdk.vm.ci.meta.JavaMethod;
@@ -95,7 +98,7 @@ public final class DebugContext implements AutoCloseable {
      */
     boolean metricsEnabled;
 
-    DebugConfig currentConfig;
+    DebugConfigImpl currentConfig;
     ScopeImpl currentScope;
     CloseableCounter currentTimer;
     CloseableCounter currentMemUseTracker;
@@ -236,14 +239,15 @@ public final class DebugContext implements AutoCloseable {
             this.unscopedTimers = parseUnscopedMetricSpec(Timers.getValue(options), "".equals(timeValue), true);
             this.unscopedMemUseTrackers = parseUnscopedMetricSpec(MemUseTrackers.getValue(options), "".equals(trackMemUseValue), true);
 
-            if (unscopedTimers != null ||
-                            unscopedMemUseTrackers != null ||
-                            timeValue != null ||
-                            trackMemUseValue != null) {
-                try {
-                    Class.forName("java.lang.management.ManagementFactory");
-                } catch (ClassNotFoundException ex) {
-                    throw new IllegalArgumentException("Time, Timers, MemUseTrackers and TrackMemUse options require java.management module");
+            if (unscopedTimers != null || timeValue != null) {
+                if (!GraalServices.isCurrentThreadCpuTimeSupported()) {
+                    throw new IllegalArgumentException("Time and Timers options require VM support for querying CPU time");
+                }
+            }
+
+            if (unscopedMemUseTrackers != null || trackMemUseValue != null) {
+                if (!GraalServices.isThreadAllocatedMemorySupported()) {
+                    throw new IllegalArgumentException("MemUseTrackers and TrackMemUse options require VM support for querying thread allocated memory");
                 }
             }
 
@@ -737,6 +741,19 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
+     * Create an unnamed scope that appends some context to the current scope.
+     *
+     * @param context an object to be appended to the {@linkplain #context() current} debug context
+     */
+    public DebugContext.Scope withContext(Object context) throws Throwable {
+        if (currentScope != null) {
+            return enterScope("", null, context);
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Creates and enters a new debug scope which will be disjoint from the current debug scope.
      * <p>
      * It is recommended to use the try-with-resource statement for managing entering and leaving
@@ -785,7 +802,7 @@ public final class DebugContext implements AutoCloseable {
     class DisabledScope implements DebugContext.Scope {
         final boolean savedMetricsEnabled;
         final ScopeImpl savedScope;
-        final DebugConfig savedConfig;
+        final DebugConfigImpl savedConfig;
 
         DisabledScope() {
             this.savedMetricsEnabled = metricsEnabled;

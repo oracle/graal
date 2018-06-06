@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,81 +35,221 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.proxy.Proxy;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
- * A polyglot context for Graal guest languages that allows to {@link #eval(Source) evaluate} code
- * and exchange symbols.
+ * A polyglot context for Graal guest languages that allows to {@link #eval(Source) evaluate} code.
+ * A polyglot context represents the global runtime state of all {@link Engine#getLanguages()
+ * installed} and {@link #newBuilder(String...) permitted} languages. Permitted languages are
+ * {@link #initialize(String) initialized} lazily, when they are used for the first time. For many
+ * operations of the context, a <i>language identifier</i> needs to be specified. A language
+ * identifier is unique for each language.
  *
- * <h4>Sample Usage</h4>
+ * <h3>Evaluation</h3>
  *
- * Evaluate a fragment of Javascript code with a new context:
+ * A context allows to evaluate Guest language source code using {@link #eval(Source)}. This is
+ * possible by evaluating {@link Source} objects or given a language identifier and code
+ * {@link String}. The {@link #eval(Source) evaluation} returns either the result value or throws a
+ * {@link PolyglotException} if a guest language error occurs.
+ * <p>
+ * <b>Example</b> for evaluation of a fragment of JavaScript code with a new context:
  *
  * <pre>
- * Context.create().eval("js", "42")
+ * Context context = Context.create();
+ * Value result = context.eval("js", "42");
+ * assert result.asInt() == 42;
+ * context.close();
  * </pre>
  *
- * <h4>Context Creation and Disposal</h4>
- *
- * Create a default context with the static method {@link #create(String...)}, which optionally
- * specifies the languages that may be used in the context. Create a context with custom
- * configuration by using a {@linkplain #newBuilder(String...) builder}. The builder can configure
- * input, error and output streams, both engine and context options, and application arguments.
- * <p>
- * A context that is no longer needed should be {@linkplain #close() closed} to ensure that
- * allocated resources are freed. Contexts are {@link AutoCloseable} for use with the Java
+ * In this example:
+ * <ul>
+ * <li>We first first create a new context with all installed languages as permitted languages.
+ * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
+ * for JavaScript. Since this is the first time we access JavaScript, it automatically gets
+ * {@link #initialize(String) initialized} first.
+ * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
+ * .
+ * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
+ * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
  * {@code try-with-resources} statement.
+ * </ul>
  *
- * <h4>Language Initialization</h4>
- *
- * Each Graal language performs some initialization in a context before it can be used to execute
- * code, after which it remains initialized for the lifetime of the context. Initialization is by
- * default lazy and automatic, but it can be {@link Context#initialize(String) forced}.
+ * <h3>Configuration</h3>
  * <p>
- *
- * <h4>Evaluation</h4>
- *
- * <h4>Values</h4>
- *
- * See {@link Value}
- *
- * <h4>Symbol Exchange</h4>
- *
- * After evaluating code that creates top-level named values, a context can be used to
- * {@link #lookup(String, String) lookup} these symbols using their name.
+ * Contexts may be created either with default configuration using the {@link #create(String...)
+ * create method} or with custom configuration using the {@link #newBuilder(String...) builder}.
+ * Both methods allow to specify a subset of the installed languages as permitted languages. If no
+ * language is specified then all installed languages are permitted. Using the builder method
+ * {@link Builder#in(InputStream) input}, {@link Builder#err(OutputStream) error} and
+ * {@link Builder#out(OutputStream) output} streams, {@link Builder#option(String, String) options},
+ * and {@link Builder#arguments(String, String[]) application arguments} may be configured.
  * <p>
- * Each context provides access to a shared (global) collection of polyglot <em>symbols</em> that
- * can be {@link #importSymbol(String) imported} and {@link #exportSymbol(String, Object) exported}
- * with the symbol name.
+ * Options may be specified for {@link Engine#getLanguages() languages},
+ * {@link Engine#getInstruments() instruments}, the {@link Engine#getOptions() engine} and the
+ * {@link Engine#getOptions() compiler}. For {@link Language#getOptions() language options} the
+ * option key consists of the {@link Language#getId() language id} plus a dot followed by the option
+ * name (e.g. "js.Strict"). For most languages the option names start with an upper-case letter by
+ * convention. A list of available options may be received using {@link Language#getOptions()}.
+ * {@link Instrument#getOptions() Instrument options} are structured in the same way as language
+ * options but start with the {@link Instrument#getId() instrument id} instead.
+ * <p>
+ * If system properties are {@link Engine.Builder#useSystemProperties(boolean) enabled}, which they
+ * are by default, then all polyglot options maybe specified with the prefix "polyglot." (e.g.
+ * "-Dpolyglot.js.Strict=true"). The system properties are read only once when the context or engine
+ * instance is created. After that changes to the system properties have no affect.
+ * <p>
+ * Each Graal language performs an initialization step before it can be used to execute code, after
+ * which it remains initialized for the lifetime of the context. Initialization is by default lazy
+ * and automatic, but initialization can be forced {@link Context#initialize(String) manually} if
+ * needed.
+ * <p>
+ * <b>Example</b> for custom configuration using the context builder:
  *
- * <h4>Interoperability</h4>
+ * <pre>
+ * OutputStream myOut = new BufferedOutputStream()
+ * Context context = Context.newBuilder("js", "R")
+ *                          .out(myOut)
+ *                          .option("js.Strict", "true")
+ *                          .allowAllAccess(true)
+ *                          .build();
+ * context.eval("js", "42");
+ * context.eval("R", "42");
+ * context.close();
+ * </pre>
  *
- * <h4>Exception Handling</h4>
+ * In this example:
+ * <ul>
+ * <li>We first first create a new context with all installed languages as permitted languages.
+ * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
+ * for JavaScript. Since this is the first time we access JavaScript, it first gets
+ * {@link #initialize(String) initialized} as well.
+ * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
+ * .
+ * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
+ * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
+ * {@code try-with-resources} statement.
+ * </ul>
  *
- * Most context methods throw {@link PolyglotException} when errors occur in guest languages.
+ * <h3>Bindings</h3>
  *
- * <h4>Proxies</h4>
+ * The symbols of the top-most scope of a language can be accessed using the
+ * {@link #getBindings(String) language bindings}. Each language provides its own bindings object
+ * for a context. The bindings object may be used to read, modify, insert and delete members in the
+ * top-most scope of the language. Certain languages may not allow write access to the bindings
+ * object. See {@link #getBindings(String)} for details.
+ * <p>
+ * A context instance also provides access to the {@link #getPolyglotBindings() polyglot} bindings.
+ * The polyglot bindings are shared between languages and may be used to exchange values. See
+ * {@link #getPolyglotBindings()} for details.
+ * <p>
+ * <b>Examples</b> using language bindings from JavaScript:
  *
- * <h4>Isolation</h4>
+ * <pre>
+ * Context context = Context.create("js");
+ * Value jsBindings = context.getBindings("js")
+ *
+ * jsBindings.putMember("foo", 42);
+ * assert context.eval("js", "foo").asInt() == 42;
+ *
+ * context.eval("js", "var bar = 42");
+ * assert jsBindings.getMember("bar").asInt() == 42;
+ *
+ * assert jsBindings.getMember("Math")
+ *                  .getMember("abs")
+ *                  .execute(-42)
+ *                  .asInt() == 42;
+ * context.close();
+ * </pre>
+ *
+ * In this example:
+ * <ul>
+ * <li>We create a new context with JavaScript as the only permitted language.
+ * <li>Next, we load the JavaScript bindings object and assign it to a local variable
+ * <code>jsBindings</code>.
+ * <li>Then, we insert a new member <code>foo</code> into to the bindings object and verify that the
+ * object is accessible within the language by reading from a global symbol with the same name.
+ * <li>After that, we declare a new global variable in JavaScript and verify that it is accessible
+ * as member of the language bindings object.
+ * <li>Next, we access we access a JavaScript builtin named <code>Math.abs</code> symbol and execute
+ * it with -42. This result is asserted to be 42.
+ * <li>Finally, we close the context to free all allocated resources.
+ * </ul>
+ *
+ * <h3>Host Interoperability</h3>
+ *
+ * It is often necessary to interact with values of the host runtime within Graal guest languages.
+ * Such objects are referred to as <i>host objects</i>. Every Java value that is passed to a Graal
+ * language is interpreted according to the specification described in {@link #asValue(Object)}.
+ * Also see {@link Value#as(Class)} for further details.
+ *
+ * <p>
+ * <b>Example</b> using a Java object from JavaScript:
+ *
+ * <pre>
+ * public class JavaRecord {
+ *     public int x;
+ *
+ *     public String name() {
+ *         return "foo";
+ *     }
+ * }
+ * Context context = Context.create();
+ *
+ * JavaRecord record = new JavaRecord();
+ * context.getBindings("js").putMember("javaRecord", record);
+ *
+ * context.eval("js", "record.x = 42");
+ * assert record.x == 42;
+ *
+ * context.eval("js", "record.name()").asString().equals("foo");
+ * </pre>
+ *
+ * <h3>Error Handling</h3>
+ *
+ * Guest languages code may fail when executing guest language code or when accessing guest language
+ * object. So almost all methods in the {@link Context} and {@link Value} API throw a
+ * {@link PolyglotException} in case an error occurs. See {@link PolyglotException} for further
+ * details on error handling.
+ *
+ * <h3>Isolation</h3>
  *
  * Each context is by default isolated from all other instances with respect to both language
- * evaluation semantics and resource consumption. Contexts can be optionally
- * {@linkplain Builder#engine(Engine) configured} to share a single underlying engine; see
- * {@link Engine} for more details about sharing.
+ * evaluation semantics and resource consumption. By default a new context instance has no access to
+ * host resources, like threads, files or loading new host classes. To allow access to such
+ * resources either the individual access right must be granted or
+ * {@link Builder#allowAllAccess(boolean) all access} must be set to <code>true</code>.
  *
- * <h4>Thread-Safety</h4>
+ * <p>
+ * Contexts can be {@linkplain Builder#engine(Engine) configured} to share certain system resources
+ * like ASTs, optimized code by specifying a single underlying engine; see {@link Engine} for more
+ * details about code sharing.
  *
- * A context permits guest language code evaluation on only one thread at a time, but it need not
- * always be the same thread. An attempt to execute code in a context where an evaluation is
- * currently underway will fail with an {@link IllegalStateException}.
+ * <h3>Proxies</h3>
+ *
+ * The {@link Proxy proxy interfaces} allow to mimic guest language objects, arrays, executables,
+ * primitives and native objects in Graal languages. Every Graal language will treat instances of
+ * proxies like an object of that particular language. Multiple proxy interfaces can be implemented
+ * at the same time. For example, it is useful to provide proxy values that are objects with members
+ * and arrays at the same time.
+ *
+ * <h3>Thread-Safety</h3>
+ *
+ * It is safe to use a context instance from a single thread. It is also safe to use it with
+ * multiple threads if they do not access the context at the same time. Whether a single context
+ * instance may be used from multiple threads at the same time depends on if all initialized
+ * languages support it. If only languages are initialized that support multi-threading then the
+ * context instance may be used from multiple threads at the same time. If a context is used from
+ * multiple threads and the language does not fit then an {@link IllegalStateException} is thrown by
+ * the accessing method.
  * <p>
  * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
  * any thread at any time.
  * <p>
  * A context may be {@linkplain #close() closed} from any thread, but only if the context is not
- * currently executing code. If a context is currently executing code, a different thread can kill
- * the execution and close the context using {@link #close(boolean)} .
+ * currently executing code. If a context is currently executing code, a different thread may kill
+ * the currently runnign execution and close the context using {@link #close(boolean)}.
  *
- * <h4>Pre-Initialization</h4>
+ * <h3>Pre-Initialization</h3>
  *
  * The Context pre-initialization can be used to perform expensive builtin creation in the time of
  * native compilation.
@@ -124,7 +264,6 @@ import org.graalvm.polyglot.proxy.Proxy;
  *
  * @since 1.0
  */
-// TODO document that the current context class loader is captured when the engine is created.
 public final class Context implements AutoCloseable {
 
     final AbstractContextImpl impl;
@@ -140,22 +279,32 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public Engine getEngine() {
-        return impl.getEngineImpl();
+        return impl.getEngineImpl(this);
     }
 
     /**
-     * Evaluates guest language code, using the Graal {@linkplain Language language} that matches
-     * the code's {@linkplain Source#getLanguage() language}. The language needs to be specified
-     * when the source is created. The result is accessible using the language agnostic {@link Value
-     * value} API.
+     * Evaluates a source by using the {@linkplain Source#getLanguage() language} specified in the
+     * source. The result is accessible as {@link Value value} and never <code>null</code>. The
+     * first time a source is evaluated it will be parsed, consecutive invocations of eval with the
+     * same source will only execute the already parsed code.
+     * <p>
+     * <b>Basic Example:</b>
+     *
+     * <pre>
+     * Context context = Context.create();
+     * Source source = Source.newBuilder("js", "42").name("mysource.js").build();
+     * Value result = context.eval(source);
+     * assert result.asInt() == 42;
+     * context.close();
+     * </pre>
      *
      * @param source a source object to evaluate
-     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
-     *         the result might represent a {@link Value#isNull() null} guest language value.
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
      * @throws IllegalStateException if the context is already closed, the current thread is not
      *             allowed to access this context or if the language of the given source is not
      *             installed.
+     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
+     *         the result might represent a {@link Value#isNull() null} value.
      * @since 1.0
      */
     public Value eval(Source source) {
@@ -163,15 +312,24 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Evaluates a guest language code literal, using a specified Graal {@linkplain Language
-     * language}. The result is accessible using the language agnostic {@link Value value} API.
+     * Evaluates a guest language code literal, using a provided {@link Language#getId() language
+     * id}. The result is accessible as {@link Value value} and never <code>null</code>. The
+     * provided {@link CharSequence} must represent an immutable String.
+     * <p>
+     * <b>Basic Example:</b>
      *
-     * @param languageId the id of the language evaluate the code in, eg <code>"js"</code>.
-     * @param source textual source code
-     * @return result of the evaluation wrapped in a non-null {@link Value}
+     * <pre>
+     * Context context = Context.create();
+     * Value result = context.eval("js", "42");
+     * assert result.asInt() == 42;
+     * context.close();
+     * </pre>
+     *
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
      * @throws IllegalStateException if the context is already closed, the current thread is not
      *             allowed to access this context or if the given language is not installed.
+     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
+     *         the result might represent a {@link Value#isNull() null} value.
      * @since 1.0
      */
     public Value eval(String languageId, CharSequence source) {
@@ -179,57 +337,40 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Looks a symbol up in the top-most scope of a specified language. The result is accessible
-     * using the language agnostic {@link Value value} API.
+     * Returns polyglot bindings that may be used to exchange symbols between the host and guest
+     * languages. All languages have unrestricted access to the polyglot bindings. The returned
+     * bindings object always has {@link Value#hasMembers() members} and its members are
+     * {@link Value#getMember(String) readable}, {@link Value#putMember(String, Object) writable}
+     * and {@link Value#removeMember(String) removable}.
+     * <p>
+     * Guest languages may put and get members through language specific APIs. For example, in
+     * JavaScript symbols of the polyglot bindings can be accessed using
+     * <code>Polyglot.import("name")</code> and set using
+     * <code>Polyglot.export("name", value)</code>. Please see the individual language reference on
+     * how to access these symbols.
      *
-     * @param languageId
-     * @param symbol name of a symbol
-     * @return result of the evaluation wrapped in a non-null {@link Value}
-     * @throws PolyglotException in case the lookup failed due to a guest language error.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the given language is not installed.
+     * @throws IllegalStateException if context is already closed.
      * @since 1.0
      */
-    public Value lookup(String languageId, String symbol) {
-        return impl.lookup(languageId, symbol);
+    public Value getPolyglotBindings() {
+        return impl.getPolyglotBindings();
     }
 
     /**
-     * Imports a symbol from the polyglot scope or <code>null</code> if the symbol is not defined.
-     * The polyglot scope is used to exchange symbols between guest languages and also the host
-     * language. Guest languages can put and get symbols through language specific APIs. For
-     * example, in JavaScript symbols of the polyglot scope can be get using
-     * <code>Interop.import("name")</code> and set using <code>Interop.export("name", value)</code>.
+     * Returns a value that represents the top-most bindings of a language. The top most bindings of
+     * the language returns a {@link Value#getMember(String) member} for symbol in the scope.
+     * Languages may allow modifications of members of the returned bindings object at the
+     * language's discretion. If the language was not yet {@link #initialize(String) initialized} it
+     * will be initialized when the bindings are requested.
      *
-     * @param name the name of the symbol to import.
-     * @return the symbol value or <code>null</code> if no symbol was registered with that name. The
-     *         returned instance is is never <code>null</code>, but the result might represent a
-     *         {@link Value#isNull() null} guest language value.
-     * @throws IllegalStateException if the context is already closed or the current thread is not
-     *             allowed to access this context.
+     * @throws IllegalArgumentException if the language does not exist.
+     * @throws IllegalStateException if context is already closed.
+     * @throws PolyglotException in case the lazy initialization failed due to a guest language
+     *             error.
      * @since 1.0
      */
-    public Value importSymbol(String name) {
-        return impl.importSymbol(name);
-    }
-
-    /**
-     * Exports a symbol into the polyglot scope. The polyglot scope is used to exchange symbols
-     * between guest languages and the host language. Guest languages can put and get symbols
-     * through language specific APIs. For example, in JavaScript symbols of the polyglot scope can
-     * be accessed using <code>Interop.import("name")</code> and set using
-     * <code>Interop.put("name", value)</code>. Any Java value or {@link Value} instance is allowed
-     * to be passed as value.
-     *
-     * @param name the name of the symbol to export.
-     * @param value the value to export to the language, any Java interpreted using the semantics
-     *            specified by {@link #asValue(Object)}.
-     * @throws IllegalStateException if the context is already closed or the current thread is not
-     *             allowed to access.
-     * @since 1.0
-     */
-    public void exportSymbol(String name, Object value) {
-        impl.exportSymbol(name, value);
+    public Value getBindings(String languageId) {
+        return impl.getBindings(languageId);
     }
 
     /**
@@ -250,10 +391,10 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Converts a host value to a polyglot value representation. This conversion is applied
-     * implicitly whenever values are {@link #exportSymbol(String, Object) exported},
-     * {@link Value#execute(Object...) execution} or {@link Value#newInstance(Object...)
-     * instantiation} arguments are provided, {@link Value#putMember(String, Object) members} and
+     * Converts a host value to a polyglot {@link Value value} representation. This conversion is
+     * applied implicitly whenever {@link Value#execute(Object...) execution} or
+     * {@link Value#newInstance(Object...) instantiation} arguments are provided,
+     * {@link Value#putMember(String, Object) members} and
      * {@link Value#setArrayElement(long, Object) array elements} are set or when a value is
      * returned by a {@link Proxy polyglot proxy}. It is not required nor efficient to explicitly
      * convert to polyglot values before performing these operations. This method is useful to
@@ -391,7 +532,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public void enter() {
-        impl.explicitEnter();
+        impl.explicitEnter(this);
     }
 
     /**
@@ -404,7 +545,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public void leave() {
-        impl.explicitLeave();
+        impl.explicitLeave(this);
     }
 
     /**
@@ -422,7 +563,8 @@ public final class Context implements AutoCloseable {
      * to close a context was successful then consecutive calls to close have no effect.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
-     *            cancelled, else an {@link IllegalStateException} is thrown.
+     *            {@link PolyglotException#isCancelled() cancelled}, else an
+     *            {@link IllegalStateException} is thrown.
      * @see Engine#close() To close an engine.
      * @throws PolyglotException in case the close failed due to a guest language error.
      * @throws IllegalStateException if the context is still running and cancelIfExecuting is
@@ -430,7 +572,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(cancelIfExecuting);
+        impl.close(this, cancelIfExecuting);
     }
 
     /**
@@ -455,33 +597,66 @@ public final class Context implements AutoCloseable {
     }
 
     /**
+     * Returns the currently entered polyglot context. A context is entered if the currently
+     * executing Java method was called by a Graal guest language or if a context was entered
+     * explicitly using {@link Context#enter()} on the current thread. The returned context may be
+     * used to:
+     * <ul>
+     * <li>Evaluate guest language code from {@link #eval(String, CharSequence) string literals} or
+     * {@link #eval(Source) file} sources.
+     * <li>{@link #asValue(Object) Convert} Java values to {@link Value polyglot values}.
+     * <li>Access top-level {@link #getBindings(String) bindings} of other languages.
+     * <li>Access {@link #getPolyglotBindings() polyglot bindings}.
+     * <li>Access meta-data like available {@link Engine#getLanguages() languages} or
+     * {@link Engine#getOptions() options} of the {@link #getEngine() engine}.
+     * </ul>
+     * <p>
+     * The returned context may <b>not</b> be used to {@link #enter() enter} , {@link #leave()
+     * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
+     * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
+     * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
+     * context.
+     * <p>
+     * The currently entered context may change. It is therefore required to call
+     * {@link #getCurrent() getCurrent} every time a context is needed. The currently entered
+     * context should not be cached in static fields.
+     *
+     * @throws IllegalStateException if no context is currently entered.
+     * @since 1.0
+     */
+    public static Context getCurrent() {
+        return Engine.getImpl().getCurrentContext();
+    }
+
+    /**
      * Creates a context with default configuration.
      *
-     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param permittedLanguages names of languages permitted in this context, if no languages are
+     *            provided then all the use of languages will be permitted.
      * @return a new context
      * @since 1.0
      */
-    public static Context create(String... onlyLanguages) {
-        return newBuilder(onlyLanguages).build();
+    public static Context create(String... permittedLanguages) {
+        return newBuilder(permittedLanguages).build();
     }
 
     /**
      * Creates a builder for constructing a context with custom configuration.
      *
-     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param permittedLanguages names of languages permitted in this context, if no languages are
+     *            provided then the use of all languages will be permitted.
      * @return a builder that can create a context
      * @since 1.0
      */
-    public static Builder newBuilder(String... onlyLanguages) {
-        return EMPTY.new Builder(onlyLanguages);
+    public static Builder newBuilder(String... permittedLanguages) {
+        return EMPTY.new Builder(permittedLanguages);
     }
 
     private static final Context EMPTY = new Context(null);
 
     /**
-     * Builder class to construct {@link Context} instances.
+     * Builder class to construct {@link Context} instances. A builder instance is not thread-safe
+     * and must not be used from multiple threads at the same time.
      *
      * @see Context
      * @since 1.0
@@ -498,8 +673,13 @@ public final class Context implements AutoCloseable {
         private Map<String, String> options;
         private Map<String, String[]> arguments;
         private Predicate<String> hostClassFilter;
-        private boolean allowHostAccess;
-        private boolean allowCreateThread;
+        private Boolean allowHostAccess;
+        private Boolean allowNativeAccess;
+        private Boolean allowCreateThread;
+        private boolean allowAllAccess;
+        private Boolean allowIO;
+        private Boolean allowHostClassLoading;
+        private FileSystem customFileSystem;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -510,7 +690,10 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         *
+         * Explicitly sets the underlying engine to use. By default every context has its own
+         * isolated engine. If multiple contexts are created from one engine, then they may
+         * share/cache certain system resources like ASTs, optimized code by specifying a single
+         * underlying engine; see {@link Engine} for more details about system resource sharing.
          *
          * @since 1.0
          */
@@ -560,7 +743,8 @@ public final class Context implements AutoCloseable {
 
         /**
          * Allows guest languages to access the host language by loading new classes. Default is
-         * <code>false</code>.
+         * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code> then then host access is enabled if not allowed explicitly.
          *
          * @since 1.0
          */
@@ -570,8 +754,21 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Allows guest languages to create new threads. Default is <code>false</code>. Threads
-         * created by guest languages are closed when the context is {@link Context#close() closed}.
+         * Allows guest languages to access the native interface.
+         *
+         * @since 1.0
+         */
+        public Builder allowNativeAccess(boolean enabled) {
+            this.allowNativeAccess = enabled;
+            return this;
+        }
+
+        /**
+         * If <code>true</code> allows guest languages to create new threads. Default is
+         * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code> then the creation of threads is enabled if not allowed explicitly.
+         * Threads created by guest languages are closed when the context is {@link Context#close()
+         * closed}.
          *
          * @since 1.0
          */
@@ -581,25 +778,58 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * If <code>true</code> grants the context the same access privileges as the host virtual
+         * machine. If not explicitly specified then all access is <code>false</code>. If the host
+         * VM runs without a {@link SecurityManager security manager} enabled, then enabling all
+         * access gives the guest languages full control over the host process. Otherwise, the Java
+         * {@link SecurityManager security manager} is in control of restricting the privileges of
+         * the polyglot context. If new privilege restrictions are added to the polyglot API then
+         * they will default to full access if all access is set to <code>true</code>. If all access
+         * is enabled then certain privileges may still be disabled by configuring it explicitly
+         * using this builder.
+         * <p>
+         * Grants full access to the following privileges by default:
+         * <ul>
+         * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
+         * <li>The access to public {@link #allowHostAccess(boolean) host classes}.
+         * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
+         * entries to the class path.
+         * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
+         * bindings}.
+         * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
+         * </ul>
+         *
+         * @param enabled <code>true</code> for all access by default.
          * @since 1.0
-         * @deprecated use {@link #hostClassFilter(Predicate)} instead
          */
-        @Deprecated
-        public Builder javaClassFilter(Predicate<String> classFilter) {
-            Objects.requireNonNull(classFilter);
-            this.hostClassFilter = classFilter;
-            return hostClassFilter(classFilter);
+        public Builder allowAllAccess(boolean enabled) {
+            this.allowAllAccess = enabled;
+            return this;
+        }
+
+        /**
+         * If host class loading is enabled then the guest language is allowed to load new host
+         * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code> then the host class loading is enabled if it is not disallowed
+         * explicitly. For host class loading to be useful {@link #allowIO(boolean) IO} operations
+         * and {@link #allowHostAccess(boolean) host access} need to be allowed as well.
+         *
+         * @since 1.0
+         */
+        public Builder allowHostClassLoading(boolean enabled) {
+            this.allowHostClassLoading = enabled;
+            return this;
         }
 
         /**
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
          * guest languages. If the filter returns <code>true</code> then the class is accessible,
          * else it is not accessible and throws an guest language error when accessed. In order to
-         * have an effect {@link #allowHostAccess(boolean)} needs to be set to <code>true</code>.
+         * have an effect {@link #allowHostAccess(boolean)} or {@link #allowAllAccess(boolean)}
+         * needs to be set to <code>true</code>.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
          *            java qualified class name.
-         *
          * @since 1.0
          */
         public Builder hostClassFilter(Predicate<String> classFilter) {
@@ -679,11 +909,57 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * If <code>true</code> allows guest language to perform unrestricted IO operations on host
+         * system. Default is <code>false</code>. If {@link #allowAllAccess(boolean) all access} is
+         * set to <code>true</code> then IO is enabled if not allowed explicitly.
          *
+         * @param enabled {@code true} to enable Input/Output
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder allowIO(final boolean enabled) {
+            allowIO = enabled;
+            return this;
+        }
+
+        /**
+         * Installs a new {@link FileSystem}.
+         *
+         * @param fileSystem the file system to be installed
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder fileSystem(final FileSystem fileSystem) {
+            Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
+            this.customFileSystem = fileSystem;
+            return this;
+        }
+
+        /**
+         * Creates a new context instance from the configuration provided in the builder. The same
+         * context builder can be used to create multiple context instances.
          *
          * @since 1.0
          */
         public Context build() {
+            if (allowHostAccess == null) {
+                allowHostAccess = allowAllAccess;
+            }
+            if (allowNativeAccess == null) {
+                allowNativeAccess = allowAllAccess;
+            }
+            if (allowCreateThread == null) {
+                allowCreateThread = allowAllAccess;
+            }
+            if (allowIO == null) {
+                allowIO = allowAllAccess;
+            }
+            if (allowHostClassLoading == null) {
+                allowHostClassLoading = allowAllAccess;
+            }
+            if (!allowIO && customFileSystem != null) {
+                throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
+            }
             Engine engine = this.sharedEngine;
             if (engine == null) {
                 org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
@@ -698,13 +974,13 @@ public final class Context implements AutoCloseable {
                 }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, allowHostAccess, allowCreateThread,
-                                hostClassFilter,
-                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages);
+                return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
+                                allowHostClassLoading,
+                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             } else {
-                return engine.impl.createContext(out, err, in, allowHostAccess, allowCreateThread,
-                                hostClassFilter,
-                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages);
+                return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
+                                allowHostClassLoading,
+                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             }
         }
 

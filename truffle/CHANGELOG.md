@@ -2,6 +2,47 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC3
+* Removed deprecated ResultVerifier.getDefaultResultVerfier.
+
+## Version 1.0.0 RC2
+
+* Added notification when [multiple language contexts](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#initializeMultiContext--) were created for a language instance. Allows languages to invalidate assumptions only valid with a single context. Returning true also allows to enable caching of ASTs per language and not only per context.
+* Added [asBoxedGuestValue](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asBoxedGuestValue-java.lang.Object-) method that allows to expose host members for primitive interop values.
+* Added default value `"inherit"` to [TruffleLanguage.Registration#version](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html#version--) which makes the language to inherit version from [Engine#getVersion](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.html#getVersion--). 
+* Changed default value of [TruffleInstrument.Registration#version](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleInstrument.Registration.html#version--) from `""` to `"inherit"` which makes the instrument to inherit version from [Engine#getVersion](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.html#getVersion--). An instrument previously not specifying any version will newly get version from Engine.
+* Added new annotation @IncomingConverter and @OutgoingConverter to declare methods for [generated wrappers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/GenerateWrapper.html) that allow to convert values when they are exposed to or introduced by the instrumentation framework.
+* The documentation of [FrameDescriptor#getSize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getSize--) clarifies that it returns the size of an array which is needed for storing all the slots in it using their `FrameSlot#getIndex()` as a position in the array. (The number may be bigger than the number of slots, if some slots are removed.)
+* Added an `InstrumentExceptionsAreThrown` engine option to propagate exceptions thrown by instruments.
+* Added [Instrumenter.visitLoadedSourceSections](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#visitLoadedSourceSections-com.oracle.truffle.api.instrumentation.SourceSectionFilter-com.oracle.truffle.api.instrumentation.LoadSourceSectionListener-) to be notified about loaded source sections that corresponds to a filter.
+* Added [DebugValue#canExecute](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#canExecute--) to distinguish executable values and [DebugValue#getProperty](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#getProperty-java.lang.String-) to get a property value by its name.
+* Removed deprecated `TruffleLanguage.Env.lookupSymbol` method.
+* All Truffle source objects are now automatically weakly internalized when created using the source builder. The source builder will now return the same instance for every source where it was previously just equal.
+* Added `Source.Builder.cached(boolean)` and `Source.isCached()` to configure caching behavior by source.
+* Removed deprecated `Source.getCode()` and `SourceSection.getCode`.
+
+## Version 1.0.0 RC1
+
+* As announced in 0.27 all classes in package com.oracle.truffle.api.vm are now deprecated.
+	* Deprecated all classes in com.oracle.truffle.api.vm. Replacements can be found in the org.graalvm.polyglot package.
+	* Deprecated all classes in com.oracle.truffle.api.interop.java. Replacements for embedders can be found in org.graalvm.polyglot. Replacements for language implementations can be found in TruffleLanguage.Env. See deprecated documentation on the individual methods for details.
+	* Deprecated TruffleTCK. Use the [new TCK](https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md) instead.
+	* Deprecated Debugger#find(PolyglotEngine)
+	* Added Debugger#find(TruffleInstrument.Env) and Debugger#find(Engine)
+* Added [FileSystem](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html) SPI to allow embedder to virtualize TruffleLanguage Input/Output operations.
+* Added [EventContext.lookupExecutionEventNodes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html#lookupExecutionEventNodes-java.util.Collection-) to lookup all execution event nodes created by the bindings at the source location.
+* Added `TruffleLanguage#getLanguageHome` to return the language directory in the GraalVM distribution or the location of the language Jar file.
+* Added [TryBlockTag](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.TryBlockTag.html) as a new standard tag to mark program locations to be considered as try blocks, that are followed by a catch.
+* Added [DebugException](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugException.html), debugger methods that execute guest language code throws that exception and it's possible to [create exception breakpoints](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#newExceptionBuilder-boolean-boolean-) that suspend when guest language exception occurs.
+* Added [DebugStackTraceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackTraceElement.html) as a representation of exception stack trace.
+* Added [Breakpoint.Kind](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Kind.html) to distinguish different breakpoint kinds.
+* Added [ResultVerifier.getDefaultResultVerifier](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.html#getDefaultResultVerifier--).
+* Added [addToHostClassPath](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#addToHostClassPath-com.oracle.truffle.api.TruffleFile-) method that can be used to allow guest language users to add to the host class path.
+* Added new permission TruffleLanguage.Env#isNativeAccessAllowed to control access to the Truffle NFI.
+* Changed default permissions in language launchers to full access. The embedding API still defaults to restricted access.
+* Added [TruffleInstrument.onFinalize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html#onFinalize-com.oracle.truffle.api.instrumentation.TruffleInstrument.Env-) that can be overridden to be notified about closing of Engine, while still having access to other instruments.
+* Deprecated `TraceASTJSON` option and related APIs.
+
 ## Version 0.33
 
 * This release contains major changes to the instrumentation framework.
@@ -12,18 +53,42 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Added the the ability to [save](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecutionEventNode.html#saveInputValue-com.oracle.truffle.api.frame.VirtualFrame-int-java.lang.Object-) and [load](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecutionEventNode.html#getSavedInputValues-com.oracle.truffle.api.frame.VirtualFrame-) instrumentable child input values in ExecutionEventNode subclasses.
 	* Renamed Instrumenter#attachListener/Factory to Instrumenter#attachExecutionEventListener/Factory. (jackpot rule available)
 	* Automatic instrumentation [wrapper generation](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/GenerateWrpper.html) now delegates non execute abstract methods to the delegate node.
-	* Added a [Tag](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html)
- base class now required to be used by all tags.
-	* Added [tag identifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.Identifier.html)
- to allow the [lookup](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html#findProvidedTag-com.oracle.truffle.api.nodes.LanguageInfo-java.lang.String-) of language specific tags in tools without compile time dependency to the languguage.
+	* Added a [Tag](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html) base class now required to be used by all tags.
+	* Added [tag identifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.Identifier.html) to allow the [lookup](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html#findProvidedTag-com.oracle.truffle.api.nodes.LanguageInfo-java.lang.String-) of language specific tags in tools without compile time dependency to the languguage.
 	* Added assertions to verify that instrumentable nodes that are annotated with a standard tag return a source section if their root node returns a source section. 
 	* Added assertions to verify that execution events always return interop values.
 	* Added the ability for instrumentable nodes to a expose a [node object](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api//instrumentation/InstrumentableNode.html#getNodeObject--). This object is intended to contain language specific properties of the node.
+* Added expression-stepping into debugger APIs. To support debugging of both statements and expressions, following changes were made:
+	* Added [SourceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SourceElement.html) enum to provide a list of source syntax elements known to the debugger.
+	* Added [StepConfig](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/StepConfig.html) class to represent a debugger step configuration.
+	* Added [Debugger.startSession()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#startSession-com.oracle.truffle.api.debug.SuspendedCallback-com.oracle.truffle.api.debug.SourceElement...-) accepting a list of source elments to enable stepping on them.
+	* Added [Breakpoint.Builder.sourceElements](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html#sourceElements-com.oracle.truffle.api.debug.SourceElement...-) to specify which source elements will the breakpoint adhere to.
+	* Added [SuspendedEvent.getInputValues](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getInputValues--) to get possible input values of the current source element.
+	* Removed deprecated methods on [SuspendedEvent](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html).
+* Added column filters on [SourceSectionFilter.Builder](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html) and [Breakpoint.Builder](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html).
+* Added [Instrumenter.attachExecuteSourceListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachExecuteSourceListener-com.oracle.truffle.api.instrumentation.SourceFilter-T-boolean-) to be able to [listen](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecuteSourceListener.html) on [source execution events](http://www.graalvm.org/truffle/javadoc/javadoc/com/oracle/truffle/api/instrumentation/ExecuteSourceEvent.html).
+* Added [InstrumentableNode.findNearestNodeAt](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findNearestNodeAt-int-java.util.Set-) to be able to find the nearest tagged node to the given source character index. This is used to auto-correct breakpoint locations.
+* Added [Breakpoint.ResolveListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.ResolveListener.html) to listen on breakpoint location resolution. Breakpoints are now resolved after the source is to be executed for the first time and breakpoint location is adjusted to match the nearest instrumentable node.
 * Added new DSL annotation @[Executed](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Executed.html) that allows to manually specify executed node fields.
 * The Truffle Node traversal order was slightly changed to always respect field declaration order (super class before sub class).
 * The [Assumption](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Assumption.html) interface has an additional override for the `invalidate` method to provide a message for debugging purposes.
+* Deprecated `KeyInfo.Builder`. Use bitwise constants in the KeyInfo class instead. Introduced new flag KeyInfo.INSERTABLE to indicate that a key can be inserted at a particular location, but it does not yet exist.
+* Deprecated `TruffleLanguage#getLanguageGlobal`, implement [top scopes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findTopScopes-java.lang.String-) instead.
+* Deprecated `TruffleLanguage#findExportedSymbol`, use the [polyglot bindings](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPolyglotBindings--) TruffleLanguage.Env for exporting symbols into the polyglot scope explicitely. The polyglot scope no longer supports implicit exports, they should be exposed using [top scopes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#findTopScopes-java.lang.String-) instead.
+* Remove deprecated `TruffleInstrument#describeOptions` and TruffleLanguage#describeOptions
+* Remove deprecated `TruffleLanguage.Env#lookupSymbol` without replacement.
+* Remove deprecated `TruffleLanguage.Env#importSymbols`, use the polyglot bindings instead.
 * Removed deprecated APIs and public debug classes in truffle.api.object and truffle.object packages, respectively.
 * Removed internal truffle.object package from javadoc.
+* Added the compiler directive [castExact](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#castExact-java.lang.Object-java.lang.Class-).
+* Added skipped exception types: `IndexOutOfBoundsException`, `BufferOverflowException`, and `BufferUnderflowException`.
+* Introduced support for the experimental automated monomorphization feature:
+    * The [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize) method which notifies the runtime that a node has specialized to a more polymorphic state.
+    * The [ReportPolymorphism](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html) and [ReportPolymorphism.Exclude](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html) annotations which the DSL uses to generate (or not generate) calls to [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize--).
+* Added `TruffleException.getSourceLocation()` for syntax errors which don't have a `Node`.
+* Changed member lookup on `Class` host objects (as obtained by e.g. `obj.getClass()`) to expose `Class` instance members, while `TruffleLanguage.Env.lookupHostSymbol(String)` returns a companion object providing the static members of the class and serving as a constructor.
+
+
 
 ## Version 0.32
 

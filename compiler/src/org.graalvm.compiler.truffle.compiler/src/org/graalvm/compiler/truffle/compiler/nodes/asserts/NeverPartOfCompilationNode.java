@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,10 +28,10 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.VerificationError;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -72,8 +74,22 @@ public final class NeverPartOfCompilationNode extends ControlSinkNode implements
 
     public static void verifyNotFoundIn(final StructuredGraph graph) {
         for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
-            Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
-            throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
+            final NeverPartOfCompilationException neverPartOfCompilationException = new NeverPartOfCompilationException(neverPartOfCompilationNode.getMessage());
+            neverPartOfCompilationException.setStackTrace(GraphUtil.approxSourceStackTraceElement(neverPartOfCompilationNode));
+            throw neverPartOfCompilationException;
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static class NeverPartOfCompilationException extends GraalBailoutException {
+
+        NeverPartOfCompilationException(String message) {
+            super(null, message, new Object[]{});
+        }
+
+        @Override
+        public boolean isCausedByCompilerAssert() {
+            return true;
         }
     }
 }

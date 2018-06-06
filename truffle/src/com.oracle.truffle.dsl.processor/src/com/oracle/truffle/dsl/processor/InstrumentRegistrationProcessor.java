@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -169,7 +171,7 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
                 break;
             }
             env.getMessager().printMessage(Kind.NOTE, filename + className, null);
-            TypeElement foundType = env.getElementUtils().getTypeElement(className);
+            TypeElement foundType = ElementUtils.getTypeElement(env, className);
             if (foundType != null && !typeNames.contains(ElementUtils.getQualifiedName(foundType))) {
                 instruments.add(foundType);
             }
@@ -194,7 +196,7 @@ public final class InstrumentRegistrationProcessor extends AbstractProcessor {
                     emitError("Registered instrument inner-class must be static", e);
                     continue;
                 }
-                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(processingEnv.getElementUtils().getTypeElement(TruffleInstrument.class.getName()).asType());
+                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(ElementUtils.getTypeElement(processingEnv, TruffleInstrument.class.getName()).asType());
                 if (!processingEnv.getTypeUtils().isAssignable(e.asType(), truffleLang)) {
                     emitError("Registered instrument class must subclass TruffleInstrument", e);
                     continue;

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,34 +26,34 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
-
-import java.io.FileDescriptor;
-import java.io.IOException;
+import java.lang.ref.ReferenceQueue;
+import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.os.OSInterface;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.code.MemoryBarriers;
-import sun.misc.Cleaner;
 import sun.misc.JavaAWTAccess;
+import sun.misc.JavaLangAccess;
 import sun.misc.Unsafe;
 
 @TargetClass(sun.misc.Unsafe.class)
@@ -110,10 +112,9 @@ final class Target_sun_misc_Unsafe {
     }
 
     @Substitute
-    private int pageSize() {
-        // This assumes that the page size of the Substrate VM
-        // is the same as the page size of the hosted VM.
-        return Util_sun_misc_Unsafe.hostedVMPageSize;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int pageSize() {
+        return (int) VirtualMemoryProvider.get().getGranularity().rawValue();
     }
 
     @Substitute
@@ -159,48 +160,79 @@ final class Target_sun_misc_Unsafe {
     }
 }
 
-final class Util_sun_misc_Unsafe {
-    /**
-     * Cache the size of a page in the hosted VM for use in the SubstrateVM.
-     */
-    static final int hostedVMPageSize = UnsafeAccess.UNSAFE.pageSize();
-}
-
 @TargetClass(sun.misc.MessageUtils.class)
 final class Target_sun_misc_MessageUtils {
 
+    /*
+     * Low-level logging support in the JDK. Methods must not use char-to-byte conversions (because
+     * they are used to report errors in the converters). We just redirect to the low-level SVM log
+     * infrastructure.
+     */
+
     @Substitute
     private static void toStderr(String msg) {
-        Util_sun_misc_MessageUtils.output(FileDescriptor.err, msg);
+        Log.log().string(msg);
     }
 
     @Substitute
     private static void toStdout(String msg) {
-        Util_sun_misc_MessageUtils.output(FileDescriptor.out, msg);
+        Log.log().string(msg);
     }
 }
 
-final class Util_sun_misc_MessageUtils {
-
-    static void output(FileDescriptor target, String msg) {
-        byte[] bytes = new byte[msg.length()];
-        for (int i = 0; i < msg.length(); i++) {
-            bytes[i] = (byte) msg.charAt(i);
-        }
-
-        OSInterface os = ConfigurationValues.getOSInterface();
-        try {
-            os.writeBytes(target, bytes);
-        } catch (IOException ex) {
-            // Ignore, since we are in low-level debug printing code.
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_ref implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.ref." + annotation.className();
         }
     }
 }
 
-@TargetClass(sun.misc.Cleaner.class)
-final class Target_sun_misc_Cleaner {
-    @Alias @RecomputeFieldValue(kind = Reset)//
-    private static Cleaner first;
+@TargetClass(classNameProvider = Package_jdk_internal_ref.class, className = "Cleaner")
+final class Target_jdk_internal_ref_Cleaner {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    static Target_jdk_internal_ref_Cleaner first;
+
+    /**
+     * Contrary to the comment on {@link sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
+     * have Cleaner instances on it, because SubstrateVM does not have a ReferenceHandler thread to
+     * clean instances, so SubstrateVM puts them on the queue and drains the queue after collections
+     * in {@link SunMiscSupport#drainCleanerQueue()}.
+     * <p>
+     * Cleaner instances that do bad things are even worse in SubstrateVM than they are in the
+     * HotSpot VM, because they are run on the thread that started a collection.
+     * <p>
+     * Changing the access from `private` to `protected`, and reinitializing to an empty queue.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
+
+    @Alias
+    native void clean();
+}
+
+/** PerfCounter methods that access the lb field fail with SIGSEV. */
+@TargetClass(sun.misc.PerfCounter.class)
+final class Target_sun_misc_PerfCounter {
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    public long get() {
+        return 0;
+    }
+
+    @Substitute
+    public void set(@SuppressWarnings("unused") long var1) {
+    }
+
+    @Substitute
+    public void add(@SuppressWarnings("unused") long var1) {
+    }
 }
 
 @TargetClass(sun.misc.SharedSecrets.class)
@@ -209,6 +241,9 @@ final class Target_sun_misc_SharedSecrets {
     private static JavaAWTAccess getJavaAWTAccess() {
         return null;
     }
+
+    @Alias
+    static native JavaLangAccess getJavaLangAccess();
 }
 
 @TargetClass(value = sun.misc.URLClassPath.class, innerClass = "JarLoader")

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -35,11 +37,14 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.util.FileUtils;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -47,8 +52,8 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints);
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
     }
 
     public NativeImageKind getOutputKind() {
@@ -68,9 +73,14 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             switch (kind) {
                 case EXECUTABLE:
                     break;
+                case STATIC_EXECUTABLE:
+                    cmd.add("-static");
+                    break;
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     break;
+                default:
+                    VMError.shouldNotReachHere();
             }
         }
 
@@ -86,8 +96,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
-                case EXECUTABLE:
-                    break;
+                case STATIC_EXECUTABLE:
+                    throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {

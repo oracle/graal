@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,6 +29,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,7 +47,6 @@ public class SLCompileImmediatelyTestSuite {
     @BeforeClass
     public static void beforeClass() {
         assert overrideScope == null;
-
         /*
          * We turn on the flag to compile every Truffle function immediately, on its first execution
          * in the interpreter. And we wait until compilation finishes so that we really execute the
@@ -54,6 +56,8 @@ public class SLCompileImmediatelyTestSuite {
          * compiled multiple times, in different specialization states.
          */
         overrideScope = TruffleCompilerOptions.overrideOptions(TruffleCompileImmediately, true, TruffleBackgroundCompilation, false);
+
+        Assume.assumeFalse("Crashes on AArch64 in C2 (GR-8733)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
     }
 
     @AfterClass

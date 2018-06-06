@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -116,7 +118,7 @@ public class OptionsParser {
      * @param loader source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
+    public static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
@@ -132,7 +134,7 @@ public class OptionsParser {
             throw new IllegalArgumentException(msg.toString());
         }
 
-        Class<?> optionType = desc.getType();
+        Class<?> optionType = desc.getOptionValueType();
         Object value;
         if (!(uncheckedValue instanceof String)) {
             if (optionType != uncheckedValue.getClass()) {

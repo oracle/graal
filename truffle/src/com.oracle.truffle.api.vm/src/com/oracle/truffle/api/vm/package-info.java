@@ -25,14 +25,11 @@
 
 /*
  @ApiInfo(
- group="Stable"
+ group="Truffle"
  )
  */
 
 /**
- * The {@link com.oracle.truffle.api.vm.PolyglotEngine execution engine} for all Truffle-implemented
- * languages.
- *
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.vm;

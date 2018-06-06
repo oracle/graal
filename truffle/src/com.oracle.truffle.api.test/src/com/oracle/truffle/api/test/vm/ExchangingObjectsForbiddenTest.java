@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,11 +39,11 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings("deprecation")
 public class ExchangingObjectsForbiddenTest {
     private MyObj myObj;
     private PolyglotEngine myEngine;

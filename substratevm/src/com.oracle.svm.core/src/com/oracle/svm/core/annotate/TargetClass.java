@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -27,6 +29,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 /**
  * A class annotated with this annotation denotes a class that modifies methods of fields of another
@@ -73,7 +76,7 @@ public @interface TargetClass {
      * Specifies the substitutee class.
      *
      * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #className()} element.
+     * for the {@link #className()} or {@link #classNameProvider()} element.
      */
     Class<?> value() default TargetClass.class;
 
@@ -82,9 +85,21 @@ public @interface TargetClass {
      * class is not accessible (according to Java language access control rules).
      *
      * If the default value is specified for this element, then a non-default value must be given
-     * for the {@link #value()} element.
+     * for the {@link #value()} or {@link #classNameProvider()} element.
      */
     String className() default "";
+
+    /**
+     * Specifies the substitutee class. This is the most flexible version to provide the class name.
+     * The {@link Function#apply} method of the provided class can compute the class name based on
+     * system properties (like the JDK version). This annotation is the argument of the function, so
+     * the function can, e.g., build a class name that incorporates the {@link #className()}
+     * property.
+     *
+     * If the default value is specified for this element, then a non-default value must be given
+     * for the {@link #value()} or {@link #className()} element.
+     */
+    Class<? extends Function<TargetClass, String>> classNameProvider() default NoClassNameProvider.class;
 
     /**
      * Specifies the suffix of the substitutee class name when it is an inner class.
@@ -104,5 +119,9 @@ public @interface TargetClass {
         public boolean getAsBoolean() {
             return true;
         }
+    }
+
+    /** Marker value for {@link #classNameProvider} that no class name provider should be used. */
+    interface NoClassNameProvider extends Function<TargetClass, String> {
     }
 }

@@ -29,6 +29,8 @@ package org.graalvm.nativeimage.c.function;
  * {@link InvokeCFunctionPointer} that invoke the method referenced by this function pointer. Since
  * the signature of the invocation method is not known, it is not possible to define a single
  * generic invocation method here.
+ * 
+ * @since 1.0
  */
 public interface CFunctionPointer extends CodePointer, RelocatedPointer {
 }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,6 +28,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Field;
 import java.text.BreakIterator;
 import java.util.ArrayList;
@@ -290,6 +293,16 @@ final class Util_java_util_TimeZone {
     }
 }
 
+@TargetClass(sun.util.locale.provider.TimeZoneNameUtility.class)
+final class Target_sun_util_locale_provider_TimeZoneNameUtility {
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    static ConcurrentHashMap<Locale, SoftReference<String[][]>> cachedZoneData = new ConcurrentHashMap<>();
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    static Map<String, SoftReference<Map<Locale, String[]>>> cachedDisplayNames = new ConcurrentHashMap<>();
+}
+
 @TargetClass(java.text.BreakIterator.class)
 final class Target_java_text_BreakIterator {
 
@@ -337,6 +350,19 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @Alias//
     private final ConcurrentMap<Locale, LocaleResources> localeResourcesMap = new ConcurrentHashMap<>();
+
+    @Alias static Boolean isNonENSupported;
+
+    @Substitute
+    private static boolean isNonENLangSupported() {
+        /*
+         * The original implementation performs lazily initialization that looks at the file system
+         * (a certain .jar file being present). That cannot work in a native image, and even worse
+         * it makes file access methods reachable in very basic images.
+         */
+        VMError.guarantee(isNonENSupported != null, "isNonENSupported must be initialized during image generation");
+        return isNonENSupported;
+    }
 }
 
 final class Util_java_text_BreakIterator {

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -44,7 +46,6 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -83,7 +84,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
                     CompilationIdentifier compilationId) {
-        super(new StructuredGraph.Builder(debug.getOptions(), debug).method(stubMethod).compilationId(compilationId).build(), providers, wordTypes, graphBuilderPlugins);
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
@@ -130,7 +131,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind) {
-        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), kind, getMetaAccess(), getConstantReflection());
+        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), null, kind, getMetaAccess(), getConstantReflection());
         if (loadIndexed instanceof FixedNode) {
             return append((FixedNode) loadIndexed);
         }
@@ -141,16 +142,16 @@ public class SubstrateGraphKit extends GraphKit {
         return append(new UnboxNode(boxed, targetKind));
     }
 
-    public ValueNode createInvoke(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
-        return createInvoke(declaringClass, name, invokeKind, frameState, bci(), args);
-    }
-
-    public ValueNode createJavaCall(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return createInvoke(targetMethod, kind, frameState, bci(), arguments);
+    public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
+        return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), bci(), args);
     }
 
     public ValueNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
         return startInvokeWithException(targetMethod, kind, frameState, bci(), bci(), arguments);
+    }
+
+    public ValueNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
+        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), bci(), arguments);
     }
 
     public ConstantNode createConstant(Constant value, JavaKind kind) {

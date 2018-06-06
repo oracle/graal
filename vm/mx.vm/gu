@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+source="${BASH_SOURCE[0]}"
+while [ -h "$source" ] ; do
+    prev_source="$source"
+    source="$(readlink "$source")";
+    if [[ "$source" != /* ]]; then
+        # if the link was relative, it was relative to where it came from
+        dir="$( cd -P "$( dirname "$prev_source" )" && pwd )"
+        source="$dir/$source"
+    fi
+done
+bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
+installer_jar="${bin_dir}/../installer.jar"
+root_dir="${bin_dir}/../../../.."
+java_exe="${root_dir}/bin/java"
+
+JAVA_ARGS=()
+PROGRAM_ARGS=()
+for opt in "${@:1}"
+do
+    case $opt in
+        -J:*|--jvm*)
+            opt="${opt:3}"
+            JAVA_ARGS+=("$opt") ;;
+        *)
+            PROGRAM_ARGS+=("$opt") ;;
+    esac
+done
+
+
+exec "${java_exe}" "${JAVA_ARGS[@]}" "-DGRAAL_HOME=${root_dir}" -jar "${installer_jar}" "${PROGRAM_ARGS[@]}"

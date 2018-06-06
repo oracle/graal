@@ -30,23 +30,71 @@ import org.graalvm.word.SignedWord;
 
 /**
  * A pointer to a C primitive 'double' value.
+ *
+ * @since 1.0
  */
 @CPointerTo(nameOfCType = "double")
 public interface CDoublePointer extends PointerBase {
 
+    /**
+     * Reads the value at the pointer address.
+     *
+     * @since 1.0
+     */
     double read();
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     double read(int index);
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     double read(SignedWord index);
 
+    /**
+     * Writes the value at the pointer address.
+     *
+     * @since 1.0
+     */
     void write(double value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(int index, double value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(SignedWord index, double value);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CDoublePointer addressOf(int index);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CDoublePointer addressOf(SignedWord index);
 }

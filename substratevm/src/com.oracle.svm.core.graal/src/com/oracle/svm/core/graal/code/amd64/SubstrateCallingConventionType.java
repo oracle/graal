@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,7 +25,6 @@
 package com.oracle.svm.core.graal.code.amd64;
 
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 
 public enum SubstrateCallingConventionType implements CallingConvention.Type {
     /**
@@ -51,8 +52,6 @@ public enum SubstrateCallingConventionType implements CallingConvention.Type {
     public final boolean outgoing;
 
     public final boolean nativeABI;
-
-    public static final Type[] VALUES = values();
 
     SubstrateCallingConventionType(boolean outgoing, boolean nativeABI) {
         this.outgoing = outgoing;

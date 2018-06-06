@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -135,6 +137,10 @@ public final class LocalizationFeature implements Feature {
     private static boolean isImmutable(Object object) {
         if (object instanceof sun.util.locale.BaseLocale || object instanceof java.util.Locale) {
             /* These classes have a mutable hash code field. */
+            return false;
+        }
+        if (object instanceof java.util.Map) {
+            /* The maps have lazily initialized cache fields (see JavaUtilSubstitutions). */
             return false;
         }
         return true;

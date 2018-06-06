@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,7 +43,6 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 class KeysGenerator extends MessageGenerator {
 
     private static final String TARGETABLE_KEYS_NODE = "TargetableKeysNode";
-    private static final String KEYS_ROOT_NODE = "KeysRootNode";
     private int parameterCount = 1;
 
     KeysGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
@@ -64,13 +65,14 @@ class KeysGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append(indent).append("    private static final class ").append(KEYS_ROOT_NODE).append(" extends RootNode {\n");
-        w.append(indent).append("        protected ").append(KEYS_ROOT_NODE).append("() {\n");
+        w.append(indent).append("    private static final class ").append(rootNodeName).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(rootNodeName).append("() {\n");
         w.append(indent).append("            super(null);\n");
         w.append(indent).append("        }\n");
         w.append("\n");
         w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
+        appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
@@ -95,11 +97,6 @@ class KeysGenerator extends MessageGenerator {
     @Override
     String getTargetableNodeName() {
         return TARGETABLE_KEYS_NODE;
-    }
-
-    @Override
-    String getRootNodeName() {
-        return KEYS_ROOT_NODE;
     }
 
     @Override

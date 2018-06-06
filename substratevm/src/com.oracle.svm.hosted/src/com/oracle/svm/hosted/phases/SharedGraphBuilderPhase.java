@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,22 +40,18 @@ import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.hub.ClassSynchronizationSupport;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -62,7 +60,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
@@ -74,16 +71,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
     }
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
-        private final ResolvedJavaType explicitNullCheck;
-        private final ResolvedJavaType[] explicitExceptionTypes;
+
+        private final boolean explicitExceptionEdges;
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
-            explicitNullCheck = metaAccess.lookupJavaType(NullPointerException.class);
-            explicitExceptionTypes = new ResolvedJavaType[]{explicitNullCheck, metaAccess.lookupJavaType(ArrayIndexOutOfBoundsException.class),
-                            metaAccess.lookupJavaType(IndexOutOfBoundsException.class)};
-
+            this.explicitExceptionEdges = explicitExceptionEdges;
         }
 
         @Override
@@ -217,6 +211,19 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        @Override
+        protected JavaType lookupType(int cpi, int bytecode) {
+            try {
+                return super.lookupType(cpi, bytecode);
+            } catch (LinkageError e) {
+                if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+                    /* The caller knows how do deal with unresolved types. */
+                    return null;
+                }
+                throw e;
+            }
+        }
+
         private boolean handleStoreFieldResolutionError(int cpi, int opcode) {
             if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
                 JavaField target = lookupFailedResolutionField(cpi, method, opcode);
@@ -308,6 +315,21 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected boolean shouldComplementProbability() {
+            /*
+             * Probabilities from AOT profiles are about canonical conditions as they are coming
+             * from Graal IR. That is, they are collected after `BytecodeParser` has done conversion
+             * to Graal IR. Unfortunately, `BytecodeParser` assumes that probabilities are about
+             * original conditions and loads them before conversion to Graal IR.
+             *
+             * Therefore, in order to maintain correct probabilities we need to prevent
+             * `BytecodeParser` from complementing probability during transformations such as
+             * negation of a condition, or elimination of logical negation.
+             */
+            return !HostedConfiguration.instance().isUsingAOTProfiles();
+        }
+
+        @Override
         public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
             boolean isStatic = targetMethod.isStatic();
             if (!isStatic) {
@@ -341,83 +363,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected ValueNode emitExplicitExceptions(ValueNode receiver, ValueNode outOfBoundsIndex) {
-            /*
-             * Normally, Substrate VM does not allow to catch implicit exceptions (exception thrown
-             * by bytecodes other than "throw") from within the same method. However, some JDK code
-             * relies on that behavior for field and array accesses. If there is an exception
-             * handler explicitly for such an exception type, we generate explicit checks that allow
-             * a catch from within the same method. If the catch is for a base class such as
-             * Throwable, we still do not catch it.
-             */
-            for (ExceptionHandler handler : method.getExceptionHandlers()) {
-                if (handler.getStartBCI() <= bci() && bci() < handler.getEndBCI()) {
-                    for (ResolvedJavaType explicitExceptionType : explicitExceptionTypes) {
-                        if (explicitExceptionType.equals(handler.getCatchType())) {
-                            return super.emitExplicitExceptions(receiver, outOfBoundsIndex);
-                        }
-                    }
-                }
-            }
-
-            // Nothing to do, we do not want explicit exception checks during graph building.
-            return receiver;
+        protected boolean needsExplicitNullCheckException(ValueNode object) {
+            return needsExplicitException() && object.getStackKind() == JavaKind.Object;
         }
 
         @Override
-        protected ValueNode emitExplicitExceptions(ValueNode receiver) {
-            if (StampTool.isPointerNonNull(receiver) || !needsExplicitException()) {
-                return receiver;
-            } else {
-                /*
-                 * Normally, Substrate VM does not allow to catch implicit exceptions (exception
-                 * thrown by bytecodes other than "throw") from within the same method. However,
-                 * some JDK code relies on that behavior for null checks. If there is an exception
-                 * handler explicitly for a NullPointerException, we generate explicit checks that
-                 * allow a catch from within the same method. If the catch is for a base class such
-                 * as Throwable, we still do not catch it.
-                 */
-                for (ExceptionHandler handler : method.getExceptionHandlers()) {
-                    if (handler.getStartBCI() <= bci() && bci() < handler.getEndBCI()) {
-                        if (explicitNullCheck.equals(handler.getCatchType())) {
-                            return super.emitExplicitNullCheck(receiver);
-                        }
-                    }
-                }
-
-                // Nothing to do, we do not want explicit exception checks during graph building.
-                return receiver;
-            }
+        protected boolean needsExplicitStoreCheckException(ValueNode array, ValueNode value) {
+            return needsExplicitException() && value.getStackKind() == JavaKind.Object;
         }
 
         @Override
-        protected void genMonitorEnter(ValueNode x, int bci) {
-            super.genMonitorEnter(interceptDynamicHub(x), bci);
-        }
-
-        @Override
-        protected void genMonitorExit(ValueNode x, ValueNode escapedReturnValue, int bci) {
-            super.genMonitorExit(interceptDynamicHub(x), escapedReturnValue, bci);
-        }
-
-        /**
-         * See {@link ClassSynchronizationSupport} for an explanation of this method. This method
-         * additionally replaces the inputs that have deopt proxies with a constant which leaves a
-         * dangling deopt proxy. This is done for two reasons: 1) It is terribly hard to go
-         * backwards and fix all Phi and DeoptProxy nodes to a new value. 2) This value is always a
-         * constant that does not participate in constant folding so it should not affect
-         * deoptimization.
-         */
-        private ValueNode interceptDynamicHub(ValueNode x) {
-            ValueNode node = GraphUtil.originalValue(x);
-            if (node.isConstant()) {
-                Object oldTarget = SubstrateObjectConstant.asObject(node.asConstant());
-                if (oldTarget instanceof DynamicHub) {
-                    JavaConstant newTarget = SubstrateObjectConstant.forObject(ClassSynchronizationSupport.synchronizationTarget((DynamicHub) oldTarget));
-                    return ConstantNode.forConstant(newTarget, metaAccess, graph);
-                }
-            }
-            return x;
+        protected boolean needsExplicitException() {
+            return explicitExceptionEdges && !parsingIntrinsic();
         }
 
         @Override

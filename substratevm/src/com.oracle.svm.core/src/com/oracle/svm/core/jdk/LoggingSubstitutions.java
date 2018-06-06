@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,9 +30,7 @@ import java.util.Map;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
 /*
  * Break the link between the {@link sun.util.logging.PlatformLogger} and {@link
@@ -42,33 +42,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 final class Target_sun_util_logging_PlatformLogger {
 
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) private static Map<?, ?> loggers = new HashMap<>();
-}
-
-@TargetClass(sun.util.logging.LoggingSupport.class)
-final class Target_sun_util_logging_LoggingSupport {
-
-    /* before JDK 7 update 40 */
-    @Alias @TargetElement(optional = true) @RecomputeFieldValue(kind = Kind.Reset)//
-    private static sun.util.logging.LoggingProxy proxy;
-
-    /* after JDK 7 update 40 */
-    @Alias @TargetElement(optional = true) @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "sun.util.logging.PlatformLogger$DefaultLoggingProxy")//
-    private static Object loggerProxy;
-    @Alias @TargetElement(optional = true) @RecomputeFieldValue(kind = Kind.Reset)//
-    private static Object javaLoggerProxy;
-}
-
-@TargetClass(value = sun.util.logging.PlatformLogger.class, innerClass = "LoggerProxy")
-final class Target_sun_util_logging_PlatformLogger_LoggerProxy {
-
-    @Alias private String name;
-
-    /* before JDK 7 update 40 */
-    @Substitute
-    @TargetElement(optional = true)
-    private String getCallerInfo() {
-        return name;
-    }
 }
 
 /** Dummy class to have a class with the file's name. */

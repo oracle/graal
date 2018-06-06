@@ -1,6 +1,7 @@
 suite = {
   "mxversion" : "5.141.0",
   "name" : "sdk",
+  "version" : "1.0.0-rc2-dev",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
   "developer" : {
@@ -69,6 +70,7 @@ suite = {
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
+      "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
     },
 

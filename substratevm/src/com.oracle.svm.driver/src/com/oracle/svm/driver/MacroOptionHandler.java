@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,10 +24,14 @@
  */
 package com.oracle.svm.driver;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Queue;
 
+import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
-import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -37,49 +43,50 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
-
-        String polyglotPrefix = "--polyglot=";
-        if (headArg.startsWith(polyglotPrefix)) {
-            String languagesRaw = headArg.substring(polyglotPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(languagesRaw.replace(',', ' '), MacroOptionKind.Language);
-            } catch (VerboseInvalidMacroException e1) {
-                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException e2) {
-                NativeImage.showError(e2.getMessage());
-            }
+        boolean consumed = false;
+        try {
+            consumed = nativeImage.optionRegistry.enableOption(headArg, new HashSet<>(), null, this::applyEnabled);
+        } catch (VerboseInvalidMacroException e1) {
+            NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
+        } catch (InvalidMacroException | AddedTwiceException e) {
+            NativeImage.showError(e.getMessage());
+        }
+        if (consumed) {
             args.poll();
-            return true;
+        }
+        return consumed;
+    }
+
+    private void applyEnabled(MacroOption.EnabledOption enabledOption) {
+        Path imageJarsDirectory = enabledOption.getOption().getOptionDirectory();
+        if (imageJarsDirectory == null) {
+            return;
         }
 
-        String toolsPrefix = "--tool.";
-        if (headArg.startsWith(toolsPrefix)) {
-            String toolString = headArg.substring(toolsPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(toolString, MacroOptionKind.Tool);
-            } catch (VerboseInvalidMacroException e1) {
-                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
-            }
-            args.poll();
-            return true;
-        }
+        enabledOption.forEachPropertyValue("ImageBuilderBootClasspath", entry -> nativeImage.addImageBuilderBootClasspath(Paths.get(entry)));
 
-        String langPrefix = "--";
-        if (headArg.startsWith("--")) {
-            String langString = headArg.substring(langPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(langString, MacroOptionKind.Language);
-                args.poll();
-                return true;
-            } catch (VerboseInvalidMacroException e1) {
-                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
+        if (!enabledOption.forEachPropertyValue("ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(Paths.get(entry)))) {
+            Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
+            if (Files.isDirectory(builderJarsDirectory)) {
+                NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
             }
         }
 
-        return false;
+        if (!enabledOption.forEachPropertyValue("ImageClasspath", entry -> nativeImage.addImageClasspath(Paths.get(entry)))) {
+            NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageProvidedClasspath);
+        }
+
+        String imageName = enabledOption.getProperty("ImageName");
+        if (imageName != null) {
+            nativeImage.addImageBuilderArg(NativeImage.oHName + imageName);
+        }
+
+        String launcherClass = enabledOption.getProperty("LauncherClass");
+        if (launcherClass != null) {
+            nativeImage.addImageBuilderArg(NativeImage.oHClass + launcherClass);
+        }
+
+        enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
+        enabledOption.forEachPropertyValue("Args", nativeImage::addImageBuilderArg);
     }
 }

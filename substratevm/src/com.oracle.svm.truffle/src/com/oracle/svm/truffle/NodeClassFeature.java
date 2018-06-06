@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -46,7 +48,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.hosted.GraalObjectReplacer;
 import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -64,7 +65,7 @@ public class NodeClassFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(GraalFeature.class);
+        return Arrays.asList(TruffleFeature.class, GraalFeature.class);
     }
 
     @Override
@@ -143,7 +144,7 @@ public class NodeClassFeature implements Feature {
                  * Unsafe in the NodeClass, e.g. when making changes in the graph.
                  */
                 // TODO register unsafe accessed Truffle nodes in a separate partition?
-                access.registerAsUnsafeWritten(field);
+                access.registerAsUnsafeAccessed(field);
             }
 
             if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA) {
@@ -162,14 +163,9 @@ public class NodeClassFeature implements Feature {
     }
 }
 
-@TargetClass(className = "com.oracle.truffle.api.nodes.NodeClass", onlyWith = TruffleFeature.HasTruffleOnClassPath.class)
+@TargetClass(className = "com.oracle.truffle.api.nodes.NodeClass", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_nodes_NodeClass {
 
-    /**
-     * We need this substitution for all images where Truffle is on the class path, even when
-     * Truffle support has been explicitly disabled using the option
-     * {@link NativeImageOptions#TruffleFeature}. Otherwise unsupported methods are reachable.
-     */
     @Substitute
     public static NodeClass get(Class<?> clazz) {
         CompilerAsserts.neverPartOfCompilation();

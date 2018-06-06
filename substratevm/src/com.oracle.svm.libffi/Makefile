@@ -4,7 +4,9 @@
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,6 +40,7 @@ DEPLOYED_HEADERS=ffi.h ffitarget.h svm_libffi.h trufflenfi.h
 
 HEADERFILES=${DEPLOYED_HEADERS:%.h=${TARGET}/include/%.h}
 
+ifneq (${OS},windows)
 
 default: ${TARGET}/libffi.a ${HEADERFILES}
 
@@ -83,3 +86,12 @@ libffi-build/Makefile: libffi-3.2.1/configure
 libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) tar xzf ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
+
+else
+all:
+	echo "Building libffi on Windows is not currently supported"
+	$(shell mkdir -p ${TARGET})
+	$(shell touch ${TARGET}/libffi.a)
+	$(shell mkdir -p `dirname ${HEADERFILES}`)
+	$(shell touch ${HEADERFILES})
+endif

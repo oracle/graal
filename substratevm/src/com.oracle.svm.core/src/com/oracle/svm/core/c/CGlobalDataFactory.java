@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -108,8 +110,10 @@ public final class CGlobalDataFactory {
      * name for the allocated word.
      */
     public static <T extends PointerBase> CGlobalData<T> createWord(WordBase initialValue, String symbolName) {
-        assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
-        Supplier<byte[]> supplier = () -> ByteBuffer.allocate(Long.BYTES).order(ByteOrder.nativeOrder()).putLong(initialValue.rawValue()).array();
+        Supplier<byte[]> supplier = () -> {
+            assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
+            return ByteBuffer.allocate(Long.BYTES).order(ByteOrder.nativeOrder()).putLong(initialValue.rawValue()).array();
+        };
         return new CGlobalDataImpl<>(symbolName, supplier);
     }
 

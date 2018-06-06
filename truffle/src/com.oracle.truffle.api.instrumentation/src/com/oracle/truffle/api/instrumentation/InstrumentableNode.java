@@ -234,6 +234,11 @@ public interface InstrumentableNode extends NodeInterface {
      * all current execution event bindings to allow the language to do the materialization
      * selectively for instrumentable nodes with certain tags only.
      * <p>
+     * The returned instrumentable nodes must return themselves when this method is called on them
+     * with the same tags. Materialized nodes should not be re-materialized again. Instrumentation
+     * relies on the stability of materialized nodes. Use {@link Node#notifyInserted(Node)} when you
+     * need to change the structure of instrumentable nodes.
+     * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked
@@ -252,6 +257,102 @@ public interface InstrumentableNode extends NodeInterface {
      */
     default InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         return this;
+    }
+
+    /**
+     * Find the nearest {@link Node node} to the given source character index according to the guest
+     * language control flow, that is tagged with some of the given tags. The source character index
+     * is in this node's source. The nearest node will preferably be in the same block/function as
+     * the character index. This node acts as a context node - either a node containing the
+     * character index if such node exists, or node following the character index if exists, or node
+     * preceding the character index otherwise.
+     * <p>
+     * Return an instrumentable node that is tagged with some of the tags and containing the
+     * character index, if such exists and there is not a more suitable sibling node inside the
+     * container source section. Return the next sibling tagged node otherwise, or the previous one
+     * when the next one does not exist.
+     * <p>
+     * <u>Use Case</u><br>
+     * The current use-case of this method is a relocation of breakpoint position, for instance.
+     * When a user submits a breakpoint at the source character index, a nearest logical
+     * instrumentable node that has suitable tags needs to be found to move the breakpoint
+     * accordingly.
+     * <p>
+     * <u>Default Implementation</u><br>
+     * This method has a default implementation, which assumes that the materialized Truffle
+     * {@link Node} hierarchy corresponds with the logical guest language AST structure. If this is
+     * not the case for a particular guest language, this method needs to be implemented, possibly
+     * with the help of language specific AST node classes.
+     * <p>
+     * The default algorithm is following:<br>
+     * <ol>
+     * <li>If the character index is smaller than the start index of this node's source section,
+     * return the first tagged child of this node.</li>
+     * <li>If the character index is larger than the end index of this node's source section, return
+     * the last tagged child of this node.</li>
+     * <li>Otherwise, this node's source section contains the character index. Use following steps
+     * to find the nearest tagged node in this node's hierarchy:
+     * <ol type="a">
+     * <li>Find the nearest tagged parent node, remember it's existence as an
+     * <code>outerCandidate</code> boolean.</li>
+     * <li>Traverse the node children in declaration order (AST breadth-first order). For every
+     * child do:
+     * <ol>
+     * <li>When the child is not instrumentable, include its children into the traversal.</li>
+     * <li>When the child does not have a source section assigned, ignore it.</li>
+     * <li>When the <code>sourceCharIndex</code> is inside the child's source section, find if it's
+     * tagged with one of the tags (store as <code>isTagged</code>) and repeat recursively from
+     * <b>3.b.</b> using this child as the node and passing the current
+     * <code>outerCandidate || isTagged</code> as the new <code>outerCandidate</code> value.</li>
+     * <li>When the child is above the character index, remember the lowest such child (store in
+     * <code>lowestHigherNode</code> and <code>lowestHigherTaggedNode</code> if the child is
+     * tagged).</li>
+     * <li>When the child is below the character index, remember the highest such child (store in
+     * <code>highestLowerNode</code> and <code>highestLowerTaggedNode</code> if the child is
+     * tagged).</li>
+     * </ol>
+     * </li>
+     * <li>If a tagged child node was found in <b>3.b</b> with source section matching the
+     * <code>sourceCharIndex</code>, return it.</li>
+     * <li>Otherwise, we check the lowest/highest nodes:
+     * <ol>
+     * <li>Prefer the node after the character index, unless we're in a nested recursive call, in
+     * which case prefer the first instrumentable node in the current scope. The motivation is to
+     * prefer the next tagged code location, but when the next node is not tagged, we search for the
+     * first tagged child in the next node.</li>
+     * <li>Create a <code>primaryNode</code> alias to the <code>lowestHigherNode</code> if not in a
+     * recursive call and to <code>highestLowerNode</code> otherwise.</li>
+     * <li>Create a <code>secondaryNode</code> alias to the <code>highestLowerNode</code> if not in
+     * a recursive call and to <code>lowestHigherNode</code> otherwise.</li>
+     * <li>Create an analogous aliases for highest/lowest tagged nodes.</li>
+     * <li>If <code>primaryNode</code> is tagged, return it.</li>
+     * <li>Otherwise, if <code>secondaryNode</code> is tagged, return it.</li>
+     * <li>If <code>outerCandidate</code> is false, repeat <b>3.b.</b> on <code>primaryNode</code>
+     * and if it provides a tagged child, return it, otherwise return <code>primaryTaggedNode</code>
+     * if it's not <code>null</code>.</li>
+     * <li>Otherwise, if <code>outerCandidate</code> is false, repeat <b>3.b.</b> on
+     * <code>secondaryNode</code> and if it provides a tagged child, return it, otherwise return
+     * <code>secondaryTaggedNode</code> if it's not <code>null</code>.</li>
+     * <li>When nothing was found in the steps above, return <code>null</code>.</li>
+     * </ol>
+     * </li>
+     * <li>If <b>d.</b> didn't provide a tagged node, apply this algorithm recursively to a parent
+     * of this node, if exists. If you encounter the nearest tagged parent node found in <b>3.a</b>,
+     * return it. Otherwise, return a tagged child found in the steps above, if any.</li>
+     * </ol>
+     * </li>
+     * </ol>
+     *
+     * @param sourceCharIndex the 0-based character index in this node's source, to find the nearest
+     *            tagged node from
+     * @param tags a set of tags, the nearest node needs to be tagged with at least one tag from
+     *            this set
+     * @return the nearest instrumentable node according to the execution flow and tagged with some
+     *         of the tags, or <code>null</code> when none was found
+     * @since 0.33
+     */
+    default Node findNearestNodeAt(int sourceCharIndex, Set<Class<? extends Tag>> tags) {
+        return DefaultNearestNodeSearch.findNearestNodeAt(sourceCharIndex, (Node) this, tags);
     }
 
     /**

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,6 +39,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 /**
@@ -108,8 +111,8 @@ public class ReflectionOptionDescriptors implements OptionDescriptors {
             ParameterizedType pt = (ParameterizedType) declaredType;
             Type[] actualTypeArguments = pt.getActualTypeArguments();
             assert actualTypeArguments.length == 1;
-            Class<?> optionType = (Class<?>) actualTypeArguments[0];
-            descriptors.put(fieldName, OptionDescriptor.create(fieldName, optionType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
+            Class<?> optionValueType = (Class<?>) actualTypeArguments[0];
+            descriptors.put(fieldName, OptionDescriptor.create(fieldName, OptionType.Debug, optionValueType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalArgumentException(e);
         }

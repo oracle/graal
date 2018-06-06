@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -117,13 +119,11 @@ import java.net.SocketException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -163,7 +163,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.PosixOSInterface.Util_java_io_FileDescriptor;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -205,6 +204,7 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.ch.IOStatus")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_IOStatus {
         @Alias @TargetElement(name = "EOF")//
         protected static int IOS_EOF;
@@ -221,6 +221,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.FileDispatcher")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_FileDispatcher {
         @Alias @TargetElement(name = "NO_LOCK")//
         protected static int FD_NO_LOCK;
@@ -235,7 +236,7 @@ public final class PosixJavaNIOSubstitutions {
     // Checkstyle: resume
 
     protected static IOException throwIOExceptionWithLastError(String defaultMsg) throws IOException {
-        throw new IOException(PosixOSInterface.lastErrorString(defaultMsg));
+        throw new IOException(PosixUtils.lastErrorString(defaultMsg));
     }
 
     protected static int handle(int rv, String msg) throws IOException {
@@ -309,7 +310,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     protected static int fdval(FileDescriptor fdo) {
-        return Util_java_io_FileDescriptor.getFD(fdo);
+        return PosixUtils.getFD(fdo);
     }
 
     protected static <T extends PointerBase> T dlsym(PointerBase handle, String name) {
@@ -320,6 +321,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.Cancellable")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_Cancellable {
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Manual)//
         private long pollingAddress;
@@ -472,12 +474,12 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static int fdVal(FileDescriptor fd) {
-            return Util_java_io_FileDescriptor.getFD(fd);
+            return PosixUtils.getFD(fd);
         }
 
         @Substitute
         private static void setfdVal(FileDescriptor fd, int value) {
-            Util_java_io_FileDescriptor.setFD(fd, value);
+            PosixUtils.setFD(fd, value);
         }
 
         @Substitute
@@ -739,22 +741,13 @@ public final class PosixJavaNIOSubstitutions {
             }
         }
 
-        /*
-         * Java 8 update 60 added another parameter to socket0. On Posix system,
-         * that parameter is ignored, so we can easily support both variants.
-         */
-        @Substitute @TargetElement(optional = true)
-        static int socket0(boolean preferIPv6, boolean stream, boolean reuse, @SuppressWarnings("unused") boolean fastLoopback) throws IOException {
-            return socket0(preferIPv6, stream, reuse);
-        }
-
         // 232 JNIEXPORT int JNICALL
         // 233 Java_sun_nio_ch_Net_socket0(JNIEnv *env, jclass cl, jboolean preferIPv6,
         // 234                             jboolean stream, jboolean reuse)
         // 235 {
         @SuppressWarnings("finally")
-        @Substitute @TargetElement(optional = true)
-        static int socket0(boolean preferIPv6, boolean stream, boolean reuse) throws IOException {
+        @Substitute
+        static int socket0(boolean preferIPv6, boolean stream, boolean reuse, @SuppressWarnings("unused") boolean fastLoopback) throws IOException {
             // 236     int fd;
             int fd;
             // 237     int type = (stream ? SOCK_STREAM : SOCK_DGRAM);
@@ -912,7 +905,7 @@ public final class PosixJavaNIOSubstitutions {
             }
             // 276
             // 277     rv = NET_Bind(fdval(env, fdo), (struct sockaddr *)&sa, sa_len);
-            rv = JavaNetNetUtilMD.NET_Bind(Util_java_io_FileDescriptor.getFD(fd), sa, sa_len_Pointer.read());
+            rv = JavaNetNetUtilMD.NET_Bind(PosixUtils.getFD(fd), sa, sa_len_Pointer.read());
             // 278     if (rv != 0) {
             if (rv != 0) {
             // 279         handleSocketError(env, errno);
@@ -929,7 +922,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         static void listen(FileDescriptor fdo, int backlog) throws IOException {
             // 286     if (listen(fdval(env, fdo), backlog) < 0)
-            if (Target_os.listen(Util_java_io_FileDescriptor.getFD(fdo), backlog) < 0) {
+            if (Target_os.listen(PosixUtils.getFD(fdo), backlog) < 0) {
                 // 287         handleSocketError(env, errno);
                 Util_sun_nio_ch_Net.handleSocketError(Errno.errno());
             }
@@ -1146,6 +1139,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.ServerSocketChannelImpl")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_ServerSocketChannelImpl {
         // jdk/src/share/classes/sun/nio/ch/ServerSocketChannelImpl.java?v=Java_1.8.0_40_b10
         // 415     // Accepts a new connection, setting the given file descriptor to refer to
@@ -1228,7 +1222,7 @@ public final class PosixJavaNIOSubstitutions {
             }
             //        109
             //        110     (*env)->SetIntField(env, newfdo, fd_fdID, newfd);
-            PosixOSInterface.Util_java_io_FileDescriptor.setFD(newfdo, newfd);
+            PosixUtils.setFD(newfdo, newfd);
             //        111     remote_ia = NET_SockaddrToInetAddress(env, sa, (int *)&remote_port);
             remote_ia = JavaNetNetUtil.NET_SockaddrToInetAddress(sa_Pointer.read(), remote_port_Pointer);
             //        112     free((void *)sa);
@@ -1376,6 +1370,48 @@ public final class PosixJavaNIOSubstitutions {
             return handle(result, "Force failed");
         }
 
+        /* Translated from src/java.base/unix/native/libnio/ch/FileDispatcherImpl.c */
+        /* { Do not re-format commented out C code: @formatter:off. */
+        // JNIEXPORT jint JNICALL
+        // Java_sun_nio_ch_FileDispatcherImpl_allocate0(JNIEnv *env, jobject this,
+        //                                              jobject fdo, jlong size) {
+        @Substitute @TargetElement(onlyWith = ContainsAllocate0.class /* Introduced in JDK 8u162. */)
+        private static int allocate0(FileDescriptor fd, long size) throws IOException {
+            // #if defined(__linux__)
+            if (IsDefined.__linux__()) {
+                //     /*
+                //      * On Linux, if the file size is being increased, then ftruncate64()
+                //      * will modify the metadata value of the size without actually allocating
+                //      * any blocks which can cause a SIGBUS error if the file is subsequently
+                //      * memory-mapped.
+                //      */
+                //     return handle(env,
+                //                   fallocate64(fdval(env, fdo), 0, 0, size),
+                //                   "Allocation failed");
+                return handle(Fcntl.fallocate(fdval(fd), 0, WordFactory.zero(), WordFactory.signed(size)),
+                                "Allocation failed");
+            } else {
+                //     return handle(env,
+                //                   ftruncate64(fdval(env, fdo), size),
+                //                   "Truncation failed");
+                return handle(Unistd.ftruncate(fdval(fd), size),
+                                "Truncation failed");
+            }
+        }
+        /* } Do not re-format commented out C code: @formatter:on. */
+
+        static class ContainsAllocate0 implements Predicate<Class<?>> {
+            @Override
+            public boolean test(Class<?> originalClass) {
+                try {
+                    originalClass.getDeclaredMethod("allocate0", FileDescriptor.class, long.class);
+                    return true;
+                } catch (NoSuchMethodException ex) {
+                    return false;
+                }
+            }
+        }
+
         @Substitute
         private static int truncate0(FileDescriptor fdo, long size) throws IOException {
             return handle(ftruncate(fdval(fdo), size), "Truncation failed");
@@ -1509,6 +1545,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixException")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     @SuppressWarnings({"unused"})
     static final class Target_sun_nio_fs_UnixException {
         @Alias
@@ -1518,6 +1555,7 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.fs.UnixFileAttributes")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileAttributes {
         @Alias int st_mode;
         @Alias long st_ino;
@@ -1538,6 +1576,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileStoreAttributes")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileStoreAttributes {
         @Alias long f_frsize;
         @Alias long f_blocks;
@@ -1546,6 +1585,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixMountEntry")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixMountEntry {
         @Alias byte[] name;
         @Alias byte[] dir;
@@ -1563,69 +1603,6 @@ public final class PosixJavaNIOSubstitutions {
             result[i] = cstr.read(i);
         }
         return result;
-    }
-
-    @Platforms({LINUX.class, DARWIN.class})
-    @TargetClass(className = "java.nio.channels.spi.SelectorProvider")
-    static final class Target_java_nio_channels_spi_SelectorProvider {
-
-        /* Aliases to gain visibility. */
-
-        /* Do not re-format commented-out code: @formatter:off */
-        @Substitute
-        /* No reflection at runtime. */
-        /* No system properties at runtime. */
-        // 087     private static boolean loadProviderFromProperty() {
-        private static boolean loadProviderFromProperty() {
-            // 088         String cn = System.getProperty("java.nio.channels.spi.SelectorProvider");
-            // 089         if (cn == null)
-            // 090             return false;
-            /* TODO: The property appears to be unset, so this is easy. */
-            return false;
-            // 091         try {
-            // 092             Class<?> c = Class.forName(cn, true,
-            // 093                                        ClassLoader.getSystemClassLoader());
-            // 094             provider = (SelectorProvider)c.newInstance();
-            // 095             return true;
-            // 096         } catch (ClassNotFoundException x) {
-            // 097             throw new ServiceConfigurationError(null, x);
-            // 098         } catch (IllegalAccessException x) {
-            // 099             throw new ServiceConfigurationError(null, x);
-            // 100         } catch (InstantiationException x) {
-            // 101             throw new ServiceConfigurationError(null, x);
-            // 102         } catch (SecurityException x) {
-            // 103             throw new ServiceConfigurationError(null, x);
-            // 104         }
-        }
-        /* @formatter:on */
-
-        /* Do not re-format commented-out code: @formatter:off */
-        @Substitute
-        // 107     private static boolean loadProviderAsService() {
-        private static boolean loadProviderAsService() {
-            /* TODO: Assume there is no ServiceLoader<SelectorProvider>. */
-            return false;
-            // 108
-            // 109         ServiceLoader<SelectorProvider> sl =
-            // 110             ServiceLoader.load(SelectorProvider.class,
-            // 111                                ClassLoader.getSystemClassLoader());
-            // 112         Iterator<SelectorProvider> i = sl.iterator();
-            // 113         for (;;) {
-            // 114             try {
-            // 115                 if (!i.hasNext())
-            // 116                     return false;
-            // 117                 provider = i.next();
-            // 118                 return true;
-            // 119             } catch (ServiceConfigurationError sce) {
-            // 120                 if (sce.getCause() instanceof SecurityException) {
-            // 121                     // Ignore the security exception, try the next provider
-            // 122                     continue;
-            // 123                 }
-            // 124                 throw sce;
-            // 125             }
-            // 126         }
-        }
-        /* @formatter:on */
     }
 
     /*
@@ -2883,46 +2860,13 @@ public final class PosixJavaNIOSubstitutions {
          */
 
         @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
+        @TargetElement(name = "transferTo0")
         @Platforms(Platform.LINUX.class)
         private long transferTo0Linux(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
-            /*
-             * We cannot call a non-static method here due to Substrate VM substitution
-             * restrictions.
-             */
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0LinuxImpl(fdval(src), position, count, fdval(dst));
-        }
-
-        @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
-        @Platforms(Platform.LINUX.class)
-        private long transferTo0Linux(int srcFD, long position, long count, int dstFD) throws IOException {
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0LinuxImpl(srcFD, position, count, dstFD);
-        }
-
-        @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
-        @Platforms(Platform.DARWIN.class)
-        private long transferTo0Darwin(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0DarwinImpl(fdval(src), position, count, fdval(dst));
-        }
-
-        @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
-        @Platforms(Platform.DARWIN.class)
-        private long transferTo0Darwin(int srcFD, long position, long count, int dstFD) throws IOException {
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0DarwinImpl(srcFD, position, count, dstFD);
-        }
-    }
-
-    static final class Util_sun_nio_ch_FileChannelImpl {
-
-        @Platforms(Platform.LINUX.class)
-        static long transferTo0LinuxImpl(int srcFD, long position, long count, int dstFD) throws IOException {
             CLongPointer offset = StackValue.get(SizeOf.get(CLongPointer.class));
             offset.write(position);
 
-            SignedWord n = sendfile(dstFD, srcFD, offset, WordFactory.unsigned(count));
+            SignedWord n = sendfile(fdval(dst), fdval(src), offset, WordFactory.unsigned(count));
             if (n.lessThan(0)) {
                 if (errno() == EAGAIN()) {
                     return Target_sun_nio_ch_IOStatus.IOS_UNAVAILABLE;
@@ -2938,15 +2882,16 @@ public final class PosixJavaNIOSubstitutions {
             return n.rawValue();
         }
 
+        @Substitute
+        @TargetElement(name = "transferTo0")
         @Platforms(Platform.DARWIN.class)
-        static long transferTo0DarwinImpl(int srcFD, long position, long count, int dstFD) throws IOException {
-
+        private long transferTo0Darwin(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
             CLongPointer numBytes = StackValue.get(SizeOf.get(CLongPointer.class));
             int result;
 
             numBytes.write(count);
 
-            result = sendfile(srcFD, dstFD, position, numBytes, WordFactory.nullPointer(), 0);
+            result = sendfile(fdval(src), fdval(dst), position, numBytes, WordFactory.nullPointer(), 0);
 
             if (numBytes.read() > 0) {
                 return numBytes.rawValue();
@@ -3061,6 +3006,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "java.nio.Bits")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_java_nio_Bits {
 
         @Substitute
@@ -3125,6 +3071,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.SocketChannelImpl")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_SocketChannelImpl {
         // /jdk/src/share/classes/sun/nio/ch/SocketChannelImpl.java?v=Java_1.8.0_40_b10
         // 1027 private static native int checkConnect(FileDescriptor fd,
@@ -3206,10 +3153,12 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileSystem")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileSystem {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileSystemProvider {
         @Alias
         native Target_sun_nio_fs_UnixFileSystem newFileSystem(String s);
@@ -3221,6 +3170,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(FileSystems.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_java_nio_file_FileSystems {
         @Substitute
         static FileSystem getDefault() {
@@ -3336,12 +3286,12 @@ public final class PosixJavaNIOSubstitutions {
                             .string("[PosixJavaNIOSubstitutions.Target_sun_nio_fs_GnomeFileTypeDetector.probeUsingGio:")
                             .newline();
             // 133     char* path = (char*)jlong_to_ptr(pathAddress);
-            CCharPointer path = Word.pointer(pathAddress);
+            CCharPointer path = WordFactory.pointer(pathAddress);
             trace.string("  pathAddress: ").string(path);
             // 134     GFile* gfile;
-            Util_sun_nio_fs_GnomeFileTypeDetector.GFile gfile = Word.nullPointer();
+            Util_sun_nio_fs_GnomeFileTypeDetector.GFile gfile = WordFactory.nullPointer();
             // 135     GFileInfo* gfileinfo;
-            Util_sun_nio_fs_GnomeFileTypeDetector.GFileInfo gfileinfo = Word.nullPointer();
+            Util_sun_nio_fs_GnomeFileTypeDetector.GFileInfo gfileinfo = WordFactory.nullPointer();
             // 136     jbyteArray result = NULL;
             byte[] result = null;
             // 138     gfile = (*g_file_new_for_path)(path);
@@ -3446,7 +3396,7 @@ public final class PosixJavaNIOSubstitutions {
                             .string("[PosixJavaNIOSubstitutions.Target_sun_nio_fs_GnomeFileTypeDetector.probeUsingGnomeVfs:")
                             .newline();
             // 190     char* path = (char*)jlong_to_ptr(pathAddress);
-            CCharPointer path = Word.pointer(pathAddress);
+            CCharPointer path = WordFactory.pointer(pathAddress);
             trace.string("  path: ").string(path).newline();
             // 191     const char* mime = (*gnome_vfs_mime_type_from_name)(path);
             CCharPointer mime = Util_sun_nio_fs_GnomeFileTypeDetector.gnome_vfs_mime_type_from_name.invoke(path);
@@ -3754,7 +3704,7 @@ public final class PosixJavaNIOSubstitutions {
                             .string("[PosixJavaNIOSubstitutions.Target_sun_nio_fs_MagicFileTypeDetector.probe0:")
                             .newline();
             // 087     char* path = (char*)jlong_to_ptr(pathAddress);
-            CCharPointer path = Word.pointer(pathAddress);
+            CCharPointer path = WordFactory.pointer(pathAddress);
             trace.string("  path: ").string(path).newline();
             // 088     magic_t* cookie;
             Util_sun_nio_fs_MagicFileTypeDetector.magic_t cookie = WordFactory.nullPointer();

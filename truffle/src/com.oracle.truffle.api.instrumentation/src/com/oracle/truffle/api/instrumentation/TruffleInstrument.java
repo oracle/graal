@@ -38,8 +38,10 @@ import java.util.Map;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
@@ -59,45 +61,25 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * <p>
- * The service provider interface (SPI) for Truffle
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument Instruments}: clients of Truffle
- * instrumentation that may observe and inject behavior into interpreters written using the Truffle
- * framework.
- * <p>
- * Each registered instrument can be
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean)
- * enabled/disabled} multiple times during the lifetime of a
- * {@link com.oracle.truffle.api.vm.PolyglotEngine PolyglotEngine}, but there is never more than one
- * instance per engine. A new {@link TruffleInstrument} instance is created each time the instrument
- * is enabled, and the currently enabled instance is disposed when the instrument is disabled.
- * </p>
- * <h4>Registration</h4>
+ * The service provider interface (SPI) for Truffle instruments: clients of Truffle instrumentation
+ * that may observe and inject behavior into interpreters written using the Truffle framework.
  * <p>
  * Instrument implementation classes must use the {@link Registration} annotation to provide
  * required metadata and to enable automatic discovery of the implementation.
- * </p>
- * <h4>Instrument Creation</h4>
- * <ul>
- * <li>When an instrument becomes
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) enabled}, a
- * new instance is created and notified once via {@link #onCreate(Env)}.</li>
- * <li>The {@link Instrumenter} available in the provided {@linkplain Env environment} allows the
- * instrument instance to bind listeners for {@linkplain ExecutionEventListener execution} and
+ * <p>
+ * An instrument is {@link #onCreate(Env) created } if at least one instrument
+ * {@link TruffleInstrument.Env#getOptions() option} was specified or if a
+ * {@link TruffleInstrument.Env#registerService(Object) service} was looked up. The
+ * {@link Instrumenter} available in the provided {@linkplain Env environment} allows the instrument
+ * instance to bind listeners for {@linkplain ExecutionEventListener execution} and
  * {@linkplain LoadSourceListener source} events, as well as {@linkplain ExecutionEventNodeFactory
- * node factories} for code injection at guest language code locations.</li>
- * </ul>
- * <h4>Instrument Disposal</h4>
- * <ul>
- * <li>When an instrument becomes
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) disabled},
- * the current instance is notified once via {@link #onDispose(Env)}.</li>
- * <li>All active bindings created by a disposed instrument become disposed automatically.</li>
- * <li>The {@link Instrumenter} instance available in the provided {@linkplain Env environment} may
- * not be used after disposal.</li>
- * <li>All enabled instruments in an engine become disabled automatically when the engine is
- * disposed.</li>
- * </ul>
+ * node factories} for code injection at guest language code locations.
+ * <p>
+ * An instrument is disposed when the associated polyglot {@linkplain Engine engine} is disposed.
+ * All active bindings created by a disposed instrument become disposed automatically. The
+ * {@link Instrumenter} instance available in the provided {@linkplain Env environment} may not be
+ * used after disposal.
+ * <p>
  * <h4>Example for a simple expression coverage instrument:</h4>
  * {@codesnippet com.oracle.truffle.api.instrumentation.test.examples.CoverageExample}
  *
@@ -117,8 +99,8 @@ public abstract class TruffleInstrument {
      * <p>
      * The method may {@link Env#registerService(java.lang.Object) register} additional
      * {@link Registration#services() services} - e.g. objects to be exposed via
-     * {@link com.oracle.truffle.api.vm.PolyglotRuntime.Instrument#lookup lookup query}. For example
-     * to expose a debugger one could define an abstract debugger controller:
+     * {@link org.graalvm.polyglot.Instrument#lookup lookup query}. For example to expose a debugger
+     * one could define an abstract debugger controller:
      * </p>
      *
      * {@codesnippet DebuggerController}
@@ -138,26 +120,30 @@ public abstract class TruffleInstrument {
     protected abstract void onCreate(Env env);
 
     /**
-     * Invoked once on an {@linkplain TruffleInstrument instance} when it becomes
-     * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) disabled}
-     * , possibly because the underlying {@linkplain com.oracle.truffle.api.vm.PolyglotEngine
-     * engine} has been disposed. A disposed instance is no longer usable. If the instrument is
-     * re-enabled, the engine will create a new instance.
+     * Invoked once on an {@linkplain TruffleInstrument instance} just before all instruments and
+     * languages are going to be disposed, possibly because the underlying
+     * {@linkplain org.graalvm.polyglot.Engine engine} is going to be closed. This method is called
+     * before {@link #onDispose(Env)} and the instrument must remain usable after finalization. The
+     * instrument can prepare for disposal while still having other instruments not disposed yet.
+     *
+     * @param env environment information for the instrument
+     * @since 1.0
+     */
+    protected void onFinalize(Env env) {
+        // default implementation does nothing
+    }
+
+    /**
+     * Invoked once on an {@linkplain TruffleInstrument instance} when it becomes disabled, possibly
+     * because the underlying {@linkplain org.graalvm.polyglot.Engine engine} has been closed. A
+     * disposed instance is no longer usable. If the instrument is re-enabled, the engine will
+     * create a new instance.
      *
      * @param env environment information for the instrument
      * @since 0.12
      */
     protected void onDispose(Env env) {
         // default implementation does nothing
-    }
-
-    /**
-     * @since 0.27
-     * @deprecated in 0.27 use {@link #getOptionDescriptors()} instead.
-     */
-    @Deprecated
-    protected List<OptionDescriptor> describeOptions() {
-        return null;
     }
 
     /**
@@ -175,7 +161,7 @@ public abstract class TruffleInstrument {
      * @since 0.27
      */
     protected OptionDescriptors getOptionDescriptors() {
-        return OptionDescriptors.create(describeOptions());
+        return OptionDescriptors.EMPTY;
     }
 
     /**
@@ -186,7 +172,7 @@ public abstract class TruffleInstrument {
     @SuppressWarnings("static-method")
     public static final class Env {
 
-        private final Object vmObject; // PolyglotRuntime.Instrument
+        private final Object vmObject; // PolyglotInstrument
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
@@ -216,8 +202,8 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Input associated with {@link com.oracle.truffle.api.vm.PolyglotEngine} this
-         * {@link TruffleInstrument instrument} is being executed in.
+         * Input associated with {@link org.graalvm.polyglot.Engine} this {@link TruffleInstrument
+         * instrument} is being executed in.
          *
          * @return reader, never <code>null</code>
          * @since 0.12
@@ -227,7 +213,7 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Standard output writer for {@link com.oracle.truffle.api.vm.PolyglotEngine} this
+         * Standard output writer for {@link org.graalvm.polyglot.Engine} this
          * {@link TruffleInstrument instrument} is being executed in.
          *
          * @return writer, never <code>null</code>
@@ -238,7 +224,7 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Standard error writer for {@link com.oracle.truffle.api.vm.PolyglotEngine} this
+         * Standard error writer for {@link org.graalvm.polyglot.Engine} this
          * {@link TruffleInstrument instrument} is being executed in.
          *
          * @return writer, never <code>null</code>
@@ -252,14 +238,14 @@ public abstract class TruffleInstrument {
          * Registers additional service. This method can be called multiple time, but only during
          * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
          * initialization of the instrument}. These services are made available to users via
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup} query method.
+         * {@link org.graalvm.polyglot.Instrument#lookup} query method.
          *
          * This method can only be called from
          * {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)} method -
          * then the services are collected and cannot be changed anymore.
          *
          * @param service a service to be returned from associated
-         *            {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup}
+         *            {@link org.graalvm.polyglot.Instrument#lookup}
          * @throws IllegalStateException if the method is called later than from
          *             {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) }
          *             method
@@ -410,9 +396,17 @@ public abstract class TruffleInstrument {
             @Override
             public Object execute(VirtualFrame frame) {
                 assert frameDescriptor == null || frameDescriptor == frame.getFrameDescriptor();
+                assureAdopted();
                 Object ret = fragment.execute(frame);
                 assert checkNullOrInterop(ret);
                 return ret;
+            }
+
+            private void assureAdopted() {
+                if (getParent() == null) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException("Needs to be inserted into the AST before execution.");
+                }
             }
 
             private boolean checkNullOrInterop(Object obj) {
@@ -675,24 +669,25 @@ public abstract class TruffleInstrument {
         /**
          * A custom machine identifier for this instrument. If not defined then the fully qualified
          * class name is used.
-         * 
+         *
          * @since 0.12
          */
         String id() default "";
 
         /**
          * The name of the instrument in an arbitrary format for humans.
-         * 
+         *
          * @since 0.12
          */
         String name() default "";
 
         /**
-         * The version for instrument in an arbitrary format.
-         * 
+         * The version for instrument in an arbitrary format. It inherits from
+         * {@link org.graalvm.polyglot.Engine#getVersion()} by default.
+         *
          * @since 0.12
          */
-        String version() default "";
+        String version() default "inherit";
 
         /**
          * Specifies whether the instrument is accessible using the polyglot API. Internal
@@ -709,11 +704,8 @@ public abstract class TruffleInstrument {
          * method and instantiate and {@link Env#registerService(java.lang.Object) register} all
          * here in defined services.
          * <p>
-         * Instruments
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) get
-         * automatically enabled} when their registered
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Instrument#lookup(java.lang.Class)
-         * service is requested}.
+         * Instruments automatically get created when their registered
+         * {@link org.graalvm.polyglot.Instrument#lookup(java.lang.Class) service is requested}.
          *
          * @since 0.25
          * @return list of service types that this instrument can provide
@@ -723,7 +715,7 @@ public abstract class TruffleInstrument {
 
     static {
         try {
-            // Instrument is loaded by PolyglotEngine which should load InstrumentationHandler
+            // Instrument is loaded by Engine which should load InstrumentationHandler
             // this is important to load the accessors properly.
             Class.forName(InstrumentationHandler.class.getName(), true, InstrumentationHandler.class.getClassLoader());
         } catch (ClassNotFoundException ex) {

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,8 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
@@ -32,10 +32,12 @@ import java.util.Map;
 import java.util.ResourceBundle;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
 public final class LocalizationSupport {
@@ -43,7 +45,7 @@ public final class LocalizationSupport {
     protected final Map<String, ResourceBundle> cache;
 
     public static class Options {
-        @Option(help = "Comma separated list of bundles to be included into the image.")//
+        @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
         public static final HostedOptionKey<String> IncludeResourceBundles = new HostedOptionKey<>("");
     }
 
@@ -73,35 +75,23 @@ public final class LocalizationSupport {
         // Ensure the bundle contents is loaded.
         bundle.getKeys();
 
-        if (bundle instanceof sun.util.resources.OpenListResourceBundle) {
-            try {
-                java.lang.reflect.Field lookupField = sun.util.resources.OpenListResourceBundle.class.getDeclaredField("lookup");
-                lookupField.setAccessible(true);
-                Map<?, ?> lookup = (Map<?, ?>) lookupField.get(bundle);
-
-                /*
-                 * Make sure all the cached sets are allocated, so that the static analysis sees the
-                 * classes as instantiated.
-                 */
-                lookup.keySet();
-                lookup.entrySet();
-                lookup.values();
-            } catch (Throwable ex) {
-                throw shouldNotReachHere(ex);
-            }
-        }
         cache.put(bundleName, bundle);
     }
 
+    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(Options.IncludeResourceBundles, "");
+
     /**
+     * Get cached resource bundle.
+     * 
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) {
         ResourceBundle result = cache.get(baseName);
         if (result == null) {
-            throw VMError.unsupportedFeature("Access of resource bundle that was not pre-cached: " + baseName);
+            String errorMessage = "Resource bundle not found " + baseName + ". " +
+                            "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
+            throw VMError.unsupportedFeature(errorMessage);
         }
         return result;
     }
-
 }

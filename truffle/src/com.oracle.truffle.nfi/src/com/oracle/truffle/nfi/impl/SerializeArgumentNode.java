@@ -35,7 +35,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsPointerNode;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsStringNode;
@@ -227,44 +226,57 @@ abstract class SerializeArgumentNode extends Node {
     abstract static class SerializeArrayArgumentNode extends SerializeArgumentNode {
 
         final LibFFIType.ArrayType argType;
+        final ContextReference<NFIContext> contextRef = NFILanguageImpl.getCurrentContextReference();
 
         SerializeArrayArgumentNode(LibFFIType.ArrayType argType) {
             this.argType = argType;
         }
 
+        @Override
+        final boolean execute(NativeArgumentBuffer buffer, Object arg) {
+            NFIContext context = contextRef.get();
+            Object hostObject = null;
+            if (context.env.isHostObject(arg)) {
+                hostObject = context.env.asHostObject(arg);
+            }
+            return execute(buffer, arg, hostObject);
+        }
+
+        abstract boolean execute(NativeArgumentBuffer buffer, Object arg, Object hostObject);
+
         @Specialization(guards = "checkNull(isNull, arg)", limit = "1")
         @SuppressWarnings("unused")
-        protected boolean serializeNull(NativeArgumentBuffer buffer, TruffleObject arg,
+        protected boolean serializeNull(NativeArgumentBuffer buffer, TruffleObject arg, Object hostObject,
                         @Cached("createIsNull()") Node isNull) {
             argType.serialize(buffer, null);
             return true;
         }
 
-        @Specialization(guards = "isJavaObject(arrayType, object)", limit = "1")
-        protected boolean serializeArray1(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
-            argType.serialize(buffer, JavaInterop.asJavaObject(arrayType, object));
+        @Specialization(guards = "isInstanceOf(arrayType, hostObject)", limit = "1")
+        @SuppressWarnings("unused")
+        protected boolean serializeArray1(NativeArgumentBuffer buffer, TruffleObject object, Object hostObject,
+                        @Cached("argType.getArrayType(hostObject)") Class<?> arrayType) {
+            argType.serialize(buffer, arrayType.cast(hostObject));
             return true;
         }
 
-        @Specialization(guards = "isJavaObject(arrayType, object)", limit = "1")
-        protected boolean serializeArray2(NativeArgumentBuffer buffer, TruffleObject object, @Cached("argType.getArrayType(object)") Class<?> arrayType) {
-            argType.serialize(buffer, JavaInterop.asJavaObject(arrayType, object));
+        @Specialization(guards = "isInstanceOf(arrayType, hostObject)", limit = "1")
+        @SuppressWarnings("unused")
+        protected boolean serializeArray2(NativeArgumentBuffer buffer, TruffleObject object, Object hostObject,
+                        @Cached("argType.getArrayType(hostObject)") Class<?> arrayType) {
+            argType.serialize(buffer, arrayType.cast(hostObject));
             return true;
         }
 
         @Fallback
         @SuppressWarnings("unused")
-        protected boolean error(NativeArgumentBuffer buffer, Object object) {
+        protected boolean error(NativeArgumentBuffer buffer, Object object, Object hostObject) {
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.raise(new Object[]{object});
         }
 
-        protected static boolean isJavaObject(Class<?> arrayType, TruffleObject object) {
-            if (arrayType != null) {
-                return JavaInterop.isJavaObject(arrayType, object);
-            } else {
-                return false;
-            }
+        protected static boolean isInstanceOf(Class<?> arrayType, Object hostObject) {
+            return arrayType != null && arrayType.isInstance(hostObject);
         }
     }
 

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -248,9 +250,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) returnType, metaAccess, target);
         AllocatableValue returnLocation = returnKind == JavaKind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(valueKindFactory.getValueKind(returnKind.getStackKind()));
-        SubstrateCallingConvention callingConvention = new SubstrateCallingConvention(currentStackOffset, returnLocation, locations);
-        callingConvention.setArgumentStorageKinds(kinds);
-        return callingConvention;
+        return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, locations);
     }
 
     @Override

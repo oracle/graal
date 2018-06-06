@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -64,6 +66,21 @@ public class NodeSourcePosition extends BytecodePosition {
         return this;
     }
 
+    public ResolvedJavaMethod getRootMethod() {
+        NodeSourcePosition cur = this;
+        while (cur.getCaller() != null) {
+            cur = cur.getCaller();
+        }
+        return cur.getMethod();
+    }
+
+    public boolean verifyRootMethod(ResolvedJavaMethod root) {
+        JavaMethod currentRoot = getRootMethod();
+        assert root.equals(currentRoot) || root.getName().equals(currentRoot.getName()) && root.getSignature().toMethodDescriptor().equals(currentRoot.getSignature().toMethodDescriptor()) &&
+                        root.getDeclaringClass().getName().equals(currentRoot.getDeclaringClass().getName()) : root + " " + currentRoot;
+        return true;
+    }
+
     enum Marker {
         None,
         Placeholder,
@@ -107,11 +124,11 @@ public class NodeSourcePosition extends BytecodePosition {
     }
 
     public static NodeSourcePosition substitution(ResolvedJavaMethod method) {
-        return new NodeSourcePosition(null, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Substitution);
+        return substitution(null, method);
     }
 
-    public static NodeSourcePosition substitution(NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
-        return new NodeSourcePosition(caller, method, bci, Substitution);
+    public static NodeSourcePosition substitution(NodeSourcePosition caller, ResolvedJavaMethod method) {
+        return new NodeSourcePosition(caller, method, BytecodeFrame.INVALID_FRAMESTATE_BCI, Substitution);
     }
 
     public boolean isSubstitution() {
@@ -151,7 +168,7 @@ public class NodeSourcePosition extends BytecodePosition {
         return d;
     }
 
-    public SourceLanguagePosition getSourceLanauage() {
+    public SourceLanguagePosition getSourceLanguage() {
         return sourceLanguagePosition;
     }
 

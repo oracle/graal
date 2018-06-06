@@ -33,6 +33,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -40,16 +41,15 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObject {
+@SuppressWarnings("deprecation")
+final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
 
     private static final String CAUSE_CAPTION = "Caused by host exception: ";
 
@@ -58,6 +58,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
     PolyglotException api;
 
     final PolyglotContextImpl context;
+    final PolyglotEngineImpl engine;
     final Throwable exception;
     final List<TruffleStackTraceElement> guestFrames;
 
@@ -74,9 +75,21 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
     private final Value guestObject;
     private final String message;
 
+    // Exception coming from a language
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
-        super(languageContext.getImpl());
-        this.context = languageContext.context;
+        this(languageContext.getImpl(), languageContext.getEngine(), languageContext, original);
+    }
+
+    // Exception coming from an instrument
+    PolyglotExceptionImpl(PolyglotEngineImpl engine, Throwable original) {
+        this(engine.impl, engine, null, original);
+    }
+
+    private PolyglotExceptionImpl(AbstractPolyglotImpl impl, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Throwable original) {
+        super(impl);
+        Objects.requireNonNull(engine);
+        this.engine = engine;
+        this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
         this.guestFrames = TruffleStackTraceElement.getStackTrace(original);
 
@@ -89,12 +102,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.exit = truffleException.isExit();
             this.exitStatus = this.exit ? truffleException.getExitStatus() : 0;
 
-            Node location = truffleException.getLocation();
-            com.oracle.truffle.api.source.SourceSection section = null;
-            if (location != null) {
-                section = location.getEncapsulatingSourceSection();
-            }
+            com.oracle.truffle.api.source.SourceSection section = truffleException.getSourceLocation();
             if (section != null) {
+                Objects.requireNonNull(languageContext, "Source location can not be accepted without language context.");
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
                 PolyglotLanguageContext sourceContext = languageContext.context.findLanguageContext(language, truffleSource.getMimeType(), false);
@@ -108,9 +118,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             }
             Object exceptionObject = ((TruffleException) exception).getExceptionObject();
             if (exceptionObject != null) {
+                Objects.requireNonNull(languageContext, "Exception object can not be accepted without language context.");
                 this.guestObject = languageContext.toHostValue(exceptionObject);
             } else {
-                this.guestObject = languageContext.context.getHostContext().nullValue;
+                if (languageContext != null) {
+                    this.guestObject = languageContext.context.getHostContext().nullValue;
+                } else {
+                    this.guestObject = null;
+                }
             }
         } else {
             this.cancelled = false;
@@ -120,7 +135,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.exit = false;
             this.exitStatus = 0;
             this.sourceLocation = null;
-            this.guestObject = languageContext.context.getHostContext().nullValue;
+            if (languageContext != null) {
+                this.guestObject = languageContext.context.getHostContext().nullValue;
+            } else {
+                this.guestObject = null;
+            }
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();
@@ -131,6 +150,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
                 this.message = exception.getMessage();
             }
         }
+
+        // late materialization of host frames. only needed if polyglot exceptions cross the
+        // host boundary.
+        VMAccessor.LANGUAGE.materializeHostFrames(original);
     }
 
     @Override
@@ -236,7 +259,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     @Override
     public PolyglotEngineImpl getEngine() {
-        return context.getEngine();
+        return engine;
     }
 
     @Override
@@ -351,7 +374,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
         private static final String POLYGLOT_PACKAGE = Engine.class.getName().substring(0, Engine.class.getName().lastIndexOf('.') + 1);
         private static final String PROXY_PACKAGE = PolyglotProxy.class.getName();
-        private static final String JAVA_INTEROP_PACKAGE = JavaInterop.class.getName().substring(0, JavaInterop.class.getName().lastIndexOf('.') + 1);
+        private static final String JAVA_INTEROP_PACKAGE = com.oracle.truffle.api.interop.java.JavaInterop.class.getName().substring(0,
+                        com.oracle.truffle.api.interop.java.JavaInterop.class.getName().lastIndexOf('.') + 1);
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
                         JAVA_INTEROP_PACKAGE + "TruffleMap",
                         JAVA_INTEROP_PACKAGE + "TruffleList",
@@ -381,11 +405,16 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
                 cause = cause.getCause();
             }
-            if (cause.getStackTrace().length == 0) {
-                cause = impl.exception;
+            StackTraceElement[] hostStack;
+            if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
+                hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
+            } else if (cause.getStackTrace().length == 0) {
+                hostStack = impl.exception.getStackTrace();
+            } else {
+                hostStack = cause.getStackTrace();
             }
             this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
-            this.hostFrames = Arrays.asList(cause.getStackTrace()).listIterator();
+            this.hostFrames = Arrays.asList(hostStack).listIterator();
             // we always start in some host stack frame
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();
         }

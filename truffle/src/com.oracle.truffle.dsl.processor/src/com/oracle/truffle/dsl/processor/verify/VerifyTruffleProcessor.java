@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -47,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.dsl.processor.ExpectError;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes({"com.oracle.truffle.api.CompilerDirectives.TruffleBoundary", "com.oracle.truffle.api.nodes.Node.Child"})
 public class VerifyTruffleProcessor extends AbstractProcessor {
@@ -104,7 +107,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
             return false;
         }
 
-        TypeElement virtualFrameType = processingEnv.getElementUtils().getTypeElement("com.oracle.truffle.api.frame.VirtualFrame");
+        TypeElement virtualFrameType = ElementUtils.getTypeElement(processingEnv, "com.oracle.truffle.api.frame.VirtualFrame");
 
         for (Element element : roundEnv.getElementsAnnotatedWith(TruffleBoundary.class)) {
             scope = element;

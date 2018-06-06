@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,18 +24,15 @@
  */
 package com.oracle.objectfile;
 
+import java.io.CharConversionException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-import com.oracle.objectfile.io.AssemblyBuffer;
-import com.oracle.objectfile.io.InputDisassembler;
 import com.oracle.objectfile.io.OutputAssembler;
+import com.oracle.objectfile.io.Utf8;
 
 /**
  * Representation of a string section that complies to the usual format (plain list of \0-terminated
@@ -48,33 +47,33 @@ public class StringTable {
     private Map<String, Integer> stringToIndexMap = new HashMap<>();
     private int totalSize;
 
-    public StringTable(byte[] bytes) {
-        this(AssemblyBuffer.createInputDisassembler(ByteBuffer.wrap(bytes)), bytes.length);
-    }
-
-    public StringTable(InputDisassembler db, int size) {
-        read(db, size);
-    }
-
-    public void read(InputDisassembler db, int size) {
-        final int charsToRead = size;
-        int charsRead = 0; // also serves as string section index
-        // FIXME: this is wrong if suffix encoding is used
-        while (charsRead < charsToRead) {
-            final String s = db.readZeroTerminatedString();
-            if (stringMap.get(charsRead) != null) {
-                throw new IllegalStateException("offset cannot be re-used");
-            }
-            Integer index = Integer.valueOf(charsRead);
-            stringMap.put(index, s);
-            stringToIndexMap.put(s, index);
-            charsRead += s.length() + 1; // also count the trailing 0 char
-        }
-        totalSize = charsRead;
-    }
-
     public StringTable() {
-        // default constructor, nothing to do
+    }
+
+    public StringTable(byte[] bytes) {
+        this(ByteBuffer.wrap(bytes));
+    }
+
+    public StringTable(ByteBuffer buffer) {
+        read(buffer);
+    }
+
+    public void read(ByteBuffer buffer) {
+        try {
+            // FIXME: this is wrong if suffix encoding is used (?)
+            while (buffer.position() < buffer.limit()) {
+                final int index = buffer.position();
+                String s = Utf8.utf8ToString(true, buffer);
+                if (stringMap.containsKey(index)) {
+                    throw new IllegalStateException("offset cannot be re-used");
+                }
+                stringMap.put(index, s);
+                stringToIndexMap.put(s, index);
+            }
+            totalSize = buffer.position();
+        } catch (CharConversionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -82,14 +81,13 @@ public class StringTable {
      * during from-scratch construction of the string table only!
      */
     public long add(String s) {
-        // TODO improve this entire class: it would probably be better to operate on a blob
         Integer index = stringToIndexMap.get(s);
         if (index != null) {
             return index;
         }
         int newIndex = totalSize;
         stringMap.put(newIndex, s);
-        totalSize += s.length() + 1;
+        totalSize += Utf8.utf8Length(s) + 1 /* zero termination */;
         return newIndex;
     }
 
@@ -105,85 +103,23 @@ public class StringTable {
         return stringMap.get(indexFor(s));
     }
 
-    /**
-     * Retrieve a String from the table.
-     */
-    public String fromIndex(int index) {
-        Integer floorKey = stringMap.floorKey(index);
-        Map.Entry<Integer, String> ent = stringMap.floorEntry(index);
-        if (ent != null) {
-            assert index >= floorKey;
-            String toReturn = ent.getValue().substring(index - floorKey);
-            if (index != floorKey) {
-                // store it in the map for fast subsequent access
-                stringMap.put(index, toReturn);
-            }
-            return toReturn;
-        }
-        return null;
-        //@formatter:off
-//        if (str == null) {
-//            // Some of those references are into the middle of strings in the section (hack!).
-//            // For such indices, the preferred (non-hack!) strategy will obviously return null.
-//            // We resolve these by finding the closest index and returning a substring.
-//            // The result of this is then stored in the map.
-//            List<Integer> keys = sortedKeys();
-//            for (int i = 0; i < keys.size() - 1; ++i) {
-//                final long ki = keys.get(i);
-//                if (ki < index && index < keys.get(i + 1)) {
-//                    final String superString = stringMap.get(ki);
-//                    str = superString.substring((int) (index - ki));
-//                    stringMap.put(index, str);
-//                    return str;
-//                }
-//            }
-//            final long ki = keys.get(keys.size() - 1);
-//            final String lastString = stringMap.get(ki);
-//            if (ki < index && index - ki < lastString.length()) {
-//                str = lastString.substring((int) (index - ki));
-//                stringMap.put(index, str);
-//                return str;
-//            }
-//            // really, not found
-//            return null;
-//        } else {
-//            return str;
-//        }
-        //@formatter:on
-    }
-
-    private List<Integer> sortedKeys() {
-        List<Integer> keys = Arrays.asList(stringMap.keySet().toArray(INTEGER_ARRAY_SENTINEL));
-        Collections.sort(keys);
-        return keys;
-    }
-
-    private static final Integer[] INTEGER_ARRAY_SENTINEL = new Integer[0];
-
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("str\nindex   string\n==========================================================================\n");
-        for (Integer idx : sortedKeys()) {
+        for (Integer idx : stringMap.keySet()) {
             sb.append(String.format("%5d   %s\n", idx, stringMap.get(idx)));
         }
         return sb.toString();
     }
 
     public void write(OutputAssembler out) {
-        assert totalSize <= Integer.MAX_VALUE;
-        byte[] blob = new byte[totalSize];
-        int w = 0;
-        for (Integer index : sortedKeys()) {
-            assert index == w;
+        ByteBuffer blob = ByteBuffer.allocate(totalSize);
+        for (Integer index : stringMap.keySet()) {
+            assert blob.position() == index;
             String s = stringMap.get(index);
-            byte[] sb = s.getBytes();
-            assert sb.length == s.length();
-            System.arraycopy(sb, 0, blob, w, sb.length);
-            blob[w + sb.length] = 0;
-            w += sb.length + 1;
+            Utf8.substringToUtf8(blob, s, 0, s.length(), true);
         }
-        assert w == blob.length;
-        out.writeBlob(blob);
+        out.writeBlob(blob.array());
     }
 
 }

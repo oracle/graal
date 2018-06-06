@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -149,7 +151,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                     for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
                         final ZipEntry zipEntry = entry.nextElement();
                         String name = zipEntry.getName();
-                        if (name.endsWith(".class") && !name.equals("module-info.class")) {
+                        if (name.endsWith(".class") && !name.equals("module-info.class") && !name.startsWith("META-INF/versions/")) {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
                             if (isInNativeImage(className)) {
                                 /*

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,6 +43,7 @@ import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.GraphSpeculationLog;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
@@ -209,7 +212,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
             try {
                 preCodeInstallationTasks(tasks, compilationResult, predefinedInstalledCode);
                 CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
-                installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+                installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, GraphSpeculationLog.unwrap(speculationLog), isDefault);
                 assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode;
             } catch (Throwable t) {
                 failCodeInstallationTasks(tasks, t);

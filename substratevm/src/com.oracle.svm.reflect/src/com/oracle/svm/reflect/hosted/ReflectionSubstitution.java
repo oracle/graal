@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -80,8 +82,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         imageClassLoader = classLoader;
     }
 
+    private static <T> String getSimpleNameSafe(Class<T> clazz) {
+        return clazz.getName().substring(clazz.getName().lastIndexOf('.') + 1);
+    }
+
     private static String getProxyClassname(Member member) {
-        String className = member.getDeclaringClass().getSimpleName();
+        String className = getSimpleNameSafe(member.getDeclaringClass());
         String memberName;
         if (member instanceof Constructor) {
             memberName = className;

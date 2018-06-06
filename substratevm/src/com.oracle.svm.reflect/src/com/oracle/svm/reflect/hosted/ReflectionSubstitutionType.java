@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -173,7 +175,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         JavaConstant expected = graphKit.getConstantReflection().asJavaClass(expectedType);
         ValueNode expectedNode = graphKit.createConstant(expected, JavaKind.Object);
 
-        ValueNode exception = graphKit.createJavaCall(InvokeKind.Static, createFailedCast, expectedNode, actual);
+        ValueNode exception = graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, createFailedCast, expectedNode, actual);
         graphKit.append(new UnwindNode(exception));
     }
 
@@ -229,7 +231,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             }
         }
 
-        graphKit.createJavaCall(InvokeKind.Special, cons, ite, exception);
+        graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, exception);
 
         graphKit.append(new UnwindNode(ite));
     }
@@ -248,7 +250,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         JavaConstant msg = graphKit.getConstantReflection().forString(message);
         ValueNode msgNode = graphKit.createConstant(msg, JavaKind.Object);
         ValueNode cause = graphKit.createConstant(JavaConstant.NULL_POINTER, JavaKind.Object);
-        graphKit.createJavaCall(InvokeKind.Special, cons, ite, msgNode, cause);
+        graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, msgNode, cause);
 
         graphKit.append(new UnwindNode(ite));
     }
@@ -260,7 +262,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
         switch (to) {
             case Object:
-                // boxing is always possible
+                // boxing can be possible
                 return true;
             case Boolean:
             case Char:
@@ -434,9 +436,14 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                         graphKit.createReturn(null, JavaKind.Void);
                     }
                 } else {
-                    value = doImplicitCast(graphKit, kind, fieldKind, value);
-                    graphKit.append(new StoreFieldNode(receiver, targetField, value));
-                    graphKit.createReturn(null, JavaKind.Void);
+                    // kind == PrimitiveKind
+                    if (fieldKind == JavaKind.Object && !field.getType().equals(kind.toBoxedJavaClass())) {
+                        throwIllegalArgumentException(graphKit, "cannot write field of type " + targetField.getJavaKind() + " with Field." + method.getName());
+                    } else {
+                        value = doImplicitCast(graphKit, kind, fieldKind, value);
+                        graphKit.append(new StoreFieldNode(receiver, targetField, value));
+                        graphKit.createReturn(null, JavaKind.Void);
+                    }
                 }
 
             } else {

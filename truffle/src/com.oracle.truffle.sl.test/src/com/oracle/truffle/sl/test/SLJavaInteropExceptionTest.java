@@ -60,7 +60,6 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.sl.SLLanguage;
 
 public class SLJavaInteropExceptionTest {
@@ -75,7 +74,7 @@ public class SLJavaInteropExceptionTest {
                             "}";
             try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
                 context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-                Value test = context.lookup(SLLanguage.ID, "test");
+                Value test = context.getBindings(SLLanguage.ID).getMember("test");
                 test.execute(Validator.this);
             }
         }
@@ -96,7 +95,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
                 test.execute(new Validator());
                 fail("expected a PolyglotException but did not throw");
@@ -115,7 +114,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
                 test.execute(new Validator());
                 fail("expected a PolyglotException but did not throw");
@@ -127,8 +126,10 @@ public class SLJavaInteropExceptionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void assertNoJavaInteropStackFrames(PolyglotException ex) {
-        String javaInteropPackageName = JavaInterop.class.getName().substring(0, JavaInterop.class.getName().lastIndexOf('.') + 1);
+        String javaInteropPackageName = com.oracle.truffle.api.interop.java.JavaInterop.class.getName().substring(0,
+                        com.oracle.truffle.api.interop.java.JavaInterop.class.getName().lastIndexOf('.') + 1);
         assertFalse("expected no java interop stack trace elements", Arrays.stream(ex.getStackTrace()).anyMatch(ste -> ste.getClassName().startsWith(javaInteropPackageName)));
     }
 
@@ -144,7 +145,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
                 test.execute(new Validator());
                 fail("expected a PolyglotException but did not throw");
@@ -174,7 +175,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             test.execute(new Validator());
         }
     }

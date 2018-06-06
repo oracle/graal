@@ -3,12 +3,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -45,6 +47,7 @@ from urlparse import urljoin
 import mx_gate
 import mx_unittest
 import mx_benchmark
+import mx_sdk
 
 _suite = mx.suite('truffle')
 
@@ -65,11 +68,11 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 #mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)
 
-
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified'] + args)
-    checkLinks(os.sep.join([_suite.dir, 'javadoc']))
+    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm,com.oracle.truffle.api.metadata'] + args)
+    javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
+    checkLinks(javadoc_dir)
 
 def checkLinks(javadocDir):
     href = re.compile('(?<=href=").*?(?=")')
@@ -185,16 +188,36 @@ mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
 })
 
-def _unittest_config_participant_tck(config):
-    def create_filter(requiredResource):
-        def has_resource(jar):
-            with zipfile.ZipFile(jar, "r") as zf:
-                try:
-                    zf.getinfo(requiredResource)
-                except KeyError:
-                    return False
-                else:
+def _is_graalvm(jdk):
+    releaseFile = os.path.join(jdk.home, "release")
+    if exists(releaseFile):
+        with open(releaseFile) as f:
+            pattern = re.compile('^GRAALVM_VERSION=*')
+            for line in f.readlines():
+                if pattern.match(line):
                     return True
+    return False
+
+def _unittest_config_participant_tck(config):
+
+    def find_path_arg(vmArgs, prefix):
+        for index in reversed(range(len(vmArgs) - 1)):
+            if prefix in vmArgs[index]:
+                return index, vmArgs[index][len(prefix):]
+        return None, None
+
+    def create_filter(requiredResource):
+        def has_resource(dist):
+            if dist.isJARDistribution() and exists(dist.path):
+                with zipfile.ZipFile(dist.path, "r") as zf:
+                    try:
+                        zf.getinfo(requiredResource)
+                    except KeyError:
+                        return False
+                    else:
+                        return True
+            else:
+                return False
         return has_resource
 
     def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
@@ -206,7 +229,7 @@ def _unittest_config_participant_tck(config):
         seenSuites.add(suite.name)
         suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
         for dist in suite.dists:
-            if dist.isJARDistribution() and exists(dist.path) and predicate(dist.path):
+            if predicate(dist):
                 for distCpEntry in mx.classpath_entries(dist):
                     if hasattr(distCpEntry, "getJavaProperties"):
                         for key, value in dist.getJavaProperties().items():
@@ -223,16 +246,48 @@ def _unittest_config_participant_tck(config):
     suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
     languages = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
+    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_INSTRUMENTATION" == dist.name and exists(dist.path), languages, javaPropertiesToAdd, set())
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()
     if cpValue:
         for cpElement in cpValue.split(os.pathsep):
             cpBuilder[cpElement] = None
-    for langCpElement in languages:
-        cpBuilder[langCpElement] = None
     for providerCpElement in providers:
         cpBuilder[providerCpElement] = None
+
+    if _is_graalvm(mx.get_jdk()):
+        common = OrderedDict()
+        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_COMMON" == dist.name and exists(dist.path), common, javaPropertiesToAdd, set())
+        tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
+        tpBuilder = OrderedDict()
+        if tpValue:
+            for cpElement in tpValue.split(os.pathsep):
+                tpBuilder[cpElement] = None
+        for langCpElement in languages:
+            tpBuilder[langCpElement] = None
+        bpIndex, bpValue = find_path_arg(vmArgs, '-Xbootclasspath/a:')
+        bpBuilder = OrderedDict()
+        if bpValue:
+            for cpElement in bpValue.split(os.pathsep):
+                bpBuilder[cpElement] = None
+        for bootCpElement in common:
+            bpBuilder[bootCpElement] = None
+            cpBuilder.pop(bootCpElement, None)
+            tpBuilder.pop(bootCpElement, None)
+        tpValue = '-Dtruffle.class.path.append=' + os.pathsep.join((e for e in tpBuilder))
+        if tpIndex:
+            vmArgs[tpIndex] = tpValue
+        else:
+            vmArgs.append(tpValue)
+        bpValue = '-Xbootclasspath/a:' + os.pathsep.join((e for e in bpBuilder))
+        if bpIndex:
+            vmArgs[bpIndex] = bpValue
+        else:
+            vmArgs.append(bpValue)
+    else:
+        for langCpElement in languages:
+            cpBuilder[langCpElement] = None
     cpValue = os.pathsep.join((e for e in cpBuilder))
     if cpIndex:
         vmArgs[cpIndex] = cpValue
@@ -331,8 +386,9 @@ _debuggertestHelpSuffix = """
     TCK options:
 
       --tck-configuration                  configuration {default|debugger}
-          default                          executes TCK tests
+          compile                          executes TCK tests with immediate comilation
           debugger                         executes TCK tests with enabled debugalot instrument
+          default                          executes TCK tests
 """
 
 def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOptions=None, jvmOptions=None):
@@ -363,7 +419,7 @@ def _tck(args):
     """runs TCK tests"""
 
     parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_debuggertestHelpSuffix)
-    parser.add_argument("--tck-configuration", help="TCK configuration", choices=["default", "debugger"], default="default")
+    parser.add_argument("--tck-configuration", help="TCK configuration", choices=["compile", "debugger", "default"], default="default")
     parsed_args, args = parser.parse_known_args(args)
     tckConfiguration = parsed_args.tck_configuration
     index = len(args)
@@ -387,10 +443,16 @@ def _tck(args):
     elif tckConfiguration == "debugger":
         with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
             _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
+    elif tckConfiguration == "compile":
+        if not _is_graalvm(mx.get_jdk()):
+            mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
+        unittest(unitTestOptions + ["--"] + jvmOptions + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleCompilationExceptionsAreThrown=true"] + tests)
+
 
 mx.update_commands(_suite, {
-    'tck' : [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+    'tck': [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
 })
+
 
 def check_filename_length(args):
     """check that all file name lengths are short enough for eCryptfs"""
@@ -409,6 +471,127 @@ def check_filename_length(args):
             mx.log_error(x)
         mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
 
+COPYRIGHT_HEADER_GPL = """\
+/*
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+// Checkstyle: stop
+//@formatter:off
+{0}
+"""
+COPYRIGHT_HEADER_UPL = """\
+/*
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+// Checkstyle: stop
+//@formatter:off
+{0}
+"""
+PTRN_SUPPRESS_WARNINGS = re.compile("^@SuppressWarnings.*$", re.MULTILINE)
+PTRN_LOCALCTXT_CAST = re.compile(r"\(\([a-zA-Z_]*Context\)_localctx\)")
+PTRN_TOKEN_CAST = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)")
+
+def create_dsl_parser(args=None, out=None):
+    """create the DSL expression parser using antlr"""
+    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", COPYRIGHT_HEADER_GPL, args, out)
+
+def create_sl_parser(args=None, out=None):
+    """create the SimpleLanguage parser using antlr"""
+    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
+
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None):
+    """create the DSL expression parser using antlr"""
+    grammar_dir = mx.project(grammar_project).source_dirs()[0] + "/" + grammar_package.replace(".", "/") + "/"
+    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
+    for filename in [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]:
+        with open(filename, 'r') as content_file:
+            content = content_file.read()
+        # remove first line
+        content = "\n".join(content.split("\n")[1:])
+        # modify SuppressWarnings to remove useless entries
+        content = PTRN_SUPPRESS_WARNINGS.sub('@SuppressWarnings("all")', content)
+        # remove useless casts
+        content = PTRN_LOCALCTXT_CAST.sub('_localctx', content)
+        content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
+        # add copyright header
+        content = copyright_template.format(content)
+        with open(filename, 'w') as content_file:
+            content_file.write(content)
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='Truffle NFI',
+    short_name='tfl',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=[],
+    support_distributions=[
+        'truffle:TRUFFLE_GRAALVM_SUPPORT',
+        'truffle:TRUFFLE_NFI_NATIVE',
+    ]
+))
+
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],
+    'create-dsl-parser' : [create_dsl_parser, "create the DSL expression parser using antlr"],
+    'create-sl-parser' : [create_sl_parser, "create the SimpleLanguage parser using antlr"],
 })

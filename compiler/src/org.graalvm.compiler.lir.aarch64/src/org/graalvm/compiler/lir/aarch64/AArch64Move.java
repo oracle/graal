@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,9 +39,7 @@ import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
-import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -164,7 +164,12 @@ public class AArch64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register dst = asRegister(result);
-            masm.loadAddress(dst, (AArch64Address) crb.recordDataReferenceInCode(data), data.getAlignment());
+            if (crb.compilationResult.isImmutablePIC()) {
+                crb.recordDataReferenceInCode(data);
+                masm.addressOf(dst);
+            } else {
+                masm.loadAddress(dst, (AArch64Address) crb.recordDataReferenceInCode(data), data.getAlignment());
+            }
         }
     }
 
@@ -194,6 +199,7 @@ public class AArch64Move {
     public static class MembarOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
+        // For future use.
         @SuppressWarnings("unused") private final int barriers;
 
         public MembarOp(int barriers) {
@@ -202,14 +208,15 @@ public class AArch64Move {
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        // The odd-looking @SuppressWarnings("all") is here because of
+        // a compiler bug which warns that crb is unused, and also
+        // warns that @SuppressWarnings("unused") is unnecessary.
+        public void emitCode(@SuppressWarnings("all") CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             // As I understand it load acquire/store release have the same semantics as on IA64
             // and allow us to handle LoadStore, LoadLoad and StoreStore without an explicit
             // barrier.
             // But Graal support to figure out if a load/store is volatile is non-existant so for
-            // now
-            // just use
-            // memory barriers everywhere.
+            // now just use memory barriers everywhere.
             // if ((barrier & MemoryBarriers.STORE_LOAD) != 0) {
             masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
             // }
@@ -339,60 +346,6 @@ public class AArch64Move {
         }
     }
 
-    /**
-     * Compare and swap instruction. Does the following atomically: <code>
-     *  CAS(newVal, expected, address):
-     *    oldVal = *address
-     *    if oldVal == expected:
-     *        *address = newVal
-     *    return oldVal
-     * </code>
-     */
-    @Opcode("CAS")
-    public static class CompareAndSwapOp extends AArch64LIRInstruction {
-        public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
-
-        @Def protected AllocatableValue resultValue;
-        @Alive protected Value expectedValue;
-        @Alive protected AllocatableValue newValue;
-        @Alive protected AllocatableValue addressValue;
-        @Temp protected AllocatableValue scratchValue;
-
-        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
-            super(TYPE);
-            this.resultValue = result;
-            this.expectedValue = expectedValue;
-            this.newValue = newValue;
-            this.addressValue = addressValue;
-            this.scratchValue = scratch;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            AArch64Kind kind = (AArch64Kind) expectedValue.getPlatformKind();
-            assert kind.isInteger();
-            final int size = kind.getSizeInBytes() * Byte.SIZE;
-
-            Register address = asRegister(addressValue);
-            Register result = asRegister(resultValue);
-            Register newVal = asRegister(newValue);
-            Register scratch = asRegister(scratchValue);
-            // We could avoid using a scratch register here, by reusing resultValue for the stlxr
-            // success flag and issue a mov resultValue, expectedValue in case of success before
-            // returning.
-            Label retry = new Label();
-            Label fail = new Label();
-            masm.bind(retry);
-            masm.ldaxr(size, result, address);
-            AArch64Compare.gpCompare(masm, resultValue, expectedValue);
-            masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-            masm.stlxr(size, scratch, newVal, address);
-            // if scratch == 0 then write successful, else retry.
-            masm.cbnz(32, scratch, retry);
-            masm.bind(fail);
-        }
-    }
-
     private static void emitStore(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Kind kind, AArch64Address dst, Value src) {
         int destSize = kind.getSizeInBytes() * Byte.SIZE;
         if (kind.isInteger()) {
@@ -464,7 +417,7 @@ public class AArch64Move {
         }
     }
 
-    private static void reg2stack(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
+    static void reg2stack(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         AArch64Address dest = loadStackSlotAddress(crb, masm, asStackSlot(result), Value.ILLEGAL);
         Register src = asRegister(input);
         // use the slot kind to define the operand size
@@ -477,7 +430,7 @@ public class AArch64Move {
         }
     }
 
-    private static void stack2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
+    static void stack2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
         // use the slot kind to define the operand size
         final int size = kind.getSizeInBytes() * Byte.SIZE;
@@ -522,6 +475,12 @@ public class AArch64Move {
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat())) {
                     masm.fmov(32, dst, input.asFloat());
+                } else if (crb.compilationResult.isImmutablePIC()) {
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        masm.mov(scratch, Float.floatToRawIntBits(input.asFloat()));
+                        masm.fmov(32, dst, scratch);
+                    }
                 } else {
                     masm.fldr(32, dst, (AArch64Address) crb.asFloatConstRef(input));
                 }
@@ -529,6 +488,12 @@ public class AArch64Move {
             case Double:
                 if (AArch64MacroAssembler.isDoubleImmediate(input.asDouble())) {
                     masm.fmov(64, dst, input.asDouble());
+                } else if (crb.compilationResult.isImmutablePIC()) {
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        masm.mov(scratch, Double.doubleToRawLongBits(input.asDouble()));
+                        masm.fmov(64, dst, scratch);
+                    }
                 } else {
                     masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
                 }

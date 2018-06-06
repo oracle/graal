@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -164,6 +166,32 @@ public class DebugContextTest {
 
         String log = setup.logOutput.toString();
         Assert.assertEquals(expect, log);
+    }
+
+    @Test
+    public void testContextScope() {
+        OptionValues options = new OptionValues(EconomicMap.create());
+        options = new OptionValues(options, DebugOptions.Log, ":5");
+        DebugContextSetup setup = new DebugContextSetup();
+        try (DebugContext debug = setup.openDebugContext(options)) {
+            try (DebugContext.Scope s0 = debug.scope("TestLogging")) {
+                try (DebugContext.Scope s1 = debug.withContext("A")) {
+                    for (Object o : debug.context()) {
+                        Assert.assertEquals(o, "A");
+                    }
+                } catch (Throwable t) {
+                    throw debug.handle(t);
+                }
+                try (DebugContext.Scope s1 = debug.withContext("B")) {
+                    for (Object o : debug.context()) {
+                        Assert.assertEquals(o, "B");
+                    }
+                } catch (Throwable t) {
+                    throw debug.handle(t);
+                }
+            }
+        }
+
     }
 
     @Test

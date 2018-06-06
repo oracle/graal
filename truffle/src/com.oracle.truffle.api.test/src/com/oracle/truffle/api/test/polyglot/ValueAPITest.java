@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -66,7 +68,6 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -104,11 +105,12 @@ public class ValueAPITest {
                     "", 'a', "a", "foo",
     };
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testString() {
         for (Object string : STRINGS) {
             assertValue(context, context.asValue(string), STRING);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
+            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
         }
     }
 
@@ -121,11 +123,12 @@ public class ValueAPITest {
                     0d, 0.24d, -0d, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.MIN_NORMAL,
     };
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNumbers() {
         for (Object number : NUMBERS) {
             assertValue(context, context.asValue(number), NUMBER);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
+            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
         }
     }
 
@@ -133,11 +136,12 @@ public class ValueAPITest {
                     false, true,
     };
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testBooleans() {
         for (Object bool : BOOLEANS) {
             assertValue(context, context.asValue(bool), BOOLEAN);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
+            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
         }
     }
 
@@ -851,8 +855,7 @@ public class ValueAPITest {
                         "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String' using Value.asString(): Invalid coercion. You can ensure that the value can be converted using Value.isString().");
         assertFails(() -> noString.as(char.class), ClassCastException.class,
                         "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'char': Invalid or lossy primitive coercion.");
-        assertFails(() -> noString.as(String.class), ClassCastException.class,
-                        "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
+        assertEquals("false", noString.as(String.class));
 
         Value noBoolean = context.asValue("foobar");
 
@@ -934,8 +937,7 @@ public class ValueAPITest {
                         "Invalid array index 1 for array '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> v.removeArrayElement(0), UnsupportedOperationException.class,
                         "Unsupported operation Value.removeArrayElement(long, Object) for '[asdf]'(language: Java, type: java.lang.String[]).");
-        assertFails(() -> v.removeMember("a"), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFalse(v.removeMember("a"));
 
         List<Object> list = v.as(List.class);
         assertFails(() -> list.get(1), IndexOutOfBoundsException.class,
@@ -950,10 +952,11 @@ public class ValueAPITest {
                         "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> stringList.set(1, null), IndexOutOfBoundsException.class,
                         "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
-        assertFails(() -> ((List<Object>) stringList).set(0, 42), ClassCastException.class,
-                        "Invalid value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
-        assertFails(() -> ((List<Object>) stringList).set(0, context.asValue(42)), ClassCastException.class,
-                        "Invalid value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
+
+        ((List<Object>) stringList).set(0, 42);
+        assertEquals("42", stringList.get(0));
+        ((List<Object>) stringList).set(0, context.asValue(42));
+        assertEquals("42", stringList.get(0));
 
         // just to make sure this works
         ((List<Object>) stringList).set(0, context.asValue("foo"));
@@ -973,8 +976,7 @@ public class ValueAPITest {
         Value rv = context.asValue(new ArrayList<>(Arrays.asList(new String[]{"a", "b", "c"})));
         assertFails(() -> rv.removeArrayElement(3), IndexOutOfBoundsException.class,
                         "Invalid array index 3 for array '[a, b, c]'(language: Java, type: java.util.ArrayList).");
-        assertFails(() -> rv.removeMember("a"), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for '[a, b, c]'(language: Java, type: java.util.ArrayList).");
+        assertFalse(v.removeMember("a"));
     }
 
     private static final TypeLiteral<Map<String, String>> STRING_MAP = new TypeLiteral<Map<String, String>>() {
@@ -1022,10 +1024,9 @@ public class ValueAPITest {
         assertFails(() -> v.putMember("notAMember", ""), IllegalArgumentException.class,
                         "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
-        assertFails(() -> v.getMember("notAMember"), IllegalArgumentException.class,
-                        "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
-        assertFails(() -> v.removeMember("notAMember"), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+        assertNull(v.getMember("notAMember"));
+
+        assertFalse(v.removeMember("notAMember"));
 
         @SuppressWarnings("unchecked")
         Map<Object, Object> map = v.as(Map.class);
@@ -1040,9 +1041,7 @@ public class ValueAPITest {
                         "Illegal identifier type 'java.lang.Object' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         Map<String, String> stringMap = v.as(STRING_MAP);
-
-        assertFails(() -> stringMap.get("value"), ClassCastException.class,
-                        "Cannot convert '43'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
+        assertEquals("43", stringMap.get("value"));
 
         assertFails(() -> map.put("value", ""), ClassCastException.class,
                         "Invalid value ''(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'value'.");
@@ -1059,8 +1058,7 @@ public class ValueAPITest {
         Map<Object, Object> rmap = new HashMap<>();
         rmap.put("value", 43);
         Value rv = context.asValue(rmap);
-        assertFails(() -> rv.removeMember("notAMember"), IllegalArgumentException.class,
-                        "Invalid member key 'notAMember' for object '{value=43}'(language: Java, type: java.util.HashMap).");
+        assertFalse(rv.removeMember("notAMember"));
     }
 
     @FunctionalInterface
@@ -1123,35 +1121,33 @@ public class ValueAPITest {
         assertEquals("", v.execute("").as(Object.class));
         assertEquals("", v.execute("").asString());
 
+        String className = executable.getClass().getName();
         assertFails(() -> v.execute("", ""), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") " +
                                         "with arguments [''(language: Java, type: java.lang.String), ''(language: Java, type: java.lang.String)]. Expected 1 argument(s) but got 2.");
 
         assertFails(() -> v.execute(), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) with arguments []." +
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") with arguments []." +
                                         " Expected 1 argument(s) but got 0.");
 
-        assertFails(() -> v.execute(42), IllegalArgumentException.class,
-                        "Invalid argument when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
-                                        "with arguments ['42'(language: Java, type: java.lang.Integer)].");
+        assertTrue(v.execute(42).isString());
+        assertEquals("42", v.execute(42).asString());
 
         assertFails(() -> context.asValue("").execute(), UnsupportedOperationException.class,
                         "Unsupported operation Value.execute(Object...) for ''(language: Java, type: java.lang.String). You can ensure that the operation " +
                                         "is supported using Value.canExecute().");
 
         assertFails(() -> v.as(OtherInterface0.class).execute(), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") " +
                                         "with arguments []. Expected 1 argument(s) but got 0.");
 
         assertEquals("", v.as(OtherInterface1.class).execute(""));
 
-        assertFails(() -> v.as(OtherInterface1.class).execute(42), IllegalArgumentException.class,
-                        "Invalid argument when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
-                                        "with arguments ['42'(language: Java, type: java.lang.Integer)].");
+        assertEquals("42", v.as(OtherInterface1.class).execute(42));
 
         assertFails(() -> v.as(OtherInterface2.class).execute("", ""), IllegalArgumentException.class,
                         "Invalid argument count when executing 'testExecutable'(language: Java, " +
-                                        "type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) with arguments [''(language: Java, type: java.lang.String), " +
+                                        "type: " + className + ") with arguments [''(language: Java, type: java.lang.String), " +
                                         "''(language: Java, type: java.lang.String)]. Expected 1 argument(s) but got 2.");
 
         assertSame(executable, v.as(ExecutableInterface.class));
@@ -1177,6 +1173,36 @@ public class ValueAPITest {
                 throw f;
             }
         }
+    }
+
+    @Test
+    public void testList() {
+        List<String> list = new ArrayList<>();
+        list.add("foo");
+        list.add("bar");
+        Value v = context.asValue(list);
+
+        assertTrue(v.hasArrayElements());
+        assertTrue(v.hasMembers());
+        assertEquals("foo", v.getArrayElement(0).asString());
+        assertEquals("bar", v.getArrayElement(1).asString());
+
+        ValueAssert.assertFails(() -> v.getArrayElement(2), ArrayIndexOutOfBoundsException.class);
+        // append to the list
+        v.setArrayElement(2, "baz");
+        assertEquals("foo", v.getArrayElement(0).asString());
+        assertEquals("bar", v.getArrayElement(1).asString());
+        assertEquals("baz", v.getArrayElement(2).asString());
+
+        assertTrue(v.removeArrayElement(1));
+        assertEquals("foo", v.getArrayElement(0).asString());
+        assertEquals("baz", v.getArrayElement(1).asString());
+
+        assertTrue(v.removeArrayElement(0));
+        assertEquals("baz", v.getArrayElement(0).asString());
+
+        assertTrue(v.removeArrayElement(0));
+        assertTrue(v.getArraySize() == 0);
     }
 
 }

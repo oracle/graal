@@ -55,15 +55,24 @@ final class ToPrimitiveNode extends Node {
         return new ToPrimitiveNode();
     }
 
-    Object toPrimitive(Object value, Class<?> requestedType) {
-        Object attr;
+    Integer toInteger(Object value) {
+        assert isUnboxed(value);
+        return toInt(value);
+    }
+
+    Object unbox(Object value) {
         if (value instanceof JavaObject) {
-            attr = ((JavaObject) value).obj;
+            return ((JavaObject) value).obj;
         } else if (value instanceof TruffleObject) {
-            attr = unbox((TruffleObject) value);
+            return unbox((TruffleObject) value);
         } else {
-            attr = value;
+            return value;
         }
+    }
+
+    Object toPrimitive(Object value, Class<?> requestedType) {
+        assert isUnboxed(value);
+        Object attr = value;
 
         if (requestedType == boolean.class || requestedType == Boolean.class) {
             if (attr instanceof Boolean) {
@@ -146,7 +155,7 @@ final class ToPrimitiveNode extends Node {
         return null;
     }
 
-    private static Object toShort(Object value) {
+    private static Short toShort(Object value) {
         if (value instanceof Short) {
             Short s = (Short) value;
             return s;
@@ -181,7 +190,7 @@ final class ToPrimitiveNode extends Node {
         return null;
     }
 
-    private static Object toInt(Object value) {
+    private static Integer toInt(Object value) {
         if (value instanceof Integer) {
             Integer i = (Integer) value;
             return i;
@@ -397,4 +406,7 @@ final class ToPrimitiveNode extends Node {
         return ForeignAccess.sendIsBoxed(isBoxedNode, foreignObject);
     }
 
+    private boolean isUnboxed(Object value) {
+        return !(value instanceof JavaObject) && !(value instanceof TruffleObject && isBoxed((TruffleObject) value));
+    }
 }

@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.source.SourceSection;

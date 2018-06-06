@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,8 +24,8 @@
  */
 package com.oracle.svm.core;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
@@ -38,8 +40,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.hub.ClassSynchronizationSupport;
-import com.oracle.svm.core.hub.ClassSynchronizationSupport.ClassSynchronizationTarget;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -48,31 +48,41 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Implementation of synchronized-related operations.
- *
- * Current implementation until GR-6980 is implemented: Most non-array objects used in
- * synchronization operations have a dedicated memory in the object to store a {@link ReentrantLock}
- * and a {@link Condition}. The static analysis finds out which classes are used for synchronization
- * (and need a monitor), and which classes are used in wait/notify (and need a condition).
- *
- * There are a few exceptions: {@link String} and {@link DynamicHub} never have monitor fields
- * because we want instances in the image heap to be immutable. Arrays never have monitor fields
- * because it would increase the size of every array and it is not possible to distinguish between
- * arrays with different header sizes.
- *
- * Synchronization on {@link DynamicHub} (= {@link java.lang.Class}) is really disallowed. We
- * support "static synchronized" methods by replacing the {@link Class} with a
- * {@link ClassSynchronizationTarget}, see documentation in {@link ClassSynchronizationSupport}. If
- * someone synchronizes manually on a {@link Class}, an error is raised in {@link #filterClass}.
- *
+ * <p>
+ * Most objects used in synchronization operations have a dedicated memory in the object to store a
+ * {@link ReentrantLock}. The static analysis finds out which classes are used for synchronization
+ * (and thus need a monitor) and assigns a monitor offset to point to the slot for the monitor. The
+ * monitor is implemented with a {@link ReentrantLock}.
+ * <p>
+ * There are a few exceptions: {@link String} and {@link DynamicHub} objects never have monitor
+ * fields because we want instances in the image heap to be immutable. Arrays never have monitor
+ * fields because it would increase the size of every array and it is not possible to distinguish
+ * between arrays with different header sizes. See
+ * UniverseBuilder.canHaveMonitorFields(AnalysisType) for details.
+ * <p>
  * Synchronization on {@link String}, arrays, and other types not detected by the static analysis
- * (like synchronization via JNI) fall back to a monitor stored in a {@link MonitorSupport
- * concurrent map}. This is a memory leak: The key of the map is a strong reference, so the GC will
- * see it as alive forever. But it is better than disallowing synchronization until GR-6980 is done.
+ * (like synchronization via JNI) fall back to a monitor stored in {@link #additionalMonitors}.
+ * <p>
+ * Because so few objects are receivers of {@link #wait()} and {@link #notify()} calls[citation
+ * needed], condition variables for those objects are kept in {@link #additionalConditions}.
  */
 public class MonitorSupport {
 
-    final ConcurrentMap<Object, ReentrantLock> additionalMonitors = new ConcurrentHashMap<>();
-    final ConcurrentMap<Object, Condition> additionalConditions = new ConcurrentHashMap<>();
+    /**
+     * Secondary storage for monitor slots.
+     *
+     * Synchronized to prevent concurrent access and modification.
+     */
+    private final Map<Object, ReentrantLock> additionalMonitors = new WeakHashMap<>();
+    private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
+
+    /**
+     * Secondary storage for condition variable slots.
+     *
+     * Synchronized to prevent concurrent access and modification.
+     */
+    private final Map<Object, Condition> additionalConditions = new WeakHashMap<>();
+    private final ReentrantLock additionalConditionsLock = new ReentrantLock();
 
     /**
      * Implements the monitorenter bytecode. The null check for the parameter must have already been
@@ -90,7 +100,6 @@ public class MonitorSupport {
 
         try {
             ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true).lock();
-
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -123,7 +132,6 @@ public class MonitorSupport {
 
         try {
             ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true).unlock();
-
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -253,94 +261,66 @@ public class MonitorSupport {
     }
 
     /* Method is public so that white-box test cases can use it. */
-    public ReentrantLock getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
-        DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
-        int monitorOffset = hub.getMonitorOffset();
-
+    private ReentrantLock getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
+        final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
+        final int monitorOffset = hub.getMonitorOffset();
         if (monitorOffset != 0) {
             /* The common case: memory for the monitor reserved in the object. */
-            ReentrantLock existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
+            final ReentrantLock existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
             if (existingMonitor != null || !createIfNotExisting) {
                 return existingMonitor;
             }
-
-            /* Atomically put a new lock in place instead of the null at the monitorOffset. */
-            ReentrantLock newMonitor = new ReentrantLock();
+            /* Atomically put a new lock in place of the null at the monitorOffset. */
+            final ReentrantLock newMonitor = new ReentrantLock();
             if (UnsafeAccess.UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
                 return newMonitor;
             }
             /* We lost the race, use the lock some other thread installed. */
             return KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
-
         } else {
-            filterClass(obj);
-
-            /* No memory reserved for the lock in the object, fall back to our secondary storage. */
-            ReentrantLock existingMonitor = additionalMonitors.get(obj);
-            if (existingMonitor != null || !createIfNotExisting) {
-                return existingMonitor;
+            /* No memory reserved for a lock in the object, fall back to our secondary storage. */
+            /*
+             * Lock the monitor map and maybe add a monitor for this object. This serialization
+             * might be a scalability problem.
+             */
+            additionalMonitorsLock.lock();
+            try {
+                final ReentrantLock existingEntry = additionalMonitors.get(obj);
+                if (existingEntry != null || !createIfNotExisting) {
+                    return existingEntry;
+                }
+                final ReentrantLock newEntry = new ReentrantLock();
+                final ReentrantLock previousEntry = additionalMonitors.put(obj, newEntry);
+                VMError.guarantee(previousEntry == null, "MonitorSupport.getOrCreateMonitor: Replaced monitor");
+                return newEntry;
+            } finally {
+                additionalMonitorsLock.unlock();
             }
-
-            /* Atomically put a new lock into the secondary storage. */
-            ReentrantLock newMonitor = new ReentrantLock();
-            existingMonitor = additionalMonitors.putIfAbsent(obj, newMonitor);
-            if (existingMonitor == null) {
-                return newMonitor;
-            }
-            /* We lost the race, use the lock some other thread installed. */
-            return existingMonitor;
         }
+    }
+
+    public ReentrantLock getMonitorForTesting(Object obj) {
+        return getOrCreateMonitor(obj, false);
     }
 
     private Condition getOrCreateCondition(Object obj, ReentrantLock lock, boolean createIfNotExisting) {
-        DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
-        int conditionOffset = hub.getWaitNotifyOffset();
-
-        if (conditionOffset != 0) {
-            /* The common case: memory for the condition reserved in the object. */
-
-            Condition existingCondition = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, conditionOffset), Condition.class);
-            if (existingCondition != null || !createIfNotExisting) {
-                return existingCondition;
+        /* No memory reserved for a condition in the object, use secondary storage. */
+        /*
+         * Lock the condition map and maybe add a condition for this object. This serialization
+         * might be a scalability problem.
+         */
+        additionalConditionsLock.lock();
+        try {
+            final Condition existingEntry = additionalConditions.get(obj);
+            if (existingEntry != null || !createIfNotExisting) {
+                return existingEntry;
             }
-
-            /*
-             * Atomically put a new condition in place instead of the null at the conditionOffset.
-             */
-            Condition newCondition = lock.newCondition();
-            if (UnsafeAccess.UNSAFE.compareAndSwapObject(obj, conditionOffset, null, newCondition)) {
-                return newCondition;
-            }
-            /* We lost the race, use the condition some other thread installed. */
-            return KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, conditionOffset), Condition.class);
-
-        } else {
-            filterClass(obj);
-
-            /*
-             * No memory reserved for the condition in the object, fall back to our secondary
-             * storage.
-             */
-            Condition existingCondition = additionalConditions.get(obj);
-            if (existingCondition != null || !createIfNotExisting) {
-                return existingCondition;
-            }
-
-            /* Atomically put a new condition into the secondary storage. */
-            Condition newCondition = lock.newCondition();
-            existingCondition = additionalConditions.putIfAbsent(obj, newCondition);
-            if (existingCondition == null) {
-                return newCondition;
-            }
-            /* We lost the race, use the condition some other thread installed. */
-            return existingCondition;
-        }
-    }
-
-    private static void filterClass(Object obj) {
-        if (obj instanceof Class) {
-            throw VMError.unsupportedFeature(
-                            "Manual synchronization, wait, and notify on java.lang.Class is not yet supported on Substrate VM. However, 'static synchronized' methods are supported.");
+            final Condition newEntry = lock.newCondition();
+            final Condition previousEntry = additionalConditions.put(obj, newEntry);
+            VMError.guarantee(previousEntry == null, "MonitorSupport.getOrCreateCondition: Replaced condition");
+            return newEntry;
+        } finally {
+            additionalConditionsLock.unlock();
         }
     }
 }

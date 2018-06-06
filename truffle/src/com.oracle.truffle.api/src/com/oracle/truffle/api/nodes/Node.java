@@ -83,6 +83,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     protected Node() {
         CompilerAsserts.neverPartOfCompilation("do not create a Node from compiled code");
         assert NodeClass.get(getClass()) != null; // ensure NodeClass constructor does not throw
@@ -229,6 +230,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         NodeUtil.adoptChildrenHelper(this);
     }
 
+    @SuppressWarnings("deprecation")
     final void adoptHelper(final Node newChild) {
         assert newChild != null;
         if (newChild == this) {
@@ -247,6 +249,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         return 1 + NodeUtil.adoptChildrenAndCountHelper(this);
     }
 
+    @SuppressWarnings("deprecation")
     int adoptAndCountHelper(Node newChild) {
         assert newChild != null;
         if (newChild == this) {
@@ -378,6 +381,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         return NodeUtil.isReplacementSafe(getParent(), this, newNode);
     }
 
+    @SuppressWarnings("deprecation")
     private void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
         Node node = this;
         while (node != null) {
@@ -496,6 +500,20 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     * Notifies the runtime that this node specialized to a polymorphic state. This includes
+     * specializations that increase "level" of polymorphism (e.g. Adding another element to an
+     * existing inline cache). The runtime can use this information to, if
+     * {@link RootNode#isCloningAllowed() allowed}, create a deep copy of the {@link RootNode}
+     * hosting this node and gather context sensitive profiling feedback.
+     *
+     * @since 0.33
+     */
+    protected final void reportPolymorphicSpecialize() {
+        CompilerAsserts.neverPartOfCompilation();
+        Node.ACCESSOR.nodes().reportPolymorphicSpecialize(this);
+    }
+
+    /**
      * Converts this node to a textual representation useful for debugging.
      *
      * @since 0.8 or earlier
@@ -577,7 +595,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * @since 0.12
      * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
-     * @deprecated in 0.32 implement InstrumentableNode#hasTag instead.
+     * @deprecated in 0.33 implement InstrumentableNode#hasTag instead.
      */
     @Deprecated
     protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
@@ -798,11 +816,6 @@ class NodeSnippets {
         class MyLanguage extends TruffleLanguage<Object> {
             @Override
             protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-                return null;
-            }
-
-            @Override
-            protected Object getLanguageGlobal(Object context) {
                 return null;
             }
 

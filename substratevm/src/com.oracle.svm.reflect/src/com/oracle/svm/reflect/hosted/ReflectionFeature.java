@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,16 +24,14 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import static com.oracle.svm.reflect.hosted.ReflectionFeature.Options.ReflectionConfigurationFiles;
-import static com.oracle.svm.reflect.hosted.ReflectionFeature.Options.ReflectionConfigurationResources;
-
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
-import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -45,10 +45,10 @@ public final class ReflectionFeature implements Feature {
         @Option(help = "Enable support for reflection at run time")//
         public static final HostedOptionKey<Boolean> ReflectionEnabled = new HostedOptionKey<>(true);
 
-        @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt")//
+        @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
         public static final HostedOptionKey<String> ReflectionConfigurationFiles = new HostedOptionKey<>("");
 
-        @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).")//
+        @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).", type = OptionType.User)//
         public static final HostedOptionKey<String> ReflectionConfigurationResources = new HostedOptionKey<>("");
     }
 
@@ -91,7 +91,7 @@ public final class ReflectionFeature implements Feature {
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
         ReflectionConfigurationParser parser = new ReflectionConfigurationParser(reflectionData, access.getImageClassLoader());
-        parser.parseAndRegisterConfigurations("reflection", ReflectionConfigurationFiles, ReflectionConfigurationResources);
+        parser.parseAndRegisterConfigurations("reflection", Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources);
     }
 
     @Override

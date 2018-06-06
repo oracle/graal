@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -67,7 +69,8 @@ public class WrappedConstantPool implements ConstantPool {
 
     @Override
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        return universe.lookupAllowUnresolved(wrapped.lookupField(cpi, method, opcode));
+        ResolvedJavaMethod substMethod = universe.resolveSubstitution(((WrappedJavaMethod) method).getWrapped());
+        return universe.lookupAllowUnresolved(wrapped.lookupField(cpi, substMethod, opcode));
     }
 
     @Override
@@ -137,7 +140,12 @@ public class WrappedConstantPool implements ConstantPool {
     public Object lookupConstant(int cpi) {
         Object con = wrapped.lookupConstant(cpi);
         if (con instanceof JavaType) {
-            return universe.lookup((ResolvedJavaType) con);
+            if (con instanceof ResolvedJavaType) {
+                return universe.lookup((ResolvedJavaType) con);
+            } else {
+                /* The caller takes care of unresolved types. */
+                return con;
+            }
         } else if (con instanceof JavaConstant) {
             return universe.lookup((JavaConstant) con);
         } else {

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,8 +27,6 @@ package com.oracle.svm.core.config;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.os.OSInterface;
-
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -38,11 +38,6 @@ public final class ConfigurationValues {
     @Fold
     public static TargetDescription getTarget() {
         return ImageSingletons.lookup(TargetDescription.class);
-    }
-
-    @Fold
-    public static OSInterface getOSInterface() {
-        return ImageSingletons.lookup(OSInterface.class);
     }
 
     @Fold

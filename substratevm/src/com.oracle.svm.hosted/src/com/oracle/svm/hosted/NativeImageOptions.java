@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,10 +31,12 @@ import java.util.Arrays;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -41,16 +45,18 @@ public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
-    @Option(help = "Class containing the default entry point method. Ignored if kind != EXECUTABLE")//
+    @Option(help = "Class containing the default entry point method. Ignored if kind != EXECUTABLE", type = OptionType.User)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
 
     @Option(help = "Name of the main entry point method. Ignored if kind != EXECUTABLE")//
     public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
 
-    @Option(help = "Name of the output file to be generated")//
+    @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
 
-    @Option(help = "Generate a SHARED_LIBRARY or EXECUTABLE image")//
+    @APIOption(name = "shared", fixedValue = {"SHARED_LIBRARY"}, customHelp = "build shared library")//
+    @APIOption(name = "static", fixedValue = {"STATIC_EXECUTABLE"}, customHelp = "build statically linked executable (requires static libc and zlib)")//
+    @Option(help = "Generate a SHARED_LIBRARY, EXECUTABLE or STATIC_EXECUTABLE image")//
     public static final HostedOptionKey<String> Kind = new HostedOptionKey<>(AbstractBootImage.NativeImageKind.EXECUTABLE.name());
 
     @Option(help = "Comma separated list of CPU features that will be used for image generation on the AMD64 platform. " +
@@ -102,7 +108,8 @@ public class NativeImageOptions {
     @Option(help = "Suppress console normal output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStdout = new HostedOptionKey<>(false);
 
-    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building")//
+    @APIOption(name = "report-unsupported-elements-at-runtime")//
+    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<Boolean>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
@@ -113,11 +120,20 @@ public class NativeImageOptions {
     @Option(help = "Report the original exception cause for unsupported features.")//
     public static final HostedOptionKey<Boolean> ReportUnsupportedFeaturesCause = new HostedOptionKey<>(false);
 
+    /**
+     * Enum with all C standards.
+     *
+     * When changing this enum, please change the CStandard option help message and keep the
+     * standards in the chronological orders.
+     */
     public enum CStandards {
-        /* When changing this enum, please change the CStandard option help message. */
         C89,
         C99,
-        C11
+        C11;
+
+        public boolean compatibleWith(CStandards standard) {
+            return this.compareTo(standard) >= 0;
+        }
     }
 
     @Option(help = "C standard to use in header files. Possible values are: [C89, C99, C11]", type = User)//
@@ -158,9 +174,6 @@ public class NativeImageOptions {
 
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
-
-    @Option(help = "Automatically enable TruffleFeature when Truffle API is on bootstrap class path.)")//
-    public static final HostedOptionKey<Boolean> TruffleFeature = new HostedOptionKey<>(true);
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);

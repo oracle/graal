@@ -44,8 +44,11 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -131,6 +134,12 @@ public final class TypeHandler {
         @Override
         public ExecutionEventNode create(final EventContext context) {
             return new ExecutionEventNode() {
+
+                @Child private Node keysNode = Message.KEYS.createNode();
+                @Child private Node readNode = Message.READ.createNode();
+                @Child private Node readKeyNode = Message.READ.createNode();
+                @Child private Node getSizeNode = Message.GET_SIZE.createNode();
+
                 @Override
                 protected void onEnter(VirtualFrame frame) {
                     super.onEnter(frame);
@@ -146,31 +155,35 @@ public final class TypeHandler {
                     final SourceSection section = context.getInstrumentedSourceSection();
                     processReturnValue(result, rootNode, section);
                 }
-            };
-        }
 
-        @CompilerDirectives.TruffleBoundary
-        private void processArguments(final MaterializedFrame frame, final Node node, final SourceSection section) {
-            final Iterator<Scope> scopes = env.findLocalScopes(node, frame).iterator();
-            if (!scopes.hasNext()) {
-                return;
-            }
-            final Scope functionScope = scopes.next();
-            final Object argsObject = functionScope.getArguments();
-            if (argsObject instanceof TruffleObject) {
-                final LanguageInfo language = node.getRootNode().getLanguageInfo();
-                final Map<?, ?> arguments = JavaInterop.asJavaObject(Map.class, (TruffleObject) argsObject);
-                arguments.entrySet().forEach(entry -> {
-                    Object argument = entry.getValue();
-                    if (argument != null) {
-                        final String retType = env.toString(language, env.findMetaObject(language, argument));
-                        SourceSection argSection = getArgSection(section, entry.getKey());
-                        if (argSection != null) {
-                            profileMap.computeIfAbsent(argSection, s -> new SectionTypeProfile(s)).types.add(retType);
+                @CompilerDirectives.TruffleBoundary
+                private void processArguments(final MaterializedFrame frame, final Node node, final SourceSection section) {
+                    final Iterator<Scope> scopes = env.findLocalScopes(node, frame).iterator();
+                    if (!scopes.hasNext()) {
+                        return;
+                    }
+                    final Scope functionScope = scopes.next();
+                    final Object argsObject = functionScope.getArguments();
+                    if (argsObject instanceof TruffleObject) {
+                        final LanguageInfo language = node.getRootNode().getLanguageInfo();
+                        try {
+                            TruffleObject keys = ForeignAccess.sendKeys(keysNode, (TruffleObject) argsObject);
+                            int size = ((Number) ForeignAccess.sendGetSize(getSizeNode, keys)).intValue();
+                            for (int i = 0; i < size; i++) {
+                                Object key = ForeignAccess.sendRead(readKeyNode, keys, i);
+                                Object argument = ForeignAccess.sendRead(readNode, (TruffleObject) argsObject, key);
+                                final String retType = env.toString(language, env.findMetaObject(language, argument));
+                                SourceSection argSection = getArgSection(section, key);
+                                if (argSection != null) {
+                                    profileMap.computeIfAbsent(argSection, s -> new SectionTypeProfile(s)).types.add(retType);
+                                }
+                            }
+                        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                            throw new AssertionError(e);
                         }
                     }
-                });
-            }
+                }
+            };
         }
 
         @CompilerDirectives.TruffleBoundary

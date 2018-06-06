@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -39,9 +41,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
@@ -136,7 +138,17 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
 
         for (Class<?> clazz : allClasses) {
-            DynamicHub hub = access.getHostVM().dynamicHub(access.getMetaAccess().lookupJavaType(clazz));
+            AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
+            DynamicHub hub = access.getHostVM().dynamicHub(type);
+
+            if (type.isArray()) {
+                /*
+                 * Array types allocated reflectively need to be registered as instantiated.
+                 * Otherwise the isInstantiated check in AllocationSnippets.checkDynamicHub() will
+                 * fail at runtime when the array is *only* allocated through Array.newInstance().
+                 */
+                type.registerAsInHeap();
+            }
 
             if (reflectionClasses.contains(clazz)) {
                 ClassForNameSupport.registerClass(clazz);
@@ -184,6 +196,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor)) {
                 /* Ensure the annotations data structures are initialized. */
                 constructor.getDeclaredAnnotations();
+                constructor.getGenericParameterTypes();
+                constructor.getGenericExceptionTypes();
                 return constructor;
             }
         }
@@ -202,6 +216,17 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                             ". This is a known transient error and most likely does not cause any problems, unless your code relies on the enclosing method of exactly this class. If you can reliably reproduce this problem, please send us a test case.");
             // Checkstyle: resume
             return null;
+        }
+
+        if (enclosingMethod != null) {
+            enclosingMethod.getDeclaredAnnotations();
+            enclosingMethod.getGenericParameterTypes();
+            enclosingMethod.getGenericExceptionTypes();
+            enclosingMethod.getGenericReturnType();
+        } else if (enclosingConstructor != null) {
+            enclosingConstructor.getDeclaredAnnotations();
+            enclosingConstructor.getGenericParameterTypes();
+            enclosingConstructor.getGenericExceptionTypes();
         }
 
         if (enclosingMethod == null && enclosingConstructor == null) {
@@ -223,6 +248,20 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         List<Object> result = new ArrayList<>();
         for (Object element : (Object[]) elements) {
             if (filter.contains(element)) {
+                /* Ensure the generic info data structures are initialized. */
+                if (element instanceof Method) {
+                    Method method = (Method) element;
+                    method.getGenericReturnType();
+                }
+                if (element instanceof Executable) {
+                    Executable method = (Executable) element;
+                    method.getGenericParameterTypes();
+                    method.getGenericExceptionTypes();
+                }
+                if (element instanceof Field) {
+                    Field field = (Field) element;
+                    field.getGenericType();
+                }
                 if (element instanceof AccessibleObject) {
                     /* Ensure the annotations data structures are initialized. */
                     ((AccessibleObject) element).getDeclaredAnnotations();

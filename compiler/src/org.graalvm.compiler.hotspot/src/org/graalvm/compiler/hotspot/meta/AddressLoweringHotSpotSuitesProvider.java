@@ -5,7 +5,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -29,7 +31,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -41,10 +43,10 @@ import org.graalvm.compiler.phases.tiers.SuitesCreator;
  */
 public class AddressLoweringHotSpotSuitesProvider extends HotSpotSuitesProvider {
 
-    private final AddressLoweringPhase.AddressLowering addressLowering;
+    private final Phase addressLowering;
 
     public AddressLoweringHotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime,
-                    AddressLoweringPhase.AddressLowering addressLowering) {
+                    Phase addressLowering) {
         super(defaultSuitesCreator, config, runtime);
         this.addressLowering = addressLowering;
     }
@@ -57,7 +59,7 @@ public class AddressLoweringHotSpotSuitesProvider extends HotSpotSuitesProvider 
         if (findPhase == null) {
             findPhase = suites.getLowTier().findPhase(ExpandLogicPhase.class);
         }
-        findPhase.add(new AddressLoweringPhase(addressLowering));
+        findPhase.add(addressLowering);
 
         return suites;
     }

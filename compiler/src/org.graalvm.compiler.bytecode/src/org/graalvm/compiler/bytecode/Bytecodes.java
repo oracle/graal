@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -836,5 +838,28 @@ public class Bytecodes {
         Bytecodes.flagsArray[opcode] = flags;
 
         assert !isConditionalBranch(opcode) || isBranch(opcode) : "a conditional branch must also be a branch";
+    }
+
+    public static boolean isIfBytecode(int bytecode) {
+        switch (bytecode) {
+            case IFEQ:
+            case IFNE:
+            case IFLT:
+            case IFGE:
+            case IFGT:
+            case IFLE:
+            case IF_ICMPEQ:
+            case IF_ICMPNE:
+            case IF_ICMPLT:
+            case IF_ICMPGE:
+            case IF_ICMPGT:
+            case IF_ICMPLE:
+            case IF_ACMPEQ:
+            case IF_ACMPNE:
+            case IFNULL:
+            case IFNONNULL:
+                return true;
+        }
+        return false;
     }
 }

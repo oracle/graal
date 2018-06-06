@@ -29,10 +29,12 @@ package org.graalvm.word;
 /**
  * Marker interface for location identities. A different location identity of two memory accesses
  * guarantees that the two accesses do not interfere.
- *
+ * <p>
  * Clients of {@link LocationIdentity} must use {@link #equals(Object)}, not {@code ==}, when
  * comparing two {@link LocationIdentity} values for equality. Likewise, they must not use
  * {@link java.util.IdentityHashMap}s with {@link LocationIdentity} values as keys.
+ *
+ * @since 1.0
  */
 public abstract class LocationIdentity {
 
@@ -60,13 +62,39 @@ public abstract class LocationIdentity {
         }
     }
 
+    /**
+     * Creates a new location identity. Subclasses are responsible to provide proper implementations
+     * of {@link #equals} and {@link #hashCode}.
+     *
+     * @since 1.0
+     */
+    protected LocationIdentity() {
+    }
+
+    /**
+     * Indicates that the given location is the union of all possible mutable locations. A write to
+     * such a location kill all reads from mutable locations and a read from this location is killed
+     * by any write (except for initialization writes).
+     *
+     * @since 1.0
+     */
     public static final LocationIdentity ANY_LOCATION = new AnyLocationIdentity();
+
+    /**
+     * Location only allowed to be used for writes. Indicates that a completely new memory location
+     * is written. Kills no read. The previous value at the given location must be either
+     * uninitialized or null. Writes to this location do not need a GC pre-barrier.
+     *
+     * @since 1.0
+     */
     public static final LocationIdentity INIT_LOCATION = new InitLocationIdentity();
 
     /**
      * Indicates that the given location is the union of all possible mutable locations. A write to
      * such a location kill all reads from mutable locations and a read from this location is killed
      * by any write (except for initialization writes).
+     *
+     * @since 1.0
      */
     public static LocationIdentity any() {
         return ANY_LOCATION;
@@ -76,6 +104,8 @@ public abstract class LocationIdentity {
      * Location only allowed to be used for writes. Indicates that a completely new memory location
      * is written. Kills no read. The previous value at the given location must be either
      * uninitialized or null. Writes to this location do not need a GC pre-barrier.
+     *
+     * @since 1.0
      */
     public static LocationIdentity init() {
         return INIT_LOCATION;
@@ -84,25 +114,53 @@ public abstract class LocationIdentity {
     /**
      * Denotes a location is unchanging in all cases. Not that this is different than the Java
      * notion of final which only requires definite assignment.
+     *
+     * @since 1.0
      */
     public abstract boolean isImmutable();
 
+    /**
+     * The inversion of {@link #isImmutable}.
+     *
+     * @since 1.0
+     */
     public final boolean isMutable() {
         return !isImmutable();
     }
 
+    /**
+     * Returns true if this location identity is {@link #any}.
+     *
+     * @since 1.0
+     */
     public final boolean isAny() {
         return this == ANY_LOCATION;
     }
 
+    /**
+     * Returns true if this location identity is {@link #init}.
+     *
+     * @since 1.0
+     */
     public final boolean isInit() {
         return this == INIT_LOCATION;
     }
 
+    /**
+     * Returns true if this location identity is not {@link #any}.
+     *
+     * @since 1.0
+     */
     public final boolean isSingle() {
         return this != ANY_LOCATION;
     }
 
+    /**
+     * Returns true if the memory slice denoted by this location identity may overlap with the
+     * provided other location identity.
+     *
+     * @since 1.0
+     */
     public final boolean overlaps(LocationIdentity other) {
         return isAny() || other.isAny() || this.equals(other);
     }

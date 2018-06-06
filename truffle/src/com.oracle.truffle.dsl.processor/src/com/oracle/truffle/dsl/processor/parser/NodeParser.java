@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -66,6 +68,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.Frame;
@@ -107,7 +110,8 @@ public class NodeParser extends AbstractParser<NodeData> {
                     Specialization.class,
                     NodeChild.class,
                     Executed.class,
-                    NodeChildren.class);
+                    NodeChildren.class,
+                    ReportPolymorphism.class);
 
     @Override
     protected NodeData parse(Element element, AnnotationMirror mirror) {
@@ -208,6 +212,11 @@ public class NodeParser extends AbstractParser<NodeData> {
             node.setReflectable(true);
         }
 
+        AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, ReportPolymorphism.class);
+        AnnotationMirror excludePolymorphism = findFirstAnnotation(lookupTypes, ReportPolymorphism.Exclude.class);
+        if (reportPolymorphism != null && excludePolymorphism == null) {
+            node.setReportPolymorphism(true);
+        }
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(node, lookupTypes, members));
         node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
@@ -634,7 +643,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             AnnotationMirror nodeChildrenMirror = ElementUtils.findAnnotationMirror(processingEnv, type, NodeChildren.class);
 
             TypeMirror nodeClassType = type.getSuperclass();
-            if (!ElementUtils.isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
+            if (nodeClassType.getKind() == TypeKind.NONE || !ElementUtils.isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
                 nodeClassType = null;
             }
 

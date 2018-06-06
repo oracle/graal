@@ -93,7 +93,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
  */
 public final class SLContext {
 
-    private static final Source BUILTIN_SOURCE = Source.newBuilder("").name("SL builtin").mimeType(SLLanguage.MIME_TYPE).build();
+    private static final Source BUILTIN_SOURCE = Source.newBuilder("").name("SL builtin").language(SLLanguage.ID).build();
     private static final Layout LAYOUT = Layout.createLayout();
 
     private final Env env;
@@ -268,18 +268,11 @@ public final class SLContext {
     }
 
     /**
-     * Goes through the other registered languages to find an exported global symbol of the
-     * specified name. The expected return type is either <code>TruffleObject</code>, or one of
-     * wrappers of Java primitive types ({@link Integer}, {@link Double}).
-     *
-     * @param name the name of the symbol to search for
-     * @return object representing the symbol or <code>null</code>
+     * Returns an object that contains bindings that were exported across all used languages. To
+     * read or write from this object the {@link TruffleObject interop} API can be used.
      */
-    @TruffleBoundary
-    public Object importSymbol(String name) {
-        Object object = env.importSymbol(name);
-        Object slValue = fromForeignValue(object);
-        return slValue;
+    public TruffleObject getPolyglotBindings() {
+        return (TruffleObject) env.getPolyglotBindings();
     }
 
     public static SLContext getCurrent() {

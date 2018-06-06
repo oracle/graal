@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -132,15 +134,16 @@ class ThreadingSupportImpl implements ThreadingSupport {
                 if (expired) {
                     try {
                         invokeCallback();
+                        /*
+                         * Note that the callback is allowed to throw an exception (e.g., to stop or
+                         * interrupt long-running code). All code that must run to reinitialize the
+                         * recurring callback state must therefore be in a finally-block.
+                         */
                     } finally {
                         now = System.nanoTime();
                         nextDeadline = now + targetIntervalNanos;
                     }
                 }
-            } catch (SafepointException se) {
-                throw se;
-            } catch (Throwable t) {
-                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
             } finally {
                 long remainingNanos = nextDeadline - now;
                 remainingNanos = (remainingNanos < MINIMUM_INTERVAL_NANOS) ? MINIMUM_INTERVAL_NANOS : remainingNanos;
@@ -160,8 +163,14 @@ class ThreadingSupportImpl implements ThreadingSupport {
         @Uninterruptible(reason = "Required by caller, but does not apply to callee.", calleeMustBe = false)
         @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         private void invokeCallback() {
-            Safepoint.setSafepointRequested(SafepointRequestValues.RESET);
-            callback.run(CALLBACK_ACCESS);
+            try {
+                Safepoint.setSafepointRequested(SafepointRequestValues.RESET);
+                callback.run(CALLBACK_ACCESS);
+            } catch (SafepointException se) {
+                throw se;
+            } catch (Throwable t) {
+                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
+            }
         }
     }
 

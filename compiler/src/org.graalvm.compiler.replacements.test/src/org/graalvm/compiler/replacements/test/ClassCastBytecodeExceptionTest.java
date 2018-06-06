@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,6 +40,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -83,7 +86,7 @@ public class ClassCastBytecodeExceptionTest extends BytecodeExceptionTest {
                 Constant hub = b.getConstantReflection().asObjectHub(type);
                 Stamp hubStamp = b.getStampProvider().createHubStamp(StampFactory.object(TypeReference.createExactTrusted(type)));
                 ConstantNode hubConst = b.add(ConstantNode.forConstant(hubStamp, hub, b.getMetaAccess()));
-                return throwBytecodeException(b, ClassCastException.class, obj, hubConst);
+                return throwBytecodeException(b, BytecodeExceptionKind.CLASS_CAST, obj, hubConst);
             }
         }, Exceptions.class, "throwClassCast", Object.class, Class.class);
         super.registerInvocationPlugins(invocationPlugins);

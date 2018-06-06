@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -25,6 +27,7 @@ package com.oracle.truffle.api.benchmark.interop;
 import java.util.Random;
 import java.util.function.IntBinaryOperator;
 
+import org.graalvm.polyglot.Context;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
@@ -32,9 +35,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
-
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 
 @Warmup(iterations = 10)
 @Measurement(iterations = 10)
@@ -68,13 +68,17 @@ public class JavaInteropSpeedBench {
         return max;
     }
 
-    private static final TruffleObject TRUFFLE_MAX = JavaInterop.asTruffleFunction(IntBinaryOperator.class, new IntBinaryOperator() {
-        @Override
-        public int applyAsInt(int left, int right) {
-            return Math.max(left, right);
-        }
-    });
-    private static final IntBinaryOperator MAX = JavaInterop.asJavaFunction(IntBinaryOperator.class, TRUFFLE_MAX);
+    private static IntBinaryOperator MAX;
+
+    static {
+        Context context = Context.create();
+        MAX = context.asValue(new IntBinaryOperator() {
+            @Override
+            public int applyAsInt(int left, int right) {
+                return Math.max(left, right);
+            }
+        }).as(IntBinaryOperator.class);
+    }
 
     @Benchmark
     public int doMinMaxWithInterOp() {

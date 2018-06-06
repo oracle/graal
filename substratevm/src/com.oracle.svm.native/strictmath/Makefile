@@ -4,7 +4,9 @@
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,48 +22,47 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+LIBRARY_NAME = strictmath
 
 # Some directory names.
 LIBM_SRC_DIR = fdlibm/src
 LIBM_INCLUDE = fdlibm/include
 
+# How to make object files from source files.
+ifeq (${OS},windows)
+CFLAGS := /I $(LIBM_INCLUDE) /O1 /D _LITTLE_ENDIAN
+OBJ_EXT := obj
+CC := CL
+else
+# The flags to be used when compiling C sources.
+CFLAGS := -I$(LIBM_INCLUDE) -fPIC -O1 -D _LITTLE_ENDIAN
+OBJ_EXT := o
+endif
+
 # A list of all the libm function source files.
 LIBM_SRCS = $(wildcard $(LIBM_SRC_DIR)/*.c)
-# A list of all the libm function object files.
-LIBM_OBJS = $(LIBM_SRCS:$(LIBM_SRC_DIR)/%.c=%.o)
+OBJ_DIR = $(TARGET_DIR)/$(LIBRARY_NAME)
+LIBM_OBJS = $(LIBM_SRCS:$(LIBM_SRC_DIR)/%.c=$(OBJ_DIR)/%.$(OBJ_EXT))
 
-LIBRARY_NAME = strictmath
-
-TARGETOS ?= $(shell uname -s)
-ifeq ($(TARGETOS),Linux)
-    OS:=linux
-endif
-ifeq ($(TARGETOS),Darwin)
-    OS:=darwin
-endif
-TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 
 # The first target is what gets made by default.
-$(TARGET) : StrictMath.o $(LIBM_OBJS)
-	mkdir -p $(TARGET_DIR)
-	ar -cr $@ $^
+$(TARGET) : $(OBJ_DIR)/StrictMath.$(OBJ_EXT) $(LIBM_OBJS) | $(TARGET_DIR)
+	$(AR) -cr $@ $^
 
-# How to make object files from source files.
+$(OBJ_DIR)/StrictMath.$(OBJ_EXT) : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< -o $@
 
-# The flags to be used when compiling C sources.
-CFLAGS = -I$(LIBM_INCLUDE) -fPIC -O1 -D _LITTLE_ENDIAN
+$(OBJ_DIR)/%.$(OBJ_EXT) : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< -o $@
 
-StrictMath.o : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
-	$(CC) -c $(CFLAGS) $<
-
-%.o : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
-	$(CC) -c $(CFLAGS) $<
+$(TARGET_DIR) $(OBJ_DIR):
+	mkdir -p $@
 
 # How to clean up.
 clean :
 	$(RM) $(LIBM_OBJS)
-	$(RM) StrictMath.o
+	$(RM) $(TARGET_DIR)/StrictMath.$(OBJ_EXT)
 	$(RM) $(TARGET)
 
 # Use "make dependencies" to discover all the dependencies.

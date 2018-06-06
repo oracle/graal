@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,7 +28,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -100,7 +102,6 @@ import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -160,7 +161,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public void run() {
                 BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
-                registerObjectPlugins(invocationPlugins, options, replacementBytecodeProvider);
+                registerObjectPlugins(invocationPlugins, options, config, replacementBytecodeProvider);
                 registerClassPlugins(plugins, config, replacementBytecodeProvider);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacementBytecodeProvider);
@@ -186,7 +187,7 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, BytecodeProvider bytecodeProvider) {
+    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Object.class, bytecodeProvider);
         if (!GeneratePIC.getValue(options)) {
             // FIXME: clone() requires speculation and requires a fix in here (to check that
@@ -210,6 +211,12 @@ public class HotSpotGraphBuilderPlugins {
             });
         }
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
+        if (config.inlineNotify()) {
+            r.registerMethodSubstitution(ObjectSubstitutions.class, "notify", Receiver.class);
+        }
+        if (config.inlineNotifyAll()) {
+            r.registerMethodSubstitution(ObjectSubstitutions.class, "notifyAll", Receiver.class);
+        }
     }
 
     private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
@@ -234,7 +241,7 @@ public class HotSpotGraphBuilderPlugins {
                     b.addPush(JavaKind.Object, object);
                 } else {
                     FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, new DynamicPiNode(object, fixedGuard, javaClass));
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, javaClass));
                 }
                 return true;
             }
@@ -440,7 +447,7 @@ public class HotSpotGraphBuilderPlugins {
     public static final String constantPoolClass;
 
     static {
-        if (JDK9Method.Java8OrEarlier) {
+        if (Java8OrEarlier) {
             cbcEncryptName = "encrypt";
             cbcDecryptName = "decrypt";
             aesEncryptName = "encryptBlock";

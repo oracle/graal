@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,28 +24,49 @@
  */
 package com.oracle.svm.hosted.server;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-
-import com.oracle.shadowed.com.google.gson.Gson;
 
 public class SubstrateServerMessage {
-    ServerCommand command;
-    String payload;
+    final ServerCommand command;
+    final byte[] payload;
+    final int offset;
+    final int length;
 
-    SubstrateServerMessage() {
-        /* Needed for GSON use in native-image */
+    SubstrateServerMessage(ServerCommand command, byte[] payload) {
+        this(command, payload, 0, payload.length);
     }
 
-    SubstrateServerMessage(ServerCommand command, String payload) {
+    SubstrateServerMessage(ServerCommand command, byte[] payload, int offset, int length) {
         this.command = command;
         this.payload = payload;
+        this.offset = offset;
+        this.length = length;
     }
 
-    static void send(SubstrateServerMessage message, OutputStreamWriter os) throws IOException {
-        new Gson().toJson(message, os);
-        os.write(System.lineSeparator());
+    static void send(SubstrateServerMessage message, DataOutputStream os) throws IOException {
+        os.writeInt(message.command.ordinal());
+        os.writeInt(message.length);
+        os.write(message.payload, message.offset, message.length);
         os.flush();
+    }
+
+    static SubstrateServerMessage receive(DataInputStream is) throws IOException {
+        try {
+            ServerCommand command = ServerCommand.values()[is.readInt()];
+            int length = is.readInt();
+            byte[] payload = new byte[length];
+            is.readFully(payload);
+            return new SubstrateServerMessage(command, payload);
+        } catch (EOFException ex) {
+            return null;
+        }
+    }
+
+    public String payloadString() {
+        return new String(payload);
     }
 
     public enum ServerCommand {

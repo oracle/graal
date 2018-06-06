@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -58,14 +60,12 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 
@@ -86,7 +86,7 @@ public class Inflation extends BigBang {
     public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executor) {
         super(options, universe, providers, hostVM, executor, new SubstrateUnsupportedFeatures());
 
-        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm"};
+        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
         targetCallersPattern = buildPrefixMatchPattern(targetCallers);
 
         String[] illegalCallees = new String[]{"java\\.util\\.stream", "java\\.util\\.Collection\\.stream", "java\\.util\\.Arrays\\.stream"};
@@ -117,25 +117,6 @@ public class Inflation extends BigBang {
     public Object getRoot(JavaConstant constant) {
         SubstrateObjectConstant sConstant = (SubstrateObjectConstant) constant;
         return sConstant.getRoot();
-    }
-
-    @Override
-    public void checkUnsupportedSynchronization(AnalysisMethod method, int bci, AnalysisType aType) {
-        /*
-         * We want DynamicHub instances to be immutable, but synchronization would require
-         * installing a Lock object. Static synchronized methods are handled by synchronizing on a
-         * dedicated type instead.
-         */
-        checkUnsupportedSynchronization(!aType.equals(metaAccess.lookupJavaType(DynamicHub.class)), method, bci, aType);
-    }
-
-    private static void checkUnsupportedSynchronization(boolean condition, AnalysisMethod method, int bci, AnalysisType aType) {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return;
-        }
-        UserError.guarantee(condition,
-                        "Not supported: Synchronization on '%s' in %s",
-                        aType.toJavaName(true), method.asStackTraceElement(bci).toString());
     }
 
     @Override
@@ -187,18 +168,29 @@ public class Inflation extends BigBang {
                 for (AnalysisField f : type.getStaticFields()) {
                     if (f.getName().endsWith("$VALUES")) {
                         if (found != null) {
-                            throw shouldNotReachHere("Enumeration has more than one static field with enumeration values: " + type);
+                            /*
+                             * Enumeration has more than one static field with enumeration values.
+                             * Bailout and use Class.getEnumConstants() to get the value instead.
+                             */
+                            found = null;
+                            break;
                         }
                         found = f;
                     }
                 }
+                Enum<?>[] enumConstants;
                 if (found == null) {
-                    throw shouldNotReachHere("Enumeration does not have static field with enumeration values: " + type);
+                    /*
+                     * We could not find a unique $VALUES field, so we use the value returned by
+                     * Class.getEnumConstants(). This is not ideal since Class.getEnumConstants()
+                     * returns a copy of the array, so we will have two arrays with the same content
+                     * in the image heap, but it is better than failing image generation.
+                     */
+                    enumConstants = (Enum<?>[]) type.getJavaClass().getEnumConstants();
+                } else {
+                    enumConstants = (Enum[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
+                    assert enumConstants != null;
                 }
-                AnalysisField field = found;
-                // field.registerAsRead(null);
-                Enum<?>[] enumConstants = (Enum[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(field, null));
-                assert enumConstants != null;
                 svmHost.dynamicHub(type).setEnumConstants(enumConstants);
             }
         }
@@ -256,8 +248,6 @@ public class Inflation extends BigBang {
         Class<?> javaClass = type.getJavaClass();
 
         TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
-        /* The bounds are lazily initialized. Initialize them eagerly in the native image. */
-        Arrays.stream(typeParameters).forEach(TypeVariable::getBounds);
         Type[] genericInterfaces = Arrays.stream(javaClass.getGenericInterfaces()).filter(this::filterGenericInterfaces).toArray(Type[]::new);
         Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
         Type genericSuperClass = javaClass.getGenericSuperclass();

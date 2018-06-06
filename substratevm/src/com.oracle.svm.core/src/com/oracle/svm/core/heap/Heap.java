@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,6 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import java.lang.management.MemoryMXBean;
+import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -69,6 +72,9 @@ public abstract class Heap {
 
     /** Walk all the Objects in the Heap, passing each to the visitor. */
     public abstract void walkObjects(ObjectVisitor visitor);
+
+    /** Return a list of all the classes in the heap. */
+    public abstract List<Class<?>> getClassList();
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.

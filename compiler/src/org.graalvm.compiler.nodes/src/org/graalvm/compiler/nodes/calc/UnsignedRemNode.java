@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -30,6 +32,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -40,33 +43,33 @@ public class UnsignedRemNode extends IntegerDivRemNode implements LIRLowerable {
 
     public static final NodeClass<UnsignedRemNode> TYPE = NodeClass.create(UnsignedRemNode.class);
 
-    public UnsignedRemNode(ValueNode x, ValueNode y) {
-        this(TYPE, x, y);
+    public UnsignedRemNode(ValueNode x, ValueNode y, GuardingNode zeroCheck) {
+        this(TYPE, x, y, zeroCheck);
     }
 
-    protected UnsignedRemNode(NodeClass<? extends UnsignedRemNode> c, ValueNode x, ValueNode y) {
-        super(c, x.stamp(NodeView.DEFAULT).unrestricted(), Op.REM, Type.UNSIGNED, x, y);
+    protected UnsignedRemNode(NodeClass<? extends UnsignedRemNode> c, ValueNode x, ValueNode y, GuardingNode zeroCheck) {
+        super(c, x.stamp(NodeView.DEFAULT).unrestricted(), Op.REM, Type.UNSIGNED, x, y, zeroCheck);
     }
 
-    public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+    public static ValueNode create(ValueNode x, ValueNode y, GuardingNode zeroCheck, NodeView view) {
         Stamp stamp = x.stamp(view).unrestricted();
-        return canonical(null, x, y, stamp, view);
+        return canonical(null, x, y, zeroCheck, stamp, view);
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, stamp(view), view);
+        return canonical(this, forX, forY, getZeroCheck(), stamp(view), view);
     }
 
     @SuppressWarnings("unused")
-    public static ValueNode canonical(UnsignedRemNode self, ValueNode forX, ValueNode forY, Stamp stamp, NodeView view) {
+    public static ValueNode canonical(UnsignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view) {
         int bits = ((IntegerStamp) stamp).getBits();
         if (forX.isConstant() && forY.isConstant()) {
             long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
             if (yConst == 0) {
-                return self != null ? self : new UnsignedRemNode(forX, forY); // this will trap,
-                                                                              // cannot canonicalize
+                /* This will trap, cannot canonicalize. */
+                return self != null ? self : new UnsignedRemNode(forX, forY, zeroCheck);
             }
             return ConstantNode.forIntegerStamp(stamp, Long.remainderUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
         } else if (forY.isConstant()) {
@@ -77,7 +80,7 @@ public class UnsignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                 return new AndNode(forX, ConstantNode.forIntegerStamp(stamp, c - 1));
             }
         }
-        return self != null ? self : new UnsignedRemNode(forX, forY);
+        return self != null ? self : new UnsignedRemNode(forX, forY, zeroCheck);
     }
 
     @Override

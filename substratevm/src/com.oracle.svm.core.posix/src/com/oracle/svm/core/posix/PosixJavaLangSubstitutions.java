@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -173,6 +175,7 @@ final class Target_java_lang_ProcessEnvironment {
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "StringEnvironment")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessEnvironment_StringEnvironment {
     @Alias
     @SuppressWarnings("unused")
@@ -185,18 +188,21 @@ final class Target_java_lang_ProcessEnvironment_StringEnvironment {
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "Variable")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessEnvironment_Variable {
     @Alias
     public static native Target_java_lang_ProcessEnvironment_Variable valueOf(byte[] bytes);
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "Value")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessEnvironment_Value {
     @Alias
     public static native Target_java_lang_ProcessEnvironment_Value valueOf(byte[] bytes);
 }
 
 @TargetClass(className = "java.lang.UNIXProcess")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
@@ -349,7 +355,8 @@ final class Target_java_lang_UNIXProcess {
                 int status = waitForProcessExit(pid);
                 // Checkstyle: stop
                 // We need to use synchronized to synchronize with non-substituted UNIXProcess code
-                synchronized (Target_java_lang_UNIXProcess.this) { // Checkstyle: resume
+                synchronized (Target_java_lang_UNIXProcess.this) {
+                    // Checkstyle: resume
                     Target_java_lang_UNIXProcess.this.exitcode = status;
                     Target_java_lang_UNIXProcess.this.hasExited = true;
                     Target_java_lang_UNIXProcess.this.notifyAll();
@@ -658,6 +665,7 @@ final class Java_lang_UNIXProcess_Supplement {
 }
 
 @TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeInputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     @Alias
     Target_java_lang_UNIXProcess_ProcessPipeInputStream(@SuppressWarnings("unused") int fd) {
@@ -668,6 +676,7 @@ final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
 }
 
 @TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeOutputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
     @Alias
     Target_java_lang_UNIXProcess_ProcessPipeOutputStream(@SuppressWarnings("unused") int fd) {
@@ -678,11 +687,13 @@ final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullInputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullInputStream {
     @Alias static final Target_java_lang_ProcessBuilder_NullInputStream INSTANCE = null;
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullOutputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullOutputStream {
     @Alias static final Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE = null;
 }
@@ -704,7 +715,17 @@ final class Target_java_lang_System {
     }
 }
 
+@TargetClass(className = "java.lang.Shutdown")
+final class Target_java_lang_Shutdown {
+
+    @Substitute
+    static void halt0(int status) {
+        LibC.exit(status);
+    }
+}
+
 @TargetClass(java.lang.Runtime.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 

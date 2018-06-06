@@ -22,18 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * The Graal-SDK polyglot API allows to embed Graal languages in Java applications.
  * <p>
  * To get started quickly create a new {@link org.graalvm.polyglot.Context} using
  * {@link org.graalvm.polyglot.Context#create(String...)} and then evaluate guest language code
  * using {@link org.graalvm.polyglot.Context#eval(String, CharSequence)}.
+ * <p>
  *
  * <p>
- * See <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to use
- * this API.
+ * See <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for more
+ * examples on how to use this API.
  *
- * @see org.graalvm.polyglot.Context#create(String...) To construct a new execution context.
+ * @see org.graalvm.polyglot.Context For an overview over the features the polyglot API provides.
  * @since 1.0
  */
 package org.graalvm.polyglot;

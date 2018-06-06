@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -33,6 +35,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class NativeImageInfo {
 
@@ -97,6 +100,24 @@ public class NativeImageInfo {
     public static boolean isInWritableReferencePartition(final Pointer ptr) {
         final boolean result = Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
         return result;
+    }
+
+    /* Convenience methods taking an Object as a parameter. */
+
+    public static boolean isObjectInReadOnlyPrimitivePartition(Object obj) {
+        return isInReadOnlyPrimitivePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInWritablePrimitivePartition(Object obj) {
+        return isInWritablePrimitivePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInReadOnlyReferencePartition(Object obj) {
+        return isInReadOnlyReferencePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInWritableReferencePartition(Object obj) {
+        return isInWritableReferencePartition(Word.objectToUntrackedPointer(obj));
     }
 
     /*
@@ -211,6 +232,39 @@ public class NativeImageInfo {
             continueVisiting = visitor.visitNativeImageHeapRegion(NativeImageHeapRegion.WRITABLE_REFERENCE, access);
         }
         return continueVisiting;
+    }
+
+    public static boolean walkNativeImageHeap(ObjectVisitor visitor) {
+        if (!walkNativeImagePartition(NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject, visitor)) {
+            return false;
+        }
+        if (!walkNativeImagePartition(NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject, visitor)) {
+            return false;
+        }
+        if (!walkNativeImagePartition(NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject, visitor)) {
+            return false;
+        }
+        if (!walkNativeImagePartition(NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject, visitor)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean walkNativeImagePartition(Object firstObject, Object lastObject, ObjectVisitor visitor) {
+        if ((firstObject == null) || (lastObject == null)) {
+            return true;
+        }
+        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
+        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+        Pointer current = firstPointer;
+        while (current.belowOrEqual(lastPointer)) {
+            final Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
+            if (!visitor.visitObject(currentObject)) {
+                return false;
+            }
+            current = LayoutEncoding.getObjectEnd(currentObject);
+        }
+        return true;
     }
 
     /** A base class with shared logic for all the MemoryWalkerAccessImpl implementations. */

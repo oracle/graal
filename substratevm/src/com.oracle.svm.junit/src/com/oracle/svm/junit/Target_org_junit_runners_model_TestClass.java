@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -26,9 +28,10 @@ package com.oracle.svm.junit;
 
 import java.lang.reflect.Constructor;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.nativeimage.RuntimeReflection;
 import org.junit.runners.model.TestClass;
 
-import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
@@ -44,7 +47,7 @@ public final class Target_org_junit_runners_model_TestClass {
     public static final class OnlyConstructorComputer implements CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             TestClass clazz = (TestClass) receiver;
             if (clazz.getJavaClass() != null) {
                 Constructor<?> constructor = clazz.getOnlyConstructor();

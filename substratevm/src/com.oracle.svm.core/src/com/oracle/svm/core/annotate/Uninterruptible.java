@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -61,9 +63,11 @@ import com.oracle.svm.core.thread.VMOperation;
  * allocates uninitialized storage and returns a Pointer to it. Such a method must only be called
  * from a method annotated with {@link Uninterruptible}.
  * <p>
- * Most methods annotated with {@link Uninterruptible} can not be inlined, because their operations
- * might be intermingled into code that can cause safepoints. If a method is so simple that it can
- * be inlined, the method can be annotated with {@link #mayBeInlined "mayBeInlined = true"}.
+ * Most methods annotated with {@link Uninterruptible} can not be inlined into interruptible code,
+ * because their operations might be intermingled into code that can cause safepoints. If a method
+ * is so simple that it can always be inlined into interruptible code, the method can be annotated
+ * with {@link #mayBeInlined "mayBeInlined = true"}. Uninterruptible methods can always be inlined
+ * into other uninterruptible methods.
  * <dl>
  * Some alternatives to annotation:
  * <dt>Code called from snippets</dt>
@@ -97,11 +101,13 @@ public @interface Uninterruptible {
     boolean calleeMustBe() default true;
 
     /**
-     * When false, the method may <em>not</em> be inlined. The concern is that if an uninterruptible
-     * method is inlined, interruptible code (e.g., allocation) could be hoisted between the
-     * operations of the uninterruptible code. The default is that uninterruptible methods may not
-     * be inlined. Simple uninterruptible methods like field accesses can be annotated to allow them
-     * to be inlined.
+     * When true, this method may be <b>inlined into interruptible code</b>. When false (the
+     * default), this method may only be inlined into other uninterruptible code. If inlining of a
+     * specific method is undesirable in general, refer to {@link NeverInline}.
+     * <p>
+     * The concern is that if an uninterruptible method is inlined, interruptible code such as
+     * allocation could be hoisted between the operations of the uninterruptible code. Simple
+     * uninterruptible methods like field accesses can be annotated to allow them to be inlined.
      */
     boolean mayBeInlined() default false;
 }

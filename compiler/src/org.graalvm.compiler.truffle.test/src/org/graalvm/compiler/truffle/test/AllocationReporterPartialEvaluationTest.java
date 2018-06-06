@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -59,7 +61,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         context.initialize(AllocationReporterLanguage.ID);
         final TestAllocationReporter tester = context.getEngine().getInstruments().get(TestAllocationReporter.ID).lookup(TestAllocationReporter.class);
         assertNotNull(tester);
-        final AllocationReporter reporter = (AllocationReporter) context.importSymbol(AllocationReporter.class.getSimpleName()).asHostObject();
+        final AllocationReporter reporter = (AllocationReporter) context.getPolyglotBindings().getMember(AllocationReporter.class.getSimpleName()).asHostObject();
         final Long[] value = new Long[]{1L};
         OptimizedCallTarget enterTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
             @Override
@@ -186,20 +188,9 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
 
         @Override
         protected AllocationReporter createContext(TruffleLanguage.Env env) {
-            return env.lookup(AllocationReporter.class);
-        }
-
-        @Override
-        protected Object findExportedSymbol(AllocationReporter context, String globalName, boolean onlyExplicit) {
-            if (AllocationReporter.class.getSimpleName().equals(globalName)) {
-                return context;
-            }
-            return null;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(AllocationReporter context) {
-            return null;
+            AllocationReporter reporter = env.lookup(AllocationReporter.class);
+            env.exportSymbol(AllocationReporter.class.getSimpleName(), reporter);
+            return reporter;
         }
 
         @Override

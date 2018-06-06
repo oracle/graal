@@ -42,12 +42,14 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+@SuppressWarnings("deprecation")
 abstract class ExecuteMethodNode extends Node {
     static final int LIMIT = 3;
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
@@ -211,7 +213,7 @@ abstract class ExecuteMethodNode extends Node {
         return new Type[args.length];
     }
 
-    private static void fillArgTypesArray(Object[] args, Type[] cachedArgTypes, SingleMethodDesc selected, boolean varArgs, List<SingleMethodDesc> applicable) {
+    private static void fillArgTypesArray(Object[] args, Type[] cachedArgTypes, SingleMethodDesc selected, boolean varArgs, List<SingleMethodDesc> applicable, int priority) {
         if (cachedArgTypes == null) {
             return;
         }
@@ -243,7 +245,7 @@ abstract class ExecuteMethodNode extends Node {
                     }
                 }
 
-                argType = new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY));
+                argType = new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY), priority);
             } else if (arg instanceof JavaObject) {
                 argType = new JavaObjectType(((JavaObject) arg).getObjectClass());
             } else {
@@ -389,29 +391,25 @@ abstract class ExecuteMethodNode extends Node {
         }
 
         SingleMethodDesc best;
-        best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, false, true, cachedArgTypes);
-        if (best != null) {
-            return best;
-        }
-        best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, false, false, cachedArgTypes);
-        if (best != null) {
-            return best;
-        }
-        if (anyVarArgs) {
-            best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, true, true, cachedArgTypes);
+        for (int priority : ToJavaNode.PRIORITIES) {
+            best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, false, priority, cachedArgTypes);
             if (best != null) {
                 return best;
             }
-            best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, true, false, cachedArgTypes);
-            if (best != null) {
-                return best;
+        }
+        if (anyVarArgs) {
+            for (int priority : ToJavaNode.PRIORITIES) {
+                best = findBestCandidate(applicableByArity, args, languageContext, toJavaNode, true, priority, cachedArgTypes);
+                if (best != null) {
+                    return best;
+                }
             }
         }
 
         throw noApplicableOverloadsException(overloads, args);
     }
 
-    private static SingleMethodDesc findBestCandidate(List<SingleMethodDesc> applicableByArity, Object[] args, Object languageContext, ToJavaNode toJavaNode, boolean varArgs, boolean strict,
+    private static SingleMethodDesc findBestCandidate(List<SingleMethodDesc> applicableByArity, Object[] args, Object languageContext, ToJavaNode toJavaNode, boolean varArgs, int priority,
                     Type[] cachedArgTypes) {
         List<SingleMethodDesc> candidates = new ArrayList<>();
 
@@ -424,7 +422,7 @@ abstract class ExecuteMethodNode extends Node {
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < paramCount; i++) {
-                        if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, strict)) {
+                        if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority)) {
                             applicable = false;
                             break;
                         }
@@ -442,7 +440,7 @@ abstract class ExecuteMethodNode extends Node {
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < parameterCount - 1; i++) {
-                        if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, strict)) {
+                        if (!isSubtypeOf(args[i], parameterTypes[i]) && !toJavaNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority)) {
                             applicable = false;
                             break;
                         }
@@ -457,7 +455,7 @@ abstract class ExecuteMethodNode extends Node {
                             varArgsGenericComponentType = varArgsComponentType;
                         }
                         for (int i = parameterCount - 1; i < args.length; i++) {
-                            if (!isSubtypeOf(args[i], varArgsComponentType) && !toJavaNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext, strict)) {
+                            if (!isSubtypeOf(args[i], varArgsComponentType) && !toJavaNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext, priority)) {
                                 applicable = false;
                                 break;
                             }
@@ -475,7 +473,7 @@ abstract class ExecuteMethodNode extends Node {
                 SingleMethodDesc best = candidates.get(0);
 
                 if (cachedArgTypes != null) {
-                    fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity);
+                    fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority);
                 }
 
                 return best;
@@ -483,7 +481,7 @@ abstract class ExecuteMethodNode extends Node {
                 SingleMethodDesc best = findMostSpecificOverload(candidates, args, varArgs);
                 if (best != null) {
                     if (cachedArgTypes != null) {
-                        fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity);
+                        fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority);
                     }
 
                     return best;
@@ -607,7 +605,7 @@ abstract class ExecuteMethodNode extends Node {
             value = ((JavaObject) argument).obj;
         }
         if (!parameterType.isPrimitive()) {
-            return value == null || parameterType.isInstance(value);
+            return value == null || (parameterType.isInstance(value) && !(value instanceof TruffleObject));
         } else {
             if (value != null) {
                 Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(value.getClass());
@@ -721,10 +719,12 @@ abstract class ExecuteMethodNode extends Node {
     static class PrimitiveType implements Type {
         final Class<?> targetType;
         @CompilationFinal(dimensions = 1) final Class<?>[] otherTypes;
+        final int priority;
 
-        PrimitiveType(Class<?> targetType, Class<?>[] otherTypes) {
+        PrimitiveType(Class<?> targetType, Class<?>[] otherTypes, int priority) {
             this.targetType = targetType;
             this.otherTypes = otherTypes;
+            this.priority = priority;
         }
 
         @Override
@@ -762,11 +762,11 @@ abstract class ExecuteMethodNode extends Node {
         @ExplodeLoop
         public boolean test(Object value, ToJavaNode toJavaNode) {
             for (Class<?> otherType : otherTypes) {
-                if (toJavaNode.canConvertStrict(value, otherType)) {
+                if (toJavaNode.canConvertToPrimitive(value, otherType, priority)) {
                     return false;
                 }
             }
-            return toJavaNode.canConvertStrict(value, targetType);
+            return toJavaNode.canConvertToPrimitive(value, targetType, priority);
         }
     }
 }

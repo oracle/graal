@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -150,9 +152,7 @@ public class UnalignedHeapChunk extends HeapChunk {
      */
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public static Pointer allocateMemory(UnalignedHeader that, UnsignedWord size) {
-        final Log trace = Log.noopLog().string("[UnalignedHeapChunk.allocateMemory:");
         final UnsignedWord available = availableObjectMemory(that);
-        trace.string("  size").unsigned(size).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd()).string("  available: ").unsigned(available).newline();
         // Is memory available for the requested size?
         Pointer result = WordFactory.nullPointer();
         if (size.belowOrEqual(available)) {
@@ -161,7 +161,6 @@ public class UnalignedHeapChunk extends HeapChunk {
             final Pointer newTop = result.add(size);
             setTopCarefully(that, newTop);
         }
-        trace.string("  returns: ").hex(result).string("]").newline();
         return result;
     }
 

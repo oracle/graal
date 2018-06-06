@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,12 +30,12 @@ import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport.LibraryInitializer;
@@ -76,7 +78,7 @@ class JNILibraryInitializer implements LibraryInitializer {
         PointerBase symbol = lib.findSymbol(name);
         if (symbol.isNonNull()) {
             JNIOnLoadFunctionPointer onLoad = (JNIOnLoadFunctionPointer) symbol;
-            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), Word.nullPointer());
+            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), WordFactory.nullPointer());
             if (expected != JNI_VERSION_1_8() && expected != JNI_VERSION_1_6() && expected != JNI_VERSION_1_4() && expected != JNI_VERSION_1_2() && expected != JNI_VERSION_1_1()) {
                 String message = "Unsupported JNI version 0x" + Integer.toHexString(expected) + ", required by " + lib.getCanonicalIdentifier();
                 throw new UnsatisfiedLinkError(message);

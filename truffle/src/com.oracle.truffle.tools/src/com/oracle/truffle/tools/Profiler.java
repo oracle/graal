@@ -54,9 +54,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
-import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
+import com.oracle.truffle.api.vm.*;
 
 /**
  * Access to Truffle polyglot profiling.
@@ -75,7 +73,10 @@ import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
  * </ul>
  *
  * @since 0.15
+ * @deprecated use {@link com.oracle.truffle.tools.profiler.CPUSampler} instead.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class Profiler {
 
     /**
@@ -249,7 +250,7 @@ public final class Profiler {
             throw new IllegalStateException("disposed profiler");
         }
         for (Counter counter : counters.values()) {
-            if (counter.getInvocations(TimeKind.INTERPRETED_AND_COMPILED) > 0) {
+            if (counter.getInvocations(com.oracle.truffle.tools.Profiler.Counter.TimeKind.INTERPRETED_AND_COMPILED) > 0) {
                 return true;
             }
         }
@@ -334,22 +335,22 @@ public final class Profiler {
 
         boolean hasCompiled = false;
         for (Counter counter : sortedCounters) {
-            if (counter.getInvocations(TimeKind.COMPILED) > 0) {
+            if (counter.getInvocations(com.oracle.truffle.tools.Profiler.Counter.TimeKind.COMPILED) > 0) {
                 hasCompiled = true;
             }
         }
 
         if (hasCompiled) {
-            printHistogram(out, sortedCounters, TimeKind.INTERPRETED_AND_COMPILED);
-            printHistogram(out, sortedCounters, TimeKind.INTERPRETED);
-            printHistogram(out, sortedCounters, TimeKind.COMPILED);
+            printHistogram(out, sortedCounters, com.oracle.truffle.tools.Profiler.Counter.TimeKind.INTERPRETED_AND_COMPILED);
+            printHistogram(out, sortedCounters, com.oracle.truffle.tools.Profiler.Counter.TimeKind.INTERPRETED);
+            printHistogram(out, sortedCounters, com.oracle.truffle.tools.Profiler.Counter.TimeKind.COMPILED);
         } else {
-            printHistogram(out, sortedCounters, TimeKind.INTERPRETED);
+            printHistogram(out, sortedCounters, com.oracle.truffle.tools.Profiler.Counter.TimeKind.INTERPRETED);
         }
 
     }
 
-    private void printHistogram(PrintStream out, List<Counter> sortedCounters, final TimeKind time) {
+    private void printHistogram(PrintStream out, List<Counter> sortedCounters, final com.oracle.truffle.tools.Profiler.Counter.TimeKind time) {
         Collections.sort(sortedCounters, new Comparator<Counter>() {
             @Override
             public int compare(Counter o1, Counter o2) {

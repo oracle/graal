@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,14 +25,18 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 import static com.oracle.svm.hosted.c.query.QueryResultFormat.DELIMINATOR;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -38,11 +44,11 @@ import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
-import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.query.QueryResultFormat;
 
 public class QueryCodeWriter extends InfoTreeVisitor {
@@ -83,7 +89,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
-        NativeImageHeaderPreamble.read().forEach(writer::appendln);
+        NativeImageHeaderPreamble.read(getClass().getClassLoader(), "graal_isolate.preamble")
+                        .forEach(writer::appendln);
 
         for (String preDefine : nativeCodeInfo.getDirectives().getMacroDefinitions()) {
             writer.appendMacroDefinition(preDefine);
@@ -94,6 +101,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         }
 
         writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>"));
+
+        writeCStandardHeaders(writer);
 
         /* Write general macro definitions. */
         writer.appendln();
@@ -111,6 +120,15 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("return 0;");
         writer.outdent();
         writer.appendln("}");
+    }
+
+    public static void writeCStandardHeaders(CSourceCodeWriter writer) {
+        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
+            writer.includeFiles(Collections.singletonList("<stdbool.h>"));
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
+            writer.includeFiles(Collections.singletonList("<stdint.h>"));
+        }
     }
 
     @Override

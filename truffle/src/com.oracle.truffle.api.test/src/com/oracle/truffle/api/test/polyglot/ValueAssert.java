@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -145,26 +147,19 @@ public class ValueAssert {
                 case HOST_OBJECT:
                     assertTrue(msg, value.isHostObject());
                     Object hostObject = value.asHostObject();
-                    // TODO temporary disabled GR-8034
-                    // assertTrue(!(hostObject instanceof Proxy));
-                    if (!value.isProxyObject()) {
-                        if (hostObject != null && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
-                            if (hostObject instanceof Class) {
-                                for (java.lang.reflect.Method m : ((Class<?>) hostObject).getMethods()) {
-                                    if (Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers())) {
-                                        assertTrue(m.getName(), value.hasMember(m.getName()));
-                                    }
-                                }
+                    assertFalse(hostObject instanceof Proxy);
+                    if (hostObject != null && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
+                        if (hostObject instanceof Class) {
+                            boolean isInstanceClass = value.hasMember("isInterface");
+                            if (isInstanceClass) {
+                                assertClassMembers(value, Class.class, false);
                             } else {
-                                for (java.lang.reflect.Method m : hostObject.getClass().getMethods()) {
-                                    if (Modifier.isPublic(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())) {
-                                        assertTrue(m.getName(), value.hasMember(m.getName()));
-                                    }
-                                }
+                                assertClassMembers(value, (Class<?>) hostObject, true);
                             }
+                        } else {
+                            assertClassMembers(value, hostObject.getClass(), false);
                         }
                     }
-
                     break;
                 case PROXY_OBJECT:
                     assertTrue(msg, value.isProxyObject());
@@ -293,8 +288,25 @@ public class ValueAssert {
                         assertNull(value.asString());
                     } else {
                         assertFails(() -> value.asString(), ClassCastException.class);
-                        assertFails(() -> value.as(String.class), ClassCastException.class);
-                        assertFails(() -> value.as(Character.class), ClassCastException.class);
+
+                        if (value.isBoolean()) {
+                            String expected = String.valueOf(value.asBoolean());
+                            assertEquals(expected, value.as(String.class));
+                        } else if (value.isNumber()) {
+                            String expected = value.as(Number.class).toString();
+                            assertEquals(expected, value.as(String.class));
+                        } else {
+                            assertFails(() -> value.as(String.class), ClassCastException.class);
+                        }
+
+                        if (value.isNumber() && value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
+                            char ch = value.as(Character.class);
+                            assertEquals(ch, value.asInt());
+                            ch = value.as(char.class);
+                            assertEquals(ch, value.asInt());
+                        } else {
+                            assertFails(() -> value.as(Character.class), ClassCastException.class);
+                        }
                     }
 
                     break;
@@ -362,11 +374,8 @@ public class ValueAssert {
                     }
                     break;
                 case HOST_OBJECT:
-                    // TODO temporary disabled GR-8034
-                    if (!value.isProxyObject()) {
-                        assertFalse(value.isHostObject());
-                        assertFails(() -> value.asHostObject(), ClassCastException.class);
-                    }
+                    assertFalse(value.isHostObject());
+                    assertFails(() -> value.asHostObject(), ClassCastException.class);
                     break;
                 case PROXY_OBJECT:
                     assertFalse(value.isProxyObject());
@@ -423,7 +432,7 @@ public class ValueAssert {
         assertEquals(receivedObjectsIntMap, objectMap3);
         assertEquals(receivedObjectsLongMap, objectMap4);
 
-        if (value.isHostObject() && !value.isProxyObject()) {
+        if (value.isHostObject()) {
             assertTrue(value.as(Object.class) instanceof List || value.as(Object.class).getClass().isArray());
         } else if (!value.hasMembers()) {
             List<Object> objectMap5 = (List<Object>) value.as(Object.class);
@@ -528,6 +537,14 @@ public class ValueAssert {
             value.asDouble();
         } else {
             assertFails(() -> value.asDouble(), ClassCastException.class);
+        }
+    }
+
+    private static void assertClassMembers(Value value, Class<?> expectedClass, boolean staticMembers) {
+        for (java.lang.reflect.Method m : expectedClass.getMethods()) {
+            if (Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers()) == staticMembers) {
+                assertTrue(m.getName(), value.hasMember(m.getName()));
+            }
         }
     }
 

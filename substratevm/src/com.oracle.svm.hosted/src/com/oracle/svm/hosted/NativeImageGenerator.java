@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -46,10 +48,14 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -61,7 +67,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.phases.CoreCompilerConfiguration;
+import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -176,7 +182,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.os.OSInterface;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -202,6 +208,7 @@ import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
@@ -249,32 +256,25 @@ public class NativeImageGenerator {
 
     private final FeatureHandler featureHandler;
     private final ImageClassLoader loader;
+    private final HostedOptionProvider optionProvider;
+
+    private ForkJoinPool imageBuildPool;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
     private BigBang bigbang;
     private AbstractBootImage image;
+    private AtomicBoolean buildStarted = new AtomicBoolean();
 
-    private static OSInterface createOSInterface(ImageClassLoader loader) {
-        List<Class<? extends OSInterface>> osClasses = loader.findSubclasses(OSInterface.class);
-
-        OSInterface result = null;
-        for (Class<? extends OSInterface> osClass : osClasses) {
-            if (!osClass.isInterface() && !Modifier.isAbstract(osClass.getModifiers())) {
-                if (result != null) {
-                    throw VMError.shouldNotReachHere("More than one OSInterface implementation found: " + osClasses);
-                }
-
-                try {
-                    result = osClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException ex) {
-                    throw VMError.shouldNotReachHere(ex);
-                }
-            }
-        }
-        if (result == null) {
-            throw VMError.shouldNotReachHere("No OSInterface implementation found");
-        }
-        return result;
+    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider) {
+        this.loader = loader;
+        this.featureHandler = new FeatureHandler();
+        this.optionProvider = optionProvider;
+        /*
+         * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
+         * parsing at run time.
+         */
+        optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
+        optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
     }
 
     public static Platform defaultPlatform() {
@@ -285,6 +285,8 @@ public class NativeImageGenerator {
                 return new Platform.LINUX_AMD64();
             } else if (OS.getCurrent() == OS.DARWIN) {
                 return new Platform.DARWIN_AMD64();
+            } else if (OS.getCurrent() == OS.WINDOWS) {
+                return new Platform.WINDOWS_AMD64();
             } else {
                 throw VMError.shouldNotReachHere("Unsupported operating system: " + osName);
             }
@@ -339,46 +341,56 @@ public class NativeImageGenerator {
         }
     }
 
-    public NativeImageGenerator(ImageClassLoader loader) {
-        this.loader = loader;
-        this.featureHandler = new FeatureHandler();
-    }
-
-    public void run(HostedOptionProvider optionProvider, Map<Method, CEntryPointData> entryPoints, Method mainEntryPoint,
+    /**
+     * Executes the image build. Only one image can be built with this generator.
+     */
+    public void run(Map<Method, CEntryPointData> entryPoints, Method mainEntryPoint,
                     JavaMainSupport javaMainSupport, String imageName,
                     AbstractBootImage.NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor,
                     EconomicSet<String> allOptionNames) {
-        /*
-         * Substrate VM parses all graphs, including snippets, early. We do not support bytecode
-         * parsing at run time.
-         */
-        optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
-        optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
-
-        int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
-        createForkJoinPool(maxConcurrentThreads).submit(() -> {
-            try {
-                ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
-                ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-
-                doRun(optionProvider, entryPoints, mainEntryPoint, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
-            } finally {
-                try {
-                    /* Make sure we clean up after ourselves even in the case of an exception. */
-                    if (deleteTempDirectory) {
-                        deleteAll(tempDirectory());
-                    }
-                    featureHandler.forEachFeature(Feature::cleanup);
-                } catch (Throwable e) {
-                    /*
-                     * Suppress subsequent errors so that we unwind the original error brought us
-                     * here.
-                     */
-                }
+        try {
+            if (!buildStarted.compareAndSet(false, true)) {
+                throw UserError.abort("An image build has already been performed with this generator.");
             }
-        }).join();
+            int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
+            this.imageBuildPool = createForkJoinPool(maxConcurrentThreads);
+            imageBuildPool.submit(() -> {
+                try {
+                    ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
+                    ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
+
+                    doRun(entryPoints, mainEntryPoint, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
+                } finally {
+                    try {
+                        /*
+                         * Make sure we clean up after ourselves even in the case of an exception.
+                         */
+                        if (deleteTempDirectory) {
+                            deleteAll(tempDirectory());
+                        }
+                        featureHandler.forEachFeature(Feature::cleanup);
+                    } catch (Throwable e) {
+                        /*
+                         * Suppress subsequent errors so that we unwind the original error brought
+                         * us here.
+                         */
+                    }
+                }
+            }).get();
+        } catch (InterruptedException | CancellationException e) {
+            System.out.println("Interrupted!");
+            throw new InterruptImageBuilding();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
+            } else if (e.getCause() instanceof Error) {
+                throw (Error) e.getCause();
+            }
+        } finally {
+            shutdownPoolSafe();
+        }
     }
 
     private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
@@ -404,7 +416,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private void doRun(HostedOptionProvider optionProvider, Map<Method, CEntryPointData> entryPoints, Method mainEntryPoint,
+    private void doRun(Map<Method, CEntryPointData> entryPoints, Method mainEntryPoint,
                     JavaMainSupport javaMainSupport, String imageName, AbstractBootImage.NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor) {
@@ -425,12 +437,10 @@ public class NativeImageGenerator {
                     Platform platform = defaultPlatform();
 
                     TargetDescription target = createTarget(platform);
-                    OSInterface osInterface = createOSInterface(loader);
                     ObjectLayout objectLayout = new ObjectLayout(target, SubstrateAMD64Backend.getDeoptScatchSpace());
                     CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.UseHeapBaseRegister.getValue() ? 1 : 0, 0);
                     ImageSingletons.add(Platform.class, platform);
                     ImageSingletons.add(TargetDescription.class, target);
-                    ImageSingletons.add(OSInterface.class, osInterface);
                     ImageSingletons.add(ObjectLayout.class, objectLayout);
                     ImageSingletons.add(CompressEncoding.class, compressEncoding);
                     if (javaMainSupport != null) {
@@ -477,8 +487,10 @@ public class NativeImageGenerator {
                     ImageSingletons.add(UnsafeAutomaticSubstitutionProcessor.class, automaticSubstitutions);
                     automaticSubstitutions.init(originalMetaAccess);
 
+                    CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
+
                     SubstitutionProcessor substitutions = SubstitutionProcessor.chainUpInOrder(harnessSubstitutions, new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
-                                    annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions);
+                                    annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions, cEnumProcessor);
                     aUniverse = new AnalysisUniverse(svmHost, target, substitutions, originalMetaAccess, originalSnippetReflection, new SubstrateSnippetReflectionProvider());
                     aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
 
@@ -487,6 +499,12 @@ public class NativeImageGenerator {
                     AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess);
                     aSnippetReflection = new HostedSnippetReflectionProvider(svmHost);
                     nativeLibs = processNativeLibraryImports(aMetaAccess, aConstantReflection, aSnippetReflection);
+
+                    ImageSingletons.add(NativeLibraries.class, nativeLibs);
+                    if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
+                        System.out.println("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
+                        return;
+                    }
 
                     /*
                      * Install all snippets so that the types, methods, and fields used in the
@@ -823,7 +841,7 @@ public class NativeImageGenerator {
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
-                        this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibs, heap, codeCache, hostedEntryPoints, mainEntryPointHostedStub);
+                        this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibs, heap, codeCache, hostedEntryPoints, mainEntryPointHostedStub, loader.getClassLoader());
                         image.build(debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
@@ -901,6 +919,16 @@ public class NativeImageGenerator {
         ImageSingletons.lookup(RestrictHeapAccessCallees.class).aggregateMethods(methods);
     }
 
+    public void interruptBuild() {
+        shutdownPoolSafe();
+    }
+
+    private void shutdownPoolSafe() {
+        if (imageBuildPool != null) {
+            imageBuildPool.shutdownNow();
+        }
+    }
+
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
         @Override
@@ -929,7 +957,7 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin());
-        plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getSnippetReflection(), providers.getWordTypes(), nativeLibs));
+        plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 
         plugins.appendInlineInvokePlugin(wordOperationPlugin);
@@ -996,9 +1024,14 @@ public class NativeImageGenerator {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
+            Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
+            if (hosted) {
+                mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
+            }
+
             Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
             lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            NonSnippetLowerings.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
+            NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, factories, providers, snippetReflection, lowerings);
             ArithmeticSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             MonitorSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
@@ -1119,7 +1152,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("unused")
     public static LIRSuites createLIRSuites(FeatureHandler featureHandler, Providers providers, boolean hosted) {
-        LIRSuites lirSuites = Suites.createLIRSuites(new CoreCompilerConfiguration(), hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton());
+        LIRSuites lirSuites = Suites.createLIRSuites(new CommunityCompilerConfiguration(), hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton());
         /* Add phases that just perform assertion checking. */
         assert addAssertionLIRPhases(lirSuites, hosted);
         return lirSuites;
@@ -1149,8 +1182,9 @@ public class NativeImageGenerator {
                     if (declaredType.isInterface()) {
                         state = TypeState.forSubtraction(bigbang, state, declaredType.getTypeFlow(bigbang, true).getState());
                         if (!state.isEmpty()) {
-                            bigbang.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method,
-                                            "Method parameter " + i + " has declaredType " + declaredType.toJavaName(true) + " and incompatible types in state: " + state);
+                            String methodKey = method.format("%H.%n(%p)");
+                            bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
+                                            "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
                         }
                     }
                 }
@@ -1163,8 +1197,9 @@ public class NativeImageGenerator {
                 if (declaredType.isInterface()) {
                     state = TypeState.forSubtraction(bigbang, state, declaredType.getTypeFlow(bigbang, true).getState());
                     if (!state.isEmpty()) {
-                        bigbang.getUnsupportedFeatures().addMessage(field.format("%H.%n"), null,
-                                        "Field has declaredType " + declaredType.toJavaName(true) + " and incompatible types in state: " + state);
+                        String fieldKey = field.format("%H.%n");
+                        bigbang.getUnsupportedFeatures().addMessage(fieldKey, null,
+                                        "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
                     }
                 }
             }
@@ -1227,7 +1262,6 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     private NativeLibraries processNativeLibraryImports(MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider aConstantReflection, SnippetReflectionProvider snippetReflection) {
-        CAnnotationProcessorCache.initialize();
         try (StopTimer t = new Timer("(cap)").start()) {
 
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, metaAccess, snippetReflection, ConfigurationValues.getTarget());
@@ -1264,14 +1298,6 @@ public class NativeImageGenerator {
 
     public BigBang getBigbang() {
         return bigbang;
-    }
-
-    public AnalysisUniverse getAnalysisUniverse() {
-        return aUniverse;
-    }
-
-    public HostedUniverse getHostedUniverse() {
-        return hUniverse;
     }
 
     private void printTypes() {

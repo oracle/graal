@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,10 +30,12 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -49,8 +53,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class StoreIndexedNode extends AccessIndexedNode implements StateSplit, Lowerable, Virtualizable {
 
     public static final NodeClass<StoreIndexedNode> TYPE = NodeClass.create(StoreIndexedNode.class);
+
+    @OptionalInput(InputType.Guard) private GuardingNode storeCheck;
     @Input ValueNode value;
     @OptionalInput(State) FrameState stateAfter;
+
+    public GuardingNode getStoreCheck() {
+        return storeCheck;
+    }
 
     @Override
     public FrameState stateAfter() {
@@ -73,8 +83,9 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
         return value;
     }
 
-    public StoreIndexedNode(ValueNode array, ValueNode index, JavaKind elementKind, ValueNode value) {
-        super(TYPE, StampFactory.forVoid(), array, index, elementKind);
+    public StoreIndexedNode(ValueNode array, ValueNode index, GuardingNode boundsCheck, GuardingNode storeCheck, JavaKind elementKind, ValueNode value) {
+        super(TYPE, StampFactory.forVoid(), array, index, boundsCheck, elementKind);
+        this.storeCheck = storeCheck;
         this.value = value;
     }
 

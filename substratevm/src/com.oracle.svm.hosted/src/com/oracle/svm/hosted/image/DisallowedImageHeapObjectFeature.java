@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -41,11 +43,16 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     }
 
     private static Object replacer(Object original) {
+        String message = "This is not supported. The object was reached from a static initializer. " +
+                        "All static class initialization is done during native image construction, " +
+                        "thus a static initializer cannot contain code that captures state dependent on the build machine. " +
+                        "Write your own initialization methods and call them explicitly from your main entry point.";
+
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
             if (asThread.getState() != Thread.State.NEW) {
-                throw new UnsupportedFeatureException("Must not have a started Thread in the image heap.");
+                throw new UnsupportedFeatureException("Detected a started Thread in the image heap. " + message);
             }
         }
         /* FileDescriptors can not be in the image heap. */
@@ -53,9 +60,15 @@ public class DisallowedImageHeapObjectFeature implements Feature {
             final FileDescriptor asFileDescriptor = (FileDescriptor) original;
             /* Except for a few well-known FileDescriptors. */
             if (!((asFileDescriptor == FileDescriptor.in) || (asFileDescriptor == FileDescriptor.out) || (asFileDescriptor == FileDescriptor.err) || (!asFileDescriptor.valid()))) {
-                throw new UnsupportedFeatureException("Must not have a FileDescriptor in the image heap.");
+                throw new UnsupportedFeatureException("Detected a FileDescriptor in the image heap. " + message);
             }
         }
+
+        /* ZipFiles can not be in the image heap. */
+        if (original instanceof java.util.zip.ZipFile) {
+            throw new UnsupportedFeatureException("Detected a ZipFile object in the image heap. " + message);
+        }
+
         return original;
     }
 }

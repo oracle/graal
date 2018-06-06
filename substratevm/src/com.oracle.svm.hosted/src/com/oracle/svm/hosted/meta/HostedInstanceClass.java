@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -123,28 +125,6 @@ public class HostedInstanceClass extends HostedClass {
     public void setMonitorFieldOffset(int monitorFieldOffset) {
         assert this.monitorFieldOffset == 0 : "setting monitor field offset twice";
         this.monitorFieldOffset = monitorFieldOffset;
-    }
-
-    /*
-     * Wait/Notify condition field.
-     */
-
-    public boolean needWaitNotifyConditionField() {
-        return waitNotifyConditionFieldNeeded;
-    }
-
-    public void setNeedWaitNotifyConditionField() {
-        assert monitorFieldNeeded : "Object.wait(long) and Object.notify() need a lock field, too";
-        waitNotifyConditionFieldNeeded = true;
-    }
-
-    public int getWaitNotifyConditionFieldOffset() {
-        return waitNotifyConditionFieldOffset;
-    }
-
-    public void setWaitNotifyConditionFieldOffset(int waitNotifyConditionFieldOffset) {
-        assert this.waitNotifyConditionFieldOffset == 0 : "setting wait/notify condition field offset twice";
-        this.waitNotifyConditionFieldOffset = waitNotifyConditionFieldOffset;
     }
 
     /*

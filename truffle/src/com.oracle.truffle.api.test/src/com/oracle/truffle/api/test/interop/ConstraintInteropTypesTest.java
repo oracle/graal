@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,6 +24,18 @@
  */
 package com.oracle.truffle.api.test.interop;
 
+import static org.junit.Assert.fail;
+
+import java.math.BigInteger;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -29,54 +43,60 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.math.BigInteger;
-import org.junit.Assert;
-import static org.junit.Assert.fail;
-import org.junit.Test;
 
 public class ConstraintInteropTypesTest {
-    @Test(expected = ClassCastException.class)
+
+    private Context context;
+    private Value polyglot;
+
+    @Before
+    public void setup() {
+        this.context = Context.create();
+        this.polyglot = context.getPolyglotBindings();
+    }
+
+    @After
+    public void tearDown() {
+        context.close();
+    }
+
+    @Test(expected = PolyglotException.class)
     public void forbidNonPrimitiveObjectReturn() {
         BrokenTruffleObject obj = new BrokenTruffleObject(this);
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("value", obj).build();
 
-        Object result = engine.findGlobalSymbol("value").execute().get();
+        polyglot.putMember("value", obj);
+        Value result = polyglot.getMember("value").execute();
         fail("No result, an exception should be thrown: " + result);
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = PolyglotException.class)
     public void forbidNullReturn() {
         BrokenTruffleObject obj = new BrokenTruffleObject(null);
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("value", obj).build();
-
-        Object result = engine.findGlobalSymbol("value").execute().get();
+        polyglot.putMember("value", obj);
+        Value result = polyglot.getMember("value").execute();
         fail("No result, an exception should be thrown: " + result);
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test(expected = PolyglotException.class)
     public void forbidStringBuilderReturn() {
         BrokenTruffleObject obj = new BrokenTruffleObject(new StringBuilder("I am string builder!"));
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("value", obj).build();
-
-        Object result = engine.findGlobalSymbol("value").execute().get();
+        polyglot.putMember("value", obj);
+        Value result = polyglot.getMember("value").execute();
         fail("No result, an exception should be thrown: " + result);
     }
 
-    @Test(expected = ClassCastException.class)
+    @Test(expected = PolyglotException.class)
     public void forbidBigIntegerReturn() {
         BrokenTruffleObject obj = new BrokenTruffleObject(new BigInteger("30"));
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("value", obj).build();
-
-        Object result = engine.findGlobalSymbol("value").execute().get();
+        polyglot.putMember("value", obj);
+        Value result = polyglot.getMember("value").execute();
         fail("No result, an exception should be thrown: " + result);
     }
 
     public void allowStringReturn() {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("value", obj).build();
-
-        Object result = engine.findGlobalSymbol("value").execute().get();
+        polyglot.putMember("value", obj);
+        Value result = polyglot.getMember("value").execute();
         Assert.assertEquals("30", result);
     }
 

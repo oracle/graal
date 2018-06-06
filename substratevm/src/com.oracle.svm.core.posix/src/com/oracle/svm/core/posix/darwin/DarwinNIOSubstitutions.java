@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,7 +26,6 @@ package com.oracle.svm.core.posix.darwin;
 
 import java.io.IOException;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -123,7 +124,7 @@ public final class DarwinNIOSubstitutions {
             // 079     int res;
             int res;
             // 081     EV_SET(&changes[0], fd, filter, flags, 0, 0, 0);
-            DarwinEvent.EV_SET(changes.addressOf(0), Word.unsigned(fd), (short) filter, (short) flags, 0, Word.signed(0), WordFactory.nullPointer());
+            DarwinEvent.EV_SET(changes.addressOf(0), WordFactory.unsigned(fd), (short) filter, (short) flags, 0, WordFactory.signed(0), WordFactory.nullPointer());
             // 082     RESTARTABLE(kevent(kqfd, &changes[0], 1, NULL, 0, &timeout), res);
             do {
                 do {
@@ -141,7 +142,7 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         static int keventPoll(int kqfd, long address, int nevents) throws IOException {
             // 090     struct kevent *events = jlong_to_ptr(address);
-            DarwinEvent.kevent events = Word.pointer(address);
+            DarwinEvent.kevent events = WordFactory.pointer(address);
             // 091     int res;
             int res;
             // 093     RESTARTABLE(kevent(kqfd, NULL, 0, events, nevents, NULL), res);
@@ -207,19 +208,19 @@ public final class DarwinNIOSubstitutions {
             // 120     //   kqueue behaves erratically if some of its registrations fail.
             // 121     EV_SET(&changes[0], fd, EVFILT_READ,  r ? EV_ADD : EV_DELETE, 0, 0, 0);
             DarwinEvent.EV_SET(changes.addressOf(0),
-                            Word.unsigned(fd),
+                            WordFactory.unsigned(fd),
                             (short) DarwinEvent.EVFILT_READ(),
                             (short) (CTypeConversion.toBoolean(r) ? DarwinEvent.EV_ADD() : DarwinEvent.EV_DELETE()),
                             0,
-                            Word.zero(),
+                            WordFactory.zero(),
                             WordFactory.nullPointer());
             // 122     EV_SET(&changes[1], fd, EVFILT_WRITE, w ? EV_ADD : EV_DELETE, 0, 0, 0);
             DarwinEvent.EV_SET(changes.addressOf(1),
-                            Word.unsigned(fd),
+                            WordFactory.unsigned(fd),
                             (short) DarwinEvent.EVFILT_WRITE(),
                             (short) (CTypeConversion.toBoolean(w) ? DarwinEvent.EV_ADD() : DarwinEvent.EV_DELETE()),
                             0,
-                            Word.zero(),
+                            WordFactory.zero(),
                             WordFactory.nullPointer());
             // 123     kevent(kq, changes, 2, errors, 2, &dontBlock);
             DarwinEvent.kevent(kq, changes, 2, errors, 2, dontBlock);
@@ -234,7 +235,7 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         int kevent0(int kq, long kevAddr, int kevCount, long timeout) throws IOException {
             // 132     struct kevent *kevs = (struct kevent *)jlong_to_ptr(kevAddr);
-            DarwinEvent.kevent keys = Word.pointer(kevAddr);
+            DarwinEvent.kevent keys = WordFactory.pointer(kevAddr);
             // 133     struct timespec ts;
             Time.timespec ts = StackValue.get(SizeOf.get(Time.timespec.class));
             // 134     struct timespec *tsp;
@@ -285,7 +286,7 @@ public final class DarwinNIOSubstitutions {
             CCharPointer cPointer = StackValue.get(SizeOf.get(CCharPointer.class));
             cPointer.write((byte) 1);
             // 167     if (1 != write(fd, &c, 1)) {
-            if (1 != (int) Unistd.write(fd, cPointer, Word.unsigned(1)).rawValue()) {
+            if (1 != (int) Unistd.write(fd, cPointer, WordFactory.unsigned(1)).rawValue()) {
                 // 168         JNU_ThrowIOExceptionWithLastError(env, "KQueueArrayWrapper: interrupt failed");
                 throw new IOException("KQueueArrayWrapper: interrupt failed");
             }
@@ -332,7 +333,7 @@ public final class DarwinNIOSubstitutions {
             // 056     RESTARTABLE(write(fd, buf, 1), res);
             do {
                 do {
-                    res = (int) Unistd.write(fd, buf, Word.unsigned(1)).rawValue();
+                    res = (int) Unistd.write(fd, buf, WordFactory.unsigned(1)).rawValue();
                 } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             } while (false);
             // 057     if (res < 0) {
@@ -353,7 +354,7 @@ public final class DarwinNIOSubstitutions {
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
                 do {
-                    res = (int) Unistd.read(fd, buf, Word.unsigned(1)).rawValue();
+                    res = (int) Unistd.read(fd, buf, WordFactory.unsigned(1)).rawValue();
                 } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             } while (false);
             // 067     if (res < 0) {

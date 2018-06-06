@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -85,7 +87,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     private Map<Long, DeoptProxyAnchorNode> deoptEntries = new HashMap<>();
 
     HostedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+        super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
     }
 
     @Override
@@ -156,13 +158,14 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
      * Insert a deopt entry for the graph's start node.
      */
     @Override
-    protected void finishPrepare(FixedWithNextNode startInstr, int bci) {
-        super.finishPrepare(startInstr, bci);
+    protected void finishPrepare(FixedWithNextNode startInstr, int bci, FrameStateBuilder state) {
+        super.finishPrepare(startInstr, bci, state);
 
         if (getMethod().compilationInfo.isDeoptEntry(bci, false, false)) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(frameState.create(bci, deoptEntry));
             deoptEntries.put(Long.valueOf(bci), deoptEntry);
+            insertProxies(deoptEntry, state);
         }
     }
 

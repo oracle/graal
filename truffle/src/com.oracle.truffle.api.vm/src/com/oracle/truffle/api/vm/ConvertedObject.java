@@ -26,10 +26,10 @@ package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 
+@SuppressWarnings("deprecation")
 final class ConvertedObject implements TruffleObject {
-    private static final TruffleObject NULL = JavaInterop.asTruffleObject(null);
+    private static final TruffleObject NULL = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(null);
 
     private final TruffleObject original;
     private final Object value;

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -36,24 +38,24 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
-            case "-help-advanced":
+            case "--help-extra":
                 args.poll();
-                nativeImage.showMessage(DefaultOptionHandler.helpTextAdvanced);
+                nativeImage.showMessage(DefaultOptionHandler.helpExtraText);
                 nativeImage.showMessage(helpTextServer);
                 System.exit(0);
                 return true;
 
-            case "-no-server":
+            case "--no-server":
                 args.poll();
                 nativeImage.setUseServer(false);
                 return true;
-            case "-verbose-server":
+            case "--verbose-server":
                 args.poll();
                 nativeImage.setVerboseServer(true);
                 return true;
         }
 
-        String oServer = "-server";
+        String oServer = "--server";
         if (headArg.startsWith(oServer)) {
             String optionTail = args.poll().substring(oServer.length());
             String oAll = "-all";

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,12 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -45,12 +50,8 @@ final class Target_com_oracle_svm_core_util_VMError {
     @Substitute
     private static RuntimeException shouldNotReachHere() {
         ThreadStackPrinter.printBacktrace();
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("VMError.shouldNotReachHere").newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        VMErrorSubstitutions.shutdown();
         return null;
     }
 
@@ -58,12 +59,8 @@ final class Target_com_oracle_svm_core_util_VMError {
     @Substitute
     private static RuntimeException shouldNotReachHere(String msg) {
         ThreadStackPrinter.printBacktrace();
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("VMError.shouldNotReachHere: ").string(msg).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        VMErrorSubstitutions.shutdown(msg);
         return null;
     }
 
@@ -71,18 +68,8 @@ final class Target_com_oracle_svm_core_util_VMError {
     @Substitute
     private static RuntimeException shouldNotReachHere(Throwable ex) {
         ThreadStackPrinter.printBacktrace();
-        /*
-         * We do not want to call getMessage(), since it can be overriden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        Log log = Log.log();
-        log.autoflush(true);
-        String detailMessage = JDKUtils.getRawMessage(ex);
-        log.string("VMError.shouldNotReachHere: ").string(ex.getClass().getName()).string(": ").string(detailMessage).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        VMErrorSubstitutions.shutdown(ex);
         return null;
     }
 
@@ -114,14 +101,55 @@ final class Target_com_oracle_svm_core_util_VMError {
     }
 }
 
-class UnsupportedFeatureError extends Error {
-    private static final long serialVersionUID = -2281164998442235179L;
-
-    UnsupportedFeatureError(String message) {
-        super(message);
-    }
-}
-
 /** Dummy class to have a class with the file's name. */
 public class VMErrorSubstitutions {
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+    static void shutdown() {
+        Log log = Log.log();
+        log.autoflush(true);
+        log.string("VMError.shouldNotReachHere").newline();
+        doShutdown(log);
+    }
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+    static void shutdown(String msg) {
+        Log log = Log.log();
+        log.autoflush(true);
+        log.string("VMError.shouldNotReachHere: ").string(msg).newline();
+        doShutdown(log);
+    }
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+    static void shutdown(Throwable ex) {
+        /*
+         * We do not want to call getMessage(), since it can be overriden by subclasses of
+         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
+         * is better than printing nothing.
+         */
+        String detailMessage = JDKUtils.getRawMessage(ex);
+        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(ex);
+
+        Log log = Log.log();
+        log.autoflush(true);
+        log.string("VMError.shouldNotReachHere: ").string(ex.getClass().getName()).string(": ").string(detailMessage).newline();
+        if (stackTrace != null) {
+            for (StackTraceElement element : stackTrace) {
+                if (element != null) {
+                    log.string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
+                    log.string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+                    log.newline();
+                }
+            }
+        }
+        doShutdown(log);
+    }
+
+    private static void doShutdown(Log log) {
+        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        ImageSingletons.lookup(LogHandler.class).fatalError();
+    }
 }

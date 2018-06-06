@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -44,6 +46,7 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
+import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
 import sun.misc.Unsafe;
 
@@ -96,7 +99,8 @@ public abstract class ObjectFile {
 
     public enum Format {
         ELF,
-        MACH_O
+        MACH_O,
+        PECOFF
     }
 
     public abstract Format getFormat();
@@ -160,6 +164,8 @@ public abstract class ObjectFile {
             return "Linux";
         } else if (osName.startsWith("Mac OS X")) {
             return "Mac OS X";
+        } else if (osName.startsWith("Windows")) {
+            return "Windows";
         } else {
             throw new IllegalStateException("unsupported OS: " + osName);
         }
@@ -175,7 +181,15 @@ public abstract class ObjectFile {
     }
 
     public static String getFilenameSuffix() {
-        return ".o";
+        switch (ObjectFile.getNativeFormat()) {
+            case ELF:
+            case MACH_O:
+                return ".o";
+            case PECOFF:
+                return ".obj";
+            default:
+                throw new AssertionError("unreachable");
+        }
     }
 
     public static Format getNativeFormat() {
@@ -184,6 +198,8 @@ public abstract class ObjectFile {
                 return Format.ELF;
             case "Mac OS X":
                 return Format.MACH_O;
+            case "Windows":
+                return Format.PECOFF;
             default:
                 throw new AssertionError("unreachable"); // we must handle any output of getHostOS()
         }
@@ -195,6 +211,8 @@ public abstract class ObjectFile {
                 return new ELFObjectFile(runtimeDebugInfoGeneration);
             case MACH_O:
                 return new MachOObjectFile();
+            case PECOFF:
+                return new PECoffObjectFile();
             default:
                 throw new AssertionError("unreachable");
         }
@@ -766,17 +784,12 @@ public abstract class ObjectFile {
         // are we the first section in any segment? are we in any explicit segment at all?
         boolean firstSection = false;
         boolean inAnySegment = false;
-        @SuppressWarnings("unused")
-        boolean predElementIsInAnySegment = false;
         for (List<Element> l : el.getOwner().getSegments()) {
             if (l.get(0) == el) {
                 firstSection = true;
             }
             if (l.contains(el)) {
                 inAnySegment = true;
-            }
-            if (l.contains(predElement)) {
-                predElementIsInAnySegment = true;
             }
         }
 
@@ -1579,6 +1592,7 @@ public abstract class ObjectFile {
             if (emittedSize != expectedSize) {
                 throw new IllegalStateException("For element " + e + ", expected size " + expectedSize + " but emitted size " + emittedSize);
             }
+
         }
     }
 
@@ -1689,17 +1703,9 @@ public abstract class ObjectFile {
         boolean isFunction();
     }
 
-    public abstract Symbol createDefinedSymbol(String name, Element baseSection, int position, int size, boolean isCode, boolean isGlobal);
-
-    public Symbol createDefinedDataSymbol(String name, Element baseSection, int position) {
-        return createDefinedSymbol(name, baseSection, position, getWordSizeInBytes(), false, true);
-    }
+    public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal);
 
     public abstract Symbol createUndefinedSymbol(String name, int size, boolean isCode);
-
-    public Symbol createUndefinedSymbol(String name, boolean isCode) {
-        return createUndefinedSymbol(name, 0, isCode);
-    }
 
     protected abstract SymbolTable createSymbolTable();
 

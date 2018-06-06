@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,8 +25,6 @@
 package com.oracle.svm.hosted.c;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.hosted.c.CAnnotationProcessorCache.get;
-import static com.oracle.svm.hosted.c.CAnnotationProcessorCache.put;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,9 +32,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
@@ -49,6 +52,7 @@ import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
 public class CAnnotationProcessor extends CCompilerInvoker {
 
     private final NativeCodeContext codeCtx;
+    private final List<String> posixHeaders;
 
     private NativeCodeInfo codeInfo;
     private QueryCodeWriter writer;
@@ -56,16 +60,25 @@ public class CAnnotationProcessor extends CCompilerInvoker {
     public CAnnotationProcessor(NativeLibraries nativeLibs, NativeCodeContext codeCtx, Path tempDirectory) {
         super(nativeLibs, tempDirectory);
         this.codeCtx = codeCtx;
+
+        PosixDirectives posixDirectives = new PosixDirectives();
+        if (posixDirectives.isInConfiguration()) {
+            this.posixHeaders = posixDirectives.getHeaderFiles();
+        } else {
+            this.posixHeaders = Collections.emptyList();
+        }
     }
 
-    public NativeCodeInfo process() {
+    public NativeCodeInfo process(CAnnotationProcessorCache cache) {
         InfoTreeBuilder constructor = new InfoTreeBuilder(nativeLibs, codeCtx);
         codeInfo = constructor.construct();
         if (nativeLibs.getErrors().size() > 0) {
             return codeInfo;
         }
-        // If using a CAP cache and have hit, short cut the whole building/compile/execute query
-        if (!(CAnnotationProcessorCache.Options.UseCAPCache.getValue() && get(nativeLibs, codeInfo))) {
+        if (CAnnotationProcessorCache.Options.UseCAPCache.getValue()) {
+            /* If using a CAP cache, short cut the whole building/compile/execute query. */
+            cache.get(nativeLibs, codeInfo);
+        } else {
             /*
              * Generate C source file (the "Query") that will produce the information needed (e.g.,
              * size of struct/union and offsets to their fields, value of enum/macros etc.).
@@ -82,7 +95,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
                 return codeInfo;
             }
 
-            makeQuery(binary.toString());
+            makeQuery(cache, binary.toString());
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
             }
@@ -93,7 +106,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
         return codeInfo;
     }
 
-    private void makeQuery(String binaryName) {
+    private void makeQuery(CAnnotationProcessorCache cache, String binaryName) {
         List<String> command = new ArrayList<>();
         command.add(binaryName);
         Process printingProcess = null;
@@ -103,7 +116,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
             List<String> lines = QueryResultParser.parse(nativeLibs, codeInfo, is);
             is.close();
             if (CAnnotationProcessorCache.Options.NewCAPCache.getValue()) {
-                put(codeInfo, lines);
+                cache.put(codeInfo, lines);
             }
             printingProcess.waitFor();
         } catch (IOException ex) {
@@ -126,8 +139,12 @@ public class CAnnotationProcessor extends CCompilerInvoker {
 
     @Override
     protected void reportCompilerError(Path queryFile, String line) {
+        for (String header : posixHeaders) {
+            if (line.contains(header.substring(1, header.length() - 1) + ": No such file or directory")) {
+                UserError.abort("Basic header file missing (" + header + "). Make sure libc and zlib headers are available on your system.");
+            }
+        }
         List<Object> elements = new ArrayList<>();
-
         int fileNameStart = line.indexOf(queryFile.toString());
         if (fileNameStart != -1) {
             int firstColon = line.indexOf(':', fileNameStart + 1);

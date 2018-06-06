@@ -97,7 +97,7 @@ public final class SLMain {
 
         try {
             Value result = context.eval(source);
-            if (context.lookup(SL, "main") == null) {
+            if (context.getBindings(SL).getMember("main") == null) {
                 System.err.println("No function main() defined in SL source file.");
                 return 1;
             }

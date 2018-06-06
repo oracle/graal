@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -153,5 +156,17 @@ final class GraalTVMCI extends TVMCI {
                 return new EngineData();
             }
         });
+    }
+
+    @Override
+    protected void reportPolymorphicSpecialize(Node source) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleExperimentalSplitting)) {
+            TruffleSplittingStrategy.newPolymorphicSpecialize(source);
+            final RootNode rootNode = source.getRootNode();
+            final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
+            if (callTarget != null) {
+                callTarget.polymorphicSpecialize(source);
+            }
+        }
     }
 }
