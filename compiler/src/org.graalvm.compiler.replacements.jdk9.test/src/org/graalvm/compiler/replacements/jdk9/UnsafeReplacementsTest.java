@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.jdk9;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -249,6 +250,8 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
             testGraph("unsafeGetAndAddShort");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddInt");
             testGraph("unsafeGetAndAddLong");
         }
@@ -304,6 +307,8 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeGetAndSetByte");
             testGraph("unsafeGetAndSetChar");
             testGraph("unsafeGetAndSetShort");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
             testGraph("unsafeGetAndSetObject");
