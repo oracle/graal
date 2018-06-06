@@ -24,11 +24,16 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.replacements.test.BitOpNodesTest.isBitCountIntrinsicSupported;
+import static org.graalvm.compiler.replacements.test.BitOpNodesTest.isNumberLeadingZerosIntrinsicSupported;
+import static org.graalvm.compiler.replacements.test.BitOpNodesTest.isNumberTrailingZerosIntrinsicSupported;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -49,6 +54,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -120,9 +126,13 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     /**
-     * The HotSpot intrinsics implemented without {@link InvocationPlugin}s or whose
-     * {@link InvocationPlugin} registration is guarded by a condition that is false in the current
-     * VM context.
+     * The HotSpot intrinsics that:
+     * <ul>
+     * <li>will never implemented by Graal (comments must explain why)</li>
+     * <li>are implemented without {@link InvocationPlugin}s, or</li>
+     * <li>whose {@link InvocationPlugin} registration is guarded by a condition that is false in
+     * the current VM context.</li>
+     * </ul>
      */
     private static final Set<String> IGNORE = new TreeSet<>();
 
@@ -145,6 +155,10 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     static {
+        HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
+        Architecture arch = rt.getHostBackend().getTarget().arch;
+        GraalHotSpotVMConfig config = rt.getVMConfig();
+
         // These are dead
         add(IGNORE,
                         "java/lang/Math.atan2(DD)D",
@@ -205,15 +219,21 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        // These are known to be implemented but the platform dependent conditions
-        // for when they are enabled are complex so just ignore them all the time.
-        add(IGNORE,
-                        "java/lang/Integer.bitCount(I)I",
-                        "java/lang/Integer.numberOfLeadingZeros(I)I",
-                        "java/lang/Integer.numberOfTrailingZeros(I)I",
-                        "java/lang/Long.bitCount(J)I",
-                        "java/lang/Long.numberOfLeadingZeros(J)I",
-                        "java/lang/Long.numberOfTrailingZeros(J)I");
+        if (!config.usePopCountInstruction || !isBitCountIntrinsicSupported(arch)) {
+            add(IGNORE,
+                            "java/lang/Integer.bitCount(I)I",
+                            "java/lang/Long.bitCount(J)I");
+        }
+        if (!isNumberLeadingZerosIntrinsicSupported(arch)) {
+            add(IGNORE,
+                            "java/lang/Integer.numberOfLeadingZeros(I)I",
+                            "java/lang/Long.numberOfLeadingZeros(J)I");
+        }
+        if (!isNumberTrailingZerosIntrinsicSupported(arch)) {
+            add(IGNORE,
+                            "java/lang/Integer.numberOfTrailingZeros(I)I",
+                            "java/lang/Long.numberOfTrailingZeros(J)I");
+        }
 
         // Relevant for Java flight recorder
         add(TO_BE_INVESTIGATED,
@@ -222,17 +242,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(TO_BE_INVESTIGATED,
-                        // Should be fairly easy to implement - C2 intrinsifies these to use "v !=
-                        // v" to check for NaN instead of looking at the bit pattern.
-                        "java/lang/Double.doubleToLongBits(D)J",
-                        "java/lang/Float.floatToIntBits(F)I",
-
-                        // Should be trivial to implement because we already have existing nodes
-                        "java/lang/Math.decrementExact(I)I",
-                        "java/lang/Math.decrementExact(J)J",
-                        "java/lang/Math.incrementExact(I)I",
-                        "java/lang/Math.incrementExact(J)J",
-
                         // Similar to addExact
                         "java/lang/Math.negateExact(I)I",
                         // Similar to addExact
@@ -265,10 +274,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/Math.fma(DDD)D",
                             // HotSpot MacroAssembler-based intrinsic
                             "java/lang/Math.fma(FFF)F",
-                            // Just a runtime call (the called C code has a better fast path)
-                            "java/lang/Object.notify()V",
-                            // Just a runtime call (the called C code has a better fast path)
-                            "java/lang/Object.notifyAll()V",
                             // Emit pause instruction if os::is_MP()
                             "java/lang/Thread.onSpinWait()V",
                             // Just check if the argument is a compile time constant
@@ -281,37 +286,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/util/zip/Adler32.updateByteBuffer(IJII)I",
                             // Only implemented on non-AMD64 platforms (some logic and runtime call)
                             "java/util/zip/Adler32.updateBytes(I[BII)I",
-                            // similar to CRC32.updateBytes
-                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
-                            // similar to CRC32.updateDirectByteBuffer
-                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I",
                             // Emits a slow and a fast path and some dispatching logic
                             "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;",
-
-                            // Should be easy to implement as it seems to match the logic that is
-                            // already implemented in ValueCompareAndSwapNode. On the high-level, we
-                            // would need something similar to UnsafeCompareAndSwapNode but with a
-                            // different result type.
-                            "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeInt(Ljava/lang/Object;JII)I",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeLong(Ljava/lang/Object;JJJ)J",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeObject(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
-
-                            // Should be easy to implement as we already have an implementation for
-                            // int, long, and Object.
-                            "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",
-                            "jdk/internal/misc/Unsafe.compareAndSetShort(Ljava/lang/Object;JSS)Z",
-
-                            // Should be easy to implement as we already have an implementation for
-                            // int and long.
-                            "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
-                            "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
-
-                            // Should be easy to implement as we already have an implementation for
-                            // int, long, and Object.
-                            "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
-                            "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
 
                             // Control flow, deopts, and a cast
                             "jdk/internal/util/Preconditions.checkIndex(IILjava/util/function/BiFunction;)I",
@@ -395,15 +371,11 @@ public class CheckGraalIntrinsics extends GraalTest {
             add(TO_BE_INVESTIGATED,
                             "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
-                            "java/lang/StringLatin1.compareTo([B[B)I",
-                            "java/lang/StringLatin1.compareToUTF16([B[B)I",
                             "java/lang/StringLatin1.equals([B[B)Z",
                             "java/lang/StringLatin1.indexOf([BI[BII)I",
                             "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
                             "java/lang/StringLatin1.inflate([BI[CII)V",
-                            "java/lang/StringUTF16.compareTo([B[B)I",
-                            "java/lang/StringUTF16.compareToLatin1([B[B)I",
                             "java/lang/StringUTF16.compress([BI[BII)I",
                             "java/lang/StringUTF16.compress([CI[BII)I",
                             "java/lang/StringUTF16.equals([B[B)Z",
@@ -456,9 +428,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
             }
         }
-
-        HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
-        GraalHotSpotVMConfig config = rt.getVMConfig();
 
         /*
          * The intrinsics down here are known to be implemented but they are not always enabled on
@@ -583,9 +552,12 @@ public class CheckGraalIntrinsics extends GraalTest {
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
 
         List<String> missing = new ArrayList<>();
+        List<String> mischaracterizedAsToBeInvestigated = new ArrayList<>();
+        List<String> mischaracterizedAsIgnored = new ArrayList<>();
         EconomicMap<String, List<Binding>> bindings = invocationPlugins.getBindings(true);
         for (VMIntrinsicMethod intrinsic : intrinsics) {
             InvocationPlugin plugin = findPlugin(bindings, intrinsic);
+            String m = String.format("%s.%s%s", intrinsic.declaringClass, intrinsic.name, intrinsic.descriptor);
             if (plugin == null) {
                 ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
                 if (method != null) {
@@ -594,17 +566,37 @@ public class CheckGraalIntrinsics extends GraalTest {
                         continue;
                     }
                 }
-                String m = String.format("%s.%s%s", intrinsic.declaringClass, intrinsic.name, intrinsic.descriptor);
                 if (!TO_BE_INVESTIGATED.contains(m) && !IGNORE.contains(m)) {
                     missing.add(m);
+                }
+            } else {
+                if (TO_BE_INVESTIGATED.contains(m)) {
+                    mischaracterizedAsToBeInvestigated.add(m);
+                } else if (IGNORE.contains(m)) {
+                    mischaracterizedAsIgnored.add(m);
                 }
             }
         }
 
+        Formatter errorMsgBuf = new Formatter();
         if (!missing.isEmpty()) {
             Collections.sort(missing);
             String missingString = missing.stream().collect(Collectors.joining(String.format("%n    ")));
-            fail("missing Graal intrinsics for:%n    %s", missingString);
+            errorMsgBuf.format("missing Graal intrinsics for:%n    %s%n", missingString);
+        }
+        if (!mischaracterizedAsToBeInvestigated.isEmpty()) {
+            Collections.sort(mischaracterizedAsToBeInvestigated);
+            String missingString = mischaracterizedAsToBeInvestigated.stream().collect(Collectors.joining(String.format("%n    ")));
+            errorMsgBuf.format("mischaracterized as TO_BE_INVESTIGATED Graal intrinsics:%n    %s%n", missingString);
+        }
+        if (!mischaracterizedAsIgnored.isEmpty()) {
+            Collections.sort(mischaracterizedAsIgnored);
+            String missingString = mischaracterizedAsIgnored.stream().collect(Collectors.joining(String.format("%n    ")));
+            errorMsgBuf.format("mischaracterized as IGNORED Graal intrinsics:%n    %s%n", missingString);
+        }
+        String errorMsg = errorMsgBuf.toString();
+        if (!errorMsg.isEmpty()) {
+            fail(errorMsg);
         }
     }
 }
