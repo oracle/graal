@@ -63,7 +63,7 @@ final class PolyglotLogger extends Logger {
     @CompilerDirectives.CompilationFinal private volatile int levelNum;
     @CompilerDirectives.CompilationFinal private volatile Assumption levelNumStable;
     private volatile Level levelObj;
-    private volatile Logger parent;
+    private volatile PolyglotLogger parent;
     private Collection<ChildLoggerRef> children;
 
     private PolyglotLogger(final String loggerName, final String resourceBundleName) {
@@ -75,7 +75,6 @@ final class PolyglotLogger extends Logger {
     private PolyglotLogger() {
         this(ROOT_NAME, null);
         addHandlerInternal(ForwardingHandler.INSTANCE);
-        setParentInternal(Logger.getLogger(ROOT_NAME));
     }
 
     @Override
@@ -126,7 +125,7 @@ final class PolyglotLogger extends Logger {
     }
 
     @Override
-    public Logger getParent() {
+    public PolyglotLogger getParent() {
         return parent;
     }
 
@@ -155,7 +154,7 @@ final class PolyglotLogger extends Logger {
             return;
         }
         final LogRecord immutable = ImmutableLogRecord.create(record);
-        for (Logger current = this; current != null; current = current.getParent()) {
+        for (PolyglotLogger current = this; current != null; current = current.getParent()) {
             for (Handler handler : current.getHandlers()) {
                 handler.publish(immutable);
             }
@@ -183,10 +182,10 @@ final class PolyglotLogger extends Logger {
         if (levelObj != null) {
             value = levelObj.intValue();
             if (parent != null) {
-                value = Math.min(value, getParentLevelNum());
+                value = Math.min(value, parent.getLevelNum());
             }
         } else if (parent != null) {
-            value = getParentLevelNum();
+            value = parent.getLevelNum();
         } else {
             value = DEFAULT_VALUE;
         }
@@ -198,15 +197,6 @@ final class PolyglotLogger extends Logger {
                     logger.updateLevelNum();
                 }
             }
-        }
-    }
-
-    private int getParentLevelNum() {
-        if (parent.getClass() == PolyglotLogger.class) {
-            return ((PolyglotLogger) parent).getLevelNum();
-        } else {
-            final Level level = parent.getLevel();
-            return level != null ? level.intValue() : DEFAULT_VALUE;
         }
     }
 
@@ -239,13 +229,12 @@ final class PolyglotLogger extends Logger {
         super.addHandler(handler);
     }
 
-    private void setParentInternal(final Logger newParent) {
+    private void setParentInternal(final PolyglotLogger newParent) {
         Objects.requireNonNull(newParent, "Parent must be non null.");
         synchronized (childrenLock) {
             ChildLoggerRef found = null;
-            if (parent != null && parent.getClass() == PolyglotLogger.class) {
-                final PolyglotLogger polyglotParent = (PolyglotLogger) parent;
-                for (Iterator<ChildLoggerRef> it = polyglotParent.children.iterator(); it.hasNext();) {
+            if (parent != null) {
+                for (Iterator<ChildLoggerRef> it = parent.children.iterator(); it.hasNext();) {
                     final ChildLoggerRef childRef = it.next();
                     final PolyglotLogger childLogger = childRef.get();
                     if (childLogger == this) {
@@ -256,17 +245,14 @@ final class PolyglotLogger extends Logger {
                 }
             }
             this.parent = newParent;
-            if (parent.getClass() == PolyglotLogger.class) {
-                if (found == null) {
-                    found = new ChildLoggerRef(this);
-                }
-                final PolyglotLogger polyglotParent = (PolyglotLogger) parent;
-                found.setParent(polyglotParent);
-                if (polyglotParent.children == null) {
-                    polyglotParent.children = new ArrayList<>(2);
-                }
-                polyglotParent.children.add(found);
+            if (found == null) {
+                found = new ChildLoggerRef(this);
             }
+            found.setParent(parent);
+            if (parent.children == null) {
+                parent.children = new ArrayList<>(2);
+            }
+            parent.children.add(found);
             updateLevelNum();
         }
     }
@@ -381,7 +367,7 @@ final class PolyglotLogger extends Logger {
         synchronized boolean isLoggable(final String loggerName, final PolyglotContextImpl currentContext, final Level level) {
             final Map<String, Level> current = levelsByContext.get(currentContext);
             if (current == null) {
-                final int currentLevel = Math.min(polyglotRootLogger.getParent().getLevel().intValue(), DEFAULT_VALUE);
+                final int currentLevel = DEFAULT_VALUE;
                 return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
             }
             if (levelsByContext.size() == 1) {
@@ -404,11 +390,11 @@ final class PolyglotLogger extends Logger {
                     currentName = index == -1 ? "" : currentName.substring(0, index);
                 }
             }
-            return polyglotRootLogger.getParent().getLevel().intValue();
+            return DEFAULT_VALUE;
         }
 
-        Logger getOrCreateLogger(final String loggerName, final String resourceBundleName) {
-            Logger found = getLogger(loggerName);
+        PolyglotLogger getOrCreateLogger(final String loggerName, final String resourceBundleName) {
+            PolyglotLogger found = getLogger(loggerName);
             if (found == null) {
                 for (final PolyglotLogger logger = new PolyglotLogger(loggerName, resourceBundleName); found == null;) {
                     if (addLogger(logger)) {
@@ -442,7 +428,7 @@ final class PolyglotLogger extends Logger {
                 cleanupFreedReferences();
                 NamedLoggerRef ref = loggers.get(loggerName);
                 if (ref != null) {
-                    final Logger loggerInstance = ref.get();
+                    final PolyglotLogger loggerInstance = ref.get();
                     if (loggerInstance != null) {
                         return false;
                     } else {
@@ -455,7 +441,7 @@ final class PolyglotLogger extends Logger {
                 createParents(loggerName);
                 final LoggerNode node = findLoggerNode(loggerName);
                 node.setLoggerRef(ref);
-                final Logger parentLogger = node.findParentLogger();
+                final PolyglotLogger parentLogger = node.findParentLogger();
                 if (parentLogger != null) {
                     logger.setParentInternal(parentLogger);
                 }
@@ -634,22 +620,22 @@ final class PolyglotLogger extends Logger {
             }
 
             void updateChildParents() {
-                final Logger logger = loggerRef.get();
+                final PolyglotLogger logger = loggerRef.get();
                 updateChildParentsImpl(logger);
             }
 
-            Logger findParentLogger() {
+            PolyglotLogger findParentLogger() {
                 if (parent == null) {
                     return null;
                 }
-                Logger logger;
+                PolyglotLogger logger;
                 if (parent.loggerRef != null && (logger = parent.loggerRef.get()) != null) {
                     return logger;
                 }
                 return parent.findParentLogger();
             }
 
-            private void updateChildParentsImpl(final Logger parentLogger) {
+            private void updateChildParentsImpl(final PolyglotLogger parentLogger) {
                 if (children == null || children.isEmpty()) {
                     return;
                 }
