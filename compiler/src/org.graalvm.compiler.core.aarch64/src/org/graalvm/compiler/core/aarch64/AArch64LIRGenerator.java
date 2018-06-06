@@ -162,7 +162,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(kind);
         Variable scratch1 = newVariable(kind);
         Variable scratch2 = newVariable(kind);
-        append(new AtomicReadAndAddOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), asAllocatable(delta), asAllocatable(scratch1), asAllocatable(scratch2)));
+        append(new AtomicReadAndAddOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), delta, asAllocatable(scratch1), asAllocatable(scratch2)));
         return result;
     }
 

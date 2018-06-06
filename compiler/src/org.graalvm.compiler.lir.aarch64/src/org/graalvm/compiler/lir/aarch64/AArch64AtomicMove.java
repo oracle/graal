@@ -25,6 +25,10 @@
 package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
+
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -37,6 +41,7 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.JavaConstant;
 
 public class AArch64AtomicMove {
     /**
@@ -116,11 +121,11 @@ public class AArch64AtomicMove {
 
         @Def protected AllocatableValue resultValue;
         @Alive protected AllocatableValue addressValue;
-        @Alive protected AllocatableValue deltaValue;
+        @Alive protected Value deltaValue;
         @Temp protected AllocatableValue scratchValue1;
         @Temp protected AllocatableValue scratchValue2;
 
-        public AtomicReadAndAddOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue delta, AllocatableValue scratch1, AllocatableValue scratch2) {
+        public AtomicReadAndAddOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta, AllocatableValue scratch1, AllocatableValue scratch2) {
             super(TYPE);
             this.accessKind = kind;
             this.resultValue = result;
@@ -130,24 +135,40 @@ public class AArch64AtomicMove {
             this.scratchValue2 = scratch2;
         }
 
+        private boolean isImmediateValue(Value value) {
+            if (isJavaConstant(value)) {
+                JavaConstant constant = asJavaConstant(value);
+                if (constant != null && constant.getJavaKind().isNumericInteger()) {
+                    int v = constant.asInt();
+                    if (v >= 0 && v < 4096) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
             final int size = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
-            Register delta = asRegister(deltaValue);
             Register result = asRegister(resultValue);
 
             if (AArch64LIRFlagsVersioned.useLSE(masm)) {
-                masm.ldadd(size, delta, result, address, true, true);
+                masm.ldadd(size, asRegister(asAllocatableValue(deltaValue)), result, address, true, true);
             } else {
                 Register scratch1 = asRegister(scratchValue1);
                 Register scratch2 = asRegister(scratchValue2);
                 Label retry = new Label();
                 masm.bind(retry);
                 masm.ldaxr(size, result, address);
-                masm.add(size, scratch1, result, delta);
+                if (isImmediateValue(deltaValue)) {
+                    masm.add(size, scratch1, result, asJavaConstant(deltaValue).asInt());
+                } else {
+                    masm.add(size, scratch1, result, asRegister(asAllocatableValue(deltaValue)));
+                }
                 masm.stlxr(size, scratch2, scratch1, address);
                 // if scratch2 == 0 then write successful, else retry
                 masm.cbnz(32, scratch2, retry);
