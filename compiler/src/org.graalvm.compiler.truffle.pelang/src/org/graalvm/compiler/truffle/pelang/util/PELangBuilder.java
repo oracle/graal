@@ -45,6 +45,7 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralArrayNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralNullNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralObjectNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
@@ -93,6 +94,10 @@ public class PELangBuilder {
 
     public PELangExpressionNode lit(Object array) {
         return PELangLiteralArrayNode.create(array);
+    }
+
+    public PELangExpressionNode litNull() {
+        return new PELangLiteralNullNode();
     }
 
     public PELangFunction fn(Function<PELangBuilder, FunctionHeader> headerFunction, Function<PELangBuilder, PELangStatementNode> bodyNodeFunction) {
