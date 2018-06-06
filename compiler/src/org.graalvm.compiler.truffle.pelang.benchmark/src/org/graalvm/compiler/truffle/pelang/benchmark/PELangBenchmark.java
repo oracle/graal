@@ -57,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 @State(Scope.Benchmark)
-public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
+public abstract class PELangBenchmark extends GraalBenchmark {
 
     private final TruffleCompilerImpl compiler = (TruffleCompilerImpl) TruffleCompilerRuntime.getRuntime().getTruffleCompiler();
     private final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
@@ -75,7 +75,7 @@ public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
     private final PhaseContext phaseContext;
     private final HighTierContext tierContext;
 
-    public PartialEvaluationBenchmark() {
+    public PELangBenchmark() {
         callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(createRootNode());
         optionValues = TruffleCompilerOptions.getOptions();
         debugContext = DebugContext.create(optionValues, Arrays.asList(new TruffleTreeDebugHandlersFactory()));
