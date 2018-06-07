@@ -29,10 +29,14 @@ import java.lang.invoke.VarHandle;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -61,6 +65,7 @@ public class VarHandleTest extends GraalCompilerTest {
     private int expectedMembars;
     private int expectedReads;
     private int expectedWrites;
+    private int expectedAnyKill;
 
     public static int testRead1Snippet(Holder h) {
         /* Explicitly access the volatile field with non-volatile access semantics. */
@@ -107,6 +112,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 1;
         expectedWrites = 0;
         expectedMembars = 0;
+        expectedAnyKill = 0;
         test("testRead1Snippet", new Holder());
     }
 
@@ -115,6 +121,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 1;
         expectedWrites = 0;
         expectedMembars = 2;
+        expectedAnyKill = 2;
         test("testRead2Snippet", new Holder());
     }
 
@@ -123,6 +130,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 1;
         expectedWrites = 0;
         expectedMembars = 0;
+        expectedAnyKill = 0;
         test("testRead3Snippet", new Holder());
     }
 
@@ -131,6 +139,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 1;
         expectedWrites = 0;
         expectedMembars = 2;
+        expectedAnyKill = 2;
         test("testRead4Snippet", new Holder());
     }
 
@@ -139,6 +148,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 0;
         expectedWrites = 1;
         expectedMembars = 0;
+        expectedAnyKill = 0;
         test("testWrite1Snippet", new Holder());
     }
 
@@ -147,6 +157,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 0;
         expectedWrites = 1;
         expectedMembars = 2;
+        expectedAnyKill = 2;
         test("testWrite2Snippet", new Holder());
     }
 
@@ -155,6 +166,7 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 0;
         expectedWrites = 1;
         expectedMembars = 0;
+        expectedAnyKill = 0;
         test("testWrite3Snippet", new Holder());
     }
 
@@ -163,20 +175,42 @@ public class VarHandleTest extends GraalCompilerTest {
         expectedReads = 0;
         expectedWrites = 1;
         expectedMembars = 2;
+        expectedAnyKill = 2;
         test("testWrite4Snippet", new Holder());
     }
 
     @Override
     protected boolean checkLowTierGraph(StructuredGraph graph) {
-        if (expectedReads != -1) {
-            Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());
-        }
-        if (expectedWrites != -1) {
-            Assert.assertEquals(expectedWrites, graph.getNodes().filter(WriteNode.class).count());
-        }
-        if (expectedMembars != -1) {
-            Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
-        }
+        Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());
+        Assert.assertEquals(expectedWrites, graph.getNodes().filter(WriteNode.class).count());
+        Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
+        Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
         return super.checkLowTierGraph(graph);
+    }
+
+    private static int countAnyKill(StructuredGraph graph) {
+        int anyKillCount = 0;
+        int startNodes = 0;
+        for (Node n : graph.getNodes()) {
+            if (n instanceof StartNode) {
+                startNodes++;
+            } else if (n instanceof MemoryCheckpoint.Single) {
+                MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
+                if (single.getLocationIdentity().isAny()) {
+                    anyKillCount++;
+                }
+            } else if (n instanceof MemoryCheckpoint.Multi) {
+                MemoryCheckpoint.Multi multi = (MemoryCheckpoint.Multi) n;
+                for (LocationIdentity loc : multi.getLocationIdentities()) {
+                    if (loc.isAny()) {
+                        anyKillCount++;
+                        break;
+                    }
+                }
+            }
+        }
+        // Ignore single StartNode.
+        Assert.assertEquals(1, startNodes);
+        return anyKillCount;
     }
 }
