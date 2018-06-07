@@ -27,13 +27,13 @@ images or shared objects.
 * [TRegex](/regex/) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
 
 ## Related Repositories
-GralVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
+GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
 * [Graal.JS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2017 compatible) and node.js 8.11.1
 * [FastR](https://github.com/oracle/fastr) - R Language 3.4.0
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
 * [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.3.7
 * [Sulong](https://github.com/graalvm/sulong) - LLVM bitcode interpreter
-* [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM.
+* [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM
 
 ## License
 Each GraalVM component is licensed:
