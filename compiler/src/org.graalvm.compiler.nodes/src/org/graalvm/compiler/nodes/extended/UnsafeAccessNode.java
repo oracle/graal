@@ -102,9 +102,9 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // Field access semantics are encoded in the field. By using VarHandles, it's
                     // possible to access volatile fields using non-volatile semantics (i.e. without
                     // memory barriers).
-                    if (field != null && field.getJavaKind() == this.accessKind() && !field.isVolatile()) {
+                    if (field != null && field.getJavaKind() == this.accessKind()) {
                         assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
-                        return cloneAsFieldAccess(graph().getAssumptions(), field);
+                        return cloneAsFieldAccess(graph().getAssumptions(), field, false);
                     }
                 }
             }
@@ -120,7 +120,11 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return this;
     }
 
-    protected abstract ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field);
+    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field) {
+        return cloneAsFieldAccess(assumptions, field, field.isVolatile());
+    }
+
+    protected abstract ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess);
 
     protected abstract ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity);
 }
