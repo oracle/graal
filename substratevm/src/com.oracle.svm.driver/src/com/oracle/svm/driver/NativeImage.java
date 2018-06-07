@@ -722,7 +722,11 @@ public class NativeImage {
     }
 
     void addCustomImageClasspath(Path classpath) {
-        customImageClasspath.add(canonicalize(classpath));
+        try {
+            customImageClasspath.add(canonicalize(classpath));
+        } catch (NativeImageError e) {
+            showWarning("Invalid classpath entry: " + classpath);
+        }
     }
 
     void addCustomJavaArgs(String javaArg) {
