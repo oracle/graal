@@ -242,7 +242,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        this.logLevels.clear();
+        assert this.logLevels.isEmpty();
         parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels, false);
 
         this.engineOptionValues.putAll(originalEngineOptions);
@@ -784,6 +784,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 // Reset language homes from native-image compilatio time, will be recomputed in
                 // image execution time
                 LanguageCache.resetNativeImageCacheLanguageHomes();
+                // Clear logger settings
+                engine.logLevels.clear();
+                engine.logHandler = null;
             }
         }
         return engine;

@@ -30,10 +30,6 @@ import java.security.PrivilegedAction;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import java.util.Objects;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
@@ -58,56 +54,6 @@ public class Truffle {
      */
     public static TruffleRuntime getRuntime() {
         return RUNTIME;
-    }
-
-    /**
-     * Find or create a logger for a given language or instrument class. If a logger for the class
-     * already exists it's returned, otherwise a new logger is created.
-     * <p>
-     * The logger's {@link Level} configuration is done using the
-     * {@link org.graalvm.polyglot.Context.Builder#options(java.util.Map)}. The level option key has
-     * the following format: {@code log.languageId.className.level} or
-     * {@code log.instrumentId.className.level}. The value is either a name of pre defined
-     * {@link Level} or a numeric {@link Level} value.
-     * <p>
-     * The created {@link Logger} supports parameters of primitive types and strings. The object
-     * parameters are converted into string value before they are passed to {@link Handler}.
-     *
-     * @param id the unique id of language or instrument
-     * @param forClass the {@link Class} to create a logger for
-     * @return a {@link Logger}
-     * @throws NullPointerException if {@code id} or {@code forClass} is null
-     * @since 1.0
-     */
-    public static Logger getLogger(final String id, final Class<?> forClass) {
-        Objects.requireNonNull(forClass, "Class must be non null.");
-        return getLogger(id, forClass.getName());
-    }
-
-    /**
-     * Find or create a logger for a given language or instrument. If a logger with given name
-     * already exists it's returned, otherwise a new logger is created.
-     * <p>
-     * The logger's {@link Level} configuration is done using the
-     * {@link org.graalvm.polyglot.Context.Builder#options(java.util.Map)}. The level option key has
-     * the following format: {@code log.languageId.loggerName.level} or
-     * {@code log.instrumentId.loggerName.level}. The value is either a name of pre-defined
-     * {@link Level} or a numeric {@link Level} value.
-     * <p>
-     * The created {@link Logger} supports parameters of primitive types and strings. The object
-     * parameters are converted into string value before they are passed to {@link Handler}.
-     *
-     * @param id the unique id of language or instrument
-     * @param loggerName the the name of a {@link Logger}, if a {@code loggerName} is null or empty
-     *            a root logger for language (instrument) is returned
-     * @return a {@link Logger}
-     * @throws NullPointerException if {@code id} is null
-     * @since 1.0
-     */
-    public static Logger getLogger(final String id, final String loggerName) {
-        Objects.requireNonNull(id, "LanguageId must be non null.");
-        final String globalLoggerId = loggerName == null || loggerName.isEmpty() ? id : id + '.' + loggerName;
-        return TruffleLanguage.AccessAPI.engineAccess().getLogger(globalLoggerId, null);
     }
 
     @SafeVarargs

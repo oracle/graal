@@ -31,7 +31,7 @@ import org.graalvm.polyglot.Engine;
 import org.junit.Before;
 import org.junit.Test;
 
-public class PolyglotLoggerPartialEvaluationTest extends PartialEvaluationTest {
+public class TruffleLoggerPartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
         return 42;

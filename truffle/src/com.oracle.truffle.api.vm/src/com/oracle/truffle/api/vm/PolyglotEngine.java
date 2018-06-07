@@ -1513,8 +1513,13 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Logger getLogger(String loggerName, String resourceBundleName) {
-            return PolyglotLogger.LoggerCache.getInstance().getOrCreateLogger(loggerName, resourceBundleName);
+        public Handler getLogHandler() {
+            return PolyglotLogHandler.INSTANCE;
+        }
+
+        @Override
+        public Object getCurrentPolyglotContext() {
+            return null;
         }
     }
 }

@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
-import java.util.logging.Logger;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -63,6 +62,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -318,8 +319,9 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
-        public abstract Logger getLogger(String loggerName, String resourceBundleName);
+        public abstract Handler getLogHandler();
 
+        public abstract Object getCurrentPolyglotContext();
     }
 
     public abstract static class LanguageSupport {
@@ -405,6 +407,8 @@ public abstract class Accessor {
         public abstract boolean checkTruffleFile(File file);
 
         public abstract byte[] truffleFileContent(File file) throws IOException;
+
+        public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
     }
 
     public abstract static class InstrumentSupport {

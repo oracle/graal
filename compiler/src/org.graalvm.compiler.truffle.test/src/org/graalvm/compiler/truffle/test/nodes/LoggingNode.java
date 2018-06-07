@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test.nodes;
 
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -37,7 +37,7 @@ public class LoggingNode extends AbstractTestNode {
     public LoggingNode(final Level level, final String message, final int result) {
         Objects.requireNonNull(level, "Level must be non null.");
         Objects.requireNonNull(message, "Message must be non null.");
-        this.log = Truffle.getLogger("test", "testLogger");
+        this.log = TruffleLogger.getLogger("test", "testLogger");
         this.level = level;
         this.message = message;
         this.result = result;
