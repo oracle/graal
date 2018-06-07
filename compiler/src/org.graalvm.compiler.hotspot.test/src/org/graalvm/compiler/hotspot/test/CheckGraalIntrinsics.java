@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -62,8 +63,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Checks the intrinsics implemented by Graal against the set of intrinsics declared by HotSpot. The
  * purpose of this test is to detect when new intrinsics are added to HotSpot and process them
- * appropriately in Graal. This will be achieved by working through {@link #TO_BE_INVESTIGATED} and
- * either implementing the intrinsic or moving it to {@link #IGNORE} .
+ * appropriately in Graal. This will be achieved by working through {@link #toBeInvestigated} and
+ * either implementing the intrinsic or moving it to {@link #ignore} .
  */
 public class CheckGraalIntrinsics extends GraalTest {
 
@@ -131,18 +132,25 @@ public class CheckGraalIntrinsics extends GraalTest {
      * the current VM context.</li>
      * </ul>
      */
-    private static final Set<String> IGNORE = new TreeSet<>();
+    public final Set<String> ignore = new TreeSet<>();
+
     /**
      * The HotSpot intrinsics whose {@link InvocationPlugin} registration is guarded by a condition
      * too complex to duplicate here.
      * </ul>
      */
-    private static final Set<String> COMPLEX_GUARD = new TreeSet<>();
+    public final Set<String> complexGuard = new TreeSet<>();
 
     /**
-     * The HotSpot intrinsics yet to be implemented or moved to {@link #IGNORE}.
+     * The HotSpot intrinsics implemented downstream.
+     * </ul>
      */
-    private static final Set<String> TO_BE_INVESTIGATED = new TreeSet<>();
+    public final Set<String> downstream = new TreeSet<>();
+
+    /**
+     * The HotSpot intrinsics yet to be implemented or moved to {@link #ignore}.
+     */
+    public final Set<String> toBeInvestigated = new TreeSet<>();
 
     private static Collection<String> add(Collection<String> c, String... elements) {
         String[] sorted = elements.clone();
@@ -157,13 +165,13 @@ public class CheckGraalIntrinsics extends GraalTest {
         return c;
     }
 
-    static {
-        HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
-        Architecture arch = rt.getHostBackend().getTarget().arch;
-        GraalHotSpotVMConfig config = rt.getVMConfig();
+    public final HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
+    public final Architecture arch = rt.getHostBackend().getTarget().arch;
+    public final GraalHotSpotVMConfig config = rt.getVMConfig();
 
+    public CheckGraalIntrinsics() {
         // These are dead
-        add(IGNORE,
+        add(ignore,
                         "java/lang/Math.atan2(DD)D",
                         "jdk/internal/misc/Unsafe.park(ZJ)V",
                         "jdk/internal/misc/Unsafe.unpark(Ljava/lang/Object;)V",
@@ -175,34 +183,34 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "sun/misc/Unsafe.unpark(Ljava/lang/Object;)V");
 
         // These only exist to assist escape analysis in C2
-        add(IGNORE,
+        add(ignore,
                         "java/lang/Throwable.fillInStackTrace()Ljava/lang/Throwable;");
 
         // These are only used for the security handling during stack walking
-        add(IGNORE,
+        add(ignore,
                         "java/lang/reflect/Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;");
 
         // These are marker intrinsic ids only
-        add(IGNORE,
+        add(ignore,
                         "java/lang/invoke/MethodHandle.<compiledLambdaForm>*",
                         "java/lang/invoke/MethodHandle.invoke*");
 
         // These are implemented through lowering
-        add(IGNORE,
+        add(ignore,
                         "java/lang/ref/Reference.get()Ljava/lang/Object;");
 
         // These are only used by C1
-        add(IGNORE,
+        add(ignore,
                         "java/nio/Buffer.checkIndex(I)I");
 
         // These do general compiler optimizations and convert min/max to cmov instructions. We are
         // ignoring them as cmovs are not necessarily beneficial.
-        add(IGNORE,
+        add(ignore,
                         "java/lang/Math.max(II)I",
                         "java/lang/Math.min(II)I");
 
         // These are known to be implemented down stream
-        add(IGNORE,
+        add(downstream,
                         "java/lang/Integer.toString(I)Ljava/lang/String;",
                         "java/lang/String.<init>(Ljava/lang/String;)V",
                         "java/lang/StringBuffer.<init>()V",
@@ -222,7 +230,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        add(COMPLEX_GUARD,
+        add(complexGuard,
                         "java/lang/Integer.bitCount(I)I",
                         "java/lang/Integer.numberOfLeadingZeros(I)I",
                         "java/lang/Integer.numberOfTrailingZeros(I)I",
@@ -231,12 +239,12 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/lang/Long.numberOfTrailingZeros(J)I");
 
         // Relevant for Java flight recorder
-        add(TO_BE_INVESTIGATED,
+        add(toBeInvestigated,
                         "oracle/jrockit/jfr/Timing.counterTime()J",
                         "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
-        add(TO_BE_INVESTIGATED,
+        add(toBeInvestigated,
                         // Similar to addExact
                         "java/lang/Math.negateExact(I)I",
                         // Similar to addExact
@@ -255,12 +263,12 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         if (isJDK9OrHigher()) {
             // Relevant for Java flight recorder
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             "jdk/jfr/internal/JVM.counterTime()J",
                             "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                             "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
 
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             // Some logic and a stub call
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                             // Stub and very little logic
@@ -296,7 +304,7 @@ public class CheckGraalIntrinsics extends GraalTest {
              * explicitly as the more generic method might be more restrictive and therefore slower
              * than necessary.
              */
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             // Mapped to compareAndExchange*
                             "jdk/internal/misc/Unsafe.compareAndExchangeByteAcquire(Ljava/lang/Object;JBB)B",
                             "jdk/internal/misc/Unsafe.compareAndExchangeByteRelease(Ljava/lang/Object;JBB)B",
@@ -363,7 +371,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/internal/misc/Unsafe.weakCompareAndSetShortRelease(Ljava/lang/Object;JSS)Z");
 
             // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
                             "java/lang/StringLatin1.equals([B[B)Z",
@@ -386,20 +394,20 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK10OrHigher()) {
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             "java/lang/Math.multiplyHigh(JJ)J",
                             "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
         }
 
         if (isJDK11OrHigher()) {
             // Relevant for Java flight recorder
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
 
         if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
-            add(TO_BE_INVESTIGATED,
+            add(toBeInvestigated,
                             "sun/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
                             "sun/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                             "sun/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
@@ -407,7 +415,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             if (isJDK9OrHigher()) {
-                add(TO_BE_INVESTIGATED,
+                add(toBeInvestigated,
                                 "java/lang/StringLatin1.compareTo([B[B)I",
                                 "java/lang/StringLatin1.compareToUTF16([B[B)I",
                                 "java/lang/StringUTF16.compareTo([B[B)I",
@@ -436,13 +444,13 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         // CRC32 intrinsics
         if (!config.useCRC32Intrinsics) {
-            add(IGNORE, "java/util/zip/CRC32.update(II)I");
+            add(ignore, "java/util/zip/CRC32.update(II)I");
             if (isJDK9OrHigher()) {
-                add(IGNORE,
+                add(ignore,
                                 "java/util/zip/CRC32.updateByteBuffer0(IJII)I",
                                 "java/util/zip/CRC32.updateBytes0(I[BII)I");
             } else {
-                add(IGNORE,
+                add(ignore,
                                 "java/util/zip/CRC32.updateByteBuffer(IJII)I",
                                 "java/util/zip/CRC32.updateBytes(I[BII)I");
             }
@@ -450,7 +458,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         // CRC32C intrinsics
         if (!config.useCRC32CIntrinsics) {
-            add(IGNORE,
+            add(ignore,
                             "java/util/zip/CRC32C.updateBytes(I[BII)I",
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
@@ -458,13 +466,13 @@ public class CheckGraalIntrinsics extends GraalTest {
         // AES intrinsics
         if (!config.useAESIntrinsics) {
             if (isJDK9OrHigher()) {
-                add(IGNORE,
+                add(ignore,
                                 "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
                                 "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
                                 "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
                                 "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
             } else {
-                add(IGNORE,
+                add(ignore,
                                 "com/sun/crypto/provider/AESCrypt.decryptBlock([BI[BI)V",
                                 "com/sun/crypto/provider/AESCrypt.encryptBlock([BI[BI)V",
                                 "com/sun/crypto/provider/CipherBlockChaining.decrypt([BII[BI)I",
@@ -475,44 +483,44 @@ public class CheckGraalIntrinsics extends GraalTest {
         // BigInteger intrinsics
         if (!config.useMultiplyToLenIntrinsic()) {
             if (isJDK9OrHigher()) {
-                add(IGNORE, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
+                add(ignore, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
             } else {
-                add(IGNORE, "java/math/BigInteger.multiplyToLen([II[II[I)[I");
+                add(ignore, "java/math/BigInteger.multiplyToLen([II[II[I)[I");
             }
         }
         if (!config.useMulAddIntrinsic()) {
-            add(IGNORE, "java/math/BigInteger.implMulAdd([I[IIII)I");
+            add(ignore, "java/math/BigInteger.implMulAdd([I[IIII)I");
         }
         if (!config.useMontgomeryMultiplyIntrinsic()) {
-            add(IGNORE, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
+            add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
         }
         if (!config.useMontgomerySquareIntrinsic()) {
-            add(IGNORE, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
+            add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
         }
         if (!config.useSquareToLenIntrinsic()) {
-            add(IGNORE, "java/math/BigInteger.implSquareToLen([II[II)[I");
+            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
         }
 
         // SHA intrinsics
         if (!config.useSHA1Intrinsics()) {
             if (isJDK9OrHigher()) {
-                add(IGNORE, "sun/security/provider/SHA.implCompress0([BI)V");
+                add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
             } else {
-                add(IGNORE, "sun/security/provider/SHA.implCompress([BI)V");
+                add(ignore, "sun/security/provider/SHA.implCompress([BI)V");
             }
         }
         if (!config.useSHA256Intrinsics()) {
             if (isJDK9OrHigher()) {
-                add(IGNORE, "sun/security/provider/SHA2.implCompress0([BI)V");
+                add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
             } else {
-                add(IGNORE, "sun/security/provider/SHA2.implCompress([BI)V");
+                add(ignore, "sun/security/provider/SHA2.implCompress([BI)V");
             }
         }
         if (!config.useSHA512Intrinsics()) {
             if (isJDK9OrHigher()) {
-                add(IGNORE, "sun/security/provider/SHA5.implCompress0([BI)V");
+                add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
             } else {
-                add(IGNORE, "sun/security/provider/SHA5.implCompress([BI)V");
+                add(ignore, "sun/security/provider/SHA5.implCompress([BI)V");
             }
         }
     }
@@ -529,16 +537,23 @@ public class CheckGraalIntrinsics extends GraalTest {
         return GraalServices.JAVA_SPECIFICATION_VERSION >= 11;
     }
 
+    public interface Refiner {
+        void refine(CheckGraalIntrinsics checker);
+    }
+
     @Test
     @SuppressWarnings("try")
     public void test() throws ClassNotFoundException {
-        HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
 
-        HotSpotVMConfigStore store = rt.getVMConfig().getStore();
+        HotSpotVMConfigStore store = config.getStore();
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
+
+        for (Refiner refiner : ServiceLoader.load(Refiner.class)) {
+            refiner.refine(this);
+        }
 
         List<String> missing = new ArrayList<>();
         List<String> mischaracterizedAsToBeInvestigated = new ArrayList<>();
@@ -555,13 +570,13 @@ public class CheckGraalIntrinsics extends GraalTest {
                         continue;
                     }
                 }
-                if (!TO_BE_INVESTIGATED.contains(m) && !IGNORE.contains(m)) {
+                if (!toBeInvestigated.contains(m) && !ignore.contains(m) && !complexGuard.contains(m) && !downstream.contains(m)) {
                     missing.add(m);
                 }
             } else {
-                if (TO_BE_INVESTIGATED.contains(m)) {
+                if (toBeInvestigated.contains(m)) {
                     mischaracterizedAsToBeInvestigated.add(m);
-                } else if (IGNORE.contains(m)) {
+                } else if (ignore.contains(m)) {
                     mischaracterizedAsIgnored.add(m);
                 }
             }
@@ -576,7 +591,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!mischaracterizedAsToBeInvestigated.isEmpty()) {
             Collections.sort(mischaracterizedAsToBeInvestigated);
             String missingString = mischaracterizedAsToBeInvestigated.stream().collect(Collectors.joining(String.format("%n    ")));
-            errorMsgBuf.format("found plugins for intrinsics characterized as TO_BE_INVESTIGATED:%n    %s%n", missingString);
+            errorMsgBuf.format("found plugins for intrinsics characterized as toBeInvestigated:%n    %s%n", missingString);
         }
         if (!mischaracterizedAsIgnored.isEmpty()) {
             Collections.sort(mischaracterizedAsIgnored);
