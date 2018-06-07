@@ -66,6 +66,10 @@ int add(int a, int b) {
   return a + b;
 }
 
+int (*get_callback_function())(int, int) {
+  return &add;
+}
+
 void store_native_function(void *container) {
   struct container *c = (struct container *) container;
   c->callback = add;

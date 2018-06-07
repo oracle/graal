@@ -74,6 +74,10 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
                         new RunConfiguration(0, null));
         runs.put(new File(OTHER_DIR + "/callbackIntrinsic/callbackIntrinsic" + testSuffix).toPath(),
                         new RunConfiguration(0, "calling f64 callback\n-0.416147\n"));
+        runs.put(new File(OTHER_DIR + "/returnNativeCallback/returnNativeCallback" + testSuffix).toPath(),
+                        new RunConfiguration(10, null));
+        runs.put(new File(OTHER_DIR + "/nativeCallbackInStruct/nativeCallbackInStruct" + testSuffix).toPath(),
+                        new RunConfiguration(42, null));
 
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
     }
