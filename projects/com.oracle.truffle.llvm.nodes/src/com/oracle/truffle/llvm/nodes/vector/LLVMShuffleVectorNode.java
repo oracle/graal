@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
@@ -58,6 +59,32 @@ public class LLVMShuffleVectorNode {
 
         private static byte[] concat(byte[] first, byte[] second) {
             byte[] result = new byte[first.length + second.length];
+            for (int i = 0; i < first.length; i++) {
+                result[i] = first[i];
+            }
+            for (int i = first.length; i < first.length + second.length; i++) {
+                result[i] = second[i - first.length];
+            }
+            return result;
+        }
+    }
+
+    @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMShuffleI16VectorNode extends LLVMExpressionNode {
+
+        @Specialization
+        protected LLVMI16Vector doI8Vector(LLVMI16Vector leftVector, LLVMI16Vector rightVector, LLVMI32Vector maskVector) {
+            short[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
+            short[] newValues = new short[maskVector.getLength()];
+            for (int i = 0; i < maskVector.getLength(); i++) {
+                int index = maskVector.getValue(i);
+                newValues[i] = joinedValues[index];
+            }
+            return LLVMI16Vector.create(newValues);
+        }
+
+        private static short[] concat(short[] first, short[] second) {
+            short[] result = new short[first.length + second.length];
             for (int i = 0; i < first.length; i++) {
                 result[i] = first[i];
             }

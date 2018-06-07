@@ -326,6 +326,7 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI8I
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMPointerInsertElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleFloatVectorNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI16VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI64VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
@@ -448,6 +449,8 @@ public class BasicNodeFactory implements NodeFactory {
             switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
                 case I8:
                     return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);
+                case I16:
+                    return LLVMShuffleI16VectorNodeGen.create(vector1, vector2, mask);
                 case I32:
                     return LLVMShuffleI32VectorNodeGen.create(vector1, vector2, mask);
                 case I64:
