@@ -37,6 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugInternalValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -52,6 +53,27 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class LLVMDebuggerScopeFactory {
+
+    @TruffleBoundary
+    private static LLVMDebuggerScopeEntries getIRLevelEntries(Frame frame) {
+        if (frame == null || frame.getFrameDescriptor().getSlots().isEmpty()) {
+            return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
+        }
+
+        final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
+        for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
+            final LLVMDebugInternalValue v = new LLVMDebugInternalValue(frame.getValue(slot), slot.getInfo());
+            entries.add(String.valueOf(slot.getIdentifier()), v);
+        }
+
+        return entries;
+    }
+
+    @TruffleBoundary
+    public static Iterable<Scope> createIRLevelScope(Node node, Frame frame) {
+        final Scope scope = Scope.newBuilder(DEFAULT_NAME, getIRLevelEntries(frame)).node(node).build();
+        return Collections.singletonList(scope);
+    }
 
     private static LLVMNode findStatementNode(Node suspendedNode) {
         for (Node node = suspendedNode; node != null; node = node.getParent()) {
@@ -69,7 +91,7 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    public static Iterable<Scope> create(Node node, Frame frame, LLVMContext context) {
+    public static Iterable<Scope> createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
 
@@ -217,22 +239,26 @@ public final class LLVMDebuggerScopeFactory {
 
     @TruffleBoundary
     private Object getVariables(Frame frame) {
+        if (symbols.isEmpty()) {
+            return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
+        }
+
         final LLVMDebuggerScopeEntries vars = new LLVMDebuggerScopeEntries();
 
-        if (frame != null && !symbols.isEmpty()) {
+        if (frame != null) {
             for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
                 if (slot.getIdentifier() instanceof LLVMSourceSymbol && frame.getValue(slot) instanceof LLVMDebugObjectBuilder) {
                     final LLVMSourceSymbol symbol = (LLVMSourceSymbol) slot.getIdentifier();
                     final LLVMDebugObject value = ((LLVMDebugObjectBuilder) frame.getValue(slot)).getValue(symbol);
                     if (symbols.contains(symbol)) {
-                        vars.add(symbol, value);
+                        vars.add(symbol.getName(), value);
                     }
                 }
             }
         }
 
         for (LLVMSourceSymbol symbol : symbols) {
-            if (!vars.contains(symbol)) {
+            if (!vars.contains(symbol.getName())) {
                 LLVMDebugObjectBuilder dbgVal = context.getStatic(symbol);
 
                 if (dbgVal == null) {
@@ -246,7 +272,7 @@ public final class LLVMDebuggerScopeFactory {
                     dbgVal = LLVMDebugObjectBuilder.UNAVAILABLE;
                 }
 
-                vars.add(symbol, dbgVal.getValue(symbol));
+                vars.add(symbol.getName(), dbgVal.getValue(symbol));
             }
         }
 

@@ -27,54 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.scope;
+package com.oracle.truffle.llvm.runtime.debug.value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+public final class LLVMDebugInternalValue extends LLVMDebuggerValue {
 
-public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
+    private static final String NO_TYPE = "";
 
-    static final LLVMDebuggerScopeEntries EMPTY_SCOPE = new LLVMDebuggerScopeEntries();
+    private final Object value;
+    private final Object type;
 
-    private final Map<String, Object> entries;
-
-    LLVMDebuggerScopeEntries() {
-        this.entries = new HashMap<>();
-    }
-
-    @TruffleBoundary
-    void add(String name, Object value) {
-        entries.put(name, value);
-    }
-
-    @TruffleBoundary
-    boolean contains(String name) {
-        return entries.containsKey(name);
+    public LLVMDebugInternalValue(Object value, Object type) {
+        this.value = value;
+        this.type = type;
     }
 
     @Override
     @TruffleBoundary
+    public String toString() {
+        return String.valueOf(value);
+    }
+
+    @TruffleBoundary
+    public Object getMetaObject() {
+        return type == null ? NO_TYPE : String.valueOf(type);
+    }
+
+    @Override
     protected int getElementCountForDebugger() {
-        return entries.size();
+        return 0;
     }
 
     @Override
-    @TruffleBoundary
     protected String[] getKeysForDebugger() {
-        final int count = getElementCountForDebugger();
-        if (count == 0) {
-            return NO_KEYS;
-        }
-        return new ArrayList<>(entries.keySet()).toArray(new String[count]);
+        return NO_KEYS;
     }
 
     @Override
-    @TruffleBoundary
     protected Object getElementForDebugger(String key) {
-        return entries.get(key);
+        return null;
     }
 }
