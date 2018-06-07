@@ -63,6 +63,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -76,6 +77,8 @@ import de.hpi.swa.trufflelsp.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
 public class TruffleAdapter implements ContextsListener {
+    private static final int SORTING_PRIORITY_LOCALS = 1;
+    private static final int SORTING_PRIORITY_GLOBALS = 2;
     private static final String TYPE_HARVESTING_URI = "TYPE_HARVESTING_URI:";
     public static final String NO_TYPES_HARVESTED = "NO_TYPES_HARVESTED";
     private static final Node HAS_SIZE = Message.HAS_SIZE.createNode();
@@ -438,39 +441,55 @@ public class TruffleAdapter implements ContextsListener {
     }
 
     private Object executeToSection(final Node nearestNode, final SourceWrapper sourceWrapper) {
-        Debugger debugger = this.env.lookup(this.env.getInstruments().get("debugger"), Debugger.class);
-        TypeHarvestingSuspendCallback callback = new TypeHarvestingSuspendCallback();
-        // We do not want to step, so an empty SourceElement-array avoids wrapping of nodes
-        try (DebuggerSession ds = debugger.startSession(callback, new SourceElement[0])) {
-            ds.install(Breakpoint.newBuilder(nearestNode.getSourceSection()).suspendAnchor(SuspendAnchor.BEFORE).build());
+        if (nearestNode instanceof InstrumentableNode && ((InstrumentableNode) nearestNode).hasTag(StandardTags.StatementTag.class)) {
+            Debugger debugger = this.env.lookup(this.env.getInstruments().get("debugger"), Debugger.class);
+            TypeHarvestingSuspendCallback callback = new TypeHarvestingSuspendCallback();
+            // We do not want to step, so an empty SourceElement-array avoids wrapping of nodes
+            try (DebuggerSession ds = debugger.startSession(callback, new SourceElement[0])) {
+                ds.install(Breakpoint.newBuilder(nearestNode.getSourceSection()).suspendAnchor(SuspendAnchor.BEFORE).build());
 
-            try {
+                try {
 // doWithContext(() -> sourceWrapper.getCallTarget().call());
-                exec(sourceWrapper.getSource().getURI());
-            } catch (Exception e) {
-                e.printStackTrace(); // TODO(ds)
+                    exec(sourceWrapper.getSource().getURI());
+                } catch (Exception e) {
+                    e.printStackTrace(); // TODO(ds)
+                }
             }
-        }
 
-        return callback.getEvalResult();
+            return callback.getEvalResult();
+        } else {
+            return doWithContext(() -> {
+                try {
+                    CallTarget target = this.env.parse(
+                                    Source.newBuilder(nearestNode.getSourceSection().getCharacters()).internal().name("internal global eval").language(
+                                                    sourceWrapper.getSource().getLanguage()).build());
+                    return target.call();
+                } catch (Throwable e) {
+                    return null;
+                }
+            });
+        }
     }
 
     private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, CompletionList completions, VirtualFrame frame) {
-        fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable);
+        fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable, SORTING_PRIORITY_LOCALS);
     }
 
     private void fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, CompletionList completions) {
-        fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findTopScopes(surrogate.getLangId()), null);
+        fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findTopScopes(surrogate.getLangId()), null, SORTING_PRIORITY_GLOBALS);
     }
 
-    private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Supplier<Iterable<Scope>> scopesSupplier, CompletionItemKind completionItemKindDefault) {
+    private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Supplier<Iterable<Scope>> scopesSupplier, CompletionItemKind completionItemKindDefault,
+                    int displayPriority) {
         doWithContext(() -> {
             String langId = surrogate.getLangId();
             LinkedHashMap<String, Map<Object, Object>> scopeMap = scopesToObjectMap(scopesSupplier.get());
             // Filter duplicates
             String[] existingCompletions = completions.getItems().stream().map((item) -> item.getLabel()).toArray(String[]::new);
             Set<String> completionKeys = new HashSet<>(Arrays.asList(existingCompletions));
+            int scopeCounter = 0;
             for (Entry<String, Map<Object, Object>> scopeEntry : scopeMap.entrySet()) {
+                ++scopeCounter;
                 for (Entry<Object, Object> entry : scopeEntry.getValue().entrySet()) {
                     String key = entry.getKey().toString();
                     if (completionKeys.contains(key)) {
@@ -488,6 +507,9 @@ public class TruffleAdapter implements ContextsListener {
                         continue;
                     }
                     CompletionItem completion = new CompletionItem(key);
+                    // Inner scopes should be displayed first, so sort by priority and scopeCounter (the innermost scope
+                    // has the lowest counter)
+                    completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
                     CompletionItemKind completionItemKind = findCompletionItemKind(object);
                     completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
                     completion.setDetail(createCompletionDetail(object, langId, completion.getKind() == null));
@@ -502,7 +524,7 @@ public class TruffleAdapter implements ContextsListener {
 
         // TODO(ds) object.isInstantiable()
 
-        if (value.canExecute()) {
+        if (value.isReadable() && value.canExecute()) {
             return CompletionItemKind.Function;
         }
 
@@ -660,7 +682,7 @@ public class TruffleAdapter implements ContextsListener {
         if (!detailText.isEmpty()) {
             detailText += " -> ";
         }
-        return detailText + obj.as(String.class);
+        return detailText + (obj.isReadable() ? obj.as(String.class) : "");
     }
 
     private String createCompletionDetail(Object obj, String langId, boolean includeClass) {

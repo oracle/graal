@@ -133,6 +133,10 @@ public class LanguageSpecificHacks {
                         Method methodCreateFloat = clazzPythonObjectFactory.getDeclaredMethod("createFloat", double.class);
                         return methodCreateFloat.invoke(factory, object);
                     }
+                    if (object instanceof String) {
+                        Method methodCreateFloat = clazzPythonObjectFactory.getDeclaredMethod("createString", String.class);
+                        return methodCreateFloat.invoke(factory, object);
+                    }
                 } catch (NoSuchMethodException | SecurityException | ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                 }
             }
