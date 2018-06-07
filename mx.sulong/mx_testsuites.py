@@ -76,8 +76,8 @@ def runGCCSuite_fortran(vmArgs):
     return run(vmArgs + ['-Dsulongtest.fileExtensionFilter=.f90:.f:.f03'], "com.oracle.truffle.llvm.test.GCCSuite", extraLibs=["libgfortran.so.3"])
 
 def compileOtherTests():
-    print("Compiling Other with clang -O0", end='')
-    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_otherDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_buildtools.Optimization.O0], mx_buildtools.ProgrammingLanguage.LLVMBC))
+    print("Compiling Other with clang -O1", end='')
+    mx_buildtools.printProgress(mx_buildtools.multicompileFolder(_otherDir, _cacheDir, [mx_buildtools.Tool.CLANG], ['-Iinclude', '-lm'], [mx_buildtools.Optimization.O1], mx_buildtools.ProgrammingLanguage.LLVMBC))
 
 def runArgsTests(vmArgs):
     """runs the Sulong test suite"""
