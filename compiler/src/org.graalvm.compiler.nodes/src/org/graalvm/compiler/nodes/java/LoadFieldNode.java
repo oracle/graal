@@ -71,7 +71,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     private final Stamp uncheckedStamp;
 
     protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field) {
-        this(stamp, object,field, field.isVolatile());
+        this(stamp, object, field, field.isVolatile());
     }
 
     protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, boolean volatileAccess) {

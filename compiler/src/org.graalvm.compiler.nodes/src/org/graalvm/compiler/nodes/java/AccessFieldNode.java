@@ -61,9 +61,8 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      *
      * @param object the instruction producing the receiver object
      * @param field the compiler interface representation of the field
-     * @param volatileAccess specifies if the field access is volatile or not,
-     *                       this is independent from and overrides the field
-     *                       volatile attribute.
+     * @param volatileAccess specifies if the access is volatile or not, this overrides the field
+     *            volatile modifier.
      */
     public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field, boolean volatileAccess) {
         super(c, stamp);
@@ -103,8 +102,8 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     /**
      * Checks whether this access has volatile semantics.
      *
-     * It is possible to access volatile fields, using non-volatile semantics
-     * using VarHandles. In general the access should
+     * The field access semantics are coupled to the access and not to the field. e.g. it's possible
+     * to access volatile fields using non-volatile semantics via VarHandles.
      */
     public boolean isVolatile() {
         return volatileAccess;
