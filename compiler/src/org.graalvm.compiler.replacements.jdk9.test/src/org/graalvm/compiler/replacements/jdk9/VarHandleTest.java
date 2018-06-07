@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -59,6 +60,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     private int expectedMembars;
     private int expectedReads;
+    private int expectedWrites;
 
     public static int testRead1Snippet(Holder h) {
         /* Explicitly access the volatile field with non-volatile access semantics. */
@@ -80,9 +82,30 @@ public class VarHandleTest extends GraalCompilerTest {
         return (int) Holder.FIELD.getVolatile(h);
     }
 
+    public static void testWrite1Snippet(Holder h) {
+        /* Explicitly access the volatile field with non-volatile access semantics. */
+        Holder.VOLATILE_FIELD.set(h, 123);
+    }
+
+    public static void testWrite2Snippet(Holder h) {
+        /* Explicitly access the volatile field with volatile access semantics. */
+        Holder.VOLATILE_FIELD.setVolatile(h, 123);
+    }
+
+    public static void testWrite3Snippet(Holder h) {
+        /* Explicitly access the non-volatile field with non-volatile access semantics. */
+        Holder.FIELD.set(h, 123);
+    }
+
+    public static void testWrite4Snippet(Holder h) {
+        /* Explicitly access the non-volatile field with volatile access semantics. */
+        Holder.FIELD.setVolatile(h, 123);
+    }
+
     @Test
     public void testRead1() {
         expectedReads = 1;
+        expectedWrites = 0;
         expectedMembars = 0;
         test("testRead1Snippet", new Holder());
     }
@@ -90,6 +113,7 @@ public class VarHandleTest extends GraalCompilerTest {
     @Test
     public void testRead2() {
         expectedReads = 1;
+        expectedWrites = 0;
         expectedMembars = 2;
         test("testRead2Snippet", new Holder());
     }
@@ -97,6 +121,7 @@ public class VarHandleTest extends GraalCompilerTest {
     @Test
     public void testRead3() {
         expectedReads = 1;
+        expectedWrites = 0;
         expectedMembars = 0;
         test("testRead3Snippet", new Holder());
     }
@@ -104,14 +129,50 @@ public class VarHandleTest extends GraalCompilerTest {
     @Test
     public void testRead4() {
         expectedReads = 1;
+        expectedWrites = 0;
         expectedMembars = 2;
         test("testRead4Snippet", new Holder());
+    }
+
+    @Test
+    public void testWrite1() {
+        expectedReads = 0;
+        expectedWrites = 1;
+        expectedMembars = 0;
+        test("testWrite1Snippet", new Holder());
+    }
+
+    @Test
+    public void testWrite2() {
+        expectedReads = 0;
+        expectedWrites = 1;
+        expectedMembars = 2;
+        test("testWrite2Snippet", new Holder());
+    }
+
+    @Test
+    public void testWrite3() {
+        expectedReads = 0;
+        expectedWrites = 1;
+        expectedMembars = 0;
+        test("testWrite3Snippet", new Holder());
+    }
+
+    @Test
+    public void testWrite4() {
+        expectedReads = 0;
+        expectedWrites = 1;
+        expectedMembars = 2;
+        test("testWrite4Snippet", new Holder());
     }
 
     @Override
     protected boolean checkLowTierGraph(StructuredGraph graph) {
         if (expectedReads != -1) {
             Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());
+        }
+        if (expectedWrites != -1) {
+            Assert.assertEquals(expectedWrites, graph.getNodes().filter(WriteNode.class).count());
         }
         if (expectedMembars != -1) {
             Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
