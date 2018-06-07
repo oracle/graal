@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.replacements.test.BitOpNodesTest.isBitCountIntrinsicSupported;
-import static org.graalvm.compiler.replacements.test.BitOpNodesTest.isNumberLeadingZerosIntrinsicSupported;
-import static org.graalvm.compiler.replacements.test.BitOpNodesTest.isNumberTrailingZerosIntrinsicSupported;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +50,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
@@ -135,6 +132,12 @@ public class CheckGraalIntrinsics extends GraalTest {
      * </ul>
      */
     private static final Set<String> IGNORE = new TreeSet<>();
+    /**
+     * The HotSpot intrinsics whose {@link InvocationPlugin} registration is guarded by a condition
+     * too complex to duplicate here.
+     * </ul>
+     */
+    private static final Set<String> COMPLEX_GUARD = new TreeSet<>();
 
     /**
      * The HotSpot intrinsics yet to be implemented or moved to {@link #IGNORE}.
@@ -219,21 +222,13 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        if (!config.usePopCountInstruction || !isBitCountIntrinsicSupported(arch)) {
-            add(IGNORE,
-                            "java/lang/Integer.bitCount(I)I",
-                            "java/lang/Long.bitCount(J)I");
-        }
-        if (!isNumberLeadingZerosIntrinsicSupported(arch)) {
-            add(IGNORE,
-                            "java/lang/Integer.numberOfLeadingZeros(I)I",
-                            "java/lang/Long.numberOfLeadingZeros(J)I");
-        }
-        if (!isNumberTrailingZerosIntrinsicSupported(arch)) {
-            add(IGNORE,
-                            "java/lang/Integer.numberOfTrailingZeros(I)I",
-                            "java/lang/Long.numberOfTrailingZeros(J)I");
-        }
+        add(COMPLEX_GUARD,
+                        "java/lang/Integer.bitCount(I)I",
+                        "java/lang/Integer.numberOfLeadingZeros(I)I",
+                        "java/lang/Integer.numberOfTrailingZeros(I)I",
+                        "java/lang/Long.bitCount(J)I",
+                        "java/lang/Long.numberOfLeadingZeros(J)I",
+                        "java/lang/Long.numberOfTrailingZeros(J)I");
 
         // Relevant for Java flight recorder
         add(TO_BE_INVESTIGATED,
@@ -402,7 +397,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
 
-        if (!getHostArchitectureName().equals("amd64")) {
+        if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(TO_BE_INVESTIGATED,
                             "sun/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
@@ -413,6 +408,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
             if (isJDK9OrHigher()) {
                 add(TO_BE_INVESTIGATED,
+                                "java/lang/StringLatin1.compareTo([B[B)I",
+                                "java/lang/StringLatin1.compareToUTF16([B[B)I",
+                                "java/lang/StringUTF16.compareTo([B[B)I",
+                                "java/lang/StringUTF16.compareToLatin1([B[B)I",
                                 "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
                                 "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                                 "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
@@ -530,16 +529,6 @@ public class CheckGraalIntrinsics extends GraalTest {
         return GraalServices.JAVA_SPECIFICATION_VERSION >= 11;
     }
 
-    private static String getHostArchitectureName() {
-        String arch = System.getProperty("os.arch");
-        if (arch.equals("x86_64")) {
-            arch = "amd64";
-        } else if (arch.equals("sparcv9")) {
-            arch = "sparc";
-        }
-        return arch;
-    }
-
     @Test
     @SuppressWarnings("try")
     public void test() throws ClassNotFoundException {
@@ -587,12 +576,12 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!mischaracterizedAsToBeInvestigated.isEmpty()) {
             Collections.sort(mischaracterizedAsToBeInvestigated);
             String missingString = mischaracterizedAsToBeInvestigated.stream().collect(Collectors.joining(String.format("%n    ")));
-            errorMsgBuf.format("mischaracterized as TO_BE_INVESTIGATED Graal intrinsics:%n    %s%n", missingString);
+            errorMsgBuf.format("found plugins for intrinsics characterized as TO_BE_INVESTIGATED:%n    %s%n", missingString);
         }
         if (!mischaracterizedAsIgnored.isEmpty()) {
             Collections.sort(mischaracterizedAsIgnored);
             String missingString = mischaracterizedAsIgnored.stream().collect(Collectors.joining(String.format("%n    ")));
-            errorMsgBuf.format("mischaracterized as IGNORED Graal intrinsics:%n    %s%n", missingString);
+            errorMsgBuf.format("found plugins for intrinsics characterized as IGNORED:%n    %s%n", missingString);
         }
         String errorMsg = errorMsgBuf.toString();
         if (!errorMsg.isEmpty()) {
