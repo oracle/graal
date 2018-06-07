@@ -43,12 +43,14 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions.NullPointerNode;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.FunctionToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.I1FromNativeToLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.IdNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.NativeToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -118,13 +120,13 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
     protected abstract static class NativeToAddress extends LLVMNativeConvertNode {
 
         @Specialization
-        protected LLVMNativePointer nativeToAddress(long pointer) {
+        protected LLVMNativePointer doLong(long pointer) {
             return LLVMNativePointer.create(pointer);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "checkIsPointer(isPointer, address)")
-        protected LLVMNativePointer addressToNative(TruffleObject address,
+        protected LLVMNativePointer doPointer(TruffleObject address,
                         @Cached("createIsPointer()") Node isPointer,
                         @Cached("createAsPointer()") Node asPointer) {
             try {
@@ -137,17 +139,15 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!checkIsPointer(isPointer, address)"})
-        protected LLVMNativePointer addressToNative(TruffleObject address,
-                        @Cached("createIsPointer()") Node isPointer,
-                        @Cached("createToNative()") Node toNative,
-                        @Cached("createAsPointer()") Node asPointer) {
-            try {
-                TruffleObject n = (TruffleObject) ForeignAccess.sendToNative(toNative, address);
-                return LLVMNativePointer.create(ForeignAccess.sendAsPointer(asPointer, n));
-            } catch (UnsupportedMessageException | ClassCastException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(new Object[]{address});
-            }
+        protected LLVMManagedPointer doFunction(TruffleObject address,
+                        @Cached("createIsPointer()") Node isPointer) {
+            /*
+             * If the NFI returns an object that's not a pointer, it's probably a callback function.
+             * In that case, don't eagerly force TO_NATIVE. If we just call it immediately, we
+             * shouldn't throw away the NFI signature just to re-construct it immediately.
+             */
+            LLVMTypedForeignObject object = LLVMTypedForeignObject.createUnknown(address);
+            return LLVMManagedPointer.create(object);
         }
     }
 
