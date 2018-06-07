@@ -3635,7 +3635,7 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.storeLocal(index, kind, value);
     }
 
-    private void genLoadConstant(int cpi, int opcode) {
+    protected void genLoadConstant(int cpi, int opcode) {
         Object con = lookupConstant(cpi, opcode);
 
         if (con instanceof JavaType) {
