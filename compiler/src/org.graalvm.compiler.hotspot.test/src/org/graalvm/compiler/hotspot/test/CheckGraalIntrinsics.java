@@ -406,6 +406,15 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
+                            "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
+                            "jdk/internal/misc/Unsafe.compareAndExchangeInt(Ljava/lang/Object;JII)I",
+                            "jdk/internal/misc/Unsafe.compareAndExchangeLong(Ljava/lang/Object;JJJ)J",
+                            "jdk/internal/misc/Unsafe.compareAndExchangeObject(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                            "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
+                            "jdk/internal/misc/Unsafe.getAndAddByte(Ljava/lang/Object;JB)B",
+                            "jdk/internal/misc/Unsafe.getAndAddShort(Ljava/lang/Object;JS)S",
+                            "jdk/internal/misc/Unsafe.getAndSetByte(Ljava/lang/Object;JB)B",
+                            "jdk/internal/misc/Unsafe.getAndSetShort(Ljava/lang/Object;JS)S",
                             "sun/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
                             "sun/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                             "sun/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
