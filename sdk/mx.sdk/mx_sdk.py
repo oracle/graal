@@ -31,9 +31,19 @@
 from abc import ABCMeta
 
 import mx
+import mx_gate
 import mx_subst
 
+from mx_gate import Task
+from mx_unittest import unittest
+
 _suite = mx.suite('sdk')
+
+def _sdk_gate_runner(args, tasks):
+    with Task('SDK UnitTests', tasks, tags=['test']) as t:
+        if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
+
+mx_gate.add_gate_runner(_suite, _sdk_gate_runner)
 
 
 def javadoc(args):
