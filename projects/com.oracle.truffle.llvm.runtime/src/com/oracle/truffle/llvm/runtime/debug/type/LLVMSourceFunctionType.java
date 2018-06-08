@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,50 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public final class LLVMFrameValueAccessImpl implements LLVMFrameValueAccess {
+import com.oracle.truffle.api.CompilerDirectives;
 
-    private final FrameSlot slot;
-    private final LLVMDebugValue.Builder builder;
+public final class LLVMSourceFunctionType extends LLVMSourceType {
 
-    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValue.Builder builder) {
-        this.slot = slot;
-        this.builder = builder;
+    private final List<LLVMSourceType> types;
+
+    public LLVMSourceFunctionType(List<LLVMSourceType> types) {
+        // function type do not require size or offset information since there are no concrete
+        // values of them in C/C++/Fortran. they are only used as basis for function pointers
+        super(0L, 0L, 0L, null);
+        assert types != null;
+        this.types = types;
+        setName(() -> {
+            CompilerDirectives.transferToInterpreter();
+            String name = getReturnType().getName();
+            name += getParameterTypes().stream().map(LLVMSourceType::getName).collect(Collectors.joining(", ", "(", ")"));
+            return name;
+        });
+    }
+
+    public LLVMSourceType getReturnType() {
+        if (types.size() > 0) {
+            return types.get(0);
+        } else {
+            return LLVMSourceType.VOID;
+        }
+    }
+
+    public List<LLVMSourceType> getParameterTypes() {
+        if (types.size() <= 1) {
+            return Collections.emptyList();
+        } else {
+            return types.subList(1, types.size());
+        }
     }
 
     @Override
-    public LLVMDebugObjectBuilder getValue(Frame frame) {
-        final Object addr = frame.getValue(slot);
-        return LLVMDebugSimpleObjectBuilder.create(builder, addr);
+    public LLVMSourceType getOffset(long newOffset) {
+        return this;
     }
 }

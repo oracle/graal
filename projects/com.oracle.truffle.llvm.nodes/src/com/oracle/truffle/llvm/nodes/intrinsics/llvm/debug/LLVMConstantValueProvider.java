@@ -34,8 +34,8 @@ import java.math.BigInteger;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -484,7 +484,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         Object getBaseValue() {
-            return value;
+            return LLVM80BitFloat.toLLVMString(value);
         }
 
         @Override
@@ -497,7 +497,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @Override
         public Object read80BitFloat(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL)) {
-                return value;
+                return LLVM80BitFloat.toLLVMString(value);
             } else {
                 return cannotInterpret(LLVMDebugTypeConstants.LLVM80BIT_NAME, bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
             }

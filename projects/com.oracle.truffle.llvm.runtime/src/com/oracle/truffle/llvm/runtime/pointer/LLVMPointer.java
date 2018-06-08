@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
  * Common base interface for all pointer representations. An {@link LLVMPointer} is either a
  * {@link LLVMNativePointer} or a {@link LLVMManagedPointer}.
  *
- * Important: Java type checks or casts for the pointer interface types will not work because all
+ * Important: Java type checks or casts for the pointer interface type will not work because all
  * interfaces are implemented by a single implementation class for efficiency reasons. Use the
  * static methods {@link #isInstance} and {@link #cast} instead.
  *

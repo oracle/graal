@@ -27,58 +27,67 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public final class LLVMSourceMemberType extends LLVMSourceType {
+import java.util.function.Supplier;
 
-    @CompilationFinal private LLVMSourceType elementType;
+public final class LLVMSourcePointerType extends LLVMSourceType {
 
-    public LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceLocation location) {
-        this(name, size, align, offset, LLVMSourceType.UNKNOWN, location);
+    private final boolean isReference;
+
+    private final boolean isSafeToDereference;
+
+    @CompilationFinal private LLVMSourceType baseType;
+
+    public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference, boolean isReference, LLVMSourceLocation location) {
+        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, isSafeToDereference, isReference, location);
     }
 
-    private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location) {
-        super(() -> name, size, align, offset, location);
-        this.elementType = elementType;
-    }
-
-    public LLVMSourceType getElementType() {
-        return elementType;
-    }
-
-    public void setElementType(LLVMSourceType elementType) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.elementType = elementType;
-    }
-
-    /**
-     * Return the element type with the offset of this type.
-     *
-     * @return the element type with the offset of this type
-     */
-    LLVMSourceType getOffsetElementType() {
-        return elementType != null ? elementType.getOffset(getOffset()) : null;
+    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, boolean isSafeToDereference, boolean isReference,
+                    LLVMSourceLocation location) {
+        super(nameSupplier, size, align, offset, location);
+        this.baseType = baseType;
+        this.isSafeToDereference = isSafeToDereference | isReference;
+        this.isReference = isReference;
     }
 
     @Override
-    @TruffleBoundary
-    public String toString() {
-        return String.format("%s: %s", getName(), elementType != null ? elementType.getName() : null);
+    public boolean isReference() {
+        // references, in contrast to pointers that are known to be safe to dereference, should be
+        // displayed as values of the basetype to users
+        return isReference;
+    }
+
+    public boolean isSafeToDereference() {
+        return isSafeToDereference;
+    }
+
+    public LLVMSourceType getBaseType() {
+        return baseType;
+    }
+
+    public void setBaseType(LLVMSourceType baseType) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.baseType = baseType;
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return this;
+        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, baseType, isSafeToDereference, isReference, getLocation());
+    }
+
+    @Override
+    public boolean isPointer() {
+        return true;
     }
 
     @Override
     public boolean isAggregate() {
-        return true;
+        return false;
     }
 
     @Override
@@ -88,25 +97,16 @@ public final class LLVMSourceMemberType extends LLVMSourceType {
 
     @Override
     public String getElementName(long i) {
-        if (i == 0) {
-            return getName();
-        }
-        return null;
+        return getBaseType().getElementName(i);
     }
 
     @Override
     public LLVMSourceType getElementType(long i) {
-        if (i == 0) {
-            return getOffsetElementType();
-        }
-        return null;
+        return getBaseType().getElementType(i);
     }
 
     @Override
     public LLVMSourceType getElementType(String name) {
-        if (name != null && name.equals(getName())) {
-            return getOffsetElementType();
-        }
-        return null;
+        return getBaseType().getElementType(name);
     }
 }

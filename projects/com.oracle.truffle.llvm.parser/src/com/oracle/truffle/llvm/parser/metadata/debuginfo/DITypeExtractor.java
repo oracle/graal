@@ -57,18 +57,18 @@ import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceDecoratorType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceEnumLikeType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceMemberType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceEnumLikeType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import static com.oracle.truffle.llvm.runtime.debug.LLVMSourceType.UNKNOWN;
+import static com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType.UNKNOWN;
 
 final class DITypeExtractor implements MetadataVisitor {
 

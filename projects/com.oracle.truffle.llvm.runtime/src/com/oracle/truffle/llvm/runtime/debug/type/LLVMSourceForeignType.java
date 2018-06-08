@@ -27,10 +27,63 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-@MessageResolution(receiverType = LLVMSourceType.class)
-public class LLVMSourceTypeMessageResolution {
+import java.util.function.Function;
+
+public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
+
+    public static final String VALUE_KEY = "Unindexed Interop Value";
+    public static final String[] KEYS = new String[]{VALUE_KEY};
+
+    public LLVMSourceForeignType(LLVMSourceType wrappedType) {
+        super(0, 0, 0, Function.identity(), wrappedType.getLocation());
+        setBaseType(wrappedType);
+    }
+
+    @Override
+    public int getElementCount() {
+        return KEYS.length;
+    }
+
+    @Override
+    @TruffleBoundary
+    public String getElementName(long i) {
+        if (0 <= i && i < getElementCount()) {
+            return IndexedTypeBounds.toKey(i);
+        }
+        return null;
+    }
+
+    @Override
+    public LLVMSourceType getElementType(long i) {
+        if (0 <= i && i < getElementCount()) {
+            return getBaseType();
+        }
+        return null;
+    }
+
+    @Override
+    @TruffleBoundary
+    public LLVMSourceType getElementType(String key) {
+        return getElementType(IndexedTypeBounds.toIndex(key));
+    }
+
+    @Override
+    public LLVMSourceLocation getElementDeclaration(long i) {
+        return getLocation();
+    }
+
+    @Override
+    public LLVMSourceLocation getElementDeclaration(String name) {
+        return getLocation();
+    }
+
+    @Override
+    public LLVMSourceType getOffset(long newOffset) {
+        return this;
+    }
 }

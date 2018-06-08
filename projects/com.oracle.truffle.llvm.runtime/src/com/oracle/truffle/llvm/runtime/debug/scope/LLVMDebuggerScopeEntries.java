@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,31 +27,53 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.scope;
 
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
-public abstract class LLVMDebugObjectBuilder {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-    public static final LLVMDebugObjectBuilder UNAVAILABLE = new LLVMDebugObjectBuilder() {
+public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
 
-        @Override
-        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
-        }
+    private final Map<String, LLVMDebugObject> entries;
 
-    };
-
-    protected LLVMDebugObjectBuilder() {
+    LLVMDebuggerScopeEntries() {
+        this.entries = new HashMap<>();
     }
 
-    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
-        if (symbol != null) {
-            return getValue(symbol.getType(), symbol.getLocation());
-        } else {
-            return getValue(LLVMSourceType.UNKNOWN, null);
-        }
+    @TruffleBoundary
+    void add(LLVMSourceSymbol symbol, LLVMDebugObject value) {
+        entries.put(symbol.getName(), value);
     }
 
-    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
+    @TruffleBoundary
+    boolean contains(LLVMSourceSymbol symbol) {
+        return entries.containsKey(symbol.getName());
+    }
+
+    @Override
+    @TruffleBoundary
+    protected int getElementCountForDebugger() {
+        return entries.size();
+    }
+
+    @Override
+    @TruffleBoundary
+    protected String[] getKeysForDebugger() {
+        final int count = getElementCountForDebugger();
+        if (count == 0) {
+            return NO_KEYS;
+        }
+        return new ArrayList<>(entries.keySet()).toArray(new String[count]);
+    }
+
+    @Override
+    @TruffleBoundary
+    protected Object getElementForDebugger(String key) {
+        return entries.get(key);
+    }
 }

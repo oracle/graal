@@ -558,7 +558,7 @@ public final class Runner {
     }
 
     private void addExternalSymbolsToScopes(List<LLVMParserResult> parserResults) {
-        // TODO (chaeubl): in here, we should validate if the return types/argument types/global
+        // TODO (chaeubl): in here, we should validate if the return type/argument type/global
         // types match
         LLVMScope globalScope = context.getGlobalScope();
         for (LLVMParserResult parserResult : parserResults) {

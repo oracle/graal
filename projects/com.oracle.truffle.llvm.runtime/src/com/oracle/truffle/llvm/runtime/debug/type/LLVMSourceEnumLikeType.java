@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,50 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
-public final class LLVMSourceFunctionType extends LLVMSourceType {
+public final class LLVMSourceEnumLikeType extends LLVMSourceType {
 
-    private final List<LLVMSourceType> types;
+    private final Map<Long, String> values;
 
-    public LLVMSourceFunctionType(List<LLVMSourceType> types) {
-        // function types do not require size or offset information since there are no concrete
-        // values of them in C/C++/Fortran. they are only used as basis for function pointers
-        super(0L, 0L, 0L, null);
-        assert types != null;
-        this.types = types;
-        setName(() -> {
-            CompilerDirectives.transferToInterpreter();
-            String name = getReturnType().getName();
-            name += getParameterTypes().stream().map(LLVMSourceType::getName).collect(Collectors.joining(", ", "(", ")"));
-            return name;
-        });
+    @TruffleBoundary
+    public LLVMSourceEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, final LLVMSourceLocation location) {
+        this(nameSupplier, size, align, offset, new HashMap<>(), location);
     }
 
-    public LLVMSourceType getReturnType() {
-        if (types.size() > 0) {
-            return types.get(0);
-        } else {
-            return LLVMSourceType.VOID;
-        }
+    private LLVMSourceEnumLikeType(Supplier<String> nameSupplier, long size, long align, long offset, Map<Long, String> values, LLVMSourceLocation location) {
+        super(nameSupplier, size, align, offset, location);
+        this.values = values;
     }
 
-    public List<LLVMSourceType> getParameterTypes() {
-        if (types.size() <= 1) {
-            return Collections.emptyList();
-        } else {
-            return types.subList(1, types.size());
-        }
+    public void addValue(long id, String representation) {
+        CompilerAsserts.neverPartOfCompilation();
+        values.put(id, representation);
+    }
+
+    @Override
+    @TruffleBoundary
+    public String getElementName(long i) {
+        return values.get(i);
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return this;
+        return new LLVMSourceEnumLikeType(this::getName, getSize(), getAlign(), getOffset(), values, getLocation());
+    }
+
+    @Override
+    public boolean isEnum() {
+        return true;
     }
 }

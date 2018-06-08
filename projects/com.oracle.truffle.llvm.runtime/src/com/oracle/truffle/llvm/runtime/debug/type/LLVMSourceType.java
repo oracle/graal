@@ -27,22 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Supplier;
 
-public abstract class LLVMSourceType implements TruffleObject {
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMSourceType;
-    }
+public abstract class LLVMSourceType extends LLVMDebuggerValue {
 
     public static final LLVMSourceType UNSUPPORTED = new LLVMSourceType(() -> "<unsupported>", 0, 0, 0, null) {
 
@@ -163,7 +158,25 @@ public abstract class LLVMSourceType implements TruffleObject {
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMSourceTypeMessageResolutionForeign.ACCESS;
+    protected int getElementCountForDebugger() {
+        return getElementCount();
+    }
+
+    @Override
+    protected String[] getKeysForDebugger() {
+        if (getElementCount() == 0) {
+            return NO_KEYS;
+        }
+
+        final String[] keys = new String[getElementCount()];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = getElementName(i);
+        }
+        return keys;
+    }
+
+    @Override
+    protected Object getElementForDebugger(String key) {
+        return getElementType(key);
     }
 }

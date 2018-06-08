@@ -262,6 +262,12 @@ final class Trace implements Iterable<StopRequest> {
                     dbgValue = new LLVMDebugValue.Address(type, value, isBuggy);
                     break;
                 }
+                case "exact": {
+                    final String value = nextToken();
+                    final boolean isBuggy = parseBugginess();
+                    dbgValue = new LLVMDebugValue.Exact(type, value, isBuggy);
+                    break;
+                }
                 case "structured": {
                     final boolean isBuggy = parseBugginess();
                     final LLVMDebugValue.Structured newStructured = new LLVMDebugValue.Structured(type, isBuggy);

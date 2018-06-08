@@ -27,52 +27,53 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-import java.util.function.Supplier;
+public final class LLVMSourceMemberType extends LLVMSourceType {
 
-public final class LLVMSourceArrayLikeType extends LLVMSourceType {
+    @CompilationFinal private LLVMSourceType elementType;
 
-    @CompilationFinal private LLVMSourceType baseType;
-    @CompilationFinal private long length;
-
-    public LLVMSourceArrayLikeType(long size, long align, long offset, LLVMSourceLocation location) {
-        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, 1L, location);
+    public LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+        this(name, size, align, offset, LLVMSourceType.UNKNOWN, location);
     }
 
-    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length, LLVMSourceLocation location) {
-        super(size, align, offset, location);
-        setName(name);
-        this.baseType = baseType;
-        this.length = length;
+    private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location) {
+        super(() -> name, size, align, offset, location);
+        this.elementType = elementType;
     }
 
-    public LLVMSourceType getBaseType() {
-        return baseType;
+    public LLVMSourceType getElementType() {
+        return elementType;
     }
 
-    public void setBaseType(LLVMSourceType baseType) {
+    public void setElementType(LLVMSourceType elementType) {
         CompilerAsserts.neverPartOfCompilation();
-        this.baseType = baseType;
+        this.elementType = elementType;
     }
 
-    public long getLength() {
-        return length;
+    /**
+     * Return the element type with the offset of this type.
+     *
+     * @return the element type with the offset of this type
+     */
+    LLVMSourceType getOffsetElementType() {
+        return elementType != null ? elementType.getOffset(getOffset()) : null;
     }
 
-    public void setLength(long length) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.length = length;
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return String.format("%s: %s", getName(), elementType != null ? elementType.getName() : null);
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, baseType, length, getLocation());
+        return this;
     }
 
     @Override
@@ -82,52 +83,30 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
 
     @Override
     public int getElementCount() {
-        return (int) getLength();
+        return 1;
     }
 
     @Override
-    @TruffleBoundary
     public String getElementName(long i) {
-        if (0 <= i && i < getLength()) {
-            return String.format("[%d]", i);
+        if (i == 0) {
+            return getName();
         }
         return null;
     }
 
     @Override
     public LLVMSourceType getElementType(long i) {
-        if (0 <= i && i < getLength()) {
-            return baseType.getOffset(i * baseType.getSize());
+        if (i == 0) {
+            return getOffsetElementType();
         }
         return null;
     }
 
     @Override
-    @TruffleBoundary
-    public LLVMSourceType getElementType(String key) {
-        return getElementType(parseKey(key));
-    }
-
-    @Override
-    public LLVMSourceLocation getElementDeclaration(long i) {
-        return getLocation();
-    }
-
-    @Override
-    public LLVMSourceLocation getElementDeclaration(String name) {
-        return getLocation();
-    }
-
-    private static final int KEY_MIN_LENGTH = "[0]".length();
-
-    @TruffleBoundary
-    private static long parseKey(String key) {
-        if (key.length() >= KEY_MIN_LENGTH) {
-            try {
-                return Integer.parseInt(key.substring(1, key.length() - 1));
-            } catch (NumberFormatException ignored) {
-            }
+    public LLVMSourceType getElementType(String name) {
+        if (name != null && name.equals(getName())) {
+            return getOffsetElementType();
         }
-        return -1;
+        return null;
     }
 }

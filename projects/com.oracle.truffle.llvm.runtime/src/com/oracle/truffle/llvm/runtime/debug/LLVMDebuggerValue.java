@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-public final class LLVMFrameValueAccessImpl implements LLVMFrameValueAccess {
+public abstract class LLVMDebuggerValue implements TruffleObject {
 
-    private final FrameSlot slot;
-    private final LLVMDebugValue.Builder builder;
-
-    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValue.Builder builder) {
-        this.slot = slot;
-        this.builder = builder;
+    public static boolean isInstance(TruffleObject value) {
+        return value instanceof LLVMDebuggerValue;
     }
 
+    protected static String[] NO_KEYS = new String[0];
+
+    protected abstract int getElementCountForDebugger();
+
+    protected abstract String[] getKeysForDebugger();
+
+    protected abstract Object getElementForDebugger(String key);
+
     @Override
-    public LLVMDebugObjectBuilder getValue(Frame frame) {
-        final Object addr = frame.getValue(slot);
-        return LLVMDebugSimpleObjectBuilder.create(builder, addr);
+    public ForeignAccess getForeignAccess() {
+        return LLVMDebuggerValueMessageResolutionForeign.ACCESS;
     }
 }

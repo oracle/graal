@@ -37,23 +37,21 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 import java.util.ArrayList;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public final class LLVMSourceScope {
+public final class LLVMDebuggerScopeFactory {
 
     private static LLVMNode findStatementNode(Node suspendedNode) {
         for (Node node = suspendedNode; node != null; node = node.getParent()) {
@@ -78,17 +76,17 @@ public final class LLVMSourceScope {
         LLVMNode llvmNode = findStatementNode(node);
 
         if (rootNode == null || llvmNode == null) {
-            return Collections.singleton(new LLVMSourceScope(sourceContext, node).toScope(frame));
+            return Collections.singleton(new LLVMDebuggerScopeFactory(sourceContext, node).toScope(frame));
         }
 
         LLVMSourceLocation scope = llvmNode.getSourceLocation();
         final SourceSection sourceSection = llvmNode.getSourceSection();
 
-        LLVMSourceScope baseScope = new LLVMSourceScope(sourceContext, new LinkedList<>(), rootNode);
-        LLVMSourceScope staticScope = null;
+        LLVMDebuggerScopeFactory baseScope = new LLVMDebuggerScopeFactory(sourceContext, new LinkedList<>(), rootNode);
+        LLVMDebuggerScopeFactory staticScope = null;
 
         for (boolean isLocalScope = true; isLocalScope && scope != null; scope = scope.getParent()) {
-            final LLVMSourceScope next = toScope(scope, sourceContext, rootNode, sourceSection);
+            final LLVMDebuggerScopeFactory next = toScope(scope, sourceContext, rootNode, sourceSection);
             copySymbols(next, baseScope);
             if (scope.getKind() == LLVMSourceLocation.Kind.FUNCTION) {
                 baseScope.setName(next.getName());
@@ -107,7 +105,7 @@ public final class LLVMSourceScope {
             // function's frame. They are still accessible from the calling function's frame, so
             // we can simply ignore this scope here. Also, any variables actually used in the
             // lambda would still be available as the members of the 'this' pointer.
-            final LLVMSourceScope next = toScope(scope, sourceContext, null, sourceSection);
+            final LLVMDebuggerScopeFactory next = toScope(scope, sourceContext, null, sourceSection);
             switch (scope.getKind()) {
                 case NAMESPACE:
                 case FILE:
@@ -134,7 +132,7 @@ public final class LLVMSourceScope {
         return Collections.unmodifiableList(scopeList);
     }
 
-    private static void copySymbols(LLVMSourceScope source, LLVMSourceScope target) {
+    private static void copySymbols(LLVMDebuggerScopeFactory source, LLVMDebuggerScopeFactory target) {
         // always exclude shadowed symbols
         if (!source.symbols.isEmpty()) {
             final Set<String> names = target.symbols.stream().map(LLVMSourceSymbol::getName).collect(Collectors.toSet());
@@ -142,15 +140,15 @@ public final class LLVMSourceScope {
         }
     }
 
-    private static LLVMSourceScope toScope(LLVMSourceLocation scope, LLVMSourceContext context, Node node, SourceSection sourceSection) {
+    private static LLVMDebuggerScopeFactory toScope(LLVMSourceLocation scope, LLVMSourceContext context, Node node, SourceSection sourceSection) {
         if (!scope.hasSymbols()) {
-            final LLVMSourceScope sourceScope = new LLVMSourceScope(context, node);
+            final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(context, node);
             sourceScope.setName(scope.getName());
             return sourceScope;
         }
 
         final List<LLVMSourceSymbol> symbols = new LinkedList<>();
-        final LLVMSourceScope sourceScope = new LLVMSourceScope(context, symbols, node);
+        final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(context, symbols, node);
         sourceScope.setName(scope.getName());
 
         for (LLVMSourceSymbol symbol : scope.getSymbols()) {
@@ -194,11 +192,11 @@ public final class LLVMSourceScope {
 
     private String name;
 
-    private LLVMSourceScope(LLVMSourceContext context, Node node) {
+    private LLVMDebuggerScopeFactory(LLVMSourceContext context, Node node) {
         this(context, Collections.emptyList(), node);
     }
 
-    private LLVMSourceScope(LLVMSourceContext context, List<LLVMSourceSymbol> symbols, Node node) {
+    private LLVMDebuggerScopeFactory(LLVMSourceContext context, List<LLVMSourceSymbol> symbols, Node node) {
         this.context = context;
         this.symbols = symbols;
         this.node = node;
@@ -218,8 +216,8 @@ public final class LLVMSourceScope {
     }
 
     @TruffleBoundary
-    protected Object getVariables(Frame frame) {
-        final Map<String, LLVMDebugObject> vars = new HashMap<>();
+    private Object getVariables(Frame frame) {
+        final LLVMDebuggerScopeEntries vars = new LLVMDebuggerScopeEntries();
 
         if (frame != null && !symbols.isEmpty()) {
             for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
@@ -227,14 +225,14 @@ public final class LLVMSourceScope {
                     final LLVMSourceSymbol symbol = (LLVMSourceSymbol) slot.getIdentifier();
                     final LLVMDebugObject value = ((LLVMDebugObjectBuilder) frame.getValue(slot)).getValue(symbol);
                     if (symbols.contains(symbol)) {
-                        vars.put(symbol.getName(), value);
+                        vars.add(symbol, value);
                     }
                 }
             }
         }
 
         for (LLVMSourceSymbol symbol : symbols) {
-            if (!vars.containsKey(symbol.getName())) {
+            if (!vars.contains(symbol)) {
                 LLVMDebugObjectBuilder dbgVal = context.getStatic(symbol);
 
                 if (dbgVal == null) {
@@ -248,11 +246,11 @@ public final class LLVMSourceScope {
                     dbgVal = LLVMDebugObjectBuilder.UNAVAILABLE;
                 }
 
-                vars.put(symbol.getName(), dbgVal.getValue(symbol));
+                vars.add(symbol, dbgVal.getValue(symbol));
             }
         }
 
-        return new LLVMSourceScopeVariables(vars);
+        return vars;
     }
 
     private Scope toScope(Frame frame) {

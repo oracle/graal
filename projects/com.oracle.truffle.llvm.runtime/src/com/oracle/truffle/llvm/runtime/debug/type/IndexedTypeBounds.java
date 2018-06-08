@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,49 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata.debuginfo;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
-import com.oracle.truffle.llvm.parser.metadata.MDString;
-import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
-import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import java.util.HashMap;
-import java.util.Map;
+final class IndexedTypeBounds {
 
-final class DITypeIdentifier {
+    private static final int KEY_MIN_LENGTH = "[0]".length();
 
-    private final Map<String, MDCompositeType> identifiedTypes = new HashMap<>();
-
-    private final MetadataVisitor collector = new MetadataVisitor() {
-
-        @Override
-        public void visit(MDCompositeType mdCompositeType) {
-            final String identifier = getIdentifier(mdCompositeType);
-            if (identifier != null) {
-                identifiedTypes.put(identifier, mdCompositeType);
+    @TruffleBoundary
+    static long toIndex(String key) {
+        if (key != null && key.length() >= KEY_MIN_LENGTH) {
+            try {
+                return Integer.parseInt(key.substring(1, key.length() - 1));
+            } catch (NumberFormatException ignored) {
             }
         }
-    };
-
-    private MetadataValueList metadata = null;
-
-    public void setMetadata(MetadataValueList metadata) {
-        this.metadata = metadata;
+        return -1;
     }
 
-    MDCompositeType identify(String name) {
-        if (!identifiedTypes.containsKey(name)) {
-            metadata.accept(collector);
-            if (!identifiedTypes.containsKey(name)) {
-                identifiedTypes.put(name, null);
-            }
-        }
-
-        return identifiedTypes.get(name);
+    @TruffleBoundary
+    static String toKey(long index) {
+        return String.format("[%d]", index);
     }
 
-    private static String getIdentifier(MDCompositeType type) {
-        return MDString.getIfInstance(type.getIdentifier());
+    private IndexedTypeBounds() {
     }
+
 }

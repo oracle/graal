@@ -27,12 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.scope;
+package com.oracle.truffle.llvm.runtime.debug.value;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 
-public interface LLVMFrameValueAccess {
+public abstract class LLVMDebugObjectBuilder {
 
-    LLVMDebugObjectBuilder getValue(Frame frame);
+    public static final LLVMDebugObjectBuilder UNAVAILABLE = new LLVMDebugObjectBuilder() {
+
+        @Override
+        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
+        }
+
+    };
+
+    protected LLVMDebugObjectBuilder() {
+    }
+
+    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
+        if (symbol != null) {
+            return getValue(symbol.getType(), symbol.getLocation());
+        } else {
+            return getValue(LLVMSourceType.UNKNOWN, null);
+        }
+    }
+
+    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
 }

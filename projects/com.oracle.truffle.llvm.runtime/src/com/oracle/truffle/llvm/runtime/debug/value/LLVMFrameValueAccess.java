@@ -27,66 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.value;
 
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.api.frame.Frame;
 
-public final class LLVMSourceBasicType extends LLVMSourceType {
+public interface LLVMFrameValueAccess {
 
-    private final Kind kind;
-
-    public LLVMSourceBasicType(String name, long size, long align, long offset, Kind kind, LLVMSourceLocation location) {
-        super(() -> name, size, align, offset, location);
-        this.kind = kind;
-    }
-
-    public Kind getKind() {
-        return kind;
-    }
-
-    @Override
-    public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceBasicType(getName(), getSize(), getAlign(), newOffset, kind, getLocation());
-    }
-
-    @Override
-    public String toString() {
-        return getName();
-    }
-
-    @Override
-    public boolean isAggregate() {
-        return false;
-    }
-
-    @Override
-    public int getElementCount() {
-        return 0;
-    }
-
-    @Override
-    public String getElementName(long i) {
-        return null;
-    }
-
-    @Override
-    public LLVMSourceType getElementType(long i) {
-        return null;
-    }
-
-    @Override
-    public LLVMSourceType getElementType(String name) {
-        return null;
-    }
-
-    public enum Kind {
-        UNKNOWN,
-        ADDRESS,
-        BOOLEAN,
-        FLOATING,
-        SIGNED,
-        SIGNED_CHAR,
-        UNSIGNED,
-        UNSIGNED_CHAR;
-    }
+    LLVMDebugObjectBuilder getValue(Frame frame);
 }
