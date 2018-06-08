@@ -159,9 +159,9 @@ public class StringNFITest extends NFITest {
         }
     }
 
-    private static void testStringCallback(CallTarget target, Object callbackRet) {
+    private static void testStringCallback(CallTarget target, Object callbackRet, String expected) {
         TruffleObject strArgCallback = new TestCallback(1, (args) -> {
-            Assert.assertEquals("string argument", "Hello, Truffle!", args[0]);
+            Assert.assertEquals("string argument", expected, args[0]);
             return 42;
         });
         TruffleObject strRetCallback = new TestCallback(0, (args) -> {
@@ -176,12 +176,17 @@ public class StringNFITest extends NFITest {
 
     @Test
     public void testStringCallback(@Inject(StringCallbackNode.class) CallTarget target) {
-        testStringCallback(target, "Hello, Native!");
+        testStringCallback(target, "Hello, Native!", "Hello, Truffle!");
+    }
+
+    @Test
+    public void testUTF8StringCallback(@Inject(StringCallbackNode.class) CallTarget target) {
+        testStringCallback(target, "Hello, UTF-8 \u00e4\u00e9\u00e7!", "UTF-8 seems to work \u20ac\u00a2");
     }
 
     @Test
     public void testBoxedStringCallback(@Inject(StringCallbackNode.class) CallTarget target) {
-        testStringCallback(target, new BoxedPrimitive("Hello, Native!"));
+        testStringCallback(target, new BoxedPrimitive("Hello, Native!"), "Hello, Truffle!");
     }
 
     public static class NativeStringCallbackNode extends NFITestRootNode {
