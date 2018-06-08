@@ -101,6 +101,10 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // never a valid access of an arbitrary address.
                     if (field != null && field.getJavaKind() == this.accessKind()) {
                         assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                        // Unsafe accesses never have volatile semantics.
+                        // Memory barriers are placed around such an unsafe access at construction
+                        // time if necessary, unlike AccessFieldNodes which encapsulate their
+                        // potential volatile semantics.
                         return cloneAsFieldAccess(graph().getAssumptions(), field, false);
                     }
                 }
