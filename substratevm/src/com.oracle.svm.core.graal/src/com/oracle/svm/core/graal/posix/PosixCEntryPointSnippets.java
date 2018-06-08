@@ -86,6 +86,7 @@ import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
@@ -277,6 +278,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
+        RuntimeSupport.executeTearDownHooks();
         boolean success = JavaThreads.singleton().tearDownVM();
         if (!success) {
             return CEntryPointErrors.UNSPECIFIED;
