@@ -99,9 +99,6 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // No need for checking that the receiver is non-null. The field access includes
                     // the null check and if a field is found, the offset is so small that this is
                     // never a valid access of an arbitrary address.
-                    // Field access semantics are encoded in the field. By using VarHandles, it's
-                    // possible to access volatile fields using non-volatile semantics (i.e. without
-                    // memory barriers).
                     if (field != null && field.getJavaKind() == this.accessKind()) {
                         assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
                         return cloneAsFieldAccess(graph().getAssumptions(), field, false);
