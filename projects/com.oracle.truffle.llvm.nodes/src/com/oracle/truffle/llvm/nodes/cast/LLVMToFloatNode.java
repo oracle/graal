@@ -123,6 +123,11 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
     public abstract static class LLVMToFloatZeroExtNode extends LLVMToFloatNode {
 
         @Specialization
+        protected float doDouble(boolean from) {
+            return from ? 1 : 0;
+        }
+
+        @Specialization
         protected float doDouble(byte from) {
             return from & LLVMExpressionNode.I8_MASK;
         }

@@ -807,6 +807,8 @@ final class LLVMCastsFactory {
                         return LLVMToI32ZeroExtNodeGen.create(fromNode);
                     case I64:
                         return LLVMToI64ZeroExtNodeGen.create(fromNode);
+                    case FLOAT:
+                        return LLVMToFloatZeroExtNodeGen.create(fromNode);
                     case DOUBLE:
                         return LLVMToDoubleZeroExtNodeGen.create(fromNode);
                     default:
