@@ -32,8 +32,10 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -313,6 +315,22 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
             } else {
                 return null;
             }
+        }
+
+        @Override
+        public Object asInteropValue() {
+            if (isInteropValue()) {
+                TruffleObject foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(address);
+                if (foreign instanceof LLVMTypedForeignObject) {
+                    return ((LLVMTypedForeignObject) foreign).getForeign();
+                }
+            }
+            return super.asInteropValue();
+        }
+
+        @Override
+        public boolean isInteropValue() {
+            return LLVMLanguage.getLLVMContextReference().get().isHandle(address);
         }
     }
 
