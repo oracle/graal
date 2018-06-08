@@ -133,7 +133,7 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${gate_vm_linux} ${linux-deploy} {
+  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} ${linux-deploy} {
     run: [
       [export, "SUITES="${vm_all_suites}]
       [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
