@@ -30,9 +30,13 @@
 package com.oracle.truffle.llvm.runtime.debug.value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
 public final class LLVMDebugInternalValue extends LLVMDebuggerValue {
+
+    private static final String VALUE_KEY = "<value>";
+    private static final String[] INTEROP_KEYS = new String[]{VALUE_KEY};
 
     private static final String NO_TYPE = "";
 
@@ -57,16 +61,16 @@ public final class LLVMDebugInternalValue extends LLVMDebuggerValue {
 
     @Override
     protected int getElementCountForDebugger() {
-        return 0;
+        return value instanceof TruffleObject ? 1 : 0;
     }
 
     @Override
     protected String[] getKeysForDebugger() {
-        return NO_KEYS;
+        return value instanceof TruffleObject ? INTEROP_KEYS : NO_KEYS;
     }
 
     @Override
     protected Object getElementForDebugger(String key) {
-        return null;
+        return VALUE_KEY.equals(key) ? value : null;
     }
 }
