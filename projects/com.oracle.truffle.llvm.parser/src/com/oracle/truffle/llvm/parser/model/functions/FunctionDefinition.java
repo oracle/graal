@@ -39,7 +39,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
@@ -68,7 +67,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     private final Visibility visibility;
 
     private List<MDAttachment> mdAttachments = null;
-    private SourceFunction sourceFunction = DebugInfoModuleProcessor.DEFAULT_FUNCTION;
+    private SourceFunction sourceFunction = SourceFunction.DEFAULT;
 
     private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;
@@ -107,6 +106,11 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     public String getName() {
         assert name != null;
         return name;
+    }
+
+    public String getSourceName() {
+        final String scopeName = sourceFunction.getName();
+        return SourceFunction.DEFAULT_SOURCE_NAME.equals(scopeName) ? null : scopeName;
     }
 
     @Override
@@ -214,6 +218,15 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
 
     public void nameBlock(int index, String argName) {
         blocks[index].setName(LLVMIdentifier.toExplicitBlockName(argName));
+    }
+
+    public void onAfterParse() {
+        // drop the parser symbol tree after parsing the function
+        blocks = EMPTY;
+        currentBlock = 0;
+        mdAttachments = null;
+        sourceFunction.clearLocals();
+        parameters.clear();
     }
 
     @Override

@@ -335,7 +335,6 @@ import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoGenerator;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
@@ -1449,7 +1448,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frame, FunctionDefinition functionHeader,
                     Source bcSource, LLVMSourceLocation location) {
-        final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
+        final String originalName = functionHeader.getSourceName();
         return new LLVMFunctionStartNode(sourceSection, context.getLanguage(), functionBodyNode, frame, functionHeader.getName(), functionHeader.getParameters().size(), originalName, bcSource,
                         location);
     }

@@ -113,6 +113,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                         nullableAfterBlock, location, copyArgumentsToFrameArray);
 
         RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(runtime.getContext(), body, method.getSourceSection(), frame, method, source, location);
+        method.onAfterParse();
 
         return Truffle.getRuntime().createCallTarget(rootNode);
     }

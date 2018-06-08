@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ public abstract class Instruction implements SymbolImpl, MetadataAttachmentHolde
 
     private MDLocation debugLocation = null;
     private List<MDAttachment> mdAttachments = null;
+    private LLVMSourceLocation sourceLocation = null;
 
     public MDLocation getDebugLocation() {
         return debugLocation;
@@ -48,6 +50,14 @@ public abstract class Instruction implements SymbolImpl, MetadataAttachmentHolde
 
     public void setDebugLocation(MDLocation debugLocation) {
         this.debugLocation = debugLocation;
+    }
+
+    public LLVMSourceLocation getSourceLocation() {
+        return sourceLocation;
+    }
+
+    public void setSourceLocation(LLVMSourceLocation sourceLocation) {
+        this.sourceLocation = sourceLocation;
     }
 
     @Override

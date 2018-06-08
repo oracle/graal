@@ -213,6 +213,11 @@ public abstract class LLVMSourceLocation {
         return result;
     }
 
+    @Override
+    public String toString() {
+        return describeLocation();
+    }
+
     private static class LineScope extends LLVMSourceLocation {
 
         private final SourceSection sourceSection;
