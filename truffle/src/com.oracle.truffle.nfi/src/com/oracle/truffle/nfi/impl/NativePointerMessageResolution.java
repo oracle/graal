@@ -72,6 +72,14 @@ class NativePointerMessageResolution {
         }
     }
 
+    @Resolve(message = "TO_NATIVE")
+    abstract static class ToNativePointerNode extends Node {
+
+        public NativePointer access(NativePointer receiver) {
+            return receiver;
+        }
+    }
+
     @Resolve(message = "UNBOX")
     abstract static class UnboxNativePointerNode extends Node {
 
