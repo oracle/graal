@@ -144,7 +144,7 @@ class HeapChunkProvider {
         assert result.getEnd().equal(HeapChunk.asPointer(result).add(chunkSize));
 
         if (HeapPolicy.getZapProducedHeapChunks()) {
-            zap(result, HeapPolicy.getProducedHeapChunkZapValue());
+            zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
         HeapPolicy.bytesAllocatedSinceLastCollection.addAndGet(chunkSize);
@@ -191,7 +191,7 @@ class HeapChunkProvider {
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
         resetAlignedHeapChunk(alignedChunk);
         if (HeapPolicy.getZapConsumedHeapChunks()) {
-            zap(alignedChunk, HeapPolicy.getConsumedHeapChunkZapValue());
+            zap(alignedChunk, HeapPolicy.getConsumedHeapChunkZapWord());
         }
     }
 
@@ -286,7 +286,7 @@ class HeapChunkProvider {
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
         if (HeapPolicy.getZapProducedHeapChunks()) {
-            zap(result, HeapPolicy.getProducedHeapChunkZapValue());
+            zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
         HeapPolicy.bytesAllocatedSinceLastCollection.addAndGet(chunkSize);

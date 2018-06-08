@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.word.Word;
@@ -36,8 +35,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -127,7 +128,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     /* "Enum" values. */
     // @formatter:off
-    //                            Name                            Value                  // In hex:
+    //                                Name                            Value                         // In hex:
     private static final UnsignedWord NO_REMEMBERED_SET_ALIGNED     = WordFactory.unsigned(0b000);  // 0 or 8.
     private static final UnsignedWord CARD_REMEMBERED_SET_ALIGNED   = WordFactory.unsigned(0b001);  // 1 or 9.
     private static final UnsignedWord NO_REMEMBERED_SET_UNALIGNED   = WordFactory.unsigned(0b010);  // 2 or a.
@@ -154,14 +155,34 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return oh;
     }
 
+    public static boolean isProducedHeapChunkZapped(UnsignedWord header) {
+        if (getReferenceSize() == Integer.BYTES) {
+            return header.equal(HeapPolicy.getProducedHeapChunkZapInt());
+        } else {
+            return header.equal(HeapPolicy.getProducedHeapChunkZapWord());
+        }
+    }
+
+    public static boolean isConsumedHeapChunkZapped(UnsignedWord header) {
+        if (getReferenceSize() == Integer.BYTES) {
+            return header.equal(HeapPolicy.getConsumedHeapChunkZapInt());
+        } else {
+            return header.equal(HeapPolicy.getConsumedHeapChunkZapWord());
+        }
+    }
+
     public static UnsignedWord readHeaderFromPointerCarefully(Pointer p) {
         VMError.guarantee(!p.isNull(), "ObjectHeader.readHeaderFromPointerCarefully:  p: null");
-        VMError.guarantee(p.notEqual(HeapPolicy.getProducedHeapChunkZapValue()), "ObjectHeader.readHeaderFromPointerCarefully:  p: producedZapValue");
-        VMError.guarantee(p.notEqual(HeapPolicy.getConsumedHeapChunkZapValue()), "ObjectHeader.readHeaderFromPointerCarefully:  p: consumedZapValue");
+        if (!ReferenceAccess.singleton().haveCompressedReferences()) {
+            // These tests are only useful if the original reference did not have to be
+            // uncompressed, which would result in a different address than the zap word
+            VMError.guarantee(p.notEqual(HeapPolicy.getProducedHeapChunkZapWord()), "ObjectHeader.readHeaderFromPointerCarefully:  p: producedZapValue");
+            VMError.guarantee(p.notEqual(HeapPolicy.getConsumedHeapChunkZapWord()), "ObjectHeader.readHeaderFromPointerCarefully:  p: consumedZapValue");
+        }
         final UnsignedWord header = readHeaderFromPointer(p);
         VMError.guarantee(header.notEqual(WordFactory.zero()), "ObjectHeader.readHeaderFromPointerCarefully:  header: 0");
-        VMError.guarantee(header.notEqual(HeapPolicy.getProducedHeapChunkZapValue()), "ObjectHeader.readHeaderFromPointerCarefully:  header: producedZapValue");
-        VMError.guarantee(header.notEqual(HeapPolicy.getConsumedHeapChunkZapValue()), "ObjectHeader.readHeaderFromPointerCarefully:  header: consumedZapValue");
+        VMError.guarantee(!isProducedHeapChunkZapped(header), "ObjectHeader.readHeaderFromPointerCarefully:  header: producedZapValue");
+        VMError.guarantee(!isConsumedHeapChunkZapped(header), "ObjectHeader.readHeaderFromPointerCarefully:  header: consumedZapValue");
         return header;
     }
 
@@ -169,8 +190,8 @@ public class ObjectHeaderImpl extends ObjectHeader {
         VMError.guarantee(o != null, "ObjectHeader.readHeaderFromObjectCarefully:  o: null");
         final UnsignedWord header = readHeaderFromObject(o);
         VMError.guarantee(header.notEqual(WordFactory.zero()), "ObjectHeader.readHeaderFromObjectCarefully:  header: 0");
-        VMError.guarantee(header.notEqual(HeapPolicy.getProducedHeapChunkZapValue()), "ObjectHeader.readHeaderFromObjectCarefully:  header: producedZapValue");
-        VMError.guarantee(header.notEqual(HeapPolicy.getConsumedHeapChunkZapValue()), "ObjectHeader.readHeaderFromObjectCarefully:  header: consumedZapValue");
+        VMError.guarantee(!isProducedHeapChunkZapped(header), "ObjectHeader.readHeaderFromObjectCarefully:  header: producedZapValue");
+        VMError.guarantee(!isConsumedHeapChunkZapped(header), "ObjectHeader.readHeaderFromObjectCarefully:  header: consumedZapValue");
         return header;
     }
 
@@ -281,17 +302,18 @@ public class ObjectHeaderImpl extends ObjectHeader {
     /** Extract a forwarding Pointer from a header. */
     @Override
     public Pointer getForwardingPointer(UnsignedWord header) {
-        final UnsignedWord pointerBits = clearBits(header);
-        final Pointer result = (Pointer) pointerBits;
-        return result;
+        return Word.objectToUntrackedPointer(getForwardedObject(header));
     }
 
     /** Extract a forwarded Object from a header. */
     @Override
     public Object getForwardedObject(UnsignedWord header) {
-        final Pointer p = getForwardingPointer(header);
-        // TODO: assert result really is an Object header.
-        return p.toObject();
+        final UnsignedWord pointerBits = clearBits(header);
+        if (ReferenceAccess.singleton().haveCompressedReferences()) {
+            return ReferenceAccess.singleton().uncompressReference(pointerBits);
+        } else {
+            return ((Pointer) pointerBits).toObject();
+        }
     }
 
     @Override
@@ -407,9 +429,14 @@ public class ObjectHeaderImpl extends ObjectHeader {
     protected void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
         /* Turn the copy Object into a Pointer, and encode that as a forwarding pointer. */
-        final Pointer unforwardedPointer = Word.objectToUntrackedPointer(copy);
-        final UnsignedWord forwarder = createForwardingPointer(unforwardedPointer);
-        writeHeaderToObject(original, forwarder);
+        UnsignedWord forwardHeader;
+        if (ReferenceAccess.singleton().haveCompressedReferences()) {
+            forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
+        } else {
+            forwardHeader = Word.objectToUntrackedPointer(copy);
+        }
+        assert ObjectHeaderImpl.getHeaderBitsFromHeader(forwardHeader).equal(0);
+        writeHeaderToObject(original, forwardHeader.or(FORWARDED));
         assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
     }
 
@@ -423,13 +450,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
     protected boolean isPointerToForwardedObjectCarefully(Pointer p) {
         final UnsignedWord header = readHeaderFromPointerCarefully(p);
         final boolean result = isForwardedHeaderCarefully(header);
-        return result;
-    }
-
-    /** Turn a Pointer into a forwarding pointer. */
-    protected UnsignedWord createForwardingPointer(Pointer p) {
-        assert ObjectHeaderImpl.getHeaderBitsFromHeader(p).equal(0);
-        final UnsignedWord result = p.or(FORWARDED);
         return result;
     }
 
@@ -482,14 +502,14 @@ public class ObjectHeaderImpl extends ObjectHeader {
      * This method returns the header bits from a header that has already been read from an object.
      */
     protected static UnsignedWord getHeaderBitsFromHeader(UnsignedWord header) {
-        assert header.notEqual(HeapPolicy.getProducedHeapChunkZapValue()) : "Produced chunk zap value";
-        assert header.notEqual(HeapPolicy.getConsumedHeapChunkZapValue()) : "Consumed chunk zap value";
+        assert !isProducedHeapChunkZapped(header) : "Produced chunk zap value";
+        assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";
         return header.and(ObjectHeader.BITS_MASK);
     }
 
     protected static UnsignedWord getHeaderBitsFromHeaderCarefully(UnsignedWord header) {
-        VMError.guarantee(header.notEqual(HeapPolicy.getProducedHeapChunkZapValue()), "Produced chunk zap value");
-        VMError.guarantee(header.notEqual(HeapPolicy.getConsumedHeapChunkZapValue()), "Consumed chunk zap value");
+        VMError.guarantee(!isProducedHeapChunkZapped(header), "Produced chunk zap value");
+        VMError.guarantee(!isConsumedHeapChunkZapped(header), "Consumed chunk zap value");
         return header.and(ObjectHeader.BITS_MASK);
     }
 
@@ -519,10 +539,10 @@ public class ObjectHeaderImpl extends ObjectHeader {
         if (header.equal(WordFactory.zero())) {
             return -1_000_000;
         }
-        if (header.equal(HeapPolicy.getProducedHeapChunkZapValue())) {
+        if (ObjectHeaderImpl.isProducedHeapChunkZapped(header)) {
             return -2_000_000;
         }
-        if (header.equal(HeapPolicy.getConsumedHeapChunkZapValue())) {
+        if (ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             return -3_000_000;
         }
         /* Tease the header apart into the DynamicHub bits and the header bits. */
