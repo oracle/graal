@@ -64,6 +64,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     @Override
     public Object call(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
+            // TODO: See why enabling this for low-tier leads to terrible performance in high-tier compilations.
             onInterpreterCall();
         }
         try {

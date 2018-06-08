@@ -287,7 +287,7 @@ public abstract class PartialEvaluator {
                     }
 
                     lastDirectCallNode = (JavaConstant) arg0.asConstant();
-                } else if (original.equals(callDirectMethod)) {
+                } else if (original.equals(callDirectMethod) && lastDirectCallNode != null) {
                     TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), lastDirectCallNode);
                     lastDirectCallNode = null;
                     if (decision != null && decision.shouldInline()) {

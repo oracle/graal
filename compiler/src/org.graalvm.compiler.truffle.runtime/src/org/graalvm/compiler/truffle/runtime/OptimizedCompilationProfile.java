@@ -159,7 +159,7 @@ public class OptimizedCompilationProfile {
     void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
-            if (CompilerDirectives.inInterpreter()) {
+            if (CompilerDirectives.inInterpreterOrLowTier()) {
                 initializeProfiledArgumentTypes(args);
             }
         } else {
@@ -200,7 +200,7 @@ public class OptimizedCompilationProfile {
 
     final void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
+        if (CompilerDirectives.inInterpreterOrLowTier() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
             if (TruffleCompilerOptions.getValue(TruffleReturnTypeSpeculation)) {
@@ -288,7 +288,7 @@ public class OptimizedCompilationProfile {
     final void interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++interpreterCallCount;
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-        if (!callTarget.isCompiling() && !compilationFailed) {
+        if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
             // check if call target is hot enough to get compiled, but took not too long to get hot
             if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
                             TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {

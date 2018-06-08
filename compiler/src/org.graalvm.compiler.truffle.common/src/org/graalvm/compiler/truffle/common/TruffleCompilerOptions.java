@@ -312,5 +312,8 @@ public class TruffleCompilerOptions {
     @Option(help = "Whether to enable economy-mode compilations.")
     public static final OptionKey<Boolean> TruffleEconomyMode = new OptionKey<>(false);
 
+    @Option(help = "Whether to do low-tier profiling.")
+    public static final OptionKey<Boolean> TruffleLowTierMode = new OptionKey<>(false);
+
     // @formatter:on
 }

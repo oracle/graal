@@ -91,7 +91,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     public final RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex) {
         final RegexResult result = runRegexSearchNode.run(frame, regex, input, fromIndex);
         assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
-        if (CompilerDirectives.inInterpreter() && canSwitchToEagerSearch() && runRegexSearchNode == lazySearchNode) {
+        if (CompilerDirectives.inInterpreterOrLowTier() && canSwitchToEagerSearch() && runRegexSearchNode == lazySearchNode) {
             RegexProfile profile = regex.getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
                 switchToEagerSearch(profile);

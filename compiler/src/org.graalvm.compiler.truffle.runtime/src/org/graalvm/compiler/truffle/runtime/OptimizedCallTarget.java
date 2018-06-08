@@ -228,10 +228,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleCallBoundary
     protected final Object callBoundary(Object[] args) {
-        if (CompilerDirectives.inInterpreter()) {
+        if (CompilerDirectives.inInterpreterOrLowTier()) {
             // We are called and we are still in Truffle interpreter mode.
             getCompilationProfile().interpreterCall(this);
-            if (isValid()) {
+            if (CompilerDirectives.inInterpreter() && isValid()) {
                 // Stubs were deoptimized => reinstall.
                 runtime().bypassedInstalledCode();
             }

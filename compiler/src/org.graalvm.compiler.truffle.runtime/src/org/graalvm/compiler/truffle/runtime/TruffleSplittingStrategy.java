@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -56,6 +57,7 @@ final class TruffleSplittingStrategy {
     private static Set<OptimizedCallTarget> waste = new HashSet<>();
     private static SplitStatisticsReporter reporter = new SplitStatisticsReporter();
 
+    @CompilerDirectives.TruffleBoundary
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
             final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);

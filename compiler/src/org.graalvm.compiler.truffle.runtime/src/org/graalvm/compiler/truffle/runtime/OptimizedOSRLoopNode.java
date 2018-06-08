@@ -537,7 +537,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 if (CompilerDirectives.inInterpreter()) {
                     if (currentSourceTag == 0 && speculatedTag != 0) {
                         if (frameSlots == readFrameSlots) {
-                            throw new AssertionError("Frame slot " + slot + " was never writte outside the loop but virtualized as read frame slot.");
+                            throw new AssertionError("Frame slot " + slot + " was never written outside the loop but virtualized as read frame slot.");
                         } else {
                             throw new AssertionError("Frame slot " + slot + " was never written in the loop but virtualized as written frame slot.");
                         }
