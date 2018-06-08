@@ -204,7 +204,7 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register0("inLowTierOrInterpreter", new InvocationPlugin() {
+        r.register0("inInterpreterOrLowTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(TruffleLowTierMode.getValue(getOptions())));
