@@ -15,6 +15,7 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * All languages now need to have a public zero argument constructor. Using a static singleton field is no longer supported.
 * Renamed and changed the return value of the method for TruffleLanguage.initializeMultiContext to TruffleLanguage.initializeMultipleContexts. The original method remains but is now deprecated.
 * Added [SourceSectionFilter#includes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.html#includes-com.oracle.truffle.api.nodes.Node-)
+* Deprecating `FrameSlot#getKind` and `FrameSlot#setKind` in favor of `FrameDescriptor#getFrameSlotKind` and `FrameDescriptor#setFrameSlotKind`.
 
 ## Version 1.0.0 RC3
 

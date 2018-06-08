@@ -34,13 +34,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TVMCI;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
@@ -236,6 +236,42 @@ public final class FrameDescriptor implements Cloneable {
         identifierToSlotMap.removeKey(identifier);
         updateVersion();
         getNotInFrameAssumption(identifier);
+    }
+
+    /**
+     * Kind of the provided slot. Specified either at
+     * {@link #addFrameSlot(java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind) creation
+     * time} or updated via {@link #setFrameSlotKind(FrameSlot, FrameSlotKind)} method.
+     *
+     * @param frameSlot the slot
+     * @return current kind of this slot
+     * @since 1.0
+     */
+    public FrameSlotKind getFrameSlotKind(final FrameSlot frameSlot) {
+        assert frameSlot.descriptor == this;
+        return frameSlot.kind;
+    }
+
+    /**
+     * Changes the kind of the provided slot. Change of the slot kind is done on <em>slow path</em>
+     * and invalidates assumptions about version of the {@link FrameDescriptor this descriptor}.
+     *
+     * @param frameSlot the slot
+     * @param kind new kind of the slot
+     * @since 1.0
+     */
+    public void setFrameSlotKind(final FrameSlot frameSlot, final FrameSlotKind kind) {
+        assert frameSlot.descriptor == this;
+        if (frameSlot.kind != kind) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            frameSlot.kind = kind;
+            updateVersion();
+            if (frameSlot.sharedWith != null) {
+                for (FrameDescriptor frameDescriptor : frameSlot.sharedWith.keySet()) {
+                    frameDescriptor.updateVersion();
+                }
+            }
+        }
     }
 
     /**

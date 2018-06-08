@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
@@ -38,12 +37,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  */
 public final class FrameSlot implements Cloneable {
 
-    private final FrameDescriptor descriptor;
+    final FrameDescriptor descriptor;
     private final Object identifier;
     private final Object info;
     private final int index;
-    private Map<FrameDescriptor, Object> sharedWith;
-    @CompilationFinal private FrameSlotKind kind;
+    Map<FrameDescriptor, Object> sharedWith;
+    @CompilationFinal FrameSlotKind kind;
 
     FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, FrameSlotKind kind, int index) {
         this.descriptor = descriptor;
@@ -91,14 +90,16 @@ public final class FrameSlot implements Cloneable {
     /**
      * Kind of the slot. Specified either at
      * {@link FrameDescriptor#addFrameSlot(java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
-     * creation time} or updated via {@link #setKind(com.oracle.truffle.api.frame.FrameSlotKind)}
-     * method.
+     * creation time} or updated via
+     * {@link FrameDescriptor#setFrameSlotKind(FrameSlot, FrameSlotKind)} method.
      *
      * @return current kind of this slot
      * @since 0.8 or earlier
+     * @deprecated in 1.0 use {@link FrameDescriptor#getFrameSlotKind(FrameSlot)} instead.
      */
+    @Deprecated
     public FrameSlotKind getKind() {
-        return kind;
+        return descriptor.getFrameSlotKind(this);
     }
 
     /**
@@ -108,18 +109,12 @@ public final class FrameSlot implements Cloneable {
      *
      * @param kind new kind of the slot
      * @since 0.8 or earlier
+     * @deprecated in 1.0 use {@link FrameDescriptor#setFrameSlotKind(FrameSlot, FrameSlotKind)}
+     *             instead.
      */
+    @Deprecated
     public void setKind(final FrameSlotKind kind) {
-        if (this.kind != kind) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.kind = kind;
-            this.descriptor.updateVersion();
-            if (sharedWith != null) {
-                for (FrameDescriptor frameDescriptor : sharedWith.keySet()) {
-                    frameDescriptor.updateVersion();
-                }
-            }
-        }
+        descriptor.setFrameSlotKind(this, kind);
     }
 
     /** @since 0.8 or earlier */

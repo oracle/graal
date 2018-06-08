@@ -115,11 +115,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
             stack = new FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
                 locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
-                locals[i].setKind(FrameSlotKind.Int);
+                this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
             }
             for (int i = 0; i < maxStack; ++i) {
                 stack[i] = this.getFrameDescriptor().addFrameSlot("stack" + i);
-                stack[i].setKind(FrameSlotKind.Int);
+                this.getFrameDescriptor().setFrameSlotKind(stack[i], FrameSlotKind.Int);
             }
         }
 
