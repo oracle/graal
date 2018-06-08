@@ -40,6 +40,8 @@ import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class VarHandleTest extends GraalCompilerTest {
 
     static class Holder {
@@ -61,11 +63,6 @@ public class VarHandleTest extends GraalCompilerTest {
             }
         }
     }
-
-    private int expectedMembars;
-    private int expectedReads;
-    private int expectedWrites;
-    private int expectedAnyKill;
 
     public static int testRead1Snippet(Holder h) {
         /* Explicitly access the volatile field with non-volatile access semantics. */
@@ -107,85 +104,54 @@ public class VarHandleTest extends GraalCompilerTest {
         Holder.FIELD.setVolatile(h, 123);
     }
 
-    @Test
-    public void testRead1() {
-        expectedReads = 1;
-        expectedWrites = 0;
-        expectedMembars = 0;
-        expectedAnyKill = 0;
-        test("testRead1Snippet", new Holder());
-    }
-
-    @Test
-    public void testRead2() {
-        expectedReads = 1;
-        expectedWrites = 0;
-        expectedMembars = 2;
-        expectedAnyKill = 2;
-        test("testRead2Snippet", new Holder());
-    }
-
-    @Test
-    public void testRead3() {
-        expectedReads = 1;
-        expectedWrites = 0;
-        expectedMembars = 0;
-        expectedAnyKill = 0;
-        test("testRead3Snippet", new Holder());
-    }
-
-    @Test
-    public void testRead4() {
-        expectedReads = 1;
-        expectedWrites = 0;
-        expectedMembars = 2;
-        expectedAnyKill = 2;
-        test("testRead4Snippet", new Holder());
-    }
-
-    @Test
-    public void testWrite1() {
-        expectedReads = 0;
-        expectedWrites = 1;
-        expectedMembars = 0;
-        expectedAnyKill = 0;
-        test("testWrite1Snippet", new Holder());
-    }
-
-    @Test
-    public void testWrite2() {
-        expectedReads = 0;
-        expectedWrites = 1;
-        expectedMembars = 2;
-        expectedAnyKill = 2;
-        test("testWrite2Snippet", new Holder());
-    }
-
-    @Test
-    public void testWrite3() {
-        expectedReads = 0;
-        expectedWrites = 1;
-        expectedMembars = 0;
-        expectedAnyKill = 0;
-        test("testWrite3Snippet", new Holder());
-    }
-
-    @Test
-    public void testWrite4() {
-        expectedReads = 0;
-        expectedWrites = 1;
-        expectedMembars = 2;
-        expectedAnyKill = 2;
-        test("testWrite4Snippet", new Holder());
-    }
-
-    @Override
-    protected boolean checkLowTierGraph(StructuredGraph graph) {
+    void testAccess(String name, int expectedReads, int expectedWrites, int expectedMembars, int expectedAnyKill) {
+        ResolvedJavaMethod method = getResolvedJavaMethod(name);
+        StructuredGraph graph = parseForCompile(method);
+        compile(method, graph);
         Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());
         Assert.assertEquals(expectedWrites, graph.getNodes().filter(WriteNode.class).count());
         Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
         Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
-        return super.checkLowTierGraph(graph);
+    }
+
+    @Test
+    public void testRead1() {
+        testAccess("testRead1Snippet", 1, 0, 0, 0);
+    }
+
+    @Test
+    public void testRead2() {
+        testAccess("testRead2Snippet", 1, 0, 2, 2);
+    }
+
+    @Test
+    public void testRead3() {
+        testAccess("testRead3Snippet", 1, 0, 0, 0);
+    }
+
+    @Test
+    public void testRead4() {
+        testAccess("testRead4Snippet", 1, 0, 2, 2);
+    }
+
+    @Test
+    public void testWrite1() {
+        testAccess("testWrite1Snippet", 0, 1, 0, 0);
+    }
+
+    @Test
+    public void testWrite2() {
+        testAccess("testWrite2Snippet", 0, 1, 2, 2);
+    }
+
+    @Test
+    public void testWrite3() {
+        testAccess("testWrite3Snippet", 0, 1, 0, 0);
+    }
+
+    @Test
+    public void testWrite4() {
+        testAccess("testWrite4Snippet", 0, 1, 2, 2);
     }
 
     private static int countAnyKill(StructuredGraph graph) {
