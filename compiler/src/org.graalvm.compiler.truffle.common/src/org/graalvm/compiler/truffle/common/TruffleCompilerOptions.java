@@ -228,7 +228,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Print all polymorphic and generic nodes after each compilation", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceTruffleCompilationPolymorphism = new OptionKey<>(false);
 
-    @Option(help = "Print all polymorphic and generic nodes after each compilation", type = OptionType.Debug)
+    @Option(help = "Print the entire AST after each compilation", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceTruffleCompilationAST = new OptionKey<>(false);
 
     @Option(help = "Print the inlined call tree for each compiled method", type = OptionType.Debug)
