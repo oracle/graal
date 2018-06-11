@@ -26,10 +26,13 @@ package org.graalvm.compiler.nodes;
 
 import static org.graalvm.compiler.graph.Graph.SourcePositionTracking.Default;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -891,13 +894,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         for (FrameState fs : getNodes(FrameState.TYPE)) {
             if (!BytecodeFrame.isPlaceholderBci(fs.bci)) {
                 ResolvedJavaMethod m = fs.code.getMethod();
-                if (m != rootMethod && !methods.contains(m)) {
-                    EconomicSet<String> haystack = EconomicSet.create(methods.size() + 1);
-                    haystack.add(rootMethod.format("%H.%n(%p)"));
+                if (!m.equals(rootMethod) && !methods.contains(m)) {
+                    List<String> haystack = new ArrayList<>(methods.size() + 1);
+                    if (!methods.contains(rootMethod)) {
+                        haystack.add(rootMethod.format("%H.%n(%p)"));
+                    }
                     for (ResolvedJavaMethod e : methods) {
                         haystack.add(e.format("%H.%n(%p)"));
                     }
-                    throw new AssertionError(String.format("Could not find %s from %s in %s", m.format("%H.%n(%p)"), fs, haystack));
+                    Collections.sort(haystack);
+                    throw new AssertionError(String.format("Could not find %s from %s in set(%s)", m.format("%H.%n(%p)"), fs, haystack.stream().collect(Collectors.joining(System.lineSeparator()))));
                 }
             }
         }
