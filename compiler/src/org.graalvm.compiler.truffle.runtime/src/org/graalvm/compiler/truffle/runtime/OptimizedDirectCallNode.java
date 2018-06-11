@@ -147,7 +147,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
+        if (CompilerDirectives.inInterpreterOrLowTier()) {
+            TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
+        }
     }
 
     /** Used by the splitting strategy to install new targets. */
