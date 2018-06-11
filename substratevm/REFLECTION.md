@@ -63,7 +63,7 @@ Alternatively, a custom `Feature` implementation can register program elements b
 ## Limitations at Runtime
 Dynamic class loading using `Class.forName()` is not available due to the ahead-of-time image generation model of Substrate VM.
 
-See also our [list of general limitations](#LIMITATIONS.md).
+See also our [list of general limitations](LIMITATIONS.md).
 
 ## Use during Native Image Generation
 Reflection can be used without restrictions during native image generation, for example in static initializers. At this point, code can collect information about methods and fields and store them in own data structures, which are then reflection-free at run time.
