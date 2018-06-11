@@ -268,11 +268,12 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         self.reset_user_group = True
         mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
 
-    def _get_metadata(self, suites):
-        '''
-        :type suites: list[str]
+    @staticmethod
+    def _get_metadata(suites):
+        """
+        :type suites: list[mx.Suite]
         :return:
-        '''
+        """
         _commit_info = {}
         for _s in suites:
             if _s.vc:
@@ -1044,7 +1045,7 @@ Bundle-Version: {version}
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
 x-GraalVM-Polyglot-Part: {polyglot}
 x-GraalVM-Working-Directories: {workdir}
-""".format( # GR-10249: the manifest file must end with a newline
+""".format(  # GR-10249: the manifest file must end with a newline
             name=self.component.name,
             id=self.component.dir_name,
             version=_suite.release_version(),
@@ -1185,10 +1186,10 @@ def get_lib_polyglot_project():
 
 
 def register_vm_config(config_name, components):
-    '''
+    """
     :type config_name: str
     :type components: list[str]
-    '''
+    """
     _vm_configs[config_name] = components
 
 
@@ -1256,6 +1257,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             }
         ))
 
+
 def has_component(name):
     return any((c.short_name == name or c.name == name for c in mx_sdk.graalvm_components()))
 
@@ -1269,7 +1271,7 @@ def graalvm_output():
 def graalvm_dist_name(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
-    args = parser.parse_args(args)
+    _ = parser.parse_args(args)
 
     mx.log(get_graalvm_distribution().name)
 
@@ -1277,7 +1279,7 @@ def graalvm_dist_name(args):
 def graalvm_version(args):
     """print the GraalVM version"""
     parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
-    args = parser.parse_args(args)
+    _ = parser.parse_args(args)
 
     mx.log(_suite.release_version())
 
@@ -1285,7 +1287,7 @@ def graalvm_version(args):
 def graalvm_home(args):
     """print the GraalVM home dir"""
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
-    args = parser.parse_args(args)
+    _ = parser.parse_args(args)
 
     _graalvm_dist = get_graalvm_distribution()
     mx.log(join(_graalvm_dist.output, _graalvm_dist.jdk_base))
@@ -1309,17 +1311,22 @@ mx.add_argument('--no-sources', action='store_true', help='Do not include the ar
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
 
+
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
+
 
 def _polyglot_lib_project():
     return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
 
+
 def _polyglot_launcher_project():
     return not (mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'))
 
+
 def _force_bash_launchers():
     return mx.get_opts().force_bash_launchers or _env_var_to_bool('FORCE_BASH_LAUNCHERS')
+
 
 def _include_sources():
     return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
