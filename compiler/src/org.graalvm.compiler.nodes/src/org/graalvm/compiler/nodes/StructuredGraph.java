@@ -26,8 +26,6 @@ package org.graalvm.compiler.nodes;
 
 import static org.graalvm.compiler.graph.Graph.SourcePositionTracking.Default;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -37,6 +35,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -337,7 +336,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * specific method is used. This will be {@code null} if recording of inlined methods is
      * disabled for the graph.
      */
-    private final List<ResolvedJavaMethod> methods;
+    private final EconomicSet<ResolvedJavaMethod> methods;
 
     /**
      * Records the fields that were accessed while constructing this graph.
@@ -377,7 +376,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
-        this.methods = recordInlinedMethods ? new ArrayList<>() : null;
+        this.methods = recordInlinedMethods ? EconomicSet.create() : null;
         if (speculationLog != null && !(speculationLog instanceof GraphSpeculationLog)) {
             this.speculationLog = new GraphSpeculationLog(speculationLog);
         } else {
@@ -885,33 +884,41 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * Checks that any method referenced from a {@link FrameState} is also in the set of methods
-     * parsed while building this graph.
+     * Checks that any method referenced from a {@link FrameState} is in the set of inlined methods.
      */
     private boolean checkFrameStatesAgainstInlinedMethods() {
         for (FrameState fs : getNodes(FrameState.TYPE)) {
             if (!BytecodeFrame.isPlaceholderBci(fs.bci)) {
                 ResolvedJavaMethod m = fs.code.getMethod();
                 if (m != rootMethod && !methods.contains(m)) {
-                    EconomicSet<ResolvedJavaMethod> haystack = EconomicSet.create(methods.size() + 1);
-                    haystack.add(rootMethod);
-                    haystack.addAll(methods);
-                    throw new AssertionError(String.format("Could not find %s from %s in %s", m, fs, haystack));
+                    EconomicSet<String> haystack = EconomicSet.create(methods.size() + 1);
+                    haystack.add(rootMethod.format("%H.%n(%p)"));
+                    for (ResolvedJavaMethod e : methods) {
+                        haystack.add(e.format("%H.%n(%p)"));
+                    }
+                    throw new AssertionError(String.format("Could not find %s from %s in %s", m.format("%H.%n(%p)"), fs, haystack));
                 }
             }
         }
         return true;
     }
 
+    @SuppressWarnings("rawtypes") private static final UnmodifiableEconomicSet EMPTY_SET = EconomicSet.create();
+
+    @SuppressWarnings("unchecked")
+    private static final <T> UnmodifiableEconomicSet<T> emptySet() {
+        return EMPTY_SET;
+    }
+
     /**
      * Gets an unmodifiable view of the methods that were inlined while constructing this graph.
      */
-    public List<ResolvedJavaMethod> getMethods() {
+    public UnmodifiableEconomicSet<ResolvedJavaMethod> getMethods() {
         if (methods != null) {
             assert checkFrameStatesAgainstInlinedMethods();
-            return Collections.unmodifiableList(methods);
+            return methods;
         }
-        return Collections.emptyList();
+        return emptySet();
     }
 
     /**
@@ -939,7 +946,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Gets the fields that were accessed while constructing this graph.
      */
-    public EconomicSet<ResolvedJavaField> getFields() {
+    public UnmodifiableEconomicSet<ResolvedJavaField> getFields() {
         return fields;
     }
 

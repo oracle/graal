@@ -30,12 +30,11 @@ import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
@@ -329,7 +328,7 @@ public class CompilationResult {
      * @param rootMethod the root method of the compilation
      * @param inlinedMethods the methods inlined during compilation
      */
-    public void setMethods(ResolvedJavaMethod rootMethod, Collection<ResolvedJavaMethod> inlinedMethods) {
+    public void setMethods(ResolvedJavaMethod rootMethod, UnmodifiableEconomicSet<ResolvedJavaMethod> inlinedMethods) {
         checkOpen();
         assert rootMethod != null;
         assert inlinedMethods != null;
@@ -374,7 +373,7 @@ public class CompilationResult {
      *
      * @param accessedFields the collected set of fields accessed during compilation
      */
-    public void setFields(EconomicSet<ResolvedJavaField> accessedFields) {
+    public void setFields(UnmodifiableEconomicSet<ResolvedJavaField> accessedFields) {
         if (accessedFields != null) {
             fields = accessedFields.toArray(new ResolvedJavaField[accessedFields.size()]);
         }

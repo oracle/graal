@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.replacements;
 
-import java.net.URI;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -37,6 +37,7 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -846,9 +847,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         // Copy inlined methods from inlinee to caller
-        List<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
+        UnmodifiableEconomicSet<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
         if (inlinedMethods != null) {
-            graph.getMethods().addAll(inlinedMethods);
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
         }
 
         if (graphToInline.getFields() != null) {
