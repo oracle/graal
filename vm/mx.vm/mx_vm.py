@@ -143,7 +143,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 exclude_base = join(exclude_base, _src_jdk_base)
             _add(layout, base_dir, {
                 'source_type': 'file',
-                'path': '{}'.format(_jdk_dir),
+                'path': _jdk_dir,
                 'exclude': [
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
@@ -380,8 +380,12 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         self._rm_link()
 
 
+def _get_jdk():
+    return mx.get_jdk(tag='default')
+
+
 def _get_jdk_dir():
-    java_home = mx.get_jdk(tag='default').home
+    java_home = _get_jdk().home
     jdk_dir = java_home
     if jdk_dir.endswith(os.path.sep):
         jdk_dir = jdk_dir[:-len(os.path.sep)]
@@ -691,8 +695,7 @@ class GraalVmLauncher(GraalVmNativeImage):
 
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
-        # TODO fixme: native-image should work as a bash launcher
-        if svm_support.is_supported() and (self.native_image_name == 'native-image' or not _force_bash_launchers()):
+        if svm_support.is_supported() and not _force_bash_launchers():
             return GraalVmSVMLauncherBuildTask(self, args, svm_support)
         else:
             return GraalVmBashLauncherBuildTask(self, args)
@@ -887,6 +890,9 @@ def lock_directory(path):
             fcntl.flock(fd, fcntl.LOCK_UN)
 
 
+_known_missing_jars = {'HAMCREST', 'JUNIT', 'JUNIT_TOOL', 'JLINE', 'TRUFFLE_DEBUG'}
+
+
 def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=False):
     start = start or _get_graalvm_archive_path('')
     assert start.startswith(_get_graalvm_archive_path(''))
@@ -896,12 +902,33 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
     if graal_vm.jdk_base and graal_vm.jdk_base != '.':
         assert not graal_vm.jdk_base.endswith('/')
         boot_jars_directory = graal_vm.jdk_base + "/" + boot_jars_directory
-    _cp = []
+    _cp = set()
+    mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
     for _cp_entry in mx.classpath_entries(dependencies):
-        graalvm_location = graal_vm.find_single_source_location('dependency:{}:{}'.format(_cp_entry.suite, _cp_entry.name))
-        if with_boot_jars or graalvm_location.startswith(boot_jars_directory):
+        if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
+            jdk = _get_jdk()
+            jdk_location = relpath(_cp_entry.classpath_repr(jdk), jdk.home)
+            graalvm_location = join(graal_vm.jdk_base, jdk_location)
+        else:
+            graalvm_location = graal_vm.find_single_source_location('dependency:{}:{}'.format(_cp_entry.suite, _cp_entry.name), fatal_if_missing=False)
+            if graalvm_location is None and _cp_entry.isDistribution():
+                # Try to find an overlapping distribution
+                for destination, layout_source in graal_vm._walk_layout():
+                    if layout_source['source_type'] == 'dependency' and layout_source['path'] is None:
+                        d = mx.dependency(layout_source['dependency'])
+                        if d.isDistribution():
+                            if _cp_entry in d.overlapped_distributions() and set(_cp_entry.archived_deps()) <= set(d.archived_deps()):
+                                mx.logv("{}:{} is not available in GraalVM, replacing with {}:{}".format(_cp_entry.suite, _cp_entry.name, d.suite, d.name))
+                                graalvm_location = graal_vm.find_single_source_location('dependency:{}:{}'.format(d.suite, d.name))
+                                break
+            if graalvm_location is None:
+                if _cp_entry.name in _known_missing_jars:
+                    mx.warn("Skipping known missing dependency {} when building classpath for {}".format(_cp_entry.name, dependencies))
+                    continue
+                mx.abort("Could not find '{}:{}' in GraalVM ('{}')".format(_cp_entry.suite, _cp_entry.name, graal_vm.name))
+        if not with_boot_jars and (graalvm_location.startswith(boot_jars_directory) or _cp_entry.isJreLibrary()):
             continue
-        _cp.append(relpath(graalvm_location, start))
+        _cp.add(relpath(graalvm_location, start))
     return ":".join(_cp)
 
 
