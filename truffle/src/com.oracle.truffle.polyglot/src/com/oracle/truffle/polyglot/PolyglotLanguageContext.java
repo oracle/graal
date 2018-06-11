@@ -407,9 +407,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     static final class ToGuestValuesNode {
 
-        @CompilationFinal private int cachedLength = -1;
-        @CompilationFinal(dimensions = 1) private ToGuestValueNode[] toGuestValue;
-        @CompilationFinal private boolean needsCopy = false;
+        @CompilationFinal private volatile int cachedLength = -1;
+        @CompilationFinal(dimensions = 1) private volatile ToGuestValueNode[] toGuestValue;
+        @CompilationFinal private volatile boolean needsCopy = false;
 
         private ToGuestValuesNode() {
         }
@@ -499,7 +499,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     static final class ToGuestValueNode {
 
-        @CompilationFinal private Class<?> cachedClass;
+        @CompilationFinal private volatile Class<?> cachedClass;
 
         private ToGuestValueNode() {
 
@@ -570,10 +570,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     final class ToHostValueNode {
 
         final APIAccess apiAccess = context.engine.impl.getAPIAccess();
-        @CompilationFinal Class<?> cachedClass;
-        @CompilationFinal PolyglotValue cachedValue;
-        @CompilationFinal Class<?> cachedFallbackClass;
-        @CompilationFinal PolyglotValue cachedFallbackValue;
+        @CompilationFinal volatile Class<?> cachedClass;
+        @CompilationFinal volatile PolyglotValue cachedValue;
+        @CompilationFinal volatile Class<?> cachedFallbackClass;
+        @CompilationFinal volatile PolyglotValue cachedFallbackValue;
 
         private ToHostValueNode() {
         }
@@ -599,7 +599,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     PolyglotValue cache = cachedValue;
                     if (cache == null) {
                         receiver = toGuestValue(receiver);
-                        if (cachedFallbackClass.isInstance(receiver)) {
+                        Class<?> cachedFallback = cachedFallbackClass;
+                        if (cachedFallback != null && cachedFallback.isInstance(receiver)) {
                             cache = cachedFallbackValue;
                         } else {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
