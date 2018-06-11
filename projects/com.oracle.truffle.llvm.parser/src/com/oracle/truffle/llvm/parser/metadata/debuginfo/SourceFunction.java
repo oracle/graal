@@ -35,14 +35,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class SourceFunction {
 
-    private final Map<Instruction, LLVMSourceLocation> instructions = new HashMap<>();
+    public static final String DEFAULT_SOURCE_NAME = LLVMIdentifier.UNKNOWN;
+    public static final SourceFunction DEFAULT = new SourceFunction(LLVMSourceLocation.createUnavailable(LLVMSourceLocation.Kind.FUNCTION, DEFAULT_SOURCE_NAME, "<unavailable>", 0, 0), null);
 
     private Map<LLVMSourceSymbol, SourceVariable> locals;
 
@@ -57,10 +58,6 @@ public final class SourceFunction {
 
     public SourceSection getSourceSection() {
         return lexicalScope.getSourceSection();
-    }
-
-    public LLVMSourceLocation getSourceLocation(Instruction instruction) {
-        return instructions.get(instruction);
     }
 
     public LLVMSourceLocation getLexicalScope() {
@@ -83,11 +80,17 @@ public final class SourceFunction {
         return variable;
     }
 
-    void addInstruction(Instruction instruction, LLVMSourceLocation scope) {
-        instructions.put(instruction, scope);
-    }
-
     public Collection<SourceVariable> getVariables() {
         return locals == null ? Collections.emptySet() : locals.values();
+    }
+
+    public String getName() {
+        return lexicalScope.getName();
+    }
+
+    public void clearLocals() {
+        if (locals != null) {
+            locals.clear();
+        }
     }
 }

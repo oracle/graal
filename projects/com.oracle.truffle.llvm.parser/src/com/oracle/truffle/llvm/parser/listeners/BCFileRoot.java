@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.List;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -42,13 +41,11 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class BCFileRoot implements ParserListener {
 
-    private final Source source;
     private final ModelModule module;
     private final StringTable stringTable;
     private final IRScope scope;
 
-    public BCFileRoot(Source source, ModelModule module) {
-        this.source = source;
+    public BCFileRoot(ModelModule module) {
         this.module = module;
         this.stringTable = new StringTable();
         this.scope = new IRScope();
@@ -73,7 +70,7 @@ public final class BCFileRoot implements ParserListener {
         int globalIndex = setMissingNames(module.getGlobalVariables(), 0);
         setMissingNames(module.getAliases(), globalIndex);
         SymbolNameMangling.demangleGlobals(module);
-        DebugInfoModuleProcessor.processModule(module, source, scope.getMetadata());
+        DebugInfoModuleProcessor.processModule(module, scope.getMetadata());
     }
 
     private static int setMissingNames(List<? extends GlobalValueSymbol> globals, int startIndex) {

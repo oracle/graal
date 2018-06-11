@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
@@ -116,7 +115,6 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final ExternalLibrary library;
     private final ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos;
     private final List<? extends FrameSlot> frameSlots;
-    private final SourceFunction sourceFunction;
     private final List<FrameSlot> notNullable;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
 
@@ -127,7 +125,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private LLVMSourceLocation lastLocation;
 
     LLVMBitcodeInstructionVisitor(FrameDescriptor frame, List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context, ExternalLibrary library,
-                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceFunction sourceFunction, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
+                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
         this.frame = frame;
         this.blockPhis = blockPhis;
         this.nodeFactory = nodeFactory;
@@ -137,7 +135,6 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         this.library = library;
         this.nullerInfos = nullerInfos;
         this.frameSlots = frame.getSlots();
-        this.sourceFunction = sourceFunction;
         this.notNullable = notNullable;
         this.dbgInfoHandler = dbgInfoHandler;
         this.lastLocation = null;
@@ -901,7 +898,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private LLVMSourceLocation getSourceLocation(Instruction inst, boolean skipRepeatingLocation) {
-        final LLVMSourceLocation location = sourceFunction.getSourceLocation(inst);
+        final LLVMSourceLocation location = inst.getSourceLocation();
         if (location == null) {
             return null;
         } else if (Objects.equals(lastLocation, location) && skipRepeatingLocation) {
