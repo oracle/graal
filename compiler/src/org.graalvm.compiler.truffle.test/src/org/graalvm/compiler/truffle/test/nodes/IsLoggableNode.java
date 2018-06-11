@@ -26,10 +26,9 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import java.util.Objects;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class IsLoggableNode extends AbstractTestNode {
-    private final Logger log;
+    private final TruffleLogger log;
     private final Level level;
     private final int result;
 

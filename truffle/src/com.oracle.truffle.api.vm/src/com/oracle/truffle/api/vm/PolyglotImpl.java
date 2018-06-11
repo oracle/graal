@@ -74,6 +74,7 @@ import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -938,6 +939,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Handler getLogHandler() {
             return PolyglotLogHandler.INSTANCE;
+        }
+
+        @Override
+        public LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
+            return PolyglotLogHandler.createLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
         }
 
         @Override

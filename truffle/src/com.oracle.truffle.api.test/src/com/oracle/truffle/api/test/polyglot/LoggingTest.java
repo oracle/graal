@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.logging.Filter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -309,48 +308,6 @@ public class LoggingTest {
                 expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINER)));
                 Assert.assertEquals(expected, handler3.getLog());
             }
-        }
-    }
-
-    @Test
-    public void testLoggersImmutable() {
-        AbstractLoggingLanguage.action = new Consumer<Collection<TruffleLogger>>() {
-            @Override
-            public void accept(Collection<TruffleLogger> loggers) {
-                final TruffleLogger logger = loggers.iterator().next();
-                try {
-                    logger.setParent(null);
-                    Assert.fail("Should not reach here.");
-                } catch (SecurityException se) {
-                    // Expected
-                }
-                try {
-                    logger.setUseParentHandlers(false);
-                    Assert.fail("Should not reach here.");
-                } catch (SecurityException se) {
-                    // Expected
-                }
-                try {
-                    logger.setFilter(new Filter() {
-                        @Override
-                        public boolean isLoggable(LogRecord record) {
-                            return false;
-                        }
-                    });
-                    Assert.fail("Should not reach here.");
-                } catch (SecurityException se) {
-                    // Expected
-                }
-                try {
-                    logger.setLevel(Level.OFF);
-                    Assert.fail("Should not reach here.");
-                } catch (SecurityException se) {
-                    // Expected
-                }
-            }
-        };
-        try (Context ctx = Context.newBuilder().build()) {
-            ctx.eval(LoggingLanguageFirst.ID, "");
         }
     }
 

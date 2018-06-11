@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import java.io.ObjectStreamException;
-import java.util.Arrays;
 import java.util.ResourceBundle;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -42,7 +40,7 @@ final class PolyglotLogHandler extends Handler {
     public void publish(final LogRecord record) {
         final Handler handler = findDelegate();
         if (handler != null) {
-            handler.publish(new ImmutableLogRecord(record));
+            handler.publish(record);
         }
     }
 
@@ -71,76 +69,34 @@ final class PolyglotLogHandler extends Handler {
         return result;
     }
 
+    static LogRecord createLogRecord(final Level level, String loggerName, final String message, final String className, final String methodName, final Object[] parameters, final Throwable thrown) {
+        return new ImmutableLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
+    }
+
     private static final class ImmutableLogRecord extends LogRecord {
 
         private static final long serialVersionUID = 1L;
 
-        private final LogRecord delegate;
-
-        private ImmutableLogRecord(final LogRecord delegate) {
-            super(delegate.getLevel(), delegate.getMessage());
-            this.delegate = delegate;
-            final Object[] params = delegate.getParameters();
+        private ImmutableLogRecord(final Level level, final String loggerName, final String message, final String className, final String methodName, final Object[] parameters,
+                        final Throwable thrown) {
+            super(level, message);
+            super.setLoggerName(loggerName);
+            if (className != null) {
+                super.setSourceClassName(className);
+            }
+            if (methodName != null) {
+                super.setSourceMethodName(methodName);
+            }
             Object[] copy = null;
-            if (params != null) {
-                copy = new Object[params.length];
+            if (parameters != null) {
+                copy = new Object[parameters.length];
                 final PolyglotContextImpl[] contextHolder = new PolyglotContextImpl[1];
-                for (int i = 0; i < params.length; i++) {
-                    copy[i] = safeValue(params[i], contextHolder);
+                for (int i = 0; i < parameters.length; i++) {
+                    copy[i] = safeValue(parameters[i], contextHolder);
                 }
             }
             super.setParameters(copy);
-        }
-
-        @Override
-        public String getLoggerName() {
-            return delegate.getLoggerName();
-        }
-
-        @Override
-        public ResourceBundle getResourceBundle() {
-            return delegate.getResourceBundle();
-        }
-
-        @Override
-        public String getResourceBundleName() {
-            return delegate.getResourceBundleName();
-        }
-
-        @Override
-        public long getSequenceNumber() {
-            return delegate.getSequenceNumber();
-        }
-
-        @Override
-        public String getSourceClassName() {
-            return delegate.getSourceClassName();
-        }
-
-        @Override
-        public String getSourceMethodName() {
-            return delegate.getSourceMethodName();
-        }
-
-        @Override
-        public Object[] getParameters() {
-            final Object[] params = super.getParameters();
-            return params == null ? null : Arrays.copyOf(params, params.length);
-        }
-
-        @Override
-        public int getThreadID() {
-            return delegate.getThreadID();
-        }
-
-        @Override
-        public long getMillis() {
-            return delegate.getMillis();
-        }
-
-        @Override
-        public Throwable getThrown() {
-            return delegate.getThrown();
+            super.setThrown(thrown);
         }
 
         @Override
@@ -201,21 +157,6 @@ final class PolyglotLogHandler extends Handler {
         @Override
         public void setThrown(Throwable thrown) {
             throw new UnsupportedOperationException("Setting Throwable is not supported.");
-        }
-
-        private Object writeReplace() throws ObjectStreamException {
-            final LogRecord serializableForm = new LogRecord(getLevel(), getMessage());
-            serializableForm.setLoggerName(delegate.getLoggerName());
-            serializableForm.setMillis(delegate.getMillis());
-            serializableForm.setParameters(super.getParameters());
-            serializableForm.setResourceBundle(delegate.getResourceBundle());
-            serializableForm.setResourceBundleName(delegate.getResourceBundleName());
-            serializableForm.setSequenceNumber(delegate.getSequenceNumber());
-            serializableForm.setSourceClassName(delegate.getSourceClassName());
-            serializableForm.setSourceMethodName(delegate.getSourceMethodName());
-            serializableForm.setThreadID(delegate.getThreadID());
-            serializableForm.setThrown(delegate.getThrown());
-            return serializableForm;
         }
 
         @SuppressWarnings("deprecation")

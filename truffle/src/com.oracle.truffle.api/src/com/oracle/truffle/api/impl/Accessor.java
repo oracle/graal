@@ -64,6 +64,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -320,6 +321,8 @@ public abstract class Accessor {
         public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
         public abstract Handler getLogHandler();
+
+        public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentPolyglotContext();
     }
