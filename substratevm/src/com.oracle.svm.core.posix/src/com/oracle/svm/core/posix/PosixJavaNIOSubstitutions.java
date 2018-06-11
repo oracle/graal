@@ -1141,6 +1141,7 @@ public final class PosixJavaNIOSubstitutions {
     @TargetClass(className = "sun.nio.ch.ServerSocketChannelImpl")
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_ServerSocketChannelImpl {
+
         // jdk/src/share/classes/sun/nio/ch/ServerSocketChannelImpl.java?v=Java_1.8.0_40_b10
         // 415     // Accepts a new connection, setting the given file descriptor to refer to
         // 416     // the new socket and setting isaa[0] to the socket's remote address.
@@ -1156,9 +1157,24 @@ public final class PosixJavaNIOSubstitutions {
         //        069 Java_sun_nio_ch_ServerSocketChannelImpl_accept0(JNIEnv *env, jobject this,
         //        070                                                 jobject ssfdo, jobject newfdo,
         //        071                                                 jobjectArray isaa)
-        @SuppressWarnings({"static-method"})
         @Substitute
+        @SuppressWarnings({"static-method"})
         int accept0(FileDescriptor ssfdo, FileDescriptor newfdo, InetSocketAddress[] isaa) throws IOException {
+            /* Ignore the receiver. */
+            return Util_sun_nio_ch_ServerSocketChannelImpl.accept0(ssfdo, newfdo, isaa);
+        }
+    }
+
+    static final class Util_sun_nio_ch_ServerSocketChannelImpl {
+
+        /** A {@code static} method that can be called from
+         * {@link Target_sun_nio_ch_ServerSocketChannelImpl#accept0(FileDescriptor, FileDescriptor, InetSocketAddress[])}
+         * and
+         * {@link Target_sun_nio_ch_UnixAsynchronoutServerSocketChannelImpl#accept0(FileDescriptor, FileDescriptor, InetSocketAddress[])}
+         * because it does not need the {@code this} parameter that is the receiver of those calls.
+         */
+        // jdk/src/solaris/native/sun/nio/ch/ServerSocketChannelImpl.c?v=Java_1.8.0_40_b10
+        static int accept0(FileDescriptor ssfdo, FileDescriptor newfdo, InetSocketAddress[] isaa) throws IOException {
             //        073     jint ssfd = (*env)->GetIntField(env, ssfdo, fd_fdID);
             int ssfd = fdval(ssfdo);
             //        074     jint newfd;
@@ -3185,6 +3201,25 @@ public final class PosixJavaNIOSubstitutions {
                     Util_sun_nio_ch_Net.handleSocketError(errorPointer.read());
                 }
             }
+        }
+    }
+
+    @TargetClass(className = "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl")
+    static final class Target_sun_nio_ch_UnixAsynchronoutServerSocketChannelImpl {
+
+        /* { Do not format quoted code: @formatter:off */
+
+        /* Translated from src/solaris/native/sun/nio/ch/UnixAsynchronousServerSocketChannelImpl.c?v=Java_1.8.0_40_b10 */
+        @Substitute
+        // 041 JNIEXPORT jint JNICALL
+        // 042 Java_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl_accept0(JNIEnv* env,
+        // 043     jobject this, jobject ssfdo, jobject newfdo, jobjectArray isaa)
+        @SuppressWarnings({"static-method"})
+        int accept0(FileDescriptor ssfd, FileDescriptor newfd, InetSocketAddress[] isaa) throws IOException {
+            // 045     return Java_sun_nio_ch_ServerSocketChannelImpl_accept0(env, this,
+            // 046         ssfdo, newfdo, isaa);
+            /* Ignore the receiver. */
+            return Util_sun_nio_ch_ServerSocketChannelImpl.accept0(ssfd, newfd, isaa);
         }
 
         /* } Do not format quoted code: @formatter:on */
