@@ -298,7 +298,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
-            EconomicSet<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? EconomicSet.create() : null;
+            EconomicSet<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? createMethodSet(null) : null;
             return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, inlinedMethods,
                             trackNodeSourcePosition, compilationId, options, debug, cancellable, callerContext);
         }
@@ -343,6 +343,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final EconomicSet<ResolvedJavaMethod> methods;
 
     /**
+     * Accumulates bytecode size for this graph.
+     *
+     * @see #getBytecodeSize()
+     */
+    private int bytecodeSize;
+
+    /**
      * Records the fields that were accessed while constructing this graph.
      */
 
@@ -376,6 +383,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         super(name, options, debug);
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
+        if (method != null) {
+            bytecodeSize = method.getCodeSize();
+        }
         this.graphId = uniqueGraphIds.incrementAndGet();
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
@@ -536,7 +546,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         assumptions == null ? null : new Assumptions(),
                         speculationLog,
                         useProfilingInfo,
-                        methods != null ? EconomicSet.create(methods) : null,
+                        methods != null ? createMethodSet(methods) : null,
                         trackNodeSourcePosition,
                         newCompilationId,
                         getOptions(), debugForCopy, null, callerContext);
@@ -549,8 +559,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.hasValueProxies = hasValueProxies;
         copy.isAfterExpandLogic = isAfterExpandLogic;
         copy.trackNodeSourcePosition = trackNodeSourcePosition;
+        copy.bytecodeSize = bytecodeSize;
         if (fields != null) {
-            copy.fields = EconomicSet.create(fields);
+            copy.fields = createFieldSet(fields);
         }
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
@@ -910,10 +921,28 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return true;
     }
 
+    private static EconomicSet<ResolvedJavaField> createFieldSet(EconomicSet<ResolvedJavaField> init) {
+        // Multiple ResolvedJavaField objects can represent the same field so they
+        // need to be compared with equals().
+        if (init != null) {
+            return EconomicSet.create(Equivalence.DEFAULT, init);
+        }
+        return EconomicSet.create(Equivalence.DEFAULT);
+    }
+
+    private static EconomicSet<ResolvedJavaMethod> createMethodSet(EconomicSet<ResolvedJavaMethod> init) {
+        // Multiple ResolvedJavaMethod objects can represent the same method so they
+        // need to be compared with equals().
+        if (init != null) {
+            return EconomicSet.create(Equivalence.DEFAULT, init);
+        }
+        return EconomicSet.create(Equivalence.DEFAULT);
+    }
+
     @SuppressWarnings("rawtypes") private static final UnmodifiableEconomicSet EMPTY_SET = EconomicSet.create();
 
     @SuppressWarnings("unchecked")
-    private static final <T> UnmodifiableEconomicSet<T> emptySet() {
+    private static <T> UnmodifiableEconomicSet<T> emptySet() {
         return EMPTY_SET;
     }
 
@@ -935,6 +964,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         if (methods == null) {
             throw new GraalError("inlined method recording not enabled for %s", this);
         }
+        bytecodeSize += method.getCodeSize();
         methods.add(method);
     }
 
@@ -943,11 +973,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * to build another graph.
      */
     public void updateMethods(StructuredGraph other) {
-        assert this != other;
-        if (methods == null) {
-            throw new GraalError("inlined method recording not enabled for %s", this);
+        recordMethod(other.rootMethod);
+        for (ResolvedJavaMethod m : other.methods) {
+            recordMethod(m);
         }
-        this.methods.addAll(other.methods);
     }
 
     /**
@@ -965,7 +994,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void recordField(ResolvedJavaField field) {
         assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (this.fields == null) {
-            this.fields = EconomicSet.create(Equivalence.IDENTITY);
+            this.fields = createFieldSet(null);
         }
         fields.add(field);
     }
@@ -979,7 +1008,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (other.fields != null) {
             if (this.fields == null) {
-                this.fields = EconomicSet.create(Equivalence.IDENTITY);
+                this.fields = createFieldSet(null);
             }
             this.fields.addAll(other.fields);
         }
@@ -992,13 +1021,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * full amount for any given method due to profile guided branch pruning).
      */
     public int getBytecodeSize() {
-        int res = 0;
-        if (methods != null) {
-            for (ResolvedJavaMethod e : methods) {
-                res += e.getCodeSize();
-            }
-        }
-        return res;
+        return bytecodeSize;
     }
 
     /**
