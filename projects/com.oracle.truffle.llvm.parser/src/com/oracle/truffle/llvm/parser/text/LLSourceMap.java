@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.text;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -39,7 +37,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public final class LLSourceMap {
+final class LLSourceMap {
 
     static final class Function {
 
@@ -80,6 +78,8 @@ public final class LLSourceMap {
         }
     }
 
+    private static final String LOCATION_SCOPE_TITLE = "<line>";
+
     static final class Instruction {
 
         private final String descriptor;
@@ -92,7 +92,7 @@ public final class LLSourceMap {
 
         LLVMSourceLocation toSourceLocation(Source llSource, LLVMSourceLocation parent) {
             final SourceSection sourceSection = llSource.createSection(line);
-            return LLVMSourceLocation.create(parent, LLVMSourceLocation.Kind.LINE, "<line>", sourceSection, null);
+            return LLVMSourceLocation.create(parent, LLVMSourceLocation.Kind.LINE, LOCATION_SCOPE_TITLE, sourceSection, null);
         }
 
         String getDescriptor() {
@@ -100,32 +100,13 @@ public final class LLSourceMap {
         }
     }
 
-    public static LLSourceMap build(Source bcSource) throws IOException {
-        final String bcPath = bcSource.getPath();
-        if (bcPath == null || !bcPath.endsWith(".bc")) {
-            return null;
-        }
-
-        final String llPath = bcPath.substring(0, bcPath.length() - ".bc".length()) + ".ll";
-        final File llFile = new File(llPath);
-        if (!llFile.exists() || !llFile.canRead()) {
-            return null;
-        }
-
-        final Source llSource = Source.newBuilder(new File(llPath)).mimeType("text/plain").build();
-        final LLSourceMap sourceMap = new LLSourceMap(llSource);
-        LLScanner.scan(llSource, sourceMap);
-        return sourceMap;
-    }
-
-    private LLSourceMap(Source llSource) {
-        this.llSource = llSource;
-        entries = new HashMap<>();
-    }
-
     private final Source llSource;
-
     private final Map<String, Function> entries;
+
+    LLSourceMap(Source llSource) {
+        this.llSource = llSource;
+        this.entries = new HashMap<>();
+    }
 
     void register(String name, Function function) {
         this.entries.put(name, function);

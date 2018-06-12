@@ -69,7 +69,7 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
         if (count == 0) {
             return NO_KEYS;
         }
-        return new ArrayList<>(entries.keySet()).toArray(new String[count]);
+        return new ArrayList<>(entries.keySet()).toArray(NO_KEYS);
     }
 
     @Override

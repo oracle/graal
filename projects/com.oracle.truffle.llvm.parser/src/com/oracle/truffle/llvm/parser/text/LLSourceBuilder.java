@@ -27,40 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.parser.text;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.listeners.Function;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 
-public final class LazyFunctionParser {
+public final class LLSourceBuilder {
 
-    private final LLVMScanner.LazyScanner scanner;
-    private final Function parser;
-    private final LLSourceBuilder llSource;
-
-    private boolean isParsed;
-
-    public LazyFunctionParser(LLVMScanner.LazyScanner scanner, Function parser, LLSourceBuilder llSource) {
-        this.scanner = scanner;
-        this.parser = parser;
-        this.llSource = llSource;
-        this.isParsed = false;
+    public static LLSourceBuilder create(Source bcSource) {
+        final String bcPath = bcSource != null ? bcSource.getPath() : null;
+        return new LLSourceBuilder(bcPath);
     }
 
-    public void parse(DebugInfoFunctionProcessor diProcessor, Source bitcodeSource, LLVMContext context) {
-        if (!isParsed) {
-            parser.setupScope();
-            scanner.scanBlock(parser);
-            diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, context);
-            if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                llSource.applySourceLocations(parser.getFunction());
-            }
-            isParsed = true;
+    // we only store the path of the bc-file so the truffle source can be dropped after module
+    // parsing
+    private final String bcPath;
+    private LLSourceMap cached;
+
+    private LLSourceBuilder(String bcPath) {
+        this.cached = null;
+        this.bcPath = bcPath;
+    }
+
+    public void applySourceLocations(FunctionDefinition function) {
+        // to include the map in the LazyFunctionParser we need to instantiate this object during
+        // module parsing but we only get an LLVMContext to check whether we will actually need it
+        // during function parsing, with this we build the map only on-demand and cache the result
+        if (cached == null) {
+            cached = LLScanner.findAndScanLLFile(bcPath);
+        }
+        if (cached != null) {
+            LLInstructionMapper.setSourceLocations(cached, function);
         }
     }
 }

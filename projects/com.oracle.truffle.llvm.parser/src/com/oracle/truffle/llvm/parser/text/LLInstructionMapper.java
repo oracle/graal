@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.parser.text;
 import java.util.LinkedList;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
+import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
@@ -49,12 +51,13 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
+import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public class LLInstructionMapper {
+final class LLInstructionMapper {
 
-    private static final class Mapper extends ValueInstructionVisitor {
+    private static final class Mapper extends ValueInstructionVisitor implements FunctionVisitor {
 
         private final Source llSource;
         private final LLVMSourceLocation parentLocation;
@@ -164,6 +167,11 @@ public class LLInstructionMapper {
         public void visit(DbgValueInstruction inst) {
             checkUnnamedInstruction("call", inst);
         }
+
+        @Override
+        public void visit(InstructionBlock block) {
+            block.accept(this);
+        }
     }
 
     static void setSourceLocations(LLSourceMap sourceMap, FunctionDefinition functionDefinition) {
@@ -172,8 +180,13 @@ public class LLInstructionMapper {
             return;
         }
 
-        // TODO set function source section
-        functionDefinition.accept(new Mapper(sourceMap.getLLSource(), function.toSourceLocation(sourceMap.getLLSource()), function.getInstructionList()));
+        final LLVMSourceLocation location = function.toSourceLocation(sourceMap.getLLSource());
+        SourceFunction sourceFunction = functionDefinition.getSourceFunction();
+        sourceFunction = new SourceFunction(location, sourceFunction.getSourceType());
+        functionDefinition.setSourceFunction(sourceFunction);
+
+        functionDefinition.accept((FunctionVisitor) new Mapper(sourceMap.getLLSource(), location, function.getInstructionList()));
+
         sourceMap.clearFunction(function);
     }
 }

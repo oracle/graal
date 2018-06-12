@@ -29,29 +29,43 @@
  */
 package com.oracle.truffle.llvm.parser.text;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-final class LLScanner implements Consumer<String> {
+final class LLScanner {
 
-    private static final class ScannerDoneException extends RuntimeException {
-        public static final long serialVersionUID = 42L;
-    }
-
-    static void scan(Source llSource, LLSourceMap sourceMap) throws IOException {
-        final LLScanner scanner = new LLScanner(sourceMap);
-        try (Stream<String> lines = Files.lines(Paths.get(llSource.getPath()))) {
-            lines.forEachOrdered(scanner);
-        } catch (LLScanner.ScannerDoneException ignored) {
+    static LLSourceMap findAndScanLLFile(String bcPath) {
+        if (bcPath == null || !bcPath.endsWith(".bc")) {
+            return null;
         }
+
+        final String llPath = bcPath.substring(0, bcPath.length() - ".bc".length()) + ".ll";
+        final File llFile = new File(llPath);
+        if (!llFile.exists() || !llFile.canRead()) {
+            return null;
+        }
+
+        try (BufferedReader llReader = new BufferedReader(new FileReader(llFile))) {
+            final Source llSource = Source.newBuilder(llFile).mimeType("text/plain").build();
+            final LLSourceMap sourceMap = new LLSourceMap(llSource);
+
+            final LLScanner scanner = new LLScanner(sourceMap);
+            for (String line = llReader.readLine(); line != null; line = llReader.readLine()) {
+                if (!scanner.continueAfter(line)) {
+                    return sourceMap;
+                }
+            }
+        } catch (IOException ignored) {
+        }
+
+        return null;
     }
 
     private final LLSourceMap map;
@@ -65,11 +79,11 @@ final class LLScanner implements Consumer<String> {
         this.function = null;
     }
 
-    @Override
-    public void accept(String line) {
+    // parse a line and indicate if the scanner should continue after it
+    private boolean continueAfter(String line) {
         currentLine++;
         if (line.isEmpty() || line.charAt(0) == ';') {
-            return;
+            return true;
         }
 
         if (line.startsWith("define")) {
@@ -80,17 +94,19 @@ final class LLScanner implements Consumer<String> {
             // end of a function definition
             endFunction();
 
+        } else if (function != null) {
+            // function body may contain only statements, comments and empty lines between blocks
+            parseInstruction(line);
+
         } else if (line.startsWith("!0")) {
             // this is the first entry of the metadata list in the *.ll file
             // after it, no more functions will be defined, so we stop scanning here
             // to avoid parsing the metadata which often accounts for more than half
             // of the total file size
-            throw new ScannerDoneException();
-
-        } else if (function != null) {
-            // function body may contain only statements, comments and empty lines between blocks
-            parseInstruction(line);
+            return false;
         }
+
+        return true;
     }
 
     private static final Pattern FUNCTION_NAME_REGEX = Pattern.compile("define .* @\"?(?<functionName>\\S+)\"?\\(.*");
@@ -110,18 +126,26 @@ final class LLScanner implements Consumer<String> {
         }
     }
 
-    // TODO (jkreindl) this doesn't work for 'unreachable'
-    private static final Pattern INSTRUCTION_NAME_REGEX = Pattern.compile("\\s* %?\"?(?<instructionName>\\S+)\"? .*");
+    private static final Pattern VALUE_NAME_REGEX = Pattern.compile("\\s*\"?(?<instructionName>\\S+)\"? .*");
+    private static final Pattern OP_NAME_REGEX = Pattern.compile("\\s*(?<instructionName>\\S+).*");
 
     private void parseInstruction(String line) {
         assert function != null;
 
-        final Matcher matcher = INSTRUCTION_NAME_REGEX.matcher(line);
+        String id = null;
+        Matcher matcher = VALUE_NAME_REGEX.matcher(line);
         if (matcher.matches()) {
-            String instructionName = matcher.group("instructionName");
-            instructionName = LLVMIdentifier.toLocalIdentifier(instructionName);
-            function.add(instructionName, currentLine);
+            id = matcher.group("instructionName");
+            id = LLVMIdentifier.toLocalIdentifier(id);
+        }
 
+        matcher = OP_NAME_REGEX.matcher(line);
+        if (matcher.matches()) {
+            id = matcher.group("instructionName");
+        }
+
+        if (id != null) {
+            function.add(id, currentLine);
         } else {
             throw new AssertionError(getErrorMessage("instruction", line));
         }
