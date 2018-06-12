@@ -42,6 +42,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -60,6 +61,15 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
         MaterializedFrame globalFrame = getFrameNode.execute(context.get());
         globalFrame.setObject(address.getSlot(), typedValue);
         return typedValue;
+    }
+
+    @Specialization
+    protected LLVMBoxedPrimitive doGlobal(LLVMGlobal address, LLVMBoxedPrimitive value,
+                    @Cached("create()") LLVMGlobal.GetFrame getFrameNode,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        MaterializedFrame globalFrame = getFrameNode.execute(context.get());
+        globalFrame.setObject(address.getSlot(), value);
+        return value;
     }
 
     // this is a workaround because @Fallback does not support @Cached
