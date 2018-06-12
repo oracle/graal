@@ -37,6 +37,8 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -44,6 +46,21 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
+
+    @Specialization
+    protected LLVMNativePointer doIntrinsic(LLVMGlobal value,
+                    @Cached("create()") LLVMGlobal.GetGlobalValueNode getValue,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        LLVMContext ctx = ctxRef.get();
+        Object pointer = getValue.execute(ctx, value);
+        if (pointer instanceof LLVMManagedPointer) {
+            return doIntrinsic((LLVMManagedPointer) pointer, ctxRef, memory);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Cannot get a handle to a global variable.");
+        }
+    }
 
     @Specialization
     protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
@@ -54,7 +71,7 @@ public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
             return handle;
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("cannot get a handle to pointer into the middle of foreign object");
+            throw new LLVMPolyglotException(this, "Cannot get a handle to pointer into the middle of foreign object.");
         }
     }
 }
