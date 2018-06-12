@@ -94,7 +94,7 @@ public class Verifier {
         Map<String, String> requiredCaps = info.getRequiredGraalValues();
         Map<String, String> graalCaps = registry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", info.getId(), info.getName(), info.getVersionString())) {
+        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", registry.shortenComponentId(info), info.getName(), info.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");
@@ -118,7 +118,7 @@ public class Verifier {
             addOrThrow(new DependencyException.Conflict(
                             existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
                             feedback.l10n("VERIFY_ComponentExists",
-                                            existing.getName(), existing.getId(), existing.getVersionString())));
+                                            existing.getName(), registry.shortenComponentId(existing), existing.getVersionString())));
         }
         if (ignoreRequirements) {
             return this;
@@ -127,7 +127,7 @@ public class Verifier {
         Map<String, String> requiredCaps = info.getRequiredGraalValues();
         Map<String, String> graalCaps = registry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", info.getId(), info.getName(), info.getVersionString())) {
+        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", registry.shortenComponentId(info), info.getName(), info.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");
