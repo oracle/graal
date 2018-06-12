@@ -269,7 +269,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitStringIndexOfChar(Value sourcePointer, Value sourceCount, Value charValue) {
+    default Variable emitArrayIndexOf(JavaKind kind, Value sourcePointer, Value sourceCount, Value charValue) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 

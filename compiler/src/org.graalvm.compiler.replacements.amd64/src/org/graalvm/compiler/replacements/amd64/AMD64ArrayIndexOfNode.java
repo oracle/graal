@@ -28,7 +28,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -47,38 +46,34 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(size = SIZE_64, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class AMD64StringIndexOfCharNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
-    public static final NodeClass<AMD64StringIndexOfCharNode> TYPE = NodeClass.create(AMD64StringIndexOfCharNode.class);
+public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
 
-    @OptionalInput(InputType.Memory) protected MemoryNode lastLocationAccess;
+    public static final NodeClass<AMD64ArrayIndexOfNode> TYPE = NodeClass.create(AMD64ArrayIndexOfNode.class);
 
-    @Input protected NodeInputList<ValueNode> arguments;
+    private final JavaKind kind;
 
-    public AMD64StringIndexOfCharNode(ValueNode sourcePointer, ValueNode sourceCount, ValueNode charValue) {
-        super(TYPE, StampFactory.forInteger(32));
-        this.arguments = new NodeInputList<>(this, new ValueNode[]{sourcePointer, sourceCount, charValue});
+    @Input private ValueNode arrayPointer;
+    @Input private ValueNode arrayLength;
+    @Input private ValueNode searchValue;
+
+    @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
+
+    public AMD64ArrayIndexOfNode(ValueNode arrayPointer, ValueNode arrayLength, ValueNode searchValue, @ConstantNodeParameter JavaKind kind) {
+        super(TYPE, StampFactory.forKind(JavaKind.Int));
+        this.kind = kind;
+        this.arrayPointer = arrayPointer;
+        this.arrayLength = arrayLength;
+        this.searchValue = searchValue;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return NamedLocationIdentity.getArrayLocation(JavaKind.Char);
-    }
-
-    ValueNode sourcePointer() {
-        return arguments.get(0);
-    }
-
-    ValueNode sourceCount() {
-        return arguments.get(1);
-    }
-
-    ValueNode charValue() {
-        return arguments.get(2);
+        return NamedLocationIdentity.getArrayLocation(kind);
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitStringIndexOfChar(gen.operand(sourcePointer()), gen.operand(sourceCount()), gen.operand(charValue()));
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(kind, gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(searchValue));
         gen.setResult(this, result);
     }
 
@@ -94,5 +89,5 @@ public class AMD64StringIndexOfCharNode extends FixedWithNextNode implements LIR
     }
 
     @NodeIntrinsic
-    public static native int optimizedStringIndexOfChar(Pointer sourcePointer, int sourceCount, char charValue);
+    public static native int optimizedArrayIndexOf(Pointer arrayPointer, int arrayLength, char searchValue, @ConstantNodeParameter JavaKind kind);
 }

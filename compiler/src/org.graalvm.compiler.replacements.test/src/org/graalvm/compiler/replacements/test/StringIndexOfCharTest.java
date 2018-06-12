@@ -36,8 +36,9 @@ import org.junit.runners.Parameterized;
 public class StringIndexOfCharTest extends GraalCompilerTest {
     @Parameterized.Parameter(value = 0) public String sourceString;
     @Parameterized.Parameter(value = 1) public int constantChar;
+    @Parameterized.Parameter(value = 2) public int fromIndex;
 
-    @Parameterized.Parameters(name = "{0},{1}")
+    @Parameterized.Parameters(name = "{0},{1},{2}")
     public static Collection<Object[]> data() {
         ArrayList<Object[]> tests = new ArrayList<>();
         String longString = "ab";
@@ -45,11 +46,22 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
             longString = longString + longString;
         }
         longString = longString + "xx";
-        String[] targets = new String[]{"foobar", "foo", "bar", longString};
+        String longUTF16String = "\u03bb" + longString;
+        String mediumString = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaax" +
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String mediumUTF16String = "\u03bbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaax" +
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String[] targets = new String[]{"foobar", "foo", "bar", "\u03bbfoobar", mediumString, mediumUTF16String, longString, longUTF16String};
         int[] targetChars = new int[]{'f', 'o', 'r', 'x', Character.MIN_SUPPLEMENTARY_CODE_POINT};
+        int[] targetOffsets = new int[18];
+        for (int i = 0; i < 18; i++) {
+            targetOffsets[i] = i - 1;
+        }
         for (String source : targets) {
-            for (int target : targetChars) {
-                tests.add(new Object[]{source, target});
+            for (int targetChar : targetChars) {
+                for (int offset : targetOffsets) {
+                    tests.add(new Object[]{source, targetChar, offset});
+                }
             }
         }
 
@@ -71,8 +83,6 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
 
     @Test
     public void testStringIndexOfConstantOffset() {
-        test("testStringIndexOfOffset", this.sourceString, this.constantChar, -1);
-        test("testStringIndexOfOffset", this.sourceString, this.constantChar, 1);
-        test("testStringIndexOfOffset", this.sourceString, this.constantChar, sourceString.length() - 1);
+        test("testStringIndexOfOffset", this.sourceString, this.constantChar, this.fromIndex);
     }
 }
