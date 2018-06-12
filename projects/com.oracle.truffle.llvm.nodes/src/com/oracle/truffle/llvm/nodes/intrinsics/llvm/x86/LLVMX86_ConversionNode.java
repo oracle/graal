@@ -49,6 +49,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMFloatVector vector) {
             if (vector.getLength() != 4) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("cvtss2si requires a float[4] as parameter");
             }
 
@@ -63,6 +64,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMDoubleVector vector) {
             if (vector.getLength() != 2) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("cvtsd2si requires a double[2] as parameter");
             }
 
