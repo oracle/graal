@@ -12,6 +12,13 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
+            {
+                "name" : "compiler",
+                "subdir": True,
+                "urls" : [
+                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+                ]
+            },
             # Dynamic imports for components:
             {
                 "name": "graal-nodejs",
@@ -94,6 +101,13 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
+            {
+                "name" : "tools",
+                "subdir": True,
+                "urls" : [
+                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+                ]
+            },
         ]
     },
 
@@ -126,6 +140,19 @@ suite = {
             ],
             "javaCompliance" : "1.8",
             "checkstyle": "com.oracle.graalvm.locator",
+            "license" : "GPLv2-CPE",
+        },
+        "org.graalvm.truffle.tools.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies": [
+                "mx:JUNIT",
+                "tools:TRUFFLE_PROFILER",
+                "compiler:GRAAL_TEST"
+            ],
+            "checkstyle" : "org.graalvm.compiler.graph",
+            "javaCompliance" : "1.8",
+            "workingSets" : "Graal,Truffle,Tools,Test",
             "license" : "GPLv2-CPE",
         },
     },
