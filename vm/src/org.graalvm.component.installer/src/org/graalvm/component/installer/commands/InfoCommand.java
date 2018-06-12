@@ -31,10 +31,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipException;
+import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
+import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -108,11 +110,16 @@ public class InfoCommand extends QueryCommandBase {
     }
 
     @Override
-    public int execute() throws IOException {
-        init(input, feedback);
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        super.init(commandInput, feedBack);
         ignoreOpenErrors = input.optValue(Commands.OPTION_IGNORE_OPEN_ERRORS) != null;
         verifyJar = input.optValue(Commands.OPTION_VERIFY_JARS) != null;
         suppressTable = input.optValue(Commands.OPTION_SUPPRESS_TABLE) != null;
+        fullPath = input.optValue(Commands.OPTION_FULL_PATHS) != null;
+    }
+
+    @Override
+    public int execute() throws IOException {
         if (input.optValue(Commands.OPTION_HELP) != null) {
             feedback.output("INFO_Help");
             return 0;
