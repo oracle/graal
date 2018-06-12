@@ -22,11 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test;
+package org.graalvm.truffle.tools.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 
+import org.graalvm.compiler.truffle.test.TestWithSynchronousCompiling;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
