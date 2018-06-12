@@ -446,6 +446,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
             result = GraalCompiler.compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult,
                             CompilationResultBuilderFactory.Default, false);
+            debug.forceDump(graph, "end");
         } catch (Throwable e) {
             throw debug.handle(e);
         }
