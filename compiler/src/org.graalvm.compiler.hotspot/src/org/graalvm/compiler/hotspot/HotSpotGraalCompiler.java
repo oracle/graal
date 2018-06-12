@@ -223,11 +223,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             assert !substMethod.equals(method);
             BytecodeProvider bytecodeProvider = subst.getOrigin();
             // @formatter:off
-            StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES)
-                            .method(substMethod)
-                            .compilationId(compilationId)
-                            .recordInlinedMethods(bytecodeProvider.shouldRecordMethodDependencies())
-                            .build();
+            StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).
+                            method(substMethod).
+                            compilationId(compilationId).
+                            recordInlinedMethods(bytecodeProvider.shouldRecordMethodDependencies()).
+                            build();
             // @formatter:on
             try (DebugContext.Scope scope = debug.scope("GetIntrinsicGraph", graph)) {
                 Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
