@@ -973,7 +973,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * to build another graph.
      */
     public void updateMethods(StructuredGraph other) {
-        recordMethod(other.rootMethod);
+        if (other.rootMethod != null) {
+            recordMethod(other.rootMethod);
+        }
         for (ResolvedJavaMethod m : other.methods) {
             recordMethod(m);
         }
