@@ -1790,6 +1790,24 @@ suite = {
       ],
     },
 
+    "JAOTC" : {
+      # This distribution defines a module.
+      "moduleName" : "jdk.aot",
+      "subDir" : "src",
+      "dependencies" : [
+        "jdk.tools.jaotc",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+        "GRAAL_MANAGEMENT",
+      ],
+      "exclude" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+        "JVMCI_HOTSPOT",
+      ],
+    },
+
     "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {
       "subDir" : "src",
       "dependencies" : [

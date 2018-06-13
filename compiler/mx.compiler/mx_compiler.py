@@ -1332,6 +1332,32 @@ def updategraalinopenjdk(args):
             fp.write(overwritten)
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
 
+def run_jaotc(args):
+    if jdk.javaCompliance < '11':
+        mx.abort('jaotc command is only available if JAVA_HOME is JDK 11 or later')
+    jaotc_entry = JVMCIClasspathEntry('JAOTC')
+    jvmci_classpath_adjusted = False
+    if jaotc_entry not in _jvmci_classpath:
+        add_jvmci_classpath_entry(jaotc_entry)
+        jvmci_classpath_adjusted = True
+    try:
+        run_vm(['--add-exports=jdk.internal.vm.ci/jdk.vm.ci.aarch64=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.amd64=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.site=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.common=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.aarch64=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.amd64=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.sparc=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=jdk.internal.vm.compiler,jdk.aot',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.sparc=jdk.internal.vm.compiler,jdk.aot',
+                '-m', 'jdk.aot/jdk.tools.jaotc.Main'] + args)
+    finally:
+        if jvmci_classpath_adjusted:
+            _jvmci_classpath.remove(jaotc_entry)
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
@@ -1356,6 +1382,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
+    'jaotc': [run_jaotc, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
