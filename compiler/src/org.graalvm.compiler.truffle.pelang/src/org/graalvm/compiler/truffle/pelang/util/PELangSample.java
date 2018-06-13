@@ -383,6 +383,19 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode nestedObjectProperties() {
+        PELangBuilder b = PELangBuilder.create();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal("foo", b.newObject()),
+                b.writeProperty(b.readLocal("foo"), "bar", b.newObject()),
+                b.writeProperty(b.readProperty(b.readLocal("foo"), "bar"), "value", b.long$(10L)),
+                b.return$(b.readProperty(b.readProperty(b.readLocal("foo"), "bar"), "value"))));
+        // @formatter:on
+    }
+
     public static PELangRootNode branchWithGlobalReadWrite() {
         PELangBuilder b = PELangBuilder.create();
 
