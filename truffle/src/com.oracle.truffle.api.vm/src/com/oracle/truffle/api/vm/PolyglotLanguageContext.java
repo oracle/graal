@@ -114,13 +114,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     Value getHostBindings() {
         Value bindings = this.hostBindings;
         if (bindings == null) {
-            Object prev = enter();
+            Object prev = context.enterIfNeeded();
             try {
                 initializeLanguageBindings();
             } catch (Throwable e) {
                 throw PolyglotImpl.wrapGuestException(this, e);
             } finally {
-                leave(prev);
+                context.leaveIfNeeded(prev);
             }
             bindings = hostBindings;
             assert bindings != null;
@@ -168,14 +168,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return localEnv;
     }
 
-    Object enter() {
-        return context.enter();
-    }
-
-    void leave(Object prev) {
-        context.leave(prev);
-    }
-
     boolean finalizeContext() {
         Env localEnv = this.env;
         if (localEnv != null && !finalized) {
@@ -221,7 +213,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert Thread.currentThread() == thread;
         synchronized (context) {
             activePolyglotThreads.add(thread);
-            return enter();
+            return context.enter();
         }
     }
 
