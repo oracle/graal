@@ -729,6 +729,40 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    /**
+     * The new memory order modes (JDK9+) are defined with cumulative effect, from weakest to
+     * strongest: Plain, Opaque, Release/Acquire, and Volatile. The existing Plain and Volatile
+     * modes are defined compatibly with their pre-JDK 9 forms. Any guaranteed property of a weaker
+     * mode, plus more, holds for a stronger mode. (Conversely, implementations are allowed to use a
+     * stronger mode than requested for any access.) In JDK 9, these are provided without a full
+     * formal specification.
+     */
+    enum AccessKind {
+        PLAIN(0, 0, 0, 0, false),
+        /**
+         * Opaque accesses are wrapped by dummy membars to avoid floating/hoisting, this is stronger
+         * than required since Opaque mode does not directly impose any ordering constraints with
+         * respect to other variables beyond Plain mode.
+         */
+        OPAQUE(0, 0, 0, 0, true),
+        RELEASE_ACQUIRE(0, LOAD_LOAD | LOAD_STORE, LOAD_STORE | STORE_STORE, 0, true),
+        VOLATILE(JMM_PRE_VOLATILE_READ, JMM_POST_VOLATILE_READ, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE, true);
+
+        public final boolean emitBarriers;
+        public final int preReadBarriers;
+        public final int postReadBarriers;
+        public final int preWriteBarriers;
+        public final int postWriteBarriers;
+
+        AccessKind(int preReadBarriers, int postReadBarriers, int preWriteBarriers, int postWriteBarriers, boolean emitBarriers) {
+            this.emitBarriers = emitBarriers;
+            this.preReadBarriers = preReadBarriers;
+            this.postReadBarriers = postReadBarriers;
+            this.preWriteBarriers = preWriteBarriers;
+            this.postWriteBarriers = postWriteBarriers;
+        }
+    }
+
     public static class UnsafeGetPlugin implements InvocationPlugin {
 
         private final JavaKind returnKind;
