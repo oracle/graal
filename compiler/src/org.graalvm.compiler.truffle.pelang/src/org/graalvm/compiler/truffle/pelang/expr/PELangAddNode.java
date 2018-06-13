@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.pelang.expr;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -39,6 +40,12 @@ public abstract class PELangAddNode extends PELangExpressionNode {
     @Specialization
     public String add(String left, String right) {
         return left + right;
+    }
+
+    @Specialization
+    @TruffleBoundary
+    public String add(Object left, Object right) {
+        return left.toString() + right.toString();
     }
 
     public static PELangAddNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {

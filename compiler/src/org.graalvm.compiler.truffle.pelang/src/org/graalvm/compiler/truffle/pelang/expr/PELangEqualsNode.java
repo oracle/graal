@@ -37,6 +37,16 @@ public abstract class PELangEqualsNode extends PELangExpressionNode {
     }
 
     @Specialization
+    public long equals(String left, String right) {
+        return (left.equals(right)) ? 0L : 1L;
+    }
+
+    @Specialization
+    public long equals(PELangFunction left, PELangFunction right) {
+        return (left == right) ? 0L : 1L;
+    }
+
+    @Specialization
     public long equals(Object left, Object right) {
         return (left == right) ? 0L : 1L;
     }

@@ -26,12 +26,15 @@ import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 public final class PELangIfNode extends PELangStatementNode {
 
     @Child private PELangExpressionNode conditionNode;
     @Child private PELangStatementNode thenNode;
     @Child private PELangStatementNode elseNode;
+
+    private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
     public PELangIfNode(PELangExpressionNode conditionNode, PELangStatementNode thenNode, PELangStatementNode elseNode) {
         this.conditionNode = conditionNode;
@@ -53,7 +56,7 @@ public final class PELangIfNode extends PELangStatementNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        if (conditionNode.evaluateLong(frame) == 0L) {
+        if (condition.profile(conditionNode.evaluateLong(frame) == 0L)) {
             thenNode.executeVoid(frame);
         } else {
             elseNode.executeVoid(frame);
