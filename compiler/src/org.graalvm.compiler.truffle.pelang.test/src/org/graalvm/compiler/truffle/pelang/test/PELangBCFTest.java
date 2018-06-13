@@ -332,10 +332,10 @@ public class PELangBCFTest extends PELangTest {
         PELangRootNode rootNode = g.generate(PELangSample.loopWithGlobalReadWrite());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         assertCallResultEquals(10L, callTarget);
+        warmupCallTarget(callTarget);
 
         try {
             // do a first run and swallow code install exceptions
-            warmupCallTarget(callTarget);
             StructuredGraph graph = partiallyEvaluate(callTarget);
             compileGraph(graph, callTarget);
         } catch (Exception e) {

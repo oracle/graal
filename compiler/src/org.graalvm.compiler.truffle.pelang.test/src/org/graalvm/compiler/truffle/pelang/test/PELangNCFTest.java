@@ -97,10 +97,10 @@ public class PELangNCFTest extends PELangTest {
         PELangRootNode rootNode = PELangSample.simpleLoop();
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         assertCallResultEquals(10L, callTarget);
+        warmupCallTarget(callTarget);
 
         try {
             // do a first run and swallow code install exceptions
-            warmupCallTarget(callTarget);
             StructuredGraph graph = partiallyEvaluate(callTarget);
             compileGraph(graph, callTarget);
         } catch (Exception e) {
@@ -278,10 +278,10 @@ public class PELangNCFTest extends PELangTest {
         PELangRootNode rootNode = PELangSample.nestedLoops();
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         assertCallResultEquals(10L, callTarget);
+        warmupCallTarget(callTarget);
 
         try {
             // do a first run and swallow code install exceptions
-            warmupCallTarget(callTarget);
             StructuredGraph graph = partiallyEvaluate(callTarget);
             compileGraph(graph, callTarget);
         } catch (Exception e) {
@@ -321,10 +321,10 @@ public class PELangNCFTest extends PELangTest {
         PELangRootNode rootNode = PELangSample.loopWithGlobalReadWrite();
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         assertCallResultEquals(10L, callTarget);
+        warmupCallTarget(callTarget);
 
         try {
             // do a first run and swallow code install exceptions
-            warmupCallTarget(callTarget);
             StructuredGraph graph = partiallyEvaluate(callTarget);
             compileGraph(graph, callTarget);
         } catch (Exception e) {
