@@ -33,20 +33,12 @@ public abstract class PELangLessThanNode extends PELangExpressionNode {
 
     @Specialization
     public long lessThan(long left, long right) {
-        if (left < right) {
-            return 0L;
-        } else {
-            return 1L;
-        }
+        return (left < right) ? 0L : 1L;
     }
 
     @Specialization
     public long lessThan(String left, String right) {
-        if (left.compareTo(right) == -1) {
-            return 0L;
-        } else {
-            return 1L;
-        }
+        return (left.compareTo(right) == -1) ? 0L : 1L;
     }
 
     public static PELangLessThanNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {

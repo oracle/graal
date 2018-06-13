@@ -41,12 +41,7 @@ public final class PELangNotNode extends PELangExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         long result = bodyNode.evaluateLong(frame);
-
-        if (result == 0L) {
-            return 1L;
-        } else {
-            return 0L;
-        }
+        return (result == 0L) ? 1L : 0L;
     }
 
 }

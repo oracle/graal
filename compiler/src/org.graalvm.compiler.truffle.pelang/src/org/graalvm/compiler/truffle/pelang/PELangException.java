@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class PELangException extends RuntimeException implements TruffleException {
@@ -31,6 +32,7 @@ public final class PELangException extends RuntimeException implements TruffleEx
 
     private final Node node;
 
+    @TruffleBoundary
     public PELangException(String message, Node node) {
         super(message);
         this.node = node;
@@ -41,8 +43,9 @@ public final class PELangException extends RuntimeException implements TruffleEx
         return node;
     }
 
+    @SuppressWarnings("sync-override")
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return null;
     }
 

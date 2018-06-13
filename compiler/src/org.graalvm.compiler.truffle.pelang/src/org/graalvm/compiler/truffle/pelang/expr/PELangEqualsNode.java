@@ -33,20 +33,12 @@ public abstract class PELangEqualsNode extends PELangExpressionNode {
 
     @Specialization
     public long equals(long left, long right) {
-        if (left == right) {
-            return 0L;
-        } else {
-            return 1L;
-        }
+        return (left == right) ? 0L : 1L;
     }
 
     @Specialization
     public long equals(Object left, Object right) {
-        if (left.equals(right)) {
-            return 0L;
-        } else {
-            return 1L;
-        }
+        return (left == right) ? 0L : 1L;
     }
 
     public static PELangEqualsNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
