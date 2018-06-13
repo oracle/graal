@@ -180,9 +180,6 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         profiler.printHistograms(new PrintStream(out));
         String o = getOut();
         Assert.assertTrue(o != null && o.trim().length() > 0);
-
-        engine.close();
-        engine = null;
     }
 
     @Test

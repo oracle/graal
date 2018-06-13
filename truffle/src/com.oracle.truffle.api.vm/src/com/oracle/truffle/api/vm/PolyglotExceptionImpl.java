@@ -107,9 +107,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 Objects.requireNonNull(languageContext, "Source location can not be accepted without language context.");
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
-                PolyglotLanguageContext sourceContext = languageContext.context.findLanguageContext(language, truffleSource.getMimeType(), false);
-                if (language == null && sourceContext != null) {
-                    language = sourceContext.language.getId();
+                if (language == null) {
+                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(language, truffleSource.getMimeType(), false);
+                    if (foundLanguage != null) {
+                        language = foundLanguage.getId();
+                    }
                 }
                 Source source = getAPIAccess().newSource(language, truffleSource);
                 this.sourceLocation = getAPIAccess().newSourceSection(source, section);
@@ -121,8 +123,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 Objects.requireNonNull(languageContext, "Exception object can not be accepted without language context.");
                 this.guestObject = languageContext.toHostValue(exceptionObject);
             } else {
-                if (languageContext != null) {
-                    this.guestObject = languageContext.context.getHostContext().nullValue;
+                if (languageContext != null && languageContext.isInitialized()) {
+                    this.guestObject = languageContext.context.getHostContextImpl().nullValue;
                 } else {
                     this.guestObject = null;
                 }
@@ -136,7 +138,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             this.exitStatus = 0;
             this.sourceLocation = null;
             if (languageContext != null) {
-                this.guestObject = languageContext.context.getHostContext().nullValue;
+                this.guestObject = languageContext.context.getHostContextImpl().nullValue;
             } else {
                 this.guestObject = null;
             }

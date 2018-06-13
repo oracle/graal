@@ -26,7 +26,6 @@ package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
-import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -286,18 +286,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     synchronized void initializeMultiContext(PolyglotContextImpl existingContext) {
         if (singleContext.isValid()) {
-            Collection<PolyglotLanguage> languages = this.idToLanguage.values();
-            for (PolyglotLanguage language : languages) {
-                PolyglotLanguageContext existingLanguageContext = null;
-                if (existingContext != null) {
-                    existingLanguageContext = existingContext.contexts[language.index];
-                    if (existingLanguageContext.env == null) {
-                        existingLanguageContext = null;
+            singleContext.invalidate("More than one context introduced.");
+            if (existingContext != null) {
+                for (PolyglotLanguageContext context : existingContext.contexts) {
+                    if (context.isInitialized()) {
+                        context.getLanguageInstance().initializeMultiContext();
                     }
                 }
-                language.initializeMultiContext(existingLanguageContext);
             }
-            singleContext.invalidate("More than one context introduced.");
         }
     }
 
@@ -400,6 +396,45 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return this;
     }
 
+    PolyglotLanguage findLanguage(String languageId, String mimeType, boolean failIfNotFound) {
+        assert languageId != null || mimeType != null : Objects.toString(languageId) + ", " + Objects.toString(mimeType);
+        if (languageId != null) {
+            PolyglotLanguage language = idToLanguage.get(languageId);
+            if (language != null) {
+                return language;
+            }
+        }
+        if (mimeType != null) {
+            // we need to interpret mime types for compatibility.
+            PolyglotLanguage language = idToLanguage.get(mimeType);
+            if (language != null) {
+                return language;
+            }
+            for (PolyglotLanguage searchLanguage : idToLanguage.values()) {
+                if (searchLanguage.cache.getMimeTypes().contains(mimeType)) {
+                    return searchLanguage;
+                }
+            }
+        }
+        if (failIfNotFound) {
+            if (languageId != null) {
+                Set<String> ids = new LinkedHashSet<>();
+                for (PolyglotLanguage language : idToLanguage.values()) {
+                    ids.add(language.cache.getId());
+                }
+                throw new IllegalStateException("No language for id " + languageId + " found. Supported languages are: " + ids);
+            } else {
+                Set<String> mimeTypes = new LinkedHashSet<>();
+                for (PolyglotLanguage language : idToLanguage.values()) {
+                    mimeTypes.addAll(language.cache.getMimeTypes());
+                }
+                throw new IllegalStateException("No language for MIME type " + mimeType + " found. Supported languages are: " + mimeTypes);
+            }
+        } else {
+            return null;
+        }
+    }
+
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
         List<InstrumentCache> cachedInstruments = InstrumentCache.load(VMAccessor.allLoaders());
@@ -471,8 +506,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             index++;
         }
 
-        this.hostLanguage.ensureInitialized();
-
         return polyglotLanguages;
     }
 
@@ -503,7 +536,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private PolyglotLanguage createLanguage(LanguageCache cache, int index, RuntimeException initError) {
         PolyglotLanguage languageImpl = new PolyglotLanguage(this, cache, index, index == HOST_LANGUAGE_INDEX, initError);
-        languageImpl.info = NODES.createLanguage(languageImpl, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal());
         Language language = impl.getAPIAccess().newLanguage(languageImpl);
         languageImpl.api = language;
         return languageImpl;
@@ -704,11 +736,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     if (!ignoreCloseFailure) {
                         throw e;
                     }
-                }
-            }
-            for (PolyglotLanguage language : idToLanguage.values()) {
-                if (language.isInitialized()) {
-                    language.requireProfile().notifyEngineDisposed();
                 }
             }
 
@@ -945,7 +972,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     @SuppressWarnings({"all"})
-    public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+    public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Handler logHandler) {
         checkState();
@@ -966,13 +993,29 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         } else {
             fs = FileSystems.newNoIOFileSystem();
         }
+        final OutputStream useOut;
+        if (configOut == null || configOut == INSTRUMENT.getOut(this.out)) {
+            useOut = this.out;
+        } else {
+            useOut = INSTRUMENT.createDelegatingOutput(configOut, this.out);
+        }
+        final OutputStream useErr;
+        if (configErr == null || configErr == INSTRUMENT.getOut(this.err)) {
+            useErr = this.err;
+        } else {
+            useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
+        }
+        final InputStream useIn = configIn == null ? this.in : configIn;
+        PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
+                        allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
+                        classFilter, arguments, allowedLanguages, options, fs);
+
         PolyglotContextImpl contextImpl = preInitializedContext;
         preInitializedContext = null;
         if (contextImpl != null) {
             boolean patchResult;
             try {
-                patchResult = contextImpl.patch(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, classFilter, options, arguments, allowedLanguages, fs,
-                                logHandler);
+                patchResult = contextImpl.patch(config);
             } catch (RuntimeException re) {
                 contextImpl.closeImpl(false, false);
                 PolyglotContextImpl.disposeStaticContext(null);
@@ -985,8 +1028,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
         if (contextImpl == null) {
-            contextImpl = new PolyglotContextImpl(this, out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, classFilter, options, arguments, allowedLanguages,
-                            fs, logHandler);
+            contextImpl = new PolyglotContextImpl(this, config);
             addContext(contextImpl);
         }
         Context api = impl.getAPIAccess().newContext(contextImpl);

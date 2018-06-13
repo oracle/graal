@@ -95,9 +95,7 @@ public abstract class Accessor {
 
         public abstract Object getEngineObject(LanguageInfo languageInfo);
 
-        public abstract TruffleLanguage<?> getLanguageSpi(LanguageInfo languageInfo);
-
-        public abstract void setLanguageSpi(LanguageInfo languageInfo, TruffleLanguage<?> spi);
+        public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
 
         public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal);
 
@@ -164,8 +162,6 @@ public abstract class Accessor {
     public abstract static class EngineSupport {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
-
-        public abstract <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
 
         @SuppressWarnings("rawtypes")
         public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass, boolean failIfNotFound);
@@ -325,13 +321,16 @@ public abstract class Accessor {
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();
+
+        public abstract Env getLanguageEnv(Object languageContextVMObject, LanguageInfo otherLanguage);
+
     }
 
     public abstract static class LanguageSupport {
 
-        public abstract void initializeLanguage(LanguageInfo language, TruffleLanguage<?> impl, boolean legacyLanguage);
+        public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object vmObject);
 
-        public abstract Env createEnv(Object vmObject, LanguageInfo info, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
+        public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
                         String[] applicationArguments, FileSystem fileSystem);
 
         public abstract Object createEnvContext(Env localEnv);
@@ -374,7 +373,7 @@ public abstract class Accessor {
 
         public abstract Object getVMObject(InstrumentInfo info);
 
-        public abstract <S> S lookup(LanguageInfo languageEnsureInitialized, Class<S> type);
+        public abstract <S> S lookup(TruffleLanguage<?> languageEnsureInitialized, Class<S> type);
 
         public abstract boolean isContextInitialized(Env env);
 
@@ -382,7 +381,7 @@ public abstract class Accessor {
 
         public abstract void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
-        public abstract boolean isThreadAccessAllowed(LanguageInfo env, Thread current, boolean singleThread);
+        public abstract boolean isThreadAccessAllowed(Env env, Thread current, boolean singleThread);
 
         public abstract void initializeThread(Env env, Thread current);
 
@@ -399,7 +398,7 @@ public abstract class Accessor {
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
                         FileSystem fileSystem);
 
-        public abstract boolean initializeMultiContext(LanguageInfo info);
+        public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
         public abstract boolean isTruffleStackTrace(Throwable t);
 
@@ -412,6 +411,8 @@ public abstract class Accessor {
         public abstract byte[] truffleFileContent(File file) throws IOException;
 
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
+
+        public abstract TruffleLanguage<?> getLanguage(Env env);
     }
 
     public abstract static class InstrumentSupport {
@@ -428,7 +429,7 @@ public abstract class Accessor {
 
         public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
-        public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, LanguageInfo languageInfo);
+        public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, TruffleLanguage<?> language);
 
         public abstract void onFirstExecution(RootNode rootNode);
 
@@ -754,7 +755,7 @@ public abstract class Accessor {
      */
     static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
         Env env = SPI.findEnv(vm, languageClass, true);
-        TruffleLanguage<?> language = NODES.getLanguageSpi(API.getLanguageInfo(env));
+        TruffleLanguage<?> language = API.getLanguage(env);
         return languageClass.cast(language);
     }
 

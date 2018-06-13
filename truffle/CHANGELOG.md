@@ -3,9 +3,17 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 1.0.0 RC4
+
 * Added `TruffleLanguage.Env.isHostFunction`.
 * Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
-* Added a method to obtain language (instrument) root `TruffleLogger`.
+* Added `TruffleLogger.getLogger(String)` to obtain the root loger of a language or instrument.
+* Introduced per language [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html). Languages are encouraged to configure the most permissive policy that they can support. 
+* Changed default context policy from MANY to ONE, i.e. there is one language instance per polyglot or inner context by default. This can be configured
+using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html).
+* TruffleInstrument.Env.lookup(LanguagInfo, Class) now requires to be entered in a context for the current thread.
+* Removed deprecated FindContextNode (deprecated since 0.25).
+* All languages now need to have a public zero argument constructor. Using a static singleton field is no longer supported.
+* Renamed and changed the return value of the method for TruffleLanguage.initializeMultiContext to TruffleLanguage.initializeMultipleContexts. The original method remains but is now deprecated.
 
 ## Version 1.0.0 RC3
 

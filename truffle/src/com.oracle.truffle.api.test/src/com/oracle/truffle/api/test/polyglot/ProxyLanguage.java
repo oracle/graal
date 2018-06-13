@@ -40,7 +40,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 /**
  * Reusable language for testing that allows wrap all methods.
  */
-@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID)
+@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID, contextPolicy = TruffleLanguage.ContextPolicy.MULTIPLE)
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static final String ID = "proxyLanguage";
@@ -57,7 +57,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     static {
         delegate.wrapper = false;
     }
-    private boolean wrapper = true;
+    protected boolean wrapper = true;
     protected ProxyLanguage languageInstance;
 
     private Consumer<LanguageContext> onCreate;
@@ -74,6 +74,10 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static LanguageContext getCurrentContext() {
         return getCurrentContext(ProxyLanguage.class);
+    }
+
+    public static LanguageContext getCurrentLanguageContext(Class<? extends ProxyLanguage> languageClass) {
+        return getCurrentContext(languageClass);
     }
 
     public static ContextReference<LanguageContext> getCurrentContextReference() {
@@ -176,6 +180,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected boolean initializeMultiContext() {
         if (wrapper) {
@@ -183,6 +188,16 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             return delegate.initializeMultiContext();
         } else {
             return super.initializeMultiContext();
+        }
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            delegate.initializeMultipleContexts();
+        } else {
+            super.initializeMultipleContexts();
         }
     }
 
