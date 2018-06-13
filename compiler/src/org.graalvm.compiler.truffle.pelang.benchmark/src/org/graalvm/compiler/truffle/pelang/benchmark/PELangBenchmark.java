@@ -45,7 +45,6 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleTreeDebugHandlersFactory;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -63,6 +62,7 @@ public abstract class PELangBenchmark extends GraalBenchmark {
     private final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
 
     private final OptimizedCallTarget callTarget;
+    private final Object[] arguments;
     private final OptionValues optionValues;
     private final DebugContext debugContext;
     private final TruffleInlining truffleInlining;
@@ -76,7 +76,8 @@ public abstract class PELangBenchmark extends GraalBenchmark {
     private final HighTierContext tierContext;
 
     public PELangBenchmark() {
-        callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(createRootNode());
+        callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode());
+        arguments = warmupArguments();
         optionValues = TruffleCompilerOptions.getOptions();
         debugContext = DebugContext.create(optionValues, Arrays.asList(new TruffleTreeDebugHandlersFactory()));
         truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
@@ -90,15 +91,19 @@ public abstract class PELangBenchmark extends GraalBenchmark {
         tierContext = new HighTierContext(compiler.getPartialEvaluator().getProviders(), new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
     }
 
-    @Setup(Level.Trial)
+    @Setup
     public void setup() {
         // run call target so that all classes are loaded and initialized
-        callTarget.call();
-        callTarget.call();
-        callTarget.call();
+        callTarget.call(arguments);
+        callTarget.call(arguments);
+        callTarget.call(arguments);
     }
 
-    protected abstract RootNode createRootNode();
+    protected abstract RootNode rootNode();
+
+    protected Object[] warmupArguments() {
+        return new Object[0];
+    }
 
     @Benchmark
     public StructuredGraph createGraph() {

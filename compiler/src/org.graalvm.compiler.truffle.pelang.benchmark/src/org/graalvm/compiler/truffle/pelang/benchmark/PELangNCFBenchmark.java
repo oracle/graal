@@ -31,7 +31,7 @@ public class PELangNCFBenchmark {
     public static class SimpleAddBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleAdd();
         }
 
@@ -40,7 +40,7 @@ public class PELangNCFBenchmark {
     public static class SimpleBlockBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleBlock();
         }
 
@@ -49,7 +49,7 @@ public class PELangNCFBenchmark {
     public static class SimpleLocalReadWriteBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleLocalReadWrite();
         }
 
@@ -58,7 +58,7 @@ public class PELangNCFBenchmark {
     public static class SimpleGlobalReadWriteBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleGlobalReadWrite();
         }
 
@@ -67,7 +67,7 @@ public class PELangNCFBenchmark {
     public static class SimpleBranchBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleBranch();
         }
 
@@ -76,7 +76,7 @@ public class PELangNCFBenchmark {
     public static class SimpleLoopBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleLoop();
         }
 
@@ -85,7 +85,7 @@ public class PELangNCFBenchmark {
     public static class SimpleSwitchBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleSwitch();
         }
 
@@ -94,7 +94,7 @@ public class PELangNCFBenchmark {
     public static class SimpleInvokeBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleInvoke();
         }
 
@@ -103,7 +103,7 @@ public class PELangNCFBenchmark {
     public static class SimpleObjectBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleObject();
         }
 
@@ -112,7 +112,7 @@ public class PELangNCFBenchmark {
     public static class SimpleArrayReadBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleArrayRead();
         }
 
@@ -121,7 +121,7 @@ public class PELangNCFBenchmark {
     public static class SimpleMultiArrayReadBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleMultiArrayRead();
         }
 
@@ -130,7 +130,7 @@ public class PELangNCFBenchmark {
     public static class SimpleArrayWriteBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleArrayWrite();
         }
 
@@ -139,7 +139,7 @@ public class PELangNCFBenchmark {
     public static class SimpleMultiArrayWriteBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.simpleMultiArrayWrite();
         }
 
@@ -148,7 +148,7 @@ public class PELangNCFBenchmark {
     public static class ComplexStringArrayBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.complexStringArray();
         }
 
@@ -157,7 +157,7 @@ public class PELangNCFBenchmark {
     public static class NestedAddsBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedAdds();
         }
 
@@ -166,7 +166,7 @@ public class PELangNCFBenchmark {
     public static class NestedBlocksBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedBlocks();
         }
 
@@ -175,7 +175,7 @@ public class PELangNCFBenchmark {
     public static class NestedLocalReadWritesBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedLocalReadWrites();
         }
 
@@ -184,7 +184,7 @@ public class PELangNCFBenchmark {
     public static class NestedBranchesBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedBranches();
         }
 
@@ -193,7 +193,7 @@ public class PELangNCFBenchmark {
     public static class NestedLoopsBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedLoops();
         }
 
@@ -202,7 +202,7 @@ public class PELangNCFBenchmark {
     public static class NestedSwitchesBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedSwitches();
         }
 
@@ -211,7 +211,7 @@ public class PELangNCFBenchmark {
     public static class BranchWithGlobalReadWriteBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.branchWithGlobalReadWrite();
         }
 
@@ -220,7 +220,7 @@ public class PELangNCFBenchmark {
     public static class LoopWithGlobalReadWriteBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.loopWithGlobalReadWrite();
         }
 
@@ -229,7 +229,7 @@ public class PELangNCFBenchmark {
     public static class NestedLoopsWithMultipleBackEdgesBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.nestedLoopsWithMultipleBackEdges();
         }
 
@@ -238,7 +238,7 @@ public class PELangNCFBenchmark {
     public static class InvokeObjectFunctionPropertyBenchmark extends PELangBenchmark {
 
         @Override
-        protected RootNode createRootNode() {
+        protected RootNode rootNode() {
             return PELangSample.invokeObjectFunctionProperty();
         }
 

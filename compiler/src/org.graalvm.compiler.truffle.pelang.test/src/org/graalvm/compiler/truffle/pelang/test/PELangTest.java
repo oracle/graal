@@ -48,14 +48,7 @@ public abstract class PELangTest extends PartialEvaluationTest {
         return (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
     }
 
-    protected void warmupCallTarget(CallTarget callTarget) {
-        // run call target so that all classes are loaded and initialized
-        callTarget.call();
-        callTarget.call();
-        callTarget.call();
-    }
-
-    protected void warmupCallTarget(CallTarget callTarget, Object[] arguments) {
+    protected void warmupCallTarget(CallTarget callTarget, Object... arguments) {
         // run call target so that all classes are loaded and initialized
         callTarget.call(arguments);
         callTarget.call(arguments);
