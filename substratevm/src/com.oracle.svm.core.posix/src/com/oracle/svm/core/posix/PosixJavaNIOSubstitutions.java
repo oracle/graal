@@ -1170,7 +1170,7 @@ public final class PosixJavaNIOSubstitutions {
         /** A {@code static} method that can be called from
          * {@link Target_sun_nio_ch_ServerSocketChannelImpl#accept0(FileDescriptor, FileDescriptor, InetSocketAddress[])}
          * and
-         * {@link Target_sun_nio_ch_UnixAsynchronoutServerSocketChannelImpl#accept0(FileDescriptor, FileDescriptor, InetSocketAddress[])}
+         * {@link Target_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl#accept0(FileDescriptor, FileDescriptor, InetSocketAddress[])}
          * because it does not need the {@code this} parameter that is the receiver of those calls.
          */
         // jdk/src/solaris/native/sun/nio/ch/ServerSocketChannelImpl.c?v=Java_1.8.0_40_b10
@@ -3205,7 +3205,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl")
-    static final class Target_sun_nio_ch_UnixAsynchronoutServerSocketChannelImpl {
+    static final class Target_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl {
 
         /* { Do not format quoted code: @formatter:off */
 
