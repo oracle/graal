@@ -26,26 +26,26 @@ import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangState;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 
 public final class PELangPropertyReadNode extends PELangExpressionNode {
 
     @Child private PELangExpressionNode receiverNode;
-    @Child private PELangExpressionNode nameNode;
+    private final String name;
+    @Child private PELangPropertyReadCacheNode readNode = PELangPropertyReadCacheNode.create();
 
-    public PELangPropertyReadNode(PELangExpressionNode receiverNode, PELangExpressionNode nameNode) {
+    public PELangPropertyReadNode(PELangExpressionNode receiverNode, String name) {
         this.receiverNode = receiverNode;
-        this.nameNode = nameNode;
+        this.name = name;
     }
 
     public PELangExpressionNode getReceiverNode() {
         return receiverNode;
     }
 
-    public PELangExpressionNode getNameNode() {
-        return nameNode;
+    public String getName() {
+        return name;
     }
 
     @Override
@@ -55,13 +55,7 @@ public final class PELangPropertyReadNode extends PELangExpressionNode {
         if (!PELangState.isPELangObject(receiver)) {
             throw new PELangException("receiver must be a PELangObject", this);
         }
-        if (!receiver.getShape().isValid()) {
-            CompilerDirectives.transferToInterpreter();
-            receiver.updateShape();
-        }
-        Object name = nameNode.executeGeneric(frame);
-        Object result = receiver.get(name);
-        return (result == null) ? PELangState.getNullObject() : result;
+        return readNode.executeRead(receiver, name);
     }
 
 }
