@@ -29,10 +29,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class PELangRootNode extends RootNode {
 
     @Child private PELangStatementNode bodyNode;
+    private final PELangState state;
 
-    public PELangRootNode(PELangStatementNode bodyNode, FrameDescriptor frameDescriptor) {
+    public PELangRootNode(FrameDescriptor frameDescriptor, PELangState state, PELangStatementNode bodyNode) {
         super(null, frameDescriptor);
+        this.state = state;
         this.bodyNode = bodyNode;
+    }
+
+    public PELangState getState() {
+        return state;
     }
 
     public PELangStatementNode getBodyNode() {
@@ -43,7 +49,7 @@ public final class PELangRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             bodyNode.executeVoid(frame);
-            return PELangState.getNullObject();
+            return PELangNull.getInstance();
         } catch (PELangResultException e) {
             return e.getResult();
         }

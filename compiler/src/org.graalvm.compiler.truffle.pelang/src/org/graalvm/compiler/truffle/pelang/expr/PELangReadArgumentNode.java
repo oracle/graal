@@ -23,7 +23,7 @@
 package org.graalvm.compiler.truffle.pelang.expr;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-import org.graalvm.compiler.truffle.pelang.PELangState;
+import org.graalvm.compiler.truffle.pelang.PELangNull;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -42,7 +42,7 @@ public final class PELangReadArgumentNode extends PELangExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        return (index < args.length) ? args[index] : PELangState.getNullObject();
+        return (index < args.length) ? args[index] : PELangNull.getInstance();
     }
 
 }

@@ -31,64 +31,48 @@ import com.oracle.truffle.api.object.Shape;
 
 public final class PELangState {
 
-    private static final Object NULL = new PELangNull();
-    private static final EconomicMap<String, Object> GLOBALS = EconomicMap.create();
     private static final Layout LAYOUT = Layout.createLayout();
-    private static final Shape EMPTY_SHAPE = LAYOUT.createShape(PELangObjectType.SINGLETON);
 
-    public static Object getNullObject() {
-        return NULL;
-    }
+    private final EconomicMap<String, Object> globals = EconomicMap.create();
+    private final Shape emptyShape = LAYOUT.createShape(PELangObjectType.INSTANCE);
 
-    public static Object readGlobal(String identifier) {
+    public Object readGlobal(String identifier) {
         return getGlobal(identifier);
     }
 
-    public static Object writeGlobal(String identifier, Object value) {
-        GLOBALS.put(identifier, value);
+    public Object writeGlobal(String identifier, Object value) {
+        globals.put(identifier, value);
         return value;
     }
 
-    public static long readLongGlobal(String identifier) {
+    public long readLongGlobal(String identifier) {
         return (long) getGlobal(identifier);
     }
 
-    public static long writeLongGlobal(String identifier, long value) {
-        GLOBALS.put(identifier, value);
+    public long writeLongGlobal(String identifier, long value) {
+        globals.put(identifier, value);
         return value;
     }
 
-    public static boolean isLongGlobal(String identifier) {
+    public boolean isLongGlobal(String identifier) {
         return getGlobal(identifier) instanceof Long;
     }
 
-    private static Object getGlobal(String identifier) {
-        return GLOBALS.get(identifier, NULL);
+    private Object getGlobal(String identifier) {
+        return globals.get(identifier, PELangNull.getInstance());
     }
 
-    public static DynamicObject createObject() {
-        return EMPTY_SHAPE.newInstance();
+    public DynamicObject createObject() {
+        return emptyShape.newInstance();
     }
 
     public static boolean isPELangObject(Object object) {
-        return LAYOUT.getType().isInstance(object) && LAYOUT.getType().cast(object).getShape().getObjectType() == PELangObjectType.SINGLETON;
-    }
-
-    private static final class PELangNull {
-
-        private PELangNull() {
-        }
-
-        @Override
-        public String toString() {
-            return "PELangNull";
-        }
-
+        return LAYOUT.getType().isInstance(object) && LAYOUT.getType().cast(object).getShape().getObjectType() == PELangObjectType.INSTANCE;
     }
 
     private static final class PELangObjectType extends ObjectType {
 
-        public static final ObjectType SINGLETON = new PELangObjectType();
+        static final ObjectType INSTANCE = new PELangObjectType();
 
         private PELangObjectType() {
         }

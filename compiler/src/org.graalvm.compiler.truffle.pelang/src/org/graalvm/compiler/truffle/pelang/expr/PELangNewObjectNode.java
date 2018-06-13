@@ -28,26 +28,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 
-public final class PELangLiteralObjectNode extends PELangExpressionNode {
-
-    private final DynamicObject object;
-
-    public PELangLiteralObjectNode(DynamicObject object) {
-        this.object = object;
-    }
-
-    public DynamicObject getObject() {
-        return object;
-    }
+public final class PELangNewObjectNode extends PELangExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        return object;
+        return getState().createObject();
     }
 
     @Override
     public DynamicObject executeObject(VirtualFrame frame) throws UnexpectedResultException {
-        return object;
+        return getState().createObject();
     }
 
 }

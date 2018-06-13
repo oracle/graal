@@ -23,7 +23,6 @@
 package org.graalvm.compiler.truffle.pelang.var;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-import org.graalvm.compiler.truffle.pelang.PELangState;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -38,19 +37,19 @@ public abstract class PELangGlobalWriteNode extends PELangExpressionNode {
 
     @Specialization(guards = "isLong()")
     protected long writeLong(@SuppressWarnings("unused") VirtualFrame frame, long value) {
-        return PELangState.writeLongGlobal(getIdentifier(), value);
+        return getState().writeLongGlobal(getIdentifier(), value);
     }
 
     @Specialization(replaces = {"writeLong"})
     protected Object write(@SuppressWarnings("unused") VirtualFrame frame, Object value) {
-        return PELangState.writeGlobal(getIdentifier(), value);
+        return getState().writeGlobal(getIdentifier(), value);
     }
 
     protected boolean isLong() {
-        return PELangState.isLongGlobal(getIdentifier());
+        return getState().isLongGlobal(getIdentifier());
     }
 
-    public static PELangGlobalWriteNode create(PELangExpressionNode valueNode, String identifier) {
+    public static PELangGlobalWriteNode create(String identifier, PELangExpressionNode valueNode) {
         return PELangGlobalWriteNodeGen.create(valueNode, identifier);
     }
 

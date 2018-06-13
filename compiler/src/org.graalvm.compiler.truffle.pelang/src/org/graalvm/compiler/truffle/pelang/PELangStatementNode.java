@@ -22,11 +22,28 @@
  */
 package org.graalvm.compiler.truffle.pelang;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class PELangStatementNode extends Node {
 
+    @CompilationFinal private PELangState state;
+
     public abstract void executeVoid(VirtualFrame frame);
+
+    public PELangState getState() {
+        ensureStateInitialized();
+        return state;
+    }
+
+    private void ensureStateInitialized() {
+        if (state == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            PELangRootNode rootNode = (PELangRootNode) getRootNode();
+            state = rootNode.getState();
+        }
+    }
 
 }

@@ -23,7 +23,6 @@
 package org.graalvm.compiler.truffle.pelang.var;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-import org.graalvm.compiler.truffle.pelang.PELangState;
 
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,16 +35,16 @@ public abstract class PELangGlobalReadNode extends PELangExpressionNode {
 
     @Specialization(guards = "isLong()")
     protected long readLong(@SuppressWarnings("unused") VirtualFrame frame) {
-        return PELangState.readLongGlobal(getIdentifier());
+        return getState().readLongGlobal(getIdentifier());
     }
 
     @Specialization(replaces = {"readLong"})
     protected Object readObject(@SuppressWarnings("unused") VirtualFrame frame) {
-        return PELangState.readGlobal(getIdentifier());
+        return getState().readGlobal(getIdentifier());
     }
 
     protected boolean isLong() {
-        return PELangState.isLongGlobal(getIdentifier());
+        return getState().isLongGlobal(getIdentifier());
     }
 
     public static PELangGlobalReadNode create(String identifier) {
