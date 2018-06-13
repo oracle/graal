@@ -309,7 +309,6 @@ public class StandardGraphBuilderPlugins {
                 if (java8OrEarlier) {
                     if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
                         r.register4("putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, AccessKind.RELEASE_ACQUIRE));
-                        r.register3("getOrdered" + kindName, Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, AccessKind.RELEASE_ACQUIRE));
                     }
                 } else {
                     r.register4("put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, AccessKind.RELEASE_ACQUIRE));
