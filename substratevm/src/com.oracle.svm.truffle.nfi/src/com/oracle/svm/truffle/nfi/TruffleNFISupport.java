@@ -26,10 +26,7 @@ package com.oracle.svm.truffle.nfi;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CoderResult;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
@@ -147,44 +144,45 @@ public final class TruffleNFISupport {
         }
     }
 
+    private static final class ZeroTerminatedCharSequence implements CharSequence {
+
+        private CharSequence seq;
+
+        ZeroTerminatedCharSequence(CharSequence seq) {
+            this.seq = seq;
+        }
+
+        @Override
+        public int length() {
+            return seq.length() + 1;
+        }
+
+        @Override
+        public char charAt(int index) {
+            if (index == seq.length()) {
+                return '\0';
+            } else {
+                return seq.charAt(index);
+            }
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            if (end == length()) {
+                return new ZeroTerminatedCharSequence(seq.subSequence(start, end - 1));
+            } else {
+                return seq.subSequence(start, end);
+            }
+        }
+    }
+
     @TruffleBoundary
     static byte[] javaStringToUtf8(String str) {
-        CharsetEncoder encoder = UTF8.newEncoder();
-        int sizeEstimate = (int) (str.length() * encoder.averageBytesPerChar()) + 1;
-        ByteBuffer retBuffer = ByteBuffer.allocate(sizeEstimate);
-        CharBuffer input = CharBuffer.wrap(str);
-
-        while (input.hasRemaining()) {
-            CoderResult result = encoder.encode(input, retBuffer, true);
-            if (result.isUnderflow()) {
-                result = encoder.flush(retBuffer);
-            }
-            if (result.isUnderflow()) {
-                break;
-            }
-
-            if (result.isOverflow()) {
-                sizeEstimate = 2 * sizeEstimate + 1;
-                ByteBuffer newBuffer = ByteBuffer.allocate(sizeEstimate);
-                retBuffer.flip();
-                newBuffer.put(retBuffer);
-                retBuffer = newBuffer;
-            } else {
-                try {
-                    result.throwException();
-                } catch (CharacterCodingException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        }
-
-        if (retBuffer.remaining() == 0) {
-            ByteBuffer newBuffer = ByteBuffer.allocate(retBuffer.limit() + 1);
-            newBuffer.put(retBuffer);
-            retBuffer = newBuffer;
-        }
-
-        retBuffer.put((byte) 0);
-        return retBuffer.array();
+        CharBuffer input = CharBuffer.wrap(new ZeroTerminatedCharSequence(str));
+        /*
+         * No need to trim the result array. The string is zero terminated, and the array is only
+         * accessed from native code, which ignores the array length anyway.
+         */
+        return UTF8.encode(input).array();
     }
 }
