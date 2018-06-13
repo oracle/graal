@@ -305,6 +305,18 @@ public class PELangNCFTest extends PELangTest {
     }
 
     @Test
+    public void testNestedObjectProperties() {
+        PELangRootNode rootNode = PELangSample.nestedObjectProperties();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
     public void testBranchWithGlobalReadWrite() {
         PELangRootNode rootNode = PELangSample.branchWithGlobalReadWrite();
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
