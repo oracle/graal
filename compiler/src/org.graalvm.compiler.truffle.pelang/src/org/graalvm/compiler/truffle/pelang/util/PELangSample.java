@@ -485,4 +485,107 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode binaryTree() {
+        PELangBuilder b = PELangBuilder.create();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeGlobal("bottomUpTree", b.function(
+                    f -> f.header("depth"),
+                    f -> f.if$(
+                        f.lt(f.long$(0L), f.readLocal("depth")),
+                        f.return$(f.invoke(
+                            f.readGlobal("createNode"),
+                            f.invoke(f.readGlobal("bottomUpTree"), f.add(f.readLocal("depth"), f.long$(-1L))),
+                            f.invoke(f.readGlobal("bottomUpTree"), f.add(f.readLocal("depth"), f.long$(-1L))))),
+                        f.return$(f.invoke(f.readGlobal("createNode"), f.null$(), f.null$()))))),
+                b.writeGlobal("createNode", b.function(
+                    f -> f.header("left", "right"),
+                    f -> f.block(
+                         f.writeLocal("node", f.newObject()),
+                         f.writeProperty(f.readLocal("node"), "left", f.readLocal("left")),
+                         f.writeProperty(f.readLocal("node"), "right", f.readLocal("right")),
+                         f.return$(f.readLocal("node"))))),
+                b.writeGlobal("itemCheck", b.function(
+                    f -> f.header("node"),
+                    f -> f.if$(
+                        f.eq(f.readProperty(f.readLocal("node"), "left"), f.null$()),
+                        f.return$(f.long$(1L)),
+                        f.return$(f.add(
+                            f.long$(1L),
+                            f.invoke(f.readGlobal("itemCheck"), f.readProperty(f.readLocal("node"), "left")),
+                            f.invoke(f.readGlobal("itemCheck"), f.readProperty(f.readLocal("node"), "right"))))))),
+                b.writeLocal("n", b.readArgument(0)),
+                b.writeLocal("MIN_DEPTH", b.long$(4L)),
+                b.if$(
+                    b.lt(b.readLocal("n"), b.add(b.readLocal("MIN_DEPTH"), b.long$(2L))),
+                    b.writeLocal("maxDepth", b.add(b.readLocal("MIN_DEPTH"), b.long$(2L))),
+                    b.writeLocal("maxDepth", b.readLocal("n"))),
+                b.writeLocal("stretchDepth", b.add(b.readLocal("maxDepth"), b.long$(1L))),
+                b.writeLocal("stretchNode", b.invoke(b.readGlobal("bottomUpTree"), b.readLocal("stretchDepth"))),
+                b.print(
+                    b.add(
+                        b.string("stretch tree of depth "),
+                        b.readLocal("stretchDepth"),
+                        b.string("\t check: "),
+                        b.invoke(b.readGlobal("itemCheck"), b.readLocal("stretchNode")))),
+                b.writeLocal("longLivedTree", b.invoke(b.readGlobal("bottomUpTree"), b.readLocal("maxDepth"))),
+                b.writeLocal("resultsSize", b.add(
+                    b.div(
+                        b.minus(
+                            b.readLocal("maxDepth"),
+                            b.readLocal("MIN_DEPTH")),
+                        b.long$(2L)),
+                    b.long$(1L))),
+                b.writeLocal("resultsDimensions", b.array(new long[1])),
+                b.writeArray(b.readLocal("resultsDimensions"), b.array(new long[] {0L}), b.readLocal("resultsSize")),
+                b.writeLocal("results", b.newArray(String.class, b.readLocal("resultsDimensions"))),
+                b.writeLocal("d", b.readLocal("MIN_DEPTH")),
+                b.while$(
+                    b.not(b.gt(b.readLocal("d"), b.readLocal("maxDepth"))),
+                    b.block(
+                        b.writeLocal("depth", b.readLocal("d")),
+                        b.writeLocal("check", b.long$(0L)),
+                        b.writeLocal("iterations", b.leftShift(b.long$(1L),
+                            b.add(
+                                b.minus(
+                                    b.readLocal("maxDepth"),
+                                    b.readLocal("depth")),
+                                b.readLocal("MIN_DEPTH")))),
+                        b.writeLocal("i", b.long$(1L)),
+                        b.while$(
+                            b.not(b.gt(b.readLocal("i"), b.readLocal("iterations"))),
+                            b.block(
+                                b.writeLocal("treeNode1", b.invoke(b.readGlobal("bottomUpTree"), b.readLocal("depth"))),
+                                b.incrementLocal("check", b.invoke(b.readGlobal("itemCheck"), b.readLocal("treeNode1"))),
+                                b.incrementLocal("i", b.long$(1L)))),
+                        b.writeLocal("resultsIndex", b.array(new long[1])),
+                        b.writeArray(b.readLocal("resultsIndex"), b.array(new long[] {0L}), b.div(b.minus(b.readLocal("depth"), b.readLocal("MIN_DEPTH")), b.long$(2L))),
+                        b.writeArray(
+                            b.readLocal("results"),
+                            b.readLocal("resultsIndex"),
+                            b.add(
+                                b.readLocal("iterations"),
+                                b.string("\t trees of depth "),
+                                b.readLocal("depth"),
+                                b.string("\t check: "),
+                                b.readLocal("check"))),
+                        b.incrementLocal("d", b.long$(2L)))),
+                b.writeLocal("j", b.long$(0L)),
+                b.while$(
+                    b.lt(b.readLocal("j"), b.readLocal("resultsSize")),
+                    b.block(
+                        b.writeArray(b.readLocal("resultsIndex"), b.array(new long[] {0L}), b.readLocal("j")),
+                        b.print(b.readArray(b.readLocal("results"), b.readLocal("resultsIndex"))),
+                        b.incrementLocal("j", b.long$(1L)))),
+                b.print(
+                    b.add(
+                        b.string("long lived tree of depth "),
+                        b.readLocal("maxDepth"),
+                        b.string("\t check: "),
+                        b.invoke(b.readGlobal("itemCheck"), b.readLocal("longLivedTree"))))));
+        // @formatter:on
+    }
+
 }

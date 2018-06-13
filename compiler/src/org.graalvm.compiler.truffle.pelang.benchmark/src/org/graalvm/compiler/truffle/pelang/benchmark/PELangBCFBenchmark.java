@@ -279,4 +279,19 @@ public class PELangBCFBenchmark {
 
     }
 
+    public static class BinaryTreeBenchmark extends PELangBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            PELangBCFGenerator g = new PELangBCFGenerator();
+            return g.generate(PELangSample.binaryTree());
+        }
+
+        @Override
+        protected Object[] warmupArguments() {
+            return new Object[]{10L};
+        }
+
+    }
+
 }

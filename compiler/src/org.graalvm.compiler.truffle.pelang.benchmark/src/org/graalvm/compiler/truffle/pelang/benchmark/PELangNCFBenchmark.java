@@ -244,4 +244,18 @@ public class PELangNCFBenchmark {
 
     }
 
+    public static class BinaryTreeBenchmark extends PELangBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            return PELangSample.binaryTree();
+        }
+
+        @Override
+        protected Object[] warmupArguments() {
+            return new Object[]{10L};
+        }
+
+    }
+
 }

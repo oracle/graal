@@ -371,6 +371,24 @@ public class PELangNCFTest extends PELangTest {
         // TODO: add partial evaluation asserts
     }
 
+    @Test
+    public void testBinaryTree() {
+        PELangRootNode rootNode = PELangSample.binaryTree();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        warmupCallTarget(callTarget, 10L);
+
+        try {
+            // do a first run and swallow code install exceptions
+            StructuredGraph graph = partiallyEvaluate(callTarget);
+            compileGraph(graph, callTarget);
+        } catch (Exception e) {
+            // swallow exception
+        }
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
     protected Object constant10() {
         return 10L;
     }
