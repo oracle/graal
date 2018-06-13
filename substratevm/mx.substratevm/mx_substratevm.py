@@ -299,11 +299,12 @@ def native_image_extract_dependencies(args):
             deps += [language_suite_name + ':' + dep for dep in language_native_deps]
     return deps
 
-def native_image_on_jvm(args):
+def native_image_on_jvm(args, **kwargs):
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
-    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp), mx.dependency('substratevm:SVM_DRIVER').mainClass] + args)
+    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp),
+        mx.dependency('substratevm:SVM_DRIVER').mainClass] + args, **kwargs)
 
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
     bootstrap_command = list(GRAAL_COMPILER_FLAGS)
@@ -557,9 +558,17 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
     native_image_cmd = native_image_path(suite_native_image_root())
+
+    if exists(native_image_cmd):
+        def _native_image(args, **kwargs):
+            mx.run([native_image_cmd] + args, **kwargs)
+    else:
+        mx.warn('native-image executable not found. Fallback to `mx native-image`')
+        _native_image = native_image_on_jvm
+
     def query_native_image(all_args, option):
         out = mx.LinesOutputCapture()
-        mx.run([native_image_cmd, '--dry-run'] + all_args, out=out)
+        _native_image(['--dry-run'] + all_args, out=out)
         for line in out.lines:
             _, sep, after = line.partition(option)
             if sep:
@@ -570,13 +579,15 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
-        mx.run([native_image_cmd] + all_args)
+        _native_image(all_args)
         return image
     try:
-        mx.run([native_image_cmd, '--server-wipe'])
+        if exists(native_image_cmd):
+            _native_image(['--server-wipe'])
         yield native_image_func
     finally:
-        mx.run([native_image_cmd, '--server-shutdown'])
+        if exists(native_image_cmd):
+            _native_image(['--server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
