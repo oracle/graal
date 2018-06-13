@@ -63,7 +63,7 @@ public abstract class PELangLocalWriteNode extends PELangExpressionNode {
         return getSlot().getKind() == FrameSlotKind.Long || getSlot().getKind() == FrameSlotKind.Illegal;
     }
 
-    public static PELangLocalWriteNode create(PELangExpressionNode valueNode, FrameSlot slot) {
+    public static PELangLocalWriteNode create(FrameSlot slot, PELangExpressionNode valueNode) {
         return PELangLocalWriteNodeGen.create(valueNode, slot);
     }
 

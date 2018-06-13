@@ -29,6 +29,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
+import org.graalvm.compiler.truffle.pelang.PELangPrintNode;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.PELangState;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
@@ -38,16 +39,20 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangAddNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangDivNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangInvokeNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLeftShiftNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralArrayNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralNullNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralObjectNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangNewObjectNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangMinusNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangNewArrayNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangReadArgumentNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangReadArrayNode;
@@ -66,67 +71,115 @@ import org.graalvm.compiler.truffle.pelang.var.PELangLocalWriteNode;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.object.DynamicObject;
 
 public class PELangBuilder {
 
-    private final FrameDescriptor frameDescriptor = new FrameDescriptor();
+    private final FrameDescriptor frameDescriptor;
+    private final PELangState state;
 
-    public PELangRootNode root(PELangStatementNode bodyNode) {
-        return new PELangRootNode(bodyNode, frameDescriptor);
+    private PELangBuilder(FrameDescriptor frameDescriptor, PELangState state) {
+        this.frameDescriptor = frameDescriptor;
+        this.state = state;
     }
 
-    public PELangExpressionNode lit(long value) {
+    public static PELangBuilder create() {
+        return new PELangBuilder(new FrameDescriptor(), new PELangState());
+    }
+
+    public PELangRootNode root(PELangStatementNode bodyNode) {
+        return new PELangRootNode(frameDescriptor, state, bodyNode);
+    }
+
+    public PELangExpressionNode long$(long value) {
         return new PELangLiteralLongNode(value);
     }
 
-    public PELangExpressionNode lit(String value) {
+    public PELangExpressionNode string(String value) {
         return new PELangLiteralStringNode(value);
     }
 
-    public PELangExpressionNode lit(PELangFunction function) {
-        return new PELangLiteralFunctionNode(function);
-    }
-
-    public PELangExpressionNode lit(DynamicObject object) {
-        return new PELangLiteralObjectNode(object);
-    }
-
-    public PELangExpressionNode lit(Object array) {
-        return PELangLiteralArrayNode.create(array);
-    }
-
-    public PELangExpressionNode litNull() {
-        return new PELangLiteralNullNode();
-    }
-
-    public PELangFunction fn(Function<PELangBuilder, FunctionHeader> headerFunction, Function<PELangBuilder, PELangStatementNode> bodyNodeFunction) {
-        PELangBuilder builder = new PELangBuilder();
-        FunctionHeader header = headerFunction.apply(builder);
-
+    public PELangExpressionNode function(Function<PELangBuilder, FunctionHeader> headerFunction, Function<PELangBuilder, PELangStatementNode> bodyFunction) {
+        PELangBuilder functionBuilder = new PELangBuilder(new FrameDescriptor(), state);
+        FunctionHeader header = headerFunction.apply(functionBuilder);
         List<PELangStatementNode> bodyNodes = new ArrayList<>();
 
         // read arguments and make them available as local variables
         for (int i = 0; i < header.getArgs().length; i++) {
-            bodyNodes.add(builder.writeLocal(builder.readArgument(i), header.getArgs()[i]));
+            bodyNodes.add(functionBuilder.writeLocal(header.getArgs()[i], functionBuilder.readArgument(i)));
         }
-        PELangStatementNode bodyNode = bodyNodeFunction.apply(builder);
+        PELangStatementNode bodyNode = bodyFunction.apply(functionBuilder);
         bodyNodes.add(bodyNode);
 
-        PELangRootNode rootNode = builder.root(builder.block(bodyNodes.stream().toArray(PELangStatementNode[]::new)));
-        return new PELangFunction(header, Truffle.getRuntime().createCallTarget(rootNode));
+        PELangRootNode rootNode = functionBuilder.root(functionBuilder.block(bodyNodes.stream().toArray(PELangStatementNode[]::new)));
+        return new PELangLiteralFunctionNode(new PELangFunction(header, Truffle.getRuntime().createCallTarget(rootNode)));
+    }
+
+    public PELangExpressionNode newObject() {
+        return new PELangNewObjectNode();
+    }
+
+    public PELangExpressionNode newArray(Class<?> type, PELangExpressionNode dimensionsNode) {
+        return new PELangNewArrayNode(type, dimensionsNode);
+    }
+
+    public PELangExpressionNode array(Object array) {
+        return PELangLiteralArrayNode.create(array);
+    }
+
+    public PELangExpressionNode null$() {
+        return new PELangLiteralNullNode();
     }
 
     public FunctionHeader header(String... args) {
         return new FunctionHeader(args);
     }
 
-    public DynamicObject object() {
-        return PELangState.createObject();
-    }
-
     public PELangExpressionNode add(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangAddNode.create(leftNode, rightNode);
+    }
+
+    public PELangExpressionNode add(PELangExpressionNode... nodes) {
+        if (nodes.length < 2) {
+            throw new IllegalArgumentException("length of nodes must be greater than two");
+        } else {
+            return add_(Arrays.asList(nodes));
+        }
+    }
+
+    private PELangExpressionNode add_(List<PELangExpressionNode> nodes) {
+        if (nodes.size() == 2) {
+            return PELangAddNode.create(nodes.get(0), nodes.get(1));
+        } else {
+            return PELangAddNode.create(nodes.get(0), add_(nodes.subList(1, nodes.size())));
+        }
+    }
+
+    public PELangExpressionNode minus(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangMinusNode.create(leftNode, rightNode);
+    }
+
+    public PELangExpressionNode minus(PELangExpressionNode... nodes) {
+        if (nodes.length < 2) {
+            throw new IllegalArgumentException("length of nodes must be greater than two");
+        } else {
+            return minus_(Arrays.asList(nodes));
+        }
+    }
+
+    private PELangExpressionNode minus_(List<PELangExpressionNode> nodes) {
+        if (nodes.size() == 2) {
+            return PELangMinusNode.create(nodes.get(0), nodes.get(1));
+        } else {
+            return PELangMinusNode.create(nodes.get(0), add_(nodes.subList(1, nodes.size())));
+        }
+    }
+
+    public PELangExpressionNode leftShift(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangLeftShiftNode.create(leftNode, rightNode);
+    }
+
+    public PELangExpressionNode div(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangDivNode.create(leftNode, rightNode);
     }
 
     public PELangExpressionNode eq(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
@@ -189,40 +242,44 @@ public class PELangBuilder {
         return new PELangReadArrayNode(arrayNode, indicesNode);
     }
 
-    public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode) {
-        return new PELangPropertyReadNode(receiverNode, nameNode);
+    public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, String name) {
+        return new PELangPropertyReadNode(receiverNode, name);
     }
 
-    public PELangExpressionNode writeLocal(PELangExpressionNode valueNode, String identifier) {
-        return PELangLocalWriteNode.create(valueNode, frameDescriptor.findOrAddFrameSlot(identifier));
+    public PELangExpressionNode writeLocal(String identifier, PELangExpressionNode valueNode) {
+        return PELangLocalWriteNode.create(frameDescriptor.findOrAddFrameSlot(identifier), valueNode);
     }
 
-    public PELangExpressionNode writeGlobal(PELangExpressionNode valueNode, String identifier) {
-        return PELangGlobalWriteNode.create(valueNode, identifier);
+    public PELangExpressionNode writeGlobal(String identifier, PELangExpressionNode valueNode) {
+        return PELangGlobalWriteNode.create(identifier, valueNode);
     }
 
     public PELangExpressionNode writeArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
         return new PELangWriteArrayNode(arrayNode, indicesNode, valueNode);
     }
 
-    public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode, PELangExpressionNode valueNode) {
-        return new PELangPropertyWriteNode(receiverNode, nameNode, valueNode);
+    public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, String name, PELangExpressionNode valueNode) {
+        return new PELangPropertyWriteNode(receiverNode, name, valueNode);
     }
 
-    public PELangExpressionNode incrementLocal(PELangExpressionNode valueNode, String identifier) {
-        return writeLocal(add(valueNode, readLocal(identifier)), identifier);
+    public PELangExpressionNode incrementLocal(String identifier, PELangExpressionNode valueNode) {
+        return writeLocal(identifier, add(valueNode, readLocal(identifier)));
     }
 
-    public PELangExpressionNode incrementGlobal(PELangExpressionNode valueNode, String identifier) {
-        return writeGlobal(add(valueNode, readGlobal(identifier)), identifier);
+    public PELangExpressionNode incrementGlobal(String identifier, PELangExpressionNode valueNode) {
+        return writeGlobal(identifier, add(valueNode, readGlobal(identifier)));
     }
 
-    public PELangExpressionNode invoke(PELangExpressionNode expressionNode, PELangExpressionNode... argumentNodes) {
-        return new PELangInvokeNode(expressionNode, argumentNodes);
+    public PELangExpressionNode invoke(PELangExpressionNode functionNode, PELangExpressionNode... argumentNodes) {
+        return new PELangInvokeNode(functionNode, argumentNodes);
     }
 
     public PELangStatementNode return$(PELangExpressionNode bodyNode) {
         return new PELangReturnNode(bodyNode);
+    }
+
+    public PELangStatementNode print(PELangExpressionNode argumentNode) {
+        return PELangPrintNode.create(argumentNode);
     }
 
     public PELangStatementNode dispatch(PELangBasicBlockNode... blockNodes) {

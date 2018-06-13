@@ -28,511 +28,447 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 public class PELangSample {
 
     public static PELangRootNode simpleAdd() {
-        PELangBuilder b = new PELangBuilder();
-        return b.root(b.return$(b.add(b.lit(5L), b.lit(5L))));
+        PELangBuilder b = PELangBuilder.create();
+        return b.root(b.return$(b.add(b.long$(5L), b.long$(5L))));
     }
 
     public static PELangRootNode simpleBlock() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
-                b.incrementLocal(b.lit(2L), "i"),
-                b.incrementLocal(b.lit(2L), "i"),
-                b.incrementLocal(b.lit(2L), "i"),
-                b.incrementLocal(b.lit(2L), "i"),
-                b.incrementLocal(b.lit(2L), "i"),
+                b.writeLocal("i", b.long$(0L)),
+                b.incrementLocal("i", b.long$(2L)),
+                b.incrementLocal("i", b.long$(2L)),
+                b.incrementLocal("i", b.long$(2L)),
+                b.incrementLocal("i", b.long$(2L)),
+                b.incrementLocal("i", b.long$(2L)),
                 b.return$(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleLocalReadWrite() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(10L), "i"),
+                b.writeLocal("i", b.long$(10L)),
                 b.return$(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleGlobalReadWrite() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeGlobal(b.lit(10L), "i"),
+                b.writeGlobal("i", b.long$(10L)),
                 b.return$(b.readGlobal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleBranch() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
+                b.writeLocal("i", b.long$(0L)),
                 b.if$(
-                    b.lt(b.readLocal("i"), b.lit(10L)),
-                    b.writeLocal(b.lit(10L), "i"),
-                    b.writeLocal(b.lit(5L), "i")),
+                    b.lt(b.readLocal("i"), b.long$(10L)),
+                    b.writeLocal("i", b.long$(10L)),
+                    b.writeLocal("i", b.long$(5L))),
                 b.return$(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleLoop() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "counter"),
+                b.writeLocal("counter", b.long$(0L)),
                 b.while$(
-                    b.lt(b.readLocal("counter"), b.lit(10L)),
-                    b.incrementLocal(b.lit(1L), "counter")),
+                    b.lt(b.readLocal("counter"), b.long$(10L)),
+                    b.incrementLocal("counter", b.long$(1L))),
                 b.return$(b.readLocal("counter"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleSwitch() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "counter"),
+                b.writeLocal("counter", b.long$(0L)),
                 b.switch$(
                     b.readLocal("counter"),
-                    b.case$(
-                        b.lit(0L),
-                        b.incrementLocal(b.lit(10L), "counter")),
-                    b.case$(
-                        b.lit(5L),
-                        b.incrementLocal(b.lit(5L), "counter"))),
+                    b.case$(b.long$(0L), b.incrementLocal("counter", b.long$(10L))),
+                    b.case$(b.long$(5L), b.incrementLocal("counter", b.long$(5L)))),
                 b.return$(b.readLocal("counter"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleInvoke() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
-            b.return$(
-                b.invoke(
-                    b.lit(
-                        b.fn(
-                            f -> f.header("a", "b"),
-                            f -> f.return$(f.add(f.readLocal("a"), f.readLocal("b"))))),
-                    b.lit(5L),
-                    b.lit(5L))));
+            b.return$(b.invoke(
+                    b.function(
+                        f -> f.header("a", "b"),
+                        f -> f.return$(f.add(f.readLocal("a"), f.readLocal("b")))),
+                    b.long$(5L),
+                    b.long$(5L))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleObject() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(
-                    b.lit(b.object()),
-                    "obj"),
-                b.writeProperty(
-                    b.readLocal("obj"),
-                    b.lit("p1"),
-                    b.lit(10L)),
-                b.return$(
-                    b.readProperty(
-                        b.readLocal("obj"),
-                        b.lit("p1")))));
+                b.writeLocal("obj", b.newObject()),
+                b.writeProperty(b.readLocal("obj"), "p1", b.long$(10L)),
+                b.return$(b.readProperty(b.readLocal("obj"), "p1"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleArrayRead() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.return$(
                 b.readArray(
-                    b.lit(new long[] {10L, 5L, 0L}),
-                    b.lit(new long[] {0L}))));
+                    b.array(new long[] {10L, 5L, 0L}),
+                    b.array(new long[] {0L}))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleMultiArrayRead() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.return$(
                 b.readArray(
-                    b.lit(new long[][] {
+                    b.array(new long[][] {
                         {6L, 8L, 10L},
                         {4L, 6L, 8L},
                         {2L, 4L, 6L}
                     }),
-                    b.lit(new long[] {0L, 2L}))));
+                    b.array(new long[] {0L, 2L}))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleArrayWrite() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(
-                    b.lit(new long[] {0L, 5L, 10L}),
-                    "var"),
+                b.writeLocal("var", b.array(new long[] {0L, 5L, 10L})),
                 b.writeArray(
                     b.readLocal("var"),
-                    b.lit(new long[] {0L}),
-                    b.lit(10L)),
+                    b.array(new long[] {0L}),
+                    b.long$(10L)),
                 b.return$(
                     b.readArray(
                         b.readLocal("var"),
-                        b.lit(new long[] {0L})))));
+                        b.array(new long[] {0L})))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleMultiArrayWrite() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(
-                    b.lit(new long[][] {
-                        {6L, 8L, 10L},
-                        {4L, 6L, 8L},
-                        {2L, 4L, 6L}
-                    }),
-                    "var"),
+                b.writeLocal("var", b.array(new long[][] {
+                                        {6L, 8L, 10L},
+                                        {4L, 6L, 8L},
+                                        {2L, 4L, 6L}})),
                 b.writeArray(
                     b.readLocal("var"),
-                    b.lit(new long[] {1L, 2L}),
-                    b.lit(10L)),
+                    b.array(new long[] {1L, 2L}),
+                    b.long$(10L)),
                 b.return$(
                     b.readArray(
                         b.readLocal("var"),
-                        b.lit(new long[] {1L, 2L})))));
+                        b.array(new long[] {1L, 2L})))));
         // @formatter:on
     }
 
     public static PELangRootNode complexStringArray() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(
-                    b.lit(new String[][][] {
-                        {
-                            {"Foo", "Bar"},
-                            {"Aaa", "Bbb"},
-                            {"Ccc", "Ddd"}
-                        },
-                        {
-                            {"Xxxx", "Yyyy"},
-                        },
-                        {
-                            {"ZZ", "AA"},
-                            {"AA", "ZZ"}
-                        }
-                    }),
-                    "var"),
+                b.writeLocal("var", b.array(new String[][][] {
+                                            {
+                                                {"Foo", "Bar"},
+                                                {"Aaa", "Bbb"},
+                                                {"Ccc", "Ddd"}
+                                            },
+                                            {
+                                                {"Xxxx", "Yyyy"},
+                                            },
+                                            {
+                                                {"ZZ", "AA"},
+                                                {"AA", "ZZ"}
+                                            }})),
                 b.writeArray(
                     b.readLocal("var"),
-                    b.lit(new long[] {2L, 0L, 1L}),
-                    b.lit("Foo")),
+                    b.array(new long[] {2L, 0L, 1L}),
+                    b.string("Foo")),
                 b.return$(
                     b.readArray(
                         b.readLocal("var"),
-                        b.lit(new long[] {2L, 0L, 1L})))));
+                        b.array(new long[] {2L, 0L, 1L})))));
         // @formatter:on
     }
 
     public static PELangRootNode invalidBranch() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
+                b.writeLocal("i", b.long$(0L)),
                 b.if$(
-                    b.lit("foo"),
-                    b.writeLocal(b.lit(10L), "i"),
-                    b.writeLocal(b.lit(5L), "i")),
+                    b.string("foo"),
+                    b.writeLocal("i", b.long$(10L)),
+                    b.writeLocal("i", b.long$(5L))),
                 b.return$(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode invalidLoop() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "counter"),
+                b.writeLocal("counter", b.long$(0L)),
                 b.while$(
-                    b.lit("foo"),
-                    b.incrementLocal(b.lit(1L), "counter")),
+                    b.string("foo"),
+                    b.incrementLocal("counter", b.long$(1L))),
                 b.return$(b.readLocal("counter"))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedAdds() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.return$(
                 b.add(
-                    b.add(b.lit(2L), b.lit(2L)),
+                    b.add(b.long$(2L), b.long$(2L)),
                     b.add(
-                        b.lit(2L),
-                        b.add(b.lit(2L), b.lit(2L))))));
+                        b.long$(2L),
+                        b.add(b.long$(2L), b.long$(2L))))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedBlocks() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
-                b.incrementLocal(b.lit(1L), "i"),
-                b.incrementLocal(b.lit(1L), "i"),
+                b.writeLocal("i", b.long$(0L)),
+                b.incrementLocal("i", b.long$(1L)),
+                b.incrementLocal("i", b.long$(1L)),
                 b.block(
-                    b.incrementLocal(b.lit(1L), "i"),
-                    b.incrementLocal(b.lit(1L), "i"),
-                    b.incrementLocal(b.lit(1L), "i"),
-                    b.incrementLocal(b.lit(1L), "i"),
+                    b.incrementLocal("i", b.long$(1L)),
+                    b.incrementLocal("i", b.long$(1L)),
+                    b.incrementLocal("i", b.long$(1L)),
+                    b.incrementLocal("i", b.long$(1L)),
                     b.block(
-                        b.incrementLocal(b.lit(1L), "i"),
-                        b.incrementLocal(b.lit(1L), "i")),
+                        b.incrementLocal("i", b.long$(1L)),
+                        b.incrementLocal("i", b.long$(1L))),
                     b.block(
-                        b.incrementLocal(b.lit(1L), "i"),
-                        b.incrementLocal(b.lit(1L), "i"))),
+                        b.incrementLocal("i", b.long$(1L)),
+                        b.incrementLocal("i", b.long$(1L)))),
                 b.block(
                     b.return$(b.readLocal("i")))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedLocalReadWrites() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(2L), "h"),
-                b.writeLocal(b.lit(2L), "i"),
-                b.writeLocal(b.lit(2L), "j"),
-                b.writeLocal(b.lit(2L), "k"),
-                b.writeLocal(b.lit(2L), "l"),
-                b.writeLocal(
-                    b.add(
-                        b.readLocal("h"),
-                        b.readLocal("i")),
-                    "i"),
-                b.writeLocal(
-                    b.add(
-                        b.readLocal("i"),
-                        b.readLocal("j")),
-                    "j"),
-                b.writeLocal(
-                    b.add(
-                        b.readLocal("j"),
-                        b.readLocal("k")),
-                    "k"),
-                b.writeLocal(
-                    b.add(
-                        b.readLocal("k"),
-                        b.readLocal("l")),
-                    "l"),
+                b.writeLocal("h", b.long$(2L)),
+                b.writeLocal("i", b.long$(2L)),
+                b.writeLocal("j", b.long$(2L)),
+                b.writeLocal("k", b.long$(2L)),
+                b.writeLocal("l", b.long$(2L)),
+                b.writeLocal("i", b.add(b.readLocal("h"), b.readLocal("i"))),
+                b.writeLocal("j", b.add(b.readLocal("i"), b.readLocal("j"))),
+                b.writeLocal("k", b.add(b.readLocal("j"), b.readLocal("k"))),
+                b.writeLocal("l", b.add(b.readLocal("k"), b.readLocal("l"))),
                 b.return$(b.readLocal("l"))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedBranches() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
+                b.writeLocal("i", b.long$(0L)),
                 b.if$(
-                    b.lt(b.readLocal("i"), b.lit(5L)),
+                    b.lt(b.readLocal("i"), b.long$(5L)),
                     b.block(
-                        b.incrementLocal(b.lit(5L), "i"),
+                        b.incrementLocal("i", b.long$(5L)),
                         b.if$(
-                            b.lt(b.readLocal("i"), b.lit(10L)),
-                            b.incrementLocal(b.lit(5L), "i"),
-                            b.incrementLocal(b.lit(1L), "i"))),
-                    b.incrementLocal(b.lit(1L), "i")),
+                            b.lt(b.readLocal("i"), b.long$(10L)),
+                            b.incrementLocal("i", b.long$(5L)),
+                            b.incrementLocal("i", b.long$(1L)))),
+                    b.incrementLocal("i", b.long$(1L))),
                 b.return$(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedLoops() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
-                b.writeLocal(b.lit(0L), "j"),
+                b.writeLocal("i", b.long$(0L)),
+                b.writeLocal("j", b.long$(0L)),
                 b.while$(
-                    b.lt(b.readLocal("i"), b.lit(5L)),
+                    b.lt(b.readLocal("i"), b.long$(5L)),
                     b.block(
-                        b.incrementLocal(b.lit(1L), "i"),
+                        b.incrementLocal("i", b.long$(1L)),
                         b.while$(
-                            b.lt(b.readLocal("j"), b.lit(5L)),
-                            b.block(
-                                b.incrementLocal(b.lit(1L), "j"))))),
-                b.return$(
-                    b.add(
-                        b.readLocal("i"),
-                        b.readLocal("j")))));
+                            b.lt(b.readLocal("j"), b.long$(5L)),
+                            b.incrementLocal("j", b.long$(1L))))),
+                b.return$(b.add(b.readLocal("i"), b.readLocal("j")))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedSwitches() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
-                b.writeLocal(b.lit(0L), "j"),
+                b.writeLocal("i", b.long$(0L)),
+                b.writeLocal("j", b.long$(0L)),
                 b.switch$(
                     b.readLocal("i"),
-                    b.case$(
-                        b.lit(0L),
-                        b.switch$(
-                            b.readLocal("j"),
-                            b.case$(
-                                b.lit(0L),
-                                b.incrementLocal(b.lit(10L), "i")))),
-                    b.case$(
-                        b.lit(5L),
-                        b.switch$(
-                            b.readLocal("j"),
-                            b.case$(
-                                b.lit(5L),
-                                b.incrementLocal(b.lit(5L), "i"))))),
+                    b.case$(b.long$(0L), b.switch$(
+                                             b.readLocal("j"),
+                                             b.case$(b.long$(0L), b.incrementLocal("i", b.long$(10L))))),
+                    b.case$(b.long$(5L), b.switch$(
+                                             b.readLocal("j"),
+                                             b.case$(b.long$(5L), b.incrementLocal("i", b.long$(5L)))))),
                 b.return$(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode branchWithGlobalReadWrite() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeGlobal(b.lit(0L), "g"),
+                b.writeGlobal("g", b.long$(0L)),
                 b.if$(
-                    b.lt(b.readGlobal("g"), b.lit(10L)),
-                    b.incrementGlobal(b.lit(10L), "g"),
-                    b.incrementGlobal(b.lit(5L), "g")),
+                    b.lt(b.readGlobal("g"), b.long$(10L)),
+                    b.incrementGlobal("g", b.long$(10L)),
+                    b.incrementGlobal("g", b.long$(5L))),
                 b.return$(b.readGlobal("g"))));
         // @formatter:on
     }
 
     public static PELangRootNode loopWithGlobalReadWrite() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeGlobal(b.lit(0L), "g"),
+                b.writeGlobal("g", b.long$(0L)),
                 b.while$(
-                    b.lt(b.readGlobal("g"), b.lit(10L)),
-                    b.block(b.incrementGlobal(b.lit(1L), "g"))),
+                    b.lt(b.readGlobal("g"), b.long$(10L)),
+                    b.incrementGlobal("g", b.long$(1L))),
                 b.return$(b.readGlobal("g"))));
         // @formatter:on
     }
 
     public static PELangRootNode nestedLoopsWithMultipleBackEdges() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(b.lit(0L), "i"),
-                b.writeLocal(b.lit(0L), "j"),
-                b.writeLocal(b.lit(0L), "k"),
+                b.writeLocal("i", b.long$(0L)),
+                b.writeLocal("j", b.long$(0L)),
+                b.writeLocal("k", b.long$(0L)),
                 b.while$(
-                    b.lt(b.readLocal("i"), b.lit(5L)),
+                    b.lt(b.readLocal("i"), b.long$(5L)),
                     b.block(
-                        b.incrementLocal(b.lit(1L), "i"),
+                        b.incrementLocal("i", b.long$(1L)),
                         b.while$(
-                            b.lt(b.readLocal("j"), b.lit(5L)),
+                            b.lt(b.readLocal("j"), b.long$(5L)),
                             b.if$(
-                                b.lt(b.readLocal("j"), b.lit(3L)),
+                                b.lt(b.readLocal("j"), b.long$(3L)),
                                 b.block(
-                                    b.incrementLocal(b.lit(1L), "j"),
-                                    b.incrementLocal(b.lit(1L), "k")),
-                                b.incrementLocal(b.lit(1L), "j"))))),
-                b.return$(
-                    b.add(
-                        b.readLocal("i"),
-                        b.readLocal("j")))));
+                                    b.incrementLocal("j", b.long$(1L)),
+                                    b.incrementLocal("k", b.long$(1L))),
+                                b.incrementLocal("j", b.long$(1L)))))),
+                b.return$(b.add(b.readLocal("i"), b.readLocal("j")))));
         // @formatter:on
     }
 
     public static PELangRootNode irreducibleLoop() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.dispatch(
-                /* 0 */ b.basicBlock(b.writeLocal(b.lit(0L), "i"), 1),
-                /* 1 */ b.basicBlock(b.writeLocal(b.lit(0L), "j"), 2),
-                /* 2 */ b.basicBlock(b.eq(b.readLocal("i"), b.lit(0L)), 6, 3),
-                /* 3 */ b.basicBlock(b.lt(b.readLocal("j"), b.lit(10L)), 4, 5),
-                /* 4 */ b.basicBlock(b.incrementLocal(b.lit(1L), "j"), 3),
-                /* 5 */ b.basicBlock(b.incrementLocal(b.lit(1L), "i"), 7),
-                /* 6 */ b.basicBlock(b.incrementLocal(b.lit(1L), "i"), 4),
+                /* 0 */ b.basicBlock(b.writeLocal("i", b.long$(0L)), 1),
+                /* 1 */ b.basicBlock(b.writeLocal("j", b.long$(0L)), 2),
+                /* 2 */ b.basicBlock(b.eq(b.readLocal("i"), b.long$(0L)), 6, 3),
+                /* 3 */ b.basicBlock(b.lt(b.readLocal("j"), b.long$(10L)), 4, 5),
+                /* 4 */ b.basicBlock(b.incrementLocal("j", b.long$(1L)), 3),
+                /* 5 */ b.basicBlock(b.incrementLocal("i", b.long$(1L)), 7),
+                /* 6 */ b.basicBlock(b.incrementLocal("i", b.long$(1L)), 4),
                 /* 7 */ b.basicBlock(b.return$(b.readLocal("j")), PELangBasicBlockNode.NO_SUCCESSOR)));
         // @formatter:on
     }
 
     public static PELangRootNode invokeObjectFunctionProperty() {
-        PELangBuilder b = new PELangBuilder();
+        PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(
-                    b.lit(b.object()),
-                    "obj"),
-                b.writeProperty(
-                    b.readLocal("obj"),
-                    b.lit("p1"),
-                    b.lit(
-                        b.fn(
-                            f -> f.header("a", "b"),
-                            f -> f.return$(
-                                f.add(
-                                    f.readLocal("a"),
-                                    f.readLocal("b")))))),
+                b.writeLocal("obj", b.newObject()),
+                b.writeProperty(b.readLocal("obj"), "p1", b.function(
+                    f -> f.header("a", "b"),
+                    f -> f.return$(f.add(f.readLocal("a"), f.readLocal("b"))))),
                 b.return$(
                     b.invoke(
-                        b.readProperty(
-                            b.readLocal("obj"),
-                            b.lit("p1")),
-                        b.lit(5L),
-                        b.lit(5L)))));
+                        b.readProperty(b.readLocal("obj"), "p1"),
+                        b.long$(5L),
+                        b.long$(5L)))));
         // @formatter:on
     }
 
