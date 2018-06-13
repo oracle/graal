@@ -1254,9 +1254,9 @@ public class NativeImageGenerator {
          */
         String lname = name.toLowerCase();
         if (lname.contains("hosted")) {
-            bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time");
+            bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
         } else if (lname.contains("hotspot")) {
-            bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time");
+            bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
         }
     }
 
