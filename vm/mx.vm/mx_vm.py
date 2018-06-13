@@ -623,9 +623,11 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')),
                     'Args': ' '.join(launcher_config.build_args),
                 }
-                for p in ('ImageName', 'LauncherClass', 'LauncherClassPath'):
+                for p in ('ImageName', 'LauncherClass'):
                     if provided_properties[p] != properties[p]:
                         mx.abort("Inconsistent property '{}':\n - native-image.properties: {}\n - LauncherConfig: {}".format(p, provided_properties[p], properties[p]))
+                if set(provided_properties['LauncherClassPath'].split(os.pathsep)) != set(properties['LauncherClassPath'].split(os.pathsep)):
+                    mx.abort("Inconsistent property 'LauncherClassPath':\n - native-image.properties: {}\n - LauncherConfig: {}".format(provided_properties['LauncherClassPath'], properties['LauncherClassPath']))
 
     def clean(self, forBuild=False):
         if exists(self.subject.output_file()):
