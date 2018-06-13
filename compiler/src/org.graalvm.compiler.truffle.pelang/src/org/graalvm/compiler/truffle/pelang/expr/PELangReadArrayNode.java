@@ -5,8 +5,8 @@ import java.lang.reflect.Array;
 import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public final class PELangReadArrayNode extends PELangExpressionNode {
 
@@ -27,7 +27,6 @@ public final class PELangReadArrayNode extends PELangExpressionNode {
     }
 
     @Override
-    @ExplodeLoop
     public Object executeGeneric(VirtualFrame frame) {
         Object array = arrayNode.evaluateArray(frame);
         long[] indices = indicesNode.evaluateLongArray(frame);
@@ -35,13 +34,23 @@ public final class PELangReadArrayNode extends PELangExpressionNode {
         if (indices.length == 0) {
             throw new PELangException("length of indices must not be zero", this);
         }
+        return unwrapArray(array, indices);
+    }
 
+    private static Object unwrapArray(Object array, long[] indices) {
         Object value = array;
+
+        // fully unwrap
         for (int i = 0; i < indices.length; i++) {
             int index = (int) indices[i];
-            value = Array.get(value, index);
+            value = readValue(value, index);
         }
         return value;
+    }
+
+    @TruffleBoundary
+    private static Object readValue(Object array, int index) {
+        return Array.get(array, index);
     }
 
 }
