@@ -29,13 +29,16 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMX86_ConversionNode {
 
@@ -46,6 +49,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMFloatVector vector) {
             if (vector.getLength() != 4) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("cvtss2si requires a float[4] as parameter");
             }
 
@@ -60,6 +64,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMDoubleVector vector) {
             if (vector.getLength() != 2) {
+                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("cvtsd2si requires a double[2] as parameter");
             }
 
@@ -67,5 +72,28 @@ public abstract class LLVMX86_ConversionNode {
             // causes an exception in one OpenCV test application when returning a long
             return Math.toIntExact(Math.round(vector.getValues()[0]));
         }
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMX86_Pmovmskb128 extends LLVMBuiltin {
+
+        @Specialization
+        @ExplodeLoop
+        protected int doIntrinsic(LLVMI8Vector vector) {
+
+            if (vector.getLength() != 16) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("expected a <16 x i8> vector");
+            }
+            int result = 0;
+            for (int i = 0; i < vector.getLength(); i++) {
+                int currentByte = vector.getValue(i);
+                int mostSignificantBit = (currentByte & 0xff) >> (Byte.SIZE - 1);
+                result |= mostSignificantBit << i;
+            }
+
+            return result;
+        }
+
     }
 }
