@@ -85,7 +85,7 @@ public final class LLVMParser {
         defineFunctions(module, externalFunctions, importedSymbols);
         defineAliases(module.getAliases(), importedSymbols);
 
-        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, StackManager.createRootFrame());
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, StackManager.createRootFrame(), AllocFactory.createAllocaFactory());
         createDebugInfo(module, symbolResolver);
 
         return new LLVMParserResult(runtime, externalFunctions, definedGlobals, externalGlobals, importedSymbols);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -99,12 +100,15 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
         }
     }
 
+    @NodeField(type = UniqueSlot.class, name = "uniqueSlot")
     public abstract static class LLVMUniqueAllocConstInstruction extends LLVMAllocConstInstruction {
+
+        abstract UniqueSlot getUniqueSlot();
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateUniqueStackMemory(frame, memory, this, getStackPointerSlot(), getSize(), getAlignment()));
+            return LLVMNativePointer.create(getUniqueSlot().toPointer(frame, memory, getStackPointerSlot()));
         }
     }
 

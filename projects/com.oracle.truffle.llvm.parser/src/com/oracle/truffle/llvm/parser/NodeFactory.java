@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -140,14 +141,16 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMStatementNode phi, LLVMSourceLocation source);
 
-    LLVMExpressionNode createArrayLiteral(LLVMContext context, List<LLVMExpressionNode> arrayValues, ArrayType arrayType);
+    LLVMExpressionNode createArrayLiteral(LLVMContext context, List<LLVMExpressionNode> arrayValues, ArrayType arrayType, AllocFactory allocFactory);
 
     /*
-     * Stack allocations with type (LLVM's alloca instruction)
+     * Stack allocations with type
      */
+    LLVMExpressionNode createAlloca(LLVMContext context, Type type);
+
     LLVMExpressionNode createAlloca(LLVMContext context, Type type, int alignment);
 
-    LLVMExpressionNode createUniqueAlloc(LLVMContext context, Type type);
+    LLVMExpressionNode createUniqueAlloc(LLVMContext context, Type type, UniquesRegion uniquesRegion);
 
     LLVMExpressionNode createAllocaArray(LLVMContext context, Type elementType, LLVMExpressionNode numElements, int alignment);
 
@@ -161,11 +164,11 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size);
 
-    LLVMExpressionNode createStructureConstantNode(LLVMContext context, Type structureType, boolean packed, Type[] types, LLVMExpressionNode[] constants);
+    LLVMExpressionNode createStructureConstantNode(LLVMContext context, Type structureType, AllocFactory allocFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
     LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
-    LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, FrameSlot[][] beforeBlockNuller,
+    LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegion uniquesRegion, FrameSlot[][] beforeBlockNuller,
                     FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame);
 
     RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader,
@@ -186,7 +189,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
 
-    LLVMExpressionNode createCopyStructByValue(LLVMContext context, Type type, LLVMExpressionNode parameterNode);
+    LLVMExpressionNode createCopyStructByValue(LLVMContext context, Type type, AllocFactory allocFactory, LLVMExpressionNode parameterNode);
 
     LLVMExpressionNode createVarArgCompoundValue(int length, int alignment, LLVMExpressionNode parameterNode);
 

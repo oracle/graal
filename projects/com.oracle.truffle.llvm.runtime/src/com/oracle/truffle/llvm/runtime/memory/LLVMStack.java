@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.util.Map;
-import java.util.IdentityHashMap;
-
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -63,15 +61,10 @@ public final class LLVMStack {
     }
 
     public final class StackPointer implements AutoCloseable {
-        private final Map<Object, Long> uniqueSlots = new IdentityHashMap<>();
         private long basePointer;
 
         private StackPointer(long basePointer) {
             this.basePointer = basePointer;
-        }
-
-        public Map<Object, Long> getUniqueSlots() {
-            return uniqueSlots;
         }
 
         public long get(LLVMMemory memory) {
@@ -96,6 +89,50 @@ public final class LLVMStack {
         public StackPointer newFrame() {
             return new StackPointer(stackPointer);
         }
+    }
+
+    public static final class UniquesRegion {
+        private long currentSlotPointer = 0;
+        private int alignment = 1;
+
+        public UniqueSlot addSlot(int slotSize, int slotAlignment) {
+            CompilerAsserts.neverPartOfCompilation();
+            currentSlotPointer = getAlignedAllocation(currentSlotPointer, slotSize, slotAlignment);
+            // maximum of current alignment, slot alignment and the alignment masking slot size
+            alignment = setMSB(alignment | slotAlignment | setMSB(slotSize) << 1);
+            return new UniqueSlot(currentSlotPointer);
+        }
+
+        void allocate(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot) {
+            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+            long stackPointer = basePointer.get(memory);
+            assert stackPointer != 0;
+            long uniquesRegionAlignedAddress = getAlignedAddress(stackPointer);
+            long uniquesRegionSize = stackPointer - uniquesRegionAlignedAddress - currentSlotPointer;
+            allocateStackMemory(memory, basePointer, uniquesRegionSize, NO_ALIGNMENT_REQUIREMENTS);
+        }
+
+        long getAlignedAddress(long address) {
+            assert alignment != 0 && powerOfTwo(alignment);
+            return address & -alignment;
+        }
+
+        public final class UniqueSlot {
+            private final long address;
+
+            private UniqueSlot(long address) {
+                this.address = address;
+            }
+
+            public long toPointer(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot) {
+                StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+                long stackPointer = basePointer.get(memory);
+                assert stackPointer != 0;
+                long uniquesRegionAlignedAddress = getAlignedAddress(stackPointer);
+                return uniquesRegionAlignedAddress + address;
+            }
+        }
+
     }
 
     @TruffleBoundary
@@ -140,25 +177,37 @@ public final class LLVMStack {
         return allocateStackMemory(memory, basePointer, size, alignment);
     }
 
-    public static long allocateUniqueStackMemory(VirtualFrame frame, LLVMMemory memory, Object slotKey, FrameSlot stackPointerSlot, int size,
-                    int alignment) {
-        StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
-        return basePointer.getUniqueSlots().computeIfAbsent(slotKey, sk -> allocateStackMemory(memory, basePointer, size, alignment));
-    }
-
     private static long allocateStackMemory(LLVMMemory memory, StackPointer basePointer, final long size, final int alignment) {
-        assert size >= 0;
-        assert alignment != 0 && powerOfTwo(alignment);
-
         long stackPointer = basePointer.get(memory);
         assert stackPointer != 0;
-        final long alignedAllocation = (stackPointer - size) & -alignment;
-        assert alignedAllocation <= stackPointer;
+        long alignedAllocation = getAlignedAllocation(stackPointer, size, alignment);
         basePointer.set(alignedAllocation);
+        return alignedAllocation;
+    }
+
+    private static long getAlignedAllocation(long address, long size, int alignment) {
+        assert size >= 0;
+        assert alignment != 0 && powerOfTwo(alignment);
+        long alignedAllocation = (address - size) & -alignment;
+        assert alignedAllocation <= address;
         return alignedAllocation;
     }
 
     private static boolean powerOfTwo(int value) {
         return (value & -value) == value;
+    }
+
+    // https://www.geeksforgeeks.org/find-significant-set-bit-number/
+    private static int setMSB(int value) {
+        int n = value;
+
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16;
+
+        n = n + 1;
+        return (n >>> 1);
     }
 }

@@ -35,6 +35,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.AllocFactory;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -93,6 +94,7 @@ public final class LLVMSymbolReadResolver {
     private final LLVMContext context;
     private final NodeFactory nodeFactory;
     private final FrameDescriptor frame;
+    private final AllocFactory allocFactory;
 
     private final InternalVisitor visitor = new InternalVisitor();
     private LLVMExpressionNode resolvedNode = null;
@@ -166,7 +168,7 @@ public final class LLVMSymbolReadResolver {
                 if (arraySize == 0) {
                     resolvedNode = null;
                 } else {
-                    final LLVMExpressionNode target = nodeFactory.createUniqueAlloc(context, type);
+                    LLVMExpressionNode target = allocFactory.createAlloc(nodeFactory, context, type);
                     resolvedNode = nodeFactory.createZeroNode(target, arraySize);
                 }
             }
@@ -178,7 +180,7 @@ public final class LLVMSymbolReadResolver {
                     final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
                     resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
                 } else {
-                    final LLVMExpressionNode addressnode = nodeFactory.createUniqueAlloc(context, structureType);
+                    LLVMExpressionNode addressnode = allocFactory.createAlloc(nodeFactory, context, structureType);
                     resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
                 }
             }
@@ -216,7 +218,7 @@ public final class LLVMSymbolReadResolver {
             for (int i = 0; i < array.getElementCount(); i++) {
                 values.add(resolve(array.getElement(i)));
             }
-            resolvedNode = nodeFactory.createArrayLiteral(context, values, array.getType());
+            resolvedNode = nodeFactory.createArrayLiteral(context, values, array.getType(), allocFactory);
         }
 
         @Override
@@ -228,7 +230,7 @@ public final class LLVMSymbolReadResolver {
                 types[i] = constant.getElementType(i);
                 constants[i] = resolve(constant.getElement(i));
             }
-            resolvedNode = nodeFactory.createStructureConstantNode(context, constant.getType(), constant.isPacked(), types, constants);
+            resolvedNode = nodeFactory.createStructureConstantNode(context, constant.getType(), allocFactory, constant.isPacked(), types, constants);
         }
 
         @Override
@@ -367,8 +369,7 @@ public final class LLVMSymbolReadResolver {
             if (constant.isCString()) {
                 values.add(nodeFactory.createLiteral((byte) 0, PrimitiveType.I8));
             }
-
-            resolvedNode = nodeFactory.createArrayLiteral(context, values, constant.getType());
+            resolvedNode = nodeFactory.createArrayLiteral(context, values, constant.getType(), allocFactory);
         }
 
         @Override
@@ -421,11 +422,12 @@ public final class LLVMSymbolReadResolver {
         }
     }
 
-    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame) {
+    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, AllocFactory allocFactory) {
         this.runtime = runtime;
         this.nodeFactory = runtime.getNodeFactory();
         this.context = runtime.getContext();
         this.frame = frame;
+        this.allocFactory = allocFactory;
     }
 
     public static Integer evaluateIntegerConstant(SymbolImpl constant) {

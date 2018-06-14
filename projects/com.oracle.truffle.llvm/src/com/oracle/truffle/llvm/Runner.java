@@ -74,6 +74,7 @@ import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFacto
 import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.LookupNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
+import com.oracle.truffle.llvm.parser.AllocFactory;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -772,7 +773,7 @@ public final class Runner {
 
     private RootCallTarget createGlobalVariableInitializer(LLVMParserResult parserResult) {
         FrameDescriptor rootFrame = StackManager.createRootFrame();
-        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(parserResult.getRuntime(), rootFrame);
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(parserResult.getRuntime(), rootFrame, AllocFactory.createAllocaFactory());
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
         for (GlobalVariable global : parserResult.getDefinedGlobals()) {
             final LLVMStatementNode store = createGlobalInitialization(symbolResolver, global);

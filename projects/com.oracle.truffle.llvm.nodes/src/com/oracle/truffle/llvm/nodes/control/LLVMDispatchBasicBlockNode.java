@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
+import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -55,14 +56,17 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     private final FrameSlot exceptionValueSlot;
     private final LLVMSourceLocation source;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
+    @Child LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
     @Children private final LLVMStatementNode[] copyArgumentsToFrame;
 
-    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation source,
+    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, LLVMUniquesRegionAllocNode uniquesRegionAllocNode, FrameSlot[][] beforeBlockNuller,
+                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation source,
                     LLVMStatementNode[] copyArgumentsToFrame) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
+        this.uniquesRegionAllocNode = uniquesRegionAllocNode;
         this.beforeBlockNuller = beforeBlockNuller;
         this.afterBlockNuller = afterBlockNuller;
         this.source = source;
@@ -80,6 +84,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object executeGeneric(VirtualFrame frame) {
         copyArgumentsToFrame(frame);
+        uniquesRegionAllocNode.execute(frame);
 
         Object returnValue = null;
 
