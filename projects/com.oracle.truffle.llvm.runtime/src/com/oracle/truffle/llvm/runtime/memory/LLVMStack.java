@@ -50,6 +50,7 @@ public final class LLVMStack {
     private boolean isAllocated;
 
     private long stackPointer;
+    private long uniquesRegionPointer;
 
     public LLVMStack(int stackSize) {
         this.stackSize = stackSize;
@@ -62,9 +63,11 @@ public final class LLVMStack {
 
     public final class StackPointer implements AutoCloseable {
         private long basePointer;
+        private long uniquesRegionBasePointer;
 
-        private StackPointer(long basePointer) {
+        private StackPointer(long basePointer, long uniquesRegionBasePointer) {
             this.basePointer = basePointer;
+            this.uniquesRegionBasePointer = uniquesRegionBasePointer;
         }
 
         public long get(LLVMMemory memory) {
@@ -79,15 +82,24 @@ public final class LLVMStack {
             stackPointer = sp;
         }
 
+        public long getUniquesRegionPointer() {
+            return uniquesRegionPointer;
+        }
+
+        public void setUniquesRegionPointer(long urp) {
+            uniquesRegionPointer = urp;
+        }
+
         @Override
         public void close() {
             if (basePointer != 0) {
                 stackPointer = basePointer;
+                uniquesRegionPointer = uniquesRegionBasePointer;
             }
         }
 
         public StackPointer newFrame() {
-            return new StackPointer(stackPointer);
+            return new StackPointer(stackPointer, uniquesRegionPointer);
         }
     }
 
@@ -107,12 +119,13 @@ public final class LLVMStack {
             StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
             long stackPointer = basePointer.get(memory);
             assert stackPointer != 0;
-            long uniquesRegionAlignedAddress = getAlignedAddress(stackPointer);
-            long uniquesRegionSize = stackPointer - uniquesRegionAlignedAddress - currentSlotPointer;
+            long uniquesRegionBasePointer = getAlignedBasePointer(stackPointer);
+            long uniquesRegionSize = stackPointer - uniquesRegionBasePointer - currentSlotPointer;
+            basePointer.setUniquesRegionPointer(uniquesRegionBasePointer);
             allocateStackMemory(memory, basePointer, uniquesRegionSize, NO_ALIGNMENT_REQUIREMENTS);
         }
 
-        long getAlignedAddress(long address) {
+        long getAlignedBasePointer(long address) {
             assert alignment != 0 && powerOfTwo(alignment);
             return address & -alignment;
         }
@@ -124,12 +137,11 @@ public final class LLVMStack {
                 this.address = address;
             }
 
-            public long toPointer(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot) {
+            public long toPointer(VirtualFrame frame, FrameSlot stackPointerSlot) {
                 StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
-                long stackPointer = basePointer.get(memory);
-                assert stackPointer != 0;
-                long uniquesRegionAlignedAddress = getAlignedAddress(stackPointer);
-                return uniquesRegionAlignedAddress + address;
+                long uniquesRegionPointer = basePointer.getUniquesRegionPointer();
+                assert uniquesRegionPointer != 0;
+                return uniquesRegionPointer + address;
             }
         }
 
@@ -153,7 +165,7 @@ public final class LLVMStack {
     }
 
     public StackPointer newFrame() {
-        return new StackPointer(stackPointer);
+        return new StackPointer(stackPointer, uniquesRegionPointer);
     }
 
     @TruffleBoundary
