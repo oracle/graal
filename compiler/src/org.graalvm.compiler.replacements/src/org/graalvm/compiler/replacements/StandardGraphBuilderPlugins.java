@@ -838,7 +838,7 @@ public class StandardGraphBuilderPlugins {
                 b.add(new MembarNode(accessKind.preWriteBarriers));
             }
             LocationIdentity locationIdentity = object.isNullConstant() ? OFF_HEAP_LOCATION : LocationIdentity.any();
-            b.add(new RawStoreNode(object, offset, value, kind, locationIdentity));
+            b.add(new RawStoreNode(object, offset, b.maskSubWordValue(value, kind), kind, locationIdentity));
             if (accessKind.emitBarriers) {
                 b.add(new MembarNode(accessKind.postWriteBarriers));
             }
