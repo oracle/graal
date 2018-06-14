@@ -38,7 +38,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
         return value instanceof LLVMDebuggerValue;
     }
 
-    protected static String[] NO_KEYS = new String[0];
+    protected static final String[] NO_KEYS = new String[0];
 
     protected abstract int getElementCountForDebugger();
 

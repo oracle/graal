@@ -121,6 +121,7 @@ suite = {
         "truffle:TRUFFLE_NFI",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "checkstyleVersion" : "8.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
