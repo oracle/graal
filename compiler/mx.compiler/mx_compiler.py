@@ -1183,6 +1183,10 @@ def updategraalinopenjdk(args):
         'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
     }
 
+    header_cpe_replace = {
+        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
+    }
+
     jdkrepo = args.jdkrepo
 
     for m in graal_modules:
@@ -1274,6 +1278,8 @@ def updategraalinopenjdk(args):
                                     dst = src_file.replace(old_name_as_dir, new_name_as_dir)
                                     dst_file = join(target_dir, os.path.relpath(dst, source_dir))
                                 contents = contents.replace(old_name, new_name)
+                            for old_line, new_line in header_cpe_replace.iteritems():
+                                contents = contents.replace(old_line, new_line)
                         dst_dir = os.path.dirname(dst_file)
                         if not exists(dst_dir):
                             os.makedirs(dst_dir)
