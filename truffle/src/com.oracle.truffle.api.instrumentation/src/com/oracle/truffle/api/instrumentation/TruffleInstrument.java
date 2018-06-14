@@ -408,14 +408,14 @@ public abstract class TruffleInstrument {
                     throw new IllegalStateException("Needs to be inserted into the AST before execution.");
                 }
             }
+        }
 
-            private boolean checkNullOrInterop(Object obj) {
-                if (obj == null) {
-                    return true;
-                }
-                AccessorInstrumentHandler.interopAccess().checkInteropType(obj);
+        private static boolean checkNullOrInterop(Object obj) {
+            if (obj == null) {
                 return true;
             }
+            AccessorInstrumentHandler.interopAccess().checkInteropType(obj);
+            return true;
         }
 
         /**
@@ -510,7 +510,9 @@ public abstract class TruffleInstrument {
         public Object findMetaObject(LanguageInfo language, Object value) {
             AccessorInstrumentHandler.interopAccess().checkInteropType(value);
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
-            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
+            Object metaObject = AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
+            assert checkNullOrInterop(metaObject);
+            return metaObject;
         }
 
         /**

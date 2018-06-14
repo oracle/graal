@@ -32,7 +32,6 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
@@ -282,8 +281,7 @@ public final class MemoryTracer implements Closeable {
                 stackOverflowed = true;
                 return;
             }
-            Node instrumentedNode = stack.getStack()[stack.getStackIndex()].getInstrumentedNode();
-            LanguageInfo languageInfo = instrumentedNode.getRootNode().getLanguageInfo();
+            LanguageInfo languageInfo = event.getLanguage();
             String metaObjectString;
             Object metaObject = env.findMetaObject(languageInfo, event.getValue());
             if (metaObject != null) {
@@ -291,7 +289,7 @@ public final class MemoryTracer implements Closeable {
             } else {
                 metaObjectString = "null";
             }
-            AllocationEventInfo info = new AllocationEventInfo(event.getLanguage(), event.getNewSize() - event.getOldSize(), event.getOldSize() != 0, metaObjectString);
+            AllocationEventInfo info = new AllocationEventInfo(languageInfo, event.getNewSize() - event.getOldSize(), event.getOldSize() != 0, metaObjectString);
             handleEvent(stack, info);
         }
 

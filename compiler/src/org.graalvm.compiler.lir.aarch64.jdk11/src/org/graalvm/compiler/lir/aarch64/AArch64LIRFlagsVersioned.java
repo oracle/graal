@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,13 +24,14 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 import jdk.vm.ci.aarch64.AArch64.Flag;
+import jdk.vm.ci.code.Architecture;
 
 public class AArch64LIRFlagsVersioned {
-    public static boolean useLSE(AArch64MacroAssembler masm) {
-        return masm.supports(CPUFeature.LSE) || masm.isFlagSet(Flag.UseLSE);
+    public static boolean useLSE(Architecture arch) {
+        AArch64 aarch64 = (AArch64) arch;
+        return aarch64.getFeatures().contains(CPUFeature.LSE) || aarch64.getFlags().contains(Flag.UseLSE);
     }
 }

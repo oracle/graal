@@ -12,13 +12,6 @@ suite = {
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
          ]
       },
-      {
-        "name" : "tools",
-        "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
-      },
     ]
   },
 
@@ -1320,7 +1313,6 @@ suite = {
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-        "tools:TRUFFLE_PROFILER",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1467,12 +1459,6 @@ suite = {
       ],
     },
 
-    "GRAAL_OPTIONS_PROCESSOR" : {
-      "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.options.processor"],
-      "overlaps" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"]
-    },
-
     "GRAAL_NODEINFO" : {
       "subDir" : "src",
       "dependencies" : [
@@ -1583,7 +1569,6 @@ suite = {
         "GRAAL",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-        "tools:TRUFFLE_PROFILER",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -1662,27 +1647,38 @@ suite = {
       ],
     },
 
+    "GRAAL_PROCESSOR_COMMON" : {
+      "dependencies" : ["org.graalvm.compiler.processor"],
+    },
+
+    "GRAAL_OPTIONS_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.compiler.options.processor"],
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
+    },
+
     "GRAAL_SERVICEPROVIDER_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.serviceprovider.processor"],
-      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR"]
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
     },
 
     "GRAAL_NODEINFO_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.nodeinfo.processor"],
-      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR"]
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
     },
 
     "GRAAL_REPLACEMENTS_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.replacements.processor"],
-      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.core.match.processor"],
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
     },
 
     "GRAAL" : {

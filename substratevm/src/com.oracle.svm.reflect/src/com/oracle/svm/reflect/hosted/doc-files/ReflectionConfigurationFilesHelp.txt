@@ -3,6 +3,8 @@ The JSON object schema is:
 
     {
       String name; // fully qualified class name
+      boolean allDeclaredConstructors; // include all declared constructors, see Class.getDeclaredConstructors()
+      boolean allPublicConstructors;   // include all public constructors, see Class.getConstructors()
       boolean allDeclaredMethods; // include all declared methods, see Class.getDeclaredMethods()
       boolean allPublicMethods;   // include all public methods, see Class.getMethods()
       boolean allDeclaredFields;  // include all declared fields, see Class.getDeclaredFields()
@@ -21,6 +23,8 @@ Example:
 	[
 	  {
 	    "name" : "java.lang.Class",
+	    "allDeclaredConstructors" : "true",
+	    "allPublicConstructors" : "true",
 	    "allDeclaredMethods" : "true",
 	    "allPublicMethods" : "true"
 	  },

@@ -957,6 +957,8 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-Dorg.graalvm.version={}'.format(version),
             '-Dgraalvm.version={}'.format(version),
         ]
+        if _debug_images():
+            build_args += ['-ea', '-H:-AOTInline']
         if self.svm_support.is_debug_supported():
             build_args += ['-g']
         if self.subject.deps:
@@ -1041,7 +1043,8 @@ Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
 x-GraalVM-Polyglot-Part: {polyglot}
-x-GraalVM-Working-Directories: {workdir}""".format(
+x-GraalVM-Working-Directories: {workdir}
+""".format( # GR-10249: the manifest file must end with a newline
             name=self.component.name,
             id=self.component.dir_name,
             version=_suite.release_version(),
@@ -1279,6 +1282,15 @@ def graalvm_version(args):
     mx.log(_suite.release_version())
 
 
+def graalvm_home(args):
+    """print the GraalVM home dir"""
+    parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
+    args = parser.parse_args(args)
+
+    _graalvm_dist = get_graalvm_distribution()
+    mx.log(join(_graalvm_dist.output, _graalvm_dist.jdk_base))
+
+
 def _env_var_to_bool(name, default='false'):
     val = mx.get_env(name, default).lower()
     if val in ('false', '0', 'no'):
@@ -1291,10 +1303,14 @@ def _env_var_to_bool(name, default='false'):
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
 mx.add_argument('--force-bash-launchers', action='store_true', help='Force the use of bash launchers instead of native images')
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
+
+def _debug_images():
+    return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
 
 def _polyglot_lib_project():
     return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
@@ -1312,4 +1328,5 @@ def _include_sources():
 mx.update_commands(_suite, {
     'graalvm-dist-name': [graalvm_dist_name, ''],
     'graalvm-version': [graalvm_version, ''],
+    'graalvm-home': [graalvm_home, ''],
 })

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -24,13 +26,9 @@ package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
 
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.Executable;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,56 +52,18 @@ import jdk.vm.ci.meta.MetaUtil;
  * Parses JSON describing classes, methods and fields and registers them with a
  * {@link ReflectionRegistry}.
  */
-public final class ReflectionConfigurationParser {
+public final class ReflectionConfigurationParser extends ConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
 
     private final ReflectionRegistry registry;
-    private final ImageClassLoader classLoader;
 
     public ReflectionConfigurationParser(ReflectionRegistry registry, ImageClassLoader classLoader) {
+        super(classLoader);
         this.registry = registry;
-        this.classLoader = classLoader;
     }
 
-    /**
-     * Parses configurations in files specified by {@code configFilesOption} and resources specified
-     * by {@code configResourcesOption} and registers the parsed classes, methods and fields with
-     * the {@link ReflectionRegistry} associated with this object.
-     *
-     * @param featureName name of the feature using the configuration (e.g., "JNI")
-     */
-    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String> configFilesOption, HostedOptionKey<String> configResourcesOption) {
-        String configFiles = configFilesOption.getValue();
-        if (!configFiles.isEmpty()) {
-            for (String path : configFiles.split(",")) {
-                File file = new File(path).getAbsoluteFile();
-                if (!file.exists()) {
-                    throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
-                }
-                try (Reader reader = new FileReader(file)) {
-                    parseAndRegister(reader, featureName, file, configFilesOption);
-                } catch (IOException e) {
-                    throw UserError.abort("Could not open " + file + ": " + e.getMessage());
-                }
-            }
-        }
-        String configResources = configResourcesOption.getValue();
-        if (!configResources.isEmpty()) {
-            for (String resource : configResources.split(",")) {
-                URL url = classLoader.findResourceByName(resource);
-                if (url == null) {
-                    throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
-                }
-                try (Reader reader = new InputStreamReader(url.openStream())) {
-                    parseAndRegister(reader, featureName, url, configResourcesOption);
-                } catch (IOException e) {
-                    throw UserError.abort("Could not open " + url + ": " + e.getMessage());
-                }
-            }
-        }
-    }
-
-    private void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String> option) {
+    @Override
+    protected void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String> option) {
         try {
             JSONParser parser = new JSONParser(reader);
             Object json = parser.parse();
@@ -144,6 +104,14 @@ public final class ReflectionConfigurationParser {
             Object value = entry.getValue();
             if (name.equals("name")) {
                 /* Already handled. */
+            } else if (name.equals("allDeclaredConstructors")) {
+                if (asBoolean(value, "allDeclaredConstructors")) {
+                    registry.register(clazz.getDeclaredConstructors());
+                }
+            } else if (name.equals("allPublicConstructors")) {
+                if (asBoolean(value, "allPublicConstructors")) {
+                    registry.register(clazz.getConstructors());
+                }
             } else if (name.equals("allDeclaredMethods")) {
                 if (asBoolean(value, "allDeclaredMethods")) {
                     registry.register(clazz.getDeclaredMethods());
@@ -166,7 +134,8 @@ public final class ReflectionConfigurationParser {
                 parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
             } else {
                 throw new JSONParserException("Unknown attribute '" + name +
-                                "' (supported attributes: allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " + clazz.getTypeName());
+                                "' (supported attributes: allDeclaredConstructors, allPublicConstructors, allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " +
+                                clazz.getTypeName());
             }
         }
     }
@@ -270,33 +239,4 @@ public final class ReflectionConfigurationParser {
         return result.toArray(new Class<?>[result.size()]);
     }
 
-    @SuppressWarnings("unchecked")
-    private static List<Object> asList(Object data, String errorMessage) {
-        if (data instanceof List) {
-            return (List<Object>) data;
-        }
-        throw new JSONParserException(errorMessage);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> asMap(Object data, String errorMessage) {
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
-        }
-        throw new JSONParserException(errorMessage);
-    }
-
-    private static String asString(Object value, String propertyName) {
-        if (value instanceof String) {
-            return (String) value;
-        }
-        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
-    }
-
-    private static boolean asBoolean(Object value, String propertyName) {
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        }
-        throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
-    }
 }

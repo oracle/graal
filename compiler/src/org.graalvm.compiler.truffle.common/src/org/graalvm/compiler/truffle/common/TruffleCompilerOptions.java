@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -226,7 +228,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Print all polymorphic and generic nodes after each compilation", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceTruffleCompilationPolymorphism = new OptionKey<>(false);
 
-    @Option(help = "Print all polymorphic and generic nodes after each compilation", type = OptionType.Debug)
+    @Option(help = "Print the entire AST after each compilation", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceTruffleCompilationAST = new OptionKey<>(false);
 
     @Option(help = "Print the inlined call tree for each compiled method", type = OptionType.Debug)

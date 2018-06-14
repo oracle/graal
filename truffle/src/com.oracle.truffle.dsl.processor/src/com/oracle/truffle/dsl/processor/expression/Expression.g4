@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
- 
+
  /*
   * The parser and lexer need to be generated using "mx create-dsl-parser".
   */
@@ -51,7 +53,7 @@ logic_factor returns [DSLExpression result]
 :
 f1=comparison_factor                             { $result = $f1.result; }
 (
-    op='||' 
+    op='||'
     f2=comparison_factor                         { $result = new Binary($op.text, $result, $f2.result); }
 )?
 ;
@@ -79,12 +81,12 @@ m=member_expression                              { $result = $m.result; }
 l=NUMERIC_LITERAL                                { $result = new IntLiteral($l.text); }
 |
 '('
-e=logic_factor                                   { $result = $e.result; } 
+e=logic_factor                                   { $result = $e.result; }
 ')'
 ;
 
 member_expression returns [DSLExpression result] :
-id1=IDENTIFIER                                   { $result = new Variable(null, $id1.text); } 
+id1=IDENTIFIER                                   { $result = new Variable(null, $id1.text); }
 (
     '('                                          { List<DSLExpression> parameters = new ArrayList<>(); }
     (

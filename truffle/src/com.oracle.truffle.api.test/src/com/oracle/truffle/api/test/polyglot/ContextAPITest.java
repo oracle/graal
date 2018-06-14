@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -40,17 +42,26 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
@@ -458,6 +469,67 @@ public class ContextAPITest {
         } catch (Exception e) {
             assertTrue(e.getClass().getName(), exceptionType.isInstance(e));
         }
+    }
+
+    @Test
+    public void testTransferControlToOtherThreadWhileEntered() {
+        Context context = Context.create();
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        try {
+                            TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), o);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+            }
+        });
+
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        AtomicInteger depth = new AtomicInteger(0);
+        context.getPolyglotBindings().putMember("test", new Runnable() {
+            public void run() {
+                depth.incrementAndGet();
+                context.leave();
+                try {
+                    AtomicReference<Throwable> innerThrow = new AtomicReference<>();
+                    Thread thread = new Thread(() -> {
+                        try {
+                            context.enter();
+                            if (depth.get() < 3) {
+                                context.eval(ProxyLanguage.ID, "");
+                            }
+                            context.leave();
+                        } catch (Throwable t) {
+                            innerThrow.set(t);
+                            throw t;
+                        }
+                    });
+                    thread.start();
+                    try {
+                        thread.join();
+                    } catch (InterruptedException e) {
+                    }
+                    if (innerThrow.get() != null) {
+                        throw new RuntimeException(innerThrow.get());
+                    }
+                } finally {
+                    context.enter();
+                }
+            }
+        });
+        context.eval(ProxyLanguage.ID, "");
+        context.leave();
+        context.close();
+        assertEquals(3, depth.get());
     }
 
 }

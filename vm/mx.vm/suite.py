@@ -1,6 +1,6 @@
 suite = {
     "name": "vm",
-    "version": "1.0.0-rc2-dev",
+    "version": "1.0.0-rc3-dev",
     "mxversion": "5.164.0",
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
@@ -12,12 +12,19 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
+            {
+                "name" : "compiler",
+                "subdir": True,
+                "urls" : [
+                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+                ]
+            },
             # Dynamic imports for components:
             {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "8dbbcfac7a77a909354f5a90c138ab521d32cb95",
+                "version": "58692da68706b64f85744ab70fdb4520069836e1",
                 "urls" : [
                     {"url" : "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -27,7 +34,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "8dbbcfac7a77a909354f5a90c138ab521d32cb95",
+                "version": "58692da68706b64f85744ab70fdb4520069836e1",
                 "urls": [
                     {"url": "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -35,7 +42,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "5d619db76f710a509250e0334611c6699594352b",
+                "version": "0c60fae09de738cdaabff0393e27f5225034b468",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -59,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "bc21e6738013a9c47374af9955c2d8415856d62c",
+                "version": "9316f50732af45c54dbbe515fc9ef997dc672e1b",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -68,7 +75,7 @@ suite = {
             },
             {
                 "name": "sulong",
-                "version": "976246131e6146025b213f0c8d7eaf0a21aa09bc",
+                "version": "cb47708b29c7f33dbf822cb6a5e75c07af877817",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/sulong.git", "kind": "git"},
@@ -87,11 +94,18 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "9928c544319864aadbd1afc8adf5ea011d31e188",
+                "version": "1db361b924ba5ef094b957e7f582248b3961e370",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/graalpython.git", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name" : "tools",
+                "subdir": True,
+                "urls" : [
+                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
         ]
@@ -126,6 +140,19 @@ suite = {
             ],
             "javaCompliance" : "1.8",
             "checkstyle": "com.oracle.graalvm.locator",
+            "license" : "GPLv2-CPE",
+        },
+        "org.graalvm.truffle.tools.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies": [
+                "mx:JUNIT",
+                "tools:TRUFFLE_PROFILER",
+                "compiler:GRAAL_TEST"
+            ],
+            "checkstyle" : "org.graalvm.compiler.graph",
+            "javaCompliance" : "1.8",
+            "workingSets" : "Graal,Truffle,Tools,Test",
             "license" : "GPLv2-CPE",
         },
     },

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -55,14 +57,14 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
-    public void register(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
         if (!config.usePopCountInstruction) {
             if (name.equals("bitCount")) {
                 assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
                 return;
             }
         }
-        super.register(plugin, declaringClass, name, argumentTypes);
+        super.register(plugin, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
     }
 
     @Override

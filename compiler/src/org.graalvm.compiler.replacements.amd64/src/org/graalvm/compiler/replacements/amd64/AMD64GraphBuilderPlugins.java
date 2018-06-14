@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -220,16 +222,14 @@ public class AMD64GraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
-        Registration r;
-        JavaKind[] unsafeJavaKinds;
-        if (Java8OrEarlier) {
-            r = new Registration(plugins, Unsafe.class);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
+        registerUnsafePlugins(new Registration(plugins, Unsafe.class), new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+        if (!Java8OrEarlier) {
+            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider),
+                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object});
         }
+    }
 
+    private static void registerUnsafePlugins(Registration r, JavaKind[] unsafeJavaKinds) {
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
 
@@ -260,8 +260,8 @@ public class AMD64GraphBuilderPlugins {
 
         for (JavaKind kind : new JavaKind[]{JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long}) {
             Class<?> javaClass = kind.toJavaClass();
-            r.registerOptional3("get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, false));
-            r.registerOptional4("put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, false));
+            r.registerOptional3("get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind));
+            r.registerOptional4("put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind));
         }
     }
 

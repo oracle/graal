@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -212,6 +214,34 @@ final class Target_jdk_internal_ref_Cleaner {
 
     @Alias
     native void clean();
+}
+
+@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_CleanerImpl {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
+    Target_jdk_internal_ref_PhantomCleanable phantomCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$WeakCleanableRef")//
+    Target_jdk_internal_ref_WeakCleanable weakCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$SoftCleanableRef")//
+    Target_jdk_internal_ref_SoftCleanable softCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.ReferenceQueue")//
+    ReferenceQueue<Object> queue;
+}
+
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_PhantomCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_WeakCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_SoftCleanable {
 }
 
 /** PerfCounter methods that access the lb field fail with SIGSEV. */

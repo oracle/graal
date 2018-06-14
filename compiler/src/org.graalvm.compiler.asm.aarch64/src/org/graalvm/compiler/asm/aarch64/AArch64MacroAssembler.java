@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -635,6 +637,26 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             super.add(size, dst, dst, immediate & ((1 << 12) - 1));
         } else {
             assert !dst.equals(src);
+            mov(dst, immediate);
+            add(size, src, dst, dst);
+        }
+    }
+
+    /**
+     * dst = src + immediate.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
+     * @param immediate 64-bit signed int
+     */
+    public void add(int size, Register dst, Register src, long immediate) {
+        if (NumUtil.isInt(immediate)) {
+            add(size, dst, src, (int) immediate);
+        } else {
+            assert (!dst.equals(zr) && !src.equals(zr));
+            assert !dst.equals(src);
+            assert size == 64;
             mov(dst, immediate);
             add(size, src, dst, dst);
         }

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,20 +24,21 @@
  */
 package org.graalvm.compiler.replacements.jdk9;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
+
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeReplacementsTest extends MethodSubstitutionTest {
-
-    // See GR-9819.
-    @SuppressWarnings("unused") ResolvedJavaMethod method = null;
 
     static class Container {
         public volatile boolean booleanField;
@@ -243,6 +246,8 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
             testGraph("unsafeGetAndAddShort");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddInt");
             testGraph("unsafeGetAndAddLong");
         }
@@ -298,6 +303,8 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeGetAndSetByte");
             testGraph("unsafeGetAndSetChar");
             testGraph("unsafeGetAndSetShort");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
             testGraph("unsafeGetAndSetObject");
@@ -309,5 +316,509 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetAndSetInt");
         test("unsafeGetAndSetLong");
         test("unsafeGetAndSetObject");
+    }
+
+    public static void fieldInstance() {
+        JdkInternalMiscUnsafeAccessTestBoolean.testFieldInstance();
+    }
+
+    @Test
+    public void testFieldInstance() {
+        test(new OptionValues(getInitialOptions(), HighTier.Options.Inline, false), "fieldInstance");
+    }
+
+    public static void array() {
+        JdkInternalMiscUnsafeAccessTestBoolean.testArray();
+    }
+
+    @Test
+    public void testArray() {
+        test(new OptionValues(getInitialOptions(), HighTier.Options.Inline, false), "array");
+    }
+
+    public static void fieldStatic() {
+        JdkInternalMiscUnsafeAccessTestBoolean.testFieldStatic();
+    }
+
+    @Test
+    public void testFieldStatic() {
+        test(new OptionValues(getInitialOptions(), HighTier.Options.Inline, false), "fieldStatic");
+    }
+
+    public static void assertEquals(Object seen, Object expected, String message) {
+        if (seen != expected) {
+            throw new AssertionError(message + " - seen: " + seen + ", expected: " + expected);
+        }
+    }
+
+    public static class JdkInternalMiscUnsafeAccessTestBoolean {
+        static final int ITERATIONS = 100000;
+
+        static final int WEAK_ATTEMPTS = 10;
+
+        static final long V_OFFSET;
+
+        static final Object STATIC_V_BASE;
+
+        static final long STATIC_V_OFFSET;
+
+        static final int ARRAY_OFFSET;
+
+        static final int ARRAY_SHIFT;
+
+        static {
+            try {
+                Field staticVField = UnsafeReplacementsTest.JdkInternalMiscUnsafeAccessTestBoolean.class.getDeclaredField("staticV");
+                STATIC_V_BASE = unsafe.staticFieldBase(staticVField);
+                STATIC_V_OFFSET = unsafe.staticFieldOffset(staticVField);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                Field vField = UnsafeReplacementsTest.JdkInternalMiscUnsafeAccessTestBoolean.class.getDeclaredField("v");
+                V_OFFSET = unsafe.objectFieldOffset(vField);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            ARRAY_OFFSET = unsafe.arrayBaseOffset(boolean[].class);
+            int ascale = unsafe.arrayIndexScale(boolean[].class);
+            ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(ascale);
+        }
+
+        static boolean staticV;
+
+        boolean v;
+
+        @BytecodeParserForceInline
+        public static void testFieldInstance() {
+            JdkInternalMiscUnsafeAccessTestBoolean t = new JdkInternalMiscUnsafeAccessTestBoolean();
+            for (int c = 0; c < ITERATIONS; c++) {
+                testAccess(t, V_OFFSET);
+            }
+        }
+
+        public static void testFieldStatic() {
+            for (int c = 0; c < ITERATIONS; c++) {
+                testAccess(STATIC_V_BASE, STATIC_V_OFFSET);
+            }
+        }
+
+        public static void testArray() {
+            boolean[] array = new boolean[10];
+            for (int c = 0; c < ITERATIONS; c++) {
+                for (int i = 0; i < array.length; i++) {
+                    testAccess(array, (((long) i) << ARRAY_SHIFT) + ARRAY_OFFSET);
+                }
+            }
+        }
+
+        // Checkstyle: stop
+        @BytecodeParserForceInline
+        public static void testAccess(Object base, long offset) {
+            // Advanced compare
+            {
+                boolean r = unsafe.compareAndExchangeBoolean(base, offset, false, true);
+                assertEquals(r, false, "success compareAndExchange boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "success compareAndExchange boolean value");
+            }
+
+            {
+                boolean r = unsafe.compareAndExchangeBoolean(base, offset, false, false);
+                assertEquals(r, true, "failing compareAndExchange boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "failing compareAndExchange boolean value");
+            }
+
+            {
+                boolean r = unsafe.compareAndExchangeBooleanAcquire(base, offset, true, false);
+                assertEquals(r, true, "success compareAndExchangeAcquire boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, false, "success compareAndExchangeAcquire boolean value");
+            }
+
+            {
+                boolean r = unsafe.compareAndExchangeBooleanAcquire(base, offset, true, false);
+                assertEquals(r, false, "failing compareAndExchangeAcquire boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, false, "failing compareAndExchangeAcquire boolean value");
+            }
+
+            {
+                boolean r = unsafe.compareAndExchangeBooleanRelease(base, offset, false, true);
+                assertEquals(r, false, "success compareAndExchangeRelease boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "success compareAndExchangeRelease boolean value");
+            }
+
+            {
+                boolean r = unsafe.compareAndExchangeBooleanRelease(base, offset, false, false);
+                assertEquals(r, true, "failing compareAndExchangeRelease boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "failing compareAndExchangeRelease boolean value");
+            }
+
+            {
+                boolean success = false;
+                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+                    success = unsafe.weakCompareAndSetBooleanPlain(base, offset, true, false);
+                }
+                assertEquals(success, true, "weakCompareAndSetPlain boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, false, "weakCompareAndSetPlain boolean value");
+            }
+
+            {
+                boolean success = false;
+                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+                    success = unsafe.weakCompareAndSetBooleanAcquire(base, offset, false, true);
+                }
+                assertEquals(success, true, "weakCompareAndSetAcquire boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "weakCompareAndSetAcquire boolean");
+            }
+
+            {
+                boolean success = false;
+                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+                    success = unsafe.weakCompareAndSetBooleanRelease(base, offset, true, false);
+                }
+                assertEquals(success, true, "weakCompareAndSetRelease boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, false, "weakCompareAndSetRelease boolean");
+            }
+
+            {
+                boolean success = false;
+                for (int c = 0; c < WEAK_ATTEMPTS && !success; c++) {
+                    success = unsafe.weakCompareAndSetBoolean(base, offset, false, true);
+                }
+                assertEquals(success, true, "weakCompareAndSet boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "weakCompareAndSet boolean");
+            }
+
+            unsafe.putBoolean(base, offset, false);
+
+            // Compare set and get
+            {
+                boolean o = unsafe.getAndSetBoolean(base, offset, true);
+                assertEquals(o, false, "getAndSet boolean");
+                boolean x = unsafe.getBoolean(base, offset);
+                assertEquals(x, true, "getAndSet boolean value");
+            }
+
+        }
+        // Checkstyle: resume
+    }
+
+    public static boolean unsafeGetPutBoolean() {
+        Container container = new Container();
+        unsafe.putBoolean(container, booleanOffset, true);
+        return unsafe.getBoolean(container, booleanOffset);
+    }
+
+    public static byte unsafeGetPutByte() {
+        Container container = new Container();
+        unsafe.putByte(container, byteOffset, (byte) 0x12);
+        return unsafe.getByte(container, byteOffset);
+    }
+
+    public static short unsafeGetPutShort() {
+        Container container = new Container();
+        unsafe.putShort(container, shortOffset, (short) 0x1234);
+        return unsafe.getShort(container, shortOffset);
+    }
+
+    public static char unsafeGetPutChar() {
+        Container container = new Container();
+        unsafe.putChar(container, charOffset, 'x');
+        return unsafe.getChar(container, charOffset);
+    }
+
+    public static int unsafeGetPutInt() {
+        Container container = new Container();
+        unsafe.putInt(container, intOffset, 0x01234567);
+        return unsafe.getInt(container, intOffset);
+    }
+
+    public static long unsafeGetPutLong() {
+        Container container = new Container();
+        unsafe.putLong(container, longOffset, 0x01234567890ABCDEFL);
+        return unsafe.getLong(container, longOffset);
+    }
+
+    public static float unsafeGetPutFloat() {
+        Container container = new Container();
+        unsafe.putFloat(container, floatOffset, 1.234F);
+        return unsafe.getFloat(container, floatOffset);
+    }
+
+    public static double unsafeGetPutDouble() {
+        Container container = new Container();
+        unsafe.putDouble(container, doubleOffset, 1.23456789);
+        return unsafe.getDouble(container, doubleOffset);
+    }
+
+    public static Object unsafeGetPutObject() {
+        Container container = new Container();
+        unsafe.putObject(container, objectOffset, "Hello there");
+        return unsafe.getObject(container, objectOffset);
+    }
+
+    public static boolean unsafeGetPutBooleanOpaque() {
+        Container container = new Container();
+        unsafe.putBooleanOpaque(container, booleanOffset, true);
+        return unsafe.getBooleanOpaque(container, booleanOffset);
+    }
+
+    public static byte unsafeGetPutByteOpaque() {
+        Container container = new Container();
+        unsafe.putByteOpaque(container, byteOffset, (byte) 0x12);
+        return unsafe.getByteOpaque(container, byteOffset);
+    }
+
+    public static short unsafeGetPutShortOpaque() {
+        Container container = new Container();
+        unsafe.putShortOpaque(container, shortOffset, (short) 0x1234);
+        return unsafe.getShortOpaque(container, shortOffset);
+    }
+
+    public static char unsafeGetPutCharOpaque() {
+        Container container = new Container();
+        unsafe.putCharOpaque(container, charOffset, 'x');
+        return unsafe.getCharOpaque(container, charOffset);
+    }
+
+    public static int unsafeGetPutIntOpaque() {
+        Container container = new Container();
+        unsafe.putIntOpaque(container, intOffset, 0x01234567);
+        return unsafe.getIntOpaque(container, intOffset);
+    }
+
+    public static long unsafeGetPutLongOpaque() {
+        Container container = new Container();
+        unsafe.putLongOpaque(container, longOffset, 0x01234567890ABCDEFL);
+        return unsafe.getLongOpaque(container, longOffset);
+    }
+
+    public static float unsafeGetPutFloatOpaque() {
+        Container container = new Container();
+        unsafe.putFloatOpaque(container, floatOffset, 1.234F);
+        return unsafe.getFloatOpaque(container, floatOffset);
+    }
+
+    public static double unsafeGetPutDoubleOpaque() {
+        Container container = new Container();
+        unsafe.putDoubleOpaque(container, doubleOffset, 1.23456789);
+        return unsafe.getDoubleOpaque(container, doubleOffset);
+    }
+
+    public static Object unsafeGetPutObjectOpaque() {
+        Container container = new Container();
+        unsafe.putObjectOpaque(container, objectOffset, "Hello there");
+        return unsafe.getObjectOpaque(container, objectOffset);
+    }
+
+    public static boolean unsafeGetPutBooleanRA() {
+        Container container = new Container();
+        unsafe.putBooleanRelease(container, booleanOffset, true);
+        return unsafe.getBooleanAcquire(container, booleanOffset);
+    }
+
+    public static byte unsafeGetPutByteRA() {
+        Container container = new Container();
+        unsafe.putByteRelease(container, byteOffset, (byte) 0x12);
+        return unsafe.getByteAcquire(container, byteOffset);
+    }
+
+    public static short unsafeGetPutShortRA() {
+        Container container = new Container();
+        unsafe.putShortRelease(container, shortOffset, (short) 0x1234);
+        return unsafe.getShortAcquire(container, shortOffset);
+    }
+
+    public static char unsafeGetPutCharRA() {
+        Container container = new Container();
+        unsafe.putCharRelease(container, charOffset, 'x');
+        return unsafe.getCharAcquire(container, charOffset);
+    }
+
+    public static int unsafeGetPutIntRA() {
+        Container container = new Container();
+        unsafe.putIntRelease(container, intOffset, 0x01234567);
+        return unsafe.getIntAcquire(container, intOffset);
+    }
+
+    public static long unsafeGetPutLongRA() {
+        Container container = new Container();
+        unsafe.putLongRelease(container, longOffset, 0x01234567890ABCDEFL);
+        return unsafe.getLongAcquire(container, longOffset);
+    }
+
+    public static float unsafeGetPutFloatRA() {
+        Container container = new Container();
+        unsafe.putFloatRelease(container, floatOffset, 1.234F);
+        return unsafe.getFloatAcquire(container, floatOffset);
+    }
+
+    public static double unsafeGetPutDoubleRA() {
+        Container container = new Container();
+        unsafe.putDoubleRelease(container, doubleOffset, 1.23456789);
+        return unsafe.getDoubleAcquire(container, doubleOffset);
+    }
+
+    public static Object unsafeGetPutObjectRA() {
+        Container container = new Container();
+        unsafe.putObjectRelease(container, objectOffset, "Hello there");
+        return unsafe.getObjectAcquire(container, objectOffset);
+    }
+
+    public static boolean unsafeGetPutBooleanVolatile() {
+        Container container = new Container();
+        unsafe.putBooleanVolatile(container, booleanOffset, true);
+        return unsafe.getBooleanVolatile(container, booleanOffset);
+    }
+
+    public static byte unsafeGetPutByteVolatile() {
+        Container container = new Container();
+        unsafe.putByteVolatile(container, byteOffset, (byte) 0x12);
+        return unsafe.getByteVolatile(container, byteOffset);
+    }
+
+    public static short unsafeGetPutShortVolatile() {
+        Container container = new Container();
+        unsafe.putShortVolatile(container, shortOffset, (short) 0x1234);
+        return unsafe.getShortVolatile(container, shortOffset);
+    }
+
+    public static char unsafeGetPutCharVolatile() {
+        Container container = new Container();
+        unsafe.putCharVolatile(container, charOffset, 'x');
+        return unsafe.getCharVolatile(container, charOffset);
+    }
+
+    public static int unsafeGetPutIntVolatile() {
+        Container container = new Container();
+        unsafe.putIntVolatile(container, intOffset, 0x01234567);
+        return unsafe.getIntVolatile(container, intOffset);
+    }
+
+    public static long unsafeGetPutLongVolatile() {
+        Container container = new Container();
+        unsafe.putLongVolatile(container, longOffset, 0x01234567890ABCDEFL);
+        return unsafe.getLongVolatile(container, longOffset);
+    }
+
+    public static float unsafeGetPutFloatVolatile() {
+        Container container = new Container();
+        unsafe.putFloatVolatile(container, floatOffset, 1.234F);
+        return unsafe.getFloatVolatile(container, floatOffset);
+    }
+
+    public static double unsafeGetPutDoubleVolatile() {
+        Container container = new Container();
+        unsafe.putDoubleVolatile(container, doubleOffset, 1.23456789);
+        return unsafe.getDoubleVolatile(container, doubleOffset);
+    }
+
+    public static Object unsafeGetPutObjectVolatile() {
+        Container container = new Container();
+        unsafe.putObjectVolatile(container, objectOffset, "Hello there");
+        return unsafe.getObjectVolatile(container, objectOffset);
+    }
+
+    @Test
+    public void testUnsafeGetPutPlain() {
+        testGraph("unsafeGetPutBoolean");
+        testGraph("unsafeGetPutByte");
+        testGraph("unsafeGetPutShort");
+        testGraph("unsafeGetPutChar");
+        testGraph("unsafeGetPutInt");
+        testGraph("unsafeGetPutLong");
+        testGraph("unsafeGetPutFloat");
+        testGraph("unsafeGetPutDouble");
+        testGraph("unsafeGetPutObject");
+
+        test("unsafeGetPutBoolean");
+        test("unsafeGetPutByte");
+        test("unsafeGetPutShort");
+        test("unsafeGetPutChar");
+        test("unsafeGetPutInt");
+        test("unsafeGetPutLong");
+        test("unsafeGetPutFloat");
+        test("unsafeGetPutDouble");
+        test("unsafeGetPutObject");
+    }
+
+    @Test
+    public void testUnsafeGetPutOpaque() {
+        testGraph("unsafeGetPutBooleanOpaque");
+        testGraph("unsafeGetPutByteOpaque");
+        testGraph("unsafeGetPutShortOpaque");
+        testGraph("unsafeGetPutCharOpaque");
+        testGraph("unsafeGetPutIntOpaque");
+        testGraph("unsafeGetPutLongOpaque");
+        testGraph("unsafeGetPutFloatOpaque");
+        testGraph("unsafeGetPutDoubleOpaque");
+        testGraph("unsafeGetPutObjectOpaque");
+
+        test("unsafeGetPutBooleanOpaque");
+        test("unsafeGetPutByteOpaque");
+        test("unsafeGetPutShortOpaque");
+        test("unsafeGetPutCharOpaque");
+        test("unsafeGetPutIntOpaque");
+        test("unsafeGetPutLongOpaque");
+        test("unsafeGetPutFloatOpaque");
+        test("unsafeGetPutDoubleOpaque");
+        test("unsafeGetPutObjectOpaque");
+    }
+
+    @Test
+    public void testUnsafeGetPutReleaseAcquire() {
+        testGraph("unsafeGetPutBooleanRA");
+        testGraph("unsafeGetPutByteRA");
+        testGraph("unsafeGetPutShortRA");
+        testGraph("unsafeGetPutCharRA");
+        testGraph("unsafeGetPutIntRA");
+        testGraph("unsafeGetPutLongRA");
+        testGraph("unsafeGetPutFloatRA");
+        testGraph("unsafeGetPutDoubleRA");
+        testGraph("unsafeGetPutObjectRA");
+
+        test("unsafeGetPutBooleanRA");
+        test("unsafeGetPutByteRA");
+        test("unsafeGetPutShortRA");
+        test("unsafeGetPutCharRA");
+        test("unsafeGetPutIntRA");
+        test("unsafeGetPutLongRA");
+        test("unsafeGetPutFloatRA");
+        test("unsafeGetPutDoubleRA");
+        test("unsafeGetPutObjectRA");
+    }
+
+    @Test
+    public void testUnsafeGetPutVolatile() {
+        testGraph("unsafeGetPutBooleanVolatile");
+        testGraph("unsafeGetPutByteVolatile");
+        testGraph("unsafeGetPutShortVolatile");
+        testGraph("unsafeGetPutCharVolatile");
+        testGraph("unsafeGetPutIntVolatile");
+        testGraph("unsafeGetPutLongVolatile");
+        testGraph("unsafeGetPutFloatVolatile");
+        testGraph("unsafeGetPutDoubleVolatile");
+        testGraph("unsafeGetPutObjectVolatile");
+
+        test("unsafeGetPutBooleanVolatile");
+        test("unsafeGetPutByteVolatile");
+        test("unsafeGetPutShortVolatile");
+        test("unsafeGetPutCharVolatile");
+        test("unsafeGetPutIntVolatile");
+        test("unsafeGetPutLongVolatile");
+        test("unsafeGetPutFloatVolatile");
+        test("unsafeGetPutDoubleVolatile");
+        test("unsafeGetPutObjectVolatile");
     }
 }

@@ -1319,6 +1319,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
+    jar_distributions=[  # Dev jars (annotation processors)
+        'compiler:GRAAL_PROCESSOR_COMMON',
+        'compiler:GRAAL_OPTIONS_PROCESSOR',
+        'compiler:GRAAL_SERVICEPROVIDER_PROCESSOR',
+        'compiler:GRAAL_NODEINFO_PROCESSOR',
+        'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
+        'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
+    ],
     jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))

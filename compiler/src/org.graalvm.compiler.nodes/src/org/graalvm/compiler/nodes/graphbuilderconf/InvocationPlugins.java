@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -948,11 +950,11 @@ public class InvocationPlugins {
      *            non-static. Upon returning, element 0 will have been rewritten to
      *            {@code declaringClass}
      */
-    public void register(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
+    public final void register(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
         register(plugin, false, false, declaringClass, name, argumentTypes);
     }
 
-    public void register(InvocationPlugin plugin, String declaringClass, String name, Type... argumentTypes) {
+    public final void register(InvocationPlugin plugin, String declaringClass, String name, Type... argumentTypes) {
         register(plugin, false, false, new OptionalLazySymbol(declaringClass), name, argumentTypes);
     }
 
@@ -965,7 +967,7 @@ public class InvocationPlugins {
      *            non-static. Upon returning, element 0 will have been rewritten to
      *            {@code declaringClass}
      */
-    public void registerOptional(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
+    public final void registerOptional(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
         register(plugin, true, false, declaringClass, name, argumentTypes);
     }
 

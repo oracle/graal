@@ -134,6 +134,7 @@ final class TestUtil {
         if (exception == null) {
             verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), result));
             verifyToString(testRun, result);
+            verifyMetaObject(testRun, result, 10);
             verifyInterop(result);
         } else {
             verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), exception));
@@ -240,6 +241,23 @@ final class TestUtil {
             throw new AssertionError(
                             String.format("The result's toString of : %s failed.", testRun),
                             e);
+        }
+    }
+
+    private static void verifyMetaObject(final TestRun testRun, final Value result, int maxMetaCalls) {
+        Value metaObject;
+        try {
+            metaObject = result.getMetaObject();
+        } catch (Exception e) {
+            throw new AssertionError(
+                            String.format("The result's meta object of : %s failed.", testRun),
+                            e);
+        }
+        if (metaObject != null) {
+            verifyToString(testRun, metaObject);
+            if (maxMetaCalls > 0) {
+                verifyMetaObject(testRun, metaObject, maxMetaCalls - 1);
+            }
         }
     }
 

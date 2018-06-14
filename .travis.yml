@@ -14,19 +14,19 @@ sudo: required
 dist: trusty
 
 jdk:
-    - oraclejdk9
+    - oraclejdk10
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.43"
-    - JVMCI_BASE_JDK8="openjdk-8u171"
+    - JVMCI_VERSION="jvmci-0.44"
+    - JDK8_UPDATE_VERSION="172"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk9" GATE="style,fullbuild"
-    - JDK="jdk9" GATE="build,test"
-    - JDK="jdk9" GATE="build,bootstraplite"
+    - JDK="jdk10" GATE="style,fullbuild"
+    - JDK="jdk10" GATE="build,test"
+    - JDK="jdk10" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -48,20 +48,26 @@ install:
   - |
       if [[ ${GATE} == *fullbuild* ]]
       then
-        # JDT is not supported on JDK9
-        if [ "${JDK}" != "jdk9" ]
+        # Only test JDT on JDK8
+        if [ "${JDK}" == "jdk8" ]
         then
           export JDT=${MX_PATH}/ecj.jar
           wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
         fi
       fi
   - |
+      JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
+      wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+      tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
+      export JAVA8_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       if [ "${JDK}" == "jdk8" ]
       then
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/${JVMCI_BASE_JDK8}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../${JVMCI_BASE_JDK8}-${JVMCI_VERSION}
+        export EXTRA_JAVA_HOMES=${JAVA_HOME} # JAVA_HOME is pointing to JDK10, which should be in EXTRA_JAVA_HOMES
+        export JAVA_HOME=${JAVA8_HOME} # JAVA_HOME should point to JDK8
+      fi
+      if [ "${JDK}" == "jdk10" ]
+      then
+        export EXTRA_JAVA_HOMES=${JAVA8_HOME} # JDK8 must be placed in EXTRA_JAVA_HOME
       fi
 
 script:
