@@ -1,8 +1,10 @@
-package de.hpi.swa.trufflelsp.server;
+package de.hpi.swa.trufflelsp.filesystem;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
@@ -15,7 +17,6 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.io.FileSystem;
 
@@ -24,31 +25,16 @@ public class LSPFileSystem implements FileSystem {
     private final FileSystemProvider delegate;
     private final boolean explicitUserDir;
     private final Path userDir;
+    private final VirtualLSPFileProvider fileProvider;
 
     static final String FILE_SCHEME = "file";
-    private static final AtomicReference<FileSystem> DEFAULT_FILE_SYSTEM = new AtomicReference<>();
 
-    static FileSystem getDefaultFileSystem() {
-        FileSystem fs = DEFAULT_FILE_SYSTEM.get();
-        if (fs == null) {
-            fs = newFileSystem(findDefaultFileSystemProvider());
-            if (!DEFAULT_FILE_SYSTEM.compareAndSet(null, fs)) {
-                fs = DEFAULT_FILE_SYSTEM.get();
-            }
-        }
-        return fs;
+    public static FileSystem newFullIOFileSystem(Path userDir, VirtualLSPFileProvider fileProvider) {
+        return newFileSystem(findDefaultFileSystemProvider(), userDir, fileProvider);
     }
 
-    public static FileSystem newFullIOFileSystem(Path userDir) {
-        return newFileSystem(findDefaultFileSystemProvider(), userDir);
-    }
-
-    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
-        return new LSPFileSystem(fileSystemProvider);
-    }
-
-    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir) {
-        return new LSPFileSystem(fileSystemProvider, userDir);
+    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLSPFileProvider fileProvider) {
+        return new LSPFileSystem(fileSystemProvider, userDir, fileProvider);
     }
 
     private static FileSystemProvider findDefaultFileSystemProvider() {
@@ -69,19 +55,16 @@ public class LSPFileSystem implements FileSystem {
         return true;
     }
 
-    LSPFileSystem(final FileSystemProvider fileSystemProvider) {
-        this(fileSystemProvider, false, null);
+    LSPFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLSPFileProvider fileProvider) {
+        this(fileSystemProvider, true, userDir, fileProvider);
     }
 
-    LSPFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir) {
-        this(fileSystemProvider, true, userDir);
-    }
-
-    private LSPFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir) {
+    private LSPFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir, VirtualLSPFileProvider fileProvider) {
         Objects.requireNonNull(fileSystemProvider, "FileSystemProvider must be non null.");
         this.delegate = fileSystemProvider;
         this.explicitUserDir = explicitUserDir;
         this.userDir = userDir;
+        this.fileProvider = fileProvider;
     }
 
     @Override
@@ -91,14 +74,19 @@ public class LSPFileSystem implements FileSystem {
 
     @Override
     public Path parsePath(String path) {
-        if (!"file".equals(delegate.getScheme())) {
+        if (!FILE_SCHEME.equals(delegate.getScheme())) {
             throw new IllegalStateException("The ParsePath(String path) should be called only for file scheme.");
         }
+
         return Paths.get(path);
     }
 
     @Override
     public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+// if (fileProvider.isVirtualFile(path)) {
+// return;
+// }
+
         if (isFollowLinks(linkOptions)) {
             delegate.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[modes.size()]));
         } else if (modes.isEmpty()) {
@@ -131,7 +119,53 @@ public class LSPFileSystem implements FileSystem {
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
         final Path resolved = resolveRelative(path);
-        // TODO(ds) return in memory stuff
+
+        final String text = this.fileProvider.getSourceText(resolved);
+        if (text != null) {
+            final byte[] bytes = text.getBytes();
+            return new SeekableByteChannel() {
+                int position = 0;
+
+                public boolean isOpen() {
+                    return true;
+                }
+
+                public void close() throws IOException {
+                }
+
+                public int write(ByteBuffer src) throws IOException {
+                    throw new AccessDeniedException(resolved.toString(), null, "Is in memory truffle read-only file");
+                }
+
+                public SeekableByteChannel truncate(long size) throws IOException {
+                    throw new AccessDeniedException(resolved.toString(), null, "Is in memory truffle read-only file");
+                }
+
+                public long size() throws IOException {
+                    return bytes.length;
+                }
+
+                public int read(ByteBuffer dst) throws IOException {
+                    int len = Math.min(dst.remaining(), bytes.length - position);
+                    dst.put(bytes, position, len);
+                    position += len;
+                    return len;
+                }
+
+                public SeekableByteChannel position(long newPosition) throws IOException {
+                    if (newPosition > Integer.MAX_VALUE) {
+                        throw new IllegalArgumentException("> Integer.MAX_VALUE");
+                    }
+                    position = (int) newPosition;
+                    return this;
+                }
+
+                public long position() throws IOException {
+                    return position;
+                }
+            };
+        }
+
         try {
             return delegate.newFileChannel(resolved, options, attrs);
         } catch (UnsupportedOperationException uoe) {

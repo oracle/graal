@@ -8,7 +8,7 @@ import java.net.ServerSocket;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -24,7 +24,8 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import de.hpi.swa.trufflelsp.LanguageSpecificHacks;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 import de.hpi.swa.trufflelsp.exceptions.LSPIOException;
-import de.hpi.swa.trufflelsp.server.LSPFileSystem;
+import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
+import de.hpi.swa.trufflelsp.filesystem.VirtualLSPFileProvider;
 import de.hpi.swa.trufflelsp.server.LSPServer;
 
 @Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1")
@@ -68,29 +69,35 @@ public class LSPInstrument extends TruffleInstrument2 {
             HostAndPort hostAndPort = options.get(Lsp);
             InetSocketAddress socketAddress;
             try {
-                // TODO(ds)
-                Supplier<TruffleContext> sup = () -> {
-                    LanguageInfo languageInfo = env.getLanguages().get("python");
-                    com.oracle.truffle.api.TruffleLanguage.Env truffleEnv = this.getTruffleEnv(languageInfo);
-                    Path userDir = Paths.get("/home/daniel"); // TODO(ds)
-                    TruffleContext context = truffleEnv.newContextBuilder().buildWithFileSystem(LSPFileSystem.newFullIOFileSystem(userDir));
-                    return context;
-                };
-
                 socketAddress = hostAndPort.createSocket(options.get(Remote));
                 PrintWriter err = new PrintWriter(env.err());
                 PrintWriter info = new PrintWriter(env.out());
                 ServerSocket serverSocket = new ServerSocket(socketAddress.getPort(), 50, socketAddress.getAddress());
                 LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LanguageSpecificHacksOption).booleanValue();
-                LSPServer languageServer = LSPServer.create(new TruffleAdapter(env, sup), info, err);
+                LSPServer languageServer = LSPServer.create(new TruffleAdapter(env, createContextProvider(env)), info, err);
                 languageServer.start(serverSocket);
-                info.println("[Truffle LSP] Starting server on " + socketAddress);
-                info.flush();
             } catch (IOException e) {
                 String message = String.format("[Truffle LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(options.get(Remote)), e.getLocalizedMessage());
                 throw new LSPIOException(message, e);
             }
         }
+    }
+
+    private Function<VirtualLSPFileProvider, TruffleContext> createContextProvider(final Env env) {
+        // TODO(ds) To do it right, we would need the actual FileSystem to use it as a delegate.
+        return (fileProvider) -> {
+            LanguageInfo languageInfo = env.getLanguages().get("python");
+            // TODO(ds) this is a hacked API - need to implement it in the real Truffle API and provide us the
+            // original FileSystem
+            com.oracle.truffle.api.TruffleLanguage.Env truffleEnv = this.getTruffleEnv(languageInfo);
+            Path userDir = null;
+            String userDirString = System.getProperty("user.home");  // TODO(ds) which dir should we use? Ask the original FileSystem if we can access it!
+            if (userDirString != null) {
+                userDir = Paths.get(userDirString);
+            }
+            TruffleContext context = truffleEnv.newContextBuilder().buildWithFileSystem(LSPFileSystem.newFullIOFileSystem(userDir, fileProvider));
+            return context;
+        };
     }
 
     @Override

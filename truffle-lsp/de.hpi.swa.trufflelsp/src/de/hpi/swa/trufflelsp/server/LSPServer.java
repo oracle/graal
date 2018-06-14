@@ -25,6 +25,7 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
@@ -151,6 +152,10 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     public void addDiagnostics(@SuppressWarnings("hiding") List<Diagnostic> diagnostics) {
         this.diagnostics.addAll(diagnostics);
+    }
+
+    private boolean hasErrorsInDiagnostics() {
+        return this.diagnostics.stream().anyMatch(diagnostic -> DiagnosticSeverity.Error.equals(diagnostic.getSeverity()));
     }
 
     public void reportCollectedDiagnostics(final String documentUri, boolean forceIfEmpty) {
@@ -314,8 +319,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
-        String removed = this.openedFileUri2LangId.remove(URI.create(params.getTextDocument().getUri()));
-        assert removed != null : params.getTextDocument().getUri();
+        URI uri = URI.create(params.getTextDocument().getUri());
+        String removed = this.openedFileUri2LangId.remove(uri);
+        assert removed != null : uri.toString();
+
+        this.truffle.didClose(uri);
     }
 
     @Override
@@ -354,12 +362,19 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         if ("harvest_types".equals(params.getCommand())) {
             this.client.showMessage(new MessageParams(MessageType.Info, "Running Type Harvester..."));
             String uri = (String) params.getArguments().get(0);
+            boolean hasErrors;
             try {
                 this.truffle.exec(URI.create(uri));
             } finally {
+                hasErrors = hasErrorsInDiagnostics();
                 reportCollectedDiagnostics(uri, false);
             }
-            this.client.showMessage(new MessageParams(MessageType.Info, "Type Harvesting done."));
+
+            if (hasErrors) {
+                this.client.showMessage(new MessageParams(MessageType.Error, "Type Harvesting failed."));
+            } else {
+                this.client.showMessage(new MessageParams(MessageType.Info, "Type Harvesting done."));
+            }
         }
 
         return CompletableFuture.completedFuture(new Object());
@@ -375,19 +390,23 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         this.executor.execute(new Runnable() {
 
             public void run() {
-                try {
-                    Socket clientSocket = serverSocket.accept();
-                    Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(LSPServer.this,
-                                    clientSocket.getInputStream(), clientSocket.getOutputStream());
-                    LSPServer.this.connect(launcher.getRemoteProxy());
-                    Future<?> future = launcher.startListening();
+                while (true) {
                     try {
-                        future.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
+                        info.println("[Truffle LSP] Starting server on " + serverSocket.getLocalSocketAddress());
+                        info.flush();
+                        Socket clientSocket = serverSocket.accept();
+                        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(LSPServer.this,
+                                        clientSocket.getInputStream(), clientSocket.getOutputStream());
+                        LSPServer.this.connect(launcher.getRemoteProxy());
+                        Future<?> future = launcher.startListening();
+                        try {
+                            future.get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
+                        }
+                    } catch (IOException e) {
+                        err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
                     }
-                } catch (IOException e) {
-                    err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
                 }
             }
         });
