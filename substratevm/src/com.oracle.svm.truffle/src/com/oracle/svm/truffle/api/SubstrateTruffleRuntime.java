@@ -32,7 +32,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -52,6 +54,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
@@ -68,6 +71,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
+
+    private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
+    private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
     private BackgroundCompileQueue compileQueue;
     private CallMethods hostedCallMethods;
@@ -94,6 +100,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     public void initializeAtRuntime() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             compileQueue = new BackgroundCompileQueue();
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
         }
         if (TruffleCompilerOptions.TraceTruffleTransferToInterpreter.getValue(RuntimeOptionValues.singleton())) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
@@ -116,6 +123,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
                         GraalSupport.getLIRSuites(),
                         GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflection);
         truffleCompiler = compiler;
+
         return compiler;
     }
 
@@ -131,6 +139,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
                         GraalSupport.getLIRSuites(),
                         GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflectionProvider);
+    }
+
+    private void tearDown() {
+        ExecutorService executor = getCompileQueue().getCompilationExecutor();
+        executor.shutdownNow();
+        try {
+            /*
+             * Runaway compilations should fail during testing, but should not cause crashes in
+             * production.
+             */
+            long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
+            executor.awaitTermination(timeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Could not terminate compiler threads. Check if there are runaway compilations that don't handle Thread#interrupt.", e);
+        }
     }
 
     @Override

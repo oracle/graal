@@ -87,6 +87,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         singleContextState = new SingleContextState();
     }
 
+    private static final Object NO_ENTER = new Object();
+
     private final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
     private final Assumption singleThreadedConstant = Truffle.getRuntime().createAssumption("Single threaded constant thread");
     private final Map<Thread, PolyglotThreadInfo> threads = new HashMap<>();
@@ -348,6 +350,19 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     PolyglotThreadInfo getCachedThreadInfo() {
         return singleThreadedConstant.isValid() ? constantCurrentThreadInfo : currentThreadInfo;
+    }
+
+    Object enterIfNeeded() {
+        if (needsEnter()) {
+            return enter();
+        }
+        return NO_ENTER;
+    }
+
+    void leaveIfNeeded(Object prev) {
+        if (prev != NO_ENTER) {
+            leave(prev);
+        }
     }
 
     Object enter() {
@@ -724,20 +739,20 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = this.contexts[language.index];
         languageContext.checkAccess(null);
-        Object prev = languageContext.enter();
+        Object prev = enterIfNeeded();
         try {
             return languageContext.ensureInitialized(null);
         } catch (Throwable t) {
             throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
-            languageContext.leave(prev);
+            leaveIfNeeded(prev);
         }
     }
 
     @Override
     public Value eval(String languageId, Object sourceImpl) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
-        Object prev = enter();
+        Object prev = enterIfNeeded();
         PolyglotLanguageContext languageContext = contexts[language.index];
         try {
             languageContext.checkAccess(null);
@@ -752,7 +767,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            leave(prev);
+            leaveIfNeeded(prev);
         }
     }
 

@@ -153,7 +153,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected static class BackgroundCompileQueue {
-        private final ExecutorService compileQueue;
+        private final ExecutorService compilationExecutor;
 
         public BackgroundCompileQueue() {
             CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread");
@@ -167,7 +167,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
             }
             selectedProcessors = Math.max(1, selectedProcessors);
-            compileQueue = Executors.newFixedThreadPool(selectedProcessors, factory);
+            compilationExecutor = Executors.newFixedThreadPool(selectedProcessors, factory);
+        }
+
+        public ExecutorService getCompilationExecutor() {
+            return compilationExecutor;
         }
     }
 
@@ -753,7 +757,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask();
-        cancellable.setFuture(l.compileQueue.submit(new Runnable() {
+        cancellable.setFuture(l.compilationExecutor.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
@@ -857,7 +861,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public int getCompilationQueueSize() {
-        ExecutorService executor = getCompileQueue().compileQueue;
+        ExecutorService executor = getCompileQueue().compilationExecutor;
         if (executor instanceof ThreadPoolExecutor) {
             return ((ThreadPoolExecutor) executor).getQueue().size();
         } else {

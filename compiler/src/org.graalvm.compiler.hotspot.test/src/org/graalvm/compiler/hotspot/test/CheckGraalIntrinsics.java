@@ -296,6 +296,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I",
                             // Runtime call and some complex compiler logic
                             "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+
             /*
              * Per default, all these operations are mapped to some generic method for which we
              * already have compiler intrinsics. Performance-wise it would be better to support them
@@ -401,6 +402,13 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Relevant for Java flight recorder
             add(toBeInvestigated,
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
+        }
+
+        if (!config.inlineNotify()) {
+            add(ignore, "java/lang/Object.notify()V");
+        }
+        if (!config.inlineNotifyAll()) {
+            add(ignore, "java/lang/Object.notifyAll()V");
         }
 
         if (!(arch instanceof AMD64)) {

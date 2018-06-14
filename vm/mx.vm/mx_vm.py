@@ -960,6 +960,8 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-Dorg.graalvm.version={}'.format(version),
             '-Dgraalvm.version={}'.format(version),
         ]
+        if _debug_images():
+            build_args += ['-ea', '-H:-AOTInline']
         if self.svm_support.is_debug_supported():
             build_args += ['-g']
         if self.subject.deps:
@@ -1304,10 +1306,14 @@ def _env_var_to_bool(name, default='false'):
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
 mx.add_argument('--force-bash-launchers', action='store_true', help='Force the use of bash launchers instead of native images')
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
+
+def _debug_images():
+    return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
 
 def _polyglot_lib_project():
     return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
