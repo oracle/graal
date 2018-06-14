@@ -30,7 +30,7 @@ import fcntl
 import os
 import pprint
 import json
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from os.path import relpath, join, dirname, basename, exists, isfile
@@ -706,7 +706,7 @@ class GraalVmLauncher(GraalVmNativeImage):
         return not _force_bash_launchers(self.native_image_config, self.force_bash)
 
     def output_file(self):
-        return join(self.get_output_base(), self.name, self.getBuildTask([]).launcher_type(), self.native_image_name)
+        return join(self.get_output_base(), self.name, self.native_image_name)
 
     def get_containing_graalvm(self):
         if self.name.endswith('-bash') and not _force_bash_launchers(self.native_image_config):
@@ -825,24 +825,12 @@ class GraalVmNativeImageBuildTask(mx.ProjectBuildTask):
         return 'Building {}'.format(self.subject.name)
 
 
-class GraalVmLauncherBuildTask(GraalVmNativeImageBuildTask):
-    def __str__(self):
-        return 'Building {} ({})'.format(self.subject.name, self.launcher_type())
-
-    @abstractmethod
-    def launcher_type(self):
-        pass
-
-
-class GraalVmBashLauncherBuildTask(GraalVmLauncherBuildTask):
+class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
     def __init__(self, subject, args):
         """
         :type subject: GraalVmNativeImage
         """
         super(GraalVmBashLauncherBuildTask, self).__init__(args, 1, subject)
-
-    def launcher_type(self):
-        return 'bash'
 
     @staticmethod
     def _template_file():
@@ -1012,10 +1000,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         return final_build_args
 
 
-class GraalVmSVMLauncherBuildTask(GraalVmSVMNativeImageBuildTask, GraalVmLauncherBuildTask):
-    def launcher_type(self):
-        return 'svm'
-
+class GraalVmSVMLauncherBuildTask(GraalVmSVMNativeImageBuildTask):
     def get_build_args(self, prepare=True):
         main_class = self.subject.native_image_config.main_class
         return super(GraalVmSVMLauncherBuildTask, self).get_build_args(prepare=prepare) + [main_class]
