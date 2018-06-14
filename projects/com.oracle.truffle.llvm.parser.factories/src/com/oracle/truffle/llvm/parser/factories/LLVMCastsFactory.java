@@ -72,6 +72,11 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToI64Vecto
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToI64VectorNoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToI8VectorBitNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToI8VectorNoZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMToI1VectorZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMToI16VectorZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMToI32VectorZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMToI64VectorZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMToI8VectorZeroExtNodeGen;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -83,19 +88,16 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 final class LLVMCastsFactory {
 
-    private Type targetType;
-    @SuppressWarnings("unused") private Type fromType;
-    private LLVMConversionType conv;
+    private final Type targetType;
+    private final Type fromType;
+    private final LLVMConversionType conv;
     private int bits;
 
     private LLVMCastsFactory(Type targetType, Type fromType, LLVMConversionType conv) {
         this.fromType = fromType;
         this.targetType = targetType;
         this.conv = conv;
-        this.bits = 0;
-        if (Type.isIntegerType(targetType)) {
-            bits = targetType.getBitSize();
-        }
+        this.bits = Type.isIntegerType(targetType) ? targetType.getBitSize() : 0;
     }
 
     static LLVMExpressionNode cast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType conv) {
@@ -217,6 +219,26 @@ final class LLVMCastsFactory {
             } else {
                 throw getUnsupportedConversionError();
             }
+        } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
+            if (targetType instanceof VectorType) {
+                Type elemType = ((VectorType) targetType).getElementType();
+                if (elemType instanceof PrimitiveType) {
+                    switch (((PrimitiveType) elemType).getPrimitiveKind()) {
+                        case I1:
+                            return LLVMToI1VectorZeroExtNodeGen.create(fromNode);
+                        case I8:
+                            return LLVMToI8VectorZeroExtNodeGen.create(fromNode);
+                        case I16:
+                            return LLVMToI16VectorZeroExtNodeGen.create(fromNode);
+                        case I32:
+                            return LLVMToI32VectorZeroExtNodeGen.create(fromNode);
+                        case I64:
+                            return LLVMToI64VectorZeroExtNodeGen.create(fromNode);
+                    }
+                }
+            }
+            throw getUnsupportedConversionError();
+
         } else {
             throw getUnsupportedConversionError();
         }
