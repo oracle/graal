@@ -121,10 +121,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
+        Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
         try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            arguments[0] = save;
-            Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
             returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
         }
         return fromNative.executeConvert(returnValue);
@@ -137,10 +136,9 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
+        Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
         try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            arguments[0] = save;
-            Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
             returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.asNative()), nativeArgs, null);
         }
         return fromNative.executeConvert(returnValue);
