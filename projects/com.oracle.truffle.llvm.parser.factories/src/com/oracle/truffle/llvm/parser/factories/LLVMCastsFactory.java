@@ -83,9 +83,6 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 final class LLVMCastsFactory {
 
-    private LLVMCastsFactory() {
-    }
-
     private Type targetType;
     @SuppressWarnings("unused") private Type fromType;
     private LLVMConversionType conv;
@@ -101,16 +98,9 @@ final class LLVMCastsFactory {
         }
     }
 
-    private LLVMCastsFactory(Type targetType, LLVMConversionType conv, int bits) {
-        this.fromType = null;
-        this.targetType = targetType;
-        this.conv = conv;
-        this.bits = bits;
-    }
-
     static LLVMExpressionNode cast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType conv) {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
-            throw new AssertionError();
+            throw getUnsupportedConversionError(null);
         }
         return cast(new LLVMCastsFactory(targetType, fromType, conv), fromType, fromNode);
     }
@@ -129,7 +119,7 @@ final class LLVMCastsFactory {
         } else if (fromType instanceof StructureType) {
             return factory.castFromPointer(fromNode);
         } else {
-            throw new AssertionError(fromType + " ==> " + factory.targetType);
+            throw getUnsupportedConversionError(factory);
         }
     }
 
@@ -152,7 +142,7 @@ final class LLVMCastsFactory {
             case X86_FP80:
                 return factory.castFrom80BitFloat(fromNode);
             default:
-                throw new AssertionError(fromType + " ==> " + factory.targetType);
+                throw getUnsupportedConversionError(factory);
         }
     }
 
@@ -177,10 +167,10 @@ final class LLVMCastsFactory {
                     case DOUBLE:
                         return LLVMToDoubleVectorNoZeroExtNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType);
+                        throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof PrimitiveType) {
@@ -202,7 +192,7 @@ final class LLVMCastsFactory {
                     case X86_FP80:
                         return LLVMToLLVM80BitFloatBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VectorType) {
                 Type elemType = ((VectorType) targetType).getElementType();
@@ -219,16 +209,16 @@ final class LLVMCastsFactory {
                         case I64:
                             return LLVMToI64VectorBitNodeGen.create(fromNode);
                         default:
-                            throw new AssertionError(targetType);
+                            throw getUnsupportedConversionError();
                     }
                 } else {
-                    throw new AssertionError(targetType + " " + elemType + " " + conv);
+                    throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else {
-            throw new AssertionError(targetType + " " + conv);
+            throw getUnsupportedConversionError();
         }
     }
 
@@ -245,7 +235,7 @@ final class LLVMCastsFactory {
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarNoZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             if (targetType instanceof PrimitiveType) {
@@ -259,12 +249,12 @@ final class LLVMCastsFactory {
                     case I64:
                         return LLVMToI64ZeroExtNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else {
             if (targetType == PrimitiveType.I32) {
@@ -274,7 +264,7 @@ final class LLVMCastsFactory {
             } else if (targetType == PrimitiveType.X86_FP80) {
                 return LLVMSignedToLLVM80BitFloatNodeGen.create(fromNode);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         }
     }
@@ -298,7 +288,7 @@ final class LLVMCastsFactory {
                 case FLOAT:
                     return LLVMToFloatNoZeroExtNodeGen.create(fromNode);
                 default:
-                    throw new AssertionError(targetType);
+                    throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
             Type elemType = ((VectorType) targetType).getElementType();
@@ -311,13 +301,13 @@ final class LLVMCastsFactory {
                     case I16:
                         return LLVMToI16VectorBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + elemType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else {
-            throw new AssertionError(targetType);
+            throw getUnsupportedConversionError();
         }
     }
 
@@ -331,7 +321,7 @@ final class LLVMCastsFactory {
         } else if (targetType == PrimitiveType.I64) {
             return LLVMToI64NoZeroExtNodeGen.create(fromNode);
         }
-        throw new AssertionError(targetType);
+        throw getUnsupportedConversionError();
     }
 
     private LLVMExpressionNode castFromFloat(LLVMExpressionNode fromNode) {
@@ -353,7 +343,7 @@ final class LLVMCastsFactory {
                 case X86_FP80:
                     return LLVMSignedToLLVM80BitFloatNodeGen.create(fromNode);
                 default:
-                    throw new AssertionError(targetType + " " + conv);
+                    throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof VectorType) {
@@ -371,18 +361,18 @@ final class LLVMCastsFactory {
                         case I64:
                             return LLVMToI64VectorBitNodeGen.create(fromNode);
                         default:
-                            throw new AssertionError(targetType + " " + conv);
+                            throw getUnsupportedConversionError();
                     }
                 } else {
-                    throw new AssertionError(targetType + " " + elemType + " " + conv);
+                    throw getUnsupportedConversionError();
                 }
             } else if (targetType == PrimitiveType.I32) {
                 return LLVMToI32BitNodeGen.create(fromNode);
             } else {
-                throw new AssertionError(targetType);
+                throw getUnsupportedConversionError();
             }
         } else {
-            throw new AssertionError(targetType + " " + conv);
+            throw getUnsupportedConversionError();
         }
     }
 
@@ -408,12 +398,12 @@ final class LLVMCastsFactory {
                     case DOUBLE:
                         return LLVMToDoubleNoZeroExtNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarNoZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             if (targetType instanceof PrimitiveType) {
@@ -427,12 +417,12 @@ final class LLVMCastsFactory {
                     case DOUBLE:
                         return LLVMToDoubleZeroExtNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
             Type elemType = ((VectorType) targetType).getElementType();
@@ -445,13 +435,13 @@ final class LLVMCastsFactory {
                     case I16:
                         return LLVMToI16VectorBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType);
+                        throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + elemType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
     }
 
     private boolean hasJavaCastSemantics() {
@@ -476,7 +466,7 @@ final class LLVMCastsFactory {
                 return LLVMToI64NoZeroExtNodeGen.create(fromNode);
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
     }
 
     private LLVMExpressionNode castFromI64(LLVMExpressionNode fromNode) {
@@ -501,14 +491,14 @@ final class LLVMCastsFactory {
                     case X86_FP80:
                         return LLVMSignedToLLVM80BitFloatNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof PointerType) {
                 return LLVMToAddressNodeGen.create(fromNode);
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarNoZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             if (targetType instanceof PrimitiveType) {
@@ -520,7 +510,7 @@ final class LLVMCastsFactory {
                     case X86_FP80:
                         return LLVMUnsignedToLLVM80BitFloatNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
@@ -529,7 +519,7 @@ final class LLVMCastsFactory {
             } else if (targetType instanceof PointerType) {
                 return LLVMToAddressNodeGen.create(fromNode);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof PrimitiveType) {
@@ -537,7 +527,7 @@ final class LLVMCastsFactory {
                     case DOUBLE:
                         return LLVMToDoubleBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VectorType) {
                 Type elemType = ((VectorType) targetType).getElementType();
@@ -554,14 +544,14 @@ final class LLVMCastsFactory {
                         case I64:
                             return LLVMToI64VectorBitNodeGen.create(fromNode);
                         default:
-                            throw new AssertionError(targetType);
+                            throw getUnsupportedConversionError();
                     }
                 } else {
-                    throw new AssertionError(targetType + " " + elemType + " " + conv);
+                    throw getUnsupportedConversionError();
                 }
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
     }
 
     private LLVMExpressionNode castFromI8(LLVMExpressionNode fromNode) {
@@ -586,7 +576,7 @@ final class LLVMCastsFactory {
                     case X86_FP80:
                         return LLVMSignedToLLVM80BitFloatNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarNoZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
@@ -605,12 +595,12 @@ final class LLVMCastsFactory {
                     case DOUBLE:
                         return LLVMToDoubleZeroExtNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
             Type elemType = ((VectorType) targetType).getElementType();
@@ -621,13 +611,13 @@ final class LLVMCastsFactory {
                     case I8:
                         return LLVMToI8VectorBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType);
+                        throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + elemType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
     }
 
     private LLVMExpressionNode castFromDouble(LLVMExpressionNode fromNode) {
@@ -649,7 +639,7 @@ final class LLVMCastsFactory {
                 case X86_FP80:
                     return LLVMSignedToLLVM80BitFloatNodeGen.create(fromNode);
                 default:
-                    throw new AssertionError(targetType + " " + conv);
+                    throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof VectorType) {
@@ -667,15 +657,15 @@ final class LLVMCastsFactory {
                         case I64:
                             return LLVMToI64VectorBitNodeGen.create(fromNode);
                         default:
-                            throw new AssertionError(targetType + " " + conv);
+                            throw getUnsupportedConversionError();
                     }
                 } else {
-                    throw new AssertionError(targetType + " " + elemType + " " + conv);
+                    throw getUnsupportedConversionError();
                 }
             } else if (targetType == PrimitiveType.I64) {
                 return LLVMToI64BitNodeGen.create(fromNode);
             } else {
-                throw new AssertionError(targetType);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.FLOAT_TO_UINT) {
             switch (((PrimitiveType) targetType).getPrimitiveKind()) {
@@ -690,10 +680,10 @@ final class LLVMCastsFactory {
                 case X86_FP80: // TODO fix the unsigned case, see the I32 case
                     return LLVMUnsignedToLLVM80BitFloatNodeGen.create(fromNode);
                 default:
-                    throw new AssertionError(targetType);
+                    throw getUnsupportedConversionError();
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
     }
 
     private LLVMExpressionNode castFromI32(LLVMExpressionNode fromNode) {
@@ -721,7 +711,7 @@ final class LLVMCastsFactory {
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarNoZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             if (targetType instanceof PrimitiveType) {
@@ -735,14 +725,14 @@ final class LLVMCastsFactory {
                     case X86_FP80:
                         return LLVMUnsignedToLLVM80BitFloatNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else if (targetType instanceof PointerType) {
                 return LLVMToAddressNodeGen.create(fromNode);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST) {
             if (targetType instanceof PrimitiveType) {
@@ -750,7 +740,7 @@ final class LLVMCastsFactory {
                     case FLOAT:
                         return LLVMToFloatBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VectorType) {
                 Type elemType = ((VectorType) targetType).getElementType();
@@ -765,16 +755,16 @@ final class LLVMCastsFactory {
                         case I32:
                             return LLVMToI32VectorBitNodeGen.create(fromNode);
                         default:
-                            throw new AssertionError(targetType);
+                            throw getUnsupportedConversionError();
                     }
                 } else {
-                    throw new AssertionError(targetType + " " + elemType + " " + conv);
+                    throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
     }
 
     private LLVMExpressionNode castFromI1(LLVMExpressionNode fromNode) {
@@ -792,7 +782,7 @@ final class LLVMCastsFactory {
                 case I64:
                     return LLVMToI64NoZeroExtNodeGen.create(fromNode);
                 default:
-                    throw new AssertionError(targetType + " " + conv);
+                    throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             if (targetType instanceof PrimitiveType) {
@@ -810,12 +800,12 @@ final class LLVMCastsFactory {
                     case DOUBLE:
                         return LLVMToDoubleZeroExtNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType + " " + conv);
+                        throw getUnsupportedConversionError();
                 }
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
-                throw new AssertionError(targetType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         } else if (conv == LLVMConversionType.BITCAST && targetType instanceof VectorType) {
             Type elemType = ((VectorType) targetType).getElementType();
@@ -824,12 +814,24 @@ final class LLVMCastsFactory {
                     case I1:
                         return LLVMToI1VectorBitNodeGen.create(fromNode);
                     default:
-                        throw new AssertionError(targetType);
+                        throw getUnsupportedConversionError();
                 }
             } else {
-                throw new AssertionError(targetType + " " + elemType + " " + conv);
+                throw getUnsupportedConversionError();
             }
         }
-        throw new AssertionError(targetType + " " + conv);
+        throw getUnsupportedConversionError();
+    }
+
+    private AssertionError getUnsupportedConversionError() {
+        return new AssertionError("Parser Error: Cannot do " + conv + " from " + fromType + " to " + targetType);
+    }
+
+    private static AssertionError getUnsupportedConversionError(LLVMCastsFactory factory) {
+        if (factory == null) {
+            return new AssertionError("Parser Error: Unsupported Cast!");
+        } else {
+            return factory.getUnsupportedConversionError();
+        }
     }
 }
