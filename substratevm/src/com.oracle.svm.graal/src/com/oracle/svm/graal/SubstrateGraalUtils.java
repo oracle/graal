@@ -200,7 +200,7 @@ public class SubstrateGraalUtils {
     }
 
     @SuppressWarnings("try")
-    public static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
+    private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
 
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {

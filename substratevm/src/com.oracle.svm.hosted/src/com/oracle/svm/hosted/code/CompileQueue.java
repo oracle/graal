@@ -143,6 +143,7 @@ import com.oracle.svm.hosted.substitute.DeletedMethod;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -867,8 +868,8 @@ public class CompileQueue {
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
         public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
-                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, EconomicMap.wrapMap(dataCache));
+                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
+            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, nullRegister, EconomicMap.wrapMap(dataCache));
         }
     }
 
