@@ -86,6 +86,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                  **kw_args):
         self.components = components
         base_dir = base_dir or '.'
+
         _src_jdk_base, _jdk_dir = _get_jdk_dir()
         _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         if base_dir != '.':
@@ -1097,6 +1098,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         """
         :type component: mx_sdk.GraalVmLanguage
         """
+        self.main_component = component
 
         def create_archive(path, **_kw_args):
             assert len(self.components) == 1
@@ -1125,6 +1127,48 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             layout={},
             archive_factory=create_archive,
             path=None,
+            **kw_args)
+
+
+class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
+    def __init__(self, installable, **kw_args):
+        """
+        :type installable: GraalVmInstallableComponent
+        """
+        support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
+        name = '{comp_name}_{ver}_{os}_{arch}'.format(comp_name=installable.main_component.name, ver=_suite.release_version(), os=mx.get_os(), arch=mx.get_arch()).upper().replace('-', '_')
+        base_dir = './{}/'.format(name.lower().replace('_', '-'))
+        layout = {}
+
+        def is_jar_distribution(val):
+            def _is_jar_distribution(val):
+                return isinstance(mx.dependency(val, fatalIfMissing=False), mx.JARDistribution)
+
+            if isinstance(val, str):
+                return val.startswith('dependency:') and _is_jar_distribution(val.split(':', 1)[1])
+            if isinstance(val, dict):
+                return val['source_type'] == 'dependency' and _is_jar_distribution(val['dependency'])
+            return False
+
+        for key, value in installable.layout.items():
+            # if the key refers to the support dir
+            if key.startswith(support_dir_pattern):
+                # take only the values that are not JAR distributions
+                new_value = [v for v in value if not is_jar_distribution(v)]
+                if new_value:
+                    new_key = base_dir + key.split(support_dir_pattern, 1)[1]
+                    layout[new_key] = new_value
+
+        super(GraalVmStandaloneComponent, self).__init__(
+            suite=_suite,
+            name=name,
+            deps=[],
+            layout=layout,
+            path=None,
+            platformDependent=True,
+            theLicense=None,
+            path_substitutions=installable.path_substitutions,
+            string_substitutions=installable.string_substitutions,
             **kw_args)
 
 
@@ -1291,7 +1335,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     needs_stage1 = True
                 register_project(config_class(launcher_config))
         if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
-            register_distribution(GraalVmInstallableComponent(component))
+            installable_component = GraalVmInstallableComponent(component)
+            register_distribution(installable_component)
+            if _get_svm_support().is_supported() and not _has_forced_launchers(component):
+                register_distribution(GraalVmStandaloneComponent(installable_component))
 
     if needs_stage1:
         register_distribution(get_stage1_graalvm_distribution())
@@ -1391,6 +1438,13 @@ def _force_bash_launchers(launcher, forced=None):
         launcher = launcher.destination
     launcher_name = basename(launcher)
     return launcher_name in forced
+
+
+def _has_forced_launchers(component, forced=None):
+    for launcher_config in component.launcher_configs:
+        if _force_bash_launchers(launcher_config, forced):
+            return True
+    return False
 
 
 def _include_sources():
