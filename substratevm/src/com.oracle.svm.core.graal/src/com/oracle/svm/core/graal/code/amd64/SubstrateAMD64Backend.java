@@ -383,20 +383,39 @@ public class SubstrateAMD64Backend extends Backend {
         }
 
         @Override
-        public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
+        public Value emitCompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
+            boolean nonNull = useLinearPointerCompression() || isNonNull;
             append(new AMD64Move.CompressPointerOp(result, asAllocatable(pointer), getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
         }
 
         @Override
-        public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
+        public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
+            boolean nonNull = useLinearPointerCompression() || isNonNull;
             append(new AMD64Move.UncompressPointerOp(result, asAllocatable(pointer), getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
         }
 
+        @Override
+        public void emitConvertNullToZero(AllocatableValue result, Value value) {
+            if (useLinearPointerCompression()) {
+                append(new AMD64Move.ConvertNullToZeroOp(result, (AllocatableValue) value));
+            } else {
+                emitMove(result, value);
+            }
+        }
+
+        @Override
+        public void emitConvertZeroToNull(AllocatableValue result, Value value) {
+            if (useLinearPointerCompression()) {
+                append(new AMD64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
+            } else {
+                emitMove(result, value);
+            }
+        }
     }
 
     public static final class SubstrateDebugInfoBuilder extends DebugInfoBuilder {
@@ -696,15 +715,14 @@ public class SubstrateAMD64Backend extends Backend {
 
             @Override
             public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-                Register resultReg = asRegister(getResult());
-                Register baseReg = hasBase(crb.getOptions(), encoding) ? getBaseRegister() : Register.None;
+                move(lirKindTool.getNarrowOopKind(), crb, masm);
 
                 /*
                  * WARNING: must NOT have side effects. Preserve the flags register!
                  */
-
-                move(lirKindTool.getNarrowOopKind(), crb, masm);
+                Register baseReg = getBaseRegister(crb);
                 assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
+                Register resultReg = getResultRegister();
                 masm.leaq(resultReg, new AMD64Address(baseReg, resultReg, Scale.fromShift(getShift())));
             }
         }
@@ -746,14 +764,21 @@ public class SubstrateAMD64Backend extends Backend {
         return new SubstrateLIRGenerationResult(compilationId, lir, frameMapBuilder, callingConvention, method);
     }
 
-    protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen() {
-        return new AMD64ArithmeticLIRGenerator(null);
+    protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen(RegisterValue nullRegisterValue) {
+        return new AMD64ArithmeticLIRGenerator(nullRegisterValue, null);
+    }
+
+    private static SubstrateAMD64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
+        return (SubstrateAMD64RegisterConfig) lirGenRes.getRegisterConfig();
+    }
+
+    private static Register getHeapBaseRegister(LIRGenerationResult lirGenRes) {
+        return getRegisterConfig(lirGenRes).getHeapBaseRegister();
     }
 
     protected AMD64MoveFactoryBase createMoveFactory(LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenRes).getMethod();
-        SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) lirGenRes.getRegisterConfig();
-        return new SubstrateAMD64MoveFactory(backupSlotProvider, method, createLirKindTool(), registerConfig);
+        return new SubstrateAMD64MoveFactory(backupSlotProvider, method, createLirKindTool(), getRegisterConfig(lirGenRes));
     }
 
     protected static class SubstrateAMD64LIRKindTool extends AMD64LIRKindTool {
@@ -774,7 +799,8 @@ public class SubstrateAMD64Backend extends Backend {
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        AMD64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen();
+        RegisterValue nullRegisterValue = useLinearPointerCompression() ? getHeapBaseRegister(lirGenRes).asValue() : null;
+        AMD64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         BackupSlotProvider backupSlotProvider = new BackupSlotProvider(lirGenRes.getFrameMapBuilder());
         AMD64MoveFactoryBase moveFactory = createMoveFactory(lirGenRes, backupSlotProvider);
         return new SubstrateAMD64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);
@@ -790,13 +816,17 @@ public class SubstrateAMD64Backend extends Backend {
         return new SubstrateAMD64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
     }
 
+    private static boolean useLinearPointerCompression() {
+        return SubstrateOptions.UseLinearPointerCompression.getValue() && SubstrateOptions.UseHeapBaseRegister.getValue();
+    }
+
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         Assembler masm = createAssembler(frameMap);
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenResult).getMethod();
         Deoptimizer.StubType stubType = method.getDeoptStubType();
         DataBuilder dataBuilder = new SubstrateDataBuilder();
-        FrameContext frameContext;
+        final FrameContext frameContext;
         if (stubType == Deoptimizer.StubType.EntryStub) {
             frameContext = new DeoptEntryStubContext();
         } else if (stubType == Deoptimizer.StubType.ExitStub) {
@@ -807,7 +837,9 @@ public class SubstrateAMD64Backend extends Backend {
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        CompilationResultBuilder tasm = factory.createBuilder(getCodeCache(), getForeignCalls(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult);
+        Register nullRegister = useLinearPointerCompression() ? getHeapBaseRegister(lirGenResult) : Register.None;
+        CompilationResultBuilder tasm = factory.createBuilder(getCodeCache(), getForeignCalls(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
+                        nullRegister);
         tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
         return tasm;
     }

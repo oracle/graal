@@ -280,4 +280,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull);
 
+    default void emitConvertNullToZero(AllocatableValue result, Value input) {
+        emitMove(result, input);
+    }
+
+    default void emitConvertZeroToNull(AllocatableValue result, Value input) {
+        emitMove(result, input);
+    }
 }

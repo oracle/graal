@@ -316,37 +316,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/internal/misc/Unsafe.compareAndExchangeShortAcquire(Ljava/lang/Object;JSS)S",
                             "jdk/internal/misc/Unsafe.compareAndExchangeShortRelease(Ljava/lang/Object;JSS)S",
 
-                            // Mapped to get*Volatile
-                            "jdk/internal/misc/Unsafe.getBooleanAcquire(Ljava/lang/Object;J)Z",
-                            "jdk/internal/misc/Unsafe.getBooleanOpaque(Ljava/lang/Object;J)Z",
-                            "jdk/internal/misc/Unsafe.getByteAcquire(Ljava/lang/Object;J)B",
-                            "jdk/internal/misc/Unsafe.getByteOpaque(Ljava/lang/Object;J)B",
-                            "jdk/internal/misc/Unsafe.getCharAcquire(Ljava/lang/Object;J)C",
-                            "jdk/internal/misc/Unsafe.getCharOpaque(Ljava/lang/Object;J)C",
-                            "jdk/internal/misc/Unsafe.getDoubleAcquire(Ljava/lang/Object;J)D",
-                            "jdk/internal/misc/Unsafe.getDoubleOpaque(Ljava/lang/Object;J)D",
-                            "jdk/internal/misc/Unsafe.getFloatAcquire(Ljava/lang/Object;J)F",
-                            "jdk/internal/misc/Unsafe.getFloatOpaque(Ljava/lang/Object;J)F",
-                            "jdk/internal/misc/Unsafe.getIntAcquire(Ljava/lang/Object;J)I",
-                            "jdk/internal/misc/Unsafe.getIntOpaque(Ljava/lang/Object;J)I",
-                            "jdk/internal/misc/Unsafe.getLongAcquire(Ljava/lang/Object;J)J",
-                            "jdk/internal/misc/Unsafe.getLongOpaque(Ljava/lang/Object;J)J",
-                            "jdk/internal/misc/Unsafe.getObjectAcquire(Ljava/lang/Object;J)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.getObjectOpaque(Ljava/lang/Object;J)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.getShortAcquire(Ljava/lang/Object;J)S",
-                            "jdk/internal/misc/Unsafe.getShortOpaque(Ljava/lang/Object;J)S",
-
-                            // Mapped to put*Volatile
-                            "jdk/internal/misc/Unsafe.putBooleanOpaque(Ljava/lang/Object;JZ)V",
-                            "jdk/internal/misc/Unsafe.putByteOpaque(Ljava/lang/Object;JB)V",
-                            "jdk/internal/misc/Unsafe.putCharOpaque(Ljava/lang/Object;JC)V",
-                            "jdk/internal/misc/Unsafe.putDoubleOpaque(Ljava/lang/Object;JD)V",
-                            "jdk/internal/misc/Unsafe.putFloatOpaque(Ljava/lang/Object;JF)V",
-                            "jdk/internal/misc/Unsafe.putIntOpaque(Ljava/lang/Object;JI)V",
-                            "jdk/internal/misc/Unsafe.putLongOpaque(Ljava/lang/Object;JJ)V",
-                            "jdk/internal/misc/Unsafe.putObjectOpaque(Ljava/lang/Object;JLjava/lang/Object;)V",
-                            "jdk/internal/misc/Unsafe.putShortOpaque(Ljava/lang/Object;JS)V",
-
                             // Mapped to compareAndSet*
                             "jdk/internal/misc/Unsafe.weakCompareAndSetByte(Ljava/lang/Object;JBB)Z",
                             "jdk/internal/misc/Unsafe.weakCompareAndSetByteAcquire(Ljava/lang/Object;JBB)Z",

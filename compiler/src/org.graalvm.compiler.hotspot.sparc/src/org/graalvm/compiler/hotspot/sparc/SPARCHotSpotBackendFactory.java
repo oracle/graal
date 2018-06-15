@@ -119,7 +119,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
                     HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(compilerConfiguration, config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, lowerer, stampProvider,
                         replacements);
-        SPARCGraphBuilderPlugins.register(plugins, replacements.getDefaultReplacementBytecodeProvider());
+        SPARCGraphBuilderPlugins.register(plugins, replacements.getDefaultReplacementBytecodeProvider(), false);
         return plugins;
     }
 
