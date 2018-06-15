@@ -92,7 +92,7 @@ public final class PolyglotLauncher extends Launcher {
     }
 
     protected static void printVersion(Engine engine) {
-        System.out.println("GraalVM polyglot launcher " + engine.getVersion());
+        System.out.println(String.format("%s polyglot launcher %s", engine.getImplementationName(), engine.getVersion()));
     }
 
     private void launch(String[] args) {

@@ -167,15 +167,15 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         if (language == null) {
             throw abort(String.format("Unknown language: '%s'!", languageId));
         }
-        String implementationName = language.getImplementationName();
-        if (implementationName == null || implementationName.length() == 0) {
+        String languageImplementationName = language.getImplementationName();
+        if (languageImplementationName == null || languageImplementationName.length() == 0) {
             String languageName = language.getName();
             if (languageName == null || languageName.length() == 0) {
                 languageName = languageId;
             }
-            implementationName = "Graal " + languageName;
+            languageImplementationName = "Graal " + languageName;
         }
-        System.out.println(String.format("%s %s (GraalVM %s)", implementationName, language.getVersion(), engine.getVersion()));
+        System.out.println(String.format("%s %s (%s %s)", languageImplementationName, language.getVersion(), engine.getImplementationName(), engine.getVersion()));
     }
 
     protected void runVersionAction(VersionAction action, Engine engine) {
