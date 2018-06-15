@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
@@ -101,7 +102,7 @@ final class ReferenceAccessImpl implements ReferenceAccess {
         assert !compressed || haveCompressedReferences();
         Word w = (Word) p;
         if (compressed) {
-            return ObjectAccess.readObject(null, p);
+            return ObjectAccess.readObject(WordFactory.nullPointer(), p);
         } else {
             return w.readObject(0);
         }
@@ -114,7 +115,7 @@ final class ReferenceAccessImpl implements ReferenceAccess {
         assert !compressed || haveCompressedReferences();
         Word w = (Word) p;
         if (compressed) {
-            ObjectAccess.writeObject(null, p, value);
+            ObjectAccess.writeObject(WordFactory.nullPointer(), p, value);
         } else {
             // this overload has no uncompression semantics
             w.writeObject(0, value);
