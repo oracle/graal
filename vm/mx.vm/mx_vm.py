@@ -1282,6 +1282,8 @@ def get_lib_polyglot_project():
             polyglot_lib_jar_dependencies = []
             polyglot_lib_build_dependencies = []
             has_polyglot_lib_entrypoints = False
+            if "LIBPOLYGLOT_DISABLE_BACKGROUND_COMPILATION" in os.environ:
+                polyglot_lib_build_args += ["-R:-TruffleBackgroundCompilation"]
             for component in mx_sdk.graalvm_components():
                 has_polyglot_lib_entrypoints |= component.has_polyglot_lib_entrypoints
                 polyglot_lib_build_args += component.polyglot_lib_build_args
