@@ -63,15 +63,6 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
         return canonicalized(null, forValue);
     }
 
-    public static LogicNode tryCanonicalize(ValueNode forValue) {
-        if (StampTool.isPointerAlwaysNull(forValue)) {
-            return LogicConstantNode.tautology();
-        } else if (StampTool.isPointerNonNull(forValue)) {
-            return LogicConstantNode.contradiction();
-        }
-        return null;
-    }
-
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         // Nothing to do.
@@ -89,28 +80,33 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
         return canonicalized(this, forValue);
     }
 
-    private static LogicNode canonicalized(IsNullNode isNullNode, ValueNode forValue) {
-        IsNullNode self = isNullNode;
-        LogicNode result = tryCanonicalize(forValue);
-        if (result != null) {
-            return result;
-        }
-
-        if (forValue instanceof PiNode) {
-            return IsNullNode.create(GraphUtil.skipPi(forValue));
-        }
-
-        if (forValue instanceof ConvertNode) {
-            ConvertNode convertNode = (ConvertNode) forValue;
-            if (convertNode.mayNullCheckSkipConversion()) {
-                return IsNullNode.create(convertNode.getValue());
+    private static LogicNode canonicalized(IsNullNode node, ValueNode forValue) {
+        ValueNode value = forValue;
+        while (true) {
+            if (StampTool.isPointerAlwaysNull(value)) {
+                return LogicConstantNode.tautology();
+            } else if (StampTool.isPointerNonNull(value)) {
+                return LogicConstantNode.contradiction();
             }
-        }
 
-        if (self == null) {
-            self = new IsNullNode(GraphUtil.skipPi(forValue));
+            if (value instanceof PiNode) {
+                value = GraphUtil.skipPi(value);
+                continue;
+            }
+
+            if (value instanceof ConvertNode) {
+                ConvertNode convertNode = (ConvertNode) value;
+                if (convertNode.mayNullCheckSkipConversion()) {
+                    value = convertNode.getValue();
+                    continue;
+                }
+            }
+
+            /*
+             * If we are at original node, just return it. Otherwise create a new node.
+             */
+            return (node != null && value == forValue) ? node : new IsNullNode(value);
         }
-        return self;
     }
 
     @Override
