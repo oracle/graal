@@ -60,4 +60,10 @@ public class CommonConstants {
      * Warns the user to rebuild the polyglot image and/or libraries.
      */
     public static final boolean WARN_REBUILD_IMAGES = true;
+
+    /**
+     * Component ID prefix for graalvm core components. The prefix will be stripped from the
+     * display, if the component is not ambiguous.
+     */
+    public static final String GRAALVM_CORE_PREFIX = "org.graalvm."; // NOI18N
 }

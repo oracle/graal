@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.CompressibleConstant;
 import jdk.vm.ci.meta.Constant;
@@ -78,5 +79,10 @@ public final class SubstrateCompressionNode extends CompressionNode {
     @Override
     protected Stamp mkStamp(Stamp input) {
         return SubstrateNarrowOopStamp.mkStamp(op, input, encoding);
+    }
+
+    @Override
+    public boolean mayNullCheckSkipConversion() {
+        return !SubstrateOptions.UseLinearPointerCompression.getValue();
     }
 }
