@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,37 +24,79 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import java.util.concurrent.locks.StampedLock;
+import java.io.IOException;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.List;
+
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
-    @Test
+    @Before
+    public void check() {
+        Assume.assumeTrue(runtime().getVMConfig().enableStackReservedZoneAddress != 0);
+    }
+
     public void stackAccessTest() {
         Assume.assumeTrue(runtime().getVMConfig().enableStackReservedZoneAddress != 0);
 
+        int passed = 0;
         for (int i = 0; i < 1000; i++) {
             // Each iteration has to be executed by a new thread. The test
             // relies on the random size area pushed by the VM at the beginning
             // of the stack of each Java thread it creates.
-            Thread thread = new Thread(new RunWithSOEContext(new ReentrantLockTest(), 256));
+            RunWithSOEContext r = new RunWithSOEContext(new ReentrantLockTest(), 256);
+            Thread thread = new Thread(r);
             thread.start();
             try {
                 thread.join();
+                assertTrue(r.result.equals("PASSED"), r.result);
+                ++passed;
             } catch (InterruptedException ex) {
             }
         }
+        System.out.println("RESULT: " + (passed == 1000 ? "PASSED" : "FAILED"));
+    }
+
+    public static void main(String[] args) {
+        new ReservedStackAccessTest().stackAccessTest();
     }
 
     @Test
-    public void stackAccessCompilationTest() {
+    public void run() throws IOException, InterruptedException {
         Assume.assumeTrue(runtime().getVMConfig().enableStackReservedZoneAddress != 0);
+        List<String> vmArgs = SubprocessUtil.withoutDebuggerArguments(SubprocessUtil.getVMCommandLine());
+for (String arg : vmArgs) {
+System.err.println("vmArg: " + arg);
+}
+        vmArgs.add("-XX:+UseJVMCICompiler");
+        vmArgs.add("-Dgraal.Inline=false");
+        vmArgs.add("-XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread");
+vmArgs.add("-XX:CompileCommand=print,org/graalvm/compiler/hotspot/test/ReservedStackAccessTest$ReentrantLockTest.lockAndCall");
+vmArgs.add("-XX:CompileCommand=print,org/graalvm/compiler/hotspot/test/ReservedStackAccessTest$RunWithSOEContext.recursiveCall*");
+vmArgs.add("-XX:CompileCommand=print,org/graalvm/compiler/hotspot/test/ReservedStackAccessTest$RunWithSOEContext.run");
+vmArgs.add("-XX:CompileCommand=print,java/util/concurrent/locks/ReentrantLock$Sync.nonfairTryAcquire");
+vmArgs.add("-XX:CompileCommand=print,java/util/concurrent/locks/ReentrantLock$NonfairSync.tryAcquire");
+
+        Subprocess proc = SubprocessUtil.java(vmArgs, ReservedStackAccessTest.class.getName());
+        boolean passed = false;
+        for (String line : proc.output) {
+System.err.println("out: " + line);
+            if (line.equals("RESULT: PASSED")) {
+                passed = true;
+            }
+        }
+        assertTrue(passed);
     }
+
 
     static class ReentrantLockTest {
 
-        private StampedLock[] lockArray;
+        private ReentrantLock[] lockArray;
         // Frame sizes vary a lot between interpreted code and compiled code
         // so the lock array has to be big enough to cover all cases.
         // If test fails with message "Not conclusive test", try to increase
@@ -63,9 +107,9 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
         int index = -1;
 
         public void initialize() {
-            lockArray = new StampedLock[LOCK_ARRAY_SIZE];
+            lockArray = new ReentrantLock[LOCK_ARRAY_SIZE];
             for (int i = 0; i < LOCK_ARRAY_SIZE; i++) {
-                lockArray[i] = new StampedLock();
+                lockArray[i] = new ReentrantLock();
             }
             stackOverflowErrorReceived = false;
         }
@@ -75,12 +119,14 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
                 return "ERROR: Not conclusive test: no StackOverflowError received";
             }
             for (int i = 0; i < LOCK_ARRAY_SIZE; i++) {
-                if (!lockArray[i].tryUnlockWrite()) {
-                    StringBuilder s = new StringBuilder();
-                    s.append("FAILED: ReentrantLock ");
-                    s.append(i);
-                    s.append(" looks corrupted");
-                    return s.toString();
+                if (lockArray[i].isLocked()) {
+                    if (!lockArray[i].isHeldByCurrentThread()) {
+                        StringBuilder s = new StringBuilder();
+                        s.append("FAILED: ReentrantLock ");
+                        s.append(i);
+                        s.append(" looks corrupted");
+                        return s.toString();
+                    }
                 }
             }
             return "PASSED";
@@ -98,7 +144,7 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
         private void lockAndCall(int i) {
             index = i;
             if (i < LOCK_ARRAY_SIZE) {
-                lockArray[i].asReadLock().lock();
+                lockArray[i].lock();
                 lockAndCall(i + 1);
             }
         }
@@ -112,6 +158,7 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
         int setupSOEFrame;
         int testStartFrame;
         ReentrantLockTest test;
+        String result = "FAILED: no result";
 
         RunWithSOEContext(ReentrantLockTest test, int deframe) {
             this.test = test;
@@ -126,8 +173,7 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
             recursiveCall();
             System.out.println("Framework got StackOverflowError at frame = " + counter);
             System.out.println("Test started execution at frame = " + (counter - deframe));
-            String result = test.getResult();
-            assertTrue(result.equals("PASSED"), result);
+            result = test.getResult();
         }
 
         @SuppressWarnings("unused")

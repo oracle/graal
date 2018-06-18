@@ -32,6 +32,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -39,7 +40,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64BlockEndOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
 
 /**
  * Superclass for operations that leave a method's frame.
@@ -73,7 +76,13 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
                 masm.ldr(64, scratch, masm.makeAddress(thread, config.javaThreadReservedStackActivationOffset, 8));
                 masm.cmp(8, sp, scratch);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.LO, noReserved);
-                AArch64Call.directCall(crb, masm, foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE), null, null);
+                ForeignCallLinkage enableStackReservedZone = foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE);
+                CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
+                assert cc.getArgumentCount() == 1;
+                Register arg0 = ((RegisterValue)cc.getArgument(0)).getRegister();
+System.err.println("aarch64 reg "+arg0);
+                masm.movx(arg0, thread);
+                AArch64Call.directCall(crb, masm, enableStackReservedZone, null, null);
                 AArch64Call.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
                 masm.bind(noReserved);
             }

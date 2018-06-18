@@ -36,6 +36,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.sparc.SPARCAddress;
 import org.graalvm.compiler.asm.sparc.SPARCAssembler;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -44,7 +45,9 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.sparc.SPARCCall;
 import org.graalvm.compiler.lir.sparc.SPARCControlFlow.ReturnOp;
 
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -81,7 +84,13 @@ final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
                 Label noReserved = new Label();
                 masm.ldx(new SPARCAddress(g2, config.javaThreadReservedStackActivationOffset), g4);
                 masm.compareBranch(sp, g4, SPARCAssembler.ConditionFlag.LessUnsigned, SPARCAssembler.CC.Xcc, noReserved, SPARCAssembler.BranchPredict.PREDICT_TAKEN, null);
-                SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE), null, null);
+                ForeignCallLinkage enableStackReservedZone = foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE);
+                CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
+                assert cc.getArgumentCount() == 1;
+                Register arg0 = ((RegisterValue)cc.getArgument(0)).getRegister();
+System.err.println("sparc reg "+arg0);
+                masm.mov(thread, arg0);
+                SPARCCall.directCall(crb, masm, enableStackReservedZone, null, null);
                 SPARCCall.indirectJmp(crb, masm, g4, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
                 masm.bind(noReserved);
             }
