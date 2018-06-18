@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.jar.JarFile;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -49,6 +50,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TestName;
 
 public class ComponentRegistryTest extends TestBase {
@@ -57,7 +59,10 @@ public class ComponentRegistryTest extends TestBase {
 
     private ComponentInfo rubyInfo;
     private ComponentInfo fakeInfo;
+    private ComponentInfo tmp1;
+    private ComponentInfo tmp2;
 
+    @Rule public ExpectedException exception = ExpectedException.none();
     @Rule public TestName name = new TestName();
 
     private ComponentRegistry registry;
@@ -92,6 +97,18 @@ public class ComponentRegistryTest extends TestBase {
         mockStorage.installed.add(fakeInfo);
     }
 
+    private void registerAdditionalComponents() {
+        ComponentInfo tmp = new ComponentInfo("org.graalvm.foobar", "Test component 1", "1.0");
+        mockStorage.installed.add(tmp);
+
+        tmp = new ComponentInfo("org.graalvm.clash", "Test component 2", "1.0");
+        mockStorage.installed.add(tmp);
+        tmp1 = tmp;
+        tmp = new ComponentInfo("org.github.clash", "Test component 3", "1.0");
+        mockStorage.installed.add(tmp);
+        tmp2 = tmp;
+    }
+
     @After
     public void tearDown() throws Exception {
         if (releaseFile != null) {
@@ -115,9 +132,52 @@ public class ComponentRegistryTest extends TestBase {
     }
 
     @Test
+    public void testFindAbbreviatedComponent() throws Exception {
+        registerAdditionalComponents();
+
+        assertSame(fakeInfo, registry.findComponent("fake"));
+        assertNull(registry.findComponent("org.graalvm.ruby"));
+        assertNull(registry.findComponent("ruby"));
+
+        assertNotNull(registry.findComponent("foobar"));
+
+        registry.addComponent(rubyInfo);
+        assertNotNull(registry.findComponent("ruby"));
+
+        registry.removeComponent(rubyInfo);
+        assertNull(registry.findComponent("ruby"));
+    }
+
+    @Test
+    public void testFindAmbiguousComponent() throws Exception {
+        registerAdditionalComponents();
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("COMPONENT_AmbiguousIdFound");
+        registry.findComponent("clash");
+    }
+
+    @Test
+    public void testFindAmbiguousComponentAfterRemove() throws Exception {
+        registerAdditionalComponents();
+        try {
+            registry.findComponent("clash");
+            Assert.fail("Expected failure clash");
+        } catch (FailedOperationException ex) {
+            // expected
+        }
+        registry.removeComponent(tmp2);
+        assertSame(tmp1, registry.findComponent("clash"));
+
+    }
+
+    @Test
     public void testFindUnknownComponent() throws Exception {
         assertSame(fakeInfo, registry.findComponent("org.graalvm.fake"));
         assertNull(registry.findComponent("org.graalvm.ruby"));
+    }
+
+    public void testLoadUnknownComponent() throws Exception {
+
     }
 
     /**

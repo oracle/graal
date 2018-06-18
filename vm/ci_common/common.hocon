@@ -69,7 +69,7 @@ fastr_linux: ${fastr} {
   packages: {
     readline: "==6.3"
     pcre: ">=8.38"
-    zlib: ">=1.2.8"
+    zlib: ">=1.2.11"
     curl: ">=7.50.1"
   }
   environment: {
