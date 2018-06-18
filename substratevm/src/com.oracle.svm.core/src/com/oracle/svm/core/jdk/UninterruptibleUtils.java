@@ -58,27 +58,27 @@ public class UninterruptibleUtils {
             this.value = value;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int get() {
             return value;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void set(int newValue) {
             value = newValue;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int incrementAndGet() {
             return UnsafeAccess.UNSAFE.getAndAddInt(this, VALUE_OFFSET, 1) + 1;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int decrementAndGet() {
             return UnsafeAccess.UNSAFE.getAndAddInt(this, VALUE_OFFSET, -1) - 1;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(int expected, int update) {
             return UnsafeAccess.UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
         }
@@ -98,17 +98,17 @@ public class UninterruptibleUtils {
 
         private volatile long value;
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public T get() {
             return WordFactory.pointer(value);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void set(T newValue) {
             value = newValue.rawValue();
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
             return UnsafeAccess.UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
         }
@@ -128,45 +128,54 @@ public class UninterruptibleUtils {
 
         private volatile T value;
 
+        public AtomicReference() {
+        }
+
         public AtomicReference(T value) {
             this.value = value;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public T get() {
             return value;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void set(T newValue) {
             value = newValue;
         }
 
-        @Uninterruptible(reason = "Uninterruptible inline expansion")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
             return UnsafeAccess.UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @SuppressWarnings("unchecked")
+        public final T getAndSet(T newValue) {
+            return (T) UnsafeAccess.UNSAFE.getAndSetObject(this, VALUE_OFFSET, newValue);
         }
     }
 
     /** Methods like the ones from {@link java.lang.Math} but annotated as uninterruptible. */
     public static class Math {
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int min(int a, int b) {
             return (a <= b) ? a : b;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int max(int a, int b) {
             return (a >= b) ? a : b;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static long max(long a, long b) {
             return (a >= b) ? a : b;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static long abs(long a) {
             return (a < 0) ? -a : a;
         }
@@ -174,7 +183,7 @@ public class UninterruptibleUtils {
 
     public static class Long {
         /** Uninterruptible version of {@link java.lang.Long#numberOfLeadingZeros(long)}. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         // Checkstyle: stop
         public static int numberOfLeadingZeros(long i) {
             // @formatter:off
@@ -198,7 +207,7 @@ public class UninterruptibleUtils {
     public static class Integer {
         // Checkstyle: stop
         /** Uninterruptible version of {@link java.lang.Integer#numberOfLeadingZeros(int)}. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("all")
         public static int numberOfLeadingZeros(int i) {
             // @formatter:off
@@ -216,7 +225,7 @@ public class UninterruptibleUtils {
         }
 
         /** Uninterruptible version of {@link java.lang.Integer#highestOneBit(int)}. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("all")
         public static int highestOneBit(int i) {
             // @formatter:off

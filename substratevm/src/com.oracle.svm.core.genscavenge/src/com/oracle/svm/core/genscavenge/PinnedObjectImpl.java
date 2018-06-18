@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -40,6 +38,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
 
 /**

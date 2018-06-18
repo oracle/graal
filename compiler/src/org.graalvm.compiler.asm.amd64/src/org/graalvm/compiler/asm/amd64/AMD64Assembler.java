@@ -815,6 +815,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64RMOp MOVSXD = new AMD64RMOp("MOVSXD",             0x63, OpAssertion.QwordAssertion);
         public static final AMD64RMOp MOVB   = new AMD64RMOp("MOVB",               0x8A, OpAssertion.ByteAssertion);
         public static final AMD64RMOp MOV    = new AMD64RMOp("MOV",                0x8B);
+        public static final AMD64RMOp CMP    = new AMD64RMOp("CMP",                0x3B);
 
         // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
         public static final AMD64RMOp MOVD   = new AMD64RMOp("MOVD",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatAssertion, CPUFeature.SSE2);
@@ -1861,7 +1862,7 @@ public class AMD64Assembler extends Assembler {
      * values were equal, and cleared otherwise.
      */
     public final void cmpxchgb(Register reg, AMD64Address adr) { // cmpxchg
-        prefix(adr, reg);
+        prefixb(adr, reg);
         emitByte(0x0F);
         emitByte(0xB0);
         emitOperandHelper(reg, adr, 0);
@@ -2138,7 +2139,7 @@ public class AMD64Assembler extends Assembler {
 
     public final void movb(AMD64Address dst, Register src) {
         assert src.getRegisterCategory().equals(AMD64.CPU) : "must have byte register";
-        prefix(dst, src, true);
+        prefixb(dst, src);
         emitByte(0x88);
         emitOperandHelper(src, dst, 0);
     }
@@ -3284,6 +3285,10 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
+    private void prefixb(AMD64Address adr, Register reg) {
+        prefix(adr, reg, true);
+    }
+
     private void prefix(AMD64Address adr, Register reg) {
         prefix(adr, reg, false);
     }
@@ -3707,7 +3712,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void xaddb(AMD64Address dst, Register src) {
-        prefix(dst, src);
+        prefixb(dst, src);
         emitByte(0x0F);
         emitByte(0xC0);
         emitOperandHelper(src, dst, 0);
@@ -3736,7 +3741,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void xchgb(Register dst, AMD64Address src) {
-        prefix(src, dst);
+        prefixb(src, dst);
         emitByte(0x86);
         emitOperandHelper(dst, src, 0);
     }

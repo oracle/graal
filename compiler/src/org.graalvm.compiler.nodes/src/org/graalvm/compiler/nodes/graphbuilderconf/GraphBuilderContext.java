@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -45,6 +46,9 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.code.BailoutException;
@@ -86,14 +90,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
             return value;
         }
-        T equivalentValue = append(value);
-        if (equivalentValue instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
-                setStateAfter(stateSplit);
-            }
-        }
-        return equivalentValue;
+        return GraphBuilderContextUtil.setStateAfterIfNecessary(this, append(value));
     }
 
     /**
@@ -110,14 +107,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
             return value;
         }
-        T equivalentValue = append(value);
-        if (equivalentValue instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
-                setStateAfter(stateSplit);
-            }
-        }
-        return equivalentValue;
+        return GraphBuilderContextUtil.setStateAfterIfNecessary(this, append(value));
     }
 
     default ValueNode addNonNullCast(ValueNode value) {
@@ -144,13 +134,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     default <T extends ValueNode> T addPush(JavaKind kind, T value) {
         T equivalentValue = value.graph() != null ? value : append(value);
         push(kind, equivalentValue);
-        if (equivalentValue instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) equivalentValue;
-            if (stateSplit.stateAfter() == null && stateSplit.hasSideEffect()) {
-                setStateAfter(stateSplit);
-            }
-        }
-        return equivalentValue;
+        return GraphBuilderContextUtil.setStateAfterIfNecessary(this, equivalentValue);
     }
 
     /**
@@ -314,4 +298,37 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         return null;
     }
 
+    /**
+     * Adds masking to a given subword value according to a given {@Link JavaKind}, such that the
+     * masked value falls in the range of the given kind. In the cases where the given kind is not a
+     * subword kind, the input value is returned immediately.
+     *
+     * @param value the value to be masked
+     * @param kind the kind that specifies the range of the masked value
+     * @return the masked value
+     */
+    default ValueNode maskSubWordValue(ValueNode value, JavaKind kind) {
+        if (kind == kind.getStackKind()) {
+            return value;
+        }
+        // Subword value
+        ValueNode narrow = append(NarrowNode.create(value, kind.getBitCount(), NodeView.DEFAULT));
+        if (kind.isUnsigned()) {
+            return append(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
+        } else {
+            return append(SignExtendNode.create(narrow, 32, NodeView.DEFAULT));
+        }
+    }
+}
+
+class GraphBuilderContextUtil {
+    static <T extends ValueNode> T setStateAfterIfNecessary(GraphBuilderContext b, T value) {
+        if (value instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) value;
+            if (stateSplit.stateAfter() == null && (stateSplit.hasSideEffect() || stateSplit instanceof AbstractMergeNode)) {
+                b.setStateAfter(stateSplit);
+            }
+        }
+        return value;
+    }
 }

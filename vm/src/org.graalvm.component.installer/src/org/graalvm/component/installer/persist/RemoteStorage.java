@@ -133,7 +133,7 @@ public class RemoteStorage implements ComponentStorage {
         URL downloadURL;
         String s = catalogProperties.getProperty(flavourPrefix + id.toLowerCase());
         if (s == null) {
-            throw feedback.failure("REMOTE_UnknownComponentId", null, id);
+            return null;
         }
         // try {
         downloadURL = new URL(baseURL, s);

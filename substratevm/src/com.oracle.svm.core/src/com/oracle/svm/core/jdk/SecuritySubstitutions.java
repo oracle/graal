@@ -81,6 +81,11 @@ final class Target_java_security_AccessController {
     }
 
     @Substitute
+    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) {
+        return action.run();
+    }
+
+    @Substitute
     private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Exception {
         return action.run();
     }

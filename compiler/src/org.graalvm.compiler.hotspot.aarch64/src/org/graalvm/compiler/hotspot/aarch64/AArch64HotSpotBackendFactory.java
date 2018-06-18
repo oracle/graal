@@ -168,7 +168,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
                     HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, HotSpotStampProvider stampProvider) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(compilerConfiguration, config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, lowerer, stampProvider,
                         replacements);
-        AArch64GraphBuilderPlugins.register(plugins, replacements.getDefaultReplacementBytecodeProvider());
+        AArch64GraphBuilderPlugins.register(plugins, replacements.getDefaultReplacementBytecodeProvider(), false);
         return plugins;
     }
 
