@@ -1768,7 +1768,8 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBench
             yield part
 
     def getExtraIterationCount(self, iterations):
-        return 3
+        # We average over the last 2 out of 3 total iterations done by this suite.
+        return 2
 
     def run(self, benchmarks, bmSuiteArgs):
         runretval = self.runAndReturnStdOut(benchmarks, bmSuiteArgs)
