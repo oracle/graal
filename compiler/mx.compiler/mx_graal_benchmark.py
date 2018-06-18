@@ -1753,10 +1753,10 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBench
         return []
 
     def decodeStackedJson(self, content):
-        NOT_WHITESPACE = re.compile(r'[^\s]')
+        notWhitespace = re.compile(r'[^\s]')
         pos = 0
         while True:
-            match = NOT_WHITESPACE.search(content, pos)
+            match = notWhitespace.search(content, pos)
             if not match:
                 return
             pos = match.start()
@@ -1773,41 +1773,34 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBench
 
     def run(self, benchmarks, bmSuiteArgs):
         runretval = self.runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        dims = {}
-        if len(runretval) == 3:
-            retcode, out, retdims = runretval
-            dims = retdims
-            self.validateStdoutWithDimensions(
-                out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims)
-        else:
-            # TODO: Remove old-style validateStdOut after updating downstream suites.
-            retcode, out = runretval
-            self.validateStdout(out, benchmarks, bmSuiteArgs, retcode=retcode)
+        retcode, out, dims = runretval
+        self.validateStdoutWithDimensions(
+            out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims)
         perf_dir = next(file for file in os.listdir(self.workdir + "/performance/"))
         experiment_dir = self.workdir + "/performance/" + perf_dir + "/"
         results_filename = next(file for file in os.listdir(experiment_dir) if file.endswith("json"))
         with open(experiment_dir + results_filename, "r") as results_file:
-          content = results_file.read()
+            content = results_file.read()
         results = []
         iteration = 0
         for part in self.decodeStackedJson(content):
-          for result in part["results"]:
-            if "queryExecution" in result:
-              datapoint = {
-                "benchmark": result["name"].replace(" ", "-"),
-                "vm": "jvmci",
-                "config.name": "default",
-                "metric.name": "warmup",
-                "metric.value": result["executionTime"],
-                "metric.unit": "ms",
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": iteration,
-              }
-              datapoint.update(dims)
-              results.append(datapoint)
-          iteration += 1
+            for result in part["results"]:
+                if "queryExecution" in result:
+                    datapoint = {
+                        "benchmark": result["name"].replace(" ", "-"),
+                        "vm": "jvmci",
+                        "config.name": "default",
+                        "metric.name": "warmup",
+                        "metric.value": result["executionTime"],
+                        "metric.unit": "ms",
+                        "metric.type": "numeric",
+                        "metric.score-function": "id",
+                        "metric.better": "lower",
+                        "metric.iteration": iteration,
+                    }
+                    datapoint.update(dims)
+                    results.append(datapoint)
+            iteration += 1
         self.addAverageAcrossLatestResults(results)
         return results
 
