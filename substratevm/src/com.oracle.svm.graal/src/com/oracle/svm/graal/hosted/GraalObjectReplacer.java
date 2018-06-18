@@ -283,7 +283,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             types.put(aType, sType);
             hub.setMetaType(sType);
 
-            sType.setInstanceFields(createFields(aType));
+            sType.setRawAllInstanceFields(createAllInstanceFields(aType));
             createType(aType.getSuperclass());
             createType(aType.getComponentType());
             for (AnalysisType aInterface : aType.getInterfaces()) {
@@ -293,8 +293,8 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         return sType;
     }
 
-    private SubstrateField[] createFields(ResolvedJavaType originalType) {
-        ResolvedJavaField[] originalFields = originalType.getInstanceFields(false);
+    private SubstrateField[] createAllInstanceFields(ResolvedJavaType originalType) {
+        ResolvedJavaField[] originalFields = originalType.getInstanceFields(true);
         SubstrateField[] sFields = new SubstrateField[originalFields.length];
         for (int idx = 0; idx < originalFields.length; idx++) {
             sFields[idx] = createField(originalFields[idx]);
@@ -386,8 +386,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
                 uniqueImplementation = hType.getUniqueConcreteImplementation().getHub();
             }
             sType.setTypeCheckData(hType.getInstanceOfFromTypeID(), hType.getInstanceOfNumTypeIDs(), uniqueImplementation);
-            SubstrateField[] originalFields = sType.getInstanceFields(false);
-            if (originalFields != null) {
+            if (sType.getInstanceFieldCount() > 1) {
                 /*
                  * What we do here is just a reordering of the instance fields array. The fields
                  * array already contains all the fields, but in the order of the AnalysisType. As
@@ -395,9 +394,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
                  * order of the HostedType. The correct order is essential for materialization
                  * during deoptimization.
                  */
-                SubstrateField[] newFields = createFields(hType);
-
-                sType.setInstanceFields(newFields);
+                sType.setRawAllInstanceFields(createAllInstanceFields(hType));
             }
         }
 
@@ -439,7 +436,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         }
         for (SubstrateType type : types.values()) {
             access.registerAsImmutable(type);
-            access.registerAsImmutable(type.getRawInstanceFields());
+            access.registerAsImmutable(type.getRawAllInstanceFields());
         }
         for (SubstrateSignature signature : signatures.values()) {
             access.registerAsImmutable(signature);
