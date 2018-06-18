@@ -125,7 +125,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     private void doEnable() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
         ds = tdbg.startSession(new SuspendedCallbackImpl());
-        ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).includeInternal(false).build());
+        ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
         slh = context.acquireScriptsHandler();
         bph = new BreakpointsHandler(ds, slh, () -> eventHandler);
     }
@@ -166,7 +166,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         for (int i = 0; i < patterns.length; i++) {
             compiledPatterns[i] = Pattern.compile(patterns[i]);
         }
-        ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).includeInternal(false).sourceIs(
+        ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).sourceIs(
                         source -> !sourceMatchesBlackboxPatterns(source, compiledPatterns)).build());
     }
 
@@ -310,11 +310,11 @@ public final class TruffleDebugger extends DebuggerDomain {
             if (sourceSection == null) {
                 continue;
             }
-            if (frame.isInternal()) {
+            if (!context.isInspectInternal() && frame.isInternal()) {
                 continue;
             }
             Source source = sourceSection.getSource();
-            if (source.isInternal()) {
+            if (!context.isInspectInternal() && source.isInternal()) {
                 // should not be, double-check
                 continue;
             }

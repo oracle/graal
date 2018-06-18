@@ -43,8 +43,10 @@ public final class ScriptsHandler implements LoadSourceListener {
     private final Map<Source, Integer> sourceIDs = new HashMap<>(100);
     private final List<Script> scripts = new ArrayList<>(100);
     private final List<LoadScriptListener> listeners = new ArrayList<>();
+    private final boolean reportInternal;
 
-    public ScriptsHandler() {
+    public ScriptsHandler(boolean reportInternal) {
+        this.reportInternal = reportInternal;
     }
 
     public int getScriptId(Source source) {
@@ -292,7 +294,7 @@ public final class ScriptsHandler implements LoadSourceListener {
     @Override
     public void onLoad(LoadSourceEvent event) {
         Source source = event.getSource();
-        if (!source.isInternal()) {
+        if (reportInternal || !source.isInternal()) {
             assureLoaded(source);
         }
     }
@@ -314,8 +316,4 @@ public final class ScriptsHandler implements LoadSourceListener {
         void loadedScript(Script script);
     }
 
-    public interface Provider {
-
-        ScriptsHandler getScriptsHandler();
-    }
 }
