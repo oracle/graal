@@ -71,6 +71,15 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
     public static final double VERY_FAST_PATH_PROBABILITY = 0.999;
     public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_PATH_PROBABILITY;
 
+    /*
+     * This probability may seem excessive, but it makes a difference in long running loops. Lets
+     * say a loop is executed 100k times and it has a few null checks with probability 0.999. As
+     * these probabilities multiply for every loop iteration, the overall loop frequency will be
+     * calculated as approximately 30 while it should be 100k.
+     */
+    public static final double LUDICROUSLY_FAST_PATH_PROBABILITY = 0.999999;
+    public static final double LUDICROUSLY_SLOW_PATH_PROBABILITY = 1 - LUDICROUSLY_FAST_PATH_PROBABILITY;
+
     @Input ValueNode probability;
     @Input ValueNode condition;
 
