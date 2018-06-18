@@ -175,7 +175,11 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             }
             languageImplementationName = "Graal " + languageName;
         }
-        System.out.println(String.format("%s %s (%s %s)", languageImplementationName, language.getVersion(), engine.getImplementationName(), engine.getVersion()));
+        String engineImplementationName = engine.getImplementationName();
+        if (isAOT()) {
+            engineImplementationName += " Native";
+        }
+        System.out.println(String.format("%s %s (%s %s)", languageImplementationName, language.getVersion(), engineImplementationName, engine.getVersion()));
     }
 
     protected void runVersionAction(VersionAction action, Engine engine) {
