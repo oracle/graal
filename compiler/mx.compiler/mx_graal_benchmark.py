@@ -27,6 +27,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import argparse
+import json
 import re
 import os
 from os.path import join, exists
@@ -1700,3 +1701,108 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchm
 
 
 mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
+
+
+class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+    """Benchmark suite for the spark-sql-perf benchmarks.
+    """
+    def name(self):
+        return "spark-sql-perf"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def sparkSqlPerfPath(self):
+        sparkSqlPerf = mx.get_env("SPARK_SQL_PERF")
+        return sparkSqlPerf
+
+    def validateEnvironment(self):
+        if not self.sparkSqlPerfPath():
+            raise RuntimeError(
+                "The SPARK_SQL_PERF environment variable was not specified.")
+
+    def validateReturnCode(self, retcode):
+        return retcode == 0
+
+    def classpathAndMainClass(self):
+        mainClass = "com.databricks.spark.sql.perf.RunBenchmark"
+        return ["-cp", self.sparkSqlPerfPath() + "/*", mainClass]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if not benchmarks is None:
+            mx.abort("Cannot specify individual benchmarks.")
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        return (
+            vmArgs + self.classpathAndMainClass() + ["--benchmark", "DatasetPerformance"] + runArgs)
+
+    def benchmarkList(self, bmSuiteArgs):
+        self.validateEnvironment()
+        return []
+
+    def successPatterns(self):
+        return []
+
+    def failurePatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return []
+
+    def decodeStackedJson(self, content):
+        notWhitespace = re.compile(r'[^\s]')
+        pos = 0
+        while True:
+            match = notWhitespace.search(content, pos)
+            if not match:
+                return
+            pos = match.start()
+            decoder = json.JSONDecoder()
+            try:
+                part, pos = decoder.raw_decode(content, pos)
+            except json.JSONDecodeError:
+                raise
+            yield part
+
+    def getExtraIterationCount(self, iterations):
+        # We average over the last 2 out of 3 total iterations done by this suite.
+        return 2
+
+    def run(self, benchmarks, bmSuiteArgs):
+        runretval = self.runAndReturnStdOut(benchmarks, bmSuiteArgs)
+        retcode, out, dims = runretval
+        self.validateStdoutWithDimensions(
+            out, benchmarks, bmSuiteArgs, retcode=retcode, dims=dims)
+        perf_dir = next(file for file in os.listdir(self.workdir + "/performance/"))
+        experiment_dir = self.workdir + "/performance/" + perf_dir + "/"
+        results_filename = next(file for file in os.listdir(experiment_dir) if file.endswith("json"))
+        with open(experiment_dir + results_filename, "r") as results_file:
+            content = results_file.read()
+        results = []
+        iteration = 0
+        for part in self.decodeStackedJson(content):
+            for result in part["results"]:
+                if "queryExecution" in result:
+                    datapoint = {
+                        "benchmark": result["name"].replace(" ", "-"),
+                        "vm": "jvmci",
+                        "config.name": "default",
+                        "metric.name": "warmup",
+                        "metric.value": result["executionTime"],
+                        "metric.unit": "ms",
+                        "metric.type": "numeric",
+                        "metric.score-function": "id",
+                        "metric.better": "lower",
+                        "metric.iteration": iteration,
+                    }
+                    datapoint.update(dims)
+                    results.append(datapoint)
+            iteration += 1
+        self.addAverageAcrossLatestResults(results)
+        return results
+
+
+mx_benchmark.add_bm_suite(SparkSqlPerfBenchmarkSuite())
