@@ -47,6 +47,7 @@ linux : ${common} {
     mercurial : ">=2.2"
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
+    "apache/ant": ">=1.9.4"
   }
 }
 
@@ -56,6 +57,7 @@ solaris : ${common} {
     mercurial : ">=2.2"
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
+    "apache/ant": ">=1.9.4"
   }
 }
 
