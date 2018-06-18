@@ -112,9 +112,6 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
             ],
-            "exclude": [
-                "TruffleJSON",
-            ],
         },
         "CHROMEINSPECTOR_TEST": {
             "dependencies": ["com.oracle.truffle.tools.chromeinspector.test"],
