@@ -1767,6 +1767,9 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBench
                 raise
             yield part
 
+    def getExtraIterationCount(self, iterations):
+        return 3
+
     def run(self, benchmarks, bmSuiteArgs):
         runretval = self.runAndReturnStdOut(benchmarks, bmSuiteArgs)
         dims = {}
