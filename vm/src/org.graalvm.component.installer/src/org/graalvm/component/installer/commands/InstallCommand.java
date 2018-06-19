@@ -34,6 +34,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
@@ -113,7 +115,8 @@ public class InstallCommand implements InstallerCommand {
         }
         executeStep(this::prepareInstallation, false);
         if (!validateBeforeInstall) {
-            executeStep(this::doInstallation, true);
+            executeStep(this::doInstallation, false);
+            executeStep(this::printMessages, true);
         }
         if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
             Path p = Paths.get(CommonConstants.PATH_JRE_BIN);
@@ -209,6 +212,53 @@ public class InstallCommand implements InstallerCommand {
 
     private interface Step {
         void execute() throws IOException;
+    }
+
+    private static final Pattern TOKEN_PATTERN = Pattern.compile("\\$\\{([\\p{Alnum}_-]+)\\}");
+
+    String replaceTokens(ComponentInfo info, String message) {
+        Map<String, String> tokens = new HashMap<>();
+        tokens.putAll(info.getRequiredGraalValues());
+        tokens.putAll(input.getLocalRegistry().getGraalCapabilities());
+        tokens.put(CommonConstants.TOKEN_GRAALVM_PATH, input.getGraalHomePath().normalize().toString());
+
+        Matcher m = TOKEN_PATTERN.matcher(message);
+        StringBuilder result = null;
+        int start = 0;
+        int last = 0;
+        while (m.find(start)) {
+            String token = m.group(1);
+            String val = tokens.get(token);
+            if (val != null) {
+                if (result == null) {
+                    result = new StringBuilder();
+                }
+                result.append(message.substring(last, m.start()));
+                result.append(val);
+                last = m.end();
+            }
+            start = m.end();
+        }
+
+        if (result == null) {
+            return message;
+        } else {
+            result.append(message.substring(last));
+            return result.toString();
+        }
+    }
+
+    void printMessages() {
+        for (Installer i : realInstallers.values()) {
+            String msg = i.getComponentInfo().getPostinstMessage();
+            if (msg != null) {
+                String replaced = replaceTokens(i.getComponentInfo(), msg);
+                // replace potential path etc
+                feedback.verbatimOut(replaced, false);
+                // add some newlines
+                feedback.verbatimOut("", false);
+            }
+        }
     }
 
     void doInstallation() throws IOException {

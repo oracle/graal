@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,6 +47,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.junit.After;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -63,6 +65,7 @@ public class ComponentPackageLoaderTest extends TestBase {
     @Rule public TestName name = new TestName();
     @Rule public ExpectedException exception = ExpectedException.none();
     private Properties data = new Properties();
+    private JarFile jarData;
 
     public ComponentPackageLoaderTest() {
     }
@@ -91,6 +94,10 @@ public class ComponentPackageLoaderTest extends TestBase {
             s = Character.toLowerCase(s.charAt(4)) + s.substring(5);
         }
 
+        Path dp = dataFile("data/" + s + ".jar");
+        if (Files.exists(dp)) {
+            this.jarData = new JarFile(dp.toFile());
+        }
         try (InputStream istm = getClass().getResourceAsStream("data/" + s + ".properties")) {
             if (istm != null) {
                 data.load(istm);
@@ -98,8 +105,19 @@ public class ComponentPackageLoaderTest extends TestBase {
         }
     }
 
-    ComponentInfo info() {
-        return new ComponentPackageLoader(data::getProperty, this).createComponentInfo();
+    @After
+    public void tearDown() throws Exception {
+        if (jarData != null) {
+            jarData.close();
+        }
+    }
+
+    ComponentInfo info() throws IOException {
+        if (jarData == null) {
+            return new ComponentPackageLoader(data::getProperty, this).createComponentInfo();
+        } else {
+            return new ComponentPackageLoader(jarData, this).createComponentInfo();
+        }
     }
 
     /**
@@ -287,4 +305,15 @@ public class ComponentPackageLoaderTest extends TestBase {
         v = permissions.get("./jre/bin/ruby");
         assertEquals("r-xr-xr-x", v);
     }
+
+    @Test
+    public void testPostinstMessage() throws Exception {
+        // first try to parse OK to capture possibel bugs
+        info = info();
+        String[] slashes = info.getPostinstMessage().split("\\\\");
+        assertEquals(3, slashes.length);
+        String[] lines = info.getPostinstMessage().split("\n");
+        assertEquals(4, lines.length);
+    }
+
 }

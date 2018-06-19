@@ -30,6 +30,7 @@ import fcntl
 import os
 import pprint
 import json
+
 from abc import ABCMeta
 from argparse import ArgumentParser
 from contextlib import contextmanager
@@ -1077,6 +1078,21 @@ x-GraalVM-Working-Directories: {workdir}
                         and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default),
             workdir=join('jre', 'languages', self.component.dir_name))
 
+        if self.component.post_install_msg:
+            _manifest_str += """x-GraalVM-Message-PostInst: {msg}
+""".format(msg=self.component.post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
+
+        _manifest_lines = []
+        for l in _manifest_str.split('\n'):
+            _first = True
+            while len(l) > 72:
+                _manifest_lines += [("" if _first else " ") + l[:72]]
+                l = l[72:]
+                _first = False
+            if len(l) > 0:
+                _manifest_lines += [("" if _first else " ") + l]
+
+        _manifest_str_wrapped = '\n'.join(_manifest_lines) + "\n"
         _manifest_arc_name = 'META-INF/MANIFEST.MF'
 
         _permissions_str = '\n'.join(self.permissions)
@@ -1085,7 +1101,7 @@ x-GraalVM-Working-Directories: {workdir}
         _symlinks_str = '\n'.join(self.symlinks)
         _symlinks_arc_name = 'META-INF/symlinks'
 
-        for _str, _arc_name in [(_manifest_str, _manifest_arc_name), (_permissions_str, _permissions_arc_name),
+        for _str, _arc_name in [(_manifest_str_wrapped, _manifest_arc_name), (_permissions_str, _permissions_arc_name),
                                 (_symlinks_str, _symlinks_arc_name)]:
             self.add_str(_str, _arc_name, '{}<-string:{}'.format(_arc_name, _str))
 
