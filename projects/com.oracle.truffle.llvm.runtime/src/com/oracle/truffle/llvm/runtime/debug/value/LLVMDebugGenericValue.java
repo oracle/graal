@@ -33,7 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
-public final class LLVMDebugInternalValue extends LLVMDebuggerValue {
+public final class LLVMDebugGenericValue extends LLVMDebuggerValue {
 
     private static final String VALUE_KEY = "<value>";
     private static final String[] INTEROP_KEYS = new String[]{VALUE_KEY};
@@ -43,7 +43,7 @@ public final class LLVMDebugInternalValue extends LLVMDebuggerValue {
     private final Object value;
     private final Object type;
 
-    public LLVMDebugInternalValue(Object value, Object type) {
+    public LLVMDebugGenericValue(Object value, Object type) {
         this.value = value;
         this.type = type;
     }
@@ -55,6 +55,7 @@ public final class LLVMDebugInternalValue extends LLVMDebuggerValue {
     }
 
     @TruffleBoundary
+    @Override
     public Object getMetaObject() {
         return type == null ? NO_TYPE : String.valueOf(type);
     }

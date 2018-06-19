@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugInternalValue;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 
@@ -192,10 +191,8 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected Object findMetaObject(LLVMContext context, Object value) {
-        if (value instanceof LLVMDebugObject) {
-            return ((LLVMDebugObject) value).getType();
-        } else if (value instanceof LLVMDebugInternalValue) {
-            return ((LLVMDebugInternalValue) value).getMetaObject();
+        if (value instanceof LLVMDebuggerValue) {
+            return ((LLVMDebuggerValue) value).getMetaObject();
         } else if (LLVMPointer.isInstance(value)) {
             LLVMPointer ptr = LLVMPointer.cast(value);
             return ptr.getExportType();

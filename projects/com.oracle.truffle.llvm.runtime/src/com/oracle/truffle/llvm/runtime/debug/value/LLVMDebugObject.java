@@ -73,8 +73,13 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
      *
      * @return the type of the referenced object
      */
-    public LLVMSourceType getType() {
+    protected LLVMSourceType getType() {
         return type;
+    }
+
+    @Override
+    public LLVMSourceType getMetaObject() {
+        return getType();
     }
 
     public LLVMSourceLocation getDeclaration() {
@@ -86,7 +91,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
      *
      * @return the keys or null
      */
-    public String[] getKeys() {
+    protected String[] getKeys() {
         if (value == null) {
             return NO_KEYS;
 
@@ -104,7 +109,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
      *
      * @return the member or {@code null} if the key does not identify a member
      */
-    public Object getMember(String identifier) {
+    private Object getMember(String identifier) {
         if (identifier == null) {
             return null;
 

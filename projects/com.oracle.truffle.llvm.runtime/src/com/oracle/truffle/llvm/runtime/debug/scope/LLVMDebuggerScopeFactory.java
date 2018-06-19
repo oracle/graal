@@ -37,10 +37,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugInternalValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugGenericValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugVector;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
@@ -62,8 +64,12 @@ public final class LLVMDebuggerScopeFactory {
 
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            final LLVMDebugInternalValue v = new LLVMDebugInternalValue(frame.getValue(slot), slot.getInfo());
-            entries.add(String.valueOf(slot.getIdentifier()), v);
+            final Object slotValue = frame.getValue(slot);
+            LLVMDebuggerValue debuggerValue = LLVMDebugVector.create(slot.getInfo(), slotValue);
+            if (debuggerValue == null) {
+                debuggerValue = new LLVMDebugGenericValue(frame.getValue(slot), slot.getInfo());
+            }
+            entries.add(String.valueOf(slot.getIdentifier()), debuggerValue);
         }
 
         return entries;
