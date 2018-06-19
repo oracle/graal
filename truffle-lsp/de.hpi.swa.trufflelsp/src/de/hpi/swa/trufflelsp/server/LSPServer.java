@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -71,6 +72,8 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 
 public class LSPServer implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
+    private static final String SHOW_COVERAGE = "show_coverage";
+    private static final String ANALYSE_COVERAGE = "analyse_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
     private final TruffleAdapter truffle;
     private final PrintWriter err;
@@ -79,7 +82,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     private LanguageClient client;
     private Map<URI, String> openedFileUri2LangId = new HashMap<>();
     private String trace_server = "off";
-    private List<Diagnostic> diagnostics = new ArrayList<>();
+    private Map<URI, PublishDiagnosticsParams> diagnostics = new HashMap<>();
     private ExecutorService executor;
     private ServerSocket serverSocket;
 
@@ -114,7 +117,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         // capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(true);
 
-        capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList("harvest_types")));
+        capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE)));
 
         final InitializeResult res = new InitializeResult(capabilities);
         return CompletableFuture.supplyAsync(() -> res);
@@ -150,21 +153,41 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         this.client = client;
     }
 
-    public void addDiagnostics(@SuppressWarnings("hiding") List<Diagnostic> diagnostics) {
-        this.diagnostics.addAll(diagnostics);
+    public void addDiagnostics(final URI uri, @SuppressWarnings("hiding") Diagnostic... diagnostics) {
+        PublishDiagnosticsParams params = this.diagnostics.computeIfAbsent(uri, _uri -> {
+            PublishDiagnosticsParams _params = new PublishDiagnosticsParams();
+            _params.setUri(uri.toString());
+            return _params;
+        });
+
+        for (Diagnostic diagnostic : diagnostics) {
+            if (diagnostic.getMessage() == null) {
+                diagnostic.setMessage("<No message>");
+            }
+            params.getDiagnostics().add(diagnostic);
+        }
     }
 
     private boolean hasErrorsInDiagnostics() {
-        return this.diagnostics.stream().anyMatch(diagnostic -> DiagnosticSeverity.Error.equals(diagnostic.getSeverity()));
+        return this.diagnostics.values().stream().anyMatch(params -> params.getDiagnostics().stream().anyMatch(diagnostic -> DiagnosticSeverity.Error.equals(diagnostic.getSeverity())));
     }
 
-    public void reportCollectedDiagnostics(final String documentUri, boolean forceIfEmpty) {
-        if (!this.diagnostics.isEmpty() || forceIfEmpty) {
-            PublishDiagnosticsParams result = new PublishDiagnosticsParams();
-            result.setDiagnostics(this.diagnostics);
-            result.setUri(documentUri);
-            this.client.publishDiagnostics(result);
-            this.diagnostics.clear();
+    private void reportCollectedDiagnostics() {
+        for (Entry<URI, PublishDiagnosticsParams> entry : this.diagnostics.entrySet()) {
+            reportCollectedDiagnostics(entry.getKey(), true);
+        }
+    }
+
+    private void reportCollectedDiagnostics(final String documentUri, boolean forceIfNotExisting) {
+        reportCollectedDiagnostics(URI.create(documentUri), forceIfNotExisting);
+    }
+
+    public void reportCollectedDiagnostics(final URI documentUri, boolean forceIfNotExisting) {
+        if (this.diagnostics.containsKey(documentUri)) {
+            this.client.publishDiagnostics(this.diagnostics.get(documentUri));
+            this.diagnostics.remove(documentUri);
+        } else if (forceIfNotExisting) {
+            this.client.publishDiagnostics(new PublishDiagnosticsParams(documentUri.toString(), new ArrayList<>()));
         }
     }
 
@@ -175,7 +198,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             CompletionList result = this.truffle.getCompletions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
             return CompletableFuture.supplyAsync(() -> Either.forRight(result));
         } finally {
-            reportCollectedDiagnostics(position.getTextDocument().getUri(), false);
+            reportCollectedDiagnostics();
         }
     }
 
@@ -224,25 +247,23 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends Command>> codeAction(CodeActionParams params) {
-        List<Diagnostic> currentDiagnostics = params.getContext().getDiagnostics();
         List<Command> commands = new ArrayList<>();
-        if (currentDiagnostics.stream().anyMatch(diag -> TruffleAdapter.NO_TYPES_HARVESTED.equals(diag.getCode()))) {
-            Command command = new Command("Harvest types (exec this code)", "harvest_types");
-            command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
-            commands.add(command);
-        }
-
         return CompletableFuture.completedFuture(commands);
     }
 
     @Override
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
         CodeLens codeLens = new CodeLens(new Range(new Position(), new Position()));
-        Command command = new Command("Harvest types (exec this code)", "harvest_types");
+        Command command = new Command("Analyse coverage", ANALYSE_COVERAGE);
         command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
         codeLens.setCommand(command);
 
-        return CompletableFuture.completedFuture(Arrays.asList(codeLens));
+        CodeLens codeLensShowCoverage = new CodeLens(new Range(new Position(), new Position()));
+        Command commandShowCoverage = new Command("Highlight uncovered code", SHOW_COVERAGE);
+        commandShowCoverage.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+        codeLensShowCoverage.setCommand(commandShowCoverage);
+
+        return CompletableFuture.completedFuture(Arrays.asList(codeLens, codeLensShowCoverage));
     }
 
     @Override
@@ -359,21 +380,29 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
-        if ("harvest_types".equals(params.getCommand())) {
-            this.client.showMessage(new MessageParams(MessageType.Info, "Running Type Harvester..."));
+        if (ANALYSE_COVERAGE.equals(params.getCommand())) {
+            this.client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analyis..."));
             String uri = (String) params.getArguments().get(0);
             boolean hasErrors;
             try {
-                this.truffle.exec(URI.create(uri));
+                this.truffle.runConverageAnalysis(URI.create(uri));
             } finally {
                 hasErrors = hasErrorsInDiagnostics();
-                reportCollectedDiagnostics(uri, false);
+                reportCollectedDiagnostics();
             }
 
             if (hasErrors) {
-                this.client.showMessage(new MessageParams(MessageType.Error, "Type Harvesting failed."));
+                this.client.showMessage(new MessageParams(MessageType.Error, "Coverage analysis failed."));
             } else {
-                this.client.showMessage(new MessageParams(MessageType.Info, "Type Harvesting done."));
+                this.client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
+            }
+        } else if (SHOW_COVERAGE.equals(params.getCommand())) {
+            String uri = (String) params.getArguments().get(0);
+
+            try {
+                this.truffle.showCoverage(URI.create(uri));
+            } finally {
+                reportCollectedDiagnostics(uri, true);
             }
         }
 
@@ -411,5 +440,4 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             }
         });
     }
-
 }

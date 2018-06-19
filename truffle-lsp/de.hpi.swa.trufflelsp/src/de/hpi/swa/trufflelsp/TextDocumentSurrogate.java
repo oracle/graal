@@ -3,8 +3,10 @@ package de.hpi.swa.trufflelsp;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 
@@ -17,9 +19,10 @@ public class TextDocumentSurrogate {
     private final String langId;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
     private final Map<SourceSection, MaterializedFrame> section2frame = new HashMap<>();
-    private final Map<SourceSection, URI> section2coverageUri = new HashMap<>();
-    private String currentText;
-    private Boolean typeHarvestingDone = Boolean.FALSE;
+    private final Map<SourceLocation, Set<URI>> location2coverageUri = new HashMap<>();
+    private String editorText;
+    private String fixedText;
+    private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper parsedSourceWrapper;
 
     public TextDocumentSurrogate(final URI uri, final String langId) {
@@ -27,9 +30,9 @@ public class TextDocumentSurrogate {
         this.langId = langId;
     }
 
-    public TextDocumentSurrogate(final URI uri, final String langId, final String currentText) {
+    public TextDocumentSurrogate(final URI uri, final String langId, final String editorText) {
         this(uri, langId);
-        this.currentText = currentText;
+        this.editorText = editorText;
     }
 
     public URI getUri() {
@@ -41,19 +44,31 @@ public class TextDocumentSurrogate {
     }
 
     public String getCurrentText() {
-        return currentText;
+        return fixedText != null ? fixedText : editorText;
     }
 
-    public void setCurrentText(String text) {
-        this.currentText = text;
+    public String getEditorText() {
+        return editorText;
+    }
+
+    public void setEditorText(String editorText) {
+        this.editorText = editorText;
+    }
+
+    public String getFixedText() {
+        return fixedText;
+    }
+
+    public void setFixedText(String currentFixedText) {
+        this.fixedText = currentFixedText;
     }
 
     public Boolean getTypeHarvestingDone() {
-        return typeHarvestingDone;
+        return coverageAnalysisDone;
     }
 
-    public void setTypeHarvestingDone(Boolean typeHarvestingDone) {
-        this.typeHarvestingDone = typeHarvestingDone;
+    public void setCoverageAnalysisDone(Boolean coverageAnalysisDone) {
+        this.coverageAnalysisDone = coverageAnalysisDone;
     }
 
     public SourceWrapper getParsedSourceWrapper() {
@@ -85,7 +100,18 @@ public class TextDocumentSurrogate {
         return section2frame;
     }
 
-    public Map<SourceSection, URI> getSection2coverageUri() {
-        return section2coverageUri;
+    public Map<SourceLocation, Set<URI>> getLocation2coverageUri() {
+        return location2coverageUri;
+    }
+
+    public Set<URI> getCoverageUri(SourceSection section) {
+        return location2coverageUri.get(SourceLocation.from(section));
+    }
+
+    public void addLocationCoverage(SourceLocation location, URI coverageUri) {
+        if (!location2coverageUri.containsKey(location)) {
+            location2coverageUri.put(location, new HashSet<>());
+        }
+        location2coverageUri.get(location).add(coverageUri);
     }
 }

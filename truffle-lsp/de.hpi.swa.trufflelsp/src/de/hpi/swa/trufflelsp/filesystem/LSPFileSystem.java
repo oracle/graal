@@ -74,7 +74,7 @@ public class LSPFileSystem implements FileSystem {
 
     @Override
     public Path parsePath(String path) {
-        if (!FILE_SCHEME.equals(delegate.getScheme())) {
+        if (!FILE_SCHEME.equalsIgnoreCase(delegate.getScheme())) {
             throw new IllegalStateException("The ParsePath(String path) should be called only for file scheme.");
         }
 
