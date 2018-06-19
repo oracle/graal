@@ -153,17 +153,6 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         }).toArray(URL[]::new);
     }
 
-    public static boolean isValidJavaVersion() {
-        String versionString = getJavaVersion();
-        if (versionString.startsWith("1.8")) {
-            String[] splitVersion = versionString.split("_");
-            int update = Integer.valueOf(splitVersion[1]);
-            return update > 40;
-        } else {
-            return false;
-        }
-    }
-
     private static void reportToolUserError(String msg) {
         reportUserError("native-image " + msg);
     }
@@ -326,10 +315,6 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     public static boolean verifyValidJavaVersionAndPlatform() {
-        if (!isValidJavaVersion()) {
-            reportToolUserError("supports only Java 1.8 with an update version 40+. Detected Java version is: " + getJavaVersion());
-            return false;
-        }
         if (!isValidArchitecture()) {
             reportToolUserError("runs only on architecture AMD64. Detected architecture: " + GraalAccess.getOriginalTarget().arch.getClass().getSimpleName());
         }
