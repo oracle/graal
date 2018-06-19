@@ -1284,13 +1284,13 @@ def updategraalinopenjdk(args):
                             for old_line, new_line in replacements.iteritems():
                                 contents = contents.replace(old_line, new_line)
                             new_line_count = len(contents.split('\n'))
-                            if (new_line_count > old_line_count):
+                            if new_line_count > old_line_count:
                                 mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
                             else:
-                                if (new_line_count < old_line_count):
+                                if new_line_count < old_line_count:
                                     contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
                             new_line_count = len(contents.split('\n'))
-                            if (new_line_count != old_line_count):
+                            if new_line_count != old_line_count:
                                 mx.abort('Unable to correct line count for {}'.format(src_file))
                             for forbidden in blacklist:
                                 if forbidden in contents:
