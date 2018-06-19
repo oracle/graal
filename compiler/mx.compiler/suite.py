@@ -1245,6 +1245,7 @@ suite = {
         "JVMCI_HOTSPOT",
         "jdk.tools.jaotc.binformat",
         "org.graalvm.compiler.asm.amd64",
+        "org.graalvm.compiler.asm.aarch64",
         "org.graalvm.compiler.hotspot",
       ],
 
