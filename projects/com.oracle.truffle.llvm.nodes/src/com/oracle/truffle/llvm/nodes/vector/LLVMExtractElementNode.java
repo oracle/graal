@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMExtractElementNode {
 
@@ -102,6 +103,15 @@ public abstract class LLVMExtractElementNode {
 
         @Specialization
         protected Double doDouble(LLVMDoubleVector vector, int index) {
+            return vector.getValue(index);
+        }
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMAddressExtractElementNode extends LLVMExpressionNode {
+
+        @Specialization
+        protected long doPointer(LLVMPointerVector vector, int index) {
             return vector.getValue(index);
         }
     }

@@ -310,6 +310,7 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteIVarBitN
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMExtractElementNodeFactory.LLVMAddressExtractElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractElementNodeFactory.LLVMDoubleExtractElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractElementNodeFactory.LLVMFloatExtractElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractElementNodeFactory.LLVMI16ExtractElementNodeGen;
@@ -420,24 +421,30 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createExtractElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode index) {
-        PrimitiveType resultType1 = (PrimitiveType) resultType;
-        switch (resultType1.getPrimitiveKind()) {
-            case I1:
-                return LLVMI1ExtractElementNodeGen.create(vector, index);
-            case I8:
-                return LLVMI8ExtractElementNodeGen.create(vector, index);
-            case I16:
-                return LLVMI16ExtractElementNodeGen.create(vector, index);
-            case I32:
-                return LLVMI32ExtractElementNodeGen.create(vector, index);
-            case I64:
-                return LLVMI64ExtractElementNodeGen.create(vector, index);
-            case FLOAT:
-                return LLVMFloatExtractElementNodeGen.create(vector, index);
-            case DOUBLE:
-                return LLVMDoubleExtractElementNodeGen.create(vector, index);
-            default:
-                throw new AssertionError(resultType1 + " not supported!");
+        if (resultType instanceof PrimitiveType) {
+            PrimitiveType resultType1 = (PrimitiveType) resultType;
+            switch (resultType1.getPrimitiveKind()) {
+                case I1:
+                    return LLVMI1ExtractElementNodeGen.create(vector, index);
+                case I8:
+                    return LLVMI8ExtractElementNodeGen.create(vector, index);
+                case I16:
+                    return LLVMI16ExtractElementNodeGen.create(vector, index);
+                case I32:
+                    return LLVMI32ExtractElementNodeGen.create(vector, index);
+                case I64:
+                    return LLVMI64ExtractElementNodeGen.create(vector, index);
+                case FLOAT:
+                    return LLVMFloatExtractElementNodeGen.create(vector, index);
+                case DOUBLE:
+                    return LLVMDoubleExtractElementNodeGen.create(vector, index);
+                default:
+                    throw new AssertionError(resultType1 + " not supported!");
+            }
+        } else if (resultType instanceof PointerType) {
+            return LLVMAddressExtractElementNodeGen.create(vector, index);
+        } else {
+            throw new AssertionError(resultType + " not supported!");
         }
     }
 
