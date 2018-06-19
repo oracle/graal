@@ -57,23 +57,29 @@ final class TruffleSplittingStrategy {
     private static Set<OptimizedCallTarget> waste = new HashSet<>();
     private static SplitStatisticsReporter reporter = new SplitStatisticsReporter();
 
-    @CompilerDirectives.TruffleBoundary
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
-            final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
-            reporter.engineDataSet.add(engineData);
-            if (call.getCurrentCallTarget().getCompilationProfile().getInterpreterCallCount() == 0) {
-                reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+        if (CompilerDirectives.inInterpreter()) {
+            if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
+                final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
+                reporter.engineDataSet.add(engineData);
+                if (call.getCurrentCallTarget().getCompilationProfile().getInterpreterCallCount() == 0) {
+                    reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+                }
+            }
+            if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
+                if (polymorphicSpecializationBasedShouldSplit(call, tvmci)) {
+                    final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+                    engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
+                    doSplit(call);
+                }
+                return;
             }
         }
-        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
-            if (polymorphicSpecializationBasedShouldSplit(call, tvmci)) {
-                final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
-                engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
-                doSplit(call);
-            }
-            return;
-        }
+        beforeCallSplit(call, tvmci);
+    }
+
+    @CompilerDirectives.TruffleBoundary(allowInlining = false)
+    static void beforeCallSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (call.getCallCount() == 2) {
             final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
             if (shouldSplit(call, engineData)) {

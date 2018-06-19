@@ -229,7 +229,7 @@ public abstract class PartialEvaluator {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
-        debug.forceDump(graph, "PE");
+//        debug.forceDump(graph, "PE");
 
         return graph;
     }
