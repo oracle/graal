@@ -26,7 +26,6 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -464,7 +463,7 @@ final class FunctionProxyHandler implements InvocationHandler {
         assert declaringClass.isInterface() : declaringClass;
         MethodHandle mh;
         try {
-            mh = MethodHandles.lookup().findSpecial(declaringClass, method.getName(), MethodType.methodType(method.getReturnType(), method.getParameterTypes()), declaringClass);
+            mh = MethodHandles.lookup().unreflectSpecial(method, declaringClass);
         } catch (IllegalAccessException e) {
             throw new UnsupportedOperationException(method.getName(), e);
         }
