@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.Value;
 
@@ -77,6 +78,10 @@ public abstract class CompressionNode extends UnaryNode implements ConvertNode, 
     protected abstract Constant compress(Constant c);
 
     protected abstract Constant uncompress(Constant c);
+
+    public JavaConstant nullConstant() {
+        return JavaConstant.NULL_POINTER;
+    }
 
     @Override
     public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
