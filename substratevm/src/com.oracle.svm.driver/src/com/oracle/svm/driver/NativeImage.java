@@ -209,7 +209,7 @@ public class NativeImage {
                 String rootDirProperty = "native-image.root";
                 String rootDirString = System.getProperty(rootDirProperty);
                 if (rootDirString == null) {
-                    throw showError("Running on JVM requires setting " + rootDirProperty + " system property");
+                    rootDirString = System.getProperty("java.home");
                 }
                 rootDir = Paths.get(rootDirString);
             }
