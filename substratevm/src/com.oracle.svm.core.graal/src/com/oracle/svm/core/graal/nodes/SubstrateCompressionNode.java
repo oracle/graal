@@ -59,6 +59,17 @@ public final class SubstrateCompressionNode extends CompressionNode {
     }
 
     @Override
+    public JavaConstant nullConstant() {
+        if (SubstrateOptions.UseLinearPointerCompression.getValue()) {
+            /*
+             * Return null constant prior to the compression op.
+             */
+            return op == CompressionOp.Uncompress ? CompressedNullConstant.COMPRESSED_NULL : JavaConstant.NULL_POINTER;
+        }
+        return super.nullConstant();
+    }
+
+    @Override
     protected Constant compress(Constant c) {
         if (JavaConstant.NULL_POINTER.equals(c)) {
             return CompressedNullConstant.COMPRESSED_NULL;
