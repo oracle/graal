@@ -129,9 +129,9 @@ public class ReplaceConstantNodesPhase extends BasePhase<PhaseContext> {
             if (type.getElementalType().isPrimitive()) {
                 return false;
             }
-            return ((HotSpotResolvedObjectType) (type.getElementalType())).getFingerprint() == 0;
+            return ((HotSpotResolvedObjectType) (type.getElementalType())).getFingerprint() != 0;
         }
-        return ((HotSpotResolvedObjectType) type).getFingerprint() == 0;
+        return ((HotSpotResolvedObjectType) type).getFingerprint() != 0;
     }
 
     /**
