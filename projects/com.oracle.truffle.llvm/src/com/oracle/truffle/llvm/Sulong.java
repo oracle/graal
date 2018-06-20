@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -151,7 +152,7 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return LLVMPointer.isInstance(object) || object instanceof LLVMInternalTruffleObject || object instanceof SulongLibrary ||
-                        object instanceof LLVMDebugObject || object instanceof LLVMSourceType;
+                        object instanceof LLVMDebugObject || object instanceof LLVMSourceType || object instanceof LLVMInteropType;
     }
 
     @Override
@@ -207,6 +208,9 @@ public final class Sulong extends LLVMLanguage {
     protected Object findMetaObject(LLVMContext context, Object value) {
         if (value instanceof LLVMDebugObject) {
             return ((LLVMDebugObject) value).getType();
+        } else if (LLVMPointer.isInstance(value)) {
+            LLVMPointer ptr = LLVMPointer.cast(value);
+            return ptr.getExportType();
         }
 
         return super.findMetaObject(context, value);
