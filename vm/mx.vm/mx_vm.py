@@ -1485,12 +1485,25 @@ def log_graalvm_home(args):
 
 
 def _env_var_to_bool(name, default='false'):
-    val = mx.get_env(name, default).lower()
-    if val in ('false', '0', 'no'):
+    val = mx.get_env(name, default)
+    b = _str_to_bool(val)
+    if isinstance(b, bool):
+        return b
+    else:
+        raise mx.abort("Invalid boolean env var value {}={}; expected: <true | false>".format(name, val))
+
+
+def _str_to_bool(val):
+    """
+    :type val: str
+    :rtype: str | bool
+    """
+    low_val = val.lower()
+    if low_val in ('false', '0', 'no'):
         return False
-    elif val in ('true', '1', 'yes'):
+    elif low_val in ('true', '1', 'yes'):
         return True
-    raise mx.abort("Invalid boolean env var value {}={}; expected: <true | false>".format(name, val))
+    return val
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
@@ -1521,7 +1534,7 @@ def _force_bash_launchers(launcher, forced=None):
     :type forced: bool | None | str | list[str]
     """
     if forced is None:
-        forced = mx.get_opts().force_bash_launchers or _env_var_to_bool('FORCE_BASH_LAUNCHERS')
+        forced = mx.get_opts().force_bash_launchers or _str_to_bool(mx.get_env('FORCE_BASH_LAUNCHERS', 'false'))
     if isinstance(forced, bool):
         return forced
     if isinstance(forced, str):
