@@ -442,13 +442,24 @@ public final class LLVMGlobal implements LLVMSymbol, LLVMObjectNativeLibrary.Pro
         if (pointeeType instanceof PrimitiveType) {
             switch (((PrimitiveType) pointeeType).getPrimitiveKind()) {
                 case DOUBLE:
-                    memory.putDouble(a, (double) value);
+                    if (value instanceof Double) {
+                        memory.putDouble(a, (double) value);
+                    } else if (value instanceof Long) {
+                        memory.putI64(a, (long) value);
+                    }
                     break;
                 case FLOAT:
-                    memory.putFloat(a, (float) value);
+                    if (value instanceof Float) {
+                        memory.putFloat(a, (float) value);
+                    } else if (value instanceof Integer) {
+                        memory.putI32(a, (int) value);
+                    }
                     break;
                 case I1:
                     memory.putI1(a, (boolean) value);
+                    break;
+                case I8:
+                    memory.putI8(a, (byte) value);
                     break;
                 case I16:
                     memory.putI16(a, (short) (int) value);
@@ -458,9 +469,6 @@ public final class LLVMGlobal implements LLVMSymbol, LLVMObjectNativeLibrary.Pro
                     break;
                 case I64:
                     memory.putI64(a, (long) value);
-                    break;
-                case I8:
-                    memory.putI8(a, (byte) value);
                     break;
                 default:
                     putOther(memory, context, a, value);
