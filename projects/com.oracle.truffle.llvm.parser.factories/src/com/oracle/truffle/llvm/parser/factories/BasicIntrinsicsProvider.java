@@ -134,8 +134,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToNameNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteManagedToGlobalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMVirtualMallocNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMArrayTypeIDNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMPolyglotAsTyped;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMPolyglotFromTyped;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMCallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
@@ -1106,9 +1108,47 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
         //
 
+        factories.put("@__polyglot_as_typeid", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMTypeIDNode.create(LLVMArgNodeGen.create(1));
+            }
+        });
+
+        factories.put("@polyglot_as_typed", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotAsTyped.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        factories.put("@polyglot_from_typed", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotFromTyped.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        factories.put("@polyglot_array_typeid", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMArrayTypeIDNode.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        /*
+         * For binary compatibility with bitcode files compiled with polyglot.h from 1.0-RC2 or
+         * earlier.
+         */
+
         factories.put("@__polyglot_as_typed", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
+            @SuppressWarnings("deprecation")
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMPolyglotAsTyped.createStruct(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
@@ -1117,6 +1157,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         factories.put("@__polyglot_as_typed_array", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
+            @SuppressWarnings("deprecation")
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMPolyglotAsTyped.createArray(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
@@ -1125,6 +1166,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         factories.put("@__polyglot_from_typed", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
+            @SuppressWarnings("deprecation")
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMPolyglotFromTyped.createStruct(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
@@ -1133,6 +1175,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         factories.put("@__polyglot_from_typed_array", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
+            @SuppressWarnings("deprecation")
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMPolyglotFromTyped.createArray(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
             }

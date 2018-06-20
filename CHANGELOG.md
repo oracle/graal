@@ -1,3 +1,9 @@
+# Version 1.0.0 RC3
+
+New features:
+
+* Dynamic polyglot cast functions `polyglot_from_typed` and `polyglot_as_typed`.
+
 # Version 1.0.0 RC2
 
 New features:
