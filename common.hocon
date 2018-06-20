@@ -1,5 +1,5 @@
 # overlay version
-overlay = 638ee675d730ba648838a0c67ae7d48c4ce0e9ff
+overlay = 24e18d34f3f0c43dbfbb48602edeeb158e021dc2
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
@@ -107,7 +107,7 @@ jdt : {
 }
 
 # for cases where a maven package is not easily accessible
-maven-download-unix : ${labsjdk8} {
+maven-download-unix : {
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
   }
@@ -130,7 +130,7 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-deploy-binaries : ${labsjdk8} {
+deploy-binaries : {
   targets : [post-merge, deploy]
   run : [
     ["mx", "--strict-compliance", "build"]
@@ -138,7 +138,7 @@ deploy-binaries : ${labsjdk8} {
   ]
 }
 
-maven-deploy-dry-run : ${labsjdk8} {
+maven-deploy-dry-run : {
   targets : [gate]
   run : [
     ["mx", "--strict-compliance", "build"]
