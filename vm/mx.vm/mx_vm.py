@@ -1152,6 +1152,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+        self.maven = True
         super(GraalVmInstallableComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -1204,6 +1205,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
                     new_key = base_dir + key.split(support_dir_pattern, 1)[1]
                     layout[new_key] = new_value
 
+        self.maven = True
         super(GraalVmStandaloneComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -1259,6 +1261,7 @@ def get_stage1_graalvm_distribution():
     if _stage1_graalvm_distribution == 'uninitialized':
         _stage1_graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
+        _stage1_graalvm_distribution.maven = False
     return _stage1_graalvm_distribution
 
 
@@ -1268,6 +1271,7 @@ def get_final_graalvm_distribution():
     if _final_graalvm_distribution == 'uninitialized':
         _final_graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout)
         _final_graalvm_distribution.description = "GraalVM distribution"
+        _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
 
 
