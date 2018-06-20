@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
-import static jdk.vm.ci.sparc.SPARC.g2;
-import static jdk.vm.ci.sparc.SPARC.g4;
 import static jdk.vm.ci.sparc.SPARC.sp;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.ENABLE_STACK_RESERVED_ZONE;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.THROW_DELAYED_STACKOVERFLOW_ERROR;
@@ -36,6 +34,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.sparc.SPARCAddress;
 import org.graalvm.compiler.asm.sparc.SPARCAssembler;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
@@ -79,20 +78,21 @@ final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         if (!isStub) {
             if (requiresReservedStackAccessCheck) {
-                HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.foreignCalls;
-
-                Label noReserved = new Label();
-                masm.ldx(new SPARCAddress(g2, config.javaThreadReservedStackActivationOffset), g4);
-                masm.compareBranch(sp, g4, SPARCAssembler.ConditionFlag.LessUnsigned, SPARCAssembler.CC.Xcc, noReserved, SPARCAssembler.BranchPredict.PREDICT_TAKEN, null);
-                ForeignCallLinkage enableStackReservedZone = foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE);
-                CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
-                assert cc.getArgumentCount() == 1;
-                Register arg0 = ((RegisterValue)cc.getArgument(0)).getRegister();
-System.err.println("sparc reg "+arg0);
-                masm.mov(thread, arg0);
-                SPARCCall.directCall(crb, masm, enableStackReservedZone, null, null);
-                SPARCCall.indirectJmp(crb, masm, g4, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
-                masm.bind(noReserved);
+                try (ScratchRegister sc = masm.getScratchRegister()) {
+                    HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.foreignCalls;
+                    Label noReserved = new Label();
+                    Register scratch = sc.getRegister();
+                    masm.ldx(new SPARCAddress(thread, config.javaThreadReservedStackActivationOffset), scratch);
+                    masm.compareBranch(sp, scratch, SPARCAssembler.ConditionFlag.LessUnsigned, SPARCAssembler.CC.Xcc, noReserved, SPARCAssembler.BranchPredict.PREDICT_TAKEN, null);
+                    ForeignCallLinkage enableStackReservedZone = foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE);
+                    CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
+                    assert cc.getArgumentCount() == 1;
+                    Register arg0 = ((RegisterValue)cc.getArgument(0)).getRegister();
+                    masm.mov(thread, arg0);
+                    SPARCCall.directCall(crb, masm, enableStackReservedZone, null, null);
+                    SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
+                    masm.bind(noReserved);
+                }
             }
             // Every non-stub compile method must have a poll before the return.
             SPARCHotSpotSafepointOp.emitCode(crb, masm, config, true, null, thread, safepointPollAddress);
