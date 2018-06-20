@@ -34,6 +34,13 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "exports" : [
+        "com.oracle.truffle.regex",
+        "com.oracle.truffle.regex.result",
+        "com.oracle.truffle.regex.tregex.nodes.input",
+        "com.oracle.truffle.regex.tregex.parser",
+        "com.oracle.truffle.regex.util",
+      ],
       "checkstyleVersion" : "8.8",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Regex",
@@ -54,6 +61,7 @@ suite = {
 
   "distributions" : {
     "TREGEX" : {
+      "moduleName" : "com.oracle.truffle.regex",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [
