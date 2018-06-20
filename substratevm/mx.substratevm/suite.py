@@ -593,5 +593,13 @@ suite = {
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
             },
         },
+
+        "NATIVE_IMAGE_JUNIT_SUPPORT" : {
+            "native" : True,
+            "description" : "Native-image based junit testing support",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/tools-junit.properties",
+            },
+        },
     },
 }

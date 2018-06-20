@@ -458,7 +458,7 @@ GraalTags = Tags([
 ])
 
 @contextmanager
-def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964=False):
+def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964=False, native_image_cmd=''):
     common_args = [] if common_args is None else common_args
     base_args = ['-H:Path=' + svmbuild_dir()]
     if debug_gr_8964:
@@ -469,7 +469,11 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
         base_args += ['--verbose-server']
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
-    native_image_cmd = native_image_path(suite_native_image_root())
+    if native_image_cmd:
+        if not exists(native_image_cmd):
+            mx.abort('Given native_image_cmd does not exist')
+    else:
+        native_image_cmd = native_image_path(suite_native_image_root())
 
     if exists(native_image_cmd):
         def _native_image(args, **kwargs):
@@ -486,12 +490,12 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
             if sep:
                 return after.split(' ')[0].rstrip()
         return None
-    def native_image_func(args, debug_gr_8964=False):
+    def native_image_func(args, debug_gr_8964=False, **kwargs):
         all_args = base_args + common_args + args
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
-        _native_image(all_args)
+        _native_image(all_args, **kwargs)
         return image
     try:
         if exists(native_image_cmd):
@@ -537,8 +541,10 @@ def svm_gate_body(args, tasks):
             maven_plugin_install([])
 
 def native_junit(native_image, unittest_args, build_args=None, run_args=None):
-    build_args = build_args if not None else []
-    run_args = run_args if not None else []
+    build_args = build_args or []
+    run_args = run_args or []
+    print('build_args', build_args)
+    print('run_args', run_args)
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
@@ -549,11 +555,11 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
-        unittest_image = join(junit_tmp_dir, 'svmjunit')
+        unittest_image = native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         mx.run([unittest_image] + run_args)
     finally:
-        remove_tree(junit_tmp_dir)
+        #remove_tree(junit_tmp_dir)
+        print('junit_tmp_dir', junit_tmp_dir)
 
 def gate_sulong(native_image, tasks):
 
@@ -882,6 +888,20 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     ],
     has_polyglot_lib_entrypoints=True,
 ))
+
+if os.environ.has_key('NATIVE_IMAGE_TESTING'):
+    mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+        suite=suite,
+        name='Native Image JUnit',
+        short_name='nju',
+        dir_name='junit',
+        license_files=[],
+        third_party_license_files=[],
+        truffle_jars=[],
+        builder_jar_distributions=['mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
+        support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
+        include_in_polyglot=False,
+    ))
 
 mx.update_commands(suite, {
     'gate': [gate, '[options]'],
