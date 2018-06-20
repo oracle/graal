@@ -1176,6 +1176,8 @@ def updategraalinopenjdk(args):
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         GraalJDKModule('jdk.internal.vm.compiler.management',
             [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+        GraalJDKModule('jdk.aot',
+            [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
 
     package_renamings = {
