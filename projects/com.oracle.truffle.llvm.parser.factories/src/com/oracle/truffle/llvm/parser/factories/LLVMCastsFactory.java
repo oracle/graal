@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeG
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8ZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMToIVarNoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMToIVarZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToDoubleVectorBitNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToDoubleVectorNoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToFloatVectorNoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorNodeFactory.LLVMToI16VectorBitNodeGen;
@@ -210,6 +211,8 @@ final class LLVMCastsFactory {
                             return LLVMToI32VectorBitNodeGen.create(fromNode);
                         case I64:
                             return LLVMToI64VectorBitNodeGen.create(fromNode);
+                        case DOUBLE:
+                            return LLVMToDoubleVectorBitNodeGen.create(fromNode);
                         default:
                             throw getUnsupportedConversionError();
                     }
