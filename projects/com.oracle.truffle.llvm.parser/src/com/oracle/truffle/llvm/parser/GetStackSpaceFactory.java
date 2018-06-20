@@ -34,16 +34,16 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface AllocFactory {
+public interface GetStackSpaceFactory {
 
-    LLVMExpressionNode createAlloc(NodeFactory nodeFactory, LLVMContext context, Type type);
+    LLVMExpressionNode createGetStackSpace(NodeFactory nodeFactory, LLVMContext context, Type type);
 
-    static AllocFactory createAllocaFactory() {
+    static GetStackSpaceFactory createAllocaFactory() {
         return (nodeFactory, context, type) -> nodeFactory.createAlloca(context, type);
     }
 
-    static AllocFactory createUniqueAllocFactory(UniquesRegion uniquesRegion) {
-        return (nodeFactory, context, type) -> nodeFactory.createUniqueAlloc(context, type, uniquesRegion);
+    static GetStackSpaceFactory createGetStackSpaceFactory(UniquesRegion uniquesRegion) {
+        return (nodeFactory, context, type) -> nodeFactory.createGetStackSpace(context, type, uniquesRegion);
     }
 
 }

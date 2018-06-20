@@ -141,7 +141,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMStatementNode phi, LLVMSourceLocation source);
 
-    LLVMExpressionNode createArrayLiteral(LLVMContext context, List<LLVMExpressionNode> arrayValues, ArrayType arrayType, AllocFactory allocFactory);
+    LLVMExpressionNode createArrayLiteral(LLVMContext context, List<LLVMExpressionNode> arrayValues, ArrayType arrayType, GetStackSpaceFactory arrayGetStackSpaceFactory);
 
     /*
      * Stack allocations with type
@@ -150,7 +150,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createAlloca(LLVMContext context, Type type, int alignment);
 
-    LLVMExpressionNode createUniqueAlloc(LLVMContext context, Type type, UniquesRegion uniquesRegion);
+    LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion);
 
     LLVMExpressionNode createAllocaArray(LLVMContext context, Type elementType, LLVMExpressionNode numElements, int alignment);
 
@@ -164,7 +164,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size);
 
-    LLVMExpressionNode createStructureConstantNode(LLVMContext context, Type structureType, AllocFactory allocFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
+    LLVMExpressionNode createStructureConstantNode(LLVMContext context, Type structureType, GetStackSpaceFactory getStackSpaceFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
     LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
@@ -189,7 +189,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
 
-    LLVMExpressionNode createCopyStructByValue(LLVMContext context, Type type, AllocFactory allocFactory, LLVMExpressionNode parameterNode);
+    LLVMExpressionNode createCopyStructByValue(LLVMContext context, Type type, GetStackSpaceFactory getStackSpaceFactory, LLVMExpressionNode parameterNode);
 
     LLVMExpressionNode createVarArgCompoundValue(int length, int alignment, LLVMExpressionNode parameterNode);
 

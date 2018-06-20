@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = Type.class, name = "symbolType")})
-public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
+public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
     abstract int getSize();
 
@@ -64,7 +64,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
         return stackPointer;
     }
 
-    public abstract static class LLVMAllocConstInstruction extends LLVMAllocInstruction {
+    public abstract static class LLVMGetStackForConstInstruction extends LLVMGetStackSpaceInstruction {
 
         @CompilationFinal(dimensions = 1) private Type[] types = null;
         @CompilationFinal(dimensions = 1) private int[] offsets = null;
@@ -91,7 +91,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
     }
 
-    public abstract static class LLVMAllocaConstInstruction extends LLVMAllocConstInstruction {
+    public abstract static class LLVMAllocaConstInstruction extends LLVMGetStackForConstInstruction {
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
@@ -101,7 +101,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     }
 
     @NodeField(type = UniqueSlot.class, name = "uniqueSlot")
-    public abstract static class LLVMUniqueAllocConstInstruction extends LLVMAllocConstInstruction {
+    public abstract static class LLVMGetUniqueStackSpaceInstruction extends LLVMGetStackForConstInstruction {
 
         abstract UniqueSlot getUniqueSlot();
 
@@ -112,7 +112,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
+    public abstract static class LLVMAllocaInstruction extends LLVMGetStackSpaceInstruction {
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,

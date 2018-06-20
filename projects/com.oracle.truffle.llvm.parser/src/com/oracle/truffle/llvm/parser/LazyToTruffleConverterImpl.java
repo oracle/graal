@@ -96,10 +96,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         // setup the uniquesRegion
         UniquesRegion uniquesRegion = new UniquesRegion();
-        AllocFactory allocFactoy = AllocFactory.createUniqueAllocFactory(uniquesRegion);
+        GetStackSpaceFactory getStackSpaceFactoy = GetStackSpaceFactory.createGetStackSpaceFactory(uniquesRegion);
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, runtime.getContext(), phis, method);
-        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, allocFactoy);
+        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactoy);
         List<FrameSlot> notNullable = new ArrayList<>();
 
         LLVMRuntimeDebugInformation dbgInfoHandler = new LLVMRuntimeDebugInformation(frame, runtime.getNodeFactory(), runtime.getContext(), notNullable, symbols);
@@ -170,7 +170,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 Type type = ((PointerType) parameter.getType()).getPointeeType();
                 formalParamInits.add(
                                 runtime.getNodeFactory().createFrameWrite(parameter.getType(),
-                                                runtime.getNodeFactory().createCopyStructByValue(runtime.getContext(), type, AllocFactory.createAllocaFactory(), parameterNode), slot,
+                                                runtime.getNodeFactory().createCopyStructByValue(runtime.getContext(), type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot,
                                                 null));
             } else {
                 formalParamInits.add(runtime.getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot, null));
