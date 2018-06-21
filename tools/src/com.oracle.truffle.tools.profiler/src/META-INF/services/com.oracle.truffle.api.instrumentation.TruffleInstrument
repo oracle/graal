@@ -1,0 +1,3 @@
+com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument
+com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument
+com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument
