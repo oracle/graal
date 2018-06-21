@@ -773,10 +773,11 @@ public final class Runner {
 
     private RootCallTarget createGlobalVariableInitializer(LLVMParserResult parserResult) {
         FrameDescriptor rootFrame = StackManager.createRootFrame();
-        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(parserResult.getRuntime(), rootFrame, GetStackSpaceFactory.createAllocaFactory());
+        LLVMParserRuntime runtime = parserResult.getRuntime();
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory());
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
         for (GlobalVariable global : parserResult.getDefinedGlobals()) {
-            final LLVMStatementNode store = createGlobalInitialization(symbolResolver, global);
+            final LLVMStatementNode store = createGlobalInitialization(runtime, symbolResolver, global);
             if (store != null) {
                 globalNodes.add(store);
             }
@@ -790,7 +791,7 @@ public final class Runner {
         return null;
     }
 
-    private LLVMStatementNode createGlobalInitialization(LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
+    private LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -800,7 +801,10 @@ public final class Runner {
             final Type type = global.getType().getPointeeType();
             final int size = context.getByteSize(type);
 
-            final LLVMExpressionNode globalVarAddress = symbolResolver.resolve(global);
+            // for fetching the address of the global that we want to initialize, we must use the
+            // file scope because we are initializing the globals of the current file
+            LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
+            final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(globalDescriptor, new PointerType(global.getType()));
             if (size != 0) {
                 if (type instanceof ArrayType || type instanceof StructureType) {
                     return nodeFactory.createStore(context, globalVarAddress, constant, type, null);
