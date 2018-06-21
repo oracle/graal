@@ -26,6 +26,9 @@ suite = {
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
             ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.api",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -52,6 +55,9 @@ suite = {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : ["truffle:TRUFFLE_API"],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.api",
             "javaCompliance" : "1.8",
@@ -107,6 +113,8 @@ suite = {
 
     "distributions": {
         "CHROMEINSPECTOR": {
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.chromeinspector",
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -135,6 +143,8 @@ suite = {
             },
         },
         "TRUFFLE_PROFILER": {
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.profiler",
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
             ],
