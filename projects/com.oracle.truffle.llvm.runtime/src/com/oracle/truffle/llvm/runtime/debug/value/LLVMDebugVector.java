@@ -29,20 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.value;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
-import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public final class LLVMDebugVector extends LLVMDebuggerValue {
 
@@ -103,60 +92,18 @@ public final class LLVMDebugVector extends LLVMDebuggerValue {
 
     @TruffleBoundary
     public static LLVMDebugVector create(Object metaObject, Object obj) {
-        if (obj instanceof LLVMI64Vector) {
-            final String[] elements = Arrays.stream(((LLVMI64Vector) obj).getValues()).mapToObj(String::valueOf).collect(Collectors.toList()).toArray(NO_KEYS);
-            return new LLVMDebugVector(metaObject, elements, "i64");
-
-        } else if (obj instanceof LLVMI32Vector) {
-            final String[] elements = Arrays.stream(((LLVMI32Vector) obj).getValues()).mapToObj(String::valueOf).collect(Collectors.toList()).toArray(NO_KEYS);
-            return new LLVMDebugVector(metaObject, elements, "i32");
-
-        } else if (obj instanceof LLVMI16Vector) {
-            final short[] values = ((LLVMI16Vector) obj).getValues();
-            final String[] elements = new String[values.length];
-            for (int i = 0; i < values.length; i++) {
-                elements[i] = String.valueOf(values[i]);
+        if (obj instanceof LLVMVector) {
+            final LLVMVector vector = (LLVMVector) obj;
+            if (vector.getLength() <= 0) {
+                return new LLVMDebugVector(metaObject, NO_KEYS, String.valueOf(vector.getElementType()));
             }
-            return new LLVMDebugVector(metaObject, elements, "i16");
-
-        } else if (obj instanceof LLVMI8Vector) {
-            final byte[] values = ((LLVMI8Vector) obj).getValues();
-            final String[] elements = new String[values.length];
-            for (int i = 0; i < values.length; i++) {
-                elements[i] = String.valueOf(values[i]);
+            final String[] elements = new String[vector.getLength()];
+            for (int i = 0; i < elements.length; i++) {
+                elements[i] = String.valueOf(vector.getElement(i));
             }
-            return new LLVMDebugVector(metaObject, elements, "i8");
-
-        } else if (obj instanceof LLVMI1Vector) {
-            final boolean[] values = ((LLVMI1Vector) obj).getValues();
-            final String[] elements = new String[values.length];
-            for (int i = 0; i < values.length; i++) {
-                elements[i] = String.valueOf(values[i]);
-            }
-            return new LLVMDebugVector(metaObject, elements, "i1");
-
-        } else if (obj instanceof LLVMDoubleVector) {
-            final String[] elements = Arrays.stream(((LLVMDoubleVector) obj).getValues()).mapToObj(String::valueOf).collect(Collectors.toList()).toArray(NO_KEYS);
-            return new LLVMDebugVector(metaObject, elements, "double");
-
-        } else if (obj instanceof LLVMFloatVector) {
-            final float[] values = ((LLVMFloatVector) obj).getValues();
-            final String[] elements = new String[values.length];
-            for (int i = 0; i < values.length; i++) {
-                elements[i] = String.valueOf(values[i]);
-            }
-            return new LLVMDebugVector(metaObject, elements, "float");
-
-        } else if (obj instanceof LLVMPointerVector) {
-            final String[] elements = Arrays.stream(((LLVMPointerVector) obj).getValues()).mapToObj(String::valueOf).collect(Collectors.toList()).toArray(NO_KEYS);
-            return new LLVMDebugVector(metaObject, elements, "void*");
-
-        } else if (obj instanceof LLVMFunctionVector) {
-            final String[] elements = Arrays.stream(((LLVMFunctionVector) obj).getValues()).map(String::valueOf).collect(Collectors.toList()).toArray(NO_KEYS);
-            return new LLVMDebugVector(metaObject, elements, "void*");
-
-        } else {
-            return null;
+            return new LLVMDebugVector(metaObject, elements, String.valueOf(vector.getElementType()));
         }
+
+        return null;
     }
 }

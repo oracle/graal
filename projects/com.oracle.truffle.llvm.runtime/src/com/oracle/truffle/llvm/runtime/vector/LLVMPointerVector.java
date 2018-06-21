@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @ValueType
 public final class LLVMPointerVector extends LLVMVector {
@@ -51,5 +53,15 @@ public final class LLVMPointerVector extends LLVMVector {
     @Override
     public int getLength() {
         return vector.length;
+    }
+
+    @Override
+    public Type getElementType() {
+        return PointerType.VOID;
+    }
+
+    @Override
+    public Object getElement(int index) {
+        return index >= 0 && index < vector.length ? vector[index] : null;
     }
 }

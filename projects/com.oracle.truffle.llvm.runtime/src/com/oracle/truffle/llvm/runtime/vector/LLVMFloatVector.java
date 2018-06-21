@@ -30,9 +30,12 @@
 package com.oracle.truffle.llvm.runtime.vector;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @ValueType
 public final class LLVMFloatVector extends LLVMVector {
+
     private final float[] vector;
 
     public static LLVMFloatVector create(float[] vector) {
@@ -50,5 +53,15 @@ public final class LLVMFloatVector extends LLVMVector {
     @Override
     public int getLength() {
         return vector.length;
+    }
+
+    @Override
+    public Type getElementType() {
+        return PrimitiveType.FLOAT;
+    }
+
+    @Override
+    public Object getElement(int index) {
+        return index >= 0 && index < vector.length ? vector[index] : null;
     }
 }
