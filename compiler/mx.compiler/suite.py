@@ -1266,6 +1266,19 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "Graal,HotSpot",
     },
+
+    "jdk.tools.jaotc.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "jdk.tools.jaotc",
+        "jdk.tools.jaotc.binformat",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,Test",
+    },
     
     # ------------- GraalTruffle -------------
 
@@ -1806,6 +1819,19 @@ suite = {
         "JVMCI_SERVICES",
         "JVMCI_API",
         "JVMCI_HOTSPOT",
+      ],
+    },
+
+    "JAOTC_TEST" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "jdk.tools.jaotc.test",
+      ],
+      "distDependencies" : [
+        "JAOTC",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
       ],
     },
 
