@@ -134,17 +134,15 @@ daily_vm_darwin: ${vm_darwin} {
 
 vm_deploy: {
   run: [
-    [export, "SUITES="${vm_all_suites}]
-    ${mx_vm_installables} [build]
-    ${mx_vm_installables} [maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
-    [export, "SUITES="${vm_base_suites}]
+    ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+    ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
     ${mx_vm_common} [build]
-    ${mx_vm_common} [maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+    ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
   ]
 }
 
 
-mx_vm_common: [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES"]
+mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
 mx_vm_installables: ${mx_vm_common} [--disable-libpolyglot, --disable-polyglot, "--force-bash-launchers=lli,native-image"]
 
 full_vm_build_linux: ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
@@ -159,23 +157,20 @@ builds += [
   },
   ${full_vm_build_linux} ${linux-deploy} ${gate_vm_linux} {
     run: [
-      [export, "SUITES="${vm_all_suites}]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
       ${mx_vm_common} [build]
-      ${mx_vm_common} [maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
-      ${mx_vm_installables} [build]
-      ${mx_vm_installables} [maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
-      [export, "SUITES="${vm_base_suites}]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} [maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_common} [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
     ]
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
   },
   ${full_vm_build_darwin} ${darwin-deploy} ${gate_vm_darwin} {
     run: [
-      [export, "SUITES="${vm_base_suites}]
       ${mx_vm_common} [build]
-      ${mx_vm_common} [maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
     ]
     timelimit: "3:00:00"
     name: ondemand-vm-build-base-darwin-amd64
@@ -183,9 +178,8 @@ builds += [
   },
   ${full_vm_build_darwin} ${darwin-deploy} ${gate_vm_darwin} {
     run: [
-      [export, "SUITES="${vm_all_suites}]
-      ${mx_vm_installables} [build]
-      ${mx_vm_installables} [maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
     ]
     timelimit: "3:00:00"
     name: ondemand-vm-build-all-darwin-amd64
