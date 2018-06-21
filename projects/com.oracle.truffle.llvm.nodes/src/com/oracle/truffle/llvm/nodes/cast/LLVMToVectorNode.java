@@ -1009,4 +1009,102 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             return LLVMI64Vector.create(vector);
         }
     }
+
+    public abstract static class LLVMToDoubleVectorBitNode extends LLVMToVectorNode {
+
+        @Specialization
+        protected LLVMDoubleVector doLong(long from) {
+            return doDouble(Double.longBitsToDouble(from));
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doDouble(double from) {
+            double[] vector = new double[]{from};
+            return LLVMDoubleVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doI1Vector(LLVMI1Vector from) {
+            if (from.getLength() % Double.SIZE != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            final double[] vector = new double[from.getLength() / Double.SIZE];
+            for (int i = 0; i < from.getLength() / Double.SIZE; i++) {
+                long vectorI = 0;
+                for (int j = 0; j < Double.SIZE; j++) {
+                    vectorI |= (from.getValue(i * Double.SIZE + j) ? 1L : 0L) << j;
+                }
+                vector[i] = Double.longBitsToDouble(vectorI);
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doI8Vector(LLVMI8Vector from) {
+            if (from.getLength() % (Double.SIZE / Byte.SIZE) != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            final double[] vector = new double[from.getLength() / (Double.SIZE / Byte.SIZE)];
+            for (int i = 0; i < from.getLength() / (Double.SIZE / Byte.SIZE); i++) {
+                long vectorI = 0;
+                for (int j = 0; j < Double.SIZE / Byte.SIZE; j++) {
+                    vectorI |= (long) (from.getValue(i * (Double.SIZE / Byte.SIZE) + j) & LLVMExpressionNode.I8_MASK) << (j * Byte.SIZE);
+                }
+                vector[i] = Double.longBitsToDouble(vectorI);
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doI16Vector(LLVMI16Vector from) {
+            if (from.getLength() % (Double.SIZE / Short.SIZE) != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            final double[] vector = new double[from.getLength() / (Double.SIZE / Short.SIZE)];
+            for (int i = 0; i < from.getLength() / (Double.SIZE / Short.SIZE); i++) {
+                long vectorI = 0;
+                for (int j = 0; j < Double.SIZE / Short.SIZE; j++) {
+                    vectorI |= (long) (from.getValue(i * (Double.SIZE / Short.SIZE) + j) & LLVMExpressionNode.I16_MASK) << (j * Short.SIZE);
+                }
+                vector[i] = Double.longBitsToDouble(vectorI);
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doI32Vector(LLVMI32Vector from) {
+            if (from.getLength() % (Double.SIZE / Integer.SIZE) != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("invalid vector size!");
+            }
+            final double[] vector = new double[from.getLength() / (Double.SIZE / Integer.SIZE)];
+            for (int i = 0; i < from.getLength() / (Double.SIZE / Integer.SIZE); i++) {
+                long vectorI = 0;
+                for (int j = 0; j < Double.SIZE / Integer.SIZE; j++) {
+                    vectorI |= (from.getValue(i * (Double.SIZE / Integer.SIZE) + j) & LLVMExpressionNode.I32_MASK) << (j * Integer.SIZE);
+                }
+                vector[i] = Double.longBitsToDouble(vectorI);
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doI64Vector(LLVMI64Vector from) {
+            final double[] vector = new double[from.getLength()];
+            for (int i = 0; i < from.getLength(); i++) {
+                vector[i] = Double.longBitsToDouble(from.getValue(i));
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doDoubleVector(LLVMDoubleVector from) {
+            final double[] vector = new double[from.getLength()];
+            System.arraycopy(from.getValues(), 0, vector, 0, vector.length);
+            return LLVMDoubleVector.create(vector);
+        }
+    }
 }
