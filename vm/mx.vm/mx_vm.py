@@ -1411,7 +1411,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_project(launcher_project)
                 if launcher_project.is_native():
                     needs_stage1 = True
-        if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
+        # The JS components have issues ATM since they share the same directory
+        if isinstance(component, mx_sdk.GraalVmLanguage) and not (_disable_installable(component) or component.dir_name == 'js'):
             installable_component = GraalVmInstallableComponent(component)
             register_distribution(installable_component)
             if _get_svm_support().is_supported() and not _has_forced_launchers(component):
@@ -1513,8 +1514,9 @@ def _str_to_bool(val):
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu. This can also be a coma-separated list of disabled components short names.', nargs='?', const=True, default=False)
 mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
-mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images', nargs='?', const=True, default=False)
+mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images. This can also be a coma-separated list of disabled launchers.', nargs='?', const=True, default=False)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
@@ -1547,6 +1549,18 @@ def _force_bash_launchers(launcher, forced=None):
         launcher = launcher.destination
     launcher_name = basename(launcher)
     return launcher_name in forced
+
+
+def _disable_installable(component):
+    """ :type component: str | mx_sdk.GraalVmComponent """
+    disabled = mx.get_opts().disable_installables or _str_to_bool(mx.get_env('DISABLE_INSTALLABLES', 'false'))
+    if isinstance(disabled, bool):
+        return disabled
+    if isinstance(disabled, str):
+        disabled = disabled.split(',')
+    if isinstance(component, mx_sdk.GraalVmComponent):
+        component = component.short_name
+    return component in disabled
 
 
 def _has_forced_launchers(component, forced=None):
