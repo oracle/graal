@@ -441,20 +441,6 @@ public final class LLVMGlobal implements LLVMSymbol, LLVMObjectNativeLibrary.Pro
 
         if (pointeeType instanceof PrimitiveType) {
             switch (((PrimitiveType) pointeeType).getPrimitiveKind()) {
-                case DOUBLE:
-                    if (value instanceof Double) {
-                        memory.putDouble(a, (double) value);
-                    } else if (value instanceof Long) {
-                        memory.putI64(a, (long) value);
-                    }
-                    break;
-                case FLOAT:
-                    if (value instanceof Float) {
-                        memory.putFloat(a, (float) value);
-                    } else if (value instanceof Integer) {
-                        memory.putI32(a, (int) value);
-                    }
-                    break;
                 case I1:
                     memory.putI1(a, (boolean) value);
                     break;
@@ -465,10 +451,24 @@ public final class LLVMGlobal implements LLVMSymbol, LLVMObjectNativeLibrary.Pro
                     memory.putI16(a, (short) (int) value);
                     break;
                 case I32:
-                    memory.putI32(a, (int) value);
+                case FLOAT:
+                    if (value instanceof Float) {
+                        memory.putFloat(a, (float) value);
+                    } else if (value instanceof Integer) {
+                        memory.putI32(a, (int) value);
+                    } else {
+                        putOther(memory, context, a, value);
+                    }
                     break;
                 case I64:
-                    memory.putI64(a, (long) value);
+                case DOUBLE:
+                    if (value instanceof Double) {
+                        memory.putDouble(a, (double) value);
+                    } else if (value instanceof Long) {
+                        memory.putI64(a, (long) value);
+                    } else {
+                        putOther(memory, context, a, value);
+                    }
                     break;
                 default:
                     putOther(memory, context, a, value);
