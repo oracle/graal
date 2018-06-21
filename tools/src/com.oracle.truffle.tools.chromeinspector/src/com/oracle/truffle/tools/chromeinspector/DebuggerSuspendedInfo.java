@@ -24,14 +24,30 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import java.util.concurrent.atomic.AtomicReference;
+
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 
+import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
+import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
+import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.CallFrame;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
+
+import org.graalvm.collections.Pair;
 
 final class DebuggerSuspendedInfo {
 
     private final SuspendedEvent se;
     private final CallFrame[] callFrames;
+    /**
+     * Holder of the last evaluated value, if any. It's expected to be used for non
+     * {@link RemoteObject#isReplicable() replicable} values, while assuming that
+     * {@link DebuggerDomain#setVariableValue(int, String, CallArgument, String)} is called after
+     * {@link RuntimeDomain#evaluate(String, String, boolean, boolean, int, boolean, boolean)}
+     */
+    final AtomicReference<Pair<DebugValue, Object>> lastEvaluatedValue = new AtomicReference<>();
 
     DebuggerSuspendedInfo(SuspendedEvent se, CallFrame[] callFrames) {
         this.se = se;
