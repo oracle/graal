@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -71,7 +72,6 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.base.NumUtil;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
@@ -737,7 +737,7 @@ public class UniverseBuilder {
         // Object.wait() and Object.notify() and friends.
         if (clazz.needMonitorField()) {
             final int referenceFieldAlignmentAndSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-            nextOffset = ObjectLayout.roundUp(nextOffset, referenceFieldAlignmentAndSize);
+            nextOffset = NumUtil.roundUp(nextOffset, referenceFieldAlignmentAndSize);
             clazz.setMonitorFieldOffset(nextOffset);
             nextOffset += referenceFieldAlignmentAndSize;
         }
@@ -745,7 +745,7 @@ public class UniverseBuilder {
         // An int to hold the result for System.identityHashCode.
         if (clazz.needHashCodeField()) {
             int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
-            nextOffset = ObjectLayout.roundUp(nextOffset, intFieldSize);
+            nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
             clazz.setHashCodeFieldOffset(nextOffset);
             nextOffset += intFieldSize;
         }

@@ -36,6 +36,7 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.options.Option;
@@ -51,7 +52,6 @@ import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -239,7 +239,7 @@ public class NativeImageCodeCache {
                 CompilationResult compilation = entry.getValue();
                 compilationsByStart.put(codeCacheSize, compilation);
                 method.setCodeAddressOffset(codeCacheSize);
-                codeCacheSize = ObjectLayout.roundUp(codeCacheSize + compilation.getTargetCodeSize(), CODE_ALIGNMENT);
+                codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), CODE_ALIGNMENT);
             }
 
             // Build run-time metadata.
@@ -493,7 +493,7 @@ public class NativeImageCodeCache {
             int codeSize = compilation.getTargetCodeSize();
             buffer.putBytes(compilation.getTargetCode(), 0, codeSize);
 
-            for (int i = codeSize; i < ObjectLayout.roundUp(codeSize, CODE_ALIGNMENT); i++) {
+            for (int i = codeSize; i < NumUtil.roundUp(codeSize, CODE_ALIGNMENT); i++) {
                 buffer.putByte(CODE_FILLER_BYTE);
             }
         }

@@ -35,6 +35,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.core.common.NumUtil;
 
 /**
  * Defines the layout for a hybrid class.
@@ -94,7 +95,7 @@ public class HybridLayout<T> {
     }
 
     public int getArrayBaseOffset() {
-        return ObjectLayout.roundUp(instanceSize, layout.sizeInBytes(getArrayElementStorageKind()));
+        return NumUtil.roundUp(instanceSize, layout.sizeInBytes(getArrayElementStorageKind()));
     }
 
     public long getArrayElementOffset(int index) {

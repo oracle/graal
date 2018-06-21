@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.config;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
@@ -71,14 +72,6 @@ public class ObjectLayout {
         this.referenceSize = target.arch.getPlatformKind(JavaKind.Object).getSizeInBytes();
         this.alignmentMask = target.wordSize - 1;
         this.deoptScratchSpace = deoptScratchSpace;
-    }
-
-    public static int roundUp(int number, int mod) {
-        return ((number + mod - 1) / mod) * mod;
-    }
-
-    public static long roundUp(long number, long mod) {
-        return ((number + mod - 1) / mod) * mod;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -167,7 +160,7 @@ public class ObjectLayout {
     private static final JavaKind arrayHashCodeKind = JavaKind.Int;
 
     public int getArrayHashCodeOffset() {
-        return roundUp(getArrayLengthNextOffset(), sizeInBytes(arrayHashCodeKind));
+        return NumUtil.roundUp(getArrayLengthNextOffset(), sizeInBytes(arrayHashCodeKind));
     }
 
     private int getArrayHashCodeNextOffset() {
@@ -175,7 +168,7 @@ public class ObjectLayout {
     }
 
     public int getArrayBaseOffset(JavaKind kind) {
-        return roundUp(getArrayHashCodeNextOffset(), sizeInBytes(kind));
+        return NumUtil.roundUp(getArrayHashCodeNextOffset(), sizeInBytes(kind));
     }
 
     public long getArrayElementOffset(JavaKind kind, int index) {

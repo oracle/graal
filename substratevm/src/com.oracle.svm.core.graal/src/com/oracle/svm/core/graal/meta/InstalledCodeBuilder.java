@@ -53,7 +53,6 @@ import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeMethodInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.code.amd64.AMD64InstructionPatcher;
@@ -185,7 +184,7 @@ public class InstalledCodeBuilder {
 
             int constantsSize = compilation.getDataSection().getSectionSize();
             codeSize = compilation.getTargetCodeSize();
-            int tmpConstantsOffset = ObjectLayout.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
+            int tmpConstantsOffset = NumUtil.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
             int tmpMemorySize = tmpConstantsOffset + constantsSize;
 
             // Allocate executable memory. It contains the compiled code and the constants
@@ -225,10 +224,10 @@ public class InstalledCodeBuilder {
                 freeOSMemory(code, WordFactory.unsigned(tmpMemorySize));
 
                 // Add space for the actual trampoline jump instructions: jmp [rip+offset]
-                tmpConstantsOffset = ObjectLayout.roundUp(codeSize + directTargets.size() * TRAMPOLINE_JUMP_SIZE, 8);
+                tmpConstantsOffset = NumUtil.roundUp(codeSize + directTargets.size() * TRAMPOLINE_JUMP_SIZE, 8);
                 // Add space for the target addresses
                 // (which are referenced from the jump instructions)
-                tmpConstantsOffset = ObjectLayout.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
+                tmpConstantsOffset = NumUtil.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
                 if (tmpConstantsOffset > compiledBytes.length) {
                     compiledBytes = Arrays.copyOf(compiledBytes, tmpConstantsOffset);
                 }
@@ -441,7 +440,7 @@ public class InstalledCodeBuilder {
              * Insert trampoline jumps. Note that this is only a fail-safe, because usually the code
              * should be within a 32-bit address range.
              */
-            currentPos = ObjectLayout.roundUp(currentPos, 8);
+            currentPos = NumUtil.roundUp(currentPos, 8);
             ByteBuffer codeBuffer = ByteBuffer.wrap(compiledBytes).order(ConfigurationValues.getTarget().arch.getByteOrder());
             for (Entry<Long, Integer> entry : directTargets.entrySet()) {
                 long targetAddress = entry.getKey();
