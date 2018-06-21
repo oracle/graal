@@ -1431,29 +1431,38 @@ def graalvm_output():
     return join(_output_root, _graalvm.jdk_base)
 
 
-def graalvm_dist_name(args):
+def graalvm_dist_name():
+    return get_final_graalvm_distribution().name
+
+
+def graalvm_version():
+    return _suite.release_version()
+
+
+def graalvm_home():
+    _graalvm_dist = get_final_graalvm_distribution()
+    return join(_graalvm_dist.output, _graalvm_dist.jdk_base)
+
+
+def log_graalvm_dist_name(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
     _ = parser.parse_args(args)
+    mx.log(graalvm_dist_name())
 
-    mx.log(get_final_graalvm_distribution().name)
 
-
-def graalvm_version(args):
+def log_graalvm_version(args):
     """print the GraalVM version"""
     parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
     _ = parser.parse_args(args)
+    mx.log(graalvm_version())
 
-    mx.log(_suite.release_version())
 
-
-def graalvm_home(args):
+def log_graalvm_home(args):
     """print the GraalVM home dir"""
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
     _ = parser.parse_args(args)
-
-    _graalvm_dist = get_final_graalvm_distribution()
-    mx.log(join(_graalvm_dist.output, _graalvm_dist.jdk_base))
+    mx.log(graalvm_home())
 
 
 def _env_var_to_bool(name, default='false'):
@@ -1516,7 +1525,7 @@ def _include_sources():
 
 
 mx.update_commands(_suite, {
-    'graalvm-dist-name': [graalvm_dist_name, ''],
-    'graalvm-version': [graalvm_version, ''],
-    'graalvm-home': [graalvm_home, ''],
+    'graalvm-dist-name': [log_graalvm_dist_name, ''],
+    'graalvm-version': [log_graalvm_version, ''],
+    'graalvm-home': [log_graalvm_home, ''],
 })
