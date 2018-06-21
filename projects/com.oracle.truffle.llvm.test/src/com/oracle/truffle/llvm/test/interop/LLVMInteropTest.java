@@ -1025,6 +1025,15 @@ public class LLVMInteropTest {
         }
     }
 
+    @Test
+    public void testReleaseHandle() {
+        try (Runner runner = new Runner("releaseHandle")) {
+            Object a = new Object();
+            runner.export(a, "object");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
     static class ForeignObject implements TruffleObject {
         protected int foo;
 
