@@ -31,6 +31,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -54,13 +56,27 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     public static final NodeClass<IsNullNode> TYPE = NodeClass.create(IsNullNode.class);
 
-    public IsNullNode(ValueNode object) {
+    /*
+     * When linear pointer compression is enabled, compressed and uncompressed nulls differ.
+     */
+    private final JavaConstant nullConstant;
+
+    private IsNullNode(ValueNode object, JavaConstant nullConstant) {
         super(TYPE, object);
+        this.nullConstant = nullConstant;
         assert object != null;
     }
 
+    public IsNullNode(ValueNode object) {
+        this(object, JavaConstant.NULL_POINTER);
+    }
+
+    public JavaConstant nullConstant() {
+        return nullConstant;
+    }
+
     public static LogicNode create(ValueNode forValue) {
-        return canonicalized(null, forValue);
+        return canonicalized(null, forValue, JavaConstant.NULL_POINTER);
     }
 
     @Override
@@ -77,10 +93,11 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        return canonicalized(this, forValue);
+        return canonicalized(this, forValue, nullConstant);
     }
 
-    private static LogicNode canonicalized(IsNullNode node, ValueNode forValue) {
+    private static LogicNode canonicalized(IsNullNode node, ValueNode forValue, JavaConstant forNullConstant) {
+        JavaConstant nullConstant = forNullConstant;
         ValueNode value = forValue;
         while (true) {
             if (StampTool.isPointerAlwaysNull(value)) {
@@ -100,12 +117,21 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
                     value = convertNode.getValue();
                     continue;
                 }
+                /*
+                 * CompressionNode.mayNullCheckSkipConversion returns false when linear pointer
+                 * compression is enabled.
+                 */
+                if (value instanceof CompressionNode) {
+                    CompressionNode compressionNode = (CompressionNode) value;
+                    nullConstant = compressionNode.nullConstant();
+                    value = compressionNode.getValue();
+                    continue;
+                }
             }
-
             /*
              * If we are at original node, just return it. Otherwise create a new node.
              */
-            return (node != null && value == forValue) ? node : new IsNullNode(value);
+            return (node != null && value == forValue) ? node : new IsNullNode(value, nullConstant);
         }
     }
 

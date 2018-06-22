@@ -1272,6 +1272,7 @@ def updategraalinopenjdk(args):
                         dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
                         with open(src_file) as fp:
                             contents = fp.read()
+                        old_line_count = len(contents.split('\n'))
                         if filename.endswith('.java'):
                             for old_name, new_name in package_renamings.iteritems():
                                 old_name_as_dir = old_name.replace('.', os.sep)
@@ -1282,6 +1283,15 @@ def updategraalinopenjdk(args):
                                 contents = contents.replace(old_name, new_name)
                             for old_line, new_line in replacements.iteritems():
                                 contents = contents.replace(old_line, new_line)
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count > old_line_count:
+                                mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
+                            else:
+                                if new_line_count < old_line_count:
+                                    contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count != old_line_count:
+                                mx.abort('Unable to correct line count for {}'.format(src_file))
                             for forbidden in blacklist:
                                 if forbidden in contents:
                                     mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))

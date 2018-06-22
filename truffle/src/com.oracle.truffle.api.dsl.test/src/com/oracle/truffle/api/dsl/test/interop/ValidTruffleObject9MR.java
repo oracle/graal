@@ -24,17 +24,19 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = ValidTruffleObject9.class)
 public class ValidTruffleObject9MR {
-    @ExpectError({"Unknown message type: unknownMsg"})
+    @SuppressWarnings("unknown-message")
     @Resolve(message = "unknownMsg")
     public abstract static class UnknownMessage extends Node {
-
+        public Object access(VirtualFrame frame, ValidTruffleObject9 obj, Object[] args) {
+            return "Called: " + frame + obj + args;
+        }
     }
 
 }
