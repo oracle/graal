@@ -82,6 +82,7 @@ def jaotc_gate_runner(tasks):
 
 
 def jaotc_test(args):
+    """run (acceptance) tests for the AOT compiler (jaotc)"""
     all_tests = ['HelloWorld', 'java.base']
     parser = ArgumentParser(prog='mx jaotc-test')
     parser.add_argument("--list", default=None, action="store_true", help="Print the list of available jaotc tests.")
