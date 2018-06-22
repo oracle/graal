@@ -29,15 +29,25 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.ForeignGetTypeNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.TypeCacheNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
+import com.oracle.truffle.llvm.spi.GetDynamicType;
 
 @ValueType
 public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
@@ -76,9 +86,71 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         return new ForeignWriteNode();
     }
 
+    abstract static class TypeCacheNode extends LLVMNode {
+
+        protected abstract LLVMInteropType.Structured execute(LLVMTypedForeignObject object);
+
+        public static TypeCacheNode create() {
+            return TypeCacheNodeGen.create();
+        }
+
+        static Node createGetDynamicType() {
+            return GetDynamicType.INSTANCE.createNode();
+        }
+
+        @Specialization(rewriteOn = InteropException.class)
+        LLVMInteropType.Structured doDynamic(LLVMTypedForeignObject object,
+                        @Cached("createGetDynamicType()") Node getDynamicType) throws InteropException {
+            return getDynamicType(object, getDynamicType);
+        }
+
+        static LLVMInteropType.Structured getDynamicType(LLVMTypedForeignObject object, Node getDynamicType) throws InteropException {
+            Object type = ForeignAccess.send(getDynamicType, object.getForeign());
+            if (type instanceof LLVMInteropType.Structured) {
+                return (LLVMInteropType.Structured) type;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(getDynamicType, "Invalid type %s returned from foreign object.", type);
+            }
+        }
+
+        @Specialization
+        LLVMInteropType.Structured doStatic(LLVMTypedForeignObject object) {
+            return object.getType();
+        }
+    }
+
+    abstract static class ForeignGetTypeNode extends LLVMNode {
+
+        protected abstract LLVMInteropType.Structured execute(LLVMTypedForeignObject object);
+
+        static Node createGetDynamicType() {
+            return GetDynamicType.INSTANCE.createNode();
+        }
+
+        @Specialization(guards = "clazz.isInstance(object)")
+        public LLVMInteropType.Structured doCached(LLVMTypedForeignObject object,
+                        @Cached("object.getForeign().getClass()") @SuppressWarnings("unused") Class<?> clazz,
+                        @Cached("create()") TypeCacheNode typeCache) {
+            return typeCache.execute(object);
+        }
+
+        @TruffleBoundary
+        @Specialization(replaces = "doCached")
+        public LLVMInteropType.Structured doFallback(LLVMTypedForeignObject object,
+                        @Cached("createGetDynamicType()") Node getDynamicType) {
+            try {
+                return TypeCacheNode.getDynamicType(object, getDynamicType);
+            } catch (InteropException ex) {
+                return object.getType();
+            }
+        }
+    }
+
     static class ForeignReadNode extends LLVMObjectReadNode {
 
         @Child LLVMInteropReadNode read;
+        @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
         protected ForeignReadNode(ForeignToLLVMType type) {
             this.read = LLVMInteropReadNode.create(type);
@@ -87,7 +159,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         @Override
         public Object executeRead(Object obj, long offset) throws InteropException {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
-            return read.execute(object.getType(), object.getForeign(), offset);
+            return read.execute(getType.execute(object), object.getForeign(), offset);
         }
 
         @Override
@@ -100,12 +172,13 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
 
         @Child LLVMInteropWriteNode write = LLVMInteropWriteNode.create();
         @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
+        @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
         @Override
         public void executeWrite(Object obj, long offset, Object value) throws InteropException {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
             Object escapedValue = dataEscape.executeWithTarget(value);
-            write.execute(object.getType(), object.getForeign(), offset, escapedValue);
+            write.execute(getType.execute(object), object.getForeign(), offset, escapedValue);
         }
 
         @Override

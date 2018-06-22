@@ -113,12 +113,26 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "com.oracle.truffle.llvm.spi" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.llvm.runtime" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "com.oracle.truffle.llvm.spi",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "checkstyleVersion" : "8.8",

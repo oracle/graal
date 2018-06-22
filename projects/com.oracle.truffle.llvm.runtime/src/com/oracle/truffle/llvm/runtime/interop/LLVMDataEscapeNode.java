@@ -131,6 +131,11 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     }
 
     @Specialization
+    protected TruffleObject escapingType(LLVMInteropType escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return escapingValue;
+    }
+
+    @Specialization
     @SuppressWarnings("unused")
     protected TruffleObject escapingVector(LLVMI8Vector vector, LLVMInteropType.Structured type) {
         CompilerDirectives.transferToInterpreter();

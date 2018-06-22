@@ -29,45 +29,34 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(value = "ptr", type = LLVMExpressionNode.class)
-@NodeChild(value = "typeid", type = LLVMExpressionNode.class)
-public abstract class LLVMPolyglotFromTyped extends LLVMIntrinsic {
+@NodeChild(value = "base", type = LLVMExpressionNode.class)
+@NodeChild(value = "len", type = LLVMExpressionNode.class)
+public abstract class LLVMArrayTypeIDNode extends LLVMExpressionNode {
 
-    /**
-     * For binary compatibility with bitcode files compiled with polyglot.h from 1.0-RC2 or earlier.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public static LLVMPolyglotFromTyped createStruct(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
-        return LLVMPolyglotFromTypedNodeGen.create(ptr, LLVMTypeIDNode.create(typeid));
+    public static LLVMArrayTypeIDNode create(LLVMExpressionNode base, LLVMExpressionNode len) {
+        return LLVMArrayTypeIDNodeGen.create(base, len);
     }
 
-    /**
-     * For binary compatibility with bitcode files compiled with polyglot.h from 1.0-RC2 or earlier.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public static LLVMPolyglotFromTyped createArray(LLVMExpressionNode ptr, LLVMExpressionNode len, LLVMExpressionNode typeid) {
-        LLVMTypeIDNode elementType = LLVMTypeIDNode.create(typeid);
-        LLVMArrayTypeIDNode arrayType = LLVMArrayTypeIDNode.create(elementType, len);
-        return LLVMPolyglotFromTypedNodeGen.create(ptr, arrayType);
+    @Specialization(guards = "len >= 0")
+    LLVMInteropType.Array doArray(LLVMInteropType base, long len) {
+        return base.toArray(len);
     }
 
-    public static LLVMPolyglotFromTyped create(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
-        return LLVMPolyglotFromTypedNodeGen.create(ptr, typeid);
-    }
-
-    @Specialization
-    LLVMPointer doPointer(LLVMPointer address, LLVMInteropType.Structured type) {
-        return address.export(type);
+    @Fallback
+    Object doError(@SuppressWarnings("unused") Object base, Object len) {
+        CompilerDirectives.transferToInterpreter();
+        if (len instanceof Number && ((Number) len).longValue() < 0) {
+            throw new LLVMPolyglotException(this, "Negative array length %s in polyglot_array_typeid.", len);
+        } else {
+            throw new LLVMPolyglotException(this, "Invalid typeid in polyglot_array_typeid.");
+        }
     }
 }
