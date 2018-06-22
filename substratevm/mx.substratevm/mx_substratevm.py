@@ -136,7 +136,10 @@ def svmbuild_dir(suite=None):
 def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
-    return join(svmbuild_dir(suite), 'native-image-root')
+    root_dir = join(svmbuild_dir(suite), 'native-image-root')
+    if not exists(root_dir):
+        layout_native_image_root(root_dir)
+    return root_dir
 
 def native_image_distributions():
     deps = [mx.distribution('GRAAL_MANAGEMENT')]
@@ -284,37 +287,11 @@ def native_image_on_jvm(args, **kwargs):
     run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + args, **kwargs)
 
-def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
-    bootstrap_command = list(GRAAL_COMPILER_FLAGS)
-    bootstrap_command += locale_US_args()
-    bootstrap_command += substratevm_version_args()
-    bootstrap_command += ['-Dgraalvm.version=dev']
-    bootstrap_command += ['-Dcom.oracle.graalvm.isaot=true']
+svmDistribution = ['substratevm:SVM']
+graalDistribution = ['compiler:GRAAL']
+librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
 
-    builder_classpath = classpath(svmDistribution)
-    imagecp_classpath = classpath(svmDistribution + ['substratevm:SVM_DRIVER'])
-    bootstrap_command += [
-        '-cp', builder_classpath,
-        'com.oracle.svm.hosted.NativeImageGeneratorRunner',
-        '-imagecp', imagecp_classpath,
-        '-H:CLibraryPath=' + clibrary_libpath()
-    ]
-
-    bootstrap_command += [
-        '-H:Path=' + dirname(native_image_path(native_image_root)),
-        '-H:Class=com.oracle.svm.driver.NativeImage',
-        '-H:Name=' + basename(native_image_path(native_image_root)),
-        '-H:-ParseRuntimeOptions'
-    ]
-
-    if mx._opts.strip_jars:
-        bootstrap_command += ['-H:-VerifyNamingConventions']
-
-    if native_image_build_veto:
-        mx.log('Skip building native-image executable: ' + native_image_build_veto)
-    else:
-        run_java(bootstrap_command)
-        mx.logv('Built ' + native_image_path(native_image_root))
+def layout_native_image_root(native_image_root):
 
     def names_to_dists(dist_names):
         return [mx.dependency(dist_name) for dist_name in dist_names]
@@ -353,74 +330,6 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
-
-class BootstrapNativeImage(mx.Project):
-    def __init__(self, suite, name, deps, workingSets, theLicense=None, **kwargs):
-        super(BootstrapNativeImage, self).__init__(suite, name, "", [], deps, workingSets, suite.dir, theLicense)
-        self.native_image_root = suite_native_image_root(suite)
-        self.buildDependencies = kwargs.pop('buildDependencies', [])
-        self.graalDistribution = kwargs.pop('graal', [])
-        self.svmDistribution = kwargs.pop('svm', [])
-        self.buildDependencies += self.svmDistribution
-        self.librarySupportDistribution = kwargs.pop('svmSupport', [])
-        self.buildDependencies += self.librarySupportDistribution
-
-    def getResults(self):
-        return None
-
-    def getBuildTask(self, args):
-        return NativeImageBootstrapTask(args, self)
-
-    def output_files(self):
-        return [native_image_path(self.native_image_root)]
-
-class NativeImageBootstrapTask(mx.ProjectBuildTask):
-    def __init__(self, args, project):
-        super(NativeImageBootstrapTask, self).__init__(args, min(8, mx.cpu_count()), project)
-        self._newestOutput = None
-
-    def _allow_bootstrapping(self):
-        task_suite_match = self.subject.suite == svm_suite()
-        return task_suite_match, ['Using ' + svm_suite().name + '. Skip ', ''][task_suite_match] + self.subject.name
-
-    def __str__(self):
-        return self._allow_bootstrapping()[1]
-
-    def build(self):
-        if not self._allow_bootstrapping()[0]:
-            return
-
-        bootstrap_native_image(
-            native_image_root=self.subject.native_image_root,
-            svmDistribution=self.subject.svmDistribution,
-            graalDistribution=self.subject.graalDistribution,
-            librarySupportDistribution=self.subject.librarySupportDistribution
-        )
-
-    def clean(self, forBuild=False):
-        if forBuild:
-            return
-
-        native_image_root = self.subject.native_image_root
-        if exists(native_image_root):
-            remove_tree(native_image_root)
-
-    def needsBuild(self, newestInput):
-        allow, message = self._allow_bootstrapping()
-        if not allow:
-            return False, message
-
-        witness = self.newestOutput()
-        if not self._newestOutput or witness.isNewerThan(self._newestOutput):
-            self._newestOutput = witness
-        if not witness.exists():
-            return True, witness.path + ' does not exist'
-        if newestInput and witness.isOlderThan(newestInput):
-            return True, '{} is older than {}'.format(witness, newestInput)
-        return False, 'output is up to date'
-
-    def newestOutput(self):
-        return mx.TimeStampFile(native_image_path(self.subject.native_image_root))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True, debug_gr_8964=False):
     """
