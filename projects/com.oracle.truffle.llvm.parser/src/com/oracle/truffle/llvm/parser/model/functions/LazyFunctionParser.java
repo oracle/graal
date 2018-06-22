@@ -58,7 +58,7 @@ public final class LazyFunctionParser {
             scanner.scanBlock(parser);
             diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, context);
             if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                llSource.applySourceLocations(parser.getFunction());
+                llSource.applySourceLocations(parser.getFunction(), context);
             }
             isParsed = true;
         }

@@ -33,22 +33,60 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLScanner {
 
-    static LLSourceMap findAndScanLLFile(String bcPath) {
+    private static File findMapping(Path canonicalBCPath, String pathMappings) {
+        if (pathMappings.isEmpty()) {
+            return null;
+        }
+
+        final String[] mappings = pathMappings.split(":");
+        for (String mapping : mappings) {
+            final String[] splittedMapping = mapping.split("=");
+            if (splittedMapping.length != 2) {
+                throw new LLVMParserException("Malformed path mapping for *.ll files: " + pathMappings);
+            }
+            final Path mappedBCFile = Paths.get(splittedMapping[0]).normalize().toAbsolutePath();
+            if (mappedBCFile.equals(canonicalBCPath)) {
+                final Path mappedLLFile = Paths.get(splittedMapping[1]).normalize().toAbsolutePath();
+                return mappedLLFile.toFile();
+            }
+        }
+
+        return null;
+    }
+
+    private static File findLLPathMapping(String bcPath, String pathMappings) {
         if (bcPath == null || !bcPath.endsWith(".bc")) {
             return null;
         }
 
-        final String llPath = bcPath.substring(0, bcPath.length() - ".bc".length()) + ".ll";
-        final File llFile = new File(llPath);
-        if (!llFile.exists() || !llFile.canRead()) {
+        final Path canonicalBCPath = Paths.get(bcPath).normalize().toAbsolutePath();
+        final File mappedFile = findMapping(canonicalBCPath, pathMappings);
+        if (mappedFile != null) {
+            return mappedFile;
+        }
+
+        final String defaultPath = canonicalBCPath.toString().substring(0, bcPath.length() - ".bc".length()) + ".ll";
+        return new File(defaultPath);
+    }
+
+    static LLSourceMap findAndScanLLFile(String bcPath, String pathMappings) {
+        if (bcPath == null || !bcPath.endsWith(".bc")) {
+            return null;
+        }
+
+        final File llFile = findLLPathMapping(bcPath, pathMappings);
+        if (llFile == null || !llFile.exists() || !llFile.canRead()) {
             return null;
         }
 
@@ -62,7 +100,8 @@ final class LLScanner {
                     return sourceMap;
                 }
             }
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            throw new LLVMParserException("Error while reading from file: " + llFile.getPath());
         }
 
         return null;

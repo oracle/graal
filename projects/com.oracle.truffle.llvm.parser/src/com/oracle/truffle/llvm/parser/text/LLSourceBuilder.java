@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.parser.text;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public final class LLSourceBuilder {
 
@@ -49,12 +51,13 @@ public final class LLSourceBuilder {
         this.bcPath = bcPath;
     }
 
-    public void applySourceLocations(FunctionDefinition function) {
+    public void applySourceLocations(FunctionDefinition function, LLVMContext context) {
         // to include the map in the LazyFunctionParser we need to instantiate this object during
         // module parsing but we only get an LLVMContext to check whether we will actually need it
         // during function parsing, with this we build the map only on-demand and cache the result
         if (cached == null) {
-            cached = LLScanner.findAndScanLLFile(bcPath);
+            final String pathMappings = context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG_SOURCES);
+            cached = LLScanner.findAndScanLLFile(bcPath, pathMappings);
         }
         if (cached != null) {
             LLInstructionMapper.setSourceLocations(cached, function);
