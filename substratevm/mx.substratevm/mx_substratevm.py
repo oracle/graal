@@ -70,7 +70,6 @@ svmSuites = [suite]
 orig_command_gate = mx.command_function('gate')
 orig_command_build = mx.command_function('build')
 
-native_image_build_veto = None
 gate_run = False
 
 def gate(args):
@@ -86,16 +85,6 @@ def build(args, vm=None):
 
     if not _host_os_supported():
         mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
-
-    global native_image_build_veto
-    if svm_suite().primary and not gate_run:
-        native_image_build_veto = 'No SVM gate-run'
-    elif mx.get_os() == 'windows':
-        native_image_build_veto = mx.get_os() + ' currently not supported'
-    elif '--warning-as-error' in args and '--force-javac' not in args:
-        native_image_build_veto = 'Building with ejc + --warning-as-error (see GR-3969)'
-    else:
-        native_image_build_veto = None
 
     orig_command_build(args, vm)
 
@@ -281,11 +270,18 @@ def extract_target_name(arg, kind):
     return target_name, target_value
 
 def native_image_on_jvm(args, **kwargs):
+    save_args = []
+    for arg in args:
+        if arg == '--no-server' or arg.startswith('--server'):
+            mx.warn('Ignoring server-mode native-image argument ' + arg)
+        else:
+            save_args.append(arg)
+
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
     run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp),
-        mx.dependency('substratevm:SVM_DRIVER').mainClass] + args, **kwargs)
+        mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 svmDistribution = ['substratevm:SVM']
 graalDistribution = ['compiler:GRAAL']
