@@ -131,7 +131,7 @@ python-downstream-test: {
     }
     run: [
         [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git",
-         --mx-command, "--dynamicimports sulong gate --tags fullbuild,python-cpyext"]
+         --mx-command, "--dynamicimports sulong gate --tags build,python-cpyext"]
     ]
 }
 
