@@ -28,7 +28,7 @@
 
 import subprocess
 import tempfile
-from argparse import ArgumentParser, OPTIONAL
+from argparse import ArgumentParser, ZERO_OR_MORE
 
 import mx
 import mx_compiler
@@ -85,8 +85,7 @@ def jaotc_test(args):
     all_tests = ['HelloWorld', 'java.base']
     parser = ArgumentParser(prog='mx jaotc-test')
     parser.add_argument("--list", default=None, action="store_true", help="Print the list of available jaotc tests.")
-    parser.add_argument('tests', help='tests to run (omit to run all tests)', nargs=OPTIONAL, choices=all_tests,
-                        metavar='tests...')
+    parser.add_argument('tests', help='tests to run (omit to run all tests)', nargs=ZERO_OR_MORE)
     args = parser.parse_args(args)
 
     if args.list:
@@ -97,7 +96,7 @@ def jaotc_test(args):
 
     tests = args.tests or all_tests
     for test in tests:
-        mx.log('Running `{}`'.format(test))
+        mx.log('Testing `{}`'.format(test))
         if test == 'HelloWorld':
             test_class(
                 classpath=mx.project('jdk.tools.jaotc.test').output_dir(),
@@ -125,7 +124,9 @@ common_opts_variants = [
 
 
 def test_class(classpath, main_class):
-    """(jaotc-)compiles a class, runs it and compares with vanilla JVM output."""
+    """(jaotc-)Compiles `main_class` and runs `main_class` + AOT library.
+    Compares the output vs. standard JVM.
+    """
     # Run on vanilla JVM.
     expected_out = mx.OutputCapture()
     mx_compiler.run_vm(['-cp', classpath, main_class], out=expected_out)
@@ -141,7 +142,9 @@ def test_class(classpath, main_class):
 
 
 def test_modules(classpath, main_class, modules):
-    """(jaotc-)compiles modules, runs main_class with and compares with vanilla JVM output."""
+    """(jaotc-)Compiles `modules` and runs `main_class` + AOT library.
+    Compares the output vs. standard JVM.
+    """
     # Run on vanilla JVM.
     expected_out = mx.OutputCapture()
     mx_compiler.run_vm(['-cp', classpath, main_class], out=expected_out)
@@ -171,7 +174,7 @@ def check_aot(classpath, main_class, common_opts, expected_output, lib_module):
             mx.log(out.data)
         mx.abort("Missing expected 'aot library' in -XX:+PrintAOT -version output")
 
-    # Run main_class+AOT and check output.
+    # Run main_class+AOT modules and check output.
     aot_out = mx.OutputCapture()
     mx_compiler.run_vm(common_opts + aot_opts + ['-cp', classpath, main_class], out=aot_out)
 
