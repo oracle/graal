@@ -280,25 +280,6 @@ def extract_target_name(arg, kind):
         target_name, _, target_value = option_tail.partition('=')
     return target_name, target_value
 
-def native_image_extract_dependencies(args):
-    deps = []
-    for arg in args:
-        tool_name = extract_target_name(arg, 'tool')[0]
-        if tool_name in tools_map:
-            tool_descriptor = tools_map[tool_name]
-            deps += tool_descriptor.builder_deps
-            deps += tool_descriptor.image_deps
-            deps += tool_descriptor.native_deps
-        language_flag = extract_target_name(arg, 'language')[0]
-        if language_flag in flag_suitename_map:
-            language_entry = flag_suitename_map[language_flag]
-            language_suite_name = language_entry[0]
-            language_deps = language_entry[1]
-            deps += [language_suite_name + ':' + dep for dep in language_deps]
-            language_native_deps = language_entry[2]
-            deps += [language_suite_name + ':' + dep for dep in language_native_deps]
-    return deps
-
 def native_image_on_jvm(args, **kwargs):
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
