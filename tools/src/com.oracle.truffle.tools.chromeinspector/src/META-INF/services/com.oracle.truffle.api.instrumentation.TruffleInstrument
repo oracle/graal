@@ -1,4 +1,0 @@
-com.oracle.truffle.tools.chromeinspector.instrument.InspectorInstrument
-com.oracle.truffle.tools.chromeinspector.instrument.TypeProfileInstrument
-com.oracle.truffle.tools.chromeinspector.instrument.SourceLoadInstrument
-com.oracle.truffle.tools.chromeinspector.instrument.OutputConsumerInstrument
