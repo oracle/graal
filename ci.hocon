@@ -123,6 +123,18 @@ ruby-downstream-test: {
     ]
 }
 
+python-downstream-test: {
+    packages: {
+        python: "==3.4.1"
+        gcc: "==4.9.1"
+        llvm: ">=4.0"
+    }
+    run: [
+        [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git",
+         --mx-command, "--dynamicimports sulong gate --tags build,python-cpyext"]
+    ]
+}
+
 svm-downstream-test: ${requireGCC} {
   environment: {
     SVM_REPO: "https://github.com/graalvm/graal.git",
@@ -154,6 +166,7 @@ builds = [
   ${gateTest40-darwin} { name: gate-basic_mac, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
 
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
+  ${gateTest38-linux} ${python-downstream-test} { name: gate-python-downstream }
   ${gateTest38-linux} ${svm-downstream-test} { name: gate-substratevm-downstream }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
