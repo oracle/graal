@@ -126,7 +126,7 @@ import java.util.logging.Level;
  * The result of the {@link #parse(ParsingRequest) parsing request} is cached per language instance,
  * {@link ParsingRequest#getSource() source}, {@link ParsingRequest#getArgumentNames() argument
  * names} and environment {@link Env#getOptions() options}. The scope of the caching is influenced
- * by the {@link Registration#contextPolicy() context cardinality}. Caching may be
+ * by the {@link Registration#contextPolicy() context policy}. Caching may be
  * {@link Source#isCached() disabled} for certain sources. It is enabled for new sources by default.
  *
  * <h4>Language Configuration</h4>
@@ -309,12 +309,12 @@ public abstract class TruffleLanguage<C> {
         /**
          * Defines the supported policy for reusing {@link TruffleLanguage languages} per context.
          * I.e. the policy specifies the degree of sharing that is allowed between multiple language
-         * contexts. The default policy is {@link #SINGLE single}. Every language is encouraged to
-         * try to support a context policy that is as permissive as possible, where {@link #SINGLE
-         * single} is the least and {@link #MULTIPLE multiple} is the most permissive policy.
-         * {@link TruffleLanguage#parse(ParsingRequest) Parse caching} is scoped per
-         * {@link TruffleLanguage language} instance, therefore the context policy influences its
-         * behavior.
+         * contexts. The default policy is {@link ContextPolicy#SINGLE single}. Every language is
+         * encouraged to try to support a context policy that is as permissive as possible, where
+         * {@link ContextPolicy#SINGLE single} is the least and {@link ContextPolicy#MULTIPLE
+         * multiple} is the most permissive policy. {@link TruffleLanguage#parse(ParsingRequest)
+         * Parse caching} is scoped per {@link TruffleLanguage language} instance, therefore the
+         * context policy influences its behavior.
          * <p>
          * The context policy applies to contexts that were created using the
          * {@link org.graalvm.polyglot.Context polyglot API} as well as for {@link TruffleContext
@@ -322,7 +322,6 @@ public abstract class TruffleLanguage<C> {
          * Truffle interop protocol. Therefore, interop message nodes always need to be prepared to
          * be used with policy {@link ContextPolicy#MULTIPLE}.
          *
-         * @see ContextPolicy
          * @see TruffleLanguage#parse(ParsingRequest)
          * @since 1.0
          */
@@ -1718,7 +1717,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.26
          */
         @TruffleBoundary
-        public <S> S lookup(@SuppressWarnings("hiding") LanguageInfo language, Class<S> type) {
+        public <S> S lookup(LanguageInfo language, Class<S> type) {
             if (this.spi.languageInfo == language) {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
