@@ -55,7 +55,8 @@ final class MachOSymtab {
     private final StringBuilder strTabContent = new StringBuilder();
 
     /**
-     * Keeps track of bytes in string table since strTabContent.length() is number of chars, not bytes.
+     * Keeps track of bytes in string table since strTabContent.length() is number of chars, not
+     * bytes.
      */
     private int strTabNrOfBytes = 0;
 

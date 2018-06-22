@@ -47,7 +47,6 @@ import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Shdr;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Sym;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rela;
 
-
 public class AMD64JELFRelocObject extends JELFRelocObject {
 
     AMD64JELFRelocObject(BinaryContainer binContainer, String outputFileName) {
@@ -65,33 +64,33 @@ public class AMD64JELFRelocObject extends JELFRelocObject {
         int addend = 0;
 
         switch (relocType) {
-        case JAVA_CALL_DIRECT:
-        case STUB_CALL_DIRECT:
-        case FOREIGN_CALL_INDIRECT_GOT: {
-            // Create relocation entry
-            addend = -4; // Size in bytes of the patch location
-            // Relocation should be applied at the location after call operand
-            offset = offset + reloc.getSize() + addend;
-            break;
-        }
-        case JAVA_CALL_INDIRECT:
-        case METASPACE_GOT_REFERENCE:
-        case EXTERNAL_PLT_TO_GOT: {
-            addend = -4; // Size of 32-bit address of the GOT
-            /*
-             * Relocation should be applied before the test instruction to the move instruction.
-             * reloc.getOffset() points to the test instruction after the instruction that loads the address of
-             * polling page. So set the offset appropriately.
-             */
-            offset = offset + addend;
-            break;
-        }
-        case EXTERNAL_GOT_TO_PLT: {
-            // this is load time relocations
-            break;
-        }
-        default:
-            throw new InternalError("Unhandled relocation type: " + relocType);
+            case JAVA_CALL_DIRECT:
+            case STUB_CALL_DIRECT:
+            case FOREIGN_CALL_INDIRECT_GOT: {
+                // Create relocation entry
+                addend = -4; // Size in bytes of the patch location
+                // Relocation should be applied at the location after call operand
+                offset = offset + reloc.getSize() + addend;
+                break;
+            }
+            case JAVA_CALL_INDIRECT:
+            case METASPACE_GOT_REFERENCE:
+            case EXTERNAL_PLT_TO_GOT: {
+                addend = -4; // Size of 32-bit address of the GOT
+                /*
+                 * Relocation should be applied before the test instruction to the move instruction.
+                 * reloc.getOffset() points to the test instruction after the instruction that loads
+                 * the address of polling page. So set the offset appropriately.
+                 */
+                offset = offset + addend;
+                break;
+            }
+            case EXTERNAL_GOT_TO_PLT: {
+                // this is load time relocations
+                break;
+            }
+            default:
+                throw new InternalError("Unhandled relocation type: " + relocType);
         }
         elfRelocTable.createRelocationEntry(sectindex, offset, symno, elfRelocType, addend);
     }

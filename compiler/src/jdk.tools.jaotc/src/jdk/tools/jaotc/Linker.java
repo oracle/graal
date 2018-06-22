@@ -150,26 +150,28 @@ final class Linker {
     /**
      * Visual Studio supported versions Search Order is: VS2013, VS2015, VS2012
      */
-    public enum VSVERSIONS {
+    public enum VSVERSIONS
+    {
         VS2013("VS120COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\VC\\bin\\amd64\\link.exe"),
         VS2015("VS140COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\amd64\\link.exe"),
         VS2012("VS110COMNTOOLS", "C:\\Program Files (x86)\\Microsoft Visual Studio 11.0\\VC\\bin\\amd64\\link.exe");
 
-        private final String envvariable;
-        private final String wkp;
+    private final String envvariable;
+    private final String wkp;
 
-        VSVERSIONS(String envvariable, String wellknownpath) {
+    VSVERSIONS(String envvariable, String wellknownpath) {
             this.envvariable = envvariable;
             this.wkp = wellknownpath;
         }
 
-        String EnvVariable() {
-            return envvariable;
-        }
+    String EnvVariable() {
+        return envvariable;
+    }
 
-        String WellKnownPath() {
-            return wkp;
-        }
+    String WellKnownPath() {
+        return wkp;
+    }
+
     }
 
     /**

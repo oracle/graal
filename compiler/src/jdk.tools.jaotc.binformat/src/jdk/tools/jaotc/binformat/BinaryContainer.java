@@ -576,7 +576,8 @@ public final class BinaryContainer implements SymbolTable {
      * @param info relocation information to be added
      */
     public void addRelocation(Relocation info) {
-        // System.out.println("# Relocation [" + info.getSymbol() + "] [" + info.getOffset() + "] [" +
+        // System.out.println("# Relocation [" + info.getSymbol() + "] [" + info.getOffset() + "] ["
+        // +
         // info.getSection().getContainerName() + "] [" + info.getSymbol().getName() + "] [" +
         // info.getSymbol().getOffset() + " @ " + info.getSymbol().getSection().getContainerName() +
         // "]");

@@ -50,7 +50,7 @@ final class ElfSection {
     private static int shStrTabNrOfBytes = 0;
 
     ElfSection(String sectName, byte[] sectData, int sectFlags, int sectType,
-               boolean hasRelocations, int align, int sectIndex) {
+                    boolean hasRelocations, int align, int sectIndex) {
 
         section = ElfByteBuffer.allocate(Elf64_Shdr.totalsize);
         name = sectName;

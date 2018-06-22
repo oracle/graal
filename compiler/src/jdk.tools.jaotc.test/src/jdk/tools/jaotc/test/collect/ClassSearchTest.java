@@ -31,7 +31,6 @@
 
 package jdk.tools.jaotc.test.collect;
 
-
 import jdk.tools.jaotc.LoadedClass;
 import jdk.tools.jaotc.collect.*;
 import org.junit.Assert;
@@ -57,8 +56,8 @@ public class ClassSearchTest {
         Set<String> searched = new HashSet<>();
         ClassSearch target = new ClassSearch();
         target.addProvider(provider("", (name, searchPath) -> {
-                searched.add(name);
-                return new NoopSource();
+            searched.add(name);
+            return new NoopSource();
         }));
         target.search(searchForList("foo", "bar", "foobar"), null);
         Assert.assertEquals(hashset("foo", "bar", "foobar"), searched);

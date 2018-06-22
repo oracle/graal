@@ -60,15 +60,19 @@ final class AOTDynamicTypeStore implements DynamicTypeStore {
         public HotSpotResolvedObjectType getHolder() {
             return holder;
         }
+
         public int getCpi() {
             return cpi;
         }
+
         public String toString() {
             return getHolder().getName() + "@" + cpi;
         }
+
         public int hashCode() {
             return holder.hashCode() + getClass().hashCode() + cpi;
         }
+
         public boolean equals(Object o) {
             if (this == o) {
                 return true;
@@ -76,7 +80,7 @@ final class AOTDynamicTypeStore implements DynamicTypeStore {
             if (getClass() != o.getClass()) {
                 return false;
             }
-            Location l = (Location)o;
+            Location l = (Location) o;
             return cpi == l.cpi && holder.equals(l.holder);
         }
     }
@@ -88,9 +92,11 @@ final class AOTDynamicTypeStore implements DynamicTypeStore {
             super(holder, cpi);
             this.methodId = methodId;
         }
+
         public int getMethodId() {
             return methodId;
         }
+
         public String toString() {
             return "adapter:" + methodId + "@" + super.toString();
         }
@@ -100,6 +106,7 @@ final class AOTDynamicTypeStore implements DynamicTypeStore {
         AppendixLocation(HotSpotResolvedObjectType holder, int cpi) {
             super(holder, cpi);
         }
+
         public String toString() {
             return "appendix@" + super.toString();
         }
@@ -122,7 +129,7 @@ final class AOTDynamicTypeStore implements DynamicTypeStore {
 
     @Override
     public void recordAdapter(int opcode, HotSpotResolvedObjectType holder, int index, HotSpotResolvedJavaMethod adapter) {
-        int cpi = ((HotSpotConstantPool)holder.getConstantPool()).rawIndexToConstantPoolIndex(index, opcode);
+        int cpi = ((HotSpotConstantPool) holder.getConstantPool()).rawIndexToConstantPoolIndex(index, opcode);
         int methodId = adapter.methodIdnum();
         HotSpotResolvedObjectType adapterType = adapter.getDeclaringClass();
         recordDynamicTypeLocation(new AdapterLocation(holder, cpi, methodId), adapterType);
@@ -130,8 +137,8 @@ final class AOTDynamicTypeStore implements DynamicTypeStore {
 
     @Override
     public JavaConstant recordAppendix(int opcode, HotSpotResolvedObjectType holder, int index, JavaConstant appendix) {
-        int cpi = ((HotSpotConstantPool)holder.getConstantPool()).rawIndexToConstantPoolIndex(index, opcode);
-        HotSpotResolvedObjectType appendixType = ((HotSpotObjectConstant)appendix).getType();
+        int cpi = ((HotSpotConstantPool) holder.getConstantPool()).rawIndexToConstantPoolIndex(index, opcode);
+        HotSpotResolvedObjectType appendixType = ((HotSpotObjectConstant) appendix).getType();
         recordDynamicTypeLocation(new AppendixLocation(holder, cpi), appendixType);
         // Make the constant locatable
         return HotSpotConstantPoolObject.forObject(holder, cpi, appendix);

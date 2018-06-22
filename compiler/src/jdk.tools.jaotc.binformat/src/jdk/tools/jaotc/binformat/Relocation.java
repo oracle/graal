@@ -25,7 +25,8 @@ package jdk.tools.jaotc.binformat;
 
 public final class Relocation {
 
-    public enum RelocType {
+    public enum RelocType
+    {
         UNDEFINED,
         JAVA_CALL_INDIRECT,
         JAVA_CALL_DIRECT,

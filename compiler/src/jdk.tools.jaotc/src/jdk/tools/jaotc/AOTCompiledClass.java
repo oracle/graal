@@ -74,7 +74,7 @@ final class AOTCompiledClass {
             this.dependentMethods = new ArrayList<>();
             this.classId = classId;
             this.type = type;
-            this.metadataName = type.isAnonymous() ? "anon<"+ classId + ">": type.getName();
+            this.metadataName = type.isAnonymous() ? "anon<" + classId + ">" : type.getName();
             this.gotIndex = binaryContainer.addTwoSlotKlassSymbol(metadataName);
             this.compiledMethodsOffset = -1; // Not compiled classes do not have compiled methods.
             this.dependentMethodsOffset = -1;
@@ -431,9 +431,7 @@ final class AOTCompiledClass {
     }
 
     static HotSpotResolvedObjectType getType(Object ref) {
-        return (ref instanceof HotSpotResolvedObjectType) ?
-            (HotSpotResolvedObjectType)ref :
-            ((HotSpotResolvedJavaMethod)ref).getDeclaringClass();
+        return (ref instanceof HotSpotResolvedObjectType) ? (HotSpotResolvedObjectType) ref : ((HotSpotResolvedJavaMethod) ref).getDeclaringClass();
     }
 
     static String metadataName(HotSpotResolvedObjectType type) {

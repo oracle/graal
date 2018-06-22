@@ -48,7 +48,6 @@ import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Shdr;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Sym;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rela;
 
-
 public class AArch64JELFRelocObject extends JELFRelocObject {
 
     AArch64JELFRelocObject(BinaryContainer binContainer, String outputFileName) {
@@ -66,38 +65,38 @@ public class AArch64JELFRelocObject extends JELFRelocObject {
         int addend = 0;
 
         switch (relocType) {
-        case STUB_CALL_DIRECT:
-        case JAVA_CALL_DIRECT: {
-            break;
-        }
-        case EXTERNAL_PLT_TO_GOT:
-            offset -= 16;
-            elfRelocTable.createRelocationEntry(sectindex, offset, symno, Elf64_Rela.R_AARCH64_ADR_PREL_PG_HI21, addend);
-            elfRelocTable.createRelocationEntry(sectindex, offset + 4, symno, Elf64_Rela.R_AARCH64_ADD_ABS_LO12_NC, addend);
-            return;
+            case STUB_CALL_DIRECT:
+            case JAVA_CALL_DIRECT: {
+                break;
+            }
+            case EXTERNAL_PLT_TO_GOT:
+                offset -= 16;
+                elfRelocTable.createRelocationEntry(sectindex, offset, symno, Elf64_Rela.R_AARCH64_ADR_PREL_PG_HI21, addend);
+                elfRelocTable.createRelocationEntry(sectindex, offset + 4, symno, Elf64_Rela.R_AARCH64_ADD_ABS_LO12_NC, addend);
+                return;
 
-        case FOREIGN_CALL_INDIRECT_GOT: {
-            break;
-        }
-        case METASPACE_GOT_REFERENCE: {
-            offset -= 4;
+            case FOREIGN_CALL_INDIRECT_GOT: {
+                break;
+            }
+            case METASPACE_GOT_REFERENCE: {
+                offset -= 4;
 
-            elfRelocTable.createRelocationEntry(sectindex, offset, symno, Elf64_Rela.R_AARCH64_ADR_PREL_PG_HI21, addend);
-            elfRelocTable.createRelocationEntry(sectindex, offset + 4, symno, Elf64_Rela.R_AARCH64_ADD_ABS_LO12_NC, addend);
-            return;
-        }
+                elfRelocTable.createRelocationEntry(sectindex, offset, symno, Elf64_Rela.R_AARCH64_ADR_PREL_PG_HI21, addend);
+                elfRelocTable.createRelocationEntry(sectindex, offset + 4, symno, Elf64_Rela.R_AARCH64_ADD_ABS_LO12_NC, addend);
+                return;
+            }
             // break;
-        case JAVA_CALL_INDIRECT: {
-            addend = -4;
-            offset = offset + addend;
-            break;
-        }
-        case EXTERNAL_GOT_TO_PLT: {
-            // this is load time relocations
-            break;
-        }
-        default:
-            throw new InternalError("Unhandled relocation type: " + relocType);
+            case JAVA_CALL_INDIRECT: {
+                addend = -4;
+                offset = offset + addend;
+                break;
+            }
+            case EXTERNAL_GOT_TO_PLT: {
+                // this is load time relocations
+                break;
+            }
+            default:
+                throw new InternalError("Unhandled relocation type: " + relocType);
         }
 
         elfRelocTable.createRelocationEntry(sectindex, offset, symno, elfRelocType, addend);

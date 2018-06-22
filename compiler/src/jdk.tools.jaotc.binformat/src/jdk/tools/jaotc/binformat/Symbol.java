@@ -29,13 +29,15 @@ import jdk.tools.jaotc.binformat.NativeSymbol;
 
 public class Symbol {
 
-    public enum Binding {
+    public enum Binding
+    {
         UNDEFINED,
         LOCAL,
         GLOBAL
     }
 
-    public enum Kind {
+    public enum Kind
+    {
         UNDEFINED,
         NATIVE_FUNCTION,
         JAVA_FUNCTION,

@@ -52,7 +52,6 @@ import static jdk.tools.jaotc.test.collect.Utils.mkpath;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-
 public class ModuleSourceProviderTest {
     private ClassLoader classLoader;
     private ModuleSourceProvider target;

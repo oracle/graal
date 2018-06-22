@@ -33,7 +33,6 @@ import jdk.tools.jaotc.utils.NativeOrderOutputStream;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 
-
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;

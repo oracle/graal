@@ -138,7 +138,11 @@ public class JPECoffRelocObject {
 
         // Add Linker Directives Section
         int scnFlags = IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_INFO | IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_REMOVE;
-        createByteSection(sections, ".drectve", symtab.getDirectiveArray(), false, scnFlags, 1 /* 1 byte alignment */);
+        createByteSection(sections, ".drectve", symtab.getDirectiveArray(), false, scnFlags, 1 /*
+                                                                                                * 1
+                                                                                                * byte
+                                                                                                * alignment
+                                                                                                */);
 
         // Create the Relocation Tables
         PECoffRelocTable pecoffRelocs = createPECoffRelocTable(sections, relocationTable);
@@ -269,7 +273,8 @@ public class JPECoffRelocObject {
 
         PECoffRelocTable pecoffRelocTable = new PECoffRelocTable(sections.size());
         /*
-         * For each of the symbols with associated relocation records, create a PECoff relocation entry.
+         * For each of the symbols with associated relocation records, create a PECoff relocation
+         * entry.
          */
         for (Map.Entry<Symbol, List<Relocation>> entry : relocationTable.entrySet()) {
             List<Relocation> relocs = entry.getValue();
@@ -316,8 +321,8 @@ public class JPECoffRelocObject {
                 addend = -4; // Size of 32-bit address of the GOT
                 /*
                  * Relocation should be applied before the test instruction to the move instruction.
-                 * reloc.getOffset() points to the test instruction after the instruction that loads the address of
-                 * polling page. So set the offset appropriately.
+                 * reloc.getOffset() points to the test instruction after the instruction that loads
+                 * the address of polling page. So set the offset appropriately.
                  */
                 offset = offset + addend;
                 break;

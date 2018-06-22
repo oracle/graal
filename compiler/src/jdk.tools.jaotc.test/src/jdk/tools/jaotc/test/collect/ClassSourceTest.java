@@ -42,7 +42,7 @@ import static jdk.tools.jaotc.collect.ClassSource.makeClassName;
 import static jdk.tools.jaotc.test.collect.Utils.getpath;
 
 public class ClassSourceTest {
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void itShouldThrowExceptionIfPathDoesntEndWithClass() {
         makeClassName(Paths.get("Bar.clazz"));
     }

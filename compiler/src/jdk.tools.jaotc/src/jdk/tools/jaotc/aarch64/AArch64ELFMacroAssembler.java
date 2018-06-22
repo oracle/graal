@@ -30,7 +30,6 @@ import jdk.tools.jaotc.ELFMacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.Register;
 
@@ -71,7 +70,7 @@ public final class AArch64ELFMacroAssembler extends AArch64MacroAssembler implem
         jmp(r16);
         stub.setDispatchJumpOffset(position());
 
-        // C2I stub used to call interpreter.  First load r12
+        // C2I stub used to call interpreter. First load r12
         // (i.e. rmethod) with a pointer to the Method structure ...
         addressOf(r12);
         ldr(64, r12, AArch64Address.createBaseRegisterOnlyAddress(r12));

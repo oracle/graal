@@ -83,18 +83,18 @@ public class JMachORelocObject {
     }
 
     private void createByteSection(ArrayList<MachOSection> sections,
-                                   ByteContainer c, String sectName, String segName, int scnFlags) {
+                    ByteContainer c, String sectName, String segName, int scnFlags) {
 
         if (c.getByteArray().length == 0) {
             // System.out.println("Skipping creation of " + sectName + " section, no data\n");
         }
 
         MachOSection sect = new MachOSection(sectName,
-                                             segName,
-                                             c.getByteArray(),
-                                             scnFlags,
-                                             c.hasRelocations(),
-                                             segmentSize);
+                        segName,
+                        c.getByteArray(),
+                        scnFlags,
+                        c.hasRelocations(),
+                        segmentSize);
         // Add this section to our list
         sections.add(sect);
 
@@ -107,13 +107,13 @@ public class JMachORelocObject {
 
     private void createCodeSection(ArrayList<MachOSection> sections, CodeContainer c) {
         createByteSection(sections, c, /* c.getContainerName() */ "__text", "__TEXT",
-                          section_64.S_ATTR_PURE_INSTRUCTIONS |
-                          section_64.S_ATTR_SOME_INSTRUCTIONS);
+                        section_64.S_ATTR_PURE_INSTRUCTIONS |
+                                        section_64.S_ATTR_SOME_INSTRUCTIONS);
     }
 
     private void createReadOnlySection(ArrayList<MachOSection> sections, ReadOnlyDataContainer c) {
         createByteSection(sections, c, c.getContainerName(), "__TEXT",
-                          section_64.S_ATTR_SOME_INSTRUCTIONS);
+                        section_64.S_ATTR_SOME_INSTRUCTIONS);
     }
 
     private void createReadWriteSection(ArrayList<MachOSection> sections, ByteContainer c) {
@@ -130,10 +130,10 @@ public class JMachORelocObject {
     public void createMachORelocObject(Map<Symbol, List<Relocation>> relocationTable, Collection<Symbol> symbols) throws IOException {
         // Allocate MachO Header
         // with 4 load commands
-        //   LC_SEGMENT_64
-        //   LC_VERSION_MIN_MACOSX
-        //   LC_SYMTAB
-        //   LC_DYSYMTAB
+        // LC_SEGMENT_64
+        // LC_VERSION_MIN_MACOSX
+        // LC_SYMTAB
+        // LC_DYSYMTAB
 
         MachOHeader mh = new MachOHeader();
 
@@ -162,10 +162,10 @@ public class JMachORelocObject {
         // Update the Header sizeofcmds size.
         // This doesn't include the Header struct size
         mh.setCmdSizes(4, segment_command_64.totalsize +
-                          (section_64.totalsize * sections.size()) +
-                          version_min_command.totalsize +
-                          symtab_command.totalsize +
-                          dysymtab_command.totalsize);
+                        (section_64.totalsize * sections.size()) +
+                        version_min_command.totalsize +
+                        symtab_command.totalsize +
+                        dysymtab_command.totalsize);
 
         // Initialize file offset for data past commands
         int file_offset = mach_header_64.totalsize + mh.getCmdSize();
@@ -189,10 +189,10 @@ public class JMachORelocObject {
 
         // Create the LC_SEGMENT_64 Segment which contains the MachOSections
         MachOSegment seg = new MachOSegment(segment_command_64.totalsize +
-                                            (section_64.totalsize * sections.size()),
-                                            segment_offset,
-                                            segment_size,
-                                            sections.size());
+                        (section_64.totalsize * sections.size()),
+                        segment_offset,
+                        segment_size,
+                        sections.size());
 
         MachOVersion vers = new MachOVersion();
 
@@ -201,8 +201,8 @@ public class JMachORelocObject {
 
         // Create LC_DYSYMTAB command
         MachODySymtab dysymtab = new MachODySymtab(symtab.getNumLocalSyms(),
-                                                   symtab.getNumGlobalSyms(),
-                                                   symtab.getNumUndefSyms());
+                        symtab.getNumGlobalSyms(),
+                        symtab.getNumUndefSyms());
 
         // Create the Relocation Tables
         MachORelocTable machORelocs = createMachORelocTable(sections, relocationTable, symtab);
@@ -271,7 +271,7 @@ public class JMachORelocObject {
      * @param symbols
      */
     private static MachOSymtab createMachOSymbolTables(ArrayList<MachOSection> sections,
-                                                       Collection<Symbol> symbols) {
+                    Collection<Symbol> symbols) {
         MachOSymtab symtab = new MachOSymtab();
         // First, create the initial null symbol. This is a local symbol.
         symtab.addSymbolEntry("", (byte) nlist_64.N_UNDF, (byte) 0, 0);
@@ -284,9 +284,9 @@ public class JMachORelocObject {
             long sectionAddr = sections.get(sectionId).getAddr();
 
             MachOSymbol machoSymbol = symtab.addSymbolEntry(symbol.getName(),
-                                                            getMachOTypeOf(symbol),
-                                                            (byte) sectionId,
-                                                            symbol.getOffset() + sectionAddr);
+                            getMachOTypeOf(symbol),
+                            (byte) sectionId,
+                            symbol.getOffset() + sectionAddr);
             symbol.setNativeSymbol(machoSymbol);
         }
 
@@ -308,8 +308,8 @@ public class JMachORelocObject {
         }
         // If Function or Data, add section type
         if (kind == Symbol.Kind.NATIVE_FUNCTION ||
-            kind == Symbol.Kind.JAVA_FUNCTION   ||
-            kind == Symbol.Kind.OBJECT) {
+                        kind == Symbol.Kind.JAVA_FUNCTION ||
+                        kind == Symbol.Kind.OBJECT) {
             type |= (nlist_64.N_SECT);
         }
 
@@ -324,12 +324,13 @@ public class JMachORelocObject {
      * @param symtab
      */
     private MachORelocTable createMachORelocTable(ArrayList<MachOSection> sections,
-                                                  Map<Symbol, List<Relocation>> relocationTable,
-                                                  MachOSymtab symtab) {
+                    Map<Symbol, List<Relocation>> relocationTable,
+                    MachOSymtab symtab) {
 
         MachORelocTable machORelocTable = new MachORelocTable(sections.size());
         /*
-         * For each of the symbols with associated relocation records, create a MachO relocation entry.
+         * For each of the symbols with associated relocation records, create a MachO relocation
+         * entry.
          */
         for (Map.Entry<Symbol, List<Relocation>> entry : relocationTable.entrySet()) {
             List<Relocation> relocs = entry.getValue();
@@ -380,8 +381,8 @@ public class JMachORelocObject {
                 int addend = -4; // Size of 32-bit address of the GOT
                 /*
                  * Relocation should be applied before the test instruction to the move instruction.
-                 * reloc.getOffset() points to the test instruction after the instruction that loads the address of
-                 * polling page. So set the offset appropriately.
+                 * reloc.getOffset() points to the test instruction after the instruction that loads
+                 * the address of polling page. So set the offset appropriately.
                  */
                 offset = offset + addend;
                 pcrel = 1;
@@ -398,8 +399,8 @@ public class JMachORelocObject {
                 throw new InternalError("Unhandled relocation type: " + relocType);
         }
         machORelocTable.createRelocationEntry(sectindex, offset, symno,
-                                              pcrel, length, isextern,
-                                              machORelocType);
+                        pcrel, length, isextern,
+                        machORelocType);
     }
 
     private static int getMachORelocationType(RelocType relocType) {
