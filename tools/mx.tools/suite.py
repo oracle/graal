@@ -28,6 +28,7 @@ suite = {
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.chromeinspector.instrument to com.oracle.truffle.truffle_api"
             ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.api",
@@ -57,6 +58,7 @@ suite = {
             "dependencies" : ["truffle:TRUFFLE_API"],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.profiler.impl to com.oracle.truffle.truffle_api",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.api",
