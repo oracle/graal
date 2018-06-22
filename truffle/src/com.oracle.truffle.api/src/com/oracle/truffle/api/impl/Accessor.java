@@ -324,7 +324,7 @@ public abstract class Accessor {
 
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
-        public abstract Object getCurrentPolyglotContext();
+        public abstract Object getCurrentOuterContext();
     }
 
     public abstract static class LanguageSupport {

@@ -48,6 +48,21 @@ import org.graalvm.polyglot.Context;
 
 /**
  * Support for logging in Truffle languages and instruments.
+ * <p>
+ * The logger's {@link Level} configuration is done using the
+ * {@link org.graalvm.polyglot.Context.Builder#options(java.util.Map) Context's options}. The level
+ * option key has the following format: {@code log.languageId.className.level} or
+ * {@code log.instrumentId.className.level}. The value is either the name of pre-defined
+ * {@link Level} constant or a numeric {@link Level} value. If not explicitly set in
+ * {@link org.graalvm.polyglot.Context.Builder#options(java.util.Map) Context's options} the level
+ * is inherited from the parent logger.
+ * <p>
+ * The {@link TruffleLogger} supports {@link LogRecord#getParameters() message parameters} of
+ * primitive types and strings. The object parameters are converted into string value before they
+ * are passed to the {@link Handler}.
+ * <p>
+ * The {@link TruffleLogger} instances are safe to be used on compiled code paths as well as from
+ * multiple-threads.
  *
  * @since 1.0
  */
@@ -61,36 +76,27 @@ public final class TruffleLogger {
     private static final Object childrenLock = new Object();
 
     private final String name;
-    private final Handler handler;
+    private final Supplier<? extends Handler> handlerProvider;
     @CompilerDirectives.CompilationFinal private volatile int levelNum;
     @CompilerDirectives.CompilationFinal private volatile Assumption levelNumStable;
     private volatile Level levelObj;
     private volatile TruffleLogger parent;
     private Collection<ChildLoggerRef> children;
 
-    private TruffleLogger(final String loggerName, final Handler handler) {
+    private TruffleLogger(final String loggerName, final Supplier<? extends Handler> handlerProvider) {
         this.name = loggerName;
-        this.handler = handler;
+        this.handlerProvider = handlerProvider;
         this.levelNum = DEFAULT_VALUE;
         this.levelNumStable = Truffle.getRuntime().createAssumption("Log Level Value stable for: " + loggerName);
     }
 
     private TruffleLogger() {
-        this(ROOT_NAME, TruffleLanguage.AccessAPI.engineAccess().getLogHandler());
+        this(ROOT_NAME, new PolyglotLogHandlerProvider());
     }
 
     /**
      * Find or create a logger for a given language or instrument class. If a logger for the class
      * already exists it's returned, otherwise a new logger is created.
-     * <p>
-     * The logger's {@link Level} configuration is done using the
-     * {@link org.graalvm.polyglot.Context.Builder#options(java.util.Map)}. The level option key has
-     * the following format: {@code log.languageId.className.level} or
-     * {@code log.instrumentId.className.level}. The value is either a name of pre defined
-     * {@link Level} or a numeric {@link Level} value.
-     * <p>
-     * The created {@link Logger} supports parameters of primitive types and strings. The object
-     * parameters are converted into string value before they are passed to {@link Handler}.
      *
      * @param id the unique id of language or instrument
      * @param forClass the {@link Class} to create a logger for
@@ -106,15 +112,6 @@ public final class TruffleLogger {
     /**
      * Find or create a logger for a given language or instrument. If a logger with given name
      * already exists it's returned, otherwise a new logger is created.
-     * <p>
-     * The logger's {@link Level} configuration is done using the
-     * {@link org.graalvm.polyglot.Context.Builder#options(java.util.Map)}. The level option key has
-     * the following format: {@code log.languageId.loggerName.level} or
-     * {@code log.instrumentId.loggerName.level}. The value is either a name of pre-defined
-     * {@link Level} or a numeric {@link Level} value.
-     * <p>
-     * The created {@link Logger} supports parameters of primitive types and strings. The object
-     * parameters are converted into string value before they are passed to {@link Handler}.
      *
      * @param id the unique id of language or instrument
      * @param loggerName the the name of a {@link Logger}, if a {@code loggerName} is null or empty
@@ -685,7 +682,7 @@ public final class TruffleLogger {
         if (level.intValue() < value || value == OFF_VALUE) {
             return false;
         }
-        final Object currentContext = TruffleLanguage.AccessAPI.engineAccess().getCurrentPolyglotContext();
+        final Object currentContext = TruffleLanguage.AccessAPI.engineAccess().getCurrentOuterContext();
         if (currentContext == null) {
             return false;
         }
@@ -766,8 +763,8 @@ public final class TruffleLogger {
     private void callHandlers(final LogRecord record) {
         CompilerAsserts.neverPartOfCompilation("Log handler should never be called from compiled code.");
         for (TruffleLogger current = this; current != null; current = current.getParent()) {
-            if (current.handler != null) {
-                current.handler.publish(record);
+            if (current.handlerProvider != null) {
+                current.handlerProvider.get().publish(record);
             }
         }
     }
@@ -1246,6 +1243,13 @@ public final class TruffleLogger {
                     }
                 }
             }
+        }
+    }
+
+    private static final class PolyglotLogHandlerProvider implements Supplier<Handler> {
+        @Override
+        public Handler get() {
+            return TruffleLanguage.AccessAPI.engineAccess().getLogHandler();
         }
     }
 }

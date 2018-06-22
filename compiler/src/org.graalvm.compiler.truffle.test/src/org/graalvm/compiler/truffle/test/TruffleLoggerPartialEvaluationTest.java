@@ -29,19 +29,12 @@ import java.util.logging.Level;
 import org.graalvm.compiler.truffle.test.nodes.IsLoggableNode;
 import org.graalvm.compiler.truffle.test.nodes.LoggingNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
-import org.graalvm.polyglot.Engine;
-import org.junit.Before;
 import org.junit.Test;
 
 public class TruffleLoggerPartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
         return 42;
-    }
-
-    @Before
-    public void setUp() {
-        Engine.create().close();
     }
 
     @Test

@@ -26,6 +26,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -40,7 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -330,9 +331,9 @@ public class LoggingTest {
     @Test
     public void testParametersPrimitive() {
         final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
-        AbstractLoggingLanguage.action = new Consumer<Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiConsumer<LoggingContext, Collection<TruffleLogger>>() {
             @Override
-            public void accept(final Collection<TruffleLogger> loggers) {
+            public void accept(final LoggingContext context, final Collection<TruffleLogger> loggers) {
                 for (TruffleLogger logger : loggers) {
                     logger.log(Level.WARNING, "Parameters", Arrays.copyOf(expected, expected.length));
                 }
@@ -354,9 +355,9 @@ public class LoggingTest {
 
     @Test
     public void testParametersObjects() {
-        AbstractLoggingLanguage.action = new Consumer<Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiConsumer<LoggingContext, Collection<TruffleLogger>>() {
             @Override
-            public void accept(final Collection<TruffleLogger> loggers) {
+            public void accept(final LoggingContext context, final Collection<TruffleLogger> loggers) {
                 for (TruffleLogger logger : loggers) {
                     logger.log(Level.WARNING, "Parameters", new LoggingLanguageObject("passed"));
                 }
@@ -373,6 +374,35 @@ public class LoggingTest {
                 }
             }
             Assert.assertTrue(logged);
+        }
+    }
+
+    @Test
+    public void testInnerContextLogging() {
+        AbstractLoggingLanguage.action = new BiConsumer<LoggingContext, Collection<TruffleLogger>>() {
+            @Override
+            public void accept(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+                TruffleContext tc = context.getEnv().newContextBuilder().build();
+                final Object prev = tc.enter();
+                try {
+                    for (TruffleLogger logger : loggers) {
+                        logger.log(Level.FINEST, "INNER: " + logger.getName());
+                    }
+                } finally {
+                    tc.leave(prev);
+                    tc.close();
+                }
+            }
+        };
+        TestHandler handler = new TestHandler();
+        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = new ArrayList<>();
+            for (String loggerName : AbstractLoggingLanguage.LOGGER_NAMES) {
+                expected.add(new AbstractMap.SimpleImmutableEntry<>(Level.FINEST, "INNER: " + LoggingLanguageFirst.ID + '.' + loggerName));
+            }
+            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+            Assert.assertEquals(expected, handler.getLog());
         }
     }
 
@@ -582,7 +612,7 @@ public class LoggingTest {
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {
         static final String[] LOGGER_NAMES = {"a", "a.a", "a.b", "a.a.a", "b", "b.a", "b.a.a.a"};
         static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
-        static Consumer<Collection<TruffleLogger>> action;
+        static BiConsumer<LoggingContext, Collection<TruffleLogger>> action;
         private final Collection<TruffleLogger> allLoggers;
 
         AbstractLoggingLanguage(final String id) {
@@ -614,7 +644,7 @@ public class LoggingTest {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     if (action != null) {
-                        action.accept(allLoggers);
+                        action.accept(getContextReference().get(), allLoggers);
                     }
                     doLog();
                     return getContextReference().get().getEnv().asGuestValue(null);

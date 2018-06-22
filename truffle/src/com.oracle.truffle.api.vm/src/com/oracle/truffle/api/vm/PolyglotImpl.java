@@ -75,9 +75,7 @@ import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 import java.util.logging.Handler;
 import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import org.graalvm.polyglot.io.FileSystem;
 
 /*
@@ -202,7 +200,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                         INSTRUMENT.createDispatchOutput(System.err),
                         System.in,
                         TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(),
-                        getAPIAccess().newStreamLogHandler(System.out));
+                        PolyglotLogHandler.createStreamHandler(System.out, false));
         preInitializedEngineRef.set(preInitializedEngine);
     }
 
@@ -947,8 +945,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Object getCurrentPolyglotContext() {
-            return PolyglotContextImpl.current();
+        public Object getCurrentOuterContext() {
+            return PolyglotLogHandler.getCurrentOuterContext();
         }
     }
 }

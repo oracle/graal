@@ -101,8 +101,6 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
-        public abstract Handler newStreamLogHandler(OutputStream out);
-
     }
 
     // shared SPI

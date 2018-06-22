@@ -78,7 +78,6 @@ public abstract class Launcher {
     private boolean helpTools;
     private boolean helpLanguages;
     private boolean seenPolyglot;
-    private File logFile;
 
     private VersionAction versionAction = VersionAction.None;
 
@@ -103,10 +102,6 @@ public abstract class Launcher {
 
     final void setPolyglot(boolean polyglot) {
         seenPolyglot = polyglot;
-    }
-
-    final File getLogFile() {
-        return logFile;
     }
 
     private Engine getTempEngine() {
@@ -627,10 +622,7 @@ public abstract class Launcher {
                     group = group.substring(0, index);
                 }
                 if ("log".equals(group)) {
-                    if (key.equals("log.file")) {
-                        logFile = new File(value);
-                        return true;
-                    } else if (key.endsWith(".level")) {
+                    if (key.endsWith(".level")) {
                         try {
                             Level.parse(value);
                             options.put(key, value);

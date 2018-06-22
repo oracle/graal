@@ -24,10 +24,16 @@
  */
 package com.oracle.truffle.api.vm;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ResourceBundle;
+import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.logging.StreamHandler;
 
 final class PolyglotLogHandler extends Handler {
 
@@ -61,16 +67,34 @@ final class PolyglotLogHandler extends Handler {
     }
 
     private Handler findDelegate() {
-        Handler result = null;
-        final PolyglotContextImpl currentContext = PolyglotContextImpl.current();
+        final PolyglotContextImpl currentContext = getCurrentOuterContext();
+        return currentContext != null ? currentContext.logHandler : null;
+    }
+
+    static PolyglotContextImpl getCurrentOuterContext() {
+        PolyglotContextImpl currentContext = PolyglotContextImpl.current();
         if (currentContext != null) {
-            result = currentContext.logHandler;
+            while (currentContext.parent != null) {
+                currentContext = currentContext.parent;
+            }
         }
-        return result;
+        return currentContext;
     }
 
     static LogRecord createLogRecord(final Level level, String loggerName, final String message, final String className, final String methodName, final Object[] parameters, final Throwable thrown) {
         return new ImmutableLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
+    }
+
+    /**
+     * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
+     * 
+     * @param out the {@link OutputStream} to print log messages into.
+     * @param closeStream if true the {@link Handler#close() handler's close} method closes given
+     *            stream.
+     * @return the {@link Handler}
+     */
+    static Handler createStreamHandler(final OutputStream out, final boolean closeStream) {
+        return new PolyglotStreamHandler(out, closeStream);
     }
 
     private static final class ImmutableLogRecord extends LogRecord {
@@ -87,12 +111,12 @@ final class PolyglotLogHandler extends Handler {
             if (methodName != null) {
                 super.setSourceMethodName(methodName);
             }
-            Object[] copy = null;
-            if (parameters != null) {
+            Object[] copy = parameters;
+            if (parameters != null && parameters.length > 0) {
                 copy = new Object[parameters.length];
-                final PolyglotContextImpl[] contextHolder = new PolyglotContextImpl[1];
+                final PolyglotContextImpl context = PolyglotContextImpl.current();
                 for (int i = 0; i < parameters.length; i++) {
-                    copy[i] = safeValue(parameters[i], contextHolder);
+                    copy[i] = safeValue(parameters[i], context);
                 }
             }
             super.setParameters(copy);
@@ -160,21 +184,101 @@ final class PolyglotLogHandler extends Handler {
         }
 
         @SuppressWarnings("deprecation")
-        private static Object safeValue(final Object param, PolyglotContextImpl[] contextHolder) {
+        private static Object safeValue(final Object param, final PolyglotContextImpl context) {
             if (param == null || PolyglotImpl.EngineImpl.isPrimitive(param)) {
                 return param;
             }
-            if (contextHolder[0] == null) {
-                contextHolder[0] = PolyglotContextImpl.current();
+            if (param instanceof TruffleObject) {
+                final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(context, null, param);
+                final PolyglotLanguageContext displayLanguageContext;
+                if (resolvedLanguage != null) {
+                    displayLanguageContext = context.contexts[resolvedLanguage.index];
+                } else {
+                    displayLanguageContext = context.getHostContext();
+                }
+                return VMAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
             }
-            final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(contextHolder[0], null, param);
-            final PolyglotLanguageContext displayLanguageContext;
-            if (resolvedLanguage != null) {
-                displayLanguageContext = contextHolder[0].contexts[resolvedLanguage.index];
+            return param.toString();
+        }
+    }
+
+    private static final class PolyglotStreamHandler extends StreamHandler {
+
+        private final boolean closeStream;
+
+        PolyglotStreamHandler(final OutputStream out, final boolean closeStream) {
+            super(out, FormatterImpl.INSTANCE);
+            setLevel(Level.ALL);
+            this.closeStream = closeStream;
+        }
+
+        @Override
+        public void close() throws SecurityException {
+            if (closeStream) {
+                super.close();
             } else {
-                displayLanguageContext = contextHolder[0].getHostContext();
+                flush();
             }
-            return VMAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
+        }
+
+        private static final class FormatterImpl extends Formatter {
+            private static final String FORMAT = "[%1$s] %2$s: %3$s%4$s%n";
+            static final Formatter INSTANCE = new FormatterImpl();
+
+            private FormatterImpl() {
+            }
+
+            @Override
+            public String format(LogRecord record) {
+                String loggerName = formatLoggerName(record.getLoggerName());
+                final String message = formatMessage(record);
+                String stackTrace = "";
+                final Throwable exception = record.getThrown();
+                if (exception != null) {
+                    final StringWriter str = new StringWriter();
+                    try (PrintWriter out = new PrintWriter(str)) {
+                        out.println();
+                        exception.printStackTrace(out);
+                    }
+                    stackTrace = str.toString();
+                }
+                return String.format(
+                                FORMAT,
+                                loggerName,
+                                record.getLevel().getName(),
+                                message,
+                                stackTrace);
+            }
+
+            private static String formatLoggerName(final String loggerName) {
+                final String id;
+                String name;
+                int index = loggerName.indexOf('.');
+                if (index < 0) {
+                    id = "";
+                    name = loggerName;
+                } else {
+                    id = loggerName.substring(0, index);
+                    name = loggerName.substring(index + 1);
+                }
+                name = possibleSimpleName(name);
+                final StringBuilder sb = new StringBuilder();
+                sb.append(id);
+                sb.append("::");
+                sb.append(name);
+                return sb.toString();
+            }
+
+            private static String possibleSimpleName(final String loggerName) {
+                int index = -1;
+                for (int i = 0; i >= 0; i = loggerName.indexOf('.', i + 1)) {
+                    if (i + 1 < loggerName.length() && Character.isUpperCase(loggerName.charAt(i + 1))) {
+                        index = i + 1;
+                        break;
+                    }
+                }
+                return index < 0 ? loggerName : loggerName.substring(index);
+            }
         }
     }
 }

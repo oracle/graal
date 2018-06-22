@@ -1525,7 +1525,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Object getCurrentPolyglotContext() {
+        public Object getCurrentOuterContext() {
             return null;
         }
     }
