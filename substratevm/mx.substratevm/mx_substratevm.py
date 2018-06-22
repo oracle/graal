@@ -259,8 +259,6 @@ tools_map = {
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'nfi' : ToolDescriptor(), # just an alias for truffle (to be removed soon)
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
-    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
-    'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
 
 def native_image_path(native_image_root):
@@ -672,7 +670,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image, debug_gr_8964=False):
     truffle_language_ensure('js', debug_gr_8964=debug_gr_8964)
-    return native_image(['--language:js', '--tool:chromeinspector'], debug_gr_8964=debug_gr_8964)
+    return native_image(['--language:js'], debug_gr_8964=debug_gr_8964)
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -696,7 +694,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image, debug_gr_8964=False):
     truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # python depends on sulong
     truffle_language_ensure('python', debug_gr_8964=debug_gr_8964)
-    return native_image(['--language:python', '--tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
+    return native_image(['--language:python', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
 
 def test_python_smoke(args):
     """
