@@ -257,7 +257,6 @@ tools_map = {
     'truffle' : ToolDescriptor(),
     'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
-    'nfi' : ToolDescriptor(), # just an alias for truffle (to be removed soon)
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
 }
 
