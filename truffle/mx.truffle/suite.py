@@ -84,7 +84,9 @@ suite = {
       ],
       "uses" : [
         "com.oracle.truffle.api.TruffleRuntimeAccess",
-         "java.nio.file.spi.FileTypeDetector"
+         "java.nio.file.spi.FileTypeDetector",
+         "com.oracle.truffle.api.instrumentation.TruffleInstrument",
+         "com.oracle.truffle.api.TruffleLanguage"
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
