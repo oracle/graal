@@ -55,7 +55,6 @@ def run_jaotc(args, cwd=None):
 
     try:
         mx_compiler.run_vm(
-            verbose +
             ['--add-exports=jdk.internal.vm.ci/jdk.vm.ci.aarch64=jdk.internal.vm.compiler,jdk.aot',
              '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.amd64=jdk.internal.vm.compiler,jdk.aot',
              '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler,jdk.aot',
@@ -69,7 +68,7 @@ def run_jaotc(args, cwd=None):
              '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=jdk.internal.vm.compiler,jdk.aot',
              '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=jdk.internal.vm.compiler,jdk.aot',
              '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.sparc=jdk.internal.vm.compiler,jdk.aot',
-             '-XX:+CalculateClassFingerprint'] + vm_args + ['-m', 'jdk.aot/jdk.tools.jaotc.Main'] + args,
+             '-XX:+CalculateClassFingerprint'] + vm_args + ['-m', 'jdk.aot/jdk.tools.jaotc.Main'] + verbose + args,
             cwd=cwd)
     finally:
         if jvmci_classpath_adjusted:

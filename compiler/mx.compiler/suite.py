@@ -1253,7 +1253,7 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "Graal,HotSpot",
     },
-    
+
     "jdk.tools.jaotc.binformat" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1279,7 +1279,7 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "Graal,Test",
     },
-    
+
     # ------------- GraalTruffle -------------
 
     "org.graalvm.compiler.truffle.common" : {
