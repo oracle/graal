@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,55 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class CallArgument {
 
-    private CallArgument() {
+    private static final String POSITIVE_INFINITY_STR = Double.toString(Double.POSITIVE_INFINITY);
+    private static final String NEGATIVE_INFINITY_STR = Double.toString(Double.NEGATIVE_INFINITY);
+    private static final String NAN_STR = Double.toString(Double.NaN);
+    private static final Double NEGATIVE_ZERO = new Double("-0");
+
+    private final Object value;
+    private final String objectId;
+    private final boolean undefined;
+
+    private CallArgument(Object value, String objectId, boolean undefined) {
+        this.value = value;
+        this.objectId = objectId;
+        this.undefined = undefined;
     }
 
     public static CallArgument get(JSONObject json) {
-        json.get("value");
-        json.get("unserializableValue");
-        json.get("objectId");
-        // TODO
-        return null;
+        Object value = json.opt("unserializableValue");
+        if (value != null) {
+            if (POSITIVE_INFINITY_STR.equals(value)) {
+                value = Double.POSITIVE_INFINITY;
+            } else if (NEGATIVE_INFINITY_STR.equals(value)) {
+                value = Double.NEGATIVE_INFINITY;
+            } else if (NAN_STR.equals(value)) {
+                value = Double.NaN;
+            } else if ("-0".equals(value) || "-0.0".equals(value)) {
+                value = NEGATIVE_ZERO;
+            }
+        } else {
+            value = json.opt("value");
+            if (value == JSONObject.NULL) {
+                value = null;
+            }
+        }
+        String objectId = json.optString("objectId", null);
+        return new CallArgument(value, objectId, json.length() == 0);
+    }
+
+    /** A primitive value, or <code>null</code>. */
+    public Object getPrimitiveValue() {
+        return value;
+    }
+
+    /** An object ID, or <code>null</code>. */
+    public String getObjectId() {
+        return objectId;
+    }
+
+    /** Whether is represents an undefined value. */
+    public boolean isUndefined() {
+        return undefined;
     }
 }

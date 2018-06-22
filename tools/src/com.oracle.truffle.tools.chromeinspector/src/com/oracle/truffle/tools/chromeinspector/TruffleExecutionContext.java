@@ -40,6 +40,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 import com.oracle.truffle.tools.chromeinspector.instrument.SourceLoadInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
 /**
@@ -158,6 +159,16 @@ public final class TruffleExecutionContext {
             getRemoteObjectsHandler().register(ro);
         }
         return ro;
+    }
+
+    void setValue(DebugValue debugValue, CallArgument newValue) {
+        String objectId = newValue.getObjectId();
+        if (objectId != null) {
+            RemoteObject obj = getRemoteObjectsHandler().getRemote(objectId);
+            debugValue.set(obj.getDebugValue());
+        } else {
+            debugValue.set(newValue.getPrimitiveValue());
+        }
     }
 
     void setSuspendThreadExecutor(SuspendedThreadExecutor suspendThreadExecutor) {

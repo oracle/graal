@@ -27,9 +27,12 @@ package com.oracle.truffle.tools.chromeinspector;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -75,8 +78,8 @@ import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
-import java.util.HashSet;
-import java.util.Set;
+
+import org.graalvm.collections.Pair;
 
 public final class TruffleDebugger extends DebuggerDomain {
 
@@ -551,6 +554,47 @@ public final class TruffleDebugger extends DebuggerDomain {
         }
         if (callFrameId == null) {
             throw new CommandProcessException("A callFrameId required.");
+        }
+        int frameId;
+        try {
+            frameId = Integer.parseInt(callFrameId);
+        } catch (NumberFormatException ex) {
+            throw new CommandProcessException(ex.getLocalizedMessage());
+        }
+        try {
+            context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
+                @Override
+                public Void executeCommand() throws CommandProcessException {
+                    DebuggerSuspendedInfo susp = suspendedInfo;
+                    if (susp != null) {
+                        if (frameId >= susp.getCallFrames().length) {
+                            throw new CommandProcessException("Too big callFrameId: " + frameId);
+                        }
+                        CallFrame cf = susp.getCallFrames()[frameId];
+                        Scope[] scopeChain = cf.getScopeChain();
+                        if (scopeNumber < 0 || scopeNumber >= scopeChain.length) {
+                            throw new CommandProcessException("Wrong scopeNumber: " + scopeNumber + ", there are " + scopeChain.length + " scopes.");
+                        }
+                        Scope scope = scopeChain[scopeNumber];
+                        DebugScope debugScope = scope.getObject().getScope();
+                        DebugValue debugValue = debugScope.getDeclaredValue(variableName);
+                        Pair<DebugValue, Object> evaluatedValue = susp.lastEvaluatedValue.getAndSet(null);
+                        if (evaluatedValue != null && Objects.equals(evaluatedValue.getRight(), newValue.getPrimitiveValue())) {
+                            debugValue.set(evaluatedValue.getLeft());
+                        } else {
+                            context.setValue(debugValue, newValue);
+                        }
+                    }
+                    return null;
+                }
+
+                @Override
+                public Void processException(DebugException dex) {
+                    return null;
+                }
+            });
+        } catch (NoSuspendedThreadException ex) {
+            throw new CommandProcessException(ex.getLocalizedMessage());
         }
     }
 

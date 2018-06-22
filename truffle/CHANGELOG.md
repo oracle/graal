@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * Removed deprecated ResultVerifier.getDefaultResultVerfier.
 * Deprecated `com.oracle.truffle.api.frame.FrameDescriptor.shallowCopy` and `com.oracle.truffle.api.frame.FrameSlot.getFrameDescriptor` 
+* Added [DebugValue#set](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#set-java.lang.Object-) to set primitive values to a debug value.
 
 ## Version 1.0.0 RC2
 

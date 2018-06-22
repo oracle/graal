@@ -39,6 +39,7 @@ import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
 import org.junit.Test;
 
+@AddExports("jdk.internal.vm.compiler/org.graalvm.compiler.truffle.runtime")
 public class NewFrameNodeTest extends PartialEvaluationTest {
 
     @Test
