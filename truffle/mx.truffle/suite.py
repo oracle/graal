@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.167.0",
+  "mxversion" : "5.175.2",
   "name" : "truffle",
   "version": "1.0.0-rc3-dev",
   "sourceinprojectwhitelist" : [],
@@ -84,7 +84,7 @@ suite = {
       ],
       "uses" : [
         "com.oracle.truffle.api.TruffleRuntimeAccess",
-         "java.nio.file.spi.FileTypeDetector"
+        "java.nio.file.spi.FileTypeDetector",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
@@ -597,6 +597,9 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.nfi.types",
       ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
@@ -747,6 +750,8 @@ suite = {
     },
 
     "TRUFFLE_NFI" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.truffle.truffle_nfi",
       "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
