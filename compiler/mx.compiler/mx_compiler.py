@@ -1361,7 +1361,7 @@ mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
-    'jaotc-tests': [mx_jaotc.jaotc_tests, ''],
+    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
