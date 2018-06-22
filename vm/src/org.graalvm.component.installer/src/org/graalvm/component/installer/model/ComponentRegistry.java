@@ -331,7 +331,7 @@ public final class ComponentRegistry {
             String shortId = id.substring(CommonConstants.GRAALVM_CORE_PREFIX.length());
             try {
                 ComponentInfo reg = findComponent(shortId);
-                if (reg == null || reg == info) {
+                if (reg == null || reg.getId().equals(id)) {
                     return shortId;
                 }
             } catch (FailedOperationException ex) {
