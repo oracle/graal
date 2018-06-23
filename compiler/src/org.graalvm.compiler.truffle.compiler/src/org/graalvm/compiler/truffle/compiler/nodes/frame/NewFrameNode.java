@@ -167,19 +167,21 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant slotArrayList = constantReflection.readFieldValue(types.fieldFrameDescriptorSlots, frameDescriptor);
         JavaConstant slotArray = constantReflection.readFieldValue(types.fieldArrayListElementData, slotArrayList);
         int slotsArrayLength = constantReflection.readArrayLength(slotArray);
-        this.frameSize = constantReflection.readFieldValue(types.fieldFrameDescriptorSize, frameDescriptor).asInt();
-
-        frameSlotKinds = new JavaKind[frameSize];
+        frameSlotKinds = new JavaKind[slotsArrayLength];
+        int limit = -1;
         for (int i = 0; i < slotsArrayLength; i++) {
+            JavaKind kind = null;
             JavaConstant slot = constantReflection.readArrayElement(slotArray, i);
             if (slot.isNonNull()) {
                 JavaConstant slotKind = constantReflection.readFieldValue(types.fieldFrameSlotKind, slot);
-                JavaConstant slotIndex = constantReflection.readFieldValue(types.fieldFrameSlotIndex, slot);
                 if (slotKind.isNonNull()) {
-                    frameSlotKinds[slotIndex.asInt()] = asJavaKind(constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind));
+                    kind = asJavaKind(constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind));
+                    limit = i;
                 }
             }
+            frameSlotKinds[i] = kind;
         }
+        this.frameSize = limit + 1;
 
         ResolvedJavaType frameType = types.classFrameClass;
         ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
