@@ -94,8 +94,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://github.com/oracle/graal/releases/download/idealgraphvisualizer-416/idealgraphvisualizer-416.zip"],
-      "sha1" : "47e809250ca32f87776f640d9209dcd87b9d2537",
+      "urls" : ["https://github.com/oracle/graal/releases/download/idealgraphvisualizer-543/idealgraphvisualizer-543.zip"],
+      "sha1" : "39a1810b8443a64e5bcc431c78e56515109898b9",
     },
 
     "JOL_CLI" : {
