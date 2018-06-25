@@ -25,7 +25,6 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
-import os
 import subprocess
 import tempfile
 from argparse import ArgumentParser, ZERO_OR_MORE
@@ -98,10 +97,7 @@ def jaotc_test(args):
     for test in tests:
         mx.log('Testing `{}`'.format(test))
         if test == 'HelloWorld':
-            test_class(
-                classpath=mx.project('jdk.tools.jaotc.test').output_dir(),
-                main_class='jdk.tools.jaotc.test.HelloWorld'
-            )
+            test_helloworld()
         elif test == 'java.base':
             test_modules(
                 classpath=mx.project('jdk.tools.jaotc.test').output_dir(),
@@ -123,13 +119,16 @@ common_opts_variants = [
 ]
 
 
-def test_class(classpath, main_class):
-    """(jaotc-)Compiles `main_class` and runs `main_class` + AOT library.
+def test_helloworld():
+    """(jaotc-)Compiles simple HelloWorld program.
     Compares the output vs. standard JVM.
     """
+    classfile_dir = mx.project('jdk.tools.jaotc.test').output_dir()
+    main_class = 'jdk.tools.jaotc.test.HelloWorld'
+
     # Run on vanilla JVM.
     expected_out = mx.OutputCapture()
-    mx_compiler.run_vm(['-cp', classpath, main_class], out=expected_out)
+    mx_compiler.run_vm(['-cp', classfile_dir, main_class], out=expected_out)
 
     for common_opts in common_opts_variants:
         mx.log('Running {} with {}'.format(main_class, ' '.join(common_opts)))
@@ -137,8 +136,8 @@ def test_class(classpath, main_class):
         with mktemp_libfile() as lib_module:
             run_jaotc(['-J' + opt for opt in common_opts] +
                       ['--info', '--output', lib_module.name, main_class],
-                      cwd=classpath)
-            check_aot(classpath, main_class, common_opts, expected_out.data, lib_module)
+                      cwd=classfile_dir)
+            check_aot(classfile_dir, main_class, common_opts, expected_out.data, lib_module)
 
 
 def test_modules(classpath, main_class, modules):
