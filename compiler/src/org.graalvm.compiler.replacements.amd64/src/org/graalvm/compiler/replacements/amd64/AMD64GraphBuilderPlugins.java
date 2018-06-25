@@ -198,7 +198,7 @@ public class AMD64GraphBuilderPlugins {
                 r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", char[].class, int.class,
                                 int.class, char[].class, int.class, int.class, int.class);
             }
-            if (arch.getFeatures().contains(CPUFeature.AVX)) {
+            if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", Receiver.class, int.class, int.class);
             }
             r.registerMethodSubstitution(AMD64StringSubstitutions.class, "compareTo", Receiver.class, String.class);
@@ -211,7 +211,7 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareToUTF16", byte[].class, byte[].class);
-            if (arch.getFeatures().contains(CPUFeature.AVX)) {
+            if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
             }
         }
@@ -223,7 +223,7 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
-            if (arch.getFeatures().contains(CPUFeature.AVX)) {
+            if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
             }
         }
