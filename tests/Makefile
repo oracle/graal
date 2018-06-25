@@ -60,7 +60,7 @@ endif
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) clang++ $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
-%.bc: %.ll
+%/gcc_O0.bc: %/gcc_O0.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
 
 define OPT_RULES
@@ -75,6 +75,11 @@ define OPT_RULES
 %/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
+
+%/$(1).bc: %.ll
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) llvm-as -o $$@ $$<
+
 endef
 
 $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
