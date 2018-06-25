@@ -90,11 +90,11 @@ import java.util.logging.Level;
  * language is needed for code execution. That execution environment remains initialized for the
  * lifetime of the engine and is isolated from the environment in any other engine instance.
  * <p>
- * Language global state can be shared between multiple context instances by saving them as in a
- * custom field of the {@link TruffleLanguage} subclass. Languages may control sharing between
- * multiple contexts using its {@link Registration#contextPolicy() context policy}. By default the
- * context policy is {@link ContextPolicy#SINGLE single}: there is always one language instance for
- * each context.
+ * Language global state can be shared between multiple context instances by saving them in a custom
+ * field of the {@link TruffleLanguage} subclass. Languages may control sharing between multiple
+ * contexts using its {@link Registration#contextPolicy() context policy}. By default the context
+ * policy is {@link ContextPolicy#SINGLE single}: there is always one language instance for each
+ * context.
  * <p>
  * If the context policy is more permissive then the implementation needs to manually ensure data
  * isolation between the contexts. This means that state associated with a context must not be
@@ -2022,7 +2022,7 @@ public abstract class TruffleLanguage<C> {
          * <li>If the language does not allow
          * {@link TruffleLanguage#isThreadAccessAllowed(Thread, boolean) multi-threading} (default
          * behavior) then the language instance is guaranteed to be used from one thread at a time
-         * only. Cached ASTs will not be use from multiple threads at the same time.
+         * only. Cached ASTs will not be used from multiple threads at the same time.
          * <li>{@link TruffleLanguage#initializeMultipleContexts()} is guaranteed to be never
          * invoked.
          * </ul>
@@ -2046,11 +2046,11 @@ public abstract class TruffleLanguage<C> {
          * <li>If the language does not
          * {@link TruffleLanguage#isThreadAccessAllowed(Thread, boolean) allow} access from multiple
          * threads (default behavior) then the language instance is guaranteed to be used from one
-         * thread at a time only. In this case also cached ASTs will not be use from multiple
+         * thread at a time only. In this case also cached ASTs will not be used from multiple
          * threads at the same time. If the language allows access from multiple threads then also
          * ASTs may be used from multiple threads at the same time.
          * <li>{@link TruffleLanguage#initializeMultipleContexts()} may be invoked when multiple
-         * contexts will be.
+         * contexts will be used with this language instance.
          * <li>{@link TruffleLanguage Language} instance fields must only be used for data that can
          * be shared across multiple contexts.
          * </ul>

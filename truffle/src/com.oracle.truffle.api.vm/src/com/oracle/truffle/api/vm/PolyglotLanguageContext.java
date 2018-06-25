@@ -691,8 +691,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 try {
                     e.printStackTrace(new PrintStream(currentEnv.err()));
                 } catch (Throwable exc) {
-                    // Still show the original error if printing on Env.err() fails for some
-                    // reason
+                    // Still show the original error if printing on Env.err() fails for some reason
                     e.printStackTrace();
                 }
             } else {
