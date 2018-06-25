@@ -623,6 +623,7 @@ def test_python_smoke(args):
 
 def build_ruby(native_image, debug_gr_8964=False, debug_gr_9912=0):
     truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # ruby depends on sulong
+    suite.import_suite('tools', in_subdir=True) # ruby depends on tools
     truffle_language_ensure('ruby', debug_gr_8964=debug_gr_8964)
 
     # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
