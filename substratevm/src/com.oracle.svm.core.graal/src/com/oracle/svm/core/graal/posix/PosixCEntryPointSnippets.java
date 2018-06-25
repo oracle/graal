@@ -166,7 +166,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
-        WordPointer isolate = StackValue.get(SizeOf.get(WordPointer.class));
+        WordPointer isolate = StackValue.get(WordPointer.class);
         isolate.write(WordFactory.nullPointer());
         int error = Isolates.create(isolate, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {

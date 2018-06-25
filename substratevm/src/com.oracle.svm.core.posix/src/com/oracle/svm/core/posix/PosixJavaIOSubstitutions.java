@@ -149,7 +149,7 @@ final class Target_java_io_UnixFileSystem {
 
     @Substitute
     public int getBooleanAttributes0(File f) {
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
@@ -182,7 +182,7 @@ final class Target_java_io_UnixFileSystem {
 
     @Substitute
     private long getLength(File f) {
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
@@ -207,7 +207,7 @@ final class Target_java_io_UnixFileSystem {
 
         List<String> entries = new ArrayList<>();
         dirent dirent = StackValue.get(SizeOf.get(dirent.class) + PATH_MAX() + 1);
-        direntPointer resultDirent = StackValue.get(SizeOf.get(direntPointer.class));
+        direntPointer resultDirent = StackValue.get(direntPointer.class);
 
         while (readdir_r(dir, dirent, resultDirent) == 0 && !resultDirent.read().isNull()) {
             String name = CTypeConversion.toJavaString(dirent.d_name());
@@ -315,7 +315,7 @@ final class Target_java_io_UnixFileSystem {
 
     @Substitute
     public long getSpace(File f, int t) {
-        statvfs statvfs = StackValue.get(SizeOf.get(statvfs.class));
+        statvfs statvfs = StackValue.get(statvfs.class);
         LibC.memset(statvfs, WordFactory.zero(), WordFactory.unsigned(SizeOf.get(statvfs.class)));
 
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
@@ -338,7 +338,7 @@ final class Target_java_io_UnixFileSystem {
 
     @Substitute
     public boolean setReadOnly(File f) {
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
@@ -363,7 +363,7 @@ final class Target_java_io_UnixFileSystem {
             throw VMError.shouldNotReachHere("illegal access mode");
         }
 
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
@@ -405,7 +405,7 @@ final class Target_java_io_UnixFileSystem {
 
     @Substitute
     public long getLastModifiedTime(File f) {
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
@@ -417,7 +417,7 @@ final class Target_java_io_UnixFileSystem {
 
     @Substitute
     public boolean setLastModifiedTime(File f, long time) {
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
@@ -474,11 +474,11 @@ final class Target_java_io_FileInputStream {
 
         SignedWord ret = WordFactory.zero();
         boolean av = false;
-        stat stat = StackValue.get(SizeOf.get(stat.class));
+        stat stat = StackValue.get(stat.class);
         if (fstat(handle, stat) >= 0) {
             int mode = stat.st_mode();
             if (Util_java_io_FileInputStream.isChr(mode) || Util_java_io_FileInputStream.isFifo(mode) || Util_java_io_FileInputStream.isSock(mode)) {
-                CIntPointer np = StackValue.get(SizeOf.get(CIntPointer.class));
+                CIntPointer np = StackValue.get(CIntPointer.class);
                 if (ioctl(handle, FIONREAD(), np) >= 0) {
                     ret = WordFactory.signed(np.read());
                     av = true;
@@ -719,7 +719,7 @@ final class Target_java_io_Console {
         /* Initialize the echo shut down hook, once. */
         Util_java_io_Console.addShutdownHook();
         // 052     struct termios tio;
-        final Termios.termios tio = StackValue.get(SizeOf.get(Termios.termios.class));
+        final Termios.termios tio = StackValue.get(Termios.termios.class);
         // 053     jboolean old;
         boolean old;
         // 054     int tty = fileno(stdin);

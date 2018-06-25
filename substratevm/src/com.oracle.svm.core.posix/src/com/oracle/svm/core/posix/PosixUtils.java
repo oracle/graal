@@ -242,7 +242,7 @@ public class PosixUtils {
     }
 
     static int readSingle(FileDescriptor fd) throws IOException {
-        CCharPointer retPtr = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer retPtr = StackValue.get(CCharPointer.class);
         int handle = PosixUtils.getFDHandle(fd);
         SignedWord nread = read(handle, retPtr, WordFactory.unsigned(1));
         if (nread.equal(0)) {
@@ -302,7 +302,7 @@ public class PosixUtils {
             throw new IOException("Stream Closed");
         }
 
-        CCharPointer bufPtr = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer bufPtr = StackValue.get(CCharPointer.class);
         bufPtr.write((byte) b);
         // the append parameter is disregarded
         n = write(handle, bufPtr, WordFactory.unsigned(1));

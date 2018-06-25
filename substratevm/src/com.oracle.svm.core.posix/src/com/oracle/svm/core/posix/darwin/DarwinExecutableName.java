@@ -56,7 +56,7 @@ public class DarwinExecutableName extends PosixExecutableName {
     @Override
     public Object apply(Object[] args) {
         /* Find out how long the executable path is. */
-        final CIntPointer sizePointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        final CIntPointer sizePointer = StackValue.get(CIntPointer.class);
         sizePointer.write(0);
         if (DarwinDyld._NSGetExecutablePath(WordFactory.nullPointer(), sizePointer) != -1) {
             VMError.shouldNotReachHere("DarwinExecutableName.getExecutableName: Executable path length is 0?");

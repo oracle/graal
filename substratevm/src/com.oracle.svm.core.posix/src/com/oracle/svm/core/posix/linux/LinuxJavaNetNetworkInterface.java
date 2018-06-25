@@ -88,7 +88,7 @@ public class LinuxJavaNetNetworkInterface {
              */
             JavaNetNetworkInterface.netif ifs = ifsParameter;
             // 1115 struct ifconf ifc;
-            NetIf.ifconf ifc = StackValue.get(SizeOf.get(NetIf.ifconf.class));
+            NetIf.ifconf ifc = StackValue.get(NetIf.ifconf.class);
             // 1116 struct ifreq *ifreqP;
             NetIf.ifreq ifreqP;
             // 1117 char *buf = NULL;
@@ -247,7 +247,7 @@ public class LinuxJavaNetNetworkInterface {
                             // 1201             struct netif *last_ptr = NULL;
                             /* `last_ptr` is unused. */
                             // 1202             struct sockaddr_in6 addr;
-                            NetinetIn.sockaddr_in6 addr = StackValue.get(SizeOf.get(NetinetIn.sockaddr_in6.class));
+                            NetinetIn.sockaddr_in6 addr = StackValue.get(NetinetIn.sockaddr_in6.class);
                             // 1203
                             // 1204             sprintf(addr6, "%s:%s:%s:%s:%s:%s:%s:%s",
                             // 1205                            addr6p[0], addr6p[1], addr6p[2], addr6p[3], addr6p[4], addr6p[5], addr6p[6], addr6p[7]);
@@ -296,7 +296,7 @@ public class LinuxJavaNetNetworkInterface {
             // 1349   struct sockaddr *ret = NULL;
             Socket.sockaddr ret = WordFactory.nullPointer();
             // 1350   struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             // 1351
             // 1352   memset((char *) &if2, 0, sizeof(if2));
             LibC.memset(if2, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
@@ -345,7 +345,7 @@ public class LinuxJavaNetNetworkInterface {
             // 1381     short ret;
             short ret;
             // 1382     struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             // 1383
             // 1384     memset((char *) &if2, 0, sizeof(if2));
             LibC.memset(if2, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
@@ -380,7 +380,7 @@ public class LinuxJavaNetNetworkInterface {
         // 1487 static int getFlags(int sock, const char *ifname, int *flags) {
         public int getFlags(int sock, CCharPointer ifname, CIntPointer flags) {
             // 1488   struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             // 1489
             // 1490   memset((char *) &if2, 0, sizeof(if2));
             LibC.memset(if2, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
@@ -414,7 +414,7 @@ public class LinuxJavaNetNetworkInterface {
             // 1331     return if_nametoindex(name);
             // 1332 #else
             // 1333     struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             LibC.memset(if2, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
             // 1334     strcpy(if2.ifr_name, name);
             LibC.strcpy(if2.ifr_name(), name);

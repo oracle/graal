@@ -76,8 +76,8 @@ final class Target_com_sun_security_auth_module_UnixSystem {
         }
         CCharPointer pwbuf = LibC.malloc(pwsize);
         try {
-            passwd pwent = StackValue.get(SizeOf.get(passwd.class));
-            passwdPointer p = StackValue.get(SizeOf.get(passwdPointer.class));
+            passwd pwent = StackValue.get(passwd.class);
+            passwdPointer p = StackValue.get(passwdPointer.class);
             int result;
             do {
                 if (pwbuf.isNull()) {

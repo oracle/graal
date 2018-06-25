@@ -161,7 +161,7 @@ public class RealLog extends Log {
 
     @Override
     public Log character(char value) {
-        CCharPointer bytes = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer bytes = StackValue.get(CCharPointer.class);
         bytes.write((byte) value);
         rawBytes(bytes, WordFactory.unsigned(1));
         return this;

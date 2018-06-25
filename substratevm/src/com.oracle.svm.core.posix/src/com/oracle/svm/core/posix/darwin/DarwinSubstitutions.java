@@ -58,7 +58,7 @@ final class Target_java_lang_System {
         }
 
         if (!utilJavaLangSystem.timeBaseValid) {
-            MachTimebaseInfo timeBaseInfo = StackValue.get(SizeOf.get(MachTimebaseInfo.class));
+            MachTimebaseInfo timeBaseInfo = StackValue.get(MachTimebaseInfo.class);
             if (mach_timebase_info(timeBaseInfo) == 0) {
                 if (timeBaseInfo.getdenom() == 1 && timeBaseInfo.getnumer() == 1) {
                     utilJavaLangSystem.fastTime = true;
@@ -74,7 +74,7 @@ final class Target_java_lang_System {
         }
 
         /* High precision time is not available, fall back to low precision. */
-        timeval timeval = StackValue.get(SizeOf.get(timeval.class));
+        timeval timeval = StackValue.get(timeval.class);
         timezone timezone = WordFactory.nullPointer();
         gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000_000_000L + timeval.tv_usec() * 1_000L;

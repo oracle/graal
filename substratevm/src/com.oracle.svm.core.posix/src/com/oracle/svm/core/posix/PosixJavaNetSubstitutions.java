@@ -457,8 +457,8 @@ final class Target_java_net_Inet4AddressImpl {
             }
         } else {
             // 362         struct addrinfo hints, *res;
-            Netdb.addrinfo hints = StackValue.get(SizeOf.get(Netdb.addrinfo.class));
-            Netdb.addrinfoPointer res = StackValue.get(SizeOf.get(Netdb.addrinfoPointer.class));
+            Netdb.addrinfo hints = StackValue.get(Netdb.addrinfo.class);
+            Netdb.addrinfoPointer res = StackValue.get(Netdb.addrinfoPointer.class);
             // 363         int error;
             int error;
             // 365         hostname[NI_MAXHOST] = '\0';
@@ -516,8 +516,8 @@ final class Target_java_net_Inet4AddressImpl {
         // 407     int error = 0;
         int error = 0;
         // 408     struct addrinfo hints, *res, *resNew = NULL;
-        Netdb.addrinfo hints = StackValue.get(SizeOf.get(Netdb.addrinfo.class));
-        Netdb.addrinfoPointer res_Pointer = StackValue.get(SizeOf.get(Netdb.addrinfoPointer.class));
+        Netdb.addrinfo hints = StackValue.get(Netdb.addrinfo.class);
+        Netdb.addrinfoPointer res_Pointer = StackValue.get(Netdb.addrinfoPointer.class);
         Netdb.addrinfo resNew = WordFactory.nullPointer();
         // 410     if (!initializeInetClasses(env))
         if (!Util_java_net_Inet4AddressImpl.initializeInetClasses()) {
@@ -718,7 +718,7 @@ final class Target_java_net_Inet4AddressImpl {
         // 540     jbyte caddr[4];
         CCharPointer caddr = StackValue.get(4, SizeOf.get(CCharPointer.class));
         // 542     struct sockaddr_in him4;
-        NetinetIn.sockaddr_in him4 = StackValue.get(SizeOf.get(NetinetIn.sockaddr_in.class));
+        NetinetIn.sockaddr_in him4 = StackValue.get(NetinetIn.sockaddr_in.class);
         // 543     struct sockaddr *sa;
         Socket.sockaddr sa;
         // 545     jint addr;
@@ -904,8 +904,8 @@ final class Target_java_net_Inet6AddressImpl {
         int len = 0;
         CCharPointer caddr = StackValue.get(16);
 
-        NetinetIn.sockaddr_in him4 = StackValue.get(SizeOf.get(NetinetIn.sockaddr_in.class));
-        NetinetIn.sockaddr_in6 him6 = StackValue.get(SizeOf.get(NetinetIn.sockaddr_in6.class));
+        NetinetIn.sockaddr_in him4 = StackValue.get(NetinetIn.sockaddr_in.class);
+        NetinetIn.sockaddr_in6 him6 = StackValue.get(NetinetIn.sockaddr_in6.class);
         Socket.sockaddr sa;
 
         if (addrArray.length == 4) {
@@ -1020,9 +1020,9 @@ final class Target_java_net_Inet6AddressImpl {
         int retLen = 0;
 
         int error = 0;
-        Netdb.addrinfo hints = StackValue.get(SizeOf.get(Netdb.addrinfo.class));
+        Netdb.addrinfo hints = StackValue.get(Netdb.addrinfo.class);
         Netdb.addrinfo res = WordFactory.nullPointer();
-        Netdb.addrinfoPointer resPtr = StackValue.get(SizeOf.get(Netdb.addrinfoPointer.class));
+        Netdb.addrinfoPointer resPtr = StackValue.get(Netdb.addrinfoPointer.class);
         Netdb.addrinfo resNew = WordFactory.nullPointer();
 
         if (host == null) {
@@ -1227,7 +1227,7 @@ final class Util_java_net_Inet6AddressImpl {
             InetAddress[] result = null;
             CCharPointer myhostname = StackValue.get(Netdb.NI_MAXHOST() + 1, SizeOf.get(CCharPointer.class));
             Ifaddrs.ifaddrs ifa = WordFactory.nullPointer();
-            Ifaddrs.ifaddrsPointer ifaPointer = StackValue.get(SizeOf.get(Ifaddrs.ifaddrsPointer.class));
+            Ifaddrs.ifaddrsPointer ifaPointer = StackValue.get(Ifaddrs.ifaddrsPointer.class);
             int i;
             int j;
             int addrs4 = 0;
@@ -1310,7 +1310,7 @@ final class Util_java_net_Inet6AddressImpl {
                         int index = (family == Socket.AF_INET()) ? i++ : j++;
                         // The space pointed to by portPointer is unused here,
                         // but I have to allocate it because it gets written by the call.
-                        CIntPointer portPointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                        CIntPointer portPointer = StackValue.get(CIntPointer.class);
                         InetAddress o = JavaNetNetUtil.NET_SockaddrToInetAddress(iter.ifa_addr(), portPointer);
                         if (o != null) {
                             throw new OutOfMemoryError("Object allocation failed");
@@ -1915,7 +1915,7 @@ final class Target_java_net_PlainSocketImpl {
             // 216 if (domain == AF_INET6) {
             if (domain == Socket.AF_INET6()) {
                 // 217 int arg = 0;
-                CIntPointer argPointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                CIntPointer argPointer = StackValue.get(CIntPointer.class);
                 argPointer.write(0);
                 // 218 if (setsockopt(fd, IPPROTO_IPV6(), IPV6_V6ONLY, (char*)&arg,
                 // 219 sizeof(int)) < 0) {
@@ -1943,7 +1943,7 @@ final class Target_java_net_PlainSocketImpl {
         // 232 if (ssObj != NULL) {
         if (ssObj != null) {
             // 233 int arg = 1;
-            CIntPointer argPointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer argPointer = StackValue.get(CIntPointer.class);
             argPointer.write(1);
             // 234 SET_NONBLOCKING(fd);
             Util_java_net_PlainSocketImpl.SET_NONBLOCKING(fd);
@@ -1976,7 +1976,7 @@ final class Target_java_net_PlainSocketImpl {
     @Substitute
     int socketAvailable() throws IOException {
         // 806     jint ret = -1;
-        CIntPointer ret_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer ret_Pointer = StackValue.get(CIntPointer.class);
         ret_Pointer.write(-1);
         // 807     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
         FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
@@ -2029,7 +2029,7 @@ final class Target_java_net_PlainSocketImpl {
         // 555     int fd;
         int fd;
         // 556     int len;
-        CIntPointer len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
         len_Pointer.write(0);
         // 557     SOCKADDR him;
         Socket.sockaddr him = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
@@ -2150,7 +2150,7 @@ final class Target_java_net_PlainSocketImpl {
         // 259    jint localport = (*env)->GetIntField(env, this, psi_localportID);
         int localport = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).localport;
         // 260    int len = 0;
-        CIntPointer len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
         len_Pointer.write(0);
         // 262    /* fdObj is the FileDescriptor field on this */
         // 263    jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
@@ -2167,7 +2167,7 @@ final class Target_java_net_PlainSocketImpl {
         Socket.sockaddr him = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
         // 275    /* The result of the connection */
         // 276    int connect_rv = -1;
-        CIntPointer connect_rv_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer connect_rv_Pointer = StackValue.get(CIntPointer.class);
         connect_rv_Pointer.write(-1);
         // 278    if (IS_NULL(fdObj)) {
         if (fdObj == null) {
@@ -2273,7 +2273,7 @@ final class Target_java_net_PlainSocketImpl {
             // 368         if (connect_rv != 0) {
             if (connect_rv_Pointer.read() != 0) {
                 // 369             int optlen;
-                CIntPointer optlen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                CIntPointer optlen_Pointer = StackValue.get(CIntPointer.class);
                 // 370             jlong prevTime = JVM_CurrentTimeMillis(env, 0);
                 long prevTime = Target_java_lang_System.currentTimeMillis();
                 // 372             if (errno != EINPROGRESS) {
@@ -2306,7 +2306,7 @@ final class Target_java_net_PlainSocketImpl {
                     // 387 #ifndef USE_SELECT
                     // 388                 {
                     // 389                     struct pollfd pfd;
-                    Poll.pollfd pfd = StackValue.get(SizeOf.get(Poll.pollfd.class));
+                    Poll.pollfd pfd = StackValue.get(Poll.pollfd.class);
                     // 390                     pfd.fd = fd;
                     pfd.set_fd(fd);
                     // 391                     pfd.events = POLLOUT;
@@ -2567,7 +2567,7 @@ final class Target_java_net_PlainSocketImpl {
     void socketAccept(SocketImpl socket) throws IOException {
         // 653     /* fields on this */
         // 654     int port;
-        CIntPointer port_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer port_Pointer = StackValue.get(CIntPointer.class);
         // 655     jint timeout = (*env)->GetIntField(env, this, psi_timeoutID);
         int timeout = Util_java_net_PlainSocketImpl.as_Target_java_net_AbstractPlainSocketImpl(this).timeout;
         // 656     jlong prevTime = 0;
@@ -2594,7 +2594,7 @@ final class Target_java_net_PlainSocketImpl {
         // 670     SOCKADDR him;
         Socket.sockaddr him = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
         // 671     int len;
-        CIntPointer len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
         // 672
         // 673     len = SOCKADDR_LEN;
         len_Pointer.write(JavaNetNetUtilMD.SOCKADDR_LEN());
@@ -2840,8 +2840,8 @@ final class Target_java_net_PlainSocketImpl {
         // 895     int fd;
         int fd;
         // 896     int level, optname, optlen;
-        CIntPointer level_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
-        CIntPointer optname_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer level_Pointer = StackValue.get(CIntPointer.class);
+        CIntPointer optname_Pointer = StackValue.get(CIntPointer.class);
         int optlen;
         /* Translated as a WordPointer to the larger of the arms. */
         // 897     union {
@@ -3078,12 +3078,12 @@ final class Target_sun_net_sdp_SdpSupport {
         // 102     if (s >= 0) {
         if (s >= 0) {
             // 103         socklen_t len;
-            CIntPointer len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
             // 104         int arg, res;
-            CIntPointer arg_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer arg_Pointer = StackValue.get(CIntPointer.class);
             int res;
             // 105         struct linger linger;
-            Socket.linger linger = StackValue.get(SizeOf.get(Socket.linger.class));
+            Socket.linger linger = StackValue.get(Socket.linger.class);
             // 107         /* copy socket options that are relevant to SDP */
             // 108         len = sizeof(arg);
             len_Pointer.write(SizeOf.get(CIntPointer.class));

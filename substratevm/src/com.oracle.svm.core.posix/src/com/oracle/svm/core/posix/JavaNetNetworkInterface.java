@@ -654,7 +654,7 @@ public class JavaNetNetworkInterface {
         // 899     int addr_size;
         int addr_size;
         // 900     int flags = 0;
-        CIntPointer flags_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer flags_Pointer = StackValue.get(CIntPointer.class);
         flags_Pointer.write(0);
         // 901
         // 902     /*

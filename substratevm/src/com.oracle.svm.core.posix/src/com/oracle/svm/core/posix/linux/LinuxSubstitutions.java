@@ -48,13 +48,13 @@ final class Target_java_lang_System {
     @Substitute
     @Uninterruptible(reason = "Does basic math after a simple system call")
     private static long nanoTime() {
-        timespec timespec = StackValue.get(SizeOf.get(timespec.class));
+        timespec timespec = StackValue.get(timespec.class);
         if (clock_gettime(CLOCK_MONOTONIC(), timespec) == 0) {
             return timespec.tv_sec() * 1_000_000_000L + timespec.tv_nsec();
 
         } else {
             /* High precision time is not available, fall back to low precision. */
-            timeval timeval = StackValue.get(SizeOf.get(timeval.class));
+            timeval timeval = StackValue.get(timeval.class);
             timezone timezone = WordFactory.nullPointer();
             gettimeofday(timeval, timezone);
             return timeval.tv_sec() * 1_000_000_000L + timeval.tv_usec() * 1_000L;

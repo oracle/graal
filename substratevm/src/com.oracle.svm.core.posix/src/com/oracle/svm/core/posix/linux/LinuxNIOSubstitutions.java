@@ -108,7 +108,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static int epollCtl(int epfd, int opcode, int fd, int events) {
             // 074     struct epoll_event event;
-            LinuxEPoll.epoll_event event = StackValue.get(SizeOf.get(LinuxEPoll.epoll_event.class));
+            LinuxEPoll.epoll_event event = StackValue.get(LinuxEPoll.epoll_event.class);
             // 075     int res;
             int res;
             // 076
@@ -236,7 +236,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         void epollCtl(int epfd, int opcode, int fd, int events) throws IOException {
             // 109     struct epoll_event event;
-            LinuxEPoll.epoll_event event = StackValue.get(SizeOf.get(LinuxEPoll.epoll_event.class));
+            LinuxEPoll.epoll_event event = StackValue.get(LinuxEPoll.epoll_event.class);
             // 110     int res;
             int res;
             // 111
@@ -334,7 +334,7 @@ public final class LinuxNIOSubstitutions {
             // 048 int remaining = timeout;
             long remaining = timeout;
             // 049 struct timeval t;
-            Time.timeval t = StackValue.get(SizeOf.get(Time.timeval.class));
+            Time.timeval t = StackValue.get(Time.timeval.class);
             // 050 int diff;
             long diff;
             // 051
@@ -411,7 +411,7 @@ public final class LinuxNIOSubstitutions {
             // 053     int res;
             int res;
             // 054     int buf[1];
-            CIntPointer buf = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer buf = StackValue.get(CIntPointer.class);
             // 055     buf[0] = 1;
             buf.write(0, 1);
             // 056     RESTARTABLE(write(fd, buf, 1), res);
@@ -434,7 +434,7 @@ public final class LinuxNIOSubstitutions {
             // 064     int res;
             int res;
             // 065     char buf[1];
-            CCharPointer buf = StackValue.get(SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(CCharPointer.class);
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
                 do {

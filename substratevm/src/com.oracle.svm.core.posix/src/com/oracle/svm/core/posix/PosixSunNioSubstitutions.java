@@ -128,7 +128,7 @@ public final class PosixSunNioSubstitutions {
             // 045     int remaining = timeout;
             int remaining = timeout;
             // 046     struct timeval t;
-            Time.timeval t = StackValue.get(SizeOf.get(Time.timeval.class));
+            Time.timeval t = StackValue.get(Time.timeval.class);
             // 047     int diff;
             long diff;
             // 048
