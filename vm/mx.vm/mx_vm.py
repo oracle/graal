@@ -86,7 +86,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                  **kw_args):
         self.components = components
         base_dir = base_dir or '.'
-
         _src_jdk_base, _jdk_dir = _get_jdk_dir()
         _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         if base_dir != '.':
@@ -429,6 +428,13 @@ def _get_jdk_dir():
     else:
         jdk_base = '.'
     return jdk_base, jdk_dir
+
+
+def get_graalvm_os():
+    os = mx.get_os()
+    if os == 'darwin':
+        return 'macos'
+    return os
 
 
 class SvmSupport(object):
@@ -1072,7 +1078,7 @@ x-GraalVM-Working-Directories: {workdir}
             name=self.component.name,
             id=self.component.dir_name,
             version=_suite.release_version(),
-            os=mx.get_os(),
+            os=get_graalvm_os(),
             arch=mx.get_arch(),
             polyglot=isinstance(self.component, mx_sdk.GraalVmTruffleComponent) and self.component.include_in_polyglot
                         and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default),
@@ -1136,7 +1142,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         :type installable: GraalVmInstallableComponent
         """
         support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
-        name = '{comp_name}_{ver}_{os}_{arch}'.format(comp_name=installable.main_component.name, ver=_suite.release_version(), os=mx.get_os(), arch=mx.get_arch()).upper().replace('-', '_')
+        name = '{comp_name}_{ver}_{os}_{arch}'.format(comp_name=installable.main_component.name, ver=_suite.release_version(), os=get_graalvm_os(), arch=mx.get_arch()).upper().replace('-', '_')
         base_dir = './{}/'.format(name.lower().replace('_', '-'))
         layout = {}
 
