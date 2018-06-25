@@ -37,6 +37,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
@@ -74,10 +77,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import org.graalvm.polyglot.io.FileSystem;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.

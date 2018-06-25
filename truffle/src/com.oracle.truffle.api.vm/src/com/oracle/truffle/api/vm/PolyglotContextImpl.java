@@ -56,8 +56,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
-import java.util.logging.Handler;
-import java.util.logging.Level;
 
 @SuppressWarnings("deprecation")
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -121,8 +119,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
-
-    Handler logHandler;
 
     /* Constructor for testing. */
     private PolyglotContextImpl() {
@@ -953,12 +949,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
             VMAccessor.INSTRUMENT.notifyContextClosed(engine, truffleContext);
             if (parent == null) {
-                if (!this.logLevels.isEmpty()) {
+                if (!this.config.logLevels.isEmpty()) {
                     VMAccessor.LANGUAGE.configureLoggers(this, null);
                 }
-                if (logHandler != null) {
-                    logHandler.close();
-                    logHandler = null;
+                if (this.config.logHandler != null) {
+                    this.config.logHandler.close();
                 }
             }
         }
@@ -995,7 +990,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
         return currentTInfo;
     }
-
 
     boolean patch(PolyglotContextConfig newConfig) {
         CompilerAsserts.neverPartOfCompilation();
@@ -1034,7 +1028,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         Collections.emptyMap(),
                         engine.getLanguages().keySet(),
                         Collections.emptyMap(),
-                        fs);
+                        fs,
+                        engine.logHandler);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
         if (optionValue != null && !optionValue.isEmpty()) {
@@ -1062,11 +1057,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             } finally {
                 context.inContextPreInitialization = false;
                 fs.patchDelegate(FileSystems.newNoIOFileSystem(null));
-                if (!context.logLevels.isEmpty()) {
+                if (!config.logLevels.isEmpty()) {
                     VMAccessor.LANGUAGE.configureLoggers(context, null);
                 }
-                context.logHandler = null;
-                context.logLevels.clear();
             }
         }
         // Need to clean up Threads before storing SVM image
