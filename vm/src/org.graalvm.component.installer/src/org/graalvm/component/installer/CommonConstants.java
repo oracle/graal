@@ -38,6 +38,12 @@ public class CommonConstants {
     public static final String CAP_OS_NAME = "os_name";
 
     /**
+     * Replaceable token for the path to the graalvm installation. The token can be used in
+     * messages.
+     */
+    public static final String TOKEN_GRAALVM_PATH = "graalvm_home"; // NOI18N
+
+    /**
      * Relative path for the component storage.
      */
     public static final String PATH_COMPONENT_STORAGE = "jre/lib/installer/components"; // NOI18N
