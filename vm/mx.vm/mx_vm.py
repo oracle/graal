@@ -1269,7 +1269,7 @@ def get_lib_polyglot_project():
         if not _get_svm_support().is_supported() or not _with_polyglot_lib_project():
             _lib_polyglot_project = None
         else:
-            polyglot_lib_build_args = ["-H:+SpawnIsolates"]
+            polyglot_lib_build_args = []
             polyglot_lib_jar_dependencies = []
             polyglot_lib_build_dependencies = []
             has_polyglot_lib_entrypoints = False
