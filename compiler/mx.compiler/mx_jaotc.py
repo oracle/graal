@@ -149,7 +149,8 @@ def test_modules(classpath, main_class, modules):
     expected_out = mx.OutputCapture()
     mx_compiler.run_vm(['-cp', classpath, main_class], out=expected_out)
 
-    module_list = os.pathsep.join(modules)
+    # jaotc uses ':' as separator.
+    module_list = ':'.join(modules)
 
     for common_opts in common_opts_variants:
         mx.log('(jaotc) Compiling module(s) {} with {}'.format(module_list, ' '.join(common_opts)))

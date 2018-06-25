@@ -1272,7 +1272,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "jdk.tools.jaotc",
-        "jdk.tools.jaotc.binformat",
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1833,6 +1832,7 @@ suite = {
       "exclude" : [
         "mx:JUNIT",
       ],
+      "testDistribution" : True,
     },
 
     "GRAAL_COMPILER_WHITEBOX_MICRO_BENCHMARKS" : {
