@@ -24,6 +24,8 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 
 /**
@@ -34,6 +36,24 @@ import org.graalvm.word.PointerBase;
 public final class StackValue {
 
     private StackValue() {
+    }
+
+    /**
+     * Reserves a block of memory for given {@link CStruct} class in the stack frame of the method
+     * that calls this intrinsic. The returned pointer is aligned on a word boundary. If the call to
+     * this method is in a loop, always the same pointer is returned. In other words: this method
+     * does not allocate memory; it returns the address of a fixed-size block of memory that is
+     * reserved in the stack frame when the method starts execution. The memory is not initialized.
+     * Two distinct calls of this method return different pointers.
+     *
+     * @param <T> the type, annotated by {@link CStruct} annotation
+     * @param structType the requested structure class - must be a compile time constant
+     * @return pointer to on-stack allocated location for the requested structure
+     *
+     * @since 1.0
+     */
+    public static <T extends PointerBase> T get(Class<T> structType) {
+        return get(SizeOf.get(structType));
     }
 
     /**

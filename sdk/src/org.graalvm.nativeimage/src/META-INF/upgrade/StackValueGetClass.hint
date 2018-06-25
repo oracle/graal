@@ -1,0 +1,6 @@
+'Request Stack Value for a Class':
+org.graalvm.nativeimage.StackValue.get(org.graalvm.nativeimage.c.struct.SizeOf.get($clazz.class))
+=>
+'Replace sizeof by class':
+org.graalvm.nativeimage.StackValue.get($clazz.class)
+;;
