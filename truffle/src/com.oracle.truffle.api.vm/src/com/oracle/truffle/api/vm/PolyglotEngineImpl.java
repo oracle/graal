@@ -1007,35 +1007,45 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
 
         final InputStream useIn = configIn == null ? this.in : configIn;
+
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         classFilter, arguments, allowedLanguages, options, fs, logHandler);
 
-        PolyglotContextImpl contextImpl = preInitializedContext;
-        preInitializedContext = null;
-        if (contextImpl != null) {
-            boolean patchResult;
-            try {
-                patchResult = contextImpl.patch(config);
-            } catch (RuntimeException re) {
-                contextImpl.closeImpl(false, false);
-                PolyglotContextImpl.disposeStaticContext(null);
-                throw re;
-            }
-            if (!patchResult) {
-                contextImpl.closeImpl(false, false);
-                contextImpl = null;
-                PolyglotContextImpl.disposeStaticContext(contextImpl);
-            }
+        PolyglotContextImpl context = loadPreinitializedContext(config);
+        if (context == null) {
+            context = new PolyglotContextImpl(this, config);
+            addContext(context);
         }
-        if (contextImpl == null) {
-            contextImpl = new PolyglotContextImpl(this, config);
-            addContext(contextImpl);
-        }
-        Context api = impl.getAPIAccess().newContext(contextImpl);
-        contextImpl.creatorApi = api;
-        contextImpl.currentApi = impl.getAPIAccess().newContext(contextImpl);
+
+        Context api = impl.getAPIAccess().newContext(context);
+        context.creatorApi = api;
+        context.currentApi = impl.getAPIAccess().newContext(context);
         return api;
+    }
+
+    private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
+        PolyglotContextImpl context = preInitializedContext;
+        preInitializedContext = null;
+        if (context != null) {
+            FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
+            preInitFs.patchDelegate(config.fileSystem);
+            FileSystem oldFileSystem = config.fileSystem;
+            config.fileSystem = preInitFs;
+
+            boolean patchResult = false;
+            try {
+                patchResult = context.patch(config);
+            } finally {
+                if (!patchResult) {
+                    context.closeImpl(false, false);
+                    context = null;
+                    PolyglotContextImpl.disposeStaticContext(context);
+                    config.fileSystem = oldFileSystem;
+                }
+            }
+        }
+        return context;
     }
 
 }

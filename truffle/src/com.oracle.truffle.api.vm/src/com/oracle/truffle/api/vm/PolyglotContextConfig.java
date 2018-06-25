@@ -35,6 +35,8 @@ import java.util.logging.Level;
 
 import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
@@ -50,7 +52,7 @@ final class PolyglotContextConfig {
     final Set<String> allowedPublicLanguages;
     final Map<String, String> options;
     private final Map<String, OptionValuesImpl> optionsByLanguage;
-    final FileSystem fileSystem;
+    @CompilationFinal FileSystem fileSystem;
     final Map<String, Level> logLevels;    // effectively final
     final Handler logHandler;
 
