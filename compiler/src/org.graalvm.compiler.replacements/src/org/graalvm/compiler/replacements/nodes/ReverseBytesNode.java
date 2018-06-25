@@ -61,9 +61,9 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
         IntegerStamp valueStamp = (IntegerStamp) newStamp;
         if (getStackKind() == JavaKind.Int) {
             long mask = CodeUtil.mask(JavaKind.Int.getBitCount());
-            return IntegerStamp.stampForMask(valueStamp.getBits(), Integer.reverse((int) valueStamp.downMask()) & mask, Integer.reverse((int) valueStamp.upMask()) & mask);
+            return IntegerStamp.stampForMask(valueStamp.getBits(), Integer.reverseBytes((int) valueStamp.downMask()) & mask, Integer.reverseBytes((int) valueStamp.upMask()) & mask);
         } else if (getStackKind() == JavaKind.Long) {
-            return IntegerStamp.stampForMask(valueStamp.getBits(), Long.reverse(valueStamp.downMask()), Long.reverse(valueStamp.upMask()));
+            return IntegerStamp.stampForMask(valueStamp.getBits(), Long.reverseBytes(valueStamp.downMask()), Long.reverseBytes(valueStamp.upMask()));
         } else {
             return stamp(NodeView.DEFAULT);
         }

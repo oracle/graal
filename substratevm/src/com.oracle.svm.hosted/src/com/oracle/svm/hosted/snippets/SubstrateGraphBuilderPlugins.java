@@ -26,7 +26,11 @@ package com.oracle.svm.hosted.snippets;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -60,6 +64,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -96,7 +103,10 @@ import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
@@ -112,11 +122,19 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
+/** Collection of debug options for SubstrateGraphBuilderPlugins. */
+class Options {
+    @Option(help = "Enable trace logging for dynamic proxy.")//
+    static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
+}
+
 public class SubstrateGraphBuilderPlugins {
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean analysis) {
 
         // register the substratevm plugins
+        registerSystemPlugins(metaAccess, plugins);
+        registerProxyPlugins(snippetReflection, plugins, analysis);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, analysis);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
@@ -132,6 +150,97 @@ public class SubstrateGraphBuilderPlugins {
         registerVMConfigurationPlugins(snippetReflection, plugins);
         registerPlatformPlugins(snippetReflection, plugins);
         registerSizeOfPlugins(snippetReflection, plugins);
+    }
+
+    private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+        Registration proxyRegistration = new Registration(plugins, System.class);
+        proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                /* System.getSecurityManager() always returns null. */
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
+                return true;
+            }
+        });
+    }
+
+    private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis) {
+        if (analysis) {
+            Registration proxyRegistration = new Registration(plugins, Proxy.class);
+            proxyRegistration.register2("getProxyClass", ClassLoader.class, Class[].class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
+                    interceptProxyInterfaces(b, targetMethod, snippetReflection, interfacesNode);
+                    return false;
+                }
+            });
+
+            proxyRegistration.register3("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
+                    interceptProxyInterfaces(b, targetMethod, snippetReflection, interfacesNode);
+                    return false;
+                }
+            });
+        }
+    }
+
+    /**
+     * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
+     * in the {@link DynamicProxyRegistry}.
+     */
+    private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection, ValueNode interfacesNode) {
+        Class<?>[] interfaces = null;
+        if (interfacesNode.isConstant()) {
+            /*
+             * The array is a constant, however that doesn't make the array immutable, i.e., its
+             * elements can still be changed. We assume that will not happen.
+             */
+            interfaces = snippetReflection.asObject(Class[].class, interfacesNode.asJavaConstant());
+
+        } else if (interfacesNode instanceof NewArrayNode) {
+            /*
+             * Find the elements written to the array. If all are constants they will be used as the
+             * proxy interfaces.
+             */
+            List<Class<?>> interfacesList = new ArrayList<>();
+            NewArrayNode newArray = (NewArrayNode) interfacesNode;
+
+            /*
+             * Walk down the control flow successor as long as we find StoreIndexedNode. Those are
+             * values written in the array.
+             */
+            assert newArray.successors().count() <= 1 : "Detected node with multiple successors: " + newArray;
+            Node successor = newArray.successors().first();
+            while (successor instanceof StoreIndexedNode) {
+                StoreIndexedNode store = (StoreIndexedNode) successor;
+                assert store.array().equals(newArray);
+                ValueNode valueNode = store.value();
+                if (valueNode.isConstant() && !valueNode.isNullConstant()) {
+                    interfacesList.add(snippetReflection.asObject(Class.class, valueNode.asJavaConstant()));
+                } else {
+                    /* If not all interfaces are non-null constants we bail out. */
+                    interfacesList = null;
+                    break;
+                }
+                assert store.successors().count() <= 1 : "Detected node with multiple successors: " + store;
+                successor = store.successors().first();
+            }
+            interfaces = interfacesList != null ? interfacesList.toArray(new Class<?>[0]) : null;
+        }
+        if (interfaces != null) {
+            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+            ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(interfaces);
+            if (Options.DynamicProxyTracing.getValue()) {
+                System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
+            }
+        } else {
+            if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
+                System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
+            }
+        }
     }
 
     private static void registerAtomicUpdaterPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis) {

@@ -102,7 +102,7 @@ public abstract class ObjectHeader {
      */
 
     /** Clear the object header bits from a header. */
-    protected static UnsignedWord clearBits(UnsignedWord header) {
+    public static UnsignedWord clearBits(UnsignedWord header) {
         return header.and(BITS_CLEAR);
     }
 

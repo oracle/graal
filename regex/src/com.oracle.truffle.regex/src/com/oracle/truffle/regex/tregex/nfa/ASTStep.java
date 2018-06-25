@@ -64,7 +64,7 @@ public final class ASTStep implements JsonConvertible {
         // to avoid running out of memory in such situations, we have to bailout during the
         // collection of ASTSuccessors in ASTStep, before they are transformed into NFA transitions.
         if (successors.size() > TRegexOptions.TRegexMaxNumberOfASTSuccessorsInOneASTStep) {
-            throw new UnsupportedRegexException("TRegex Bailout: ASTSuccessor explosion");
+            throw new UnsupportedRegexException("ASTSuccessor explosion");
         }
     }
 

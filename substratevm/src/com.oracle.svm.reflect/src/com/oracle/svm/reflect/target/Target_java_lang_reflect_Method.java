@@ -26,7 +26,8 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
+import java.lang.reflect.Method;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -34,13 +35,20 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
-import java.lang.reflect.Method;
+import com.oracle.svm.reflect.hosted.ReflectionFeature;
+
 import sun.reflect.MethodAccessor;
+import sun.reflect.generics.repository.MethodRepository;
 
 @TargetClass(value = Method.class, onlyWith = ReflectionFeature.IsEnabled.class)
 public final class Target_java_lang_reflect_Method {
 
+    @Alias MethodRepository genericInfo;
+
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) MethodAccessor methodAccessor;
+
+    @Alias
+    native Target_java_lang_reflect_Method copy();
 
     @Substitute
     MethodAccessor acquireMethodAccessor() {

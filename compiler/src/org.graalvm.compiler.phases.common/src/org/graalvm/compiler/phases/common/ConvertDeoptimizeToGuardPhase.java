@@ -181,8 +181,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                         AbstractEndNode end = mergeNode.forwardEnds().first();
                         propagateFixed(end, deopt, loweringProvider);
                     }
-                    assert next.isAlive();
-                    propagateFixed(next, deopt, loweringProvider);
+                    if (next.isAlive()) {
+                        propagateFixed(next, deopt, loweringProvider);
+                    }
                     return;
                 } else if (current.predecessor() instanceof IfNode) {
                     IfNode ifNode = (IfNode) current.predecessor();

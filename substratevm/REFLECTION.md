@@ -8,13 +8,15 @@ Examining and accessing program elements through `java.lang.reflect` at runtime 
 
     -H:ReflectionConfigurationFiles=/path/to/reflectconfig
 
-where `reflectconfig` is a JSON file in the following format (use `-H:+PrintFlags` for more details):
+where `reflectconfig` is a JSON file in the following format (use `--expert-options` for more details):
 
 	[
 	  {
 	    "name" : "java.lang.Class",
-	    "allDeclaredMethods" : "true",
-	    "allPublicMethods" : "true"
+      "allDeclaredConstructors" : true,
+      "allPublicConstructors" : true
+	    "allDeclaredMethods" : true,
+	    "allPublicMethods" : true
 	  },
 	  {
 	    "name" : "java.lang.String",
@@ -37,7 +39,7 @@ where `reflectconfig` is a JSON file in the following format (use `-H:+PrintFlag
       }
 	]
 
-The image build generates reflection metadata for all classes, methods and fields referenced in that file. The `allPublicMethods`, `allPublicFields`, `allDeclaredMethods` and `allDeclaredFields` attributes can be used to automatically include an entire set of members of a class. More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`. Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
+The image build generates reflection metadata for all classes, methods and fields referenced in that file. The `allPublicConstructors`, `allPublicMethods`, `allPublicFields`, `allDeclaredConstructors`, `allDeclaredMethods` and `allDeclaredFields` attributes can be used to automatically include an entire set of members of a class. More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`. Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `RuntimeReflection` class. For example:
 

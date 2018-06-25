@@ -361,11 +361,17 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @return new instance of a descriptor with copies of values from this one
      * @since 0.8 or earlier
+     * @deprecated in 1.0 without replacement. The implementation is broken and would require a fix
+     *             that is too complex.
      */
+    @Deprecated
     public FrameDescriptor shallowCopy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
         clonedFrameDescriptor.slots.addAll(slots);
         clonedFrameDescriptor.identifierToSlotMap.putAll(identifierToSlotMap);
+        for (FrameSlot slot : slots) {
+            slot.shareWith(clonedFrameDescriptor);
+        }
         clonedFrameDescriptor.size = this.size;
         return clonedFrameDescriptor;
     }

@@ -94,7 +94,7 @@ public class UninstallCommand implements InstallerCommand {
             if (toUninstall.containsKey(compId)) {
                 continue;
             }
-            ComponentInfo info = input.getLocalRegistry().loadSingleComponent(compId, true);
+            ComponentInfo info = input.getLocalRegistry().loadSingleComponent(compId.toLowerCase(), true);
             if (info == null) {
                 throw feedback.failure("UNINSTALL_UnknownComponentId", null, compId);
             }

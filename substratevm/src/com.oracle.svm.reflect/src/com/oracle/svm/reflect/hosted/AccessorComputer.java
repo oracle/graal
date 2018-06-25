@@ -26,14 +26,18 @@ package com.oracle.svm.reflect.hosted;
 
 // Checkstyle: allow reflection
 
+import java.lang.reflect.Member;
+import java.lang.reflect.Proxy;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.util.VMError;
-import java.lang.reflect.Member;
+import com.oracle.svm.reflect.helpers.ReflectionProxyHelper;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public final class AccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
 
@@ -47,7 +51,10 @@ public final class AccessorComputer implements RecomputeFieldValue.CustomFieldVa
             throw VMError.shouldNotReachHere();
         }
         try {
-            return UnsafeAccess.UNSAFE.allocateInstance(proxyClass);
+            Proxy proxyInstance = (Proxy) UnsafeAccess.UNSAFE.allocateInstance(proxyClass);
+            ReflectionProxyHelper.setDefaultInvocationHandler(proxyInstance);
+            return proxyInstance;
+
         } catch (InstantiationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

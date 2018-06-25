@@ -601,15 +601,19 @@ public class WriteBarrierSnippets implements Snippets {
      * prematurely crash the VM and debug the stack trace of the faulty method.
      */
     public static void validateObject(Object parent, Object child) {
-        if (verifyOops(INJECTED_VMCONFIG) && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
-            log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.objectToTrackedPointer(parent).rawValue(), Word.objectToTrackedPointer(child).rawValue());
-            VMErrorNode.vmError("Verification ERROR, Parent: %p\n", Word.objectToTrackedPointer(parent).rawValue());
+        if (verifyOops(INJECTED_VMCONFIG) && child != null) {
+            Word parentWord = Word.objectToTrackedPointer(parent);
+            Word childWord = Word.objectToTrackedPointer(child);
+            if (!validateOop(VALIDATE_OBJECT, parentWord, childWord)) {
+                log(true, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
+                VMErrorNode.vmError("Verification ERROR, Parent: %p\n", parentWord.rawValue());
+            }
         }
     }
 
     public static final ForeignCallDescriptor VALIDATE_OBJECT = new ForeignCallDescriptor("validate_object", boolean.class, Word.class, Word.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native boolean validateOop(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object parent, Object object);
+    private static native boolean validateOop(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word parent, Word object);
 
 }

@@ -45,11 +45,11 @@ public final class StackTrace {
             if (sourceSection == null) {
                 continue;
             }
-            if (frame.isInternal()) {
+            if (!context.isInspectInternal() && frame.isInternal()) {
                 continue;
             }
             Source source = sourceSection.getSource();
-            if (source.isInternal()) {
+            if (!context.isInspectInternal() && source.isInternal()) {
                 // should not be, double-check
                 continue;
             }

@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
 
 import jdk.vm.ci.meta.TriState;
 
@@ -78,4 +79,34 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 
     public abstract TriState tryFold(Stamp valueStamp);
+
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (other instanceof UnaryOpLogicNode) {
+            UnaryOpLogicNode unaryY = (UnaryOpLogicNode) other;
+            if (this.getValue() == unaryY.getValue() || // fast path
+                            skipThroughPisAndProxies(this.getValue()) == skipThroughPisAndProxies(unaryY.getValue())) {
+                Stamp succStamp = this.getSucceedingStampForValue(thisNegated);
+                TriState fold = unaryY.tryFold(succStamp);
+                if (fold.isKnown()) {
+                    return fold;
+                }
+            }
+        }
+        return super.implies(thisNegated, other);
+    }
+
+    private static ValueNode skipThroughPisAndProxies(ValueNode node) {
+        ValueNode n = node;
+        while (n != null) {
+            if (n instanceof PiNode) {
+                n = ((PiNode) n).getOriginalNode();
+            } else if (n instanceof ValueProxy) {
+                n = ((ValueProxy) n).getOriginalNode();
+            } else {
+                break;
+            }
+        }
+        return n;
+    }
 }

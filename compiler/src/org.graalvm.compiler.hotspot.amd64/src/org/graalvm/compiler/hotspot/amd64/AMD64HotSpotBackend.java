@@ -32,12 +32,14 @@ import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AMD64VectorAssembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -197,7 +199,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        return new AMD64MacroAssembler(getTarget());
+        if (((AMD64) getTarget().arch).getFeatures().contains(CPUFeature.AVX)) {
+            return new AMD64VectorAssembler(getTarget());
+        } else {
+            return new AMD64MacroAssembler(getTarget());
+        }
     }
 
     @Override
@@ -219,7 +225,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult);
+        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();

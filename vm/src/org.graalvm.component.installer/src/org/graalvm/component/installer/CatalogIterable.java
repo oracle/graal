@@ -84,11 +84,11 @@ public class CatalogIterable implements ComponentIterable {
         public ComponentParam next() {
             String s = input.nextParameter();
 
-            if (!getRegistry().getComponentIDs().contains(s.toLowerCase())) {
+            if (getRegistry().findComponent(s.toLowerCase()) == null) {
                 throw feedback.failure("REMOTE_UnknownComponentId", null, s);
             }
 
-            ComponentInfo info = getRegistry().loadSingleComponent(s, false);
+            ComponentInfo info = getRegistry().loadSingleComponent(s.toLowerCase(), false);
             if (info == null) {
                 throw feedback.failure("REMOTE_UnknownComponentId", null, s);
             }

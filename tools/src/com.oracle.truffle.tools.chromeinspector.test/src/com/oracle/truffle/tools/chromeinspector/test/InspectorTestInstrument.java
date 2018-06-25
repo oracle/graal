@@ -36,24 +36,64 @@ import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 
-@TruffleInstrument.Registration(id = InspectorTestInstrument.ID, services = {InspectServerSession.class, ConnectionWatcher.class, Long.class})
+@TruffleInstrument.Registration(id = InspectorTestInstrument.ID, services = InspectSessionInfoProvider.class)
 public final class InspectorTestInstrument extends TruffleInstrument {
 
     public static final String ID = "InspectorTestInstrument";
-    public static boolean suspend = false;
 
     @Override
-    protected void onCreate(Env env) {
-        TruffleExecutionContext context = TruffleExecutionContext.create("test", env, new PrintWriter(env.err()));
-        ConnectionWatcher connectionWatcher = new ConnectionWatcher();
-        TruffleRuntime runtime = new TruffleRuntime(context);
-        TruffleDebugger debugger = new TruffleDebugger(context, suspend);
-        TruffleProfiler profiler = new TruffleProfiler(context, connectionWatcher);
-        InspectServerSession iss = new InspectServerSession(runtime, debugger, profiler, context);
-        env.registerService(iss);
-        env.registerService(connectionWatcher);
-        env.registerService(context.getId());
-        // Fake connection open
-        ReflectionUtils.invoke(connectionWatcher, "notifyOpen");
+    protected void onCreate(final Env env) {
+        env.registerService(new InspectSessionInfoProvider() {
+            @Override
+            public InspectSessionInfo getSessionInfo(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) {
+                return new InspectSessionInfo() {
+
+                    private InspectServerSession iss;
+                    private ConnectionWatcher connectionWatcher;
+                    private long id;
+
+                    InspectSessionInfo init() {
+                        TruffleExecutionContext context = new TruffleExecutionContext("test", inspectInternal, inspectInitialization, env, new PrintWriter(env.err()));
+                        this.connectionWatcher = new ConnectionWatcher();
+                        TruffleRuntime runtime = new TruffleRuntime(context);
+                        TruffleDebugger debugger = new TruffleDebugger(context, suspend);
+                        TruffleProfiler profiler = new TruffleProfiler(context, connectionWatcher);
+                        this.iss = new InspectServerSession(runtime, debugger, profiler, context);
+                        this.id = context.getId();
+                        // Fake connection open
+                        ReflectionUtils.invoke(connectionWatcher, "notifyOpen");
+                        return this;
+                    }
+
+                    @Override
+                    public InspectServerSession getInspectServerSession() {
+                        return iss;
+                    }
+
+                    @Override
+                    public ConnectionWatcher getConnectionWatcher() {
+                        return connectionWatcher;
+                    }
+
+                    @Override
+                    public long getId() {
+                        return id;
+                    }
+                }.init();
+            }
+        });
     }
+
+}
+
+interface InspectSessionInfoProvider {
+    InspectSessionInfo getSessionInfo(boolean suspend, boolean inspectInternal, boolean inspectInitialization);
+}
+
+interface InspectSessionInfo {
+    InspectServerSession getInspectServerSession();
+
+    ConnectionWatcher getConnectionWatcher();
+
+    long getId();
 }

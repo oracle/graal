@@ -1183,6 +1183,12 @@ def updategraalinopenjdk(args):
         'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
     }
 
+    replacements = {
+        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
+    }
+
+    blacklist = ['"Classpath" exception']
+
     jdkrepo = args.jdkrepo
 
     for m in graal_modules:
@@ -1266,6 +1272,7 @@ def updategraalinopenjdk(args):
                         dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
                         with open(src_file) as fp:
                             contents = fp.read()
+                        old_line_count = len(contents.split('\n'))
                         if filename.endswith('.java'):
                             for old_name, new_name in package_renamings.iteritems():
                                 old_name_as_dir = old_name.replace('.', os.sep)
@@ -1274,6 +1281,20 @@ def updategraalinopenjdk(args):
                                     dst = src_file.replace(old_name_as_dir, new_name_as_dir)
                                     dst_file = join(target_dir, os.path.relpath(dst, source_dir))
                                 contents = contents.replace(old_name, new_name)
+                            for old_line, new_line in replacements.iteritems():
+                                contents = contents.replace(old_line, new_line)
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count > old_line_count:
+                                mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
+                            else:
+                                if new_line_count < old_line_count:
+                                    contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count != old_line_count:
+                                mx.abort('Unable to correct line count for {}'.format(src_file))
+                            for forbidden in blacklist:
+                                if forbidden in contents:
+                                    mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
                         dst_dir = os.path.dirname(dst_file)
                         if not exists(dst_dir):
                             os.makedirs(dst_dir)
@@ -1319,6 +1340,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
+    jar_distributions=[  # Dev jars (annotation processors)
+        'compiler:GRAAL_PROCESSOR_COMMON',
+        'compiler:GRAAL_OPTIONS_PROCESSOR',
+        'compiler:GRAAL_SERVICEPROVIDER_PROCESSOR',
+        'compiler:GRAAL_NODEINFO_PROCESSOR',
+        'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
+        'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
+    ],
     jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))

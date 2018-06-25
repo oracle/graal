@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.frame;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -39,6 +42,7 @@ public final class FrameSlot implements Cloneable {
     private final Object identifier;
     private final Object info;
     private final int index;
+    private Map<FrameDescriptor, Object> sharedWith;
     @CompilationFinal private FrameSlotKind kind;
 
     FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, FrameSlotKind kind, int index) {
@@ -47,6 +51,7 @@ public final class FrameSlot implements Cloneable {
         this.info = info;
         this.index = index;
         this.kind = kind;
+        this.sharedWith = null;
     }
 
     /**
@@ -98,8 +103,8 @@ public final class FrameSlot implements Cloneable {
 
     /**
      * Changes the kind of this slot. Change of the slot kind is done on <em>slow path</em> and
-     * invalidates assumptions about version of the {@link #getFrameDescriptor() associated
-     * descriptor}.
+     * invalidates assumptions about version of the {@link FrameDescriptor descriptor} it belongs
+     * to.
      *
      * @param kind new kind of the slot
      * @since 0.8 or earlier
@@ -109,6 +114,11 @@ public final class FrameSlot implements Cloneable {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.kind = kind;
             this.descriptor.updateVersion();
+            if (sharedWith != null) {
+                for (FrameDescriptor frameDescriptor : sharedWith.keySet()) {
+                    frameDescriptor.updateVersion();
+                }
+            }
         }
     }
 
@@ -120,13 +130,25 @@ public final class FrameSlot implements Cloneable {
     }
 
     /**
-     * Frame descriptor this slot is associated with.
+     * Frame descriptor this slot is associated with. When the slot was shared using
+     * {@link FrameDescriptor#shallowCopy()} it returns the original {@link FrameDescriptor}.
      *
      * @return instance of descriptor that {@link FrameDescriptor#addFrameSlot(java.lang.Object)
      *         created} the slot
      * @since 0.8 or earlier
+     * @deprecated in 1.0 without direct replacement. When {@link FrameDescriptor#shallowCopy()} is
+     *             removed the frame slot will always belong only to the descriptor which created
+     *             it.
      */
+    @Deprecated
     public FrameDescriptor getFrameDescriptor() {
         return this.descriptor;
+    }
+
+    void shareWith(FrameDescriptor frameDescriptor) {
+        if (sharedWith == null) {
+            sharedWith = new WeakHashMap<>();
+        }
+        sharedWith.put(frameDescriptor, null);
     }
 }

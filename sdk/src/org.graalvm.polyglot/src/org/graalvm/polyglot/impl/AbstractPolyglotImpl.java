@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.logging.Handler;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -115,7 +116,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler);
 
     public abstract void preInitializeEngine();
 
@@ -262,7 +263,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
                         boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
-                        String[] onlyLanguages, FileSystem fileSystem);
+                        String[] onlyLanguages, FileSystem fileSystem, Handler logHandler);
 
         public abstract String getImplementationName();
 

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.lang.annotation.Annotation;
+
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
@@ -33,15 +35,40 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.nodes.AssertValueNode;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class InliningUtilities {
 
+    private static final Class<? extends Annotation> JDK_FORCE_INLINE_ANNOTATION = lookupForceInlineAnnotation();
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends Annotation> lookupForceInlineAnnotation() {
+        try {
+            if (GraalServices.Java8OrEarlier) {
+                return (Class<? extends Annotation>) Class.forName("java.lang.invoke.ForceInline");
+            } else {
+                return (Class<? extends Annotation>) Class.forName("jdk.internal.vm.annotation.ForceInline");
+            }
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     public static boolean isTrivialMethod(StructuredGraph graph) {
+        if (graph.method().getAnnotation(JDK_FORCE_INLINE_ANNOTATION) != null) {
+            /*
+             * The method is annotated by the JDK as force inline, hopefully for a good reason.
+             * Treating it as a trivial method means we also inline it everywhere.
+             */
+            return true;
+        }
+
         int numInvokes = 0;
         int numOthers = 0;
         for (Node n : graph.getNodes()) {

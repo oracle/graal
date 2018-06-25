@@ -216,6 +216,34 @@ final class Target_jdk_internal_ref_Cleaner {
     native void clean();
 }
 
+@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_CleanerImpl {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
+    Target_jdk_internal_ref_PhantomCleanable phantomCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$WeakCleanableRef")//
+    Target_jdk_internal_ref_WeakCleanable weakCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$SoftCleanableRef")//
+    Target_jdk_internal_ref_SoftCleanable softCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.ReferenceQueue")//
+    ReferenceQueue<Object> queue;
+}
+
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_PhantomCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_WeakCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_SoftCleanable {
+}
+
 /** PerfCounter methods that access the lb field fail with SIGSEV. */
 @TargetClass(sun.misc.PerfCounter.class)
 final class Target_sun_misc_PerfCounter {

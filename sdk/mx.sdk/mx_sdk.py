@@ -31,9 +31,19 @@
 from abc import ABCMeta
 
 import mx
+import mx_gate
 import mx_subst
 
+from mx_gate import Task
+from mx_unittest import unittest
+
 _suite = mx.suite('sdk')
+
+def _sdk_gate_runner(args, tasks):
+    with Task('SDK UnitTests', tasks, tags=['test']) as t:
+        if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
+
+mx_gate.add_gate_runner(_suite, _sdk_gate_runner)
 
 
 def javadoc(args):
@@ -144,10 +154,12 @@ class GraalVmTruffleComponent(GraalVmComponent):
                  builder_jar_distributions=None, support_distributions=None, dir_name=None, launcher_configs=None,
                  provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
                  polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None,
-                 include_in_polyglot=True, priority=None):
+                 include_in_polyglot=True, priority=None, post_install_msg=None):
         """
         :param truffle_jars list[str]: JAR distributions that should be on the classpath for the language implementation.
         :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
+        :param post_install_msg: Post-installation message to be printed
+        :type post_install_msg: str
         """
         super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files,
                                                       third_party_license_files, truffle_jars, builder_jar_distributions, support_distributions, dir_name, launcher_configs, provided_executables,
@@ -155,7 +167,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
                                                       has_polyglot_lib_entrypoints, boot_jars,
                                                       priority)
         self.include_in_polyglot = include_in_polyglot
-
+        self.post_install_msg = post_install_msg
         assert isinstance(self.include_in_polyglot, bool)
 
 

@@ -31,7 +31,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.dead.DeadRegexExecRootNode;
 import com.oracle.truffle.regex.literal.LiteralRegexEngine;
@@ -86,7 +85,7 @@ final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    TruffleObject compile() throws RegexSyntaxException {
+    TruffleObject compile() {
         try {
             CompiledRegex compiledRegex = compileInternal();
             if (DebugUtil.LOG_AUTOMATON_SIZES) {
@@ -97,21 +96,20 @@ final class TRegexCompilationRequest {
             if (DebugUtil.LOG_AUTOMATON_SIZES) {
                 logAutomatonSizes(null);
             }
+            e.setReason("TRegex: " + e.getReason());
+            e.setRegex(source);
             throw e;
         }
     }
 
     @TruffleBoundary
-    private CompiledRegex compileInternal() throws RegexSyntaxException {
+    private CompiledRegex compileInternal() {
         // System.out.println("TRegex compiling " +
         // DebugUtil.jsStringEscape(source.toString()));
         // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
         createAST();
         RegexProperties properties = ast.getProperties();
-        if (!isSupported(properties)) {
-            // features not supported by DFA
-            throw new UnsupportedRegexException("unsupported feature: " + source);
-        }
+        checkFeatureSupport(properties);
         if (ast.getRoot().isDead()) {
             return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
         }
@@ -171,15 +169,34 @@ final class TRegexCompilationRequest {
         return createDFAExecutor(nfa, true, true, true);
     }
 
-    private static boolean isSupported(RegexProperties properties) {
-        return !(properties.hasBackReferences() ||
-                        properties.hasLargeCountedRepetitions() ||
-                        properties.hasNegativeLookAheadAssertions() ||
-                        properties.hasComplexLookBehindAssertions() ||
-                        properties.hasNegativeLookBehindAssertions());
+    private static void checkFeatureSupport(RegexProperties properties) throws UnsupportedRegexException {
+        if (properties.hasBackReferences()) {
+            throw new UnsupportedRegexException("backreferences not supported");
+        }
+        if (properties.hasLargeCountedRepetitions()) {
+            throw new UnsupportedRegexException("bounds of range quantifier too high");
+        }
+        if (properties.hasNegativeLookAheadAssertions()) {
+            throw new UnsupportedRegexException("negative lookahead assertions not supported");
+        }
+        if (properties.hasNonLiteralLookBehindAssertions()) {
+            throw new UnsupportedRegexException("body of lookbehind assertion too complex");
+        }
+        if (properties.hasNegativeLookBehindAssertions()) {
+            throw new UnsupportedRegexException("negative lookbehind assertions not supported");
+        }
     }
 
-    private void createAST() throws RegexSyntaxException {
+    private static boolean isSupported(RegexProperties properties) {
+        try {
+            checkFeatureSupport(properties);
+            return true;
+        } catch (UnsupportedRegexException e) {
+            return false;
+        }
+    }
+
+    private void createAST() {
         phaseStart("Parser");
         ast = new RegexParser(source, tRegexCompiler.getOptions()).parse();
         phaseEnd("Parser");
@@ -264,16 +281,16 @@ final class TRegexCompilationRequest {
 
     private void debugNFA() {
         if (DebugUtil.DEBUG) {
-            NFAExport.exportDot(nfa, "./nfa.gv", true);
-            NFAExport.exportLaTex(nfa, "./nfa.tex", false);
-            NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true);
+            NFAExport.exportDot(nfa, "./nfa.gv", true, false);
+            NFAExport.exportLaTex(nfa, "./nfa.tex", false, true);
+            NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true, false);
             nfa.toJson().dump("nfa.json");
         }
     }
 
     private void debugTraceFinder() {
         if (DebugUtil.DEBUG) {
-            NFAExport.exportDotReverse(traceFinderNFA, "./trace_finder.gv", true);
+            NFAExport.exportDotReverse(traceFinderNFA, "./trace_finder.gv", true, false);
             traceFinderNFA.toJson().dump("nfa_trace_finder.json");
         }
     }

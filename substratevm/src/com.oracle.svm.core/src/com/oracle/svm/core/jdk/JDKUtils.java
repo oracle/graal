@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public final class JDKUtils {
@@ -34,8 +33,11 @@ public final class JDKUtils {
      * {@link Throwable#getMessage}. This method ignores possible overrides of
      * {@link Throwable#getMessage} and is therefore guaranteed to be allocation free.
      */
-    @Uninterruptible(reason = "Called from uniterruptible code.", mayBeInlined = true)
     public static String getRawMessage(Throwable ex) {
         return KnownIntrinsics.unsafeCast(ex, Target_java_lang_Throwable.class).detailMessage;
+    }
+
+    public static StackTraceElement[] getRawStackTrace(Throwable ex) {
+        return KnownIntrinsics.unsafeCast(ex, Target_java_lang_Throwable.class).stackTrace;
     }
 }

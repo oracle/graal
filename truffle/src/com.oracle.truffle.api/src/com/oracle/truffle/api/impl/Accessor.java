@@ -62,6 +62,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -317,6 +320,11 @@ public abstract class Accessor {
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
+        public abstract Handler getLogHandler();
+
+        public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
+
+        public abstract Object getCurrentOuterContext();
     }
 
     public abstract static class LanguageSupport {
@@ -403,6 +411,7 @@ public abstract class Accessor {
 
         public abstract byte[] truffleFileContent(File file) throws IOException;
 
+        public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
     }
 
     public abstract static class InstrumentSupport {

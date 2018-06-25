@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.proxies;
+package com.oracle.svm.core.posix.headers.darwin;
 
-public class ExceptionHelpers {
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 
-    public static IllegalArgumentException createFailedCast(Class<?> expected, Object actual) {
-        return new IllegalArgumentException("cannot cast " + actual.getClass().getName() + " to " + expected.getName());
-    }
+import com.oracle.svm.core.posix.headers.PosixDirectives;
+
+@CContext(PosixDirectives.class)
+@CLibrary("pthread")
+public class DarwinPthread {
+
+    /* { Allow names with underscores: Checkstyle: stop */
+
+    /** Set thread name visible in the kernel and its interfaces. */
+    @CFunction
+    public static native int pthread_setname_np(CCharPointer name);
+
+    /* } Allow names with underscores: Checkstyle: resume */
+
 }

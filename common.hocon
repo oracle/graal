@@ -1,19 +1,20 @@
 # overlay version
-overlay = efcf529122547c2c67bbabebee695d61ddd5ac18
+overlay = 24e18d34f3f0c43dbfbb48602edeeb158e021dc2
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
-# openjdk* are JDKs based on OpenJDK binaries
+# openjdk8 JDKs on Linux are built by Oracle Labs
+# openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  labsjdk8 : {name : labsjdk, version : "8u171-jvmci-0.43", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u171-jvmci-0.43-fastdebug", platformspecific: true}
-  oraclejdk9 : {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
-  oraclejdk10 : {name : oraclejdk, version : "10+46", platformspecific: true}
+  labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.44", platformspecific: true}
+  openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.44", platformspecific: true}
+  labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.44-fastdebug", platformspecific: true}
+  oraclejdk9:    {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
+  oraclejdk10:   {name : oraclejdk, version : "10+46", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
   oraclejdkSNAPSHOT : {name : labsjdk, version : "20180522-073957", platformspecific: true}
 
-  openjdk8 : {name : openjdk, version : "8u171-jvmci-0.43", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
@@ -38,13 +39,6 @@ common : ${mx} {
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
-  environment : {
-    TRUFFLE_LLVM_VERSION : "cb47708b29c7f33dbf822cb6a5e75c07af877817"
-    TRUFFLE_JS_VERSION : "58692da68706b64f85744ab70fdb4520069836e1"
-    TRUFFLE_RUBY_VERSION : "0c60fae09de738cdaabff0393e27f5225034b468"
-    TRUFFLE_PYTHON_VERSION : "c30c0c8c737ba2f5ba59eb4c2eb701778d98c753"
-    TRUFFLE_R_VERSION : "9316f50732af45c54dbbe515fc9ef997dc672e1b"
-  }
 }
 
 linux : ${common} {
@@ -53,6 +47,7 @@ linux : ${common} {
     mercurial : ">=2.2"
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
+    "apache/ant": ">=1.9.4"
   }
 }
 
@@ -62,6 +57,7 @@ solaris : ${common} {
     mercurial : ">=2.2"
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
+    "apache/ant": ">=1.9.4"
   }
 }
 
@@ -111,7 +107,7 @@ jdt : {
 }
 
 # for cases where a maven package is not easily accessible
-maven-download-unix : ${labsjdk8} {
+maven-download-unix : {
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
   }
@@ -134,7 +130,7 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-deploy-binaries : ${labsjdk8} {
+deploy-binaries : {
   targets : [post-merge, deploy]
   run : [
     ["mx", "--strict-compliance", "build"]
@@ -142,7 +138,7 @@ deploy-binaries : ${labsjdk8} {
   ]
 }
 
-maven-deploy-dry-run : ${labsjdk8} {
+maven-deploy-dry-run : {
   targets : [gate]
   run : [
     ["mx", "--strict-compliance", "build"]

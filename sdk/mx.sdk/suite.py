@@ -1,7 +1,7 @@
 suite = {
   "mxversion" : "5.141.0",
   "name" : "sdk",
-  "version" : "1.0.0-rc2-dev",
+  "version" : "1.0.0-rc3-dev",
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
   "developer" : {
@@ -81,6 +81,9 @@ suite = {
         "org.graalvm.word",
         "org.graalvm.options",
       ],
+      "exports" : [
+        "<package-info>",  # exports all packages containing package-info.java
+      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",
@@ -113,6 +116,9 @@ suite = {
     "org.graalvm.collections" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "exports" : [
+        "<package-info>",  # exports all packages containing package-info.java
+      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "1.8",
       "workingSets" : "API,SDK",

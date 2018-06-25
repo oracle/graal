@@ -63,7 +63,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
-import com.oracle.svm.reflect.proxies.ExceptionHelpers;
+import com.oracle.svm.reflect.helpers.ExceptionHelpers;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

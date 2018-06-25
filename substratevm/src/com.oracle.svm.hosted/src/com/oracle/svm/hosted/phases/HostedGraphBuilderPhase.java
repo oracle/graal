@@ -158,13 +158,14 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
      * Insert a deopt entry for the graph's start node.
      */
     @Override
-    protected void finishPrepare(FixedWithNextNode startInstr, int bci) {
-        super.finishPrepare(startInstr, bci);
+    protected void finishPrepare(FixedWithNextNode startInstr, int bci, FrameStateBuilder state) {
+        super.finishPrepare(startInstr, bci, state);
 
         if (getMethod().compilationInfo.isDeoptEntry(bci, false, false)) {
             DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
             deoptEntry.setStateAfter(frameState.create(bci, deoptEntry));
             deoptEntries.put(Long.valueOf(bci), deoptEntry);
+            insertProxies(deoptEntry, state);
         }
     }
 

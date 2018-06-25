@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.LogHandler;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -67,14 +68,8 @@ final class Target_com_oracle_svm_core_util_VMError {
     @Substitute
     private static RuntimeException shouldNotReachHere(Throwable ex) {
         ThreadStackPrinter.printBacktrace();
-        /*
-         * We do not want to call getMessage(), since it can be overriden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        String detailMessage = JDKUtils.getRawMessage(ex);
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        VMErrorSubstitutions.shutdown(detailMessage, ex.getClass().getName());
+        VMErrorSubstitutions.shutdown(ex);
         return null;
     }
 
@@ -110,6 +105,7 @@ final class Target_com_oracle_svm_core_util_VMError {
 public class VMErrorSubstitutions {
 
     @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     static void shutdown() {
         Log log = Log.log();
         log.autoflush(true);
@@ -118,6 +114,7 @@ public class VMErrorSubstitutions {
     }
 
     @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     static void shutdown(String msg) {
         Log log = Log.log();
         log.autoflush(true);
@@ -126,14 +123,31 @@ public class VMErrorSubstitutions {
     }
 
     @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
-    static void shutdown(String detailMessage, String exceptionClassName) {
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+    static void shutdown(Throwable ex) {
+        /*
+         * We do not want to call getMessage(), since it can be overriden by subclasses of
+         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
+         * is better than printing nothing.
+         */
+        String detailMessage = JDKUtils.getRawMessage(ex);
+        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(ex);
+
         Log log = Log.log();
         log.autoflush(true);
-        log.string("VMError.shouldNotReachHere: ").string(exceptionClassName).string(": ").string(detailMessage).newline();
+        log.string("VMError.shouldNotReachHere: ").string(ex.getClass().getName()).string(": ").string(detailMessage).newline();
+        if (stackTrace != null) {
+            for (StackTraceElement element : stackTrace) {
+                if (element != null) {
+                    log.string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
+                    log.string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+                    log.newline();
+                }
+            }
+        }
         doShutdown(log);
     }
 
-    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
     private static void doShutdown(Log log) {
         SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
         ImageSingletons.lookup(LogHandler.class).fatalError();

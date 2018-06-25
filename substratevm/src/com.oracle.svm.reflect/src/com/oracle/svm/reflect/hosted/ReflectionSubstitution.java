@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.annotation.CustomSubstitution;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
-import com.oracle.svm.reflect.proxies.ReflectionProxy;
+import com.oracle.svm.reflect.helpers.ReflectionProxy;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -614,7 +614,7 @@ public final class SourceSectionFilter {
          * <code>startIndex <= endIndex</code>.
          *
          * @param startIndex the start index (inclusive)
-         * @param endIndex the end index (inclusive)
+         * @param endIndex the end index (exclusive)
          * @return a new index range
          * @throws IllegalArgumentException if parameter invariants are violated
          * @since 0.12

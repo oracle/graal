@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package org.graalvm.compiler.truffle.test.nodes;
 
-//Checkstyle: allow reflection 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import java.util.Objects;
+import java.util.logging.Level;
 
-import java.lang.reflect.GenericDeclaration;
+public class IsLoggableNode extends AbstractTestNode {
+    private final TruffleLogger log;
+    private final Level level;
+    private final int result;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-
-@TargetClass(sun.reflect.generics.reflectiveObjects.TypeVariableImpl.class)
-final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
-
-    @Alias GenericDeclaration genericDeclaration;
-
-    /** Reason for substitutions: disable access checks in original method. */
-    @Substitute
-    public GenericDeclaration getGenericDeclaration() {
-        return genericDeclaration;
+    public IsLoggableNode(final Level level, final int result) {
+        Objects.requireNonNull(level, "Level must be non null.");
+        this.log = TruffleLogger.getLogger("test", "testLogger");
+        this.level = level;
+        this.result = result;
     }
 
-}
-
-public class TypeVariableSubstitutions {
+    @Override
+    public int execute(VirtualFrame frame) {
+        log.isLoggable(level);
+        return result;
+    }
 }

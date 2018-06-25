@@ -61,7 +61,7 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
     }
 
     public static Object asObject(Constant constant) {
-        if (constant instanceof JavaConstant && ((JavaConstant) constant).isNull()) {
+        if (JavaConstant.isNull(constant)) {
             return null;
         }
         return ((SubstrateObjectConstant) constant).object;

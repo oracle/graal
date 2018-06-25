@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
+
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
@@ -98,7 +100,6 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
@@ -984,8 +985,9 @@ public class NativeImageGenerator {
         }
 
         BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
-        StandardGraphBuilderPlugins.registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacementBytecodeProvider, !hosted);
-        AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) ConfigurationValues.getTarget().arch, true);
+        final boolean explicitUnsafeNullChecks = SubstrateOptions.UseHeapBaseRegister.getValue() && SubstrateOptions.UseLinearPointerCompression.getValue();
+        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacementBytecodeProvider, !hosted, explicitUnsafeNullChecks);
+        AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) ConfigurationValues.getTarget().arch, true, explicitUnsafeNullChecks);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
@@ -1254,9 +1256,9 @@ public class NativeImageGenerator {
          */
         String lname = name.toLowerCase();
         if (lname.contains("hosted")) {
-            bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time");
+            bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
         } else if (lname.contains("hotspot")) {
-            bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time");
+            bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
         }
     }
 

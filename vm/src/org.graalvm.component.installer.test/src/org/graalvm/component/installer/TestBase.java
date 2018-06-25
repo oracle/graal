@@ -269,6 +269,9 @@ public class TestBase implements Feedback {
         if (verboseOutput) {
             verboseOutput((ResourceBundle) null, msg);
         } else {
+            if (feedbackDelegate != null) {
+                feedbackDelegate.verbatimOut(msg, verboseOutput);
+            }
             output((ResourceBundle) null, msg);
         }
         return verboseOutput;

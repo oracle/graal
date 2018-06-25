@@ -84,8 +84,8 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
-    NativeImageServer() {
-        super();
+    NativeImageServer(PathsProvider pathsProvider) {
+        super(pathsProvider);
         registerOptionHandler(new ServerOptionHandler(this));
     }
 

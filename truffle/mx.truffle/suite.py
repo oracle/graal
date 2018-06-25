@@ -1,7 +1,7 @@
 suite = {
-  "mxversion" : "5.167.0",
+  "mxversion" : "5.175.2",
   "name" : "truffle",
-  "version": "1.0.0-rc2-dev",
+  "version": "1.0.0-rc3-dev",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -48,8 +48,7 @@ suite = {
 
     "LIBFFI" : {
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-3.2.1.tar.gz",
-        "ftp://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
+        "https://github.com/oracle/graal/releases/download/libffi-3.2.1/libffi-3.2.1.tar.gz",
       ],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
@@ -65,8 +64,7 @@ suite = {
 
     "ANTLR4_COMPLETE": {
       "urls": [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7-complete.jar",
-        "http://www.antlr.org/download/antlr-4.7-complete.jar"
+        "https://github.com/oracle/graal/releases/download/antlr-complete-4.7/antlr-4.7-complete.jar"
       ],
       "sha1": "5b3a8824334069979a0862ce67ede796c3a4d1b1",
     },
@@ -84,7 +82,7 @@ suite = {
       ],
       "uses" : [
         "com.oracle.truffle.api.TruffleRuntimeAccess",
-         "java.nio.file.spi.FileTypeDetector"
+        "java.nio.file.spi.FileTypeDetector",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
@@ -597,6 +595,9 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.nfi.types",
       ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
@@ -747,6 +748,8 @@ suite = {
     },
 
     "TRUFFLE_NFI" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.truffle.truffle_nfi",
       "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [

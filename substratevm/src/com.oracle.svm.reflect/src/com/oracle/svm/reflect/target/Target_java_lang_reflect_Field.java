@@ -39,13 +39,16 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.FieldDeclaredAnnotationsComputer;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
+import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import sun.reflect.FieldAccessor;
+import sun.reflect.generics.repository.FieldRepository;
 
 @TargetClass(value = Field.class, onlyWith = ReflectionFeature.IsEnabled.class)
 public final class Target_java_lang_reflect_Field {
+
+    @Alias FieldRepository genericInfo;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) FieldAccessor fieldAccessor;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) FieldAccessor overrideFieldAccessor;
@@ -58,6 +61,9 @@ public final class Target_java_lang_reflect_Field {
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
     int offset;
+
+    @Alias
+    native Target_java_lang_reflect_Field copy();
 
     @Substitute
     FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {

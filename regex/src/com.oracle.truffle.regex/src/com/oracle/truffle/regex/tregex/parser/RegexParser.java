@@ -145,14 +145,22 @@ public final class RegexParser {
     @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         ast.setRoot(parse(true));
+        for (LookBehindAssertion lb : ast.getLookBehinds()) {
+            if (!lb.isLiteral()) {
+                properties.setNonLiteralLookBehindAssertions();
+                break;
+            }
+        }
         final CalcMinPathsVisitor calcMinPathsVisitor = new CalcMinPathsVisitor();
         calcMinPathsVisitor.runReverse(ast.getRoot());
         calcMinPathsVisitor.run(ast.getRoot());
         ast.removeUnreachablePositionAssertions();
-        ast.createPrefix();
-        InitIDVisitor.init(ast);
-        if (!ast.getProperties().hasBackReferences()) {
-            new MarkLookBehindEntriesVisitor(ast).run();
+        if (!properties.hasNonLiteralLookBehindAssertions()) {
+            ast.createPrefix();
+            InitIDVisitor.init(ast);
+            if (!properties.hasBackReferences()) {
+                new MarkLookBehindEntriesVisitor(ast).run();
+            }
         }
         return ast;
     }

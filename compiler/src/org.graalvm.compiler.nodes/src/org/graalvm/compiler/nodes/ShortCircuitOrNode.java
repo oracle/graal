@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
@@ -37,13 +36,11 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
-import org.graalvm.compiler.nodes.spi.ValueProxy;
 
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable.Binary<LogicNode> {
-
     public static final NodeClass<ShortCircuitOrNode> TYPE = NodeClass.create(ShortCircuitOrNode.class);
     @Input(Condition) LogicNode x;
     @Input(Condition) LogicNode y;
@@ -179,23 +176,15 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             }
         }
 
-        // Check whether !X => Y constant
-        if (forX instanceof UnaryOpLogicNode && forY instanceof UnaryOpLogicNode) {
-            UnaryOpLogicNode unaryX = (UnaryOpLogicNode) forX;
-            UnaryOpLogicNode unaryY = (UnaryOpLogicNode) forY;
-            if (skipThroughPisAndProxies(unaryX.getValue()) == skipThroughPisAndProxies(unaryY.getValue())) {
-                // !X => Y is constant
-                Stamp succStamp = unaryX.getSucceedingStampForValue(!isXNegated());
-                TriState fold = unaryY.tryFold(succStamp);
-                if (fold.isKnown()) {
-                    boolean yResult = fold.toBoolean() ^ isYNegated();
-                    return yResult
-                                    ? LogicConstantNode.tautology()
-                                    : (isXNegated()
-                                                    ? LogicNegationNode.create(forX)
-                                                    : forX);
-                }
-            }
+        // !X => Y constant
+        TriState impliedForY = forX.implies(!isXNegated(), forY);
+        if (impliedForY.isKnown()) {
+            boolean yResult = impliedForY.toBoolean() ^ isYNegated();
+            return yResult
+                            ? LogicConstantNode.tautology()
+                            : (isXNegated()
+                                            ? LogicNegationNode.create(forX)
+                                            : forX);
         }
 
         // if X >= 0:
@@ -238,20 +227,6 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         }
 
         return this;
-    }
-
-    private static ValueNode skipThroughPisAndProxies(ValueNode node) {
-        ValueNode n = node;
-        while (n != null) {
-            if (n instanceof PiNode) {
-                n = ((PiNode) n).getOriginalNode();
-            } else if (n instanceof ValueProxy) {
-                n = ((ValueProxy) n).getOriginalNode();
-            } else {
-                break;
-            }
-        }
-        return n;
     }
 
     private static LogicNode simplifyComparison(LogicNode forX, LogicNode forY) {

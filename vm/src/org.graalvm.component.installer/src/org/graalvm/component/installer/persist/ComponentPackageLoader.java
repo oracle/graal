@@ -213,7 +213,8 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
                         },
                         () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
-                        () -> loadWorkingDirectories()
+                        () -> loadWorkingDirectories(),
+                        () -> loadMessages()
 
         );
         return info;
@@ -363,6 +364,14 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     public void close() throws IOException {
         if (jarFile != null) {
             jarFile.close();
+        }
+    }
+
+    private void loadMessages() {
+        String val = parseHeader(BundleConstants.BUNDLE_MESSAGE_POSTINST, null).getContents(null);
+        if (val != null) {
+            String text = val.replace("\\n", "\n").replace("\\\\", "\\"); // NOI18N
+            info.setPostinstMessage(text);
         }
     }
 }

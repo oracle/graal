@@ -28,10 +28,15 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.util.Arrays;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -300,6 +305,12 @@ public class SubstrateUtil {
             }
         }
 
+        try {
+            DiagnosticThunkRegister.getSingleton().callDiagnosticThunks();
+        } catch (Exception e) {
+            dumpException(log, "callThunks", e);
+        }
+
         diagnosticsInProgress = false;
     }
 
@@ -476,5 +487,56 @@ public class SubstrateUtil {
         log.indent(true);
         JavaStackWalker.walkThread(vmThread, ThreadStackPrinter.AllocationFreeStackFrameVisitor);
         log.indent(false);
+    }
+
+    /** The functional interface for a "thunk" that does not allocate. */
+    @FunctionalInterface
+    public interface DiagnosticThunk {
+
+        /** The method to be supplied by the implementor. */
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
+        void invokeWithoutAllocation();
+    }
+
+    public static class DiagnosticThunkRegister {
+
+        DiagnosticThunk[] diagnosticThunkRegistry;
+
+        /**
+         * Get the register.
+         *
+         * This method is @Fold so anyone who uses it ensures there is a register.
+         */
+        @Fold
+        /* { Checkstyle: allow synchronization. */
+        public static synchronized DiagnosticThunkRegister getSingleton() {
+            if (!ImageSingletons.contains(SubstrateUtil.DiagnosticThunkRegister.class)) {
+                ImageSingletons.add(SubstrateUtil.DiagnosticThunkRegister.class, new DiagnosticThunkRegister());
+            }
+            return ImageSingletons.lookup(SubstrateUtil.DiagnosticThunkRegister.class);
+        }
+        /* } Checkstyle: disallow synchronization. */
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        DiagnosticThunkRegister() {
+            this.diagnosticThunkRegistry = new DiagnosticThunk[0];
+        }
+
+        /** Register a diagnostic thunk to be called after a segfault. */
+        @Platforms(Platform.HOSTED_ONLY.class)
+        /* { Checkstyle: allow synchronization. */
+        public synchronized void register(DiagnosticThunk diagnosticThunk) {
+            final DiagnosticThunk[] newArray = Arrays.copyOf(diagnosticThunkRegistry, diagnosticThunkRegistry.length + 1);
+            newArray[newArray.length - 1] = diagnosticThunk;
+            diagnosticThunkRegistry = newArray;
+        }
+        /* } Checkstyle: disallow synchronization. */
+
+        /** Call each registered diagnostic thunk. */
+        void callDiagnosticThunks() {
+            for (int i = 0; i < diagnosticThunkRegistry.length; i += 1) {
+                diagnosticThunkRegistry[i].invokeWithoutAllocation();
+            }
+        }
     }
 }

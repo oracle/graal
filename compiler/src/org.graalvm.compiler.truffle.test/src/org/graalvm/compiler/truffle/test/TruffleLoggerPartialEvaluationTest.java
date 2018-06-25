@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.proxies;
+package org.graalvm.compiler.truffle.test;
 
-/**
- * Marker interface for generated accessor classes.
- */
-public interface ReflectionProxy {
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import java.util.logging.Level;
+import org.graalvm.compiler.truffle.test.nodes.IsLoggableNode;
+import org.graalvm.compiler.truffle.test.nodes.LoggingNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Test;
+
+public class TruffleLoggerPartialEvaluationTest extends PartialEvaluationTest {
+
+    public static Object constant42() {
+        return 42;
+    }
+
+    @Test
+    public void logBelowLevel() {
+        final LoggingNode result = new LoggingNode(Level.FINE, "Logging", 42);
+        final RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "log", result);
+        assertPartialEvalEquals("constant42", rootNode);
+    }
+
+    @Test
+    public void isLoggableBelowLevel() {
+        final IsLoggableNode result = new IsLoggableNode(Level.FINE, 42);
+        final RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "isLoggable", result);
+        assertPartialEvalEquals("constant42", rootNode);
+    }
 }
