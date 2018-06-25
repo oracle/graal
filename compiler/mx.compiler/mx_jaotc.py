@@ -25,7 +25,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
-
+import os
 import subprocess
 import tempfile
 from argparse import ArgumentParser, ZERO_OR_MORE
@@ -149,11 +149,13 @@ def test_modules(classpath, main_class, modules):
     expected_out = mx.OutputCapture()
     mx_compiler.run_vm(['-cp', classpath, main_class], out=expected_out)
 
+    module_list = os.pathsep.join(modules)
+
     for common_opts in common_opts_variants:
-        mx.log('(jaotc) Compiling module(s) {} with {}'.format(':'.join(modules), ' '.join(common_opts)))
+        mx.log('(jaotc) Compiling module(s) {} with {}'.format(module_list, ' '.join(common_opts)))
         with mktemp_libfile() as lib_module:
             run_jaotc(['-J' + opt for opt in common_opts] +
-                      ['--module', ':'.join(modules)] +
+                      ['--module', module_list] +
                       ['--info', '--output', lib_module.name])
 
             check_aot(classpath, main_class, common_opts, expected_out.data, lib_module)
