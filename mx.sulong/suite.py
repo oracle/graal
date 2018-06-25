@@ -307,6 +307,20 @@ suite = {
       ],
       "testProject" : True,
     },
+    "com.oracle.truffle.llvm.tests.irdebug" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0"],
+      "buildRef" : False,
+      "buildEnv" : {
+        "CFLAGS" : "<clangImplicitArgs>",
+        "CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS>",
+      },
+      "buildDependencies" : [
+        "SULONG_LIBS",
+      ],
+      "testProject" : True,
+    },
     "com.oracle.truffle.llvm.tests.interop" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -473,6 +487,7 @@ suite = {
       "output" : "mxbuild/<os>-<arch>/sulong-test-suites",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.debug",
+        "com.oracle.truffle.llvm.tests.irdebug",
         "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.nfi",
         "com.oracle.truffle.llvm.tests.sulong",
