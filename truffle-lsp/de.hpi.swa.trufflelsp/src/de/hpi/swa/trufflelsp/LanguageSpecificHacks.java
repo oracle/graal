@@ -146,7 +146,6 @@ public class LanguageSpecificHacks {
     }
 
     public static Object getLiteralObject(Node node, String langId) {
-        // message
         if (enableLanguageSpecificHacks) {
             if (langId.equals("python")) {
                 Class<?> clazzLiteralNode;
