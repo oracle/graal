@@ -38,10 +38,14 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.source.SourceSection;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -91,9 +95,9 @@ final class ShadowStack {
             this.profilerStack = profilerStack;
             this.cachedThread = Thread.currentThread();
             this.location = location;
-            this.cachedStack = getStack();
             this.isAttachedToRootTag = isAttachedToRootTag;
             this.ignoreInlinedRoots = ignoreInlinedRoots;
+            this.cachedStack = getStack();
         }
 
         @Override
@@ -168,7 +172,7 @@ final class ShadowStack {
             Thread currentThread = Thread.currentThread();
             ThreadLocalStack stack = profilerStack.stacks.get(currentThread);
             if (stack == null) {
-                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit);
+                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, isAttachedToRootTag);
                 ThreadLocalStack prevStack = profilerStack.stacks.putIfAbsent(currentThread, stack);
                 if (prevStack != null) {
                     stack = prevStack;
@@ -199,11 +203,13 @@ final class ShadowStack {
         private boolean stackOverflowed = false;
         @CompilationFinal private Assumption noStackOverflowedAssumption = Truffle.getRuntime().createAssumption();
 
-        private int stackIndex = -1;
+        private int stackIndex;
 
-        ThreadLocalStack(Thread thread, int stackLimit) {
+        ThreadLocalStack(Thread thread, int stackLimit, boolean isAttachedToRootTag) {
             this.thread = thread;
-            this.stack = new SourceLocation[stackLimit];
+            ArrayList<SourceLocation> init = getInitialStack(isAttachedToRootTag);
+            this.stack = init.toArray(new SourceLocation[stackLimit]);
+            this.stackIndex = init.size() - 1;
             this.compiledStack = new boolean[stackLimit];
             // In case we are running in CompiledOnly mode, the assumption is never checked in the
             // Interpreter so call is needed to resolve the method.
@@ -264,6 +270,22 @@ final class ShadowStack {
 
         boolean hasStackOverflowed() {
             return stackOverflowed;
+        }
+
+        private static ArrayList<SourceLocation> getInitialStack(boolean isAttachedToRootTag) {
+            ArrayList<SourceLocation> sls = new ArrayList<>();
+            Truffle.getRuntime().iterateFrames(frame -> {
+                Node node = frame.getCallNode();
+                if (node != null) {
+                    SourceSection sourceSection = isAttachedToRootTag ? node.getRootNode().getSourceSection() : node.getEncapsulatingSourceSection();
+                    if (sourceSection != null) {
+                        sls.add(new SourceLocation(node, sourceSection));
+                    }
+                }
+                return null;
+            });
+            Collections.reverse(sls);
+            return sls;
         }
 
         static final class CorrectedStackInfo {

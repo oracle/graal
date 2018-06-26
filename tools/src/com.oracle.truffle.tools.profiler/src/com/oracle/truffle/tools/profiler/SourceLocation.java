@@ -29,6 +29,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.Collections;
 
 import java.util.Objects;
 import java.util.Set;
@@ -50,6 +51,22 @@ final class SourceLocation {
         this.sourceSection = context.getInstrumentedSourceSection();
         this.instrumentedNode = context.getInstrumentedNode();
         RootNode rootNode = instrumentedNode.getRootNode();
+        if (rootNode != null) {
+            if (rootNode.getName() == null) {
+                this.rootName = rootNode.toString();
+            } else {
+                this.rootName = rootNode.getName();
+            }
+        } else {
+            this.rootName = "<Unknown>";
+        }
+    }
+
+    SourceLocation(Node callNode, SourceSection sourceSection) {
+        this.tags = Collections.emptySet();
+        this.sourceSection = sourceSection;
+        this.instrumentedNode = null;
+        RootNode rootNode = callNode.getRootNode();
         if (rootNode != null) {
             if (rootNode.getName() == null) {
                 this.rootName = rootNode.toString();
