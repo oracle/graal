@@ -85,5 +85,6 @@ public class NewFrameNodeTest extends PartialEvaluationTest {
         Assert.assertTrue(callTarget.isValid());
         Assert.assertEquals(222, callTarget.call());
         Assert.assertEquals(version, fd.getVersion());
+        Assert.assertTrue(version.isValid());
     }
 }

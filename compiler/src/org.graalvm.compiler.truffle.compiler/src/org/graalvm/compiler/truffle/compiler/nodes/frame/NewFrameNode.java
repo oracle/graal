@@ -137,7 +137,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant frameDescriptor = frameDescriptorNode.asJavaConstant();
 
         /*
-         * We access the FrameDescriptor only here and copy out all relevant data. So later
+         * We access the FrameDescriptor only here and copy out all relevant data (being extra
+         * paranoid when copying data out since they may be concurrently modified). So later
          * modifications to the FrameDescriptor by the running Truffle thread do not interfere. The
          * frame version assumption is registered first, so that we get invalidated in case the
          * FrameDescriptor changes.
@@ -167,19 +168,23 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant slotArrayList = constantReflection.readFieldValue(types.fieldFrameDescriptorSlots, frameDescriptor);
         JavaConstant slotArray = constantReflection.readFieldValue(types.fieldArrayListElementData, slotArrayList);
         int slotsArrayLength = constantReflection.readArrayLength(slotArray);
-        this.frameSize = constantReflection.readFieldValue(types.fieldFrameDescriptorSize, frameDescriptor).asInt();
 
-        frameSlotKinds = new JavaKind[frameSize];
+        frameSlotKinds = new JavaKind[slotsArrayLength];
+        int limit = -1;
         for (int i = 0; i < slotsArrayLength; i++) {
             JavaConstant slot = constantReflection.readArrayElement(slotArray, i);
             if (slot.isNonNull()) {
                 JavaConstant slotKind = constantReflection.readFieldValue(types.fieldFrameSlotKind, slot);
                 JavaConstant slotIndex = constantReflection.readFieldValue(types.fieldFrameSlotIndex, slot);
-                if (slotKind.isNonNull()) {
-                    frameSlotKinds[slotIndex.asInt()] = asJavaKind(constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind));
+                if (slotKind.isNonNull() && slotIndex.isNonNull()) {
+                    final JavaKind kind = asJavaKind(constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind));
+                    final int index = slotIndex.asInt();
+                    limit = index > limit ? index : limit;
+                    frameSlotKinds[index] = kind;
                 }
             }
         }
+        this.frameSize = limit + 1;
 
         ResolvedJavaType frameType = types.classFrameClass;
         ResolvedJavaField[] frameFields = frameType.getInstanceFields(true);
