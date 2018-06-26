@@ -28,9 +28,6 @@ install:
   - echo MAKEFLAGS=-j2 >> $SULONG_ENV
   - echo CPPFLAGS=-g >> $SULONG_ENV
   - mx sforceimports
-# Disable native-image build server due to memory constraints on travis
-  - export NATIVE_IMAGE_CONFIG_FILE=`pwd`/mx.sulong/native-image-travis.properties
-  - echo NativeImageArgs = --no-server >> $NATIVE_IMAGE_CONFIG_FILE
 script:
   - cd llvmDir
   - ln -s /usr/bin/clang-$LLVM_VER clang
