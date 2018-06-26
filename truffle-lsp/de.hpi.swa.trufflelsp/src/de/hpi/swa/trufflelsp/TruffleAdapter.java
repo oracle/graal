@@ -39,18 +39,15 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
@@ -65,10 +62,8 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeAccessHelper;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -101,10 +96,22 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     private boolean isContextBeingCreated = false;
     private Function<VirtualLSPFileProvider, TruffleContext> contextProvider;
 
-    class SourceUriFilter implements SourcePredicate {
+    private static final class SourceUriFilter implements SourcePredicate {
 
         public boolean test(Source source) {
             return source.getName().startsWith("file://"); // TODO(ds) how to filter? tag is STATEMENT && source.isAvailable()?
+        }
+    }
+
+    protected static final class SourceFix {
+        public final String text;
+        public final int character;
+        public final boolean isObjectPropertyCompletion;
+
+        public SourceFix(String text, int character, boolean isObjectPropertyCompletion) {
+            this.text = text;
+            this.character = character;
+            this.isObjectPropertyCompletion = isObjectPropertyCompletion;
         }
     }
 
@@ -301,7 +308,6 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
 
         TextDocumentSurrogate textDocumentSurrogate = this.uri2TextDocumentSurrogate.get(uri);
         String langId = textDocumentSurrogate.getLangId();
-        boolean includeGlobalsAndLocalsInCompletion = true;
         boolean isObjectPropertyCompletion = false;
 
         int character = originalCharacter;
@@ -313,10 +319,10 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             if (sourceFix != null) {
                 try {
                     textDocumentSurrogate.setFixedText(sourceFix.text);
+
                     doWithGlobalInnerContext(() -> parseInternal(textDocumentSurrogate));
                     sourceWrapper = this.sourceProvider.getLoadedSource(langId, uri);
                     character = sourceFix.character;
-                    includeGlobalsAndLocalsInCompletion = !sourceFix.isObjectPropertyCompletion;
                     isObjectPropertyCompletion = sourceFix.isObjectPropertyCompletion;
                 } catch (IllegalStateException e) {
                     this.err.println(e.getLocalizedMessage());
@@ -335,96 +341,50 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
 
                 if (isLineValid(line, source)) {
                     int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, source);
-
-                    NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, oneBasedLineNumber, character);
-                    SourceSection containsSection = nearestSections.getContainsSourceSection();
-
-                    Node nearestNode;
-                    NodeLocationType locationType;
-                    if (containsSection == null) {
-                        // We are not in a local scope, so only top scope objects possible
-                        nearestNode = null;
-                        locationType = null;
-                    } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, character, containsSection)) {
-                        // Our caret is directly behind the containing section, so we can simply use that one to find local
-                        // scope objects
-                        nearestNode = (Node) nearestSections.getContainsNode();
-                        locationType = NodeLocationType.CONTAINS_END;
-                    } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
-                        // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the same scope as
-                        // we are and we can use it to get local scope objects
-                        nearestNode = (Node) nearestSections.getNextNode();
-                        locationType = NodeLocationType.NEXT;
-                    } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getPreviousNode(), (Node) nearestSections.getContainsNode())) {
-                        // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local scope
-                        // objects which are valid behind that node
-                        nearestNode = (Node) nearestSections.getPreviousNode();
-                        locationType = NodeLocationType.PREVIOUS;
-                    } else {
-                        // No next or previous node is in the same scope like us, so we can only take our containing node to
-                        // get local scope objects
-                        nearestNode = (Node) nearestSections.getContainsNode();
-                        locationType = NodeLocationType.CONTAINS;
-                    }
+                    NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(oneBasedLineNumber, character, source, env);
+                    Node nearestNode = nearestNodeHolder.getNearestNode();
+                    NodeLocationType locationType = nearestNodeHolder.getLocationType();
 
                     System.out.println("nearestNode: " +
                                     (nearestNode != null ? nearestNode.getClass().getSimpleName() : "--NULL--") + "\t-" + locationType + "-\t" +
                                     (nearestNode != null ? nearestNode.getSourceSection() : ""));
 
-                    if (nearestNode instanceof InstrumentableNode) {
-                        InstrumentableNode instrumentableNode = (InstrumentableNode) nearestNode;
-                        if (instrumentableNode.isInstrumentable()) {
-                            Map<SourceSection, MaterializedFrame> section2frame = textDocumentSurrogate.getSection2frame();
-                            VirtualFrame frame = section2frame.get(nearestNode.getSourceSection());
-// if (frame == null) {
-// // TODO(ds) this is hacky and is not always correct
-// SourceSection sourceSection = nearestNode.getSourceSection();
-// Optional<Entry<SourceSection, MaterializedFrame>> optEntry =
-// section2frame.entrySet().stream().filter(
-// (f) -> f.getKey().getCharIndex() == sourceSection.getCharIndex() && f.getKey().getCharEndIndex()
-// == sourceSection.getCharEndIndex()).findFirst();
-// if (optEntry.isPresent()) {
-// frame = optEntry.get().getValue();
-// }
-// }
-
-                            // TODO(ds) isObjectPropertyCompletion and includeGlobalsAndLocalsInCompletion are deeply related,
-                            // check which one is needed
-                            if (isObjectPropertyCompletion && locationType == NodeLocationType.CONTAINS_END) {
-                                includeGlobalsAndLocalsInCompletion = false;
-                                // TODO(ds) should we always use a fresh context? Also for the fillCompletionsWithLocals() calls
-                                // below?
-                                try (TruffleContextWrapper context = createNewContextFromOtherThread()) {
-                                    EvaluationResult evalResult = executeToSection(nearestNode, sourceWrapper);
-                                    if (evalResult.isEvaluationDone()) {
-                                        if (!evalResult.isError()) {
-                                            fillCompletionsFromTruffleObject(completions, langId, evalResult.getResult());
-                                        }
-                                    } else {
-                                        // TODO(ds) this is old code, recycle it: We only want to eval in global scope to check for globals.
-                                        // Everything else is done in executeToSection()
-
-                                        // Here we cannot use any nearestNode instance, because this can also be the nextNode or
-                                        // previousNode. We need the node directly before our caret.
-                                        boolean arePojectPropertiesPresent = fillCompletionsWithObjectProperties(completions, frame, nearestNode, langId);
-                                        if (arePojectPropertiesPresent) {
-                                            // If there are object properties available for code completion, then we do not want to display any
-                                            // globals or local variables
-                                            includeGlobalsAndLocalsInCompletion = false;
-                                        } else if (frame == null) {
-                                            // No frame is available for the current source section and no properties could be derived
-                                            // TODO(ds) do diagnosticas depending on evalResult
-                                            this.diagnosticsPublisher.addDiagnostics(uri,
-                                                            new Diagnostic(sourceSectionToRange(nearestNode.getSourceSection()), "No types harvested for this source section yet.",
-                                                                            DiagnosticSeverity.Information, "Truffle"));
+                    if (nearestNode instanceof InstrumentableNode && ((InstrumentableNode) nearestNode).isInstrumentable()) {
+                        if (isObjectPropertyCompletion) {
+                            if (locationType == NodeLocationType.CONTAINS_END) {
+                                boolean isLiteralObject = doWithGlobalInnerContext(() -> {
+                                    Object literalObj = LanguageSpecificHacks.getLiteralObject(nearestNode, langId);
+                                    if (literalObj != null) {
+                                        System.out.println("Literal shortcut!");
+                                        fillCompletionsFromTruffleObject(completions, langId, literalObj);
+                                        return true;
+                                    }
+                                    return false;
+                                });
+                                if (!isLiteralObject) {
+                                    try (TruffleContextWrapper context = createNewContextFromOtherThread()) {
+                                        EvaluationResult evalResult = executeToSection(nearestNode, sourceWrapper);
+                                        if (evalResult.isEvaluationDone()) {
+                                            if (!evalResult.isError()) {
+                                                fillCompletionsFromTruffleObject(completions, langId, evalResult.getResult());
+                                            }
+                                        } else {
+                                            try {
+                                                System.out.println("Trying global eval...");
+                                                // TODO(ds) in global scope? Or in new, fresh context?
+                                                Object object = executeInGlobalScope(langId, nearestNode);
+                                                fillCompletionsFromTruffleObject(completions, langId, object);
+                                            } catch (Exception e) {
+                                                this.diagnosticsPublisher.addDiagnostics(uri,
+                                                                new Diagnostic(sourceSectionToRange(nearestNode.getSourceSection()), "No coverage information available for this source section.",
+                                                                                DiagnosticSeverity.Information, "Truffle"));
+                                            }
                                         }
                                     }
                                 }
                             }
-
-                            if (includeGlobalsAndLocalsInCompletion) {
-                                fillCompletionsWithLocals(textDocumentSurrogate, nearestNode, completions, frame);
-                            }
+                        } else {
+                            fillCompletionsWithLocals(textDocumentSurrogate, nearestNode, completions, null);
                         }
                     }
                 } // isLineValid
@@ -433,7 +393,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                 System.out.println("!!! Cannot lookup Source for local scoping. No parsed Node found for URI: " + uri);
             }
 
-            if (includeGlobalsAndLocalsInCompletion) {
+            if (!isObjectPropertyCompletion) {
                 fillCompletionsWithGlobals(textDocumentSurrogate, completions);
             }
 
@@ -443,6 +403,12 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
 
         return completions;
+    }
+
+    private Object executeInGlobalScope(String langId, Node nearestNode) throws IOException {
+        CallTarget callTarget = this.env.parse(
+                        Source.newBuilder(nearestNode.getEncapsulatingSourceSection().getCharacters()).language(langId).name("eval in global scope").build());
+        return callTarget.call();
     }
 
     private EvaluationResult executeToSection(final Node nearestNode, final SourceWrapper sourceWrapper) {
@@ -475,50 +441,39 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             final CallTarget callTarget = parse(surrogateOfTestFile);
 
             EventBinding<ExecutionEventNodeFactory> binding = this.env.getInstrumenter().attachExecutionEventFactory(
-                            SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).lineStartsIn(
-                                            IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1)).lineEndsIn(
-                                                            IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1)).columnStartsIn(
-                                                                            IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1)).columnEndsIn(
-                                                                                            IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1)).sourceIs(
-                                                                                                            source -> source.getURI().equals(uri) || source.getName().equals(name)).build(),
-                            new ExecutionEventNodeFactory() {
-
-                                public ExecutionEventNode create(final EventContext eventContext) {
-                                    return new ExecutionEventNode() {
-                                        @Override
-                                        protected void onEnter(VirtualFrame frame) {
-                                            final LanguageInfo info = eventContext.getInstrumentedNode().getRootNode().getLanguageInfo();
-                                            final String code = eventContext.getInstrumentedSourceSection().getCharacters().toString();
-                                            final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();
-                                            ExecutableNode fragment = TruffleAdapter.this.env.parseInline(source, eventContext.getInstrumentedNode(), frame.materialize());
-                                            if (fragment != null) {
-                                                insert(fragment);
-                                                Object result;
-                                                try {
-                                                    result = fragment.execute(frame);
-                                                } catch (Throwable e) {
-                                                    e.printStackTrace(); // TODO(ds)
-                                                    CompilerDirectives.transferToInterpreter();
-                                                    throw new EvaluationResultException(null, true);
-                                                }
-                                                CompilerDirectives.transferToInterpreter();
-                                                throw new EvaluationResultException(result);
-                                            }
-                                        }
-                                    };
-                                }
-                            });
+                            createSourceSectionFilter(uri, sourceSection, name),
+                            new InlineEvaluationEventFactory(this.env));
             try {
                 callTarget.call();
             } catch (EvaluationResultException e) {
                 return e.isError() ? EvaluationResult.createError() : EvaluationResult.createResult(e.getResult());
+            } catch (RuntimeException e) {
+                if (e instanceof TruffleException) {
+                    if (((TruffleException) e).isExit()) {
+                        return EvaluationResult.createEvaluationSectionNotReached();
+                    } else {
+                        return EvaluationResult.createError();
+                    }
+                }
             } finally {
-                binding.dispose(); // TODO(ds) im try-with-res
+                binding.dispose();
             }
             return EvaluationResult.createEvaluationSectionNotReached();
         } else {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
+    }
+
+    private static SourceSectionFilter createSourceSectionFilter(final URI uri, final SourceSection sourceSection, final String name) {
+        // @formatter:off
+        return SourceSectionFilter.newBuilder()
+                        .tagIs(StatementTag.class, ExpressionTag.class)
+                        .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
+                        .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
+                        .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
+                        .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
+                        .sourceIs(source -> source.getURI().equals(uri) || source.getName().equals(name)).build();
+        // @formatter:on
     }
 
     private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, CompletionList completions, VirtualFrame frame) {
@@ -584,39 +539,6 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
 
         return null;
-    }
-
-    private boolean fillCompletionsWithObjectProperties(CompletionList completions, VirtualFrame frame, Node nodeBeforeCaret, String langId) {
-        return doWithGlobalInnerContext(() -> {
-            Object object;
-            Object metaObject;
-
-            try {
-                if (frame != null) {
-                    ExecutableNode executableNode = this.env.parseInline(
-                                    Source.newBuilder(nodeBeforeCaret.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy inline eval").build(),
-                                    nodeBeforeCaret,
-                                    frame.materialize());
-                    if (executableNode != null) {
-                        NodeAccessHelper.insertNode(nodeBeforeCaret, executableNode);
-                        object = executableNode.execute(frame);
-                        metaObject = getMetaObject(langId, object);
-                    } else {
-                        return LanguageSpecificHacks.fillCompletions(this, completions, frame, nodeBeforeCaret, langId);
-                    }
-                } else {
-                    // No frame available. Try evaluation of the code snippet in global scope.
-                    CallTarget callTarget = this.env.parse(Source.newBuilder(nodeBeforeCaret.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy eval").build());
-                    object = callTarget.call();
-                    metaObject = getMetaObject(langId, object);
-                }
-            } catch (Exception e) {
-                return false;
-            }
-
-            return fillCompletionsFromTruffleObject(completions, langId, object, metaObject);
-        });
-
     }
 
     protected boolean fillCompletionsFromTruffleObject(CompletionList completions, String langId, Object object) {
@@ -717,24 +639,6 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         throw new IllegalStateException("Mismatch in line numbers. Source line count (one-based): " + source.getLineCount() + ", zero-based line count: " + line);
     }
 
-    private static boolean nodeIsInChildHirarchyOf(Node node, Node potentialParent) {
-        if (node == null) {
-            return false;
-        }
-        Node parent = node.getParent();
-        while (parent != null) {
-            if (parent.equals(potentialParent)) {
-                return true;
-            }
-            parent = parent.getParent();
-        }
-        return false;
-    }
-
-    private static boolean isEndOfSectionMatchingCaretPosition(int line, int character, SourceSection section) {
-        return section.getEndLine() == line && section.getEndColumn() == character;
-    }
-
     private static SourceFix fixSourceAtPosition(TextDocumentSurrogate surrogate, int line, int character) {
         Source originalSource = Source.newBuilder(surrogate.getCurrentText()).language(surrogate.getLangId()).name(surrogate.getUri().toString()).build();
         int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, originalSource);
@@ -823,7 +727,8 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
 
         // Clean-up
-        // TODO(ds) how to do this without dropping everything?
+        // TODO(ds) how to do this without dropping everything? If we have different tests, the coverage run
+        // of one test will remove any coverage info provided from the other tests.
         this.uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().getLocation2coverageUri().clear());
 
         try {
@@ -1004,18 +909,6 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return TruffleContextWrapper.createAndEnter(doWithGlobalInnerContext(() -> this.contextProvider.apply(this)));
     }
 
-    protected static final class SourceFix {
-        public final String text;
-        public final int character;
-        public final boolean isObjectPropertyCompletion;
-
-        public SourceFix(String text, int character, boolean isObjectPropertyCompletion) {
-            this.text = text;
-            this.character = character;
-            this.isObjectPropertyCompletion = isObjectPropertyCompletion;
-        }
-    }
-
     public void onContextCreated(TruffleContext truffleContext) {
     }
 
@@ -1041,15 +934,16 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     public synchronized void showCoverage(URI uri) {
         final TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
         if (surrogate.getParsedSourceWrapper() != null) {
-            Diagnostic[] coverageDiagnostics = surrogate.getParsedSourceWrapper().getNodes().stream().filter(
-                            node -> node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StatementTag.class)).filter(
-                                            node -> !surrogate.getLocation2coverageUri().containsKey(SourceLocation.from(node.getSourceSection()))).map(node -> {
-                                                return new Diagnostic(sourceSectionToRange(node.getSourceSection()),
-                                                                "Not covered",
-                                                                DiagnosticSeverity.Warning,
-                                                                "Coverage Analysis");
-                                            }).toArray(Diagnostic[]::new);
-
+            // @formatter:off
+            Diagnostic[] coverageDiagnostics = surrogate.getParsedSourceWrapper().getNodes().stream()
+                            .filter(node -> node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StatementTag.class))
+                            .filter(node -> !surrogate.getLocation2coverageUri().containsKey(SourceLocation.from(node.getSourceSection())))
+                            .map(node -> new Diagnostic(sourceSectionToRange(node.getSourceSection()),
+                                                        "Not covered",
+                                                        DiagnosticSeverity.Warning,
+                                                        "Coverage Analysis"))
+                            .toArray(Diagnostic[]::new);
+            // @formatter:on
             this.diagnosticsPublisher.addDiagnostics(uri, coverageDiagnostics);
         } else {
             this.diagnosticsPublisher.addDiagnostics(uri,

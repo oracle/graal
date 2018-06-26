@@ -9,7 +9,8 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
 
-import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -144,13 +145,23 @@ public class LanguageSpecificHacks {
         return null;
     }
 
-    public static Object getDebugValueValue(DebugValue value) {
-        try {
-            Class<?> clazzDebugValue = LanguageSpecificHacks.class.getClassLoader().loadClass("com.oracle.truffle.api.debug.DebugValue");
-            Method methodGet = clazzDebugValue.getDeclaredMethod("get");
-            methodGet.setAccessible(true);
-            return methodGet.invoke(value);
-        } catch (NoSuchMethodException | SecurityException | ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+    public static Object getLiteralObject(Node node, String langId) {
+        // message
+        if (enableLanguageSpecificHacks) {
+            if (langId.equals("python")) {
+                Class<?> clazzLiteralNode;
+                try {
+                    clazzLiteralNode = LanguageSpecificHacks.class.getClassLoader().loadClass("com.oracle.graal.python.nodes.literal.LiteralNode");
+                    if (clazzLiteralNode.isAssignableFrom(node.getClass())) {
+                        Method methodExecute = clazzLiteralNode.getMethod("execute", VirtualFrame.class);
+                        Object object = methodExecute.invoke(node, Truffle.getRuntime().createVirtualFrame(new Object[]{}, new FrameDescriptor()));
+                        if (object != null) {
+                            return getBoxedObject(object, langId);
+                        }
+                    }
+                } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                }
+            }
         }
         return null;
     }

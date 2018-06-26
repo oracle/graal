@@ -10,7 +10,6 @@ import java.util.Set;
 
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class TextDocumentSurrogate {
@@ -18,7 +17,6 @@ public class TextDocumentSurrogate {
     private final URI uri;
     private final String langId;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
-    private final Map<SourceSection, MaterializedFrame> section2frame = new HashMap<>();
     private final Map<SourceLocation, Set<URI>> location2coverageUri = new HashMap<>();
     private String editorText;
     private String fixedText;
@@ -94,10 +92,6 @@ public class TextDocumentSurrogate {
 
     public List<TextDocumentContentChangeEvent> getChangeEventsSinceLastSuccessfulParsing() {
         return changeEventsSinceLastSuccessfulParsing;
-    }
-
-    public Map<SourceSection, MaterializedFrame> getSection2frame() {
-        return section2frame;
     }
 
     public Map<SourceLocation, Set<URI>> getLocation2coverageUri() {

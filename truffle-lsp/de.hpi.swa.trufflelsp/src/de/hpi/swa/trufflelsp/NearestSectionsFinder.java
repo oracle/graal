@@ -29,6 +29,7 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -43,6 +44,59 @@ public final class NearestSectionsFinder {
     }
 
     private NearestSectionsFinder() {
+    }
+
+    public static NearestNodeHolder findNearestNode(int oneBasedLineNumber, int column, Source source, Env env) {
+        NearestSections nearestSections = getNearestSections(source, env, oneBasedLineNumber, column);
+        SourceSection containsSection = nearestSections.getContainsSourceSection();
+
+        Node nearestNode;
+        NodeLocationType locationType;
+        if (containsSection == null) {
+            // We are not in a local scope, so only top scope objects possible
+            nearestNode = null;
+            locationType = null;
+        } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, column, containsSection)) {
+            // Our caret is directly behind the containing section, so we can simply use that one to find local
+            // scope objects
+            nearestNode = (Node) nearestSections.getContainsNode();
+            locationType = NodeLocationType.CONTAINS_END;
+        } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
+            // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the same scope as
+            // we are and we can use it to get local scope objects
+            nearestNode = (Node) nearestSections.getNextNode();
+            locationType = NodeLocationType.NEXT;
+        } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getPreviousNode(), (Node) nearestSections.getContainsNode())) {
+            // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local scope
+            // objects which are valid behind that node
+            nearestNode = (Node) nearestSections.getPreviousNode();
+            locationType = NodeLocationType.PREVIOUS;
+        } else {
+            // No next or previous node is in the same scope like us, so we can only take our containing node to
+            // get local scope objects
+            nearestNode = (Node) nearestSections.getContainsNode();
+            locationType = NodeLocationType.CONTAINS;
+        }
+
+        return new NearestNodeHolder(nearestNode, locationType);
+    }
+
+    private static boolean isEndOfSectionMatchingCaretPosition(int line, int character, SourceSection section) {
+        return section.getEndLine() == line && section.getEndColumn() == character;
+    }
+
+    private static boolean nodeIsInChildHirarchyOf(Node node, Node potentialParent) {
+        if (node == null) {
+            return false;
+        }
+        Node parent = node.getParent();
+        while (parent != null) {
+            if (parent.equals(potentialParent)) {
+                return true;
+            }
+            parent = parent.getParent();
+        }
+        return false;
     }
 
     private static int fixColumn(Source source, int column, int boundLine) {
@@ -63,13 +117,13 @@ public final class NearestSectionsFinder {
         return boundLine;
     }
 
-    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
+    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
         int boundLine = fixLine(source, line);
         int boundColumn = fixColumn(source, column, boundLine);
         return getNearestSections(source, env, convertLineAndColumnToOffset(source, boundLine, boundColumn));
     }
 
-    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset) {
+    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset) {
         NearestSections sectionsCollector = new NearestSections(offset);
         // All SourceSections of the Source are loaded already when the source was parsed
         env.getInstrumenter().attachLoadSourceSectionListener(
