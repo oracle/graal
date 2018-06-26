@@ -786,6 +786,24 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+        Registration r2 = new Registration(plugins, StackValue.class);
+        r2.register1("get", Class.class, new InvocationPlugin() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
+                Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
+                int result = SizeOf.get(clazz);
+                final ConstantNode clazzSizeNode = ConstantNode.forInt(result);
+
+                for (ResolvedJavaMethod method : targetMethod.getDeclaringClass().getDeclaredMethods()) {
+                    if (method.getName().equals("get") && method.getParameters().length == 1 && method.getParameters()[0].getKind() == JavaKind.Int) {
+                        b.handleReplacedInvoke(InvokeKind.Static, method, new ValueNode[]{clazzSizeNode}, true);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
     }
 
     private static <T> T constantObjectParameter(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod targetMethod, int parameterIndex, Class<T> declaredType,
