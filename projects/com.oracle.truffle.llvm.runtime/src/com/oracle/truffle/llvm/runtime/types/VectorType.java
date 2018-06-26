@@ -119,7 +119,7 @@ public final class VectorType extends AggregateType {
     @Override
     @TruffleBoundary
     public String toString() {
-        return String.format("<%d x %s>", getNumberOfElements(), getElementType());
+        return String.format("< %d x %s >", getNumberOfElements(), getElementType());
     }
 
     @Override
