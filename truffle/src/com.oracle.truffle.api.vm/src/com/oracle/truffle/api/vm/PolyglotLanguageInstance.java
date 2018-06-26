@@ -76,7 +76,7 @@ final class PolyglotLanguageInstance {
 
     void initializeMultiContext() {
         assert !language.engine.singleContext.isValid();
-        if (language.cache.getCardinality() != ContextPolicy.SINGLE) {
+        if (language.cache.getCardinality() != ContextPolicy.EXCLUSIVE) {
             LANGUAGE.initializeMultiContext(spi);
         }
     }

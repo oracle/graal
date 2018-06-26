@@ -93,8 +93,8 @@ import java.util.logging.Level;
  * Language global state can be shared between multiple context instances by saving them in a custom
  * field of the {@link TruffleLanguage} subclass. Languages may control sharing between multiple
  * contexts using its {@link Registration#contextPolicy() context policy}. By default the context
- * policy is {@link ContextPolicy#SINGLE single}: there is always one language instance for each
- * context.
+ * policy is {@link ContextPolicy#EXCLUSIVE exclusive}: there is always one language instance for
+ * each context.
  * <p>
  * If the context policy is more permissive then the implementation needs to manually ensure data
  * isolation between the contexts. This means that state associated with a context must not be
@@ -111,12 +111,12 @@ import java.util.logging.Level;
  *
  * The number of {@link TruffleLanguage} instances per polyglot {@link org.graalvm.polyglot.Engine
  * engine} is configured by the {@link Registration#contextPolicy() context policy}. By default
- * there is a {@link ContextPolicy#SINGLE single} {@link TruffleLanguage language} instance for
- * every {@link org.graalvm.polyglot.Context polyglot context} or
+ * there is a {@link ContextPolicy#EXCLUSIVE exclusive} {@link TruffleLanguage language} instance
+ * for every {@link org.graalvm.polyglot.Context polyglot context} or
  * {@link TruffleLanguage.Env#newContextBuilder() inner context} that was created. With
- * {@link ContextPolicy#SINGLE_REUSE single reuse}, language instances will be reused after a
- * context was {@link TruffleLanguage#disposeContext(Object) disposed} and with policy
- * {@link ContextPolicy#MULTIPLE multiple} there is only one {@link TruffleLanguage} instance per
+ * {@link ContextPolicy#REUSE reuse}, language instances will be reused after a context was
+ * {@link TruffleLanguage#disposeContext(Object) disposed} and with policy
+ * {@link ContextPolicy#SHARED shared} there is only one {@link TruffleLanguage} instance per
  * polyglot {@link org.graalvm.polyglot.Engine engine}. Language implementations are encouraged to
  * support the most permissive context policy possible. Please see the individual
  * {@link ContextPolicy policies} for details on the implications on the language implementation.
@@ -309,23 +309,23 @@ public abstract class TruffleLanguage<C> {
         /**
          * Defines the supported policy for reusing {@link TruffleLanguage languages} per context.
          * I.e. the policy specifies the degree of sharing that is allowed between multiple language
-         * contexts. The default policy is {@link ContextPolicy#SINGLE single}. Every language is
-         * encouraged to try to support a context policy that is as permissive as possible, where
-         * {@link ContextPolicy#SINGLE single} is the least and {@link ContextPolicy#MULTIPLE
-         * multiple} is the most permissive policy. {@link TruffleLanguage#parse(ParsingRequest)
-         * Parse caching} is scoped per {@link TruffleLanguage language} instance, therefore the
-         * context policy influences its behavior.
+         * contexts. The default policy is {@link ContextPolicy#EXCLUSIVE exclusive}. Every language
+         * is encouraged to try to support a context policy that is as permissive as possible, where
+         * {@link ContextPolicy#EXCLUSIVE exclusive} is the least and {@link ContextPolicy#SHARED
+         * shared} is the most permissive policy. {@link TruffleLanguage#parse(ParsingRequest) Parse
+         * caching} is scoped per {@link TruffleLanguage language} instance, therefore the context
+         * policy influences its behavior.
          * <p>
          * The context policy applies to contexts that were created using the
          * {@link org.graalvm.polyglot.Context polyglot API} as well as for {@link TruffleContext
          * inner contexts}. The context policy does not apply to nodes that were created using the
          * Truffle interop protocol. Therefore, interop message nodes always need to be prepared to
-         * be used with policy {@link ContextPolicy#MULTIPLE}.
+         * be used with policy {@link ContextPolicy#SHARED}.
          *
          * @see TruffleLanguage#parse(ParsingRequest)
          * @since 1.0
          */
-        ContextPolicy contextPolicy() default ContextPolicy.SINGLE;
+        ContextPolicy contextPolicy() default ContextPolicy.EXCLUSIVE;
     }
 
     /**
@@ -412,10 +412,10 @@ public abstract class TruffleLanguage<C> {
      * instance supports being used for multiple contexts depends on its
      * {@link Registration#contextPolicy() context policy}.
      * <p>
-     * In the default policy {@link ContextPolicy#SINGLE single} this method will never be invoked,
-     * otherwise it will be called prior or after the first context was created for this language.
-     * In case an {@link org.graalvm.polyglot.Context.Builder#engine(Engine) explicit engine} was
-     * used to create a context, then this method will be invoked prior to the
+     * With the default context policy {@link ContextPolicy#EXCLUSIVE exclusive}, this method will
+     * never be invoked. This method will be called prior or after the first context was created for
+     * this language. In case an {@link org.graalvm.polyglot.Context.Builder#engine(Engine) explicit
+     * engine} was used to create a context, then this method will be invoked prior to the
      * {@link #createContext(Env) creation} of the first language context of a language. For inner
      * contexts, this method may be invoked prior to the first
      * {@link TruffleLanguage.Env#newContextBuilder() inner context} that is created, but after the
@@ -1991,9 +1991,9 @@ public abstract class TruffleLanguage<C> {
     /**
      * Defines the supported policy for reusing {@link TruffleLanguage languages} per context. I.e.
      * the policy specifies the degree of sharing that is allowed between multiple language
-     * contexts. The default policy is {@link #SINGLE single}. Every language is encouraged to try
-     * to support a context policy that is as permissive as possible, where {@link #SINGLE single}
-     * is the least and {@link #MULTIPLE multiple} is the most permissive policy.
+     * contexts. The default policy is {@link #EXCLUSIVE exclusive}. Every language is encouraged to
+     * try to support a context policy that is as permissive as possible, where {@link #EXCLUSIVE
+     * exclusive} is the least and {@link #SHARED shared} is the most permissive policy.
      * {@link TruffleLanguage#parse(ParsingRequest) Parse caching} is scoped per
      * {@link TruffleLanguage language} instance, therefore the context policy influences its
      * behavior.
@@ -2001,7 +2001,7 @@ public abstract class TruffleLanguage<C> {
      * The context policy applies to contexts that were created using the polyglot API as well as
      * for {@link TruffleContext inner contexts}. The context policy does not apply to nodes that
      * were created using the Truffle interop protocol. Therefore, interop message nodes always need
-     * to be prepared to be used with policy {@link ContextPolicy#MULTIPLE}.
+     * to be prepared to be used with policy {@link ContextPolicy#SHARED}.
      *
      * @see Registration#contextPolicy() To configure context policy for a language.
      * @see TruffleLanguage#parse(ParsingRequest)
@@ -2010,7 +2010,7 @@ public abstract class TruffleLanguage<C> {
     public enum ContextPolicy {
 
         /**
-         * Use one {@link TruffleLanguage} instance per language context instance.
+         * Use one exclusive {@link TruffleLanguage} instance per language context instance.
          * <p>
          * Using this policy has the following implications:
          * <ul>
@@ -2029,7 +2029,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 1.0
          */
-        SINGLE,
+        EXCLUSIVE,
 
         /**
          * Use a single {@link TruffleLanguage} instance per context instance, but allow the reuse
@@ -2057,7 +2057,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 1.0
          */
-        SINGLE_REUSE,
+        REUSE,
 
         /**
          * Use one {@link TruffleLanguage} instance for many language context instances.
@@ -2080,7 +2080,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 1.0
          */
-        MULTIPLE;
+        SHARED;
 
     }
 

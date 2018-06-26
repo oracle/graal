@@ -40,7 +40,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 /**
  * Reusable language for testing that allows wrap all methods.
  */
-@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID, contextPolicy = TruffleLanguage.ContextPolicy.MULTIPLE)
+@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static final String ID = "proxyLanguage";

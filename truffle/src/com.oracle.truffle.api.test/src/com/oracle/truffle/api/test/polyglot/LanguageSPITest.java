@@ -598,7 +598,7 @@ public class LanguageSPITest {
         context2.close();
     }
 
-    @TruffleLanguage.Registration(id = OneContextLanguage.ID, name = OneContextLanguage.ID, version = "1.0", mimeType = OneContextLanguage.ID, contextPolicy = ContextPolicy.SINGLE)
+    @TruffleLanguage.Registration(id = OneContextLanguage.ID, name = OneContextLanguage.ID, version = "1.0", mimeType = OneContextLanguage.ID, contextPolicy = ContextPolicy.EXCLUSIVE)
     public static class OneContextLanguage extends MultiContextLanguage {
         static final String ID = "OneContextLanguage";
 
@@ -613,7 +613,7 @@ public class LanguageSPITest {
 
     }
 
-    @TruffleLanguage.Registration(id = MultiContextLanguage.ID, name = MultiContextLanguage.ID, version = "1.0", mimeType = MultiContextLanguage.ID, contextPolicy = ContextPolicy.MULTIPLE)
+    @TruffleLanguage.Registration(id = MultiContextLanguage.ID, name = MultiContextLanguage.ID, version = "1.0", mimeType = MultiContextLanguage.ID, contextPolicy = ContextPolicy.SHARED)
     public static class MultiContextLanguage extends ProxyLanguage {
 
         static final String ID = "MultiContextLanguage";

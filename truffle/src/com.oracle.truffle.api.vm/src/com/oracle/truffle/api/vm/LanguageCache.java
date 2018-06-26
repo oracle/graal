@@ -125,7 +125,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.loader = instance.getClass().getClassLoader();
         this.languageClass = (Class<? extends TruffleLanguage<?>>) instance.getClass();
         this.languageHome = null;
-        this.cardinality = ContextPolicy.MULTIPLE;
+        this.cardinality = ContextPolicy.SHARED;
         this.globalInstance = instance;
     }
 
@@ -308,7 +308,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         Class<?> loadedClass = Class.forName(className, true, loader);
                         Registration reg = loadedClass.getAnnotation(Registration.class);
                         if (reg == null) {
-                            cardinality = ContextPolicy.SINGLE;
+                            cardinality = ContextPolicy.EXCLUSIVE;
                         } else {
                             cardinality = loadedClass.getAnnotation(Registration.class).contextPolicy();
                         }

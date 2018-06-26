@@ -145,16 +145,16 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                 return instance;
             }
             switch (cache.getCardinality()) {
-                case SINGLE:
+                case EXCLUSIVE:
                     instance = ensureInitialized(new PolyglotLanguageInstance(this, true));
                     break;
-                case SINGLE_REUSE:
+                case REUSE:
                     instance = instancePool.poll();
                     if (instance == null) {
                         instance = ensureInitialized(new PolyglotLanguageInstance(this, false));
                     }
                     break;
-                case MULTIPLE:
+                case SHARED:
                     instance = instancePool.peek();
                     if (instance == null) {
                         instance = ensureInitialized(new PolyglotLanguageInstance(this, false));
@@ -171,16 +171,16 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     void freeInstance(PolyglotLanguageInstance instance) {
         switch (cache.getCardinality()) {
-            case SINGLE:
+            case EXCLUSIVE:
                 // nothing to do
                 break;
-            case SINGLE_REUSE:
+            case REUSE:
                 synchronized (engine) {
                     instance.profile.notifyLanguageFreed();
                     instancePool.add(instance);
                 }
                 break;
-            case MULTIPLE:
+            case SHARED:
                 // nothing to do
                 break;
             default:
