@@ -222,6 +222,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return "GraalVM " + suffix;
     }
 
+    /**
+     * This method allows retrieval of the compiler configuration without requiring to initialize
+     * the {@link TruffleCompiler} with {@link #getTruffleCompiler()}. The result of this method
+     * should always match {@link TruffleCompiler#getCompilerConfigurationName()}.
+     */
     protected abstract String getCompilerConfigurationName();
 
     protected GraalTVMCI getTvmci() {
