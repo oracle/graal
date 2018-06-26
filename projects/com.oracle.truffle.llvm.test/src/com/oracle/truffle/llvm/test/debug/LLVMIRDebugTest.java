@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.test.debug;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,42 +44,37 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public final class LLVMDebugTest extends LLVMDebugTestBase {
+public final class LLVMIRDebugTest extends LLVMDebugTestBase {
 
-    private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "debug");
-    private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug", "debug");
-    private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug", "trace");
+    private static final String CONFIGURATION = "O0.bc";
 
-    private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";
+    private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "irdebug");
+    private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug", "irdebug");
+    private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug", "trace");
 
-    private static final String BC_O0 = "O0.bc";
-    private static final String BC_O1 = "O1.bc";
-    private static final String BC_MEM2REG = "O0_MEM2REG.bc";
+    private static final String OPTION_LLDEBUG = "llvm.llDebug";
+    private static final String OPTION_LLDEBUG_SOURCES = "llvm.llDebug.sources";
 
-    public LLVMDebugTest(String testName, String configuration) {
-        super(testName, configuration);
+    @Parameters(name = "{0}")
+    public static Collection<Object[]> getConfigurations() {
+        try (Stream<Path> dirs = Files.walk(BC_DIR_PATH)) {
+            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{path.getParent().getFileName().toString(), CONFIGURATION}).collect(Collectors.toSet());
+        } catch (IOException e) {
+            throw new AssertionError("Error while finding tests!", e);
+        }
     }
 
-    @Parameters(name = "{0}_{1}")
-    public static Collection<Object[]> getConfigurations() {
-        final Map<String, String[]> configs = new HashMap<>();
-        configs.put("testPrimitives", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testUnions", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testDecorators", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testFunctionPointer", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testObjectPointer", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testLongDouble", new String[]{BC_O0, BC_MEM2REG});
-        return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
+    public LLVMIRDebugTest(String testName, String configuration) {
+        super(testName, configuration);
     }
 
     @Override
     void setContextOptions(Context.Builder contextBuilder) {
-        contextBuilder.option(OPTION_ENABLE_LVI, String.valueOf(true));
+        contextBuilder.option(OPTION_LLDEBUG, String.valueOf(true));
+
+        final String testName = getTestName();
+        final String sourceMapping = String.format("%s=%s", BC_DIR_PATH.resolve(testName).resolve(CONFIGURATION), SRC_DIR_PATH.resolve(testName + ".ll"));
+        contextBuilder.option(OPTION_LLDEBUG_SOURCES, sourceMapping);
     }
 
     @Override

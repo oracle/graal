@@ -41,6 +41,8 @@ import java.util.stream.IntStream;
 
 final class Trace implements Iterable<StopRequest> {
 
+    private static final String KEYWORD_PARTIAL_SCOPE = "partial";
+
     static Trace parse(Path path) {
         final Trace trace = new Trace();
         try {
@@ -114,14 +116,21 @@ final class Trace implements Iterable<StopRequest> {
                     parseStop(true);
                     break;
 
-                case "OPEN_SCOPE":
-                    final String scopeName = buffer.pollFirst(); // may be null
+                case "OPEN_SCOPE": {
+                    String scopeName = buffer.pollFirst(); // may be null
+                    String partialScope = buffer.pollFirst(); // often null
                     if (structured != null || !parents.isEmpty() || request == null) {
                         error();
                     }
-                    scope = new StopRequest.Scope(scopeName);
+                    if (KEYWORD_PARTIAL_SCOPE.equals(scopeName) && partialScope == null) {
+                        scopeName = null;
+                        partialScope = KEYWORD_PARTIAL_SCOPE;
+                    }
+                    boolean isPartialScope = KEYWORD_PARTIAL_SCOPE.equals(partialScope);
+                    scope = new StopRequest.Scope(scopeName, isPartialScope);
                     request.addScope(scope);
                     break;
+                }
 
                 case "MEMBER":
                     parseMember();

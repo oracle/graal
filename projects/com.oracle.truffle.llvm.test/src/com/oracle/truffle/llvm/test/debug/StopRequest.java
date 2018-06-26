@@ -94,10 +94,12 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
 
         private final Map<String, LLVMDebugValue> expectLocals;
         private final String scopeName;
+        private final boolean isPartial;
 
-        Scope(String scopeName) {
+        Scope(String scopeName, boolean isPartial) {
             this.scopeName = scopeName;
-            expectLocals = new HashMap<>();
+            this.isPartial = isPartial;
+            this.expectLocals = new HashMap<>();
         }
 
         void addMember(String name, LLVMDebugValue value) {
@@ -106,6 +108,10 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
 
         Map<String, LLVMDebugValue> getLocals() {
             return expectLocals;
+        }
+
+        boolean isPartial() {
+            return isPartial;
         }
 
         String getName() {
