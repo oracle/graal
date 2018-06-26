@@ -237,7 +237,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             _jre_bin_names = []
 
-            for _launcher_config in _component.launcher_configs:
+            for _launcher_config in _get_launcher_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + _launcher_config.destination
                 # add `LauncherConfig.destination` to the layout
@@ -332,7 +332,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
         else:
             force_bash = None
             for component in components:
-                for launcher_config in component.launcher_configs:
+                for launcher_config in _get_launcher_configs(component):
                     if _force_bash_launchers(launcher_config, force_bash):
                         components_set.add('b' + basename(launcher_config.destination))
 
@@ -734,7 +734,7 @@ class GraalVmPolyglotLauncher(GraalVmLauncher):
     def __init__(self, suite, deps, workingSets, launcherConfig, **kw_args):
         for component in mx_sdk.graalvm_components():
             if isinstance(component, mx_sdk.GraalVmLanguage) and component.include_in_polyglot:
-                for language_launcher_config in component.launcher_configs:
+                for language_launcher_config in _get_launcher_configs(component):
                     if isinstance(language_launcher_config, mx_sdk.LanguageLauncherConfig):
                         launcherConfig['jar_distributions'] += language_launcher_config.jar_distributions
         launcher_config = mx_sdk.LauncherConfig(**launcherConfig)
@@ -904,7 +904,22 @@ def lock_directory(path):
 
 
 # Those libraries are optional runtime dependencies of SVM
-_known_missing_jars = {'HAMCREST', 'JUNIT', 'JUNIT_TOOL', 'JLINE', 'TRUFFLE_DEBUG'}
+_known_missing_jars = {
+    'HAMCREST',
+    'JUNIT',
+    'JUNIT_TOOL',
+    'JLINE',
+    'TRUFFLE_DEBUG',
+    'NANO_HTTPD',
+    'NANO_HTTPD_WEBSERVER',
+    'JFFI',
+    'JNR_FFI',
+    'JNR_INVOKE',
+    'JFFI_NATIVE',
+    'JNR_POSIX',
+    'JNR_CONSTANTS',
+    'JDK_TOOLS',
+}
 
 
 def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=False, graal_vm=None):
@@ -1127,11 +1142,11 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             return InstallableComponentArchiver(path, self.components[0], **_kw_args)
 
         other_involved_components = []
-        if _get_svm_support().is_supported() and component.launcher_configs:
+        if _get_svm_support().is_supported() and _get_launcher_configs(component):
             other_involved_components += [c for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
-        for launcher_config in component.launcher_configs:
+        for launcher_config in _get_launcher_configs(component):
             if _force_bash_launchers(launcher_config):
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
@@ -1320,6 +1335,30 @@ def register_vm_config(config_name, components):
     _vm_configs[config_name] = components
 
 
+_launcher_configs = None
+
+
+def _get_launcher_configs(component):
+    """ :rtype : list[mx_sdk.LauncherConfig]"""
+    global _launcher_configs
+    if _launcher_configs is None:
+        launchers = {}
+        for component_ in mx_sdk.graalvm_components():
+            for launcher_config in component_.launcher_configs:
+                launcher_name = launcher_config.destination
+                if launcher_name in launchers:
+                    _, prev_component = launchers[launcher_name]
+                    if prev_component.priority > component_.priority:
+                        continue
+                    if prev_component.priority == component_.priority:
+                        raise mx.abort("Conflicting launchers: {} and {} both declare a launcher called {}".format(component_.name, prev_component.name, launcher_name))
+                launchers[launcher_name] = launcher_config, component_
+        _launcher_configs = {}
+        for launcher_config, component_ in launchers.values():
+            _launcher_configs.setdefault(component_.name, []).append(launcher_config)
+    return _launcher_configs.get(component.name, [])
+
+
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     """
     :type register_project: (mx.Project) -> None
@@ -1346,16 +1385,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         names.add(component.name)
         short_names.add(component.short_name)
         id_to_component.setdefault(component.dir_name, []).append(component)
+        if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
+            register_distribution(GraalVmInstallableComponent(component))
         if register_project:
-            if isinstance(component, mx_sdk.GraalVmTruffleComponent):
-                config_class = GraalVmLanguageLauncher
-            else:
-                config_class = GraalVmMiscLauncher
-            for launcher_config in component.launcher_configs:
+            for launcher_config in _get_launcher_configs(component):
+                if isinstance(component, mx_sdk.GraalVmTruffleComponent):
+                    config_class = GraalVmLanguageLauncher
+                else:
+                    config_class = GraalVmMiscLauncher
+                launcher_project = config_class(launcher_config)
                 if not _force_bash_launchers(launcher_config):
                     register_project(config_class(launcher_config, force_bash=True))
                     needs_stage1 = True
-                register_project(config_class(launcher_config))
+                register_project(launcher_project)
         if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
             installable_component = GraalVmInstallableComponent(component)
             register_distribution(installable_component)
