@@ -70,22 +70,12 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
     public void run() throws IOException, InterruptedException {
         Assume.assumeTrue(runtime().getVMConfig().enableStackReservedZoneAddress != 0);
         List<String> vmArgs = SubprocessUtil.withoutDebuggerArguments(SubprocessUtil.getVMCommandLine());
-for (String arg : vmArgs) {
-System.err.println("vmArg: " + arg);
-}
         vmArgs.add("-XX:+UseJVMCICompiler");
         vmArgs.add("-Dgraal.Inline=false");
         vmArgs.add("-XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread");
-vmArgs.add("-XX:CompileCommand=print,org/graalvm/compiler/hotspot/test/ReservedStackAccessTest$ReentrantLockTest.lockAndCall");
-vmArgs.add("-XX:CompileCommand=print,org/graalvm/compiler/hotspot/test/ReservedStackAccessTest$RunWithSOEContext.recursiveCall*");
-vmArgs.add("-XX:CompileCommand=print,org/graalvm/compiler/hotspot/test/ReservedStackAccessTest$RunWithSOEContext.run");
-vmArgs.add("-XX:CompileCommand=print,java/util/concurrent/locks/ReentrantLock$Sync.nonfairTryAcquire");
-vmArgs.add("-XX:CompileCommand=print,java/util/concurrent/locks/ReentrantLock$NonfairSync.tryAcquire");
-
         Subprocess proc = SubprocessUtil.java(vmArgs, ReservedStackAccessTest.class.getName());
         boolean passed = false;
         for (String line : proc.output) {
-System.err.println("out: " + line);
             if (line.equals("RESULT: PASSED")) {
                 passed = true;
             }

@@ -90,6 +90,7 @@ final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
                     Register arg0 = ((RegisterValue)cc.getArgument(0)).getRegister();
                     masm.mov(thread, arg0);
                     SPARCCall.directCall(crb, masm, enableStackReservedZone, null, null);
+                    masm.restoreWindow();
                     SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
                     masm.bind(noReserved);
                 }
