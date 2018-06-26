@@ -132,16 +132,6 @@ daily_vm_darwin: ${vm_darwin} {
   targets: [daily]
 }
 
-vm_deploy: {
-  run: [
-    ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-    ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
-    ${mx_vm_common} [build]
-    ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
-  ]
-}
-
-
 mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
 mx_vm_installables: ${mx_vm_common} [--disable-libpolyglot, --disable-polyglot, "--force-bash-launchers=lli,native-image"]
 
@@ -167,31 +157,31 @@ builds += [
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
   },
-  ${full_vm_build_darwin} ${darwin-deploy} ${gate_vm_darwin} {
+  ${full_vm_build_linux} ${linux-deploy} ${post-merge_vm_linux} {
     run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
       ${mx_vm_common} [build]
       ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
     ]
-    timelimit: "3:00:00"
-    name: ondemand-vm-build-base-darwin-amd64
-    targets: [on-demand]  # override target on darwin for now to get a lighter gate
+    timelimit: "45:00"
+    name: deploy-vm-linux-amd64
   },
-  ${full_vm_build_darwin} ${darwin-deploy} ${gate_vm_darwin} {
+  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
     ]
-    timelimit: "3:00:00"
-    name: ondemand-vm-build-all-darwin-amd64
-    targets: [on-demand]  # override target on darwin for now to get a lighter gate
-  },
-  ${full_vm_build_linux} ${linux-deploy} ${post-merge_vm_linux} ${vm_deploy} {
-    timelimit: "45:00"
-    name: deploy-vm-build-linux-amd64
-  },
-  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} ${vm_deploy} {
     timelimit: "1:30:00"
-    name: deploy-vm-build-darwin-amd64
+    name: deploy-vm-installable-darwin-amd64
+  },
+  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+    run: [
+      ${mx_vm_common} [build]
+      ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-base-darwin-amd64
   },
   ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
