@@ -134,6 +134,8 @@ daily_vm_darwin: ${vm_darwin} {
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
 mx_vm_installables: ${mx_vm_common} [--disable-libpolyglot, --disable-polyglot, "--force-bash-launchers=lli,native-image"]
+maven_deploy_vm: [--suite, vm, maven-deploy, --validate, none, --all-distributions, --with-suite-revisions-metadata, ${binaries-repository}]
+maven_deploy_dry_run_vm: [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, --with-suite-revisions-metadata, ${binaries-repository}]
 
 full_vm_build_linux: ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
@@ -148,11 +150,11 @@ builds += [
   ${full_vm_build_linux} ${linux-deploy} ${gate_vm_linux} {
     run: [
       ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
       ${mx_vm_common} [build]
-      ${mx_vm_common} [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_common}  ${maven_deploy_dry_run_vm}
     ]
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
@@ -160,9 +162,9 @@ builds += [
   ${full_vm_build_linux} ${linux-deploy} ${post-merge_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
       ${mx_vm_common} [build]
-      ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_common} ${maven_deploy_vm}
     ]
     timelimit: "45:00"
     name: deploy-vm-linux-amd64
@@ -170,7 +172,7 @@ builds += [
   ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, --suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
     ]
     timelimit: "1:30:00"
     name: deploy-vm-installable-darwin-amd64
@@ -178,7 +180,7 @@ builds += [
   ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
     run: [
       ${mx_vm_common} [build]
-      ${mx_vm_common} [--suite, vm, maven-deploy, --validate, none, --all-distributions, ${binaries-repository}]
+      ${mx_vm_common} ${maven_deploy_vm}
     ]
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64
