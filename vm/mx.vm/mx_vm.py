@@ -1385,8 +1385,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         names.add(component.name)
         short_names.add(component.short_name)
         id_to_component.setdefault(component.dir_name, []).append(component)
-        if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
-            register_distribution(GraalVmInstallableComponent(component))
         if register_project:
             for launcher_config in _get_launcher_configs(component):
                 if isinstance(component, mx_sdk.GraalVmTruffleComponent):
@@ -1505,7 +1503,7 @@ def _force_bash_launchers(launcher, forced=None):
 
 
 def _has_forced_launchers(component, forced=None):
-    for launcher_config in component.launcher_configs:
+    for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config, forced):
             return True
     return False
