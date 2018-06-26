@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,12 +40,13 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = Type.class, name = "symbolType")})
-public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
+public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
     abstract int getSize();
 
@@ -63,7 +64,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
         return stackPointer;
     }
 
-    public abstract static class LLVMAllocaConstInstruction extends LLVMAllocInstruction {
+    public abstract static class LLVMGetStackForConstInstruction extends LLVMGetStackSpaceInstruction {
 
         @CompilationFinal(dimensions = 1) private Type[] types = null;
         @CompilationFinal(dimensions = 1) private int[] offsets = null;
@@ -88,6 +89,10 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
             return offsets.length;
         }
 
+    }
+
+    public abstract static class LLVMAllocaConstInstruction extends LLVMGetStackForConstInstruction {
+
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -95,8 +100,19 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
         }
     }
 
+    @NodeField(type = UniqueSlot.class, name = "uniqueSlot")
+    public abstract static class LLVMGetUniqueStackSpaceInstruction extends LLVMGetStackForConstInstruction {
+
+        abstract UniqueSlot getUniqueSlot();
+
+        @Specialization
+        protected LLVMNativePointer doOp(VirtualFrame frame) {
+            return LLVMNativePointer.create(getUniqueSlot().toPointer(frame, getStackPointerSlot()));
+        }
+    }
+
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
+    public abstract static class LLVMAllocaInstruction extends LLVMGetStackSpaceInstruction {
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,

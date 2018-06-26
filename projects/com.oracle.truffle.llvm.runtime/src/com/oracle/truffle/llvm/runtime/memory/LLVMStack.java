@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -49,6 +50,7 @@ public final class LLVMStack {
     private boolean isAllocated;
 
     private long stackPointer;
+    private long uniquesRegionPointer;
 
     public LLVMStack(int stackSize) {
         this.stackSize = stackSize;
@@ -60,11 +62,12 @@ public final class LLVMStack {
     }
 
     public final class StackPointer implements AutoCloseable {
-
         private long basePointer;
+        private long uniquesRegionBasePointer;
 
-        private StackPointer(long basePointer) {
+        private StackPointer(long basePointer, long uniquesRegionBasePointer) {
             this.basePointer = basePointer;
+            this.uniquesRegionBasePointer = uniquesRegionBasePointer;
         }
 
         public long get(LLVMMemory memory) {
@@ -79,16 +82,81 @@ public final class LLVMStack {
             stackPointer = sp;
         }
 
+        public long getUniquesRegionPointer() {
+            return uniquesRegionPointer;
+        }
+
+        public void setUniquesRegionPointer(long urp) {
+            uniquesRegionPointer = urp;
+        }
+
         @Override
         public void close() {
             if (basePointer != 0) {
                 stackPointer = basePointer;
+                uniquesRegionPointer = uniquesRegionBasePointer;
             }
         }
 
         public StackPointer newFrame() {
-            return new StackPointer(stackPointer);
+            return new StackPointer(stackPointer, uniquesRegionPointer);
         }
+    }
+
+    /**
+     * Implements a stack region dedicated to values which should be bound to unique frame slots.
+     *
+     * Adding a slot to the region will extend it according to the specified slot size and slot
+     * alignment. The {@link #addSlot} method will return a handle to the new slot in the form of a
+     * {@link UniqueSlot}. In combination with a stack pointer this handle can be resolved to an
+     * address pointing to the corresponding pre-allocated slot on the current stack frame. This
+     * requires that the region has already been allocated on the current stack frame through the
+     * {@link #allocate} method. Aside from allocating memory, this method is responsible for
+     * setting the region's base pointer for the current stack frame. A {@link UniqueSlot} uses the
+     * region's base pointer to resolve its internal unique relative address to an absolute address.
+     */
+    public static final class UniquesRegion {
+        private long currentSlotPointer = 0;
+        private int alignment = 1;
+
+        public UniqueSlot addSlot(int slotSize, int slotAlignment) {
+            CompilerAsserts.neverPartOfCompilation();
+            currentSlotPointer = getAlignedAllocation(currentSlotPointer, slotSize, slotAlignment);
+            // maximum of current alignment, slot alignment and the alignment masking slot size
+            alignment = Integer.highestOneBit(alignment | slotAlignment | Integer.highestOneBit(slotSize) << 1);
+            return new UniqueSlot(currentSlotPointer);
+        }
+
+        void allocate(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot) {
+            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+            long stackPointer = basePointer.get(memory);
+            assert stackPointer != 0;
+            long uniquesRegionBasePointer = getAlignedBasePointer(stackPointer);
+            long uniquesRegionSize = stackPointer - uniquesRegionBasePointer - currentSlotPointer;
+            basePointer.setUniquesRegionPointer(uniquesRegionBasePointer);
+            allocateStackMemory(memory, basePointer, uniquesRegionSize, NO_ALIGNMENT_REQUIREMENTS);
+        }
+
+        long getAlignedBasePointer(long address) {
+            assert alignment != 0 && powerOfTwo(alignment);
+            return address & -alignment;
+        }
+
+        public final class UniqueSlot {
+            private final long address;
+
+            private UniqueSlot(long address) {
+                this.address = address;
+            }
+
+            public long toPointer(VirtualFrame frame, FrameSlot stackPointerSlot) {
+                StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+                long uniquesRegionPointer = basePointer.getUniquesRegionPointer();
+                assert uniquesRegionPointer != 0;
+                return uniquesRegionPointer + address;
+            }
+        }
+
     }
 
     @TruffleBoundary
@@ -109,7 +177,7 @@ public final class LLVMStack {
     }
 
     public StackPointer newFrame() {
-        return new StackPointer(stackPointer);
+        return new StackPointer(stackPointer, uniquesRegionPointer);
     }
 
     @TruffleBoundary
@@ -129,14 +197,23 @@ public final class LLVMStack {
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
     public static long allocateStackMemory(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot, final long size, final int alignment) {
-        assert size >= 0;
-        assert alignment != 0 && powerOfTwo(alignment);
         StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+        return allocateStackMemory(memory, basePointer, size, alignment);
+    }
+
+    private static long allocateStackMemory(LLVMMemory memory, StackPointer basePointer, final long size, final int alignment) {
         long stackPointer = basePointer.get(memory);
         assert stackPointer != 0;
-        final long alignedAllocation = (stackPointer - size) & -alignment;
-        assert alignedAllocation <= stackPointer;
+        long alignedAllocation = getAlignedAllocation(stackPointer, size, alignment);
         basePointer.set(alignedAllocation);
+        return alignedAllocation;
+    }
+
+    private static long getAlignedAllocation(long address, long size, int alignment) {
+        assert size >= 0;
+        assert alignment != 0 && powerOfTwo(alignment);
+        long alignedAllocation = (address - size) & -alignment;
+        assert alignedAllocation <= address;
         return alignedAllocation;
     }
 
