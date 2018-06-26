@@ -1496,6 +1496,17 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns <code>true</code> if the argument is a Java host language function wrapped using
+         * Truffle interop.
+         *
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public boolean isHostFunction(Object value) {
+            return AccessAPI.javaAccess().isHostFunction(value);
+        }
+
+        /**
          * Find a meta-object of a value, if any. The meta-object represents a description of the
          * object, reveals it's kind and it's features. Some information that a meta-object might
          * define includes the base object's type, interface, class, methods, attributes, etc.
