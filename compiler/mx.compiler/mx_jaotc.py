@@ -172,8 +172,7 @@ def check_aot(classpath, main_class, common_opts, expected_output, lib_module):
     out = mx.OutputCapture()
     mx_compiler.run_vm(common_opts + aot_opts + ['-XX:+PrintAOT', '-version'], out=out, err=subprocess.STDOUT)
     if 'aot library' not in out.data:
-        if mx._opts.verbose:
-            mx.log(out.data)
+        mx.logv(out.data)
         mx.abort("Missing expected 'aot library' in -XX:+PrintAOT -version output")
 
     # Run main_class+AOT modules and check output.
