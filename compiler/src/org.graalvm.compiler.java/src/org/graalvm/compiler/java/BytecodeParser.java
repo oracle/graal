@@ -1405,7 +1405,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (profile == null || profile.getNotRecordedProbability() > 0.0) {
             return null;
         } else {
-            return append(new ValueAnchorNode(null));
+            return BeginNode.prevBegin(lastInstr);
         }
     }
 
