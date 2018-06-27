@@ -31,6 +31,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
@@ -49,11 +51,14 @@ import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.OutputConsumerInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.PropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
+
+import org.graalvm.collections.Pair;
 
 public final class TruffleRuntime extends RuntimeDomain {
 
@@ -175,6 +180,7 @@ public final class TruffleRuntime extends RuntimeDomain {
                 context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
                     @Override
                     public Void executeCommand() throws CommandProcessException {
+                        suspendedInfo.lastEvaluatedValue.set(null);
                         JSONObject result;
                         DebugValue value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
                         if (returnByValue) {
@@ -183,6 +189,9 @@ public final class TruffleRuntime extends RuntimeDomain {
                             RemoteObject ro = new RemoteObject(value, context.getErr());
                             context.getRemoteObjectsHandler().register(ro);
                             result = ro.toJSON();
+                            if (!ro.isReplicable()) {
+                                suspendedInfo.lastEvaluatedValue.set(Pair.create(value, ro.getRawValue()));
+                            }
                         }
                         json.put("result", result);
                         return null;
@@ -330,6 +339,15 @@ public final class TruffleRuntime extends RuntimeDomain {
                             JSONObject result;
                             if (functionDeclaration.startsWith("function getCompletions(")) {
                                 result = createCodecompletion(value);
+                            } else if (functionDeclaration.equals("function(a, b) { this[a] = b; }")) {
+                                // Set of an array element, or object property
+                                if (arguments.length() < 2) {
+                                    throw new CommandProcessException("Insufficient number of arguments: " + arguments.length() + ", expecting: 2");
+                                }
+                                Object property = ((JSONObject) arguments.get(0)).get("value");
+                                CallArgument newValue = CallArgument.get((JSONObject) arguments.get(1));
+                                setPropertyValue(value, property, newValue, suspendedInfo.lastEvaluatedValue.getAndSet(null));
+                                result = new JSONObject();
                             } else {
                                 String code = "(" + functionDeclaration + ")(" + value.getName() + ")";
                                 DebugValue eval = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(code);
@@ -357,6 +375,40 @@ public final class TruffleRuntime extends RuntimeDomain {
             }
         }
         return new Params(json);
+    }
+
+    private void setPropertyValue(DebugValue object, Object property, CallArgument newValue, Pair<DebugValue, Object> evaluatedValue) throws CommandProcessException {
+        DebugValue propValue;
+        Number index = null;
+        if (object.isArray()) {
+            if (property instanceof Number) {
+                index = (Number) property;
+            } else {
+                try {
+                    index = Integer.parseUnsignedInt(property.toString());
+                } catch (NumberFormatException ex) {
+                    // It's a String property
+                }
+            }
+        }
+        if (index != null) {
+            List<DebugValue> array = object.getArray();
+            int i = index.intValue();
+            if (i < 0 || array.size() <= i) {
+                throw new CommandProcessException("Bad array index: " + i + " array size = " + array.size());
+            }
+            propValue = array.get(i);
+        } else {
+            propValue = object.getProperty(property.toString());
+            if (propValue == null) {
+                throw new CommandProcessException("No property named " + property.toString() + " was found.");
+            }
+        }
+        if (evaluatedValue != null && Objects.equals(evaluatedValue.getRight(), newValue.getPrimitiveValue())) {
+            propValue.set(evaluatedValue.getLeft());
+        } else {
+            context.setValue(propValue, newValue);
+        }
     }
 
     private JSONObject createCodecompletion(DebugValue value) {

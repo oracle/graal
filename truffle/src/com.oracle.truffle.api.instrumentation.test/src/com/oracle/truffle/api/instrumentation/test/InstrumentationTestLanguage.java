@@ -78,6 +78,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -163,7 +164,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT, TRY_CATCH};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
                     "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW"};
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -320,7 +321,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
             int argumentIndex = 0;
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP") ||
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") || tag.equals("SLEEP") ||
                             tag.equals("SPAWN") | tag.equals("CATCH")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT") || tag.equals("THROW")) {
@@ -435,6 +436,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new CatchNode(idents[0], childArray);
                 case "THROW":
                     return new ThrowNode(idents[0], idents[1]);
+                case "UNEXPECTED_RESULT":
+                    return new UnexpectedResultNode(idents[0]);
                 default:
                     throw new AssertionError();
             }
@@ -627,7 +630,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
 
         @Override
-        public final boolean hasTag(Class<? extends Tag> tag) {
+        public boolean hasTag(Class<? extends Tag> tag) {
             if (tag == StandardTags.RootTag.class) {
                 return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
@@ -1162,6 +1165,73 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             return 1;
+        }
+    }
+
+    @GenerateWrapper
+    public static class TypeSpecializedNode extends InstrumentedNode implements InstrumentableNode {
+
+        private String value;
+
+        public TypeSpecializedNode() {
+            super(null);
+        }
+
+        public TypeSpecializedNode(String value) {
+            super(null);
+            this.value = value;
+        }
+
+        @SuppressWarnings("unused")
+        public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            throw new UnexpectedResultException(value);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new AssertionError();
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new TypeSpecializedNodeWrapper(this, probe);
+        }
+
+        @Override
+        public final boolean hasTag(Class<? extends Tag> tag) {
+            if (tag.equals(StandardTags.StatementTag.class)) {
+                return true;
+            }
+            return super.hasTag(tag);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return Source.newBuilder("UnexpectedResultException(" + value + ")").name("unexpected").mimeType(MIME_TYPE).build().createSection(1);
+        }
+    }
+
+    private static class UnexpectedResultNode extends InstrumentedNode {
+
+        UnexpectedResultNode(String value) {
+            super(new BaseNode[]{new TypeSpecializedNode(value)});
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            try {
+                return ((TypeSpecializedNode) children[0]).executeInt(frame);
+            } catch (UnexpectedResultException e) {
+                return e.getResult();
+            }
+        }
+
+        @Override
+        public final boolean hasTag(Class<? extends Tag> tag) {
+            if (tag.equals(StandardTags.StatementTag.class)) {
+                return true;
+            }
+            return super.hasTag(tag);
         }
     }
 

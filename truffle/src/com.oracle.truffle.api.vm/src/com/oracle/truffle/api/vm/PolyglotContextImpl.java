@@ -63,6 +63,8 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 
 @SuppressWarnings("deprecation")
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -132,6 +134,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
     FileSystem fileSystem;  // effectively final
+    Handler logHandler;
+    Map<String, Level> logLevels;    // effectively final
 
     /* Constructor for testing. */
     private PolyglotContextImpl() {
@@ -142,6 +146,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         parent = null;
         polyglotHostBindings = null;
         polyglotBindings = null;
+        logLevels = Collections.emptyMap();
     }
 
     /*
@@ -158,12 +163,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     Map<String, String> options,
                     Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages,
-                    FileSystem fileSystem) {
+                    FileSystem fileSystem,
+                    Handler logHandler) {
         super(engine.impl);
         this.parent = null;
         this.engine = engine;
         this.fileSystem = fileSystem;
-        patchInstance(out, err, in, hostAccessAllowed, nativeAccessAllowed, createThreadAllowed, hostClassLoadingAllowed, classFilter, applicationArguments, allowedPublicLanguages);
+        patchInstance(out, err, in, hostAccessAllowed, nativeAccessAllowed, createThreadAllowed, hostClassLoadingAllowed, classFilter, applicationArguments, allowedPublicLanguages, logHandler);
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
         PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
@@ -176,15 +182,32 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
 
         // process language specific options
+        logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
-            final PolyglotLanguage language = findLanguageForOption(optionKey);
-            this.contexts[language.index].getOptionValues().put(optionKey, options.get(optionKey));
+            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+            PolyglotLanguage language = engine.idToLanguage.get(group);
+            if (language != null) {
+                assert !engine.isEngineGroup(group);
+                this.contexts[language.index].getOptionValues().put(optionKey, options.get(optionKey));
+                continue;
+            }
+            if (engine.isEngineGroup(group)) {
+                invalidEngineOption(optionKey);
+            }
+            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+                logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
+                continue;
+            }
+            throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);
         }
         hostContext.ensureInitialized(null);
         PolyglotContextImpl.initializeStaticContext(this);
 
         this.polyglotBindings = new ConcurrentHashMap<>();
         this.polyglotHostBindings = getAPIAccess().newValue(polyglotBindings, new PolyglotBindingsValue(hostContext));
+        if (!this.logLevels.isEmpty()) {
+            VMAccessor.LANGUAGE.configureLoggers(this, logLevels);
+        }
         this.truffleContext = VMAccessor.LANGUAGE.createTruffleContext(this);
         VMAccessor.INSTRUMENT.notifyContextCreated(engine, truffleContext);
     }
@@ -1006,6 +1029,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 VMAccessor.INSTRUMENT.notifyThreadFinished(engine, truffleContext, thread);
             }
             VMAccessor.INSTRUMENT.notifyContextClosed(engine, truffleContext);
+            if (parent == null) {
+                if (!this.logLevels.isEmpty()) {
+                    VMAccessor.LANGUAGE.configureLoggers(this, null);
+                }
+                if (logHandler != null) {
+                    logHandler.close();
+                    logHandler = null;
+                }
+            }
         }
         return true;
     }
@@ -1043,22 +1075,39 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     boolean patch(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
                     boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
-                    Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem) {
+                    Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem, Handler newLogHandler) {
         CompilerAsserts.neverPartOfCompilation();
         patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newNativeAccessAllowed, newCreateThreadAllowed, newHostClassLoadingAllowed, newClassFilter, newApplicationArguments,
-                        newAllowedPublicLanguages);
+                        newAllowedPublicLanguages, newLogHandler);
         ((FileSystems.PreInitializeContextFileSystem) fileSystem).patchDelegate(newFileSystem);
         final Map<String, Map<String, String>> optionsByLanguage = new HashMap<>();
+        logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : newOptions.keySet()) {
-            final PolyglotLanguage language = findLanguageForOption(optionKey);
-            Map<String, String> languageOptions = optionsByLanguage.get(language.getId());
-            if (languageOptions == null) {
-                languageOptions = new HashMap<>();
-                optionsByLanguage.put(language.getId(), languageOptions);
+            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+            PolyglotLanguage language = engine.idToLanguage.get(group);
+            if (language != null) {
+                assert !engine.isEngineGroup(group);
+                Map<String, String> languageOptions = optionsByLanguage.get(language.getId());
+                if (languageOptions == null) {
+                    languageOptions = new HashMap<>();
+                    optionsByLanguage.put(language.getId(), languageOptions);
+                }
+                languageOptions.put(optionKey, newOptions.get(optionKey));
+                continue;
             }
-            languageOptions.put(optionKey, newOptions.get(optionKey));
+            if (engine.isEngineGroup(group)) {
+                invalidEngineOption(optionKey);
+            }
+            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+                logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(newOptions.get(optionKey)));
+                continue;
+            }
+            throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);
         }
         initializeStaticContext(this);
+        if (!this.logLevels.isEmpty()) {
+            VMAccessor.LANGUAGE.configureLoggers(this, logLevels);
+        }
         final Object prev = enter();
         try {
             for (int i = 1; i < this.contexts.length; i++) {
@@ -1075,7 +1124,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private void patchInstance(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
                     boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
-                    Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages) {
+                    Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, Handler newLogHandler) {
         this.hostAccessAllowed = newHostAccessAllowed;
         this.nativeAccessAllowed = newNativeAccessAllowed;
         this.createThreadAllowed = newCreateThreadAllowed;
@@ -1095,26 +1144,17 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         this.in = newIn == null ? engine.in : newIn;
         this.allowedPublicLanguages = newAllowedPublicLanguages;
+        final Handler configuredHandler = newLogHandler != null ? newLogHandler : engine.logHandler;
+        this.logHandler = configuredHandler != null ? configuredHandler : PolyglotLogHandler.createStreamHandler(this.out, false);
     }
 
-    private PolyglotLanguage findLanguageForOption(final String optionKey) {
-        String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
-        PolyglotLanguage language = engine.idToLanguage.get(group);
-        if (language == null) {
-            if (engine.isEngineGroup(group)) {
-                // Test that "engine options" are not present among the options designated for
-                // this context
-                if (engine.getAllOptions().get(optionKey) != null) {
-                    throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
-                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
-                }
-            }
-            throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);
-        } else {
-            // there should not be any overlaps -> engine creation should already fail
-            assert !engine.isEngineGroup(group);
+    private void invalidEngineOption(final String optionKey) {
+        // Test that "engine options" are not present among the options designated for
+        // this context
+        if (engine.getAllOptions().get(optionKey) != null) {
+            throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
+                            " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
         }
-        return language;
     }
 
     static PolyglotContextImpl preInitialize(final PolyglotEngineImpl engine) {
@@ -1132,7 +1172,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         Collections.emptyMap(),
                         Collections.emptyMap(),
                         engine.getLanguages().keySet(),
-                        fs);
+                        fs,
+                        null);
         final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
         if (optionValue != null && !optionValue.isEmpty()) {
             final Set<String> languagesToPreinitialize = new HashSet<>();
@@ -1158,6 +1199,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             } finally {
                 context.inContextPreInitialization = false;
                 fs.patchDelegate(FileSystems.newNoIOFileSystem(null));
+                if (!context.logLevels.isEmpty()) {
+                    VMAccessor.LANGUAGE.configureLoggers(context, null);
+                }
+                context.logHandler = null;
+                context.logLevels.clear();
             }
         }
         // Need to clean up Threads before storing SVM image

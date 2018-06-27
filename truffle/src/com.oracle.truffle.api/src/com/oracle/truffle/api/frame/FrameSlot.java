@@ -103,8 +103,8 @@ public final class FrameSlot implements Cloneable {
 
     /**
      * Changes the kind of this slot. Change of the slot kind is done on <em>slow path</em> and
-     * invalidates assumptions about version of the {@link #getFrameDescriptor() associated
-     * descriptor}.
+     * invalidates assumptions about version of the {@link FrameDescriptor descriptor} it belongs
+     * to.
      *
      * @param kind new kind of the slot
      * @since 0.8 or earlier
@@ -136,7 +136,11 @@ public final class FrameSlot implements Cloneable {
      * @return instance of descriptor that {@link FrameDescriptor#addFrameSlot(java.lang.Object)
      *         created} the slot
      * @since 0.8 or earlier
+     * @deprecated in 1.0 without direct replacement. When {@link FrameDescriptor#shallowCopy()} is
+     *             removed the frame slot will always belong only to the descriptor which created
+     *             it.
      */
+    @Deprecated
     public FrameDescriptor getFrameDescriptor() {
         return this.descriptor;
     }

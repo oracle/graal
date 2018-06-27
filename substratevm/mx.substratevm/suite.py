@@ -22,13 +22,6 @@ suite = {
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
-            {
-                "name" : "tools",
-                "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
-            },
         ]
     },
 
@@ -426,24 +419,6 @@ suite = {
                 "OS": "<os>"
             },
         },
-
-        "bootstrap.native-image" : {
-            "class" : "BootstrapNativeImage",
-            "buildDependencies": [
-                "SVM_DRIVER",
-                'tools:CHROMEINSPECTOR',
-                'tools:TRUFFLE_PROFILER',
-            ],
-            "svm" : [
-                "SVM"
-            ],
-            "svmSupport" : [
-                "LIBRARY_SUPPORT"
-            ],
-            "graal" : [
-                "compiler:GRAAL"
-            ],
-        },
     },
 
     "distributions": {
@@ -556,14 +531,6 @@ suite = {
             ],
             "exclude": [
             ]
-        },
-
-        "NATIVE_IMAGE": {
-            "native": True,
-            "dependencies": [
-                "bootstrap.native-image",
-            ],
-            "output": "svmbuild/native-image-root",
         },
 
         "POLYGLOT_NATIVE_API" : {

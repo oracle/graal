@@ -111,7 +111,7 @@ public class FrameDescriptorTest {
         assertEquals(first.getKind(), FrameSlotKind.Float);
         assertEquals(first.getIndex(), 1);
 
-        FrameDescriptor copy = d.shallowCopy();
+        FrameDescriptor copy = getShallowCopy(d);
 
         assertEquals(2, copy.getSize());
         final FrameSlot firstCopy = copy.getSlots().get(1);
@@ -136,6 +136,11 @@ public class FrameDescriptorTest {
         d.removeFrameSlot("v3");
         assertNotEquals("A slot was removed from original, its version has to be updated", originalVersion, d.getVersion());
         assertEquals("A slot was removed from original but not from the copy, its version has remain", copyVersion, copy.getVersion());
+    }
+
+    @SuppressWarnings("deprecation")
+    private static FrameDescriptor getShallowCopy(FrameDescriptor d) {
+        return d.shallowCopy();
     }
 
     @Test
@@ -213,7 +218,7 @@ public class FrameDescriptorTest {
         assertEquals("a", frame.getObject(slot1));
         assertEquals("b", frame.getObject(slot2));
         assertEquals(2, frameDescriptor.getSize());
-        assertEquals(2, frameDescriptor.shallowCopy().getSize());
+        assertEquals(2, getShallowCopy(frameDescriptor).getSize());
 
         frameDescriptor.removeFrameSlot("var1");
         assertNull(frameDescriptor.findFrameSlot("var1"));
