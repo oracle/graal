@@ -3022,7 +3022,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void pmovzxbw(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.SSE4_2);
+        assert supports(CPUFeature.AVX) || supports(CPUFeature.SSE4_1);
         // XXX legacy_mode should be: _legacy_mode_bw
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
         attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
@@ -3032,9 +3032,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void pmovzxbw(Register dst, Register src) {
+        assert supports(CPUFeature.AVX) || supports(CPUFeature.SSE4_1);
         assert dst.getRegisterCategory().equals(AMD64.XMM);
         assert src.getRegisterCategory().equals(AMD64.XMM);
-        assert supports(CPUFeature.AVX);
 
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
         int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
