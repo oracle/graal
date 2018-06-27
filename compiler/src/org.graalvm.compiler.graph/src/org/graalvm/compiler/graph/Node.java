@@ -913,6 +913,14 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
+    public void replaceFirstInput(Node oldInput, Node newInput, InputType type) {
+        for (Position pos : inputPositions()) {
+            if (pos.getInputType() == type && pos.get(this) == oldInput) {
+                pos.set(this, newInput);
+            }
+        }
+    }
+
     public void clearInputs() {
         assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
         getNodeClass().unregisterAtInputsAsUsage(this);
