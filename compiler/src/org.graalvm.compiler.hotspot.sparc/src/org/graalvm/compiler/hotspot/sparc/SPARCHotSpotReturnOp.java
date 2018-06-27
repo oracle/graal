@@ -87,7 +87,7 @@ final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
                     ForeignCallLinkage enableStackReservedZone = foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE);
                     CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
                     assert cc.getArgumentCount() == 1;
-                    Register arg0 = ((RegisterValue)cc.getArgument(0)).getRegister();
+                    Register arg0 = ((RegisterValue) cc.getArgument(0)).getRegister();
                     masm.mov(thread, arg0);
                     SPARCCall.directCall(crb, masm, enableStackReservedZone, null, null);
                     masm.restoreWindow();
