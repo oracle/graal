@@ -22,6 +22,11 @@ suite = {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
     },
+    "lafo" : {
+      "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+      "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+    },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "defaultLicense" : "GPLv2-CPE",
