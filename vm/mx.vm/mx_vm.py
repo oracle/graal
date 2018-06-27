@@ -1487,6 +1487,51 @@ def log_graalvm_home(args):
     mx.log(graalvm_home())
 
 
+def graalvm_show(args):
+    """print the GraalVM config"""
+    parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
+    _ = parser.parse_args(args)
+
+    graalvm_dist = get_final_graalvm_distribution()
+    mx.log("GraalVM distribution: {}".format(graalvm_dist))
+    mx.log("Version: {}".format(_suite.release_version()))
+    mx.log("Components:")
+    for component in mx_sdk.graalvm_components():
+        mx.log(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
+
+    launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
+    if launchers:
+        mx.log("Launchers:")
+        for launcher in launchers:
+            mx.log(" - {} ({})".format(launcher.native_image_name, "native" if launcher.is_native() else "bash"))
+    else:
+        mx.log("No launcher")
+
+    libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
+    if libraries:
+        mx.log("Libraries:")
+        for library in libraries:
+            mx.log(" - {}".format(library.native_image_name))
+    else:
+        mx.log("No library")
+
+    installables = [d for d in _suite.dists if isinstance(d, GraalVmInstallableComponent)]
+    if installables:
+        mx.log("Installables:")
+        for i in installables:
+            mx.log(" - {}".format(i))
+    else:
+        mx.log("No installable")
+
+    standalones = [d for d in _suite.dists if isinstance(d, GraalVmStandaloneComponent)]
+    if standalones:
+        mx.log("Standalones:")
+        for s in standalones:
+            mx.log(" - {}".format(s))
+    else:
+        mx.log("No standalone")
+
+
 def _env_var_to_bool(name, default='false'):
     val = mx.get_env(name, default)
     b = _str_to_bool(val)
@@ -1576,4 +1621,5 @@ mx.update_commands(_suite, {
     'graalvm-dist-name': [log_graalvm_dist_name, ''],
     'graalvm-version': [log_graalvm_version, ''],
     'graalvm-home': [log_graalvm_home, ''],
+    'graalvm-show': [graalvm_show, ''],
 })
