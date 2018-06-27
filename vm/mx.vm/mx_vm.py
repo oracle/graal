@@ -1399,8 +1399,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         names.add(component.name)
         short_names.add(component.short_name)
         id_to_component.setdefault(component.dir_name, []).append(component)
-        if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
-            register_distribution(GraalVmInstallableComponent(component))
         if register_project:
             if isinstance(component, mx_sdk.GraalVmTruffleComponent):
                 config_class = GraalVmLanguageLauncher
