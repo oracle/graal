@@ -32,12 +32,10 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.vm.PolyglotLanguage.ContextProfile;
 
 final class PolyglotLanguageInstance {
 
     final PolyglotLanguage language;
-    final ContextProfile profile;
     final TruffleLanguage<?> spi;
     final boolean singleContext;
 
@@ -48,10 +46,9 @@ final class PolyglotLanguageInstance {
     PolyglotLanguageInstance(PolyglotLanguage language, boolean singleContext) {
         this.singleContext = singleContext;
         this.language = language;
-        this.profile = new ContextProfile(this);
         try {
             this.spi = language.cache.loadLanguage();
-            LANGUAGE.initializeLanguage(spi, language.info, this);
+            LANGUAGE.initializeLanguage(spi, language.info, language);
 
             if (!language.engine.singleContext.isValid()) {
                 initializeMultiContext();

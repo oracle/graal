@@ -61,6 +61,8 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     private volatile PolyglotLanguageInstance initLanguage = null;
     private final Queue<PolyglotLanguageInstance> instancePool = new ConcurrentLinkedQueue<>();
 
+    final ContextProfile profile;
+
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
         super(engine.impl);
         this.engine = engine;
@@ -68,6 +70,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.initError = initError;
         this.index = index;
         this.host = host;
+        this.profile = new ContextProfile(this);
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal());
     }
 
@@ -176,7 +179,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                 break;
             case REUSE:
                 synchronized (engine) {
-                    instance.profile.notifyLanguageFreed();
+                    profile.notifyLanguageFreed();
                     instancePool.add(instance);
                 }
                 break;
@@ -242,12 +245,12 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         private static final Object UNSET_CONTEXT = new Object();
 
-        private final PolyglotLanguageInstance instance;
+        private final PolyglotLanguage language;
         private final Assumption singleContext = Truffle.getRuntime().createAssumption("Language single context.");
         @CompilationFinal private volatile Object cachedSingleContext = UNSET_CONTEXT;
 
-        ContextProfile(PolyglotLanguageInstance language) {
-            this.instance = language;
+        ContextProfile(PolyglotLanguage language) {
+            this.language = language;
         }
 
         Object get() {
@@ -264,11 +267,13 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         private boolean assertCorrectEngine() {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguageContext languageContext = context.getContext(instance.language);
-            if (languageContext.isInitialized() && languageContext.getLanguageInstance() != instance) {
+            PolyglotLanguageContext languageContext = context.getContext(language);
+            if (languageContext.isInitialized() && languageContext.language.engine != language.engine) {
                 throw new AssertionError(String.format("Context reference was used from an Engine that is currently not entered. " +
-                                "ContextReference of language %s was used but language %s is currently entered. " +
-                                "ContextReference must not be shared between multiple TruffleLanguage instances.", languageContext.getLanguageInstance(), instance));
+                                "ContextReference of engine %s was used but engine %s is currently entered. " +
+                                "ContextReference must not be shared between multiple Engine instances.",
+                                languageContext.language.engine.creatorApi,
+                                language.engine.creatorApi));
             }
             return true;
         }
@@ -283,7 +288,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         }
 
         private Object lookupLanguageContext(PolyglotContextImpl context) {
-            Env env = context.getContext(instance.language).env;
+            Env env = context.getContext(language).env;
             if (env == null) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("The language context is not yet initialized or already disposed.");

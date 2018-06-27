@@ -269,7 +269,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
                         try {
                             LANGUAGE.createEnvContext(localEnv);
-                            lang.profile.notifyContextCreate(localEnv);
+                            lang.language.profile.notifyContextCreate(localEnv);
                             if (eventsEnabled) {
                                 VMAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
                             }
