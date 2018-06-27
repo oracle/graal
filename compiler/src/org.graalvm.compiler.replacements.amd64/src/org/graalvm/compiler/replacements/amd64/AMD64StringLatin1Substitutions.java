@@ -63,6 +63,8 @@ public class AMD64StringLatin1Substitutions {
         return ArrayCompareToNode.compareTo(value, other, value.length, other.length, JavaKind.Byte, JavaKind.Char);
     }
 
+    // @formatter:off
+
     /* java.lang.StringLatin1.inflate([BI[CII)V
      *
      * @HotSpotIntrinsicCandidate
@@ -77,16 +79,18 @@ public class AMD64StringLatin1Substitutions {
         assert ndx2 + len < dst.length;
 
         // Offset calc. outside of the actual intrinsic.
-
-        Pointer src_ptr = Word.objectToTrackedPointer(src)
-                              .add(byteArrayBaseOffset(INJECTED))
-                              .add(ndx1 * byteArrayIndexScale(INJECTED));
-        Pointer dst_ptr = Word.objectToTrackedPointer(dst)
-                              .add(charArrayBaseOffset(INJECTED))
-                              .add(ndx2 * charArrayIndexScale(INJECTED));
-
-        AMD64StringLatin1InflateNode.inflate(src_ptr, dst_ptr, len);
+        // Checkstyle: stop
+        Pointer srcptr = Word.objectToTrackedPointer(src)
+                             .add(byteArrayBaseOffset(INJECTED))
+                             .add(ndx1 * byteArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst)
+                             .add(charArrayBaseOffset(INJECTED))
+                             .add(ndx2 * charArrayIndexScale(INJECTED));
+        // Checkstyle: start
+        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len);
     }
+
+    // @formatter:on
 
     @Fold
     protected static int charArrayBaseOffset(@InjectedParameter ArrayOffsetProvider aop) {

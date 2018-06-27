@@ -32,8 +32,6 @@ import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAVX;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseSSE;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIncDec;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
@@ -47,6 +45,10 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
+
+// @formatter:off
+
+// Checkstyle: stop
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -790,10 +792,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *   tmp   (gpr)
      *   res   (rax) the result code (length on success, zero otherwise)
      */
-    public void char_array_compress(Register src, Register dst, Register len,
-                                    Register vtmp1, Register vtmp2,
-                                    Register vtmp3, Register vtmp4,
-                                    Register tmp, Register res) {
+    public void charArrayCompress(Register src,   Register dst,   Register len,
+                                  Register vtmp1, Register vtmp2,
+                                  Register vtmp3, Register vtmp4,
+                                  Register tmp,   Register res) {
 
         assert vtmp1.getRegisterCategory().equals(AMD64.XMM);
         assert vtmp2.getRegisterCategory().equals(AMD64.XMM);
@@ -809,9 +811,9 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
         push(len);      // Save length for return.
 
-        if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
-                           supports(CPUFeature.AVX512VL) &&
-                           supports(CPUFeature.BMI2))) {
+        if (supports(CPUFeature.AVX512BW) &&
+            supports(CPUFeature.AVX512VL) &&
+            supports(CPUFeature.BMI2)) {
 
             Label L_restore_k1_return_zero = new Label();
             Label L_avx_post_alignement = new Label();
@@ -916,7 +918,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             jmp(L_return_zero);
         }
 
-        if (UseSSE > 3 && supports(CPUFeature.SSE4_2)) {
+        if (supports(CPUFeature.SSE4_2)) {
+
             Label L_sse_tail = new Label();
 
             bind(L_below_threshold);
@@ -1007,8 +1010,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         bind(L_done);
     }
 
-    /* Copy (inflate) a Latin1 string using a byte[] array representation into
-     * a UTF16 string using a char[] array representation.
+    /* Inflate a Latin1 string using a byte[] array representation into a UTF16
+     * string using a char[] array representation.
      *
      *   src    (rsi) the start address of source byte[] to be inflated
      *   dst    (rdi) the start address of destination char[] array
@@ -1016,8 +1019,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *   vtmp   (xmm)
      *   tmp    (gpr)
      */
-    public void byte_array_inflate(Register src, Register dst, Register len,
-                                   Register vtmp, Register tmp) {
+    public void byteArrayInflate(Register src,  Register dst, Register len,
+                                 Register vtmp, Register tmp) {
 
         assert vtmp.getRegisterCategory().equals(AMD64.XMM);
 
@@ -1028,9 +1031,9 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert dst.number != len.number && dst.number != tmp.number;
         assert len.number != tmp.number;
 
-        if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
-                           supports(CPUFeature.AVX512VL) &&
-                           supports(CPUFeature.BMI2))) {
+        if (supports(CPUFeature.AVX512BW) &&
+            supports(CPUFeature.AVX512VL) &&
+            supports(CPUFeature.BMI2)) {
 
             // If the length of the string is less than 16, we chose not to use the
             // AVX512 instructions.
@@ -1085,11 +1088,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             jmp(L_done);
         }
 
-        if (UseSSE > 3 && supports(CPUFeature.SSE4_1)) {
+        if (supports(CPUFeature.SSE4_1)) {
 
             Label L_sse_tail = new Label();
 
-            if (UseAVX > 1 && supports(CPUFeature.AVX2)) {
+            if (supports(CPUFeature.AVX2)) {
 
                 Label L_avx2_tail = new Label();
 

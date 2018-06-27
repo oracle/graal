@@ -182,8 +182,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * The AMD64 backend only uses DWORD and QWORD values in registers because of a performance penalty
-     * when accessing WORD or BYTE registers. This function converts small integer kinds to DWORD.
+     * The AMD64 backend only uses DWORD and QWORD values in registers because of a performance
+     * penalty when accessing WORD or BYTE registers. This function converts small integer kinds to
+     * DWORD.
      */
     @Override
     public <K extends ValueKind<K>> K toRegisterKind(K kind) {
@@ -589,12 +590,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rdst, dst);
         emitMove(rlen, len);
 
-        LIRKind res_kind = LIRKind.value(AMD64Kind.DWORD);
-        RegisterValue rres = AMD64.rax.asValue(res_kind);
+        LIRKind reskind = LIRKind.value(AMD64Kind.DWORD);
+        RegisterValue rres = AMD64.rax.asValue(reskind);
 
         append(new AMD64StringUTF16CompressOp(this, rres, rsrc, rdst, rlen));
 
-        Variable res = newVariable(res_kind);
+        Variable res = newVariable(reskind);
         emitMove(res, rres);
         return res;
     }

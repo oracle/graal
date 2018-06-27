@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -45,6 +47,7 @@ import org.graalvm.word.Pointer;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+//@formatter:off
 
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN)
 
@@ -79,15 +82,15 @@ public final class AMD64StringUTF16CompressNode
     @Override
     public LocationIdentity[] getLocationIdentities() {
         // Model write access via 'dst' using:
+        // Checkstyle: stop
         return new LocationIdentity[] { NamedLocationIdentity.getArrayLocation(JavaKind.Byte) };
+        // Checkstyle: start
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool lgt = gen.getLIRGeneratorTool();
-        Value res = lgt.emitStringUTF16Compress(gen.operand(src),
-                                                gen.operand(dst),
-                                                gen.operand(len));
+        Value res = lgt.emitStringUTF16Compress(gen.operand(src), gen.operand(dst), gen.operand(len));
         gen.setResult(this, res);
     }
 
@@ -97,9 +100,9 @@ public final class AMD64StringUTF16CompressNode
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode new_lla) {
-        updateUsages(ValueNodeUtil.asNode(lla), ValueNodeUtil.asNode(new_lla));
-        lla = new_lla;
+    public void setLastLocationAccess(MemoryNode newlla) {
+        updateUsages(ValueNodeUtil.asNode(lla), ValueNodeUtil.asNode(newlla));
+        lla = newlla;
     }
 
     @NodeIntrinsic

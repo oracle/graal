@@ -72,6 +72,10 @@ import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.PlatformKind;
 
+// @formatter:off
+
+// Checkstyle: stop
+
 /**
  * This class implements an assembler that can encode most X86 instructions.
  */
@@ -500,9 +504,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * Get RXB bits for register-register instruction. In that encoding, ModRM.rm contains
-     * a register index. The R bit extends the ModRM.reg field and the B bit extends the
-     * ModRM.rm field. The X bit must be 0.
+     * Get RXB bits for register-register instruction. In that encoding, ModRM.rm contains a
+     * register index. The R bit extends the ModRM.reg field and the B bit extends the ModRM.rm
+     * field. The X bit must be 0.
      */
     protected static int getRXB(Register reg, Register rm) {
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
@@ -511,8 +515,8 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * Get RXB bits for register-register instructions in EVex encoding, Where ModRM.rm contains
-     * a register index. The R bit extends the ModRM.reg field and the X and B bits extends the
+     * Get RXB bits for register-register instructions in EVex encoding, Where ModRM.rm contains a
+     * register index. The R bit extends the ModRM.reg field and the X and B bits extends the
      * ModRM.rm field.
      */
     protected static int getEVexRXB(Register reg, Register rm) {
@@ -530,9 +534,8 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field.
-     * There are two cases for the memory operand:
-     * <br>
+     * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field. There
+     * are two cases for the memory operand: <br>
      * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0.
      * <br>
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
@@ -860,7 +863,7 @@ public class AMD64Assembler extends Assembler {
         // TEST is documented as MR operation, but it's symmetric, and using it as RM operation is more convenient.
         public static final AMD64RMOp TESTB  = new AMD64RMOp("TEST",               0x84, OpAssertion.ByteAssertion);
         public static final AMD64RMOp TEST   = new AMD64RMOp("TEST",               0x85);
-        // @formatter:on
+        // @formatter:off
 
         protected AMD64RMOp(String opcode, int op) {
             this(opcode, 0, op);
@@ -1190,7 +1193,7 @@ public class AMD64Assembler extends Assembler {
         // MOVSS and MOVSD are the same opcode, just with different operand size prefix
         public static final AMD64MROp MOVSS  = new AMD64MROp("MOVSS",        P_0F, 0x11, OpAssertion.FloatAssertion, CPUFeature.SSE);
         public static final AMD64MROp MOVSD  = new AMD64MROp("MOVSD",        P_0F, 0x11, OpAssertion.FloatAssertion, CPUFeature.SSE);
-        // @formatter:on
+        // @formatter:off
 
         protected AMD64MROp(String opcode, int op) {
             this(opcode, 0, op);
@@ -1356,7 +1359,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
         public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6);
         public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.WordOrDwordAssertion);
-        // @formatter:on
+        // @formatter:off
 
         private final int ext;
 
@@ -1398,7 +1401,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64MIOp MOVB = new AMD64MIOp("MOVB", true,  0xC6, 0, OpAssertion.ByteAssertion);
         public static final AMD64MIOp MOV  = new AMD64MIOp("MOV",  false, 0xC7, 0);
         public static final AMD64MIOp TEST = new AMD64MIOp("TEST", false, 0xF7, 0);
-        // @formatter:on
+        // @formatter:off
 
         private final int ext;
 
@@ -1442,7 +1445,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64RMIOp IMUL_SX = new AMD64RMIOp("IMUL", true,  0x6B);
         public static final AMD64RMIOp ROUNDSS = new AMD64RMIOp("ROUNDSS", true, P_0F3A, 0x0A, OpAssertion.PackedDoubleAssertion);
         public static final AMD64RMIOp ROUNDSD = new AMD64RMIOp("ROUNDSD", true, P_0F3A, 0x0B, OpAssertion.PackedDoubleAssertion);
-        // @formatter:on
+        // @formatter:off
 
         protected AMD64RMIOp(String opcode, boolean immIsByte, int op) {
             this(opcode, immIsByte, 0, op, OpAssertion.WordOrLargerAssertion);
@@ -1603,7 +1606,7 @@ public class AMD64Assembler extends Assembler {
         public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D);
         public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E);
         public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F);
-        // @formatter:on
+        // @formatter:off
 
         protected SSEOp(String opcode, int prefix, int op) {
             this(opcode, prefix, op, OpAssertion.FloatAssertion);
@@ -1630,7 +1633,7 @@ public class AMD64Assembler extends Assembler {
         public static final AVXOp MIN       = new AVXOp("MIN",             P_0F, 0x5D);
         public static final AVXOp DIV       = new AVXOp("DIV",             P_0F, 0x5E);
         public static final AVXOp MAX       = new AVXOp("MAX",             P_0F, 0x5F);
-        // @formatter:on
+        // @formatter:off
 
         protected AVXOp(String opcode, int prefix, int op) {
             this(opcode, prefix, op, OpAssertion.FloatAssertion);
@@ -1658,7 +1661,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64BinaryArithmetic SUB = new AMD64BinaryArithmetic("SUB", 5);
         public static final AMD64BinaryArithmetic XOR = new AMD64BinaryArithmetic("XOR", 6);
         public static final AMD64BinaryArithmetic CMP = new AMD64BinaryArithmetic("CMP", 7);
-        // @formatter:on
+        // @formatter:off
 
         private final AMD64MIOp byteImmOp;
         private final AMD64MROp byteMrOp;
@@ -1721,7 +1724,7 @@ public class AMD64Assembler extends Assembler {
         public static final AMD64Shift SHL = new AMD64Shift("SHL", 4);
         public static final AMD64Shift SHR = new AMD64Shift("SHR", 5);
         public static final AMD64Shift SAR = new AMD64Shift("SAR", 7);
-        // @formatter:on
+        // @formatter:off
 
         public final AMD64MOp m1Op;
         public final AMD64MOp mcOp;
@@ -3503,6 +3506,7 @@ public class AMD64Assembler extends Assembler {
         return regEnc << 3 | rmEnc;
     }
 
+    // @formatter:off
     /*
     Instruction Format and EVEX illustrated below:
     within brackets are optional.
@@ -3529,7 +3533,7 @@ public class AMD64Assembler extends Assembler {
     Notation        Bit field Group         Position        Comment
     EVEX.RXB    Next-8 register specifier   P[7 : 5]    Combine with ModR/M.reg, ModR/M.rm (base, index/vidx).
     EVEX.X      High-16 register specifier  P[6]        Combine with EVEX.B and ModR/M.rm, when SIB/VSIB absent.
-    EVEX.R’     High-16 register specifier  P[4]        Combine with EVEX.R and ModR/M.reg.
+    EVEX.R'     High-16 register specifier  P[4]        Combine with EVEX.R and ModR/M.reg.
     --          Reserved                    P[3 : 2]    Must be 0.
     EVEX.mm     Compressed legacy escape    P[1 : 0]    Identical to low two bits of VEX.mmmmm.
 
@@ -3539,16 +3543,17 @@ public class AMD64Assembler extends Assembler {
     EVEX.pp     Compressed legacy prefix    P[9 : 8]    Identical to VEX.pp.
 
     EVEX.z      Zeroing/Merging             P[23]
-    EVEX.L’L    Vector length/RC            P[22 : 21]
+    EVEX.L'L    Vector length/RC            P[22 : 21]
     EVEX.b      Broadcast/RC/SAE Context    P[20]
-    EVEX.V’     High-16 NDS/VIDX register   P[19]       Combine with EVEX.vvvv or when VSIB present.
+    EVEX.V'     High-16 NDS/VIDX register   P[19]       Combine with EVEX.vvvv or when VSIB present.
     EVEX.aaa    Embedded opmask register    P[18 : 16]
 
     NOTE: All extension encodings (i.e. RXB, R' and V') in inverse.
      */
-
     private void evexPrefix(int rxb, int RnV, int nds, int pre, int opc, AMD64InstructionAttr attr) {
-        assert (opc == VexOpcode.VEX_OPCODE_0F_38 || opc == VexOpcode.VEX_OPCODE_0F_3A ||
+
+        assert (opc == VexOpcode.VEX_OPCODE_0F_38 ||
+                opc == VexOpcode.VEX_OPCODE_0F_3A ||
                 opc == VexOpcode.VEX_OPCODE_0F);
 
         emitByte(Prefix.EVEX_4BYTES);
@@ -3567,6 +3572,7 @@ public class AMD64Assembler extends Assembler {
         P2 |= attr.isRegMask() ? attr.getMaskEncoding() : 0;
         emitByte(P2);
     }
+    // @formatter:off
 
     private void evexPrefix(AMD64Address addr, Register nds, Register src, int pre, int opc, AMD64InstructionAttr attr) {
         int rxb = getRXB(src, addr);
@@ -3583,6 +3589,7 @@ public class AMD64Assembler extends Assembler {
         return (((dst.encoding & 7) << 3) | (src.encoding & 7));
     }
 
+    // @formatter:off
     /*
 
     #of bytes:    2,3      1       1       1       1,2,4       1
@@ -3619,7 +3626,7 @@ public class AMD64Assembler extends Assembler {
     VEX.pp      Compressed legacy prefix    P[9 : 8]    b00/None, b01/0x66, b10/0xF3, b11/0xF2
                                             P[1 : 0]
      */
-
+    // @formatter:off
     private void vexPrefix(int rxb, int ndsEncoding, int pre, int opc, AMD64InstructionAttr attributes) {
         int vectorLen = attributes.getVectorLen();
         boolean vexW = attributes.isRexVexW();
@@ -4290,6 +4297,7 @@ public class AMD64Assembler extends Assembler {
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
+        // @formatter:off
         assert op == 0xE8 // call
             || op == 0x00 // jump table entry
             || op == 0xE9 // jmp
@@ -4297,6 +4305,7 @@ public class AMD64Assembler extends Assembler {
             || (op & 0xF0) == 0x70 // short jcc
             || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
         : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
+        // @formatter:off
 
         if (op == 0x00) {
             int offsetToJumpTableBase = getShort(branch + 1);
