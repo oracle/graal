@@ -97,7 +97,7 @@ suite = {
                 "version": "a3e5133866cf7500ee8d334d4551b569b97dc01c",
                 "dynamic": True,
                 "urls": [
-                    {"url": "https://github.com/oracle/graalpython.git", "kind": "git"},
+                    {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
