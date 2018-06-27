@@ -80,6 +80,11 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
                 passed = true;
             }
         }
+        if (!passed) {
+            for (String line : proc.output) {
+                System.err.println("" + line);
+            }
+        }
         assertTrue(passed);
     }
 
