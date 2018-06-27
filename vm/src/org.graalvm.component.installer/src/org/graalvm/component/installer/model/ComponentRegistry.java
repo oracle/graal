@@ -86,7 +86,7 @@ public final class ComponentRegistry {
 
     private String findAbbreviatedId(String id) {
         String candidate = null;
-        String end = "." + id; // NOI18N
+        String end = "." + id.toLowerCase(); // NOI18N
         for (String s : getComponentIDs()) {
             if (s.equals(id)) {
                 return id;
@@ -245,6 +245,8 @@ public final class ComponentRegistry {
         if (fid == null) {
             if (notFoundFailure) {
                 throw env.failure("REMOTE_UnknownComponentId", null, id);
+            } else {
+                return null;
             }
         }
         ComponentInfo info = components.get(fid);
