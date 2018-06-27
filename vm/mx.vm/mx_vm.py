@@ -1175,8 +1175,15 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         :type installable: GraalVmInstallableComponent
         """
         support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
-        name = '{comp_name}_{ver}_{os}_{arch}'.format(comp_name=installable.main_component.name, ver=_suite.release_version(), os=get_graalvm_os(), arch=mx.get_arch()).upper().replace('-', '_')
-        base_dir = './{}/'.format(name.lower().replace('_', '-'))
+        other_comp_names = []
+        if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
+            other_comp_names += [c.short_name for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
+
+        main_comp_name = installable.main_component.name
+        version = _suite.release_version()
+
+        name = '{comp_name}_{other_comp_names}_{version}'.format(comp_name=main_comp_name, other_comp_names='-'.join(other_comp_names), version=version).upper().replace('-', '_')
+        base_dir = './{comp_name}-{version}-{os}-{arch}/'.format(comp_name=main_comp_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
         layout = {}
 
         def is_jar_distribution(val):
