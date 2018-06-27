@@ -243,13 +243,15 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
         String compilerConfig;
         if (compiler != null) {
             compilerConfig = compiler.getCompilerConfigurationName();
-            assert verifyCompilerConfiguration(compilerConfig);
+            // disabled GR-10618
+            // assert verifyCompilerConfiguration(compilerConfig);
         } else {
             compilerConfig = getLazyCompilerConfigurationName();
         }
         return compilerConfig;
     }
 
+    @SuppressWarnings("unused")
     private boolean verifyCompilerConfiguration(String name) {
         String lazyName = getLazyCompilerConfigurationName();
         if (!name.equals(lazyName)) {
