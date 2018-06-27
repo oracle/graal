@@ -24,20 +24,22 @@
  */
 package com.oracle.svm.core.posix;
 
-import java.io.Console;
-import java.nio.charset.Charset;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -45,62 +47,39 @@ import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(sun.misc.SharedSecrets.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_misc_SharedSecrets {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private static sun.misc.JavaIOAccess javaIOAccess;
-
-    @Substitute
-    public static sun.misc.JavaIOAccess getJavaIOAccess() {
-        if (javaIOAccess == null) {
-            javaIOAccess = new sun.misc.JavaIOAccess() {
-                @Override
-                public Console console() {
-                    if (Target_java_io_Console.istty()) {
-                        if (Target_java_lang_System.cons == null) {
-                            Target_java_lang_System.cons = Util_java_io_Console.toConsole(new Target_java_io_Console());
-                        }
-                        return Target_java_lang_System.cons;
-                    }
-                    return null;
-                }
-
-                @Override
-                public Charset charset() {
-                    // This method is called in sun.security.util.Password,
-                    // cons already exists when this method is called
-                    return KnownIntrinsics.unsafeCast(Target_java_lang_System.cons, Target_java_io_Console.class).cs;
-                }
-            };
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_misc implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.misc." + annotation.className();
         }
-        return javaIOAccess;
-    }
-
-    @Alias private static sun.misc.JavaLangAccess javaLangAccess;
-
-    @Substitute
-    public static sun.misc.JavaLangAccess getJavaLangAccess() {
-        return javaLangAccess;
     }
 }
 
-@TargetClass(sun.misc.Signal.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_sun_misc_Signal {
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
+final class Target_jdk_internal_misc_Signal {
 
     @Substitute
-    private static int findSignal(String signalName) {
-        return Util_sun_misc_Signal.numberFromName(signalName);
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static /* native */ int findSignal(String signalName) {
+        return Util_jdk_internal_misc_Signal.numberFromName(signalName);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private static /* native */ int findSignal0(String signalName) {
+        return Util_jdk_internal_misc_Signal.numberFromName(signalName);
     }
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        return Util_sun_misc_Signal.handle0(sig, nativeH);
+        return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }
 
     /** The Java side of raising a signal calls the C side of raising a signal. */
@@ -118,7 +97,7 @@ final class Target_sun_misc_Signal {
 }
 
 /** Support for Target_sun_misc_Signal. */
-final class Util_sun_misc_Signal {
+final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
     private static Thread dispatchThread = null;
@@ -131,7 +110,7 @@ final class Util_sun_misc_Signal {
     /** A map from signal numbers to handlers. */
     private static SignalState[] signalState = null;
 
-    private Util_sun_misc_Signal() {
+    private Util_jdk_internal_misc_Signal() {
         /* All-static class. */
     }
 
@@ -307,7 +286,7 @@ final class Util_sun_misc_Signal {
                     if (dispatcher.equal(CSunMiscSignal.countingHandlerFunctionPointer())) {
                         /* ... and if there are outstanding signals to be dispatched. */
                         if (entry.decrementCount() > 0L) {
-                            Target_sun_misc_Signal.dispatch(entry.getNumber());
+                            Target_jdk_internal_misc_Signal.dispatch(entry.getNumber());
                         }
                     }
                 }
@@ -375,7 +354,7 @@ final class Util_sun_misc_Signal {
 }
 
 /** Translated from: jdk/src/share/native/sun/misc/NativeSignalHandler.c?v=Java_1.8.0_40_b10. */
-@TargetClass(className = "sun.misc.NativeSignalHandler")
+@TargetClass(className = "sun.misc.NativeSignalHandler", onlyWith = JDK8OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_misc_NativeSignalHandler {
 

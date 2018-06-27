@@ -109,6 +109,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
@@ -458,7 +460,8 @@ final class Target_java_io_FileInputStream {
         PosixUtils.fileOpen(name, fd, O_RDONLY());
     }
 
-    @Substitute
+    @Substitute //
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
         PosixUtils.fileClose(fd);
     }
@@ -556,7 +559,8 @@ final class Target_java_io_FileOutputStream {
         PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
     }
 
-    @Substitute
+    @Substitute //
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
         PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)));
     }
@@ -639,7 +643,8 @@ final class Target_java_io_RandomAccessFile {
         PosixUtils.fileOpen(name, fd, flags);
     }
 
-    @Substitute
+    @Substitute //
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
         PosixUtils.fileClose(fd);
     }
@@ -779,9 +784,16 @@ class Util_java_io_Console {
                     try {
                         /*
                          * Compare this code to the static initialization code of {@link
-                         * java.io.Console}.
+                         * java.io.Console}, except I am short-circuiting the trampoline through
+                         * {@link sun.misc.SharedSecrets#getJavaLangAccess()}.
                          */
-                        Target_sun_misc_SharedSecrets.getJavaLangAccess().registerShutdownHook(
+                        /*
+                         * The {@code add} method is declared in {@code
+                         * com.oracle.svm.core.jdk.Target_java_lang_Shutdown} rather than in {@code
+                         * com.oracle.svm.core.posix.Target_java_lang_Shutdown}, so I have to
+                         * fully-qualify the reference.
+                         */
+                        com.oracle.svm.core.jdk.Target_java_lang_Shutdown.add(
                                         0 /* shutdown hook invocation order */,
                                         false /* only register if shutdown is not in progress */,
                                         new Runnable() {/* hook */

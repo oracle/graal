@@ -161,6 +161,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Dirent;
@@ -3021,7 +3022,8 @@ public final class PosixJavaNIOSubstitutions {
         }
     }
 
-    @TargetClass(className = "java.nio.Bits")
+    /** This class exists in JDK-9, but these methods do not. */
+    @TargetClass(className = "java.nio.Bits", onlyWith = JDK8OrEarlier.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_java_nio_Bits {
 

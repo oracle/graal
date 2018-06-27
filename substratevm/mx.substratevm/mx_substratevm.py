@@ -60,9 +60,35 @@ from mx_unittest import _run_tests, _VMLauncher
 
 JVM_COMPILER_THREADS = 2 if mx.cpu_count() <= 4 else 4
 
-GRAAL_COMPILER_FLAGS = ['-XX:-UseJVMCIClassLoader', '-XX:+UseJVMCICompiler', '-Dgraal.CompileGraalWithC1Only=false', '-XX:CICompilerCount=' + str(JVM_COMPILER_THREADS),
+GRAAL_COMPILER_FLAGS = ['-XX:+UseJVMCICompiler', '-Dgraal.CompileGraalWithC1Only=false', '-XX:CICompilerCount=' + str(JVM_COMPILER_THREADS),
                         '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
                         '-Dgraal.VerifyGraalGraphs=false', '-Dgraal.VerifyGraalGraphEdges=false', '-Dgraal.VerifyGraalPhasesSize=false', '-Dgraal.VerifyPhases=false']
+if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
+    GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
+else:
+    # JVMCI access
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.amd64=ALL-UNNAMED']
+    # Reflective access
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.unsupported/sun.reflect=ALL-UNNAMED']
+    # Reflective access to private fields of java.lang.Class.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED']
+    # Reflective access to resource bundle getContents() methods.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.text.resources=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.util.resources=ALL-UNNAMED']
+    # Reflective access to java.util.Bits.words.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.util=ALL-UNNAMED']
+    # Reflective access to java.lang.invoke.VarHandle*.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED']
+    # Reflective access to java.lang.Reference.referent.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED']
+    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED']
+    # Disable the check for JDK-8 graal version.
+    GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
+
+
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -306,8 +332,9 @@ def layout_native_image_root(native_image_root):
     native_image_layout_dists(join('lib', 'jvmci'), graalDistribution)
     jdk_config = mx.get_jdk()
     jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
-    for symlink_name in os.listdir(jvmci_path):
-        relsymlink(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
+    if os.path.isdir(jvmci_path):
+        for symlink_name in os.listdir(jvmci_path):
+            relsymlink(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])

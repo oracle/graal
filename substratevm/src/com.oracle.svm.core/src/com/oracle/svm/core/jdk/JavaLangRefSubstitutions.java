@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.thread.VMOperation;
@@ -139,6 +140,7 @@ final class Target_java_lang_ref_Reference {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
     private static boolean tryHandlePending(boolean waitForNotify) {
         throw VMError.unimplemented();

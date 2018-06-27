@@ -48,6 +48,7 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,6 +66,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
@@ -221,13 +225,31 @@ final class Target_java_net_InetAddress {
 
     @Alias static int IPv6;
 
-    // TODO: I am re-using the static field rather than caching it locally in a translation of
-    // Inet6AddressImpl::initializeInetClasses().
-    @Alias static boolean preferIPv6Address;
+    @Alias //
+    @TargetElement(name = "preferIPv6Address", onlyWith = JDK8OrEarlier.class) //
+    static boolean preferIPv6AddressJDK8OrEarlier;
+
+    @Alias //
+    @TargetElement(name = "preferIPv6Address", onlyWith = JDK9OrLater.class) //
+    static int preferIPv6AddressJDK9OrLater;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static /* final */ int PREFER_IPV4_VALUE;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static /* final */ int PREFER_IPV6_VALUE;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static /* final */ int PREFER_SYSTEM_VALUE;
 
     @Alias Target_java_net_InetAddress_InetAddressHolder holder;
 
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.FromAlias) //
     static HashMap<String, Void> lookupTable = new HashMap<>();
 
     /**
@@ -238,23 +260,42 @@ final class Target_java_net_InetAddress {
      * {@link Target_java_net_InetAddress_Cache#cache} - that is easier since it does not require us
      * to instantiate a non-public JDK class during image generation.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
     static boolean addressCacheInit = false;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
     static InetAddress[] unknown_array;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
-    static InetAddress cachedLocalHost;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    @Alias //
+    @TargetElement(name = "cachedLocalHost", onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    static InetAddress cachedLocalHostJDK8OrEarlier;
+
+    @Alias //
+    @TargetElement(name = "cachedLocalHost", onlyWith = JDK9OrLater.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    static Target_java_net_InetAddress_CachedLocalHost cachedLocalHostJDK9OrLater;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
     static long cacheTime;
 }
 
-@TargetClass(className = "java.net.InetAddress", innerClass = "Cache")
+@TargetClass(className = "java.net.InetAddress", innerClass = "Cache", onlyWith = JDK8OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_Cache {
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = LinkedHashMap.class)//
     LinkedHashMap<String, Object> cache;
+}
+
+@TargetClass(className = "java.net.InetAddress", innerClass = "CachedLocalHost", onlyWith = JDK9OrLater.class)
+final class Target_java_net_InetAddress_CachedLocalHost {
 }
 
 /** Methods to operate on java.net.InetAddress instances. */
@@ -1069,8 +1110,9 @@ final class Target_java_net_Inet6AddressImpl {
                     int i = 0;
                     int inetCount = 0;
                     int inet6Count = 0;
-                    int inetIndex;
-                    int inet6Index;
+                    int inetIndex = 0;
+                    int inet6Index = 0;
+                    int originalIndex = 0;
                     Netdb.addrinfo itr;
                     Netdb.addrinfo last = WordFactory.nullPointer();
                     Netdb.addrinfo iterator = res;
@@ -1141,14 +1183,28 @@ final class Target_java_net_Inet6AddressImpl {
 
                     ret = new InetAddress[retLen];
 
-                    if (Target_java_net_InetAddress.preferIPv6Address) {
-                        /* AF_INET addresses will be offset by inet6Count */
-                        inetIndex = inet6Count;
-                        inet6Index = 0;
+                    if (GraalServices.Java8OrEarlier) {
+                        if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
+                            /* AF_INET addresses will be offset by inet6Count */
+                            inetIndex = inet6Count;
+                            inet6Index = 0;
+                        } else {
+                            /* AF_INET6 addresses will be offset by inetCount */
+                            inetIndex = 0;
+                            inet6Index = inetCount;
+                        }
                     } else {
-                        /* AF_INET6 addresses will be offset by inetCount */
-                        inetIndex = 0;
-                        inet6Index = inetCount;
+                        if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) {
+                            inetIndex = inet6Count;
+                            inet6Index = 0;
+                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV4_VALUE) {
+                            inetIndex = 0;
+                            inet6Index = inetCount;
+                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
+                            inetIndex = 0;
+                            inet6Index = 0;
+                            originalIndex = 0;
+                        }
                     }
 
                     while (iterator.isNonNull()) {
@@ -1157,7 +1213,7 @@ final class Target_java_net_Inet6AddressImpl {
                             Inet4Address iaObj = Util_java_net_Inet4Address.new_Inet4Address();
                             JavaNetNetUtil.setInetAddress_addr(iaObj, NetinetIn.ntohl(((NetinetIn.sockaddr_in) iterator.ai_addr()).sin_addr().s_addr()));
                             JavaNetNetUtil.setInetAddress_hostName(iaObj, host);
-                            ret[inetIndex] = iaObj;
+                            ret[inetIndex | originalIndex] = iaObj;
                             inetIndex++;
                         } else if (iterator.ai_family() == Socket.AF_INET6()) {
                             // 455 jint scope = 0;
@@ -1190,9 +1246,16 @@ final class Target_java_net_Inet6AddressImpl {
                             // 472 setInetAddress_hostName(env, iaObj, host);
                             JavaNetNetUtil.setInetAddress_hostName(iaObj, host);
                             // 473 (*env)->SetObjectArrayElement(env, ret, inet6Index, iaObj);
-                            ret[inet6Index] = iaObj;
+                            ret[inet6Index | originalIndex] = iaObj;
                             // 474 inet6Index++;
                             inet6Index++;
+                        }
+                        if (!GraalServices.Java8OrEarlier) {
+                            if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
+                                originalIndex++;
+                                inetIndex = 0;
+                                inet6Index = 0;
+                            }
                         }
                         iterator = iterator.ai_next();
                     }
@@ -1293,12 +1356,19 @@ final class Util_java_net_Inet6AddressImpl {
                 /* Create and fill the Java array. */
                 int arraySize = addrs4 + addrs6 - (includeLoopback ? 0 : (numV4Loopbacks + numV6Loopbacks));
                 result = new InetAddress[arraySize];
-                if (Target_java_net_InetAddress.preferIPv6Address) {
-                    i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
-                    j = 0;
+                if (GraalServices.Java8OrEarlier) {
+                    if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
+                        i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
+                        j = 0;
+                    } else {
+                        i = 0;
+                        j = includeLoopback ? addrs4 : (addrs4 - numV4Loopbacks);
+                    }
                 } else {
+                    /* TODO: `i` and `j` need to be initialized. But to what values? */
                     i = 0;
-                    j = includeLoopback ? addrs4 : (addrs4 - numV4Loopbacks);
+                    j = 0;
+                    throw VMError.unsupportedFeature("JDK9OrLater: PosixJavaNetSubstitutions.Util_java_net_Inet6AddressImpl.lookupIfLocalhost: https://bugs.openjdk.java.net/browse/JDK-8205076");
                 }
                 // Now loop around the ifaddrs
                 iter = ifa;
@@ -3045,10 +3115,20 @@ final class Target_sun_net_spi_DefaultProxySelector {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings({"static-method", "unused"})
     /* FIXME: No proxies, yet. */
-    private synchronized Proxy getSystemProxy(String protocol, String host) {
-        VMError.unimplemented();
+    private synchronized /* native */ Proxy getSystemProxy(String protocol, String host) {
+        VMError.unsupportedFeature("Target_sun_net_spi_DefaultProxySelector.getSystemProxy");
+        return null;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    /* FIXME: No proxies, yet. */
+    private synchronized /* native */ Proxy[] getSystemProxies(String protocol, String host) {
+        VMError.unsupportedFeature("Target_sun_net_spi_DefaultProxySelector.getSystemProxies");
         return null;
     }
 }

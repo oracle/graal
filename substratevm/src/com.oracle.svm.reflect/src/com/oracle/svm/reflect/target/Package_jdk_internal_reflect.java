@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,34 @@
  */
 package com.oracle.svm.reflect.target;
 
-import com.oracle.svm.core.annotate.Substitute;
+import java.util.function.Function;
+
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "Reflection", onlyWith = ReflectionFeature.IsEnabled.class)
-public final class Target_sun_reflect_Reflection {
-
-    @Substitute
-    public static Class<?> getCallerClass() {
-        return null;
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_reflect implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.reflect." + annotation.className();
+        } else {
+            return "jdk.internal.reflect." + annotation.className();
+        }
     }
+}
 
-    @Substitute
-    public static int getClassAccessFlags(Class<?> cls) {
-        return cls.getModifiers();
-    }
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstructorAccessor")
+final class Target_jdk_internal_reflect_ConstructorAccessor {
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "FieldAccessor")
+final class Target_jdk_internal_reflect_FieldAccessor {
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessor")
+final class Target_jdk_internal_reflect_MethodAccessor {
 }
