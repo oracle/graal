@@ -35,7 +35,7 @@
 #define bit_TSC_compat           0x00000010
 #define bit_ERMS_compat          0x00000200
 #define bit_AVX2_compat          0x00000020
-#define bit_3DNOWP_compat        0x40000000
+#define bit_PREFETCHW_compat     0x00000100
 #define bit_BMI1_compat          0x00000008
 #define bit_BMI2_compat          0x00000100
 #define bit_AVX512F_compat       0x00010000
@@ -111,6 +111,6 @@ void determineCPUFeatures(CPUFeatures* features) {
 
     features->fSSE4A = !!(ecx & bit_SSE4a_compat);
     features->fLZCNT = !!(ecx & bit_LZCNT_compat);
-    features->fAMD3DNOWPREFETCH = !!(edx & bit_3DNOWP_compat);
+    features->fAMD3DNOWPREFETCH = !!(ecx & bit_PREFETCHW_compat);
   }
 }
