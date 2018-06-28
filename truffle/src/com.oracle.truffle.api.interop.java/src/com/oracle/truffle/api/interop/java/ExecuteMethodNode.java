@@ -66,7 +66,7 @@ abstract class ExecuteMethodNode extends Node {
             return executeImpl(method, obj, args, languageContext);
         } catch (ClassCastException | NullPointerException e) {
             // conversion failed by ToJavaNode
-            throw UnsupportedTypeException.raise(args);
+            throw UnsupportedTypeException.raise(e, args);
         } catch (InteropException e) {
             throw e.raise();
         } catch (Throwable e) {
