@@ -43,7 +43,9 @@ import org.graalvm.word.WordBase;
  * An execution context must be passed as a parameter and can be either an {@link IsolateThread}
  * that is specific to the current thread, or an {@link Isolate} for an isolate in which the current
  * thread is attached. These pointers can be obtained via the methods of {@link CEntryPointContext}.
- * Specifying more than one parameter of these types is not allowed.
+ * When there is more than one parameter of these types, exactly one of the parameters must be
+ * annotated with {@link IsolateThreadContext} for {@link IsolateThread}, or {@link IsolateContext}
+ * for {@link Isolate}.
  * <p>
  * Exceptions cannot be thrown to the caller and must be explicitly caught in the entry point
  * method. Any uncaught exception causes the termination of the process after it is printed.
@@ -74,4 +76,26 @@ public @interface CEntryPoint {
      * @since 1.0
      */
     String[] documentation() default "";
+
+    /**
+     * Designates an {@link IsolateThread} parameter to use as the execution context. At most one
+     * parameter can be annotated with this annotation or {@link IsolateContext}.
+     *
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface IsolateThreadContext {
+    }
+
+    /**
+     * Designates an {@link Isolate} parameter to use as the execution context. At most one
+     * parameter can be annotated with this annotation or {@link IsolateThreadContext}.
+     *
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface IsolateContext {
+    }
 }
