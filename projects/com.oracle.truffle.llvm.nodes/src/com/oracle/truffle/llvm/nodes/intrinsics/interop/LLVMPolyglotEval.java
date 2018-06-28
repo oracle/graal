@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -46,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import java.io.File;
 import java.io.IOException;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -132,8 +132,9 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                         @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
             try {
                 // never cache, since the file content could change between invocations
-                Source sourceObject = Source.newBuilder(new File(filename)).name("<eval>").language(id).build();
-                return ctxRef.get().getEnv().parse(sourceObject);
+                Env env = ctxRef.get().getEnv();
+                Source sourceObject = env.newSourceBuilder(env.getTruffleFile(filename)).name("<eval>").language(id).build();
+                return env.parse(sourceObject);
             } catch (IOException ex) {
                 throw new LLVMPolyglotException(this, "Could not parse file %s (%s).", filename, ex.getMessage());
             }
