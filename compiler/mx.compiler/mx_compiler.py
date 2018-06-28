@@ -49,6 +49,7 @@ import mx_unittest
 from mx_unittest import unittest
 
 from mx_javamodules import as_java_module
+import mx_jaotc
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
@@ -647,6 +648,7 @@ graal_bootstrap_tests = [
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
+    mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -1176,6 +1178,8 @@ def updategraalinopenjdk(args):
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         GraalJDKModule('jdk.internal.vm.compiler.management',
             [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+        GraalJDKModule('jdk.aot',
+            [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
 
     package_renamings = {
@@ -1356,6 +1360,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
+    'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
+    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
