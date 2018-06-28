@@ -57,9 +57,11 @@ final class ShadowStack {
 
     private final ConcurrentHashMap<Thread, ThreadLocalStack> stacks = new ConcurrentHashMap<>();
     private final int stackLimit;
+    private final boolean reconstructStatements;
 
-    ShadowStack(int stackLimit) {
+    ShadowStack(int stackLimit, boolean reconstructStatements) {
         this.stackLimit = stackLimit;
+        this.reconstructStatements = reconstructStatements;
     }
 
     ThreadLocalStack getStack(Thread thread) {

@@ -106,7 +106,7 @@ public final class MemoryTracer implements Closeable {
         if (!collecting || closed) {
             return;
         }
-        this.shadowStack = new ShadowStack(stackLimit);
+        this.shadowStack = new ShadowStack(stackLimit, false);
         SourceSectionFilter f = this.filter;
         if (f == null) {
             f = DEFAULT_FILTER;
