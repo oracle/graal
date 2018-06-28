@@ -323,17 +323,6 @@ public final class JavaInterop {
         return o instanceof JavaFunctionObject;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    static boolean isJavaFunctionInterface(Class<?> type) {
-        if (!type.isInterface() || type == TruffleObject.class) {
-            return false;
-        }
-        if (type.getAnnotation(FunctionalInterface.class) != null) {
-            return true;
-        }
-        return false;
-    }
-
     static Value toHostValue(Object obj, Object languageContext) {
         return JavaInteropAccessor.ACCESSOR.engine().toHostValue(obj, languageContext);
     }

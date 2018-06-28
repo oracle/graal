@@ -193,7 +193,7 @@ abstract class ToJavaNode extends Node {
                         return false;
                     }
                 } else {
-                    if (JavaInterop.isJavaFunctionInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
+                    if (JavaInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
                         return true;
                     } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
                         return true;
@@ -301,7 +301,7 @@ abstract class ToJavaNode extends Node {
                 throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have array elements.");
             }
         } else if (!TruffleOptions.AOT && targetType.isInterface()) {
-            if (JavaInterop.isJavaFunctionInterface(targetType) && (isExecutable(truffleObject) || isInstantiable(truffleObject))) {
+            if (JavaInteropReflect.isFunctionalInterface(targetType) && (isExecutable(truffleObject) || isInstantiable(truffleObject))) {
                 obj = JavaInteropReflect.asJavaFunction(targetType, truffleObject, languageContext);
             } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
                 obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
