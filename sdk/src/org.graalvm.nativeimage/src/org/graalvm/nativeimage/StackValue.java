@@ -24,6 +24,8 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
@@ -40,11 +42,13 @@ public final class StackValue {
 
     /**
      * Reserves a block of memory for given {@link CStruct} class in the stack frame of the method
-     * that calls this intrinsic. The returned pointer is aligned on a word boundary. If the call to
-     * this method is in a loop, always the same pointer is returned. In other words: this method
-     * does not allocate memory; it returns the address of a fixed-size block of memory that is
-     * reserved in the stack frame when the method starts execution. The memory is not initialized.
-     * Two distinct calls of this method return different pointers.
+     * that calls this intrinsic. This is a convenience method for calls to:
+     * {@codesnippet org.graalvm.nativeimage.StackValueSnippets#withSizeOf}
+     *
+     * It can be used to allocate a structure on the stack. The following example allocates a
+     * {@code ComplexNumber} and then sends it as a regular parameter to another function to compute
+     * absolute value of the number:
+     * {@codesnippet org.graalvm.nativeimage.StackValueSnippets#ninePlusSixteenSqrt}
      *
      * @param <T> the type, annotated by {@link CStruct} annotation
      * @param structType the requested structure class - must be a compile time constant
@@ -80,5 +84,49 @@ public final class StackValue {
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int numberOfElements, int elementSize) {
         throw new IllegalStateException("Cannot invoke method during native image generation");
+    }
+}
+
+@CContext(CContext.Directives.class)
+final class StackValueSnippets {
+    // BEGIN: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
+    @CStruct
+    static interface ComplexNumber extends PointerBase {
+        @CField("re")
+        public double realPart();
+
+        @CField("re")
+        public void realPart(double re);
+
+        @CField("im")
+        public double imagineryPart();
+
+        @CField("im")
+        public void imagineryPart(double im);
+    }
+    // END: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
+
+    public static void ninePlusSixteenSqrt() {
+        // BEGIN: org.graalvm.nativeimage.StackValueSnippets#ninePlusSixteenSqrt
+        ComplexNumber numberOnStack = StackValue.get(ComplexNumber.class);
+        numberOnStack.realPart(3.0);
+        numberOnStack.imagineryPart(4.0);
+        double absoluteValue = absoluteValue(numberOnStack);
+        assert 5.0 == absoluteValue;
+        // END: org.graalvm.nativeimage.StackValueSnippets#ninePlusSixteenSqrt
+    }
+
+    private static double absoluteValue(ComplexNumber cn) {
+        double reSquare = cn.realPart() * cn.realPart();
+        double imSquare = cn.imagineryPart() * cn.imagineryPart();
+        return Math.sqrt(reSquare + imSquare);
+    }
+
+    private static void withSizeOf() {
+        // BEGIN: org.graalvm.nativeimage.StackValueSnippets#withSizeOf
+        ComplexNumber numberOnStack = StackValue.get(
+                        SizeOf.get(ComplexNumber.class));
+        // END: org.graalvm.nativeimage.StackValueSnippets#withSizeOf
+
     }
 }
