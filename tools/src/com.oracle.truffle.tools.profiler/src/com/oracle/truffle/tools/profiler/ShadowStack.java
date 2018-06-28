@@ -35,6 +35,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -174,7 +175,7 @@ final class ShadowStack {
             Thread currentThread = Thread.currentThread();
             ThreadLocalStack stack = profilerStack.stacks.get(currentThread);
             if (stack == null) {
-                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit);
+                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, profilerStack.reconstructStatements, location.getInstrumentedNode());
                 ThreadLocalStack prevStack = profilerStack.stacks.putIfAbsent(currentThread, stack);
                 if (prevStack != null) {
                     stack = prevStack;
@@ -207,9 +208,9 @@ final class ShadowStack {
 
         private int stackIndex;
 
-        ThreadLocalStack(Thread thread, int stackLimit) {
+        ThreadLocalStack(Thread thread, int stackLimit, boolean reconstructStatements, Node instrumentedNode) {
             this.thread = thread;
-            ArrayList<SourceLocation> init = getInitialStack();
+            ArrayList<SourceLocation> init = getInitialStack(reconstructStatements, instrumentedNode);
             this.stack = init.toArray(new SourceLocation[stackLimit]);
             this.stackIndex = init.size() - 1;
             this.compiledStack = new boolean[stackLimit];
@@ -274,20 +275,45 @@ final class ShadowStack {
             return stackOverflowed;
         }
 
-        private static ArrayList<SourceLocation> getInitialStack() {
-            ArrayList<SourceLocation> sls = new ArrayList<>();
+        private static ArrayList<SourceLocation> getInitialStack(boolean reconstructStatements, Node instrumentedNode) {
+            ArrayList<SourceLocation> sourceLocations = new ArrayList<>();
+            if (reconstructStatements) {
+                doReconstructStatements(sourceLocations, instrumentedNode);
+            }
+
             Truffle.getRuntime().iterateFrames(frame -> {
                 Node node = frame.getCallNode();
                 if (node != null) {
-                    SourceSection sourceSection = node.getRootNode().getSourceSection();
-                    if (sourceSection != null) {
-                        sls.add(new SourceLocation(node, sourceSection));
+                    if (reconstructStatements) {
+                        doReconstructStatements(sourceLocations, node);
+                    } else {
+                        SourceSection sourceSection = node.getRootNode().getSourceSection();
+                        if (sourceSection != null) {
+                            sourceLocations.add(new SourceLocation(node, sourceSection));
+                        }
                     }
                 }
                 return null;
             });
-            Collections.reverse(sls);
-            return sls;
+            Collections.reverse(sourceLocations);
+            return sourceLocations;
+        }
+
+        private static void doReconstructStatements(ArrayList<SourceLocation> sourceLocations, Node node) {
+            // We exclude the node itself as it will be pushed on the stack by the StackPushPopNode
+            Node current = node.getParent();
+            while (current != null) {
+                if (current instanceof InstrumentableNode) {
+                    InstrumentableNode instrumentableNode = (InstrumentableNode) current;
+                    if (instrumentableNode.hasTag(StandardTags.StatementTag.class) || instrumentableNode.hasTag(StandardTags.RootTag.class)) {
+                        SourceSection sourceSection = current.getSourceSection();
+                        if (sourceSection != null) {
+                            sourceLocations.add(new SourceLocation(current, sourceSection));
+                        }
+                    }
+                }
+                current = current.getParent();
+            }
         }
 
         static final class CorrectedStackInfo {
