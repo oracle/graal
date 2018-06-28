@@ -152,7 +152,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createAlloca(LLVMContext context, Type type, int alignment);
 
-    LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion);
+    LLVMExpressionNode createGetUniqueStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion);
 
     LLVMExpressionNode createAllocaArray(LLVMContext context, Type elementType, LLVMExpressionNode numElements, int alignment);
 

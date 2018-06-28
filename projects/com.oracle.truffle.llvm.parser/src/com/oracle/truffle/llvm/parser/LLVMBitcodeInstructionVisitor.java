@@ -241,7 +241,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         if (targetType instanceof StructureType) {
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createGetStackSpace(context, targetType, uniquesRegion);
+            argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(context, targetType, uniquesRegion);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++) {
@@ -275,7 +275,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LandingpadInstruction landingpadInstruction) {
         Type type = landingpadInstruction.getType();
-        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createGetStackSpace(context, type, uniquesRegion);
+        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createGetUniqueStackSpace(context, type, uniquesRegion);
         LLVMExpressionNode[] entries = new LLVMExpressionNode[landingpadInstruction.getClauseSymbols().length];
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
@@ -385,7 +385,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argIndex++;
         if (targetType instanceof StructureType) {
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createGetStackSpace(context, targetType, uniquesRegion);
+            argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(context, targetType, uniquesRegion);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
@@ -634,7 +634,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type valueType = insert.getValue().getType();
         final int targetIndex = insert.getIndex();
 
-        final LLVMExpressionNode resultAggregate = nodeFactory.createGetStackSpace(context, sourceType, uniquesRegion);
+        final LLVMExpressionNode resultAggregate = nodeFactory.createGetUniqueStackSpace(context, sourceType, uniquesRegion);
 
         final long offset = context.getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,

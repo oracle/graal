@@ -96,7 +96,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         // setup the uniquesRegion
         UniquesRegion uniquesRegion = new UniquesRegion();
-        GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetStackSpaceFactory(uniquesRegion);
+        GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion);
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, runtime.getContext(), phis, method);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory);

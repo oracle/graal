@@ -1324,7 +1324,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion) {
+    public LLVMExpressionNode createGetUniqueStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion) {
         int alignment = context.getByteAlignment(type);
         int byteSize = context.getByteSize(type);
         UniqueSlot slot = uniquesRegion.addSlot(byteSize, alignment);
