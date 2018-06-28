@@ -182,11 +182,11 @@ def collect_java_sources(source_dirs):
 
 def test_javac(project_name):
     """(jaotc-)Compiles the `jdk.compiler` module and compiles (mx) project_name using `javac` (+ AOT module)."""
-    out_dir = tempfile.mkdtemp()
-    try:
-        # jaotc uses ':' as separator.
-        modules = ':'.join(['jdk.compiler'])
-        for common_opts in common_opts_variants:
+    # jaotc uses ':' as separator.
+    modules = ':'.join(['jdk.compiler'])
+    for common_opts in common_opts_variants:
+        out_dir = tempfile.mkdtemp()
+        try:
             mx.log('(jaotc) Compiling module(s) {} with {}'.format(modules, ' '.join(common_opts)))
             with mktemp_libfile() as lib_module:
                 run_jaotc(['-J' + opt for opt in common_opts] +
@@ -216,8 +216,8 @@ def test_javac(project_name):
 
                 mx_compiler.run_vm(common_opts + aot_opts + ['com.sun.tools.javac.Main'] + javac_args)
 
-    finally:
-        shutil.rmtree(out_dir)
+        finally:
+            shutil.rmtree(out_dir)
 
 
 def check_aot(classpath, main_class, common_opts, expected_output, lib_module, program_args=None):
