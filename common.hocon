@@ -1,5 +1,5 @@
 # overlay version
-overlay = 24e18d34f3f0c43dbfbb48602edeeb158e021dc2
+overlay = 1deeaf6e01f16b72271b066cfc8d73d8ab3977d9
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
@@ -138,6 +138,19 @@ deploy-binaries : {
   ]
 }
 
+deploy-binaries-no-rewrites : ${deploy-binaries} {
+  run : [
+     ["export", "PREV_MX_URLREWRITES=$MX_URLREWRITES"]
+     ["unset", "MX_URLREWRITES"]
+  ] ${deploy-binaries.run} [
+     ["export", "MX_URLREWRITES=$PREV_MX_URLREWRITES"]
+  ]
+}
+
+deploy-binaries-both : ${deploy-binaries} {
+  run : ${deploy-binaries.run} ${deploy-binaries-no-rewrites.run}
+}
+
 maven-deploy-dry-run : {
   targets : [gate]
   run : [
@@ -192,4 +205,3 @@ svm-common-sulong: {
     llvm: "==3.8"
   }
 }
-
