@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
@@ -54,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -324,7 +324,7 @@ public final class Runner {
         }
     }
 
-    private static ParserInput getParserData(Source source) {
+    private ParserInput getParserData(Source source) {
         ByteBuffer bytes;
         ExternalLibrary library;
         if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
@@ -523,8 +523,8 @@ public final class Runner {
         Path path = lib.getPath();
         byte[] bytes;
         try {
-            bytes = Files.readAllBytes(path);
-        } catch (IOException ex) {
+            bytes = context.getEnv().getTruffleFile(path.toString()).readAllBytes();
+        } catch (IOException | SecurityException | OutOfMemoryError ex) {
             throw new LLVMParserException("Error reading file " + path + ".");
         }
         // at the moment, we don't need the bitcode as the content of the source
@@ -890,14 +890,11 @@ public final class Runner {
         return Base64.getDecoder().decode(result);
     }
 
-    private static ByteBuffer read(String filename) {
-        return read(Paths.get(filename));
-    }
-
-    private static ByteBuffer read(Path path) {
+    private ByteBuffer read(String filename) {
         try {
-            return ByteBuffer.wrap(Files.readAllBytes(path));
-        } catch (IOException ignore) {
+            TruffleFile truffleFile = context.getEnv().getTruffleFile(filename);
+            return ByteBuffer.wrap(truffleFile.readAllBytes());
+        } catch (IOException | SecurityException | OutOfMemoryError ignore) {
             return ByteBuffer.allocate(0);
         }
     }

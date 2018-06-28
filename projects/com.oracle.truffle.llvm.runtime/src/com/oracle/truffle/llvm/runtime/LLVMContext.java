@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -408,7 +408,7 @@ public final class LLVMContext {
 
     private void addLibraryPath(String p) {
         Path path = Paths.get(p);
-        File file = path.toFile();
+        TruffleFile file = getEnv().getTruffleFile(path.toString());
         if (file.isDirectory()) {
             if (!libraryPaths.contains(path)) {
                 libraryPaths.add(path);
