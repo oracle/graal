@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk;
 import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
-import java.lang.reflect.Field;
 import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -53,6 +53,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
 import sun.text.normalizer.UBiDiProps;
@@ -90,7 +91,7 @@ final class Target_java_util_Locale {
 
 @Substitute
 @TargetClass(sun.util.locale.provider.LocaleServiceProviderPool.class)
-@SuppressWarnings({"static-method", "unused", "unchecked"})
+@SuppressWarnings({"unchecked"})
 final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
     /*
@@ -103,28 +104,32 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     private final LocaleServiceProvider cachedProvider;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected static Class<LocaleServiceProvider>[] spiClasses() throws NoSuchFieldException, IllegalAccessException {
+    protected static Class<LocaleServiceProvider>[] spiClasses() {
         /*
          * LocaleServiceProviderPool.spiClasses does not contain all the classes we need, so we list
          * them manually here.
          */
-        return (Class<LocaleServiceProvider>[]) new Class<?>[]{java.text.spi.BreakIteratorProvider.class, java.text.spi.CollatorProvider.class, java.text.spi.DateFormatProvider.class,
-                        java.text.spi.DateFormatSymbolsProvider.class, java.text.spi.DecimalFormatSymbolsProvider.class, java.text.spi.NumberFormatProvider.class,
-                        java.util.spi.CurrencyNameProvider.class, java.util.spi.LocaleNameProvider.class, java.util.spi.TimeZoneNameProvider.class, java.util.spi.CalendarDataProvider.class,
+        return (Class<LocaleServiceProvider>[]) new Class<?>[]{
+                        java.text.spi.BreakIteratorProvider.class,
+                        java.text.spi.CollatorProvider.class,
+                        java.text.spi.DateFormatProvider.class,
+                        java.text.spi.DateFormatSymbolsProvider.class,
+                        java.text.spi.DecimalFormatSymbolsProvider.class,
+                        java.text.spi.NumberFormatProvider.class,
+                        java.util.spi.CurrencyNameProvider.class,
+                        java.util.spi.LocaleNameProvider.class,
+                        java.util.spi.TimeZoneNameProvider.class,
+                        java.util.spi.CalendarDataProvider.class,
                         java.util.spi.CalendarNameProvider.class};
     }
 
     static {
         cachedPools = new HashMap<>();
         try {
-            Field providersField = LocaleServiceProviderPool.class.getDeclaredField("providers");
-            providersField.setAccessible(true);
-
             for (Class<LocaleServiceProvider> providerClass : spiClasses()) {
-                LocaleServiceProviderPool pool = LocaleServiceProviderPool.getPool(providerClass);
-                ConcurrentMap<LocaleProviderAdapter.Type, LocaleServiceProvider> providers = (ConcurrentMap<LocaleProviderAdapter.Type, LocaleServiceProvider>) providersField.get(pool);
-                LocaleServiceProvider provider = providers.get(LocaleProviderAdapter.Type.JRE);
-                assert provider != null : "There should be no null LocaleServiceProviders.";
+                final LocaleProviderAdapter lda = LocaleProviderAdapter.forJRE();
+                final LocaleServiceProvider provider = lda.getLocaleServiceProvider(providerClass);
+                assert provider != null : "Target_sun_util_locale_provider_LocaleServiceProviderPool: There should be no null LocaleServiceProviders.";
                 cachedPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
             }
         } catch (Throwable ex) {
@@ -146,6 +151,8 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     }
 
     @Substitute
+    @SuppressWarnings({"static-method"})
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private boolean hasProviders() {
         return false;
     }
@@ -156,6 +163,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     @KeepOriginal
     private native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter, Locale locale, String key, Object... params);
 
+    @SuppressWarnings({"unused"})
     @Substitute
     private <P extends LocaleServiceProvider, S> S getLocalizedObjectImpl(LocalizedObjectGetter<P, S> getter, Locale locale, boolean isObjectProvider, String key, Object... params) {
         if (locale == null) {
@@ -166,10 +174,10 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 }
 
 @TargetClass(sun.util.locale.provider.LocaleProviderAdapter.class)
-@SuppressWarnings({"unused"})
 final class Target_sun_util_locale_provider_LocaleProviderAdapter {
 
     @Substitute
+    @SuppressWarnings({"unused"})
     public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
         LocaleProviderAdapter result = Util_sun_util_locale_provider_LocaleProviderAdapter.cachedAdapters.get(providerClass);
         if (result == null) {
@@ -178,14 +186,24 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
         return result;
     }
 
-    @Alias private static LocaleProviderAdapter jreLocaleProviderAdapter;
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private static LocaleProviderAdapter jreLocaleProviderAdapter;
 
     @Substitute
     public static LocaleProviderAdapter forType(Type type) {
-        if (type == Type.JRE) {
-            return jreLocaleProviderAdapter;
+        if (GraalServices.Java8OrEarlier) {
+            if (type == Type.JRE) {
+                return jreLocaleProviderAdapter;
+            } else {
+                throw VMError.unsupportedFeature("LocaleProviderAdapter.forType: " + type);
+            }
         } else {
-            throw VMError.unsupportedFeature("LocaleProviderAdapter.forType: " + type);
+            /*
+             * TODO: If I only wanted the JRE adapter, I could cache the result of calling
+             * `LocaleProviderAdapter.forJRE()` during image building.
+             */
+            throw VMError.unsupportedFeature("JDK9OrLater: LocaleProviderAdapter.forType: " + type);
         }
     }
 }
@@ -201,7 +219,6 @@ final class Util_sun_util_locale_provider_LocaleProviderAdapter {
             Class<LocaleServiceProvider>[] spiClasses = Target_sun_util_locale_provider_LocaleServiceProviderPool.spiClasses();
             for (Class<LocaleServiceProvider> providerClass : spiClasses) {
                 LocaleProviderAdapter adapter = LocaleProviderAdapter.getAdapter(providerClass, Locale.getDefault());
-                assert adapter.getClass() == JRELocaleProviderAdapter.class;
                 cachedAdapters.put(providerClass, adapter);
             }
 
@@ -220,10 +237,15 @@ final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
 @TargetClass(sun.text.normalizer.UCharacterProperty.class)
 final class Target_sun_text_normalizer_UCharacterProperty {
 
-    @Substitute
+    @Substitute //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private static UCharacterProperty getInstance() {
         return Util_sun_text_normalizer_UCharacterProperty.instance;
     }
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public static /* final */ UCharacterProperty INSTANCE;
 }
 
 final class Util_sun_text_normalizer_UCharacterProperty {
@@ -233,10 +255,15 @@ final class Util_sun_text_normalizer_UCharacterProperty {
 @TargetClass(sun.text.normalizer.UBiDiProps.class)
 final class Target_sun_text_normalizer_UBiDiProps {
 
-    @Substitute
+    @Substitute //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private static UBiDiProps getSingleton() {
         return Util_sun_text_normalizer_UBiDiProps.singleton;
     }
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public static /* final */ UBiDiProps INSTANCE;
 }
 
 final class Util_sun_text_normalizer_UBiDiProps {
@@ -351,9 +378,12 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @Alias//
     private final ConcurrentMap<Locale, LocaleResources> localeResourcesMap = new ConcurrentHashMap<>();
 
-    @Alias static Boolean isNonENSupported;
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    static Boolean isNonENSupported;
 
-    @Substitute
+    @Substitute //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private static boolean isNonENLangSupported() {
         /*
          * The original implementation performs lazily initialization that looks at the file system
