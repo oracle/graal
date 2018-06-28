@@ -139,7 +139,7 @@ public class SubstrateGraphBuilderPlugins {
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerKnownIntrinsicsPlugins(plugins, analysis);
-        registerStackValuePlugins(plugins);
+        registerStackValuePlugins(snippetReflection, plugins);
         registerPinnedAllocatorPlugins(constantReflection, plugins);
         registerArraysPlugins(plugins, analysis);
         registerArrayPlugins(plugins);
@@ -558,13 +558,24 @@ public class SubstrateGraphBuilderPlugins {
         return StampFactory.forUnsignedInteger(64, 1, 0xffffffffffffffffL);
     }
 
-    private static void registerStackValuePlugins(InvocationPlugins plugins) {
+    private static void registerStackValuePlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, StackValue.class);
 
         r.register1("get", int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sizeNode) {
                 long size = longValue(b, targetMethod, sizeNode, "size");
+                StackSlotIdentity slotIdentity = new StackSlotIdentity(b.getGraph().method().asStackTraceElement(b.bci()).toString());
+                b.addPush(JavaKind.Object, new StackValueNode(1, size, slotIdentity));
+                return true;
+            }
+        });
+        r.register1("get", Class.class, new InvocationPlugin() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
+                Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
+                int size = SizeOf.get(clazz);
                 StackSlotIdentity slotIdentity = new StackSlotIdentity(b.getGraph().method().asStackTraceElement(b.bci()).toString());
                 b.addPush(JavaKind.Object, new StackValueNode(1, size, slotIdentity));
                 return true;
@@ -784,24 +795,6 @@ public class SubstrateGraphBuilderPlugins {
 
                 b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess())));
                 return true;
-            }
-        });
-        Registration r2 = new Registration(plugins, StackValue.class);
-        r2.register1("get", Class.class, new InvocationPlugin() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
-                Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
-                int result = SizeOf.get(clazz);
-                final ConstantNode clazzSizeNode = ConstantNode.forInt(result);
-
-                for (ResolvedJavaMethod method : targetMethod.getDeclaringClass().getDeclaredMethods()) {
-                    if (method.getName().equals("get") && method.getParameters().length == 1 && method.getParameters()[0].getKind() == JavaKind.Int) {
-                        b.handleReplacedInvoke(InvokeKind.Static, method, new ValueNode[]{clazzSizeNode}, true);
-                        return true;
-                    }
-                }
-                return false;
             }
         });
     }
