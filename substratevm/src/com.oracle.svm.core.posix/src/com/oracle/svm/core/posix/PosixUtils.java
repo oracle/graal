@@ -184,9 +184,15 @@ public class PosixUtils {
         KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
-    static String lastErrorString(String defaultMsg) {
-        String result = "";
+    /** Return the error string for the last error, or a default message. */
+    public static String lastErrorString(String defaultMsg) {
         int errno = Errno.errno();
+        return errorString(errno, defaultMsg);
+    }
+
+    /** Return the error string for the given error number, or a default message. */
+    public static String errorString(int errno, String defaultMsg) {
+        String result = "";
         if (errno != 0) {
             result = CTypeConversion.toJavaString(Errno.strerror(errno));
         }
