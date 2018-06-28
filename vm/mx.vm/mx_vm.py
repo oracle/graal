@@ -297,11 +297,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     "commit.committer-ts": _info['committer-ts'],
                 }
         _metadata = """\
-OS_NAME=<os>
-OS_ARCH=<arch>
+OS_NAME={os}
+OS_ARCH={arch}
 SOURCE="{source}"
 COMMIT_INFO={commit_info}
 GRAALVM_VERSION={version}""".format(
+            os=get_graalvm_os(),
+            arch=mx.get_arch(),
             source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites]),
             commit_info=json.dumps(_commit_info, sort_keys=True),
             version=_suite.release_version()
