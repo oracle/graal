@@ -116,7 +116,6 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                 registeredSignals.put(signalId, newSignalHandler);
             }
         } catch (IllegalArgumentException e) {
-            System.err.println("could not register signal with id " + signalId + " (" + signal + ")");
             return context.getSigErr();
         }
 

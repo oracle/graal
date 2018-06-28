@@ -80,9 +80,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapV2I64NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapV4I32NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapV8I16NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapVI16NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapVI32NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapVI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI1NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI64NodeGen;
@@ -1629,11 +1629,17 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.bswap.i64":
                 return LLVMByteSwapI64NodeGen.create(args[1], sourceSection);
             case "@llvm.bswap.v8i16":
-                return LLVMByteSwapV8I16NodeGen.create(args[1], sourceSection);
+                return LLVMByteSwapVI16NodeGen.create(8, args[1], sourceSection);
+            case "@llvm.bswap.v16i16":
+                return LLVMByteSwapVI16NodeGen.create(16, args[1], sourceSection);
             case "@llvm.bswap.v4i32":
-                return LLVMByteSwapV4I32NodeGen.create(args[1], sourceSection);
+                return LLVMByteSwapVI32NodeGen.create(4, args[1], sourceSection);
+            case "@llvm.bswap.v8i32":
+                return LLVMByteSwapVI32NodeGen.create(8, args[1], sourceSection);
             case "@llvm.bswap.v2i64":
-                return LLVMByteSwapV2I64NodeGen.create(args[1], sourceSection);
+                return LLVMByteSwapVI64NodeGen.create(2, args[1], sourceSection);
+            case "@llvm.bswap.v4i64":
+                return LLVMByteSwapVI64NodeGen.create(4, args[1], sourceSection);
             case "@llvm.memmove.p0i8.p0i8.i64":
                 return LLVMMemMoveI64NodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], args[5], sourceSection);
             case "@llvm.pow.f32":

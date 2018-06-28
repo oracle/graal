@@ -66,11 +66,18 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapV8I16 extends LLVMBuiltin {
+    public abstract static class LLVMByteSwapVI16 extends LLVMBuiltin {
+
+        private final int vectorLen;
+
+        protected LLVMByteSwapVI16(int vectorLen) {
+            this.vectorLen = vectorLen;
+        }
+
         @Specialization
         protected LLVMI16Vector doI16Vector(LLVMI16Vector vector) {
-            short[] result = new short[8];
-            for (int i = 0; i < 8; i++) {
+            short[] result = new short[vectorLen];
+            for (int i = 0; i < vectorLen; i++) {
                 result[i] = Short.reverseBytes(vector.getValue(i));
             }
             return LLVMI16Vector.create(result);
@@ -78,11 +85,18 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapV4I32 extends LLVMBuiltin {
+    public abstract static class LLVMByteSwapVI32 extends LLVMBuiltin {
+
+        private final int vectorLen;
+
+        protected LLVMByteSwapVI32(int vectorLen) {
+            this.vectorLen = vectorLen;
+        }
+
         @Specialization
         protected LLVMI32Vector doI32Vector(LLVMI32Vector vector) {
-            int[] result = new int[4];
-            for (int i = 0; i < 4; i++) {
+            int[] result = new int[vectorLen];
+            for (int i = 0; i < vectorLen; i++) {
                 result[i] = Integer.reverseBytes(vector.getValue(i));
             }
             return LLVMI32Vector.create(result);
@@ -90,11 +104,18 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapV2I64 extends LLVMBuiltin {
+    public abstract static class LLVMByteSwapVI64 extends LLVMBuiltin {
+
+        private final int vectorLen;
+
+        protected LLVMByteSwapVI64(int vectorLen) {
+            this.vectorLen = vectorLen;
+        }
+
         @Specialization
         protected LLVMI64Vector doI32Vector(LLVMI64Vector vector) {
-            long[] result = new long[2];
-            for (int i = 0; i < 2; i++) {
+            long[] result = new long[vectorLen];
+            for (int i = 0; i < vectorLen; i++) {
                 result[i] = Long.reverseBytes(vector.getValue(i));
             }
             return LLVMI64Vector.create(result);
