@@ -343,6 +343,17 @@ suite = {
       },
       "testProject" : True,
     },
+    "com.oracle.truffle.llvm.tests.sulongavx" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O1", "O2", "O3"],
+      "buildEnv" : {
+        "CFLAGS" : "-mavx2",
+        "LDFLAGS" : "-lm",
+        "OS" : "<os>",
+      },
+      "testProject" : True,
+    },
     "com.oracle.truffle.llvm.tests.sulongcpp" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -465,6 +476,7 @@ suite = {
         "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.nfi",
         "com.oracle.truffle.llvm.tests.sulong",
+        "com.oracle.truffle.llvm.tests.sulongavx",
         "com.oracle.truffle.llvm.tests.sulongcpp",
         "com.oracle.truffle.llvm.tests.libc",
       ],
