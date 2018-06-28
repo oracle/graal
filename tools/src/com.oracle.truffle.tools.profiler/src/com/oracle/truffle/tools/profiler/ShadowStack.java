@@ -174,7 +174,7 @@ final class ShadowStack {
             Thread currentThread = Thread.currentThread();
             ThreadLocalStack stack = profilerStack.stacks.get(currentThread);
             if (stack == null) {
-                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, isAttachedToRootTag);
+                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit);
                 ThreadLocalStack prevStack = profilerStack.stacks.putIfAbsent(currentThread, stack);
                 if (prevStack != null) {
                     stack = prevStack;
@@ -207,9 +207,9 @@ final class ShadowStack {
 
         private int stackIndex;
 
-        ThreadLocalStack(Thread thread, int stackLimit, boolean isAttachedToRootTag) {
+        ThreadLocalStack(Thread thread, int stackLimit) {
             this.thread = thread;
-            ArrayList<SourceLocation> init = getInitialStack(isAttachedToRootTag);
+            ArrayList<SourceLocation> init = getInitialStack();
             this.stack = init.toArray(new SourceLocation[stackLimit]);
             this.stackIndex = init.size() - 1;
             this.compiledStack = new boolean[stackLimit];
@@ -274,12 +274,12 @@ final class ShadowStack {
             return stackOverflowed;
         }
 
-        private static ArrayList<SourceLocation> getInitialStack(boolean isAttachedToRootTag) {
+        private static ArrayList<SourceLocation> getInitialStack() {
             ArrayList<SourceLocation> sls = new ArrayList<>();
             Truffle.getRuntime().iterateFrames(frame -> {
                 Node node = frame.getCallNode();
                 if (node != null) {
-                    SourceSection sourceSection = isAttachedToRootTag ? node.getRootNode().getSourceSection() : node.getEncapsulatingSourceSection();
+                    SourceSection sourceSection = node.getRootNode().getSourceSection();
                     if (sourceSection != null) {
                         sls.add(new SourceLocation(node, sourceSection));
                     }
