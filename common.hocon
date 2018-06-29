@@ -130,27 +130,6 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-deploy-binaries : {
-  targets : [post-merge, deploy]
-  run : [
-    ["mx", "--strict-compliance", "build"]
-    ["mx", "deploy-binary", "--all-suites", "--skip-existing", ${binaries-repository}]
-  ]
-}
-
-deploy-binaries-no-rewrites : ${deploy-binaries} {
-  run : [
-     ["export", "PREV_MX_URLREWRITES=$MX_URLREWRITES"]
-     ["unset", "MX_URLREWRITES"]
-  ] ${deploy-binaries.run} [
-     ["export", "MX_URLREWRITES=$PREV_MX_URLREWRITES"]
-  ]
-}
-
-deploy-binaries-both : ${deploy-binaries} {
-  run : ${deploy-binaries.run} ${deploy-binaries-no-rewrites.run}
-}
-
 maven-deploy-dry-run : {
   targets : [gate]
   run : [
