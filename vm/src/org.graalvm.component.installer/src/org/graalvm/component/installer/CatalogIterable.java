@@ -109,6 +109,7 @@ public class CatalogIterable implements ComponentIterable {
         private final String spec;
         private final Feedback feedback;
         private final ComponentInfo catalogInfo;
+        private ComponentInfo fileInfo;
         private final boolean progress;
 
         private boolean verifyJars;
@@ -170,6 +171,7 @@ public class CatalogIterable implements ComponentIterable {
                     ComponentInfo i = super.createComponentInfo();
                     i.setRemoteURL(remoteURL);
                     complete = true;
+                    fileInfo = i;
                     return i;
                 }
 
@@ -215,7 +217,7 @@ public class CatalogIterable implements ComponentIterable {
 
         @Override
         public ComponentInfo getComponentInfo() {
-            return catalogInfo;
+            return fileInfo != null ? fileInfo : catalogInfo;
         }
 
         @Override
