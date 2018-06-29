@@ -503,6 +503,9 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
+    with Task('maven plugin checks', tasks, tags=[GraalTags.helloworld]) as t:
+        if t:
+            maven_plugin_install([])
     # Debug GR-8964 on Darwin gates
     debug_gr_8964 = (mx.get_os() == 'darwin')
     with native_image_context(IMAGE_ASSERTION_FLAGS, debug_gr_8964=debug_gr_8964) as native_image:
@@ -773,8 +776,19 @@ def fetch_languages(args, early_exit=True):
         version = requested[language_flag]
         truffle_language_ensure(language_flag, version, early_exit=early_exit)
 
+def deploy_native_image_maven_plugin(svmVersion, action='install'):
+    # Create native-image-maven-plugin pom with correct version info from template
+    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
+    dom = parse(join(proj_dir, 'pom_template.xml'))
+    for svmVersionElement in dom.getElementsByTagName('svmVersion'):
+        svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
+    with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
+        dom.writexml(pom_file)
+    # Build and install native-image-maven-plugin into local repository
+    mx.run_maven([action], cwd=proj_dir)
+
 def maven_plugin_install(args):
-    # Install native-image-maven-plugin dependencies into local repository
+    # First install native-image-maven-plugin dependencies into local maven repository
     deps = []
     def visit(dep, edge):
         if isinstance(dep, mx.Distribution):
@@ -791,16 +805,7 @@ def maven_plugin_install(args):
         '--only', ','.join(dep.qualifiedName() for dep in deps)
     ])
 
-    # Create native-image-maven-plugin pom with correct version info from template
-    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
-    dom = parse(join(proj_dir, 'pom_template.xml'))
-    for svmVersionElement in dom.getElementsByTagName('svmVersion'):
-        svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
-    with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
-        dom.writexml(pom_file)
-
-    # Build and install native-image-maven-plugin into local repository
-    mx.run_maven(['install', '-Dmx.platform=' + platform_name()], cwd=proj_dir)
+    deploy_native_image_maven_plugin(svmVersion)
 
     success_message = [
         '',
