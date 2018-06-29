@@ -9,10 +9,10 @@ jdks: {
   labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.46-dev", platformspecific: true}
   openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.46-dev", platformspecific: true}
   labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.46-dev-fastdebug", platformspecific: true}
-  oraclejdk11:   {name : labsjdk,   version : "20180627-111552-dev", platformspecific: true}
+  oraclejdk11:   {name : labsjdk,   version : "20180629-011203-dev", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180627-111552-dev", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180629-011203-dev", platformspecific: true}
 
 }
 
