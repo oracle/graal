@@ -1,12 +1,13 @@
 # Accessing resources in Substrate VM images
 
-Per-default the native-image builder will not integrate any of the resources
-that are on the classpath during image building into the image it creates. To
-make calls like Class.{getResource,getResourceAsStream} or the corresponding
-ClassLoader variants working in images, the resources that should be accessible
-at image-runtime need to be explicitly specified with the following option
+By default, the native-image builder will not integrate any of the resources
+which are on the classpath during image building into the image it creates. To
+make calls such as Class.{getResource,getResourceAsStream} (or the
+corresponding ClassLoader methods) return specific resources (instead of null),
+the resources that should be accessible at image runtime need to be explicitly
+specified with the following option
 ```bash
--H:IncludeResources=<Java regexp to match resources to be included in the image>
+-H:IncludeResources=<Java regexp that matches resources to be included in the image>
 ```
 
 # Resource Bundles on Substrate VM
