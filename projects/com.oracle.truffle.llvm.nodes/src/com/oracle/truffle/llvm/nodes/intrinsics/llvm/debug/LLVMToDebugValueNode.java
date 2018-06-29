@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -191,7 +192,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         return new LLVMConstantValueProvider.InteropValue(value.getObject(), value.getOffset());
     }
 
-    @Specialization
+    @Fallback
     protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object value) {
         return LLVMDebugValue.UNAVAILABLE;
     }
