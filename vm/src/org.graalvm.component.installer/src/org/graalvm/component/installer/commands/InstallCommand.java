@@ -339,7 +339,7 @@ public class InstallCommand implements InstallerCommand {
 
     Installer createInstaller(ComponentParam p, MetadataLoader ldr) throws IOException {
         ComponentInfo partialInfo;
-        partialInfo = p.createMetaLoader().getComponentInfo();
+        partialInfo = ldr.getComponentInfo();
         feedback.verboseOutput("INSTALL_PrepareToInstall",
                         /* feedback.translateFilename( */ p.getDisplayName(),
                         partialInfo.getId(),
