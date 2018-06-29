@@ -450,6 +450,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'maven',
     'js',
     'ruby',
     'sulong',
@@ -503,9 +504,6 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
-    with Task('maven plugin checks', tasks, tags=[GraalTags.helloworld]) as t:
-        if t:
-            maven_plugin_install([])
     # Debug GR-8964 on Darwin gates
     debug_gr_8964 = (mx.get_os() == 'darwin')
     with native_image_context(IMAGE_ASSERTION_FLAGS, debug_gr_8964=debug_gr_8964) as native_image:
@@ -533,6 +531,10 @@ def svm_gate_body(args, tasks):
                 test_python_smoke([python])
 
         gate_sulong(native_image, tasks)
+
+    with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
+        if t:
+            maven_plugin_install([])
 
 def native_junit(native_image, unittest_args, build_args=None, run_args=None):
     build_args = build_args if not None else []
