@@ -48,6 +48,15 @@ import org.graalvm.word.PointerBase;
  * {@link org.graalvm.nativeimage.StackValue#get(java.lang.Class)} or by
  * {@link org.graalvm.nativeimage.UnmanagedMemory#malloc(org.graalvm.word.UnsignedWord)}.
  *
+ * To access an array of structs one can define a special {@code addressOf} method:
+ * 
+ * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.IntOrDouble}
+ *
+ * Implementation of such mehtod then allows one to do <em>array arithmetics</em> - e.g. obtain
+ * pointer to the first element of the array and then access the others:
+ *
+ * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.acceptIntIntDouble}
+ *
  * @since 1.0
  * @see org.graalvm.nativeimage.StackValue
  * @see org.graalvm.nativeimage.UnmanagedMemory

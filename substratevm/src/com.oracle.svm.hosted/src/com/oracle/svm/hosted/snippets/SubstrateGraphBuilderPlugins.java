@@ -591,6 +591,18 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register2("get", int.class, Class.class, new InvocationPlugin() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode numElementsNode, ValueNode classNode) {
+                long numElements = longValue(b, targetMethod, numElementsNode, "numElements");
+                Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
+                int size = SizeOf.get(clazz);
+                StackSlotIdentity slotIdentity = new StackSlotIdentity(b.getGraph().method().asStackTraceElement(b.bci()).toString());
+                b.addPush(JavaKind.Object, new StackValueNode(numElements, size, slotIdentity));
+                return true;
+            }
+        });
     }
 
     private static void registerPinnedAllocatorPlugins(ConstantReflectionProvider constantReflection, InvocationPlugins plugins) {

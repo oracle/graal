@@ -61,6 +61,28 @@ public final class StackValue {
     }
 
     /**
+     * Reserves a block of memory for array of given {@link CStruct} type in the stack frame of the
+     * method that calls this intrinsic. This is a convenience method for calls to:
+     * {@codesnippet org.graalvm.nativeimage.StackValueSnippets#withSizeOfArray}
+     *
+     * It can be used to allocate a array of parameters on the stack. The following example
+     * allocates a three element array, fills them with two int values and one double value and then
+     * sends it to a method that accepts such parameter convention:
+     *
+     * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.callIntIntDouble}
+     *
+     * @param <T> the type, annotated by {@link CStruct} annotation
+     * @param numberOfElements number of array elements to allocate
+     * @param structType the requested structure class - must be a compile time constant
+     * @return pointer to on-stack allocated location for the requested structure
+     *
+     * @since 1.0
+     */
+    public static <T extends PointerBase> T get(int numberOfElements, Class<T> structType) {
+        return get(SizeOf.get(structType));
+    }
+
+    /**
      * Reserves a block of memory in the stack frame of the method that calls this intrinsic. The
      * returned pointer is aligned on a word boundary. If the requested size is 0, the method
      * returns {@code null}. The size must be a compile time constant. If the call to this method is
@@ -127,6 +149,56 @@ final class StackValueSnippets {
         ComplexNumber numberOnStack = StackValue.get(
                         SizeOf.get(ComplexNumber.class));
         // END: org.graalvm.nativeimage.StackValueSnippets#withSizeOf
+
+    }
+
+    // BEGIN: org.graalvm.nativeimage.StackValueSnippets.IntOrDouble
+    @CStruct("int_double")
+    interface IntOrDouble extends PointerBase {
+        // allows access to individual structs in an array
+        IntOrDouble addressOf(int index);
+
+        @CField
+        int i();
+
+        @CField
+        void i(int i);
+
+        @CField
+        double d();
+
+        @CField
+        void d(double d);
+
+    }
+    // END: org.graalvm.nativeimage.StackValueSnippets.IntOrDouble
+
+    // BEGIN: org.graalvm.nativeimage.StackValueSnippets.acceptIntIntDouble
+    private static double acceptIntIntDouble(IntOrDouble arr) {
+        IntOrDouble firstInt = arr.addressOf(0);
+        IntOrDouble secondInt = arr.addressOf(1);
+        IntOrDouble thirdDouble = arr.addressOf(2);
+        return firstInt.i() + secondInt.i() + thirdDouble.d();
+    }
+    // END: org.graalvm.nativeimage.StackValueSnippets.acceptIntIntDouble
+
+    private static double callIntIntDouble() {
+        // BEGIN: org.graalvm.nativeimage.StackValueSnippets.callIntIntDouble
+        IntOrDouble array = StackValue.get(3, IntOrDouble.class);
+        array.addressOf(0).i(10);
+        array.addressOf(2).i(12);
+        array.addressOf(3).d(20.0);
+        double sum = acceptIntIntDouble(array);
+        // END: org.graalvm.nativeimage.StackValueSnippets.callIntIntDouble
+        return sum;
+    }
+
+    private static void withSizeOfArray() {
+        // BEGIN: org.graalvm.nativeimage.StackValueSnippets#withSizeOfArray
+        IntOrDouble arrayOnStack = StackValue.get(
+                        3, // number of array elements
+                        SizeOf.get(IntOrDouble.class));
+        // END: org.graalvm.nativeimage.StackValueSnippets#withSizeOfArray
 
     }
 }
