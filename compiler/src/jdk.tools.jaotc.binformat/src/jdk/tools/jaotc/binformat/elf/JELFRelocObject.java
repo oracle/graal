@@ -36,17 +36,12 @@ import jdk.tools.jaotc.binformat.ByteContainer;
 import jdk.tools.jaotc.binformat.CodeContainer;
 import jdk.tools.jaotc.binformat.ReadOnlyDataContainer;
 import jdk.tools.jaotc.binformat.Relocation;
-import jdk.tools.jaotc.binformat.Relocation.RelocType;
 import jdk.tools.jaotc.binformat.Symbol;
 import jdk.tools.jaotc.binformat.Symbol.Binding;
 import jdk.tools.jaotc.binformat.Symbol.Kind;
-
-import jdk.tools.jaotc.binformat.elf.ElfSymbol;
-import jdk.tools.jaotc.binformat.elf.ElfTargetInfo;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Ehdr;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Shdr;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Sym;
-import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rela;
 
 public abstract class JELFRelocObject {
 
@@ -127,7 +122,7 @@ public abstract class JELFRelocObject {
     }
 
     /**
-     * Create an ELF relocatable object
+     * Creates an ELF relocatable object.
      *
      * @param relocationTable
      * @param symbols
@@ -196,28 +191,28 @@ public abstract class JELFRelocObject {
         // Update all section offsets and the Elf header section offset
         // Write the Header followed by the contents of each section
         // and then the section structures (section table).
-        int file_offset = Elf64_Ehdr.totalsize;
+        int fileOffset = Elf64_Ehdr.totalsize;
 
         // and round it up
-        file_offset = (file_offset + (sections.get(1).getDataAlign() - 1)) &
+        fileOffset = (fileOffset + (sections.get(1).getDataAlign() - 1)) &
                         ~((sections.get(1).getDataAlign() - 1));
 
         // Calc file offsets for section data skipping null section
         for (int i = 1; i < sections.size(); i++) {
             ElfSection sect = sections.get(i);
-            file_offset = (file_offset + (sect.getDataAlign() - 1)) &
+            fileOffset = (fileOffset + (sect.getDataAlign() - 1)) &
                             ~((sect.getDataAlign() - 1));
-            sect.setOffset(file_offset);
-            file_offset += sect.getSize();
+            sect.setOffset(fileOffset);
+            fileOffset += sect.getSize();
         }
 
         // Align the section table
-        file_offset = (file_offset + (ElfSection.getShdrAlign() - 1)) &
+        fileOffset = (fileOffset + (ElfSection.getShdrAlign() - 1)) &
                         ~((ElfSection.getShdrAlign() - 1));
 
         // Update the Elf Header with the offset of the first Elf64_Shdr
         // and the number of sections.
-        eh.setSectionOff(file_offset);
+        eh.setSectionOff(fileOffset);
         eh.setSectionNum(sections.size());
 
         // Write out the Header

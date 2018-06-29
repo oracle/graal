@@ -27,8 +27,6 @@ package jdk.tools.jaotc;
 
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.Symbol;
-import jdk.tools.jaotc.StubInformation;
-
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 
@@ -46,11 +44,11 @@ final class JavaCallSiteRelocationSymbol extends CallSiteRelocationSymbol {
         String archStr = System.getProperty("os.arch").toLowerCase();
         if (archStr.equals("aarch64")) {
             // AArch64 is a special case: it uses 48-bit addresses.
-            byte[] non_oop_word = {-1, -1, -1, -1, -1, -1, 0, 0};
-            minusOneSlot = non_oop_word;
+            byte[] nonOopWord = {-1, -1, -1, -1, -1, -1, 0, 0};
+            minusOneSlot = nonOopWord;
         } else {
-            byte[] non_oop_word = {-1, -1, -1, -1, -1, -1, -1, -1};
-            minusOneSlot = non_oop_word;
+            byte[] nonOopWord = {-1, -1, -1, -1, -1, -1, -1, -1};
+            minusOneSlot = nonOopWord;
         }
     }
 
@@ -137,7 +135,6 @@ final class JavaCallSiteRelocationSymbol extends CallSiteRelocationSymbol {
      */
     private static String getResolveSymbolName(CompiledMethodInfo mi, Call call) {
         String resolveSymbolName;
-        String name = call.target.toString();
         if (CallInfo.isStaticCall(call)) {
             assert mi.hasMark(call, MarkId.INVOKESTATIC);
             resolveSymbolName = BinaryContainer.getResolveStaticEntrySymbolName();

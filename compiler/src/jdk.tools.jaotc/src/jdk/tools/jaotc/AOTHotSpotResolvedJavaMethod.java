@@ -41,15 +41,18 @@ final class AOTHotSpotResolvedJavaMethod implements JavaMethodInfo {
         this.backend = backend;
     }
 
+    @Override
     public String getSymbolName() {
         return JavaMethodInfo.uniqueMethodName(method);
     }
 
+    @Override
     public String getNameAndSignature() {
         String className = method.getDeclaringClass().getName();
         return className + "." + method.getName() + method.getSignature().toMethodDescriptor();
     }
 
+    @Override
     public HotSpotCompiledCode compiledCode(CompilationResult result) {
         return HotSpotCompiledCodeBuilder.createCompiledCode(backend.getCodeCache(), method, null, result);
     }

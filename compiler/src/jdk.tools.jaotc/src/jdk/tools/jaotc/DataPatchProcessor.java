@@ -28,16 +28,15 @@ package jdk.tools.jaotc;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import org.graalvm.compiler.code.DataSection;
+import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
+
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.Relocation;
 import jdk.tools.jaotc.binformat.Relocation.RelocType;
 import jdk.tools.jaotc.binformat.Symbol;
 import jdk.tools.jaotc.binformat.Symbol.Binding;
 import jdk.tools.jaotc.binformat.Symbol.Kind;
-import jdk.tools.jaotc.AOTCompiledClass;
-import org.graalvm.compiler.code.DataSection;
-import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
