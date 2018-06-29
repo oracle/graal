@@ -1,6 +1,6 @@
 suite = {
     "name": "vm",
-    "version": "1.0.0-rc3-dev",
+    "version": "1.0.0-rc3",
     "mxversion": "5.174.2",
     "defaultLicense" : "GPLv2-CPE",
     "imports": {

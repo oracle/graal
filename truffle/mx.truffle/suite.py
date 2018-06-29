@@ -1,7 +1,7 @@
 suite = {
   "mxversion" : "5.175.2",
   "name" : "truffle",
-  "version": "1.0.0-rc3-dev",
+  "version": "1.0.0-rc3",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
