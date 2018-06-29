@@ -171,8 +171,8 @@ public class NativeImage {
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
     private final ArrayList<OptionHandler<? extends NativeImage>> optionHandlers = new ArrayList<>();
 
-    private final Path workDir;
-    private final Path rootDir;
+    protected final BuildConfiguration config;
+
     private final Map<String, String> userConfigProperties = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
@@ -181,17 +181,96 @@ public class NativeImage {
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
-    public interface PathsProvider {
-        Path getWorkDir();
+    public interface BuildConfiguration {
+        /**
+         * @return relative path usage get resolved against this path (also default path for image
+         *         building)
+         */
+        Path getWorkingDirectory();
 
-        Path getRootDir();
+        /**
+         * @return path to Java executable
+         */
+        Path getJavaExecutable();
+
+        /**
+         * @return classpath for SubstrateVM image builder components
+         */
+        List<Path> getBuilderClasspath();
+
+        /**
+         * @return base clibrary paths needed for general image building
+         */
+        List<Path> getBuilderCLibrariesPaths();
+
+        /**
+         * @return path to content of the inspect web server (points-to analysis debugging)
+         */
+        Path getBuilderInspectServerPath();
+
+        /**
+         * @return base image classpath needed for every image (e.g. LIBRARY_SUPPORT)
+         */
+        List<Path> getImageProvidedClasspath();
+
+        /**
+         * @return JVMCI API classpath for image builder (jvmci + graal jars)
+         */
+        List<Path> getBuilderJVMCIClasspath();
+
+        /**
+         * @return entries for jvmci.class.path.append system property (if needed)
+         */
+        List<Path> getBuilderJVMCIClasspathAppend();
+
+        /**
+         * @return boot-classpath for image builder (graal-sdk.jar)
+         */
+        List<Path> getBuilderBootClasspath();
+
+        /**
+         * @return additional arguments for JVM that runs image builder
+         */
+        List<String> getBuilderJavaArgs();
+
+        /**
+         * @return classpath for image (the classes the user wants to build an image from)
+         */
+        List<Path> getImageClasspath();
+
+        /**
+         * @return native-image (i.e. image build) arguments
+         */
+        List<String> getBuildArgs();
+
+        /**
+         * TODO Remove GraalVM Lanucher specific code.
+         *
+         * @return extra classpath entries for common GraalVM launcher components
+         *         (launcher-common.jar)
+         */
+        List<Path> getLauncherCommonClasspath();
+
+        /**
+         * TODO Remove GraalVM Lanucher specific code.
+         *
+         * @return launcher classpath system property argument for image builder
+         */
+        String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath);
+
+        /**
+         * TODO Remove GraalVM Lanucher specific code.
+         */
+        Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath);
     }
 
-    private static class DefaultPathsProvider implements PathsProvider {
+    private static class DefaultBuildConfiguration implements BuildConfiguration {
         private final Path workDir;
         private final Path rootDir;
+        private final String[] args;
 
-        DefaultPathsProvider() {
+        DefaultBuildConfiguration(String[] args) {
+            this.args = args;
             workDir = Paths.get(".").toAbsolutePath().normalize();
             if (IS_AOT) {
                 Path executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
@@ -216,23 +295,117 @@ public class NativeImage {
         }
 
         @Override
-        public Path getWorkDir() {
+        public Path getWorkingDirectory() {
             return workDir;
         }
 
         @Override
-        public Path getRootDir() {
-            return rootDir;
+        public Path getJavaExecutable() {
+            Path javaHomePath = rootDir.getParent();
+            Path binJava = Paths.get("bin", "java");
+            if (Files.isExecutable(javaHomePath.resolve(binJava))) {
+                return javaHomePath.resolve(binJava);
+            }
+
+            String javaHome = System.getenv("JAVA_HOME");
+            if (javaHome == null) {
+                throw showError("Environment variable JAVA_HOME is not set");
+            }
+            javaHomePath = Paths.get(javaHome);
+            if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
+                throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
+            }
+            return javaHomePath.resolve(binJava);
+        }
+
+        @Override
+        public List<Path> getBuilderClasspath() {
+            return getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")));
+        }
+
+        @Override
+        public List<Path> getBuilderCLibrariesPaths() {
+            return Collections.singletonList(rootDir.resolve(Paths.get("lib", "svm", "clibraries")));
+        }
+
+        @Override
+        public List<Path> getImageProvidedClasspath() {
+            return getJars(rootDir.resolve(Paths.get("lib", "svm")));
+        }
+
+        @Override
+        public Path getBuilderInspectServerPath() {
+            Path inspectPath = rootDir.resolve(Paths.get("lib", "svm", "inspect"));
+            if (Files.isDirectory(inspectPath)) {
+                return inspectPath;
+            }
+            return null;
+        }
+
+        @Override
+        public List<Path> getBuilderJVMCIClasspath() {
+            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")));
+        }
+
+        @Override
+        public List<Path> getBuilderJVMCIClasspathAppend() {
+            return getBuilderJVMCIClasspath().stream()
+                            .filter(f -> f.getFileName().toString().toLowerCase().endsWith("graal.jar"))
+                            .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<Path> getBuilderBootClasspath() {
+            return getJars(rootDir.resolve(Paths.get("lib", "boot")));
+        }
+
+        @Override
+        public List<String> getBuilderJavaArgs() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Path> getImageClasspath() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<String> getBuildArgs() {
+            if (args.length == 0) {
+                return Collections.emptyList();
+            }
+            List<String> buildArgs = new ArrayList<>();
+            buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.toString()));
+            buildArgs.addAll(Arrays.asList(args));
+            return buildArgs;
+        }
+
+        @Override
+        public List<Path> getLauncherCommonClasspath() {
+            return Collections.singletonList(rootDir.resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
+        }
+
+        @Override
+        public String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath) {
+            StringJoiner sj = new StringJoiner(File.pathSeparator);
+            for (Path path : imageClasspath) {
+                if (!path.startsWith(rootDir)) {
+                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", path, rootDir));
+                    continue;
+                }
+                sj.add(Paths.get("jre").resolve(rootDir.relativize(path)).toString());
+            }
+            return sj.toString();
+        }
+
+        @Override
+        public Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath) {
+            return relativeLauncherClassPath.map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> rootDir.resolve(p));
         }
     }
 
-    protected NativeImage(PathsProvider pathsProvider) {
-        workDir = pathsProvider.getWorkDir();
-        try {
-            rootDir = canonicalize(pathsProvider.getRootDir());
-        } catch (NativeImageError e) {
-            throw showError("PathsProvider provides invalid rootDir " + pathsProvider.getRootDir() + "\n" + e.getMessage());
-        }
+    protected NativeImage(BuildConfiguration config) {
+        this.config = config;
 
         String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
         String configFile = System.getenv(configFileEnvVarKey);
@@ -268,10 +441,10 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
 
         // Generate images into the current directory
-        addImageBuilderArg(oHPath + workDir);
+        addImageBuilderArg(oHPath + config.getWorkingDirectory());
 
         /* Discover supported MacroOptions */
-        optionRegistry = new MacroOption.Registry(canonicalize(rootDir));
+        optionRegistry = new MacroOption.Registry();
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
@@ -316,29 +489,29 @@ public class NativeImage {
     }
 
     private void prepareImageBuildArgs() {
-        Path svmDir = rootDir.resolve(Paths.get("lib", "svm"));
-        getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
-        getJars(svmDir).forEach(this::addImageProvidedClasspath);
-        Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
-        addImageBuilderArg(oHCLibraryPath + clibrariesDir);
-        if (Files.isDirectory(svmDir.resolve("inspect"))) {
-            addImageBuilderArg(oHInspectServerContentPath + svmDir.resolve("inspect"));
+        config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
+        config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
+        String clibrariesBuilderArg = config.getBuilderCLibrariesPaths()
+                        .stream()
+                        .map(path -> canonicalize(path.resolve(platform)).toString())
+                        .collect(Collectors.joining(",", oHCLibraryPath, ""));
+        addImageBuilderArg(clibrariesBuilderArg);
+        if (config.getBuilderInspectServerPath() != null) {
+            addImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
         }
 
-        Path jvmciDir = rootDir.resolve(Paths.get("lib", "jvmci"));
-        getJars(jvmciDir).forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
-        try {
-            addImageBuilderJavaArgs(Files.list(jvmciDir)
-                            .filter(f -> f.getFileName().toString().toLowerCase().endsWith("graal.jar"))
-                            .map(this::canonicalize)
-                            .map(Path::toString)
-                            .collect(Collectors.joining(":", "-Djvmci.class.path.append=", "")));
-        } catch (IOException e) {
-            showError("Unable to use jar-files from directory " + jvmciDir, e);
+        config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
+        if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
+            String builderJavaArg = config.getBuilderJVMCIClasspathAppend()
+                            .stream().map(path -> canonicalize(path).toString())
+                            .collect(Collectors.joining(":", "-Djvmci.class.path.append=", ""));
+            addImageBuilderJavaArgs(builderJavaArg);
         }
 
-        Path bootDir = rootDir.resolve(Paths.get("lib", "boot"));
-        getJars(bootDir).forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
+        config.getBuilderBootClasspath().forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
+
+        config.getBuilderJavaArgs().forEach(this::addImageBuilderJavaArgs);
+        config.getImageClasspath().forEach(this::addCustomImageClasspath);
     }
 
     private void completeOptionArgs() {
@@ -390,10 +563,6 @@ public class NativeImage {
         return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
                         .map(lang -> lang.getProperty("LauncherClassPath"))
                         .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
-    }
-
-    private Stream<Path> getAbsoluteLauncherClassPath() {
-        return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> rootDir.resolve(p));
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -448,8 +617,8 @@ public class NativeImage {
         }
     }
 
-    private void completeImageBuildArgs(String[] args) {
-        List<String> leftoverArgs = processNativeImageArgs(args);
+    private void completeImageBuildArgs() {
+        List<String> leftoverArgs = processNativeImageArgs();
 
         completeOptionArgs();
 
@@ -550,14 +719,14 @@ public class NativeImage {
 
         if (isGraalVMLauncher) {
             showVerboseMessage(verbose || dryRun, "Automatically appending LauncherClassPath");
-            getAbsoluteLauncherClassPath().forEach(p -> {
+            config.getAbsoluteLauncherClassPath(getRelativeLauncherClassPath()).forEach(p -> {
                 if (!Files.isRegularFile(p)) {
                     showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
                 } else {
                     addImageClasspath(p);
                 }
             });
-            addImageClasspath(rootDir.resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
+            config.getLauncherCommonClasspath().forEach(this::addImageClasspath);
         }
 
         if (!leftoverArgs.isEmpty()) {
@@ -571,16 +740,10 @@ public class NativeImage {
         finalImageClasspath.addAll(imageClasspath);
 
         if (isGraalVMLauncher && collectListArgs(imageBuilderJavaArgs, oDLauncherClasspath, File.pathSeparator).isEmpty()) {
-            StringJoiner sj = new StringJoiner(File.pathSeparator, oDLauncherClasspath, "");
-            for (Path p : imageClasspath) {
-                Path canonical = canonicalize(p);
-                if (!canonical.startsWith(rootDir)) {
-                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", canonical, rootDir));
-                    continue;
-                }
-                sj.add(Paths.get("jre").resolve(rootDir.relativize(canonical)).toString());
+            String classpathPropertyValue = config.getLauncherClasspathPropertyValue(imageClasspath);
+            if (classpathPropertyValue != null) {
+                addImageBuilderJavaArgs(oDLauncherClasspath + classpathPropertyValue);
             }
-            addImageBuilderJavaArgs(sj.toString());
         }
 
         buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
@@ -590,7 +753,7 @@ public class NativeImage {
         /* Construct ProcessBuilder command from final arguments */
         ProcessBuilder pb = new ProcessBuilder();
         List<String> command = pb.command();
-        command.add(getJavaHome().resolve("bin/java").toString());
+        command.add(canonicalize(config.getJavaExecutable()).toString());
         if (!bcp.isEmpty()) {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(":", "-Xbootclasspath/a:", "")));
         }
@@ -626,7 +789,7 @@ public class NativeImage {
 
     public static void main(String[] args) {
         try {
-            build(new DefaultPathsProvider(), args);
+            build(new DefaultBuildConfiguration(args));
         } catch (NativeImageError e) {
             boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
             NativeImage.show(System.err::println, "Error: " + e.getMessage());
@@ -642,18 +805,18 @@ public class NativeImage {
         }
     }
 
-    public static void build(PathsProvider pathsProvider, String[] args) {
-        NativeImage nativeImage = IS_AOT ? new NativeImageServer(pathsProvider) : new NativeImage(pathsProvider);
-        if (args.length == 0) {
+    public static void build(BuildConfiguration config) {
+        NativeImage nativeImage = IS_AOT ? new NativeImageServer(config) : new NativeImage(config);
+        if (config.getBuildArgs().isEmpty()) {
             nativeImage.showMessage(usageText);
         } else {
             nativeImage.prepareImageBuildArgs();
-            nativeImage.completeImageBuildArgs(args);
+            nativeImage.completeImageBuildArgs();
         }
     }
 
     Path canonicalize(Path path) {
-        Path absolutePath = path.isAbsolute() ? path : workDir.resolve(path);
+        Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
         boolean hasWildcard = absolutePath.endsWith("*");
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
@@ -673,24 +836,6 @@ public class NativeImage {
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path.toString(), e);
         }
-    }
-
-    Path getJavaHome() {
-        Path javaHomePath = rootDir.getParent();
-        Path binJava = Paths.get("bin", "java");
-        if (Files.isExecutable(javaHomePath.resolve(binJava))) {
-            return javaHomePath;
-        }
-
-        String javaHome = System.getenv("JAVA_HOME");
-        if (javaHome == null) {
-            throw showError("Environment variable JAVA_HOME is not set");
-        }
-        javaHomePath = Paths.get(javaHome);
-        if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
-            throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
-        }
-        return javaHomePath;
     }
 
     void addImageBuilderClasspath(Path classpath) {
@@ -815,15 +960,14 @@ public class NativeImage {
         }
     }
 
-    private List<String> processNativeImageArgs(String[] args) {
+    private List<String> processNativeImageArgs() {
         List<String> leftoverArgs = new ArrayList<>();
         Queue<String> arguments = new ArrayDeque<>();
         String defaultNativeImageArgs = getUserConfigProperties().get(pKeyNativeImageArgs);
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
             arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
         }
-        for (String arg : args) {
-
+        for (String arg : config.getBuildArgs()) {
             switch (arg) {
                 case "--language:all":
                     for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {

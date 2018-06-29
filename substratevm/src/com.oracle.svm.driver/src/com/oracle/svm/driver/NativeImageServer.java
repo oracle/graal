@@ -84,8 +84,8 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
-    NativeImageServer(PathsProvider pathsProvider) {
-        super(pathsProvider);
+    NativeImageServer(BuildConfiguration buildConfiguration) {
+        super(buildConfiguration);
         registerOptionHandler(new ServerOptionHandler(this));
     }
 
@@ -538,7 +538,7 @@ final class NativeImageServer extends NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.directory(serverDir.toFile());
         List<String> command = pb.command();
-        command.add(getJavaHome().resolve("bin/java").toString());
+        command.add(canonicalize(config.getJavaExecutable()).toString());
         if (!bootClasspath.isEmpty()) {
             command.add(bootClasspath.stream().map(Path::toString).collect(Collectors.joining(":", "-Xbootclasspath/a:", "")));
         }
