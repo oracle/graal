@@ -1,0 +1,27 @@
+# Defined here as --all-suites should only be used for these jobs
+deploy-binaries-all-suites : [
+  ["mx", "deploy-binary", "--all-suites", "--skip-existing", ${binaries-repository}]
+]
+
+# Defined here as no-rewrites should only be used for these jobs
+deploy-binaries-all-suites-no-rewrites : [
+   ["export", "PREV_MX_URLREWRITES=$MX_URLREWRITES"]
+   ["unset", "MX_URLREWRITES"]
+] ${deploy-binaries-all-suites} [
+   ["export", "MX_URLREWRITES=$PREV_MX_URLREWRITES"]
+]
+
+deploy-sdk-truffle-compiler-tools : ${compilerCommon} {
+  targets : [post-merge, deploy]
+  run : [
+    # compiler depends on all suites we want to deploy, except tools
+    ["export", "DYNAMIC_IMPORTS=/tools"]
+    ["mx", "--strict-compliance", "build"]
+  ] ${deploy-binaries-all-suites} ${deploy-binaries-all-suites-no-rewrites}
+}
+
+builds += [
+  ${deploy-sdk-truffle-compiler-tools} ${linux-amd64} ${linux-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-linux-amd64"}
+  ${deploy-sdk-truffle-compiler-tools} ${darwin-amd64} ${darwin-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-darwin-amd64"}
+  ${deploy-sdk-truffle-compiler-tools} ${solaris-sparcv9} ${solaris-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-solaris-sparcv9"}
+]

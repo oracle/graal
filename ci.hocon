@@ -29,7 +29,7 @@ include "compiler/ci_common/common.hocon"
 include "compiler/ci_common/gate.hocon"
 include "compiler/ci_common/gate_tasks.hocon"
 include "compiler/ci_common/gate_tasks_bootstrap.hocon"
-include "compiler/ci_common/deploy.hocon"
+include "compiler/ci_includes/deploy.hocon"
 
 include "compiler/ci_common/bench.hocon"
 include "compiler/ci_common/bench-hwloc.hocon"
@@ -59,4 +59,3 @@ include "ci_includes/publish-javadoc.hocon"
 # ------------------- VM ----------------------
 include "vm/ci_common/common.hocon"
 include "vm/ci_includes/vm.hocon"
-
