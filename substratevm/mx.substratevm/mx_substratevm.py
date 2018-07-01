@@ -45,6 +45,7 @@ import functools
 import collections
 import itertools
 import glob
+from xml.dom.minidom import parse
 
 import mx
 import mx_compiler
@@ -60,9 +61,35 @@ from mx_unittest import _run_tests, _VMLauncher
 
 JVM_COMPILER_THREADS = 2 if mx.cpu_count() <= 4 else 4
 
-GRAAL_COMPILER_FLAGS = ['-XX:-UseJVMCIClassLoader', '-XX:+UseJVMCICompiler', '-Dgraal.CompileGraalWithC1Only=false', '-XX:CICompilerCount=' + str(JVM_COMPILER_THREADS),
+GRAAL_COMPILER_FLAGS = ['-XX:+UseJVMCICompiler', '-Dgraal.CompileGraalWithC1Only=false', '-XX:CICompilerCount=' + str(JVM_COMPILER_THREADS),
                         '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
                         '-Dgraal.VerifyGraalGraphs=false', '-Dgraal.VerifyGraalGraphEdges=false', '-Dgraal.VerifyGraalPhasesSize=false', '-Dgraal.VerifyPhases=false']
+if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
+    GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
+else:
+    # JVMCI access
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.amd64=ALL-UNNAMED']
+    # Reflective access
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.unsupported/sun.reflect=ALL-UNNAMED']
+    # Reflective access to private fields of java.lang.Class.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED']
+    # Reflective access to resource bundle getContents() methods.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.text.resources=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.util.resources=ALL-UNNAMED']
+    # Reflective access to java.util.Bits.words.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.util=ALL-UNNAMED']
+    # Reflective access to java.lang.invoke.VarHandle*.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED']
+    # Reflective access to java.lang.Reference.referent.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED']
+    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED']
+    # Disable the check for JDK-8 graal version.
+    GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
+
+
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -108,11 +135,11 @@ def classpath(args):
 def clibrary_paths():
     return (join(suite.dir, 'clibraries') for suite in svmSuites)
 
-def platform_subdir():
+def platform_name():
     return mx.get_os() + "-" + mx.get_arch()
 
 def clibrary_libpath():
-    return ','.join(join(path, platform_subdir()) for path in clibrary_paths())
+    return ','.join(join(path, platform_name()) for path in clibrary_paths())
 
 def svm_suite():
     return svmSuites[-1]
@@ -254,7 +281,7 @@ tools_map = {
 
 def native_image_path(native_image_root):
     native_image_name = 'native-image'
-    native_image_dir = join(native_image_root, platform_subdir(), 'bin')
+    native_image_dir = join(native_image_root, platform_name(), 'bin')
     return join(native_image_dir, native_image_name)
 
 def remove_option_prefix(text, prefix):
@@ -306,8 +333,9 @@ def layout_native_image_root(native_image_root):
     native_image_layout_dists(join('lib', 'jvmci'), graalDistribution)
     jdk_config = mx.get_jdk()
     jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
-    for symlink_name in os.listdir(jvmci_path):
-        relsymlink(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
+    if os.path.isdir(jvmci_path):
+        for symlink_name in os.listdir(jvmci_path):
+            relsymlink(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
@@ -422,6 +450,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'maven',
     'js',
     'ruby',
     'sulong',
@@ -503,10 +532,14 @@ def svm_gate_body(args, tasks):
 
         gate_sulong(native_image, tasks)
 
+    with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
+        if t:
+            maven_plugin_install([])
+
 def native_junit(native_image, unittest_args, build_args=None, run_args=None):
     build_args = build_args if not None else []
     run_args = run_args if not None else []
-    junit_native_dir = join(svmbuild_dir(), platform_subdir(), 'junit')
+    junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
     try:
@@ -745,6 +778,58 @@ def fetch_languages(args, early_exit=True):
         version = requested[language_flag]
         truffle_language_ensure(language_flag, version, early_exit=early_exit)
 
+def deploy_native_image_maven_plugin(svmVersion, action='install'):
+    # Create native-image-maven-plugin pom with correct version info from template
+    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
+    dom = parse(join(proj_dir, 'pom_template.xml'))
+    for svmVersionElement in dom.getElementsByTagName('svmVersion'):
+        svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
+    with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
+        dom.writexml(pom_file)
+    # Build and install native-image-maven-plugin into local repository
+    mx.run_maven([action], cwd=proj_dir)
+
+def maven_plugin_install(args):
+    # First install native-image-maven-plugin dependencies into local maven repository
+    deps = []
+    def visit(dep, edge):
+        if isinstance(dep, mx.Distribution):
+            deps.append(dep)
+    mx.walk_deps([mx.dependency('substratevm:SVM_DRIVER')], visit=visit, ignoredEdges=[mx.DEP_ANNOTATION_PROCESSOR, mx.DEP_BUILD])
+    svmVersion = '{0}-SNAPSHOT'.format(suite.vc.parent(suite.vc_dir))
+    mx.maven_deploy([
+        '--version-string', svmVersion,
+        '--suppress-javadoc',
+        '--all-distributions',
+        '--validate=none',
+        '--all-suites',
+        '--skip-existing',
+        '--only', ','.join(dep.qualifiedName() for dep in deps)
+    ])
+
+    deploy_native_image_maven_plugin(svmVersion)
+
+    success_message = [
+        '',
+        'Use the following plugin snippet to enable native-image building for your maven project:',
+        '',
+        '<plugin>',
+        '    <groupId>com.oracle.substratevm</groupId>',
+        '    <artifactId>native-image-maven-plugin</artifactId>',
+        '    <version>' + svmVersion + '</version>',
+        '    <executions>',
+        '        <execution>',
+        '            <goals>',
+        '                <goal>native-image</goal>',
+        '            </goals>',
+        '            <phase>package</phase>',
+        '        </execution>',
+        '    </executions>',
+        '</plugin>',
+        '',
+    ]
+    mx.log('\n'.join(success_message))
+
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
@@ -786,6 +871,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",
         "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>",
         "-H:CStandard=C11",
+        "-H:+SpawnIsolates",
     ],
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
@@ -805,4 +891,5 @@ mx.update_commands(suite, {
     'fetch-languages': [lambda args: fetch_languages(args, early_exit=False), ''],
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
+    'maven-plugin-install': [maven_plugin_install, ''],
 })

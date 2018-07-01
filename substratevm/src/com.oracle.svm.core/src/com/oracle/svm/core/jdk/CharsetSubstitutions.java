@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 import sun.misc.ASCIICaseInsensitiveComparator;
 
@@ -87,6 +88,7 @@ final class Target_java_nio_charset_Charset {
     private static native void checkName(String s);
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static boolean atBugLevel(String bl) {
         return false;
     }

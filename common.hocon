@@ -1,5 +1,5 @@
 # overlay version
-overlay = 24e18d34f3f0c43dbfbb48602edeeb158e021dc2
+overlay = 1deeaf6e01f16b72271b066cfc8d73d8ab3977d9
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
@@ -13,7 +13,7 @@ jdks: {
   oraclejdk10:   {name : oraclejdk, version : "10+46", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180522-073957", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180618-110011", platformspecific: true}
 
 }
 
@@ -130,14 +130,6 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-deploy-binaries : {
-  targets : [post-merge, deploy]
-  run : [
-    ["mx", "--strict-compliance", "build"]
-    ["mx", "deploy-binary", "--all-suites", "--skip-existing", ${binaries-repository}]
-  ]
-}
-
 maven-deploy-dry-run : {
   targets : [gate]
   run : [
@@ -192,4 +184,3 @@ svm-common-sulong: {
     llvm: "==3.8"
   }
 }
-

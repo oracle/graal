@@ -36,11 +36,10 @@ public interface ImageBuildTask {
      * Main function for remote image building which is invoked on every image building request sent
      * to the server.
      *
-     * @apiNote Standard error and standard output for image building will be reported remotely only
-     *          if printed within this method.
-     * @apiNote After {@code build} finishes, the static state of the JDK and
-     *          {@link NativeImageBuildServer} must not have pointers to classes loaded by
-     *          {@code compilationClassLoader}.
+     * API NOTE: Standard error and standard output for image building will be reported remotely
+     * only if printed within this method. After {@code build} finishes, the static state of the JDK
+     * and {@link NativeImageBuildServer} must not have pointers to classes loaded by
+     * {@code compilationClassLoader}.
      *
      * @param args arguments passed with the request to the SVM image builder
      * @param classpath the whole classpath used for the image

@@ -297,11 +297,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     "commit.committer-ts": _info['committer-ts'],
                 }
         _metadata = """\
-OS_NAME=<os>
-OS_ARCH=<arch>
+OS_NAME={os}
+OS_ARCH={arch}
 SOURCE="{source}"
 COMMIT_INFO={commit_info}
 GRAALVM_VERSION={version}""".format(
+            os=get_graalvm_os(),
+            arch=mx.get_arch(),
             source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites]),
             commit_info=json.dumps(_commit_info, sort_keys=True),
             version=_suite.release_version()
@@ -1173,8 +1175,15 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         :type installable: GraalVmInstallableComponent
         """
         support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
-        name = '{comp_name}_{ver}_{os}_{arch}'.format(comp_name=installable.main_component.name, ver=_suite.release_version(), os=get_graalvm_os(), arch=mx.get_arch()).upper().replace('-', '_')
-        base_dir = './{}/'.format(name.lower().replace('_', '-'))
+        other_comp_names = []
+        if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
+            other_comp_names += [c.short_name for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
+
+        main_comp_name = installable.main_component.name
+        version = _suite.release_version()
+
+        name = '{comp_name}_{other_comp_names}_{version}'.format(comp_name=main_comp_name, other_comp_names='-'.join(other_comp_names), version=version).upper().replace('-', '_')
+        base_dir = './{comp_name}-{version}-{os}-{arch}/'.format(comp_name=main_comp_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
         layout = {}
 
         def is_jar_distribution(val):
@@ -1273,6 +1282,8 @@ def get_lib_polyglot_project():
             polyglot_lib_jar_dependencies = []
             polyglot_lib_build_dependencies = []
             has_polyglot_lib_entrypoints = False
+            if "LIBPOLYGLOT_DISABLE_BACKGROUND_COMPILATION" in os.environ:
+                polyglot_lib_build_args += ["-R:-TruffleBackgroundCompilation"]
             for component in mx_sdk.graalvm_components():
                 has_polyglot_lib_entrypoints |= component.has_polyglot_lib_entrypoints
                 polyglot_lib_build_args += component.polyglot_lib_build_args
@@ -1431,29 +1442,38 @@ def graalvm_output():
     return join(_output_root, _graalvm.jdk_base)
 
 
-def graalvm_dist_name(args):
+def graalvm_dist_name():
+    return get_final_graalvm_distribution().name
+
+
+def graalvm_version():
+    return _suite.release_version()
+
+
+def graalvm_home():
+    _graalvm_dist = get_final_graalvm_distribution()
+    return join(_graalvm_dist.output, _graalvm_dist.jdk_base)
+
+
+def log_graalvm_dist_name(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
     _ = parser.parse_args(args)
+    mx.log(graalvm_dist_name())
 
-    mx.log(get_final_graalvm_distribution().name)
 
-
-def graalvm_version(args):
+def log_graalvm_version(args):
     """print the GraalVM version"""
     parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
     _ = parser.parse_args(args)
+    mx.log(graalvm_version())
 
-    mx.log(_suite.release_version())
 
-
-def graalvm_home(args):
+def log_graalvm_home(args):
     """print the GraalVM home dir"""
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
     _ = parser.parse_args(args)
-
-    _graalvm_dist = get_final_graalvm_distribution()
-    mx.log(join(_graalvm_dist.output, _graalvm_dist.jdk_base))
+    mx.log(graalvm_home())
 
 
 def _env_var_to_bool(name, default='false'):
@@ -1516,7 +1536,7 @@ def _include_sources():
 
 
 mx.update_commands(_suite, {
-    'graalvm-dist-name': [graalvm_dist_name, ''],
-    'graalvm-version': [graalvm_version, ''],
-    'graalvm-home': [graalvm_home, ''],
+    'graalvm-dist-name': [log_graalvm_dist_name, ''],
+    'graalvm-version': [log_graalvm_version, ''],
+    'graalvm-home': [log_graalvm_home, ''],
 })

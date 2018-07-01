@@ -771,6 +771,10 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
+      "platforms" : [
+          "linux-amd64",
+          "darwin-amd64",
+      ],
       "output" : "<mxbuild>/truffle-nfi-native",
       "dependencies" : [
         "com.oracle.truffle.nfi.native",

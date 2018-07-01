@@ -210,6 +210,7 @@ final class Target_java_lang_Throwable {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     int getStackTraceDepth() {
         if (stackTrace != null) {
             return stackTrace.length;
@@ -218,6 +219,7 @@ final class Target_java_lang_Throwable {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     StackTraceElement getStackTraceElement(int index) {
         if (stackTrace == null) {
             throw new IndexOutOfBoundsException();
@@ -657,52 +659,6 @@ class Util_java_lang_ApplicationShutdownHooks {
     }
 }
 
-@TargetClass(className = "java.lang.Shutdown")
-final class Target_java_lang_Shutdown {
-    /**
-     * Re-initialize the map of registered hooks, because any hooks registered during native image
-     * construction can not survive into the running image.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static Runnable[] hooks;
-
-    static {
-        hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
-        /*
-         * We use the last system hook slot (index 9), which is currently not used by the JDK, for
-         * our own shutdown hooks that are registered during image generation. The JDK currently
-         * uses slots 0, 1, and 2.
-         */
-        hooks[hooks.length - 1] = RuntimeSupport::executeShutdownHooks;
-    }
-
-    /* Wormhole for invoking java.lang.ref.Finalizer.runAllFinalizers */
-    @Substitute
-    static void runAllFinalizers() {
-        throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
-    }
-
-    /**
-     * Invoked by the JNI DestroyJavaVM procedure when the last non-daemon thread has finished.
-     * Unlike the exit method, this method does not actually halt the VM.
-     */
-    @Alias
-    static native void shutdown();
-
-    @Alias
-    static native void add(int slot, boolean registerShutdownInProgress, Runnable hook);
-}
-
-/** Utility methods for Target_java_lang_Shutdown. */
-final class Util_java_lang_Shutdown {
-
-    /**
-     * Value *copied* from {@code java.lang.Shutdown.MAX_SYSTEM_HOOKS} so that the value can be used
-     * during image generation (@Alias values are only visible at run time).
-     */
-    static final int MAX_SYSTEM_HOOKS = 10;
-}
-
 @TargetClass(java.lang.Package.class)
 final class Target_java_lang_Package {
 
@@ -715,6 +671,7 @@ final class Target_java_lang_Package {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     static Package getPackage(Class<?> c) {
         if (c.isPrimitive() || c.isArray()) {
             /* Arrays and primitives don't have a package. */

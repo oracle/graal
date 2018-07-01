@@ -366,7 +366,7 @@ final class Target_javax_crypto_CryptoAllPermission {
     static Target_javax_crypto_CryptoAllPermission INSTANCE;
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity")
+@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDK8OrEarlier.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 

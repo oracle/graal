@@ -62,8 +62,8 @@ public class CoreFoundation {
     public static native void CFStringAppendCharacters(CFMutableStringRef theString, PointerBase chars, SignedWord numChars);
 
     /**
-     * @function CFStringNormalize Normalizes the string into the specified form as described in
-     *           Unicode Technical Report #15.
+     * Normalizes the string into the specified form as described in Unicode Technical Report #15.
+     * 
      * @param theString The string which is to be normalized. If this parameter is not a valid
      *            mutable CFString, the behavior is undefined.
      * @param theForm The form into which the string is to be normalized. If this parameter is not a
