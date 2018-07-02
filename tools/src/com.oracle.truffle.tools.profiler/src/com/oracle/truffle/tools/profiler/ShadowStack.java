@@ -303,7 +303,7 @@ final class ShadowStack {
             // We exclude the node itself as it will be pushed on the stack by the StackPushPopNode
             Node current = node.getParent();
             while (current != null) {
-                if (current instanceof InstrumentableNode) {
+                if (current instanceof InstrumentableNode && !(current instanceof InstrumentableNode.WrapperNode)) {
                     InstrumentableNode instrumentableNode = (InstrumentableNode) current;
                     if (instrumentableNode.hasTag(StandardTags.StatementTag.class) || instrumentableNode.hasTag(StandardTags.RootTag.class)) {
                         SourceSection sourceSection = current.getSourceSection();
