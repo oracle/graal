@@ -62,11 +62,11 @@ final class SourceLocation {
         }
     }
 
-    SourceLocation(Node callNode, SourceSection sourceSection) {
+    SourceLocation(Node node, SourceSection sourceSection) {
         this.tags = Collections.emptySet();
         this.sourceSection = sourceSection;
-        this.instrumentedNode = null;
-        RootNode rootNode = callNode.getRootNode();
+        this.instrumentedNode = node;
+        RootNode rootNode = node.getRootNode();
         if (rootNode != null) {
             if (rootNode.getName() == null) {
                 this.rootName = rootNode.toString();
