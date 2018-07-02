@@ -119,15 +119,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 this.sourceLocation = null;
             }
             Object exceptionObject = ((TruffleException) exception).getExceptionObject();
-            if (exceptionObject != null) {
-                Objects.requireNonNull(languageContext, "Exception object can not be accepted without language context.");
+            if (exceptionObject != null && languageContext != null) {
                 this.guestObject = languageContext.toHostValue(exceptionObject);
             } else {
-                if (languageContext != null && languageContext.isInitialized()) {
-                    this.guestObject = languageContext.context.getHostContextImpl().nullValue;
-                } else {
-                    this.guestObject = null;
-                }
+                this.guestObject = null;
             }
         } else {
             this.cancelled = false;
@@ -137,11 +132,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             this.exit = false;
             this.exitStatus = 0;
             this.sourceLocation = null;
-            if (languageContext != null) {
-                this.guestObject = languageContext.context.getHostContextImpl().nullValue;
-            } else {
-                this.guestObject = null;
-            }
+            this.guestObject = null;
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();

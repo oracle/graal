@@ -287,8 +287,8 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
-     * Returns an additional guest language object. The value is never <code>null</code> and returns
-     * a Value object where {@link Value#isNull()} returns as true if it is not available.
+     * Returns an additional guest language object. Returns <code>null</code> if no exception object
+     * is available.
      *
      * @since 1.0
      */
