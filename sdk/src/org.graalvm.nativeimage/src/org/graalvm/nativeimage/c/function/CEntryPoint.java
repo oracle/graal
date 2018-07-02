@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 /**
  * Annotates a method that is a VM entry point. Such a method must be declared <i>static</i>, and is
@@ -43,7 +44,9 @@ import org.graalvm.word.WordBase;
  * An execution context must be passed as a parameter and can be either an {@link IsolateThread}
  * that is specific to the current thread, or an {@link Isolate} for an isolate in which the current
  * thread is attached. These pointers can be obtained via the methods of {@link CEntryPointContext}.
- * Specifying more than one parameter of these types is not allowed.
+ * When there is more than one parameter of these types, exactly one of the parameters must be
+ * annotated with {@link IsolateThreadContext} for {@link IsolateThread}, or {@link IsolateContext}
+ * for {@link Isolate}.
  * <p>
  * Exceptions cannot be thrown to the caller and must be explicitly caught in the entry point
  * method. Any uncaught exception causes the termination of the process after it is printed.
@@ -74,4 +77,110 @@ public @interface CEntryPoint {
      * @since 1.0
      */
     String[] documentation() default "";
+
+    /**
+     * Specifies that the annotated entry point method is an alias for a built-in function as
+     * provided by the C API. Such aliases may have extra arguments which are ignored and can be
+     * used to adhere to specific external conventions. The annotated method must be declared
+     * {@code native} and as such, cannot have its own code body. Refer to the C API for
+     * descriptions of the built-ins, and to the {@linkplain Builtin individual built-ins} for their
+     * requirements to the annotated method's signature.
+     *
+     * @since 1.0
+     */
+    Builtin builtin() default Builtin.NoBuiltin;
+
+    /**
+     * The built-in methods which can be {@linkplain #builtin() aliased}.
+     *
+     * @since 1.0
+     */
+    enum Builtin {
+        /**
+         * The annotated method is not an alias for a built-in method.
+         *
+         * @since 1.0
+         */
+        NoBuiltin,
+
+        /**
+         * The annotated method creates an isolate. An alias for this built-in requires no
+         * arguments, and must have a return type of {@link Isolate}. In case of an error,
+         * {@link WordFactory#nullPointer() NULL} is returned.
+         *
+         * @since 1.0
+         */
+        CreateIsolate,
+
+        /**
+         * The annotated method attaches the current thread to an isolate. It requires a parameter
+         * of type {@link Isolate} with the isolate to attach to, and a return type of
+         * {@link IsolateThread}. In case of an error, {@link WordFactory#nullPointer() NULL} is
+         * returned.
+         *
+         * @since 1.0
+         */
+        AttachThread,
+
+        /**
+         * The annotated method returns the {@link IsolateThread} of the current thread in a
+         * specified {@link Isolate}. It requires a parameter of type {@link Isolate} for the
+         * isolate in question, and a return type of {@link IsolateThread}. In case of an error,
+         * {@link WordFactory#nullPointer() NULL} is returned.
+         *
+         * @since 1.0
+         */
+        CurrentThread,
+
+        /**
+         * The annotated method returns the {@link Isolate} for an {@link IsolateThread} which
+         * represents the current thread. It requires a parameter of type {@link IsolateThread}, and
+         * a return type of {@link Isolate}. In case of an error, {@link WordFactory#nullPointer()
+         * NULL} is returned.
+         *
+         * @since 1.0
+         */
+        CurrentIsolate,
+
+        /**
+         * The annotated method detaches the current thread, given as an {@link IsolateThread}, from
+         * an isolate. It requires a parameter of type {@link IsolateThread}, and a return type of
+         * {@code int} or {@code void}. With an {@code int} return type, zero is returned when
+         * successful, or non-zero in case of an error.
+         *
+         * @since 1.0
+         */
+        DetachThread,
+
+        /**
+         * The annotated method tears down the specified isolate. It requires a parameter of type
+         * {@link Isolate}, and a return type of {@code int} or {@code void}. With an {@code int}
+         * return type, zero is returned when successful, or non-zero in case of an error.
+         *
+         * @since 1.0
+         */
+        TearDownIsolate,
+    }
+
+    /**
+     * Designates an {@link IsolateThread} parameter to use as the execution context. At most one
+     * parameter can be annotated with this annotation or {@link IsolateContext}.
+     *
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface IsolateThreadContext {
+    }
+
+    /**
+     * Designates an {@link Isolate} parameter to use as the execution context. At most one
+     * parameter can be annotated with this annotation or {@link IsolateThreadContext}.
+     *
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface IsolateContext {
+    }
 }
