@@ -61,7 +61,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.test.UnwindReenterReturnTest.TestControlFlow.CodeAction;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 /**
