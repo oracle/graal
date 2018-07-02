@@ -319,7 +319,7 @@ public class GraphDecoder {
         public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
 
         @Input ValueNode value;
-        @Input(InputType.Unchecked) Node proxyPoint;
+        @Input(InputType.Association) Node proxyPoint;
 
         public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint) {
             super(TYPE, value.stamp(NodeView.DEFAULT));
@@ -1336,6 +1336,11 @@ public class GraphDecoder {
      * @param methodScope The current method.
      */
     protected void cleanupGraph(MethodScope methodScope) {
+        for (MergeNode merge : graph.getNodes(MergeNode.TYPE)) {
+            for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()){
+                placeholder.replaceAndDelete(placeholder.value);
+            }
+        }
         assert verifyEdges();
     }
 

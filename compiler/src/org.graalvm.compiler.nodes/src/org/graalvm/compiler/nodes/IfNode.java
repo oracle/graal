@@ -1268,8 +1268,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private MergeNode insertMerge(AbstractBeginNode begin, FrameState stateAfter) {
         MergeNode merge = graph().add(new MergeNode());
         if (!begin.anchored().isEmpty()) {
-            Object before = null;
-            before = begin.anchored().snapshot();
+            Object before = begin.anchored().snapshot();
             begin.replaceAtUsages(InputType.Guard, merge);
             begin.replaceAtUsages(InputType.Anchor, merge);
             assert begin.anchored().isEmpty() : before + " " + begin.anchored().snapshot();

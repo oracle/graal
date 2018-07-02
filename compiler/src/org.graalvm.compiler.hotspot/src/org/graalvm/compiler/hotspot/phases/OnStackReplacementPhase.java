@@ -159,11 +159,8 @@ public class OnStackReplacementPhase extends Phase {
             LoopEx loop = loops.loop(l);
             loop.loopBegin().markOsrLoop();
             LoopTransformations.peel(loop);
-            osr.replaceAtUsages(InputType.Guard, AbstractBeginNode.prevBegin((FixedNode) osr.predecessor()));
-            for (Node usage : osr.usages().snapshot()) {
-                EntryProxyNode proxy = (EntryProxyNode) usage;
-                proxy.replaceAndDelete(proxy.value());
-            }
+
+            osr.prepareDelete();
             GraphUtil.removeFixedWithUnusedInputs(osr);
             debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement loop peeling result");
         } while (true);
@@ -228,6 +225,7 @@ public class OnStackReplacementPhase extends Phase {
             }
 
             osr.replaceAtUsages(InputType.Guard, osrStart);
+            osr.replaceAtUsages(InputType.Anchor, osrStart);
         }
         debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement after replacing entry proxies");
         GraphUtil.killCFG(start);

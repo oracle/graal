@@ -175,9 +175,9 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             AbstractBeginNode beginNode = b.getBeginNode();
             if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
-                for (Node n : mergeNode.anchored()) {
-                    n.replaceFirstInput(mergeNode, anchorBlock.getBeginNode(), InputType.Anchor);
-                }
+                mergeNode.replaceAtUsages(InputType.Anchor, anchorBlock.getBeginNode());
+                mergeNode.replaceAtUsages(InputType.Guard, anchorBlock.getBeginNode());
+                assert mergeNode.anchored().isEmpty();
             }
 
             FixedNode endNode = b.getEndNode();
