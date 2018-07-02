@@ -30,7 +30,6 @@ import java.util.Deque;
 import java.util.Iterator;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
@@ -42,18 +41,14 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GuardNode;
-import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -467,14 +462,7 @@ public abstract class LoopFragment {
                     final ValueNode replaceWith;
                     ValueNode newVpn = prim(newEarlyExitIsLoopExit ? vpn : vpn.value());
                     if (newVpn != null) {
-                        PhiNode phi;
-                        if (vpn instanceof ValueProxyNode) {
-                            phi = graph.addWithoutUnique(new ValuePhiNode(vpn.stamp(NodeView.DEFAULT), merge));
-                        } else if (vpn instanceof GuardProxyNode) {
-                            phi = graph.addWithoutUnique(new GuardPhiNode(merge));
-                        } else {
-                            throw GraalError.shouldNotReachHere();
-                        }
+                        PhiNode phi = vpn.createPhi(merge);
                         phi.addInput(vpn);
                         phi.addInput(newVpn);
                         replaceWith = phi;
