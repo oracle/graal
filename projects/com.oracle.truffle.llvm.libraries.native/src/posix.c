@@ -334,3 +334,7 @@ pid_t __sulong_posix_getpgid(pid_t pid)
 {
 	CALL(pid_t, getpgid, pid);
 }
+
+long __sulong_posix_syscall(long number, long rdi, long rsi, long rdx, long r10, long r8, long r9) {
+  CALL(long, syscall, number, rdi, rsi, rdx, r10, r8, r9);
+}

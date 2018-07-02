@@ -29,14 +29,18 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
 public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
-    private final int nr;
 
-    public LLVMAMD64UnknownSyscallNode(int nr) {
+    private final long nr;
+    @Child private LLVMAMD64PosixCallNode syscall;
+
+    public LLVMAMD64UnknownSyscallNode(long nr) {
         this.nr = nr;
+        this.syscall = LLVMAMD64PosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64", 1);
     }
 
     @Override
@@ -46,7 +50,6 @@ public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
 
     @Override
     public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        CompilerDirectives.transferToInterpreter();
-        throw new RuntimeException("unknown syscall " + nr);
+        return (long) syscall.execute(nr, rdi, rsi, rdx, r10, r8, r9);
     }
 }
