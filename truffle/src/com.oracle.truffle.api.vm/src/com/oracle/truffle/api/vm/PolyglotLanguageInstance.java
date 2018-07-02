@@ -41,7 +41,11 @@ final class PolyglotLanguageInstance {
 
     private final PolyglotSourceCache sourceCache;
     private final Map<Object, PolyglotSourceCache> sourceCaches;
-    private final Function<Object, PolyglotSourceCache> sourceCacheCompute;
+    private static final Function<Object, PolyglotSourceCache> sourceCacheCompute = new Function<Object, PolyglotSourceCache>() {
+        public PolyglotSourceCache apply(Object t) {
+            return new PolyglotSourceCache();
+        }
+    };
 
     PolyglotLanguageInstance(PolyglotLanguage language, boolean singleContext) {
         this.singleContext = singleContext;
@@ -59,15 +63,9 @@ final class PolyglotLanguageInstance {
         if (singleContext) {
             this.sourceCache = new PolyglotSourceCache();
             this.sourceCaches = null;
-            this.sourceCacheCompute = null;
         } else {
             this.sourceCache = null;
             this.sourceCaches = new ConcurrentHashMap<>();
-            this.sourceCacheCompute = new Function<Object, PolyglotSourceCache>() {
-                public PolyglotSourceCache apply(Object t) {
-                    return new PolyglotSourceCache();
-                }
-            };
         }
     }
 
