@@ -133,11 +133,11 @@ import java.util.logging.Level;
  *
  *  - 1 : Host VM Processs
  *   - N : {@linkplain org.graalvm.polyglot.Engine Engine}
+ *     - N : {@linkplain org.graalvm.polyglot.Context Context}
+ *       - L : Language Context
  *     - P * L : {@link TruffleLanguage TruffleLanguage}
  *     - I : {@linkplain org.graalvm.polyglot.Instrument Instrument}
  *       - 1 : {@link com.oracle.truffle.api.instrumentation.TruffleInstrument TruffleInstrument}
- *     - N : {@linkplain org.graalvm.polyglot.Context Context}
- *       - L : Language Context
  * </pre>
  *
  * <h4>Parse Caching</h4>
@@ -147,8 +147,6 @@ import java.util.logging.Level;
  * names} and environment {@link Env#getOptions() options}. The scope of the caching is influenced
  * by the {@link Registration#contextPolicy() context policy}. Caching may be
  * {@link Source#isCached() disabled} for certain sources. It is enabled for new sources by default.
- *
- *
  *
  * <h4>Language Configuration</h4>
  *
