@@ -882,13 +882,13 @@ public class AMD64Assembler extends Assembler {
             boolean noNds = false;
 
             switch (op) {
-                case 0x2A:
                 case 0x2C:
                 case 0x2E:
                 case 0x6E:
                     isSimd = true;
                     noNds = true;
                     break;
+                case 0x2A:
                 case 0x54:
                 case 0x55:
                 case 0x56:
@@ -968,13 +968,13 @@ public class AMD64Assembler extends Assembler {
 
             switch (op) {
                 case 0x10:
-                case 0x2A:
                 case 0x2C:
                 case 0x2E:
                 case 0x6E:
                     isSimd = true;
                     noNds = true;
                     break;
+                case 0x2A:
                 case 0x54:
                 case 0x55:
                 case 0x56:
@@ -1450,7 +1450,6 @@ public class AMD64Assembler extends Assembler {
                 case 0x0A:
                 case 0x0B:
                     isSimd = true;
-                    noNds = true;
                     break;
             }
 
@@ -1516,7 +1515,6 @@ public class AMD64Assembler extends Assembler {
                 case 0x0A:
                 case 0x0B:
                     isSimd = true;
-                    noNds = true;
                     break;
             }
 
@@ -2730,7 +2728,7 @@ public class AMD64Assembler extends Assembler {
         assert supports(CPUFeature.SSE2);
         assert dst.getRegisterCategory().equals(AMD64.CPU) && src.getRegisterCategory().equals(AMD64.XMM);
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
-        int encode = simdPrefixAndEncode(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
+        int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0xD7);
         emitByte(0xC0 | encode);
     }
@@ -2919,8 +2917,7 @@ public class AMD64Assembler extends Assembler {
         assert supports(CPUFeature.SSSE3);
         assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
-        int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
-        emitByte(0x38);
+        int encode = simdPrefixAndEncode(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
         emitByte(0x00);
         emitByte(0xC0 | encode);
     }
