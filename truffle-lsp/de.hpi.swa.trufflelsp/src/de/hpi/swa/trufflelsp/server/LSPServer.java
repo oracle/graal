@@ -381,7 +381,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
         if (ANALYSE_COVERAGE.equals(params.getCommand())) {
-            this.client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analyis..."));
+            this.client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analysis..."));
             String uri = (String) params.getArguments().get(0);
             boolean hasErrors;
             try {
