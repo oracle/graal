@@ -2,38 +2,28 @@ package org.graalvm.compiler.truffle.pelang.expr;
 
 import java.lang.reflect.Array;
 
-import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 
-public final class PELangReadArrayNode extends PELangExpressionNode {
+@NodeChildren({@NodeChild("arrayNode"), @NodeChild("indicesNode")})
+public abstract class PELangReadArrayNode extends PELangExpressionNode {
 
-    @Child private PELangExpressionNode arrayNode;
-    @Child private PELangExpressionNode indicesNode;
-
-    public PELangReadArrayNode(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
-        this.arrayNode = arrayNode;
-        this.indicesNode = indicesNode;
+    @Specialization
+    public long readLongArray(long[] array, long index) {
+        return array[(int) index];
     }
 
-    public PELangExpressionNode getArrayNode() {
-        return arrayNode;
+    @Specialization
+    public String readStringArray(String[] array, long index) {
+        return array[(int) index];
     }
 
-    public PELangExpressionNode getIndicesNode() {
-        return indicesNode;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        Object array = arrayNode.evaluateArray(frame);
-        long[] indices = indicesNode.evaluateLongArray(frame);
-
-        if (indices.length == 0) {
-            throw new PELangException("length of indices must not be zero", this);
-        }
+    @Specialization
+    public Object readArray(Object array, long[] indices) {
         return unwrapArray(array, indices);
     }
 
@@ -51,6 +41,10 @@ public final class PELangReadArrayNode extends PELangExpressionNode {
     @TruffleBoundary
     private static Object readValue(Object array, int index) {
         return Array.get(array, index);
+    }
+
+    public static PELangReadArrayNode create(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
+        return PELangReadArrayNodeGen.create(arrayNode, indicesNode);
     }
 
 }

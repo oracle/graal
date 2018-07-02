@@ -7,47 +7,37 @@ import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.util.ClassUtil;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 
-public final class PELangWriteArrayNode extends PELangExpressionNode {
+@NodeChildren({@NodeChild("arrayNode"), @NodeChild("indicesNode"), @NodeChild("valueNode")})
+public abstract class PELangWriteArrayNode extends PELangExpressionNode {
 
-    @Child private PELangExpressionNode arrayNode;
-    @Child private PELangExpressionNode indicesNode;
-    @Child private PELangExpressionNode valueNode;
-
-    public PELangWriteArrayNode(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
-        this.arrayNode = arrayNode;
-        this.indicesNode = indicesNode;
-        this.valueNode = valueNode;
+    @Specialization
+    public long writeLongArray(long[] array, long index, long value) {
+        array[(int) index] = value;
+        return value;
     }
 
-    public PELangExpressionNode getArrayNode() {
-        return arrayNode;
+    @Specialization
+    public String writeStringArray(String[] array, long index, String value) {
+        array[(int) index] = value;
+        return value;
     }
 
-    public PELangExpressionNode getIndicesNode() {
-        return indicesNode;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        Object array = arrayNode.evaluateArray(frame);
-        long[] indices = indicesNode.evaluateLongArray(frame);
-
-        if (indices.length == 0) {
-            throw new PELangException("length of indices must not be zero", this);
-        }
-        array = unwrapArray(array, indices);
+    @Specialization
+    public Object writeArray(Object array, long[] indices, Object value) {
+        Object unwrappedArray = unwrapArray(array, indices);
         int lastIndex = (int) indices[indices.length - 1];
 
-        Object value = valueNode.executeGeneric(frame);
-        Class<?> componentType = array.getClass().getComponentType();
+        Class<?> componentType = unwrappedArray.getClass().getComponentType();
         Class<?> valueType = value.getClass();
 
         if (!ClassUtil.isAssignableTo(componentType, valueType)) {
             throw new PELangException("value type must be assignable to array component type", this);
         }
-        writeValue(array, lastIndex, value);
+        writeValue(unwrappedArray, lastIndex, value);
         return value;
     }
 
@@ -70,6 +60,10 @@ public final class PELangWriteArrayNode extends PELangExpressionNode {
     @TruffleBoundary
     private static void writeValue(Object array, int index, Object value) {
         Array.set(array, index, value);
+    }
+
+    public static PELangWriteArrayNode create(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
+        return PELangWriteArrayNodeGen.create(arrayNode, indicesNode, valueNode);
     }
 
 }
