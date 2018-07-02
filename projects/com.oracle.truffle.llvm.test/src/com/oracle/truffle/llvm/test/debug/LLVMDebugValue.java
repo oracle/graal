@@ -45,14 +45,20 @@ abstract class LLVMDebugValue {
         return typeValue != null ? typeValue.as(String.class) : null;
     }
 
+    private final String kind;
     private final String expectedType;
 
     // known bugs in LLVM debug information may cause values to be impossible to retrieve
     private final boolean isBuggy;
 
-    private LLVMDebugValue(String expectedType, boolean isBuggy) {
+    private LLVMDebugValue(String kind, String expectedType, boolean isBuggy) {
+        this.kind = kind;
         this.expectedType = expectedType;
         this.isBuggy = isBuggy;
+    }
+
+    String getKind() {
+        return kind;
     }
 
     String getExpectedType() {
@@ -75,13 +81,20 @@ abstract class LLVMDebugValue {
         }
     }
 
+    abstract String getExpectedDisplayValue();
+
     abstract void checkValue(DebugValue value);
 
     static final class Any extends LLVMDebugValue {
 
         Any(String expectedType) {
             // the value can be anything, it does not matter if it is buggy or not
-            super(expectedType, false);
+            super(Trace.KEYWORD_KIND_ANY, expectedType, false);
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return null;
         }
 
         @Override
@@ -94,8 +107,13 @@ abstract class LLVMDebugValue {
         private final char expected;
 
         Char(String expectedType, char expected, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_CHAR, expectedType, isBuggy);
             this.expected = expected;
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return String.valueOf(expected);
         }
 
         @Override
@@ -112,8 +130,13 @@ abstract class LLVMDebugValue {
 
         private final BigInteger expected;
 
+        @Override
+        String getExpectedDisplayValue() {
+            return String.valueOf(expected);
+        }
+
         Int(String expectedType, BigInteger expected, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_INT, expectedType, isBuggy);
             this.expected = expected;
         }
 
@@ -133,8 +156,13 @@ abstract class LLVMDebugValue {
 
         private final float expected;
 
+        @Override
+        String getExpectedDisplayValue() {
+            return String.valueOf(expected);
+        }
+
         Float_32(String expectedType, float expected, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_FLOAT_32, expectedType, isBuggy);
             this.expected = expected;
         }
 
@@ -155,8 +183,13 @@ abstract class LLVMDebugValue {
         private final double expected;
 
         Float_64(String expectedType, double expected, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_FLOAT_64, expectedType, isBuggy);
             this.expected = expected;
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return String.valueOf(expected);
         }
 
         @Override
@@ -176,8 +209,13 @@ abstract class LLVMDebugValue {
         private final String expected;
 
         Address(String expectedType, String expected, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_ADDRESS, expectedType, isBuggy);
             this.expected = expected.toLowerCase();
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return String.valueOf(expected);
         }
 
         @Override
@@ -192,8 +230,13 @@ abstract class LLVMDebugValue {
         private final String expected;
 
         Exact(String expectedType, String expected, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_EXACT, expectedType, isBuggy);
             this.expected = expected;
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return String.valueOf(expected);
         }
 
         @Override
@@ -208,12 +251,21 @@ abstract class LLVMDebugValue {
         private final Map<String, LLVMDebugValue> expectedMembers;
 
         Structured(String expectedType, boolean isBuggy) {
-            super(expectedType, isBuggy);
+            super(Trace.KEYWORD_KIND_STRUCTURED, expectedType, isBuggy);
             expectedMembers = new HashMap<>();
         }
 
         void addMember(String name, LLVMDebugValue value) {
             expectedMembers.put(name, value);
+        }
+
+        Map<String, LLVMDebugValue> getExpectedMembers() {
+            return expectedMembers;
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return "";
         }
 
         @Override

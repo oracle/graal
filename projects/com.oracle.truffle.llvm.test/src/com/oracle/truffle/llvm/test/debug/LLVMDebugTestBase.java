@@ -273,8 +273,11 @@ public abstract class LLVMDebugTestBase {
 
     @Test
     public void test() throws Throwable {
-        final Source source = loadOriginalSource();
         final Trace trace = readTrace();
+        // Trace.updateLines(trace, 0, 0);
+        // TraceWriter.write(trace, getTracePath().resolve(testName + TRACE_EXT));
+
+        final Source source = loadOriginalSource();
         final Source bitcode = loadBitcodeSource();
         runTest(source, bitcode, trace);
     }

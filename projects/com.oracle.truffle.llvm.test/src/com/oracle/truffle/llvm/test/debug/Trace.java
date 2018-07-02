@@ -41,13 +41,29 @@ import java.util.stream.IntStream;
 
 final class Trace implements Iterable<StopRequest> {
 
-    private static final String KEYWORD_PARTIAL_SCOPE = "partial";
+    static final String KEYWORD_OPEN_SCOPE = "OPEN_SCOPE";
+    static final String KEYWORD_SUSPEND = "SUSPEND";
+    static final String KEYWORD_PARTIAL_SCOPE = "partial";
+    static final String KEYWORD_STOP = "STOP";
+    static final String KEYWORD_BREAK = "BREAK";
+    static final String KEYWORD_MEMBER = "MEMBER";
+    static final String KEYWORD_END_MEMBERS = "END_MEMBERS";
+    static final String KEYWORD_BUGGY = "buggy";
+
+    static final String KEYWORD_KIND_ANY = "any";
+    static final String KEYWORD_KIND_ADDRESS = "address";
+    static final String KEYWORD_KIND_CHAR = "char";
+    static final String KEYWORD_KIND_EXACT = "exact";
+    static final String KEYWORD_KIND_FLOAT_32 = "float32";
+    static final String KEYWORD_KIND_FLOAT_64 = "float64";
+    static final String KEYWORD_KIND_INT = "int";
+    static final String KEYWORD_KIND_STRUCTURED = "structured";
 
     static Trace parse(Path path) {
         final Trace trace = new Trace();
         try {
             final Parser parser = trace.newParser();
-            Files.lines(path).filter(s -> !s.isEmpty()).forEachOrdered(parser);
+            Files.lines(path).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEachOrdered(parser);
         } catch (Throwable t) {
             throw new AssertionError("Could not read trace file: " + path, t);
         }
@@ -68,6 +84,16 @@ final class Trace implements Iterable<StopRequest> {
 
     IntStream requestedBreakpoints() {
         return stops.stream().filter(StopRequest::needsBreakPoint).mapToInt(StopRequest::getLine).distinct();
+    }
+
+    static void updateLines(Trace trace, int from, int offset) {
+        for (int i = 0; i < trace.stops.size(); i++) {
+            StopRequest currentStop = trace.stops.get(i);
+            if (currentStop.getLine() >= from) {
+                currentStop = currentStop.updateLines(from, offset);
+                trace.stops.set(i, currentStop);
+            }
+        }
     }
 
     @Override
@@ -101,22 +127,22 @@ final class Trace implements Iterable<StopRequest> {
             split(line);
             final String token = nextToken();
             switch (token) {
-                case "SUSPEND":
+                case KEYWORD_SUSPEND:
                     if (request != null) {
                         error();
                     }
                     suspendOnEntry = true;
                     break;
 
-                case "STOP":
+                case KEYWORD_STOP:
                     parseStop(false);
                     break;
 
-                case "BREAK":
+                case KEYWORD_BREAK:
                     parseStop(true);
                     break;
 
-                case "OPEN_SCOPE": {
+                case KEYWORD_OPEN_SCOPE: {
                     String scopeName = buffer.pollFirst(); // may be null
                     String partialScope = buffer.pollFirst(); // often null
                     if (structured != null || !parents.isEmpty() || request == null) {
@@ -132,11 +158,11 @@ final class Trace implements Iterable<StopRequest> {
                     break;
                 }
 
-                case "MEMBER":
+                case KEYWORD_MEMBER:
                     parseMember();
                     break;
 
-                case "END_MEMBERS":
+                case KEYWORD_END_MEMBERS:
                     if (structured == null) {
                         error();
                     } else if (parents.isEmpty()) {
@@ -209,7 +235,7 @@ final class Trace implements Iterable<StopRequest> {
 
         private boolean parseBugginess() {
             final String token = buffer.pollFirst();
-            return "buggy".equals(token) || (structured != null && structured.isBuggy());
+            return KEYWORD_BUGGY.equals(token) || (structured != null && structured.isBuggy());
         }
 
         private void parseMember() {
@@ -219,11 +245,11 @@ final class Trace implements Iterable<StopRequest> {
 
             LLVMDebugValue dbgValue = null;
             switch (kind) {
-                case "any": {
+                case Trace.KEYWORD_KIND_ANY: {
                     dbgValue = new LLVMDebugValue.Any(type);
                     break;
                 }
-                case "char": {
+                case Trace.KEYWORD_KIND_CHAR: {
                     final String value = nextToken();
                     if (value.length() != 1) {
                         error();
@@ -232,7 +258,7 @@ final class Trace implements Iterable<StopRequest> {
                     dbgValue = new LLVMDebugValue.Char(type, value.charAt(0), isBuggy);
                     break;
                 }
-                case "int": {
+                case Trace.KEYWORD_KIND_INT: {
                     final String value = nextToken();
                     try {
                         final BigInteger intVal = new BigInteger(value);
@@ -243,7 +269,7 @@ final class Trace implements Iterable<StopRequest> {
                     }
                     break;
                 }
-                case "float32": {
+                case Trace.KEYWORD_KIND_FLOAT_32: {
                     final String value = nextToken();
                     try {
                         final float floatVal = Float.parseFloat(value);
@@ -254,7 +280,7 @@ final class Trace implements Iterable<StopRequest> {
                     }
                     break;
                 }
-                case "float64": {
+                case Trace.KEYWORD_KIND_FLOAT_64: {
                     final String value = nextToken();
                     try {
                         final double floatVal = Double.parseDouble(value);
@@ -265,19 +291,19 @@ final class Trace implements Iterable<StopRequest> {
                     }
                     break;
                 }
-                case "address": {
+                case Trace.KEYWORD_KIND_ADDRESS: {
                     final String value = nextToken();
                     final boolean isBuggy = parseBugginess();
                     dbgValue = new LLVMDebugValue.Address(type, value, isBuggy);
                     break;
                 }
-                case "exact": {
+                case Trace.KEYWORD_KIND_EXACT: {
                     final String value = nextToken();
                     final boolean isBuggy = parseBugginess();
                     dbgValue = new LLVMDebugValue.Exact(type, value, isBuggy);
                     break;
                 }
-                case "structured": {
+                case Trace.KEYWORD_KIND_STRUCTURED: {
                     final boolean isBuggy = parseBugginess();
                     final LLVMDebugValue.Structured newStructured = new LLVMDebugValue.Structured(type, isBuggy);
                     if (structured != null) {
@@ -348,4 +374,5 @@ final class Trace implements Iterable<StopRequest> {
             throw new AssertionError("Invalid Trace!", cause);
         }
     }
+
 }

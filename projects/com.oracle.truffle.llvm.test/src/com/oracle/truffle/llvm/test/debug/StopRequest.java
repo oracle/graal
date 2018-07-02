@@ -71,6 +71,18 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
         scopes.add(scope);
     }
 
+    StopRequest updateLines(int from, int offset) {
+        if (expectLine < from) {
+            return this;
+        }
+
+        final StopRequest newRequest = new StopRequest(nextAction, functionName, expectLine + offset, needsBreakPoint);
+        for (Scope scope : scopes) {
+            newRequest.addScope(scope);
+        }
+        return newRequest;
+    }
+
     @Override
     public Iterator<Scope> iterator() {
 
