@@ -14,13 +14,13 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class InlineEvalEventNode extends ExecutionEventNode {
+public class CoverageEventNode extends ExecutionEventNode {
 
     private final URI coverageUri;
     private final SourceSection instrumentedSection;
     private final Function<URI, TextDocumentSurrogate> surrogateProvider;
 
-    protected InlineEvalEventNode(SourceSection instrumentedSection, URI coverageUri, Function<URI, TextDocumentSurrogate> func) {
+    protected CoverageEventNode(SourceSection instrumentedSection, URI coverageUri, Function<URI, TextDocumentSurrogate> func) {
         this.instrumentedSection = instrumentedSection;
         this.coverageUri = coverageUri;
         this.surrogateProvider = func;

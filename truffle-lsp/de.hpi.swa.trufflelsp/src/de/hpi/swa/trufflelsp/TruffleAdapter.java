@@ -461,8 +461,8 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                 final Source inlineEvalSource = Source.newBuilder(code).name("inline eval").language(info.getId()).mimeType("content/unknown").build();
                 for (CoverageData coverageData : coverageDataObjects) {
                     final ExecutableNode executableNode = this.env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
-                    final InlineEvalEventNode inlineEvalEventNode = coverageData.getInlineEvalEventNode();
-                    inlineEvalEventNode.insertChild(executableNode);
+                    final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
+                    coverageEventNode.insertChild(executableNode);
                     // TODO(ds) remove child after execution? There is no API for that?!
 
                     try {
@@ -836,7 +836,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                                                             sourceUri,
                                                             (_uri) -> new TextDocumentSurrogate(_uri, instrumentedNode.getRootNode().getLanguageInfo().getId()));
 
-                                            return new InlineEvalEventNode(eventContext.getInstrumentedSourceSection(), coverageUri, func);
+                                            return new CoverageEventNode(eventContext.getInstrumentedSourceSection(), coverageUri, func);
                                         } else {
                                             return new ExecutionEventNode() {
                                             };

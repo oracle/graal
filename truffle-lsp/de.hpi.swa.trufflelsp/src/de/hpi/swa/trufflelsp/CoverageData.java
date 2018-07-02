@@ -6,13 +6,13 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 
 public class CoverageData {
     private final MaterializedFrame frame;
-    private final InlineEvalEventNode inlineEvalEventNode;
+    private final CoverageEventNode coverageEventNode;
     private final URI coverageUri;
 
-    public CoverageData(URI coverageUri, MaterializedFrame frame, InlineEvalEventNode inlineEvalEventNode) {
+    public CoverageData(URI coverageUri, MaterializedFrame frame, CoverageEventNode coverageEventNode) {
         this.coverageUri = coverageUri;
         this.frame = frame;
-        this.inlineEvalEventNode = inlineEvalEventNode;
+        this.coverageEventNode = coverageEventNode;
     }
 
     public MaterializedFrame getFrame() {
@@ -23,7 +23,7 @@ public class CoverageData {
         return coverageUri;
     }
 
-    public InlineEvalEventNode getInlineEvalEventNode() {
-        return inlineEvalEventNode;
+    public CoverageEventNode getCoverageEventNode() {
+        return coverageEventNode;
     }
 }
