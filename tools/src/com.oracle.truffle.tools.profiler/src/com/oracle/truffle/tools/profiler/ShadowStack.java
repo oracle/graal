@@ -278,20 +278,13 @@ final class ShadowStack {
         private static ArrayList<SourceLocation> getInitialStack(boolean reconstructStatements, Node instrumentedNode) {
             ArrayList<SourceLocation> sourceLocations = new ArrayList<>();
             if (reconstructStatements) {
-                doReconstructStatements(sourceLocations, instrumentedNode);
+                doReconstructStack(sourceLocations, instrumentedNode, reconstructStatements);
             }
 
             Truffle.getRuntime().iterateFrames(frame -> {
                 Node node = frame.getCallNode();
                 if (node != null) {
-                    if (reconstructStatements) {
-                        doReconstructStatements(sourceLocations, node);
-                    } else {
-                        SourceSection sourceSection = node.getRootNode().getSourceSection();
-                        if (sourceSection != null) {
-                            sourceLocations.add(new SourceLocation(node, sourceSection));
-                        }
-                    }
+                    doReconstructStack(sourceLocations, node, reconstructStatements);
                 }
                 return null;
             });
@@ -299,13 +292,13 @@ final class ShadowStack {
             return sourceLocations;
         }
 
-        private static void doReconstructStatements(ArrayList<SourceLocation> sourceLocations, Node node) {
+        private static void doReconstructStack(ArrayList<SourceLocation> sourceLocations, Node node, boolean reconstructStatements) {
             // We exclude the node itself as it will be pushed on the stack by the StackPushPopNode
             Node current = node.getParent();
             while (current != null) {
                 if (current instanceof InstrumentableNode && !(current instanceof InstrumentableNode.WrapperNode)) {
                     InstrumentableNode instrumentableNode = (InstrumentableNode) current;
-                    if (instrumentableNode.hasTag(StandardTags.StatementTag.class) || instrumentableNode.hasTag(StandardTags.RootTag.class)) {
+                    if (instrumentableNode.hasTag(StandardTags.RootTag.class) || (reconstructStatements && instrumentableNode.hasTag(StandardTags.StatementTag.class))) {
                         SourceSection sourceSection = current.getSourceSection();
                         if (sourceSection != null) {
                             sourceLocations.add(new SourceLocation(current, sourceSection));
