@@ -35,6 +35,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -435,6 +437,30 @@ public class LoggingTest {
             final String message = m.group(2);
             Assert.assertEquals(message, loggerName);
         }
+    }
+
+    @Test
+    public void testGcedContext() {
+        TestHandler handler = new TestHandler();
+        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
+        gcedContext.eval(LoggingLanguageFirst.ID, "");
+        List<Map.Entry<Level, String>> expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+        Assert.assertEquals(expected, handler.getLog());
+        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
+        gcedContext = null;
+        for (int i = 1; gcedContextRef.get() != null; i++) {
+            if (i == 10) {
+                throw new AssertionError("Cannot free context.");
+            }
+            System.gc();
+        }
+        handler = new TestHandler();
+        Context newContext = Context.newBuilder().logHandler(handler).build();
+        newContext.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap()));
+        Assert.assertEquals(expected, handler.getLog());
     }
 
     private static void assertImmutable(final LogRecord r) {
