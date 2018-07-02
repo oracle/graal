@@ -835,7 +835,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    public Node getUsageAt(int index) {
+    private Node getUsageAt(int index) {
         if (index == 0) {
             return this.usage0;
         } else if (index == 1) {
