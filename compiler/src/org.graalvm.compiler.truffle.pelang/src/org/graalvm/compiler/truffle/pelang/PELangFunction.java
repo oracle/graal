@@ -44,4 +44,9 @@ public final class PELangFunction {
         return callTarget;
     }
 
+    @Override
+    public String toString() {
+        return "PELangFunction " + header.getName() + " " + System.identityHashCode(this);
+    }
+
 }

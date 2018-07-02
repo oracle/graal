@@ -28,7 +28,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class PELangNCFBenchmark {
 
-    public static class SimpleAddBenchmark extends PELangBenchmark {
+    public static class SimpleAdd extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -37,7 +37,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleBlockBenchmark extends PELangBenchmark {
+    public static class SimpleBlock extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -46,7 +46,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleLocalReadWriteBenchmark extends PELangBenchmark {
+    public static class SimpleLocalReadWrite extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -55,7 +55,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleGlobalReadWriteBenchmark extends PELangBenchmark {
+    public static class SimpleGlobalReadWrite extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -64,7 +64,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleBranchBenchmark extends PELangBenchmark {
+    public static class SimpleBranch extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -73,7 +73,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleLoopBenchmark extends PELangBenchmark {
+    public static class SimpleLoop extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -82,7 +82,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleSwitchBenchmark extends PELangBenchmark {
+    public static class SimpleSwitch extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -91,7 +91,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleInvokeBenchmark extends PELangBenchmark {
+    public static class SimpleInvoke extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -100,7 +100,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleObjectBenchmark extends PELangBenchmark {
+    public static class SimpleObject extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -109,7 +109,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleArrayReadBenchmark extends PELangBenchmark {
+    public static class SimpleArrayRead extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -118,7 +118,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleMultiArrayReadBenchmark extends PELangBenchmark {
+    public static class SimpleMultiArrayRead extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -127,7 +127,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleArrayWriteBenchmark extends PELangBenchmark {
+    public static class SimpleArrayWrite extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -136,7 +136,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleMultiArrayWriteBenchmark extends PELangBenchmark {
+    public static class SimpleMultiArrayWrite extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -145,7 +145,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class ComplexStringArrayBenchmark extends PELangBenchmark {
+    public static class ComplexStringArray extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -154,7 +154,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedAddsBenchmark extends PELangBenchmark {
+    public static class NestedAdds extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -163,7 +163,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedBlocksBenchmark extends PELangBenchmark {
+    public static class NestedBlocks extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -172,7 +172,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedLocalReadWritesBenchmark extends PELangBenchmark {
+    public static class NestedLocalReadWrites extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -181,7 +181,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedBranchesBenchmark extends PELangBenchmark {
+    public static class NestedBranches extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -190,7 +190,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedLoopsBenchmark extends PELangBenchmark {
+    public static class NestedLoops extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -199,7 +199,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedSwitchesBenchmark extends PELangBenchmark {
+    public static class NestedSwitches extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -208,7 +208,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class BranchWithGlobalReadWriteBenchmark extends PELangBenchmark {
+    public static class BranchWithGlobalReadWrite extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -217,7 +217,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class LoopWithGlobalReadWriteBenchmark extends PELangBenchmark {
+    public static class LoopWithGlobalReadWrite extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -226,7 +226,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedLoopsWithMultipleBackEdgesBenchmark extends PELangBenchmark {
+    public static class NestedLoopsWithMultipleBackEdges extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -235,7 +235,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class InvokeObjectFunctionPropertyBenchmark extends PELangBenchmark {
+    public static class InvokeObjectFunctionProperty extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -244,15 +244,15 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class BinaryTreeBenchmark extends PELangBenchmark {
+    public static class BinaryTrees extends PELangBenchmark {
 
         @Override
         protected RootNode rootNode() {
-            return PELangSample.binaryTree();
+            return PELangSample.binaryTrees();
         }
 
         @Override
-        protected Object[] warmupArguments() {
+        protected Object[] callArguments() {
             return new Object[]{10L};
         }
 

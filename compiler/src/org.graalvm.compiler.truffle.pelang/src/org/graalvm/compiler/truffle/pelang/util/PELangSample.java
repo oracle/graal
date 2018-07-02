@@ -29,7 +29,7 @@ public class PELangSample {
 
     public static PELangRootNode simpleAdd() {
         PELangBuilder b = PELangBuilder.create();
-        return b.root(b.return$(b.add(b.long$(5L), b.long$(5L))));
+        return b.root("main", b.return$(b.add(b.long$(5L), b.long$(5L))));
     }
 
     public static PELangRootNode simpleBlock() {
@@ -37,6 +37,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.incrementLocal("i", b.long$(2L)),
@@ -53,6 +54,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(10L)),
                 b.return$(b.readLocal("i"))));
@@ -64,6 +66,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeGlobal("i", b.long$(10L)),
                 b.return$(b.readGlobal("i"))));
@@ -75,6 +78,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.if$(
@@ -90,6 +94,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("counter", b.long$(0L)),
                 b.while$(
@@ -104,6 +109,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("counter", b.long$(0L)),
                 b.switch$(
@@ -119,9 +125,10 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.return$(b.invoke(
                     b.function(
-                        f -> f.header("a", "b"),
+                        f -> f.header("add", "a", "b"),
                         f -> f.return$(f.add(f.readLocal("a"), f.readLocal("b")))),
                     b.long$(5L),
                     b.long$(5L))));
@@ -133,6 +140,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("obj", b.newObject()),
                 b.writeProperty(b.readLocal("obj"), "p1", b.long$(10L)),
@@ -145,6 +153,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.return$(
                 b.readArray(
                     b.array(new long[] {10L, 5L, 0L}),
@@ -157,6 +166,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.return$(
                 b.readArray(
                     b.array(new long[][] {
@@ -173,6 +183,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("var", b.array(new long[] {0L, 5L, 10L})),
                 b.writeArray(
@@ -191,6 +202,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("var", b.array(new long[][] {
                                         {6L, 8L, 10L},
@@ -212,6 +224,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("var", b.array(new String[][][] {
                                             {
@@ -242,6 +255,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.if$(
@@ -257,6 +271,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("counter", b.long$(0L)),
                 b.while$(
@@ -271,6 +286,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.return$(
                 b.add(
                     b.add(b.long$(2L), b.long$(2L)),
@@ -285,6 +301,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.incrementLocal("i", b.long$(1L)),
@@ -310,6 +327,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("h", b.long$(2L)),
                 b.writeLocal("i", b.long$(2L)),
@@ -329,6 +347,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.if$(
@@ -349,6 +368,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.writeLocal("j", b.long$(0L)),
@@ -368,6 +388,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.writeLocal("j", b.long$(0L)),
@@ -388,6 +409,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("foo", b.newObject()),
                 b.writeProperty(b.readLocal("foo"), "bar", b.newObject()),
@@ -401,6 +423,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeGlobal("g", b.long$(0L)),
                 b.if$(
@@ -416,6 +439,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeGlobal("g", b.long$(0L)),
                 b.while$(
@@ -430,6 +454,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("i", b.long$(0L)),
                 b.writeLocal("j", b.long$(0L)),
@@ -455,6 +480,7 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.dispatch(
                 /* 0 */ b.basicBlock(b.writeLocal("i", b.long$(0L)), 1),
                 /* 1 */ b.basicBlock(b.writeLocal("j", b.long$(0L)), 2),
@@ -472,10 +498,11 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeLocal("obj", b.newObject()),
                 b.writeProperty(b.readLocal("obj"), "p1", b.function(
-                    f -> f.header("a", "b"),
+                    f -> f.header("add", "a", "b"),
                     f -> f.return$(f.add(f.readLocal("a"), f.readLocal("b"))))),
                 b.return$(
                     b.invoke(
@@ -485,14 +512,15 @@ public class PELangSample {
         // @formatter:on
     }
 
-    public static PELangRootNode binaryTree() {
+    public static PELangRootNode binaryTrees() {
         PELangBuilder b = PELangBuilder.create();
 
         // @formatter:off
         return b.root(
+            "main",
             b.block(
                 b.writeGlobal("bottomUpTree", b.function(
-                    f -> f.header("depth"),
+                    f -> f.header("bottomUpTree", "depth"),
                     f -> f.if$(
                         f.lt(f.long$(0L), f.readLocal("depth")),
                         f.return$(f.invoke(
@@ -501,14 +529,14 @@ public class PELangSample {
                             f.invoke(f.readGlobal("bottomUpTree"), f.add(f.readLocal("depth"), f.long$(-1L))))),
                         f.return$(f.invoke(f.readGlobal("createNode"), f.null$(), f.null$()))))),
                 b.writeGlobal("createNode", b.function(
-                    f -> f.header("left", "right"),
+                    f -> f.header("createNode", "left", "right"),
                     f -> f.block(
                          f.writeLocal("node", f.newObject()),
                          f.writeProperty(f.readLocal("node"), "left", f.readLocal("left")),
                          f.writeProperty(f.readLocal("node"), "right", f.readLocal("right")),
                          f.return$(f.readLocal("node"))))),
                 b.writeGlobal("itemCheck", b.function(
-                    f -> f.header("node"),
+                    f -> f.header("itemCheck", "node"),
                     f -> f.if$(
                         f.eq(f.readProperty(f.readLocal("node"), "left"), f.null$()),
                         f.return$(f.long$(1L)),

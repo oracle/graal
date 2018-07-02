@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.pelang;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
@@ -40,17 +41,26 @@ public final class PELangState {
         return getGlobal(identifier);
     }
 
-    public Object writeGlobal(String identifier, Object value) {
-        globals.put(identifier, value);
-        return value;
-    }
-
     public long readLongGlobal(String identifier) {
         return (long) getGlobal(identifier);
     }
 
+    public String readStringGlobal(String identifier) {
+        return (String) getGlobal(identifier);
+    }
+
+    public Object writeGlobal(String identifier, Object value) {
+        putGlobal(identifier, value);
+        return value;
+    }
+
     public long writeLongGlobal(String identifier, long value) {
-        globals.put(identifier, value);
+        putGlobal(identifier, value);
+        return value;
+    }
+
+    public String writeStringGlobal(String identifier, String value) {
+        putGlobal(identifier, value);
         return value;
     }
 
@@ -58,8 +68,18 @@ public final class PELangState {
         return getGlobal(identifier) instanceof Long;
     }
 
+    public boolean isStringGlobal(String identifier) {
+        return getGlobal(identifier) instanceof String;
+    }
+
+    @TruffleBoundary
     private Object getGlobal(String identifier) {
         return globals.get(identifier, PELangNull.getInstance());
+    }
+
+    @TruffleBoundary
+    private void putGlobal(String identifier, Object value) {
+        globals.put(identifier, value);
     }
 
     public DynamicObject createObject() {

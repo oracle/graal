@@ -62,7 +62,7 @@ public class PELangBCFGenerator {
 
         PELangBasicBlockNode[] blockNodes = basicBlocks.stream().toArray(PELangBasicBlockNode[]::new);
         PELangBasicBlockDispatchNode dispatchNode = new PELangBasicBlockDispatchNode(blockNodes);
-        return new PELangRootNode(node.getFrameDescriptor(), node.getState(), dispatchNode);
+        return new PELangRootNode(node.getFrameDescriptor(), node.getName(), node.getState(), dispatchNode);
     }
 
     private void generate(PELangStatementNode node, Mode mode) {

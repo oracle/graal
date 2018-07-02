@@ -57,7 +57,6 @@ public abstract class PELangTest extends PartialEvaluationTest {
 
     protected StructuredGraph partiallyEvaluate(OptimizedCallTarget callTarget) {
         CompilationIdentifier compilationId = truffleCompiler.getCompilationIdentifier(callTarget);
-
         OptionValues options = TruffleCompilerOptions.getOptions();
         TruffleInlining inliningDecision = new TruffleInlining(callTarget, new DefaultInliningPolicy());
         SpeculationLog speculationLog = callTarget.getSpeculationLog();

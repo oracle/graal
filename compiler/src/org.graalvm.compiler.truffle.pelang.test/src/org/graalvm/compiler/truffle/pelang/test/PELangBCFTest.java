@@ -386,9 +386,9 @@ public class PELangBCFTest extends PELangTest {
     }
 
     @Test
-    public void testBinaryTree() {
+    public void testBinaryTrees() {
         PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.binaryTree());
+        PELangRootNode rootNode = g.generate(PELangSample.binaryTrees());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         warmupCallTarget(callTarget, 10L);
 

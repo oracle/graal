@@ -2,6 +2,7 @@ package org.graalvm.compiler.truffle.pelang.expr;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -37,6 +38,7 @@ public abstract class PELangLiteralArrayNode extends PELangExpressionNode {
         return getArray() instanceof String[];
     }
 
+    @TruffleBoundary
     protected boolean isArray() {
         return getArray().getClass().isArray();
     }

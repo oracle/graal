@@ -86,8 +86,8 @@ public class PELangBuilder {
         return new PELangBuilder(new FrameDescriptor(), new PELangState());
     }
 
-    public PELangRootNode root(PELangStatementNode bodyNode) {
-        return new PELangRootNode(frameDescriptor, state, bodyNode);
+    public PELangRootNode root(String name, PELangStatementNode bodyNode) {
+        return new PELangRootNode(frameDescriptor, name, state, bodyNode);
     }
 
     public PELangExpressionNode long$(long value) {
@@ -110,7 +110,7 @@ public class PELangBuilder {
         PELangStatementNode bodyNode = bodyFunction.apply(functionBuilder);
         bodyNodes.add(bodyNode);
 
-        PELangRootNode rootNode = functionBuilder.root(functionBuilder.block(bodyNodes.stream().toArray(PELangStatementNode[]::new)));
+        PELangRootNode rootNode = functionBuilder.root(header.getName(), functionBuilder.block(bodyNodes.stream().toArray(PELangStatementNode[]::new)));
         return new PELangLiteralFunctionNode(new PELangFunction(header, Truffle.getRuntime().createCallTarget(rootNode)));
     }
 
@@ -130,8 +130,8 @@ public class PELangBuilder {
         return new PELangLiteralNullNode();
     }
 
-    public FunctionHeader header(String... args) {
-        return new FunctionHeader(args);
+    public FunctionHeader header(String name, String... args) {
+        return new FunctionHeader(name, args);
     }
 
     public PELangExpressionNode add(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
@@ -239,7 +239,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode readArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
-        return new PELangReadArrayNode(arrayNode, indicesNode);
+        return PELangReadArrayNode.create(arrayNode, indicesNode);
     }
 
     public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, String name) {
@@ -255,7 +255,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode writeArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
-        return new PELangWriteArrayNode(arrayNode, indicesNode, valueNode);
+        return PELangWriteArrayNode.create(arrayNode, indicesNode, valueNode);
     }
 
     public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, String name, PELangExpressionNode valueNode) {
@@ -300,10 +300,16 @@ public class PELangBuilder {
 
     public static final class FunctionHeader {
 
+        private final String name;
         private final String[] args;
 
-        public FunctionHeader(String... args) {
+        public FunctionHeader(String name, String... args) {
+            this.name = name;
             this.args = args;
+        }
+
+        public String getName() {
+            return name;
         }
 
         public String[] getArgs() {

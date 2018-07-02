@@ -27,7 +27,6 @@ import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 
 @NodeChild("valueNode")
 @NodeField(name = "identifier", type = String.class)
@@ -36,12 +35,12 @@ public abstract class PELangGlobalWriteNode extends PELangExpressionNode {
     protected abstract String getIdentifier();
 
     @Specialization(guards = "isLong()")
-    protected long writeLong(@SuppressWarnings("unused") VirtualFrame frame, long value) {
+    protected long writeLong(long value) {
         return getState().writeLongGlobal(getIdentifier(), value);
     }
 
     @Specialization(replaces = {"writeLong"})
-    protected Object write(@SuppressWarnings("unused") VirtualFrame frame, Object value) {
+    protected Object write(Object value) {
         return getState().writeGlobal(getIdentifier(), value);
     }
 

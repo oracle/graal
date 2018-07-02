@@ -28,13 +28,21 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public final class PELangRootNode extends RootNode {
 
-    @Child private PELangStatementNode bodyNode;
+    private final String name;
     private final PELangState state;
 
-    public PELangRootNode(FrameDescriptor frameDescriptor, PELangState state, PELangStatementNode bodyNode) {
+    @Child private PELangStatementNode bodyNode;
+
+    public PELangRootNode(FrameDescriptor frameDescriptor, String name, PELangState state, PELangStatementNode bodyNode) {
         super(null, frameDescriptor);
+        this.name = name;
         this.state = state;
         this.bodyNode = bodyNode;
+    }
+
+    @Override
+    public String getName() {
+        return name;
     }
 
     public PELangState getState() {
@@ -53,6 +61,11 @@ public final class PELangRootNode extends RootNode {
         } catch (PELangResultException e) {
             return e.getResult();
         }
+    }
+
+    @Override
+    public String toString() {
+        return "PELangRootNode " + name + " " + System.identityHashCode(this);
     }
 
 }

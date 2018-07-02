@@ -26,7 +26,6 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -46,7 +45,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleTreeDebugHandlersFactory;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
 import com.oracle.truffle.api.Truffle;
@@ -56,13 +54,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 @State(Scope.Benchmark)
-public abstract class PELangBenchmark extends GraalBenchmark {
+public abstract class PELangBenchmark {
+
+    private static final int AST_WARMUPS = 5;
 
     private final TruffleCompilerImpl compiler = (TruffleCompilerImpl) TruffleCompilerRuntime.getRuntime().getTruffleCompiler();
     private final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
 
     private final OptimizedCallTarget callTarget;
-    private final Object[] arguments;
+    private final Object[] callArguments;
     private final OptionValues optionValues;
     private final DebugContext debugContext;
     private final TruffleInlining truffleInlining;
@@ -77,7 +77,7 @@ public abstract class PELangBenchmark extends GraalBenchmark {
 
     public PELangBenchmark() {
         callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode());
-        arguments = warmupArguments();
+        callArguments = callArguments();
         optionValues = TruffleCompilerOptions.getOptions();
         debugContext = DebugContext.create(optionValues, Arrays.asList(new TruffleTreeDebugHandlersFactory()));
         truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
@@ -89,20 +89,22 @@ public abstract class PELangBenchmark extends GraalBenchmark {
         method = compiler.getPartialEvaluator().rootForCallTarget(callTarget);
         phaseContext = new PhaseContext(compiler.getPartialEvaluator().getProviders());
         tierContext = new HighTierContext(compiler.getPartialEvaluator().getProviders(), new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
-    }
 
-    @Setup
-    public void setup() {
         // run call target so that all classes are loaded and initialized
-        callTarget.call(arguments);
-        callTarget.call(arguments);
-        callTarget.call(arguments);
+        for (int i = 0; i < AST_WARMUPS; i++) {
+            callTarget.call(callArguments);
+        }
     }
 
     protected abstract RootNode rootNode();
 
-    protected Object[] warmupArguments() {
+    protected Object[] callArguments() {
         return new Object[0];
+    }
+
+    @Benchmark
+    public Object call() {
+        return callTarget.call(callArguments);
     }
 
     @Benchmark
