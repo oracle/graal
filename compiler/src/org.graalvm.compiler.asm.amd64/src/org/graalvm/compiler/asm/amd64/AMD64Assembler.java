@@ -882,13 +882,13 @@ public class AMD64Assembler extends Assembler {
             boolean noNds = false;
 
             switch (op) {
-                case 0x2A:
                 case 0x2C:
                 case 0x2E:
                 case 0x6E:
                     isSimd = true;
                     noNds = true;
                     break;
+                case 0x2A:
                 case 0x54:
                 case 0x55:
                 case 0x56:
@@ -968,13 +968,13 @@ public class AMD64Assembler extends Assembler {
 
             switch (op) {
                 case 0x10:
-                case 0x2A:
                 case 0x2C:
                 case 0x2E:
                 case 0x6E:
                     isSimd = true;
                     noNds = true;
                     break;
+                case 0x2A:
                 case 0x54:
                 case 0x55:
                 case 0x56:
@@ -1450,7 +1450,6 @@ public class AMD64Assembler extends Assembler {
                 case 0x0A:
                 case 0x0B:
                     isSimd = true;
-                    noNds = true;
                     break;
             }
 
@@ -1516,7 +1515,6 @@ public class AMD64Assembler extends Assembler {
                 case 0x0A:
                 case 0x0B:
                     isSimd = true;
-                    noNds = true;
                     break;
             }
 
