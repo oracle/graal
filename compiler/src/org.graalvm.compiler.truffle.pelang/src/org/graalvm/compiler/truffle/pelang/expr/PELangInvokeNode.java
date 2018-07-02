@@ -27,22 +27,19 @@ import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public final class PELangInvokeNode extends PELangExpressionNode {
 
     @Child private PELangExpressionNode functionNode;
     @Children private final PELangExpressionNode[] argumentNodes;
-    @Child private DirectCallNode callNode;
+    @Child private PELangDispatchNode dispatchNode;
 
     public PELangInvokeNode(PELangExpressionNode functionNode, PELangExpressionNode[] argumentNodes) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
+        dispatchNode = PELangDispatchNode.create();
     }
 
     public PELangExpressionNode getFunctionNode() {
@@ -53,8 +50,8 @@ public final class PELangInvokeNode extends PELangExpressionNode {
         return argumentNodes;
     }
 
-    public DirectCallNode getCallNode() {
-        return callNode;
+    public PELangDispatchNode getDispatchNode() {
+        return dispatchNode;
     }
 
     @Override
@@ -71,15 +68,7 @@ public final class PELangInvokeNode extends PELangExpressionNode {
         for (int i = 0; i < argumentNodes.length; i++) {
             argumentValues[i] = argumentNodes[i].executeGeneric(frame);
         }
-        ensureCallNodeInitialized(function.getCallTarget());
-        return callNode.call(argumentValues);
-    }
-
-    private void ensureCallNodeInitialized(RootCallTarget callTarget) {
-        if (callNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callNode = insert(Truffle.getRuntime().createDirectCallNode(callTarget));
-        }
+        return dispatchNode.executeDispatch(function, argumentValues);
     }
 
 }
