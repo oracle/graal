@@ -2688,6 +2688,24 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xC0 | encode);
     }
 
+    public final void pcmpeqb(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
+        int encode = simdPrefixAndEncode(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x74);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void pcmpeqw(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
+        int encode = simdPrefixAndEncode(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x75);
+        emitByte(0xC0 | encode);
+    }
+
     public final void pcmpestri(Register dst, AMD64Address src, int imm8) {
         assert supports(CPUFeature.SSE4_2);
         assert dst.getRegisterCategory().equals(AMD64.XMM);
@@ -2706,6 +2724,15 @@ public class AMD64Assembler extends Assembler {
         emitByte(0x61);
         emitByte(0xC0 | encode);
         emitByte(imm8);
+    }
+
+    public final void pmovmskb(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert dst.getRegisterCategory().equals(AMD64.CPU) && src.getRegisterCategory().equals(AMD64.XMM);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
+        int encode = simdPrefixAndEncode(dst, dst, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0xD7);
+        emitByte(0xC0 | encode);
     }
 
     public final void pmovzxbw(Register dst, AMD64Address src) {
@@ -2884,6 +2911,27 @@ public class AMD64Assembler extends Assembler {
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
         int encode = simdPrefixAndEncode(AMD64.xmm3, dst, dst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x73);
+        emitByte(0xC0 | encode);
+        emitByte(imm8);
+    }
+
+    public final void pshufb(Register dst, Register src) {
+        assert supports(CPUFeature.SSSE3);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
+        int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x38);
+        emitByte(0x00);
+        emitByte(0xC0 | encode);
+    }
+
+    public final void pshuflw(Register dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE2);
+        assert isUByte(imm8) : "invalid value";
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ false, /* legacyMode */ false, /* noMaskReg */ false, /* usesVl */ false, target);
+        int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x70);
         emitByte(0xC0 | encode);
         emitByte(imm8);
     }

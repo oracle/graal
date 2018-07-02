@@ -220,6 +220,10 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
         return getLo(ia) == getHi(ia);
     }
 
+    private int size(int ia) {
+        return getHi(ia) - getLo(ia);
+    }
+
     private static boolean contains(char aLo, char aHi, char bLo, char bHi) {
         return aLo <= bLo && aHi >= bHi;
     }
@@ -713,6 +717,16 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
         return size() == 1 && isSingle(0);
     }
 
+    public boolean inverseMatchesSingleChar() {
+        if (size() == 1) {
+            return ((getHi(0) - getLo(0)) + 1) == Character.MAX_VALUE;
+        }
+        if (size() == 2) {
+            return getLo(0) == Character.MIN_VALUE && getHi(0) + 2 == getLo(1) && getHi(1) == Character.MAX_VALUE;
+        }
+        return false;
+    }
+
     public boolean matchesEverything() {
         // ranges should be consolidated to one
         return size() == 1 && getLo(0) == Character.MIN_VALUE && getHi(0) == Character.MAX_VALUE;
@@ -758,10 +772,17 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
             if (isSingle(0)) {
                 return new SingleCharMatcher(inverse, getLo(0));
             }
+            if (size(0) == 1) {
+                // two equality checks are cheaper than one range check
+                return new TwoCharMatcher(inverse, getLo(0), getHi(0));
+            }
             return new SingleRangeMatcher(inverse, getLo(0), getHi(0));
         }
         if (size() == 2 && isSingle(0) && isSingle(1)) {
             return new TwoCharMatcher(inverse, getLo(0), getLo(1));
+        }
+        if (preferRangeListMatcherOverBitSetMatcher()) {
+            return new RangeListMatcher(inverse, ranges);
         }
         if (allSameHighByte()) {
             CompilationFinalBitSet bs = convertToBitSet(0, size());
@@ -781,6 +802,23 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
                 return RangeTreeMatcher.fromRanges(inverse, ranges);
             }
         }
+    }
+
+    private boolean preferRangeListMatcherOverBitSetMatcher() {
+        if (size() <= 2) {
+            // for up to two ranges, RangeListMatcher is faster than any BitSet matcher
+            return true;
+        }
+        if (size() <= 4) {
+            // up to four single character checks are still faster than a bit set
+            for (int i = 0; i < size(); i++) {
+                if (!isSingle(i)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private CompilationFinalBitSet convertToBitSet(int iMinArg, int iMaxArg) {
