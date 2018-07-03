@@ -7,7 +7,6 @@ dist: trusty
 sudo: required
 language: generic
 install:
-  - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
   - pip install astroid==1.1.0 --user
   - pip install pylint==1.1.0 --user
@@ -16,15 +15,15 @@ install:
   - wget -O mx/ecj.jar 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/ecj-4.5.2.jar'
   - wget https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
-  - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.34/openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
-  - tar -xzf openjdk1.8.0_141-jvmci-0.34-linux-amd64.tar.gz
+  - wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/jvmci-0.46/openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
+  - tar -xzf openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
   - mkdir llvmDir
   - export SULONG_ENV=mx.sulong/env
 # Travis' pyenv prepends some directories to PATH with an older LLVM, we use mx to restore it
   - echo PATH=`pwd`/llvmDir:$PATH >> $SULONG_ENV
   - echo ECLIPSE_EXE=`pwd`/eclipse/eclipse >> $SULONG_ENV
   - echo JDT=`pwd`/mx/ecj.jar >> $SULONG_ENV
-  - echo JAVA_HOME=`pwd`/openjdk1.8.0_141-jvmci-0.34 >> $SULONG_ENV
+  - echo JAVA_HOME=`pwd`/openjdk1.8.0_172-jvmci-0.46 >> $SULONG_ENV
   - echo MAKEFLAGS=-j2 >> $SULONG_ENV
   - echo CPPFLAGS=-g >> $SULONG_ENV
   - mx sforceimports
