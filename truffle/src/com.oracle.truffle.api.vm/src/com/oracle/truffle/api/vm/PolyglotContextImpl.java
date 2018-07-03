@@ -1145,7 +1145,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.in = newIn == null ? engine.in : newIn;
         this.allowedPublicLanguages = newAllowedPublicLanguages;
         final Handler configuredHandler = newLogHandler != null ? newLogHandler : engine.logHandler;
-        this.logHandler = configuredHandler != null ? configuredHandler : PolyglotLogHandler.createStreamHandler(this.out, false);
+        this.logHandler = configuredHandler != null ? configuredHandler : PolyglotLogHandler.createStreamHandler(this.out, false, true);
     }
 
     private void invalidEngineOption(final String optionKey) {
