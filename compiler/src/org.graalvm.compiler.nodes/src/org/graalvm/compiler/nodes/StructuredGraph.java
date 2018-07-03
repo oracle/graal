@@ -1006,14 +1006,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return res;
     }
 
-    /**
-     *
-     * @return true if the graph contains only a {@link StartNode} and {@link ReturnNode}
-     */
-    public boolean isTrivial() {
-        return !(start.next() instanceof ReturnNode);
-    }
-
     @Override
     public JavaMethod asJavaMethod() {
         return method();
