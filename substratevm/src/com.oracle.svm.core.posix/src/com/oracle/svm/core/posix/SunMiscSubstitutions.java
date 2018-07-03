@@ -28,11 +28,13 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -40,6 +42,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -398,6 +401,33 @@ final class Util_sun_misc_NativeSignalHandler {
     @NeverInline("Provide a return address for the Java frame anchor.")
     private static void handle0InNative(Signal.AdvancedSignalDispatcher functionPointer, int sig) {
         functionPointer.dispatch(sig, WordFactory.nullPointer(), WordFactory.nullPointer());
+    }
+}
+
+@AutomaticFeature
+class IgnoreSIGPIPEFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new Runnable() {
+
+            @Override
+            /**
+             * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide
+             * signal whose default action is to terminate the process, will instead return an error
+             * code from the specific write operation.
+             *
+             * From pipe(7}: If all file descriptors referring to the read end of a pipe have been
+             * closed, then a write(2) will cause a SIGPIPE signal to be generated for the calling
+             * process. If the calling process is ignoring this signal, then write(2) fails with the
+             * error EPIPE.
+             */
+            public void run() {
+                final Signal.SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+                VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+            }
+        });
     }
 }
 
