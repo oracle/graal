@@ -57,26 +57,27 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
             CompilerDirectives.transferToInterpreterAndInvalidate();
             memory = getLLVMMemory();
         }
-        if (inJava) {
-            if (length <= MAX_JAVA_LEN) {
-                long targetPointer = target.asNative();
-                long sourcePointer = source.asNative();
 
-                if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, targetPointer == sourcePointer)) {
-                    // nothing todo
-                } else if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {
-                    copyForward(memory, targetPointer, sourcePointer, length);
+        long targetPointer = target.asNative();
+        long sourcePointer = source.asNative();
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, length > 0 && sourcePointer != targetPointer)) {
+            if (inJava) {
+                if (length <= MAX_JAVA_LEN) {
+                    // the unsigned comparison replaces
+                    // sourcePointer + length <= targetPointer || targetPointer < sourcePointer
+                    if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {
+                        copyForward(memory, targetPointer, sourcePointer, length);
+                    } else {
+                        copyBackward(memory, targetPointer, sourcePointer, length);
+                    }
+                    return;
                 } else {
-                    copyBackward(memory, targetPointer, sourcePointer, length);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    inJava = false;
                 }
-                return;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                inJava = false;
             }
+            nativeMemCopy(memory, target, source, length);
         }
-
-        nativeMemCopy(memory, target, source, length);
     }
 
     private static void copyForward(LLVMMemory memory, long target, long source, long length) {

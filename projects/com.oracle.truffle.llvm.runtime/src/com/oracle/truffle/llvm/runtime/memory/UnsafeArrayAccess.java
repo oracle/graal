@@ -131,6 +131,62 @@ public final class UnsafeArrayAccess {
         return getDouble(arr, ARRAY_INT_BASE_OFFSET, offset);
     }
 
+    public void writeI1(long[] arr, long offset, boolean value) {
+        writeI1(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public boolean getI1(long[] arr, long offset) {
+        return getI1(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
+    public void writeI8(long[] arr, long offset, byte value) {
+        writeI8(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public byte getI8(long[] arr, long offset) {
+        return getI8(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
+    public void writeI16(long[] arr, long offset, short value) {
+        writeI16(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public short getI16(long[] arr, long offset) {
+        return getI16(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
+    public void writeI32(long[] arr, long offset, int value) {
+        writeI32(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public int getI32(long[] arr, long offset) {
+        return getI32(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
+    public void writeI64(long[] arr, long offset, long value) {
+        writeI64(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public long getI64(long[] arr, long offset) {
+        return getI64(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
+    public void writeFloat(long[] arr, long offset, float value) {
+        writeFloat(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public float getFloat(long[] arr, long offset) {
+        return getFloat(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
+    public void writeDouble(long[] arr, long offset, double value) {
+        writeDouble(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+    }
+
+    public double getDouble(long[] arr, long offset) {
+        return getDouble(arr, ARRAY_LONG_BASE_OFFSET, offset);
+    }
+
     public void writeI1(Object arr, long baseOffset, long offset, boolean value) {
         unsafe.putByte(arr, baseOffset + offset, (byte) (value ? 1 : 0));
     }
