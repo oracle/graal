@@ -1538,7 +1538,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadFilterEntry(LLVMExpressionNode exp) {
         LLVMPointerArrayLiteralNode array = (LLVMPointerArrayLiteralNode) exp;
-        LLVMToNativeNode[] types = array == null ? new LLVMToNativeNode[]{} : array.getValues();
+        LLVMToNativeNode[] types = array == null ? new LLVMToNativeNode[]{} : array.getNativeValues();
         return new LLVMLandingpadNode.LandingpadFilterEntryNode(types);
     }
 
