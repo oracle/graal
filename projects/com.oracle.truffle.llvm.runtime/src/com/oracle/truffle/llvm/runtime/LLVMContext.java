@@ -71,9 +71,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
@@ -642,54 +639,9 @@ public final class LLVMContext {
         return result;
     }
 
-    public void allocateGlobals(ArrayList<LLVMGlobal> globals) {
-        // get intrinsics to allocate memory
-        LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
-        RootCallTarget malloc = provider.generateIntrinsic("@malloc", null);
-
-        // divide into pointer and non-pointer globals
-        ArrayList<Type> nonPointerTypes = new ArrayList<>();
-        for (LLVMGlobal global : globals) {
-            Type type = global.getPointeeType();
-            if (!isSpecialGlobalSlot(type)) {
-                // allocate at least one byte per global (to make the pointers unique)
-                if (type.getSize(dataLayout) == 0) {
-                    nonPointerTypes.add(PrimitiveType.getIntegerType(8));
-                }
-                nonPointerTypes.add(type);
-            }
-        }
-
-        StructureType structType = new StructureType("globals_struct", false, nonPointerTypes.toArray(new Type[0]));
-
-        // passing -1 for stack pointer (ignored by the intrinsics)
-        LLVMPointer nonPointerStore = nonPointerTypes.isEmpty() ? null : (LLVMPointer) malloc.call(-1, (long) structType.getSize(dataLayout));
-        // remember to free this pointer
+    public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
         globalsNonPointerStore.add(nonPointerStore);
-
-        int nonPointerOffset = 0;
-        for (LLVMGlobal global : globals) {
-            Type type = global.getPointeeType();
-            LLVMPointer ref;
-            if (isSpecialGlobalSlot(global.getPointeeType())) {
-                ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
-            } else {
-                // allocate at least one byte per global (to make the pointers unique)
-                if (type.getSize(dataLayout) == 0) {
-                    type = PrimitiveType.getIntegerType(8);
-                }
-                nonPointerOffset += Type.getPadding(nonPointerOffset, type, dataLayout);
-                ref = nonPointerStore.increment(nonPointerOffset);
-                nonPointerOffset += type.getSize(dataLayout);
-            }
-            global.setTarget(ref);
-            globalsReverseMap.put(ref, global);
-        }
-    }
-
-    private static boolean isSpecialGlobalSlot(Type type) {
-        // globals of pointer type can potentially contain a TruffleObject
-        return type instanceof PointerType;
+        globalsReverseMap.putAll(reverseMap);
     }
 
     public void setCleanupNecessary(boolean value) {
