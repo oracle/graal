@@ -60,6 +60,11 @@ public class TypedInteropTest extends InteropTestBase {
         return new StructObject(point);
     }
 
+    private static void checkPoint(StructObject p, int x, int y) {
+        Assert.assertEquals("x", x, p.get("x"));
+        Assert.assertEquals("y", y, p.get("y"));
+    }
+
     public static class DistSquaredNode extends SulongTestNode {
 
         public DistSquaredNode() {
@@ -192,4 +197,41 @@ public class TypedInteropTest extends InteropTestBase {
         int res = (int) accessBitFields.call(createBitFieldsStruct());
         Assert.assertTrue(res != 0);
     }
+
+    public static class FillFusedArrayNode extends SulongTestNode {
+
+        public FillFusedArrayNode() {
+            super(testLibrary, "fillFusedArray", 1);
+        }
+    }
+
+    private static Object createFusedArray() {
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("origin", makePoint(0, 0));
+        ArrayObject array = new ArrayObject(makePoint(0, 0), makePoint(0, 0), makePoint(0, 0), makePoint(0, 0), makePoint(0, 0), makePoint(0, 0), makePoint(0, 0));
+        ret.put("path", array);
+
+        return new StructObject(ret);
+    }
+
+    private static void checkFusedArray(Object res) {
+        Assert.assertTrue(res instanceof StructObject);
+        if (res instanceof StructObject) {
+            StructObject struct = (StructObject) res;
+            checkPoint((StructObject) struct.get("origin"), 3, 7);
+            ArrayObject array = (ArrayObject) struct.get("path");
+            for (int i = 0; i < 7; i++) {
+                StructObject point = (StructObject) array.get(i);
+                checkPoint(point, 2 * i, 5 * i);
+            }
+        }
+    }
+
+    @Test
+    public void testFillFusedArray(@Inject(FillFusedArrayNode.class) CallTarget fillFusedArray) {
+        Object fusedArray = createFusedArray();
+        fillFusedArray.call(fusedArray);
+        checkFusedArray(fusedArray);
+    }
+
 }

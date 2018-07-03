@@ -78,3 +78,23 @@ int accessBitFields(void *arg) {
 	struct BitFields *obj = polyglot_as_BitFields(arg);
 	return obj->x + obj->y + obj->z;
 }
+
+struct FusedArray {
+  struct Point origin;
+  struct Point path[0];
+};
+
+POLYGLOT_DECLARE_STRUCT(FusedArray)
+
+int fillFusedArray(void *arg) {
+  struct FusedArray *fused = polyglot_as_FusedArray(arg);
+  int i;
+
+  fused->origin.x = 3;
+  fused->origin.y = 7;
+
+  for (i = 0; i < 7; i++) {
+    fused->path[i].x = 2 * i;
+    fused->path[i].y = 5 * i;    
+  }
+}
