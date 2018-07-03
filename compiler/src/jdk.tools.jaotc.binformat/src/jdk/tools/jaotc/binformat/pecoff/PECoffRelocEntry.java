@@ -28,7 +28,6 @@ package jdk.tools.jaotc.binformat.pecoff;
 import java.nio.ByteBuffer;
 
 import jdk.tools.jaotc.binformat.pecoff.PECoff.IMAGE_RELOCATION;
-import jdk.tools.jaotc.binformat.pecoff.PECoffByteBuffer;
 
 final class PECoffRelocEntry {
     private final ByteBuffer entry;

@@ -27,25 +27,23 @@ package jdk.tools.jaotc.binformat;
 
 import java.util.Objects;
 
-import jdk.tools.jaotc.binformat.NativeSymbol;
-
 public class Symbol {
 
-    public enum Binding
-    {
+    // @formatter:off (workaround for Eclipse formatting bug)
+    public enum Binding {
         UNDEFINED,
         LOCAL,
         GLOBAL
     }
 
-    public enum Kind
-    {
+    public enum Kind {
         UNDEFINED,
         NATIVE_FUNCTION,
         JAVA_FUNCTION,
         OBJECT,
         NOTYPE
     }
+    // @formatter:on
 
     private final String name;
     private final int size;

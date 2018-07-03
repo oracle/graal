@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_METAACCESS;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getArrayBaseOffset;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
@@ -49,7 +50,7 @@ public class CRC32CSubstitutions {
 
     @MethodSubstitution
     static int updateBytes(int crc, byte[] b, int off, int end) {
-        Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(b, arrayBaseOffset(JavaKind.Byte) + off));
+        Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(b, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + off));
         return updateBytesCRC32(UPDATE_BYTES_CRC32C, crc, bufAddr, end - off);
     }
 

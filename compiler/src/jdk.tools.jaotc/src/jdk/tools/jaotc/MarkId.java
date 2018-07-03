@@ -57,7 +57,7 @@ enum MarkId {
 
     private final int value;
 
-    private MarkId(String name) {
+    MarkId(String name) {
         this.value = (int) (long) HotSpotJVMCIRuntime.runtime().getConfigStore().getConstants().get(name);
     }
 

@@ -101,6 +101,11 @@ public class AnnotatedField implements ReadableJavaField {
     }
 
     @Override
+    public int getOffset() {
+        return original.getOffset();
+    }
+
+    @Override
     public boolean isInternal() {
         return original.isInternal();
     }

@@ -26,16 +26,17 @@
 
 package jdk.tools.jaotc.aarch64;
 
-import jdk.tools.jaotc.StubInformation;
-import jdk.tools.jaotc.ELFMacroAssembler;
+import static jdk.vm.ci.aarch64.AArch64.r12;
+import static jdk.vm.ci.aarch64.AArch64.r16;
+import static jdk.vm.ci.aarch64.AArch64.r17;
+import static jdk.vm.ci.aarch64.AArch64.r9;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 
+import jdk.tools.jaotc.ELFMacroAssembler;
+import jdk.tools.jaotc.StubInformation;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.Register;
-
-import static jdk.vm.ci.aarch64.AArch64.*;
 
 public final class AArch64ELFMacroAssembler extends AArch64MacroAssembler implements ELFMacroAssembler {
 
