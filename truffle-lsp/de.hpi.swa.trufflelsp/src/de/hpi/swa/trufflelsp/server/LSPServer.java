@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.CodeLens;
@@ -413,10 +414,17 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         return "verbose".equals(this.trace_server);
     }
 
-    public void start(@SuppressWarnings("hiding") final ServerSocket serverSocket) {
+    public void start(@SuppressWarnings("hiding") final ServerSocket serverSocket) throws InterruptedException, ExecutionException {
         this.serverSocket = serverSocket;
-        this.executor = Executors.newSingleThreadExecutor();
-        this.executor.execute(new Runnable() {
+        this.executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+
+            public Thread newThread(Runnable r) {
+                Thread thread = Executors.defaultThreadFactory().newThread(r);
+                thread.setName("LSP server connection thread");
+                return thread;
+            }
+        });
+        Future<Boolean> future = this.executor.submit(new Runnable() {
 
             public void run() {
                 while (true) {
@@ -427,9 +435,9 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(LSPServer.this,
                                         clientSocket.getInputStream(), clientSocket.getOutputStream());
                         LSPServer.this.connect(launcher.getRemoteProxy());
-                        Future<?> future = launcher.startListening();
+                        Future<?> listenFuture = launcher.startListening();
                         try {
-                            future.get();
+                            listenFuture.get();
                         } catch (InterruptedException | ExecutionException e) {
                             err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
                         }
@@ -438,6 +446,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                     }
                 }
             }
-        });
+        }, Boolean.TRUE);
+        future.get();
     }
 }

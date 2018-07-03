@@ -37,6 +37,8 @@ import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
@@ -57,6 +59,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -87,14 +90,15 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
     protected final Map<SourceSection, SourceSection> section2definition = new HashMap<>();
 
-    private final TruffleInstrument.Env env;
-    private final PrintWriter err;
-// private final PrintWriter info;
+    private TruffleInstrument.Env env;
+    private PrintWriter err;
+    private PrintWriter info;
     private final SourceProvider sourceProvider;
     private DiagnosticsPublisher diagnosticsPublisher;
     private TruffleContext globalInnerContext;
     private boolean isContextBeingCreated = false;
-    private Function<VirtualLSPFileProvider, TruffleContext> contextProvider;
+    private Builder contextBuilder;
+    private Context globalContext;
 
     private static final class SourceUriFilter implements SourcePredicate {
 
@@ -115,16 +119,19 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
     }
 
-    public TruffleAdapter(TruffleInstrument.Env env, Function<VirtualLSPFileProvider, TruffleContext> contextProvider) {
-        assert env != null;
-        this.env = env;
-        this.contextProvider = contextProvider;
-        this.err = new PrintWriter(env.err());
-// this.info = new PrintWriter(env.out());
+    public TruffleAdapter(Builder contextBuilder) {
         this.sourceProvider = new SourceProvider();
+        this.contextBuilder = contextBuilder;
+    }
+
+    @SuppressWarnings("hiding")
+    public void initialize(Env env, PrintWriter info, PrintWriter err) {
+        this.env = env;
+        this.info = info;
+        this.err = err;
+
         env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs(new SourceUriFilter()).build(), this.sourceProvider, false);
         env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().sourceIs(new SourceUriFilter()).build(), this.sourceProvider, false);
-        env.getInstrumenter().attachContextsListener(this, true);
     }
 
     public void setDiagnosticsPublisher(DiagnosticsPublisher diagnosticsPublisher) {
@@ -879,12 +886,12 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         doWithContext(getGlobalInnerContext(), runnable);
     }
 
-    private static void doWithContext(TruffleContext context, Runnable runnable) {
-        Object contextEnterObject = context.enter();
+    private static void doWithContext(Context context, Runnable runnable) {
+        context.enter();
         try {
             runnable.run();
         } finally {
-            context.leave(contextEnterObject);
+            context.leave();
         }
     }
 
@@ -892,12 +899,12 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return doWithContext(getGlobalInnerContext(), supplier);
     }
 
-    private static <T> T doWithContext(TruffleContext context, Supplier<T> runnable) {
-        Object contextEnterObject = context.enter();
+    private static <T> T doWithContext(Context context, Supplier<T> runnable) {
+        context.enter();
         try {
             return runnable.get();
         } finally {
-            context.leave(contextEnterObject);
+            context.leave();
         }
     }
 
@@ -951,9 +958,12 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return new Hover(contents);
     }
 
-    private synchronized TruffleContext getGlobalInnerContext() {
-        assert this.globalInnerContext != null : "Global inner Context not initialized yet";
-        return this.globalInnerContext;
+    private synchronized Context getGlobalInnerContext() {
+// assert this.globalInnerContext != null : "Global inner Context not initialized yet";
+        if (globalContext == null) {
+            globalContext = contextBuilder.build();
+        }
+        return globalContext;
     }
 
     public String getSourceText(Path path) {
@@ -965,12 +975,14 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return this.uri2TextDocumentSurrogate.containsKey(path.toUri());
     }
 
-    private TruffleContext createNewContext() {
-        return this.contextProvider.apply(this);
-    }
+// private TruffleContext createNewContext() {
+// return this.contextProvider.apply(this);
+// }
 
     private TruffleContextWrapper createNewContextFromOtherThread() {
-        return TruffleContextWrapper.createAndEnter(doWithGlobalInnerContext(() -> this.contextProvider.apply(this)));
+// return TruffleContextWrapper.createAndEnter(doWithGlobalInnerContext(() ->
+// this.contextProvider.apply(this)));
+        return TruffleContextWrapper.createAndEnter(contextBuilder.build());
     }
 
     public void onContextCreated(TruffleContext truffleContext) {
@@ -980,10 +992,10 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     }
 
     public void onLanguageContextInitialized(TruffleContext truffleContext, LanguageInfo language) {
-        if (this.globalInnerContext == null && !isContextBeingCreated) {
-            this.isContextBeingCreated = true;
-            this.globalInnerContext = createNewContext();
-        }
+// if (this.globalInnerContext == null && !isContextBeingCreated) {
+// this.isContextBeingCreated = true;
+// this.globalInnerContext = createNewContext();
+// }
     }
 
     public void onLanguageContextFinalized(TruffleContext truffleContext, LanguageInfo language) {

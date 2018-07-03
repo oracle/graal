@@ -25,8 +25,11 @@
 package de.hpi.swa.trufflelsp;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -126,8 +129,16 @@ public final class NearestSectionsFinder {
     protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset) {
         NearestSections sectionsCollector = new NearestSections(offset);
         // All SourceSections of the Source are loaded already when the source was parsed
+        env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+
+            public void onLoad(LoadSourceEvent event) {
+                System.out.println(event.getSource().getURI());
+            }
+        }, true).dispose();
+
         env.getInstrumenter().attachLoadSourceSectionListener(
-                        SourceSectionFilter.newBuilder().sourceIs(source).build(),
+                        SourceSectionFilter.ANY,
+                        // SourceSectionFilter.newBuilder().sourceIs(source).build(),
                         sectionsCollector, true).dispose(); // TODO(ds) this is depending on an underlying weak list and atm it works, because we actively hold
                                                             // the nodes in SourceSectionProvider. Is this good?
         return sectionsCollector;
