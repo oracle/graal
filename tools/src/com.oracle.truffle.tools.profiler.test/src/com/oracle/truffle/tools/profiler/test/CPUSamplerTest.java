@@ -295,7 +295,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             Wrapper(SamplerTestNode node) {
                 this.node = node;
-                adoptChildren();
             }
 
             @Override
@@ -312,7 +311,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             Statement(Statement other) {
                 node = other.node;
                 sourceSection = other.sourceSection;
-                adoptChildren();
             }
 
             Statement(SourceSection sourceSection, SamplerTestNode node) {
@@ -344,7 +342,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             Root(Root other) {
                 node = other.node;
                 sourceSection = other.sourceSection;
-                adoptChildren();
             }
 
             @Override
@@ -377,14 +374,12 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 super(language);
                 this.language = language;
                 this.child = child;
-                adoptChildren();
             }
 
             protected SRootNode(SRootNode other) {
                 super(other.language);
                 language = other.language;
                 child = other.child;
-                adoptChildren();
             }
 
             @Override
@@ -398,7 +393,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             CallNode(DirectCallNode callNode) {
                 this.callNode = callNode;
-                adoptChildren();
             }
 
             @Override
@@ -414,7 +408,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             StartSamplerNode(CPUSampler sampler, SamplerTestNode child) {
                 this.sampler = sampler;
                 this.child = child;
-                adoptChildren();
             }
 
             @Override
