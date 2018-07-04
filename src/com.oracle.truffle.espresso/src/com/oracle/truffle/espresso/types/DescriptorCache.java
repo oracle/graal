@@ -29,11 +29,7 @@ public abstract class DescriptorCache<T extends Descriptor> {
     protected final EconomicMap<String, T> cache = EconomicMap.create();
 
     public synchronized T lookup(String key) {
-        T value = cache.get(key);
-        if (value == null) {
-            value = cache.get(key);
-        }
-        return value;
+        return cache.get(key);
     }
 
     public synchronized T make(String key) {

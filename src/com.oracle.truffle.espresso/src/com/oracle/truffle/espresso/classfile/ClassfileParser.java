@@ -33,6 +33,8 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.Klass;
+import com.oracle.truffle.espresso.runtime.KlassRegistry;
+import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public class ClassfileParser {
 
@@ -57,11 +59,11 @@ public class ClassfileParser {
 
     private final DynamicObject classLoader;
     private final ClasspathFile classfile;
-    private final String requestedClassName;
+    private final TypeDescriptor requestedClassName;
     private final EspressoContext context;
     private final ClassfileStream stream;
 
-    private String className;
+    private TypeDescriptor className;
     private int minorVersion;
     private int majorVersion;
     private ConstantPool pool;
@@ -79,16 +81,13 @@ public class ClassfileParser {
     private Klass superClass;
     private Klass[] localInterfaces;
 
-    public ClassfileParser(DynamicObject classLoader, String name, Klass hostClass, EspressoContext context) {
-        this.requestedClassName = 'L' + name.replace('.', '/') + ';';
+    public ClassfileParser(DynamicObject classLoader, ClasspathFile classpathFile, TypeDescriptor requestedClassName, Klass hostClass, EspressoContext context) {
+        this.requestedClassName = requestedClassName;
         this.classLoader = classLoader;
-        this.className = name == null ? "<Unknown>" : name;
+        this.className = requestedClassName;
         this.hostClass = hostClass;
         this.context = context;
-        this.classfile = context.getClasspath().readClassFile(className);
-        if (this.classfile == null) {
-            throw new NoClassDefFoundError(className);
-        }
+        this.classfile = classpathFile;
         this.stream = new ClassfileStream(classfile.contents, classfile);
     }
 
@@ -164,7 +163,7 @@ public class ClassfileParser {
         // This class and superclass
         int thisClassIndex = stream.readU2();
 
-        String classNameInCP = pool.classAt(thisClassIndex).getTypeDescriptor(pool, thisClassIndex).toString();
+        TypeDescriptor classNameInCP = pool.classAt(thisClassIndex).getTypeDescriptor(pool, thisClassIndex);
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
@@ -197,6 +196,17 @@ public class ClassfileParser {
             if (!className.equals("Ljava/lang/Object;")) {
                 throw classfile.classFormatError("Invalid superclass index 0");
             }
+        }
+    }
+
+    private void parseInterfaces() {
+        int interfaceCount = stream.readU2();
+        localInterfaces = new Klass[interfaceCount];
+        for (int i = 0; i < interfaceCount; i++) {
+            int interfaceIndex = stream.readU2();
+            TypeDescriptor interfaceDescriptor = pool.classAt(interfaceIndex).getTypeDescriptor(pool, interfaceIndex);
+            Klass interfaceKlass = KlassRegistry.get(context, classLoader, interfaceDescriptor);
+            localInterfaces[i] = interfaceKlass;
         }
     }
 
@@ -292,8 +302,6 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
     private static String getPackageName(String fqn) {
         int slash = fqn.lastIndexOf('/');
         if (slash == -1) {
-            // For an anonymous class that is in the unnamed package, move it to its host class's
-            // package by prepending its host class's package name to its class name.
             int first = 0;
             while (fqn.charAt(first) == '[') {
                 first++;
@@ -316,18 +324,19 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
      * are in different packages then throw an {@link IllegalArgumentException}.
      */
     private void fixAnonymousClassName() {
-        int slash = className.lastIndexOf('/');
+        int slash = this.className.toJavaName().lastIndexOf('/');
         String hostPackageName = getPackageName(hostClass.getName().toString());
         if (slash == -1) {
             // For an anonymous class that is in the unnamed package, move it to its host class's
             // package by prepending its host class's package name to its class name.
             if (hostPackageName != null) {
-                className = hostPackageName + '/' + className;
+                String newClassName = 'L' + hostPackageName + '/' + this.className.toJavaName() + ';';
+                this.className = context.getLanguage().getTypeDescriptors().make(newClassName);
             }
         } else {
-            String packageName = getPackageName(className);
+            String packageName = getPackageName(this.className.toString());
             if (!hostPackageName.equals(packageName)) {
-                throw new IllegalArgumentException("Host class " + hostClass + " and anonymoust class " + className + " are in different packages");
+                throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " + this.className + " are in different packages");
             }
         }
     }

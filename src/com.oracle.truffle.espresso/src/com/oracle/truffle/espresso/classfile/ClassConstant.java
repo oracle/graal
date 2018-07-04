@@ -89,7 +89,7 @@ public interface ClassConstant extends PoolConstant {
         public Klass resolve(ConstantPool pool, int index) {
             try {
                 try {
-                    Klass klass = typeDescriptor.resolveType(pool.classLoader());
+                    Klass klass = typeDescriptor.resolveType(pool.getContext(), pool.classLoader());
                     pool.updateAt(index, new Resolved(klass));
                     return klass;
                 } catch (RuntimeException e) {

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.types;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.Klass;
 import com.oracle.truffle.espresso.runtime.KlassRegistry;
 
@@ -33,6 +34,29 @@ public final class TypeDescriptor extends Descriptor {
 
     TypeDescriptor(String string) {
         super(string);
+    }
+
+    public static String stringToJava(String string) {
+        switch (string.charAt(0)) {
+            // @formatter: off
+            case 'L': return dottified(string.substring(1, string.length() - 1));
+            case '[': return stringToJava(string.substring(1)) + "[]";
+            case 'B': return "byte";
+            case 'C': return "char";
+            case 'D': return "double";
+            case 'F': return "float";
+            case 'I': return "int";
+            case 'J': return "long";
+            case 'S': return "short";
+            case 'V': return "void";
+            case 'Z': return "boolean";
+            default: throw new InternalError("invalid type descriptor: " + "\"" + string + "\"");
+            // @formatter: on
+        }
+    }
+
+    public String toJavaName() {
+        return stringToJava(toString());
     }
 
     /**
@@ -65,14 +89,14 @@ public final class TypeDescriptor extends Descriptor {
      * @param classLoader the class loader used to resolve this type descriptor to a class
      * @return the resolved class or null
      */
-    public Klass resolveType(DynamicObject classLoader) {
+    public Klass resolveType(EspressoContext context, DynamicObject classLoader) {
         // FIXME (ld): Recursing up the class registry's ancestors is wrong.
         // This assumes a delegation model where a class loader delegates to class loaders up
         // its class hierarchy only.
         // This will not work with more elaborated loader where delegation may be customized to
         // arbitrary loader, e.g., loader that aren't
         // in its ancestor branch.
-        Klass klass = KlassRegistry.get(classLoader, this, true);
+        Klass klass = KlassRegistry.get(context, classLoader, this);
         if (klass != null) {
             return klass;
         }

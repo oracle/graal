@@ -30,6 +30,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 
+import com.oracle.truffle.espresso.runtime.KlassRegistry;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -41,11 +42,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.Klass;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 
@@ -139,11 +138,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         final EspressoContext context = findContext();
 
         DynamicObject classLoader = null;
-        Klass hostClass = null;
         String className = source.getName();
-        ClassfileParser parser = new ClassfileParser(classLoader, className, hostClass, context);
 
-        parser.loadClass();
+        String classDescriptor = 'L' + className.replace('.', '/') + ';';
+        KlassRegistry.get(context, classLoader, context.getLanguage().getTypeDescriptors().make(classDescriptor));
         throw unimplemented();
     }
 

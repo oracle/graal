@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.runtime;
 
 import java.io.BufferedReader;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
@@ -42,6 +44,8 @@ public class EspressoContext {
     private final StringTable strings = new StringTable();
     private String[] mainArguments;
     private Source mainSourceFile;
+
+    private final List<KlassRegistry> klassRegistries = new ArrayList<>();
 
     public EspressoContext(TruffleLanguage.Env env, BufferedReader in, PrintWriter out, EspressoLanguage language) {
         this.input = in;
@@ -102,5 +106,9 @@ public class EspressoContext {
 
     public void initializeContext() {
         this.initialized = true;
+    }
+
+    public List<KlassRegistry> getKlassRegistries() {
+        return klassRegistries;
     }
 }

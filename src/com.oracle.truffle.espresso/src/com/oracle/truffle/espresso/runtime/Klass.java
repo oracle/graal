@@ -46,7 +46,7 @@ public final class Klass {
     * signature data set in the array. The fields array looks like following:
     * //@formatter:off
     *
-    * f1: [access, name index, sig index, initial value index, low_offset, high_offset]
+    * f1: [access, nameANDtYPE index, initial value index, low_offset, high_offset]
     * f2: [access, name index, sig index, initial value index, low_offset, high_offset]
     *      ...
     * fn: [access, name index, sig index, initial value index, low_offset, high_offset]
