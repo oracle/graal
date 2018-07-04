@@ -2642,7 +2642,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // not using emitArith because test
         // doesn't support sign-extension of
         // 8bit operands
-        if (dst == AMD64.rax) {
+        if (dst.encoding == 0) {
             emitByte(0xA9);
         } else {
             prefix(dst);

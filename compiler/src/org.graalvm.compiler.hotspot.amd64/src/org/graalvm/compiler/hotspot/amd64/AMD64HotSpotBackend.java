@@ -32,14 +32,12 @@ import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64VectorAssembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -199,11 +197,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     protected Assembler createAssembler(FrameMap frameMap) {
-        if (((AMD64) getTarget().arch).getFeatures().contains(CPUFeature.AVX)) {
-            return new AMD64VectorAssembler(getTarget());
-        } else {
-            return new AMD64MacroAssembler(getTarget());
-        }
+        return new AMD64MacroAssembler(getTarget());
     }
 
     @Override

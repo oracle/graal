@@ -642,7 +642,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     private class SSEEncoderImpl implements SIMDEncoder {
 
         @Override
-        public void simdPrefix(Register xreg, @SuppressWarnings("unused") Register nds, AMD64Address adr, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
+        public void simdPrefix(Register xreg, Register nds, AMD64Address adr, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
             if (sizePrefix > 0) {
                 emitByte(sizePrefix);
             }
@@ -659,7 +659,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
 
         @Override
-        public void simdPrefix(Register dst, @SuppressWarnings("unused") Register nds, Register src, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
+        public void simdPrefix(Register dst, Register nds, Register src, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
             if (sizePrefix > 0) {
                 emitByte(sizePrefix);
             }
@@ -833,12 +833,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     @SuppressWarnings("unused")
-    public final void evexPrefix(Register dst, Register nds, Register src, OperandSize size, int prefix, boolean isRexW) {
+    public static final void evexPrefix(Register dst, Register nds, Register src, OperandSize size, int prefix, boolean isRexW) {
         throw GraalError.unimplemented("Evex encoder is not implemented yet.");
     }
 
     @SuppressWarnings("unused")
-    public final void evexPrefix(Register dst, Register nds, AMD64Address src, OperandSize size, int prefix, boolean isRexW) {
+    public static final void evexPrefix(Register dst, Register nds, AMD64Address src, OperandSize size, int prefix, boolean isRexW) {
         throw GraalError.unimplemented("Evex encoder is not implemented yet.");
     }
 }
