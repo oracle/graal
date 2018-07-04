@@ -223,7 +223,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         boolean contains(long offset) {
-            return startOffset <= offset && offset < endOffset;
+            return startOffset <= offset && ((startOffset == endOffset) | offset < endOffset);
         }
 
         public String getName() {
