@@ -37,7 +37,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
@@ -232,29 +231,29 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             com.oracle.truffle.api.source.Source source = request.getSource();
             SourceSection statement = null;
             SourceSection root = null;
-            Statement startSamplerChild = null;
+            StatementNode startSamplerChild = null;
 
             // Case when we want to test statements and roots
             if (source.getCharacters().toString().equals("Statement Root")) {
                 statement = source.createSection(0, 9);
                 root = source.createSection(10, 4);
-                startSamplerChild = new Statement(statement, new SleepNode());
+                startSamplerChild = new StatementNode(statement, new SleepNode());
             }
 
             // Case when we want to test roots only
             if (source.getCharacters().toString().equals("Root Root")) {
                 statement = source.createUnavailableSection();
                 root = source.createSection(0, 4);
-                RootCallTarget sleepTarget = Truffle.getRuntime().createCallTarget(new SRootNode(this, new Root(root, new SleepNode())));
-                startSamplerChild = new Statement(statement, new CallNode(Truffle.getRuntime().createDirectCallNode(sleepTarget)));
+                RootCallTarget sleepTarget = Truffle.getRuntime().createCallTarget(new SRootNode(this, new RootNode(root, new SleepNode())));
+                startSamplerChild = new StatementNode(statement, new CallNode(Truffle.getRuntime().createDirectCallNode(sleepTarget)));
             }
 
             RootCallTarget innerTarget = Truffle.getRuntime().createCallTarget(
-                            new SRootNode(this, new Root(root,
-                                            new Wrapper(new Statement(statement, new Wrapper(new Statement(statement, new Wrapper(new StartSamplerNode(sampler, startSamplerChild)))))))));
+                            new SRootNode(this, new RootNode(root,
+                                            new DummyNode(new StatementNode(statement, new DummyNode(new StatementNode(statement, new DummyNode(new StartSamplerNode(sampler, startSamplerChild)))))))));
             DirectCallNode directCallNode = Truffle.getRuntime().createDirectCallNode(innerTarget);
             return Truffle.getRuntime().createCallTarget(
-                            new SRootNode(this, new Root(root, new Wrapper(new Statement(statement, new Wrapper(new Statement(statement, new Wrapper(new CallNode(directCallNode)))))))));
+                            new SRootNode(this, new RootNode(root, new DummyNode(new StatementNode(statement, new DummyNode(new StatementNode(statement, new DummyNode(new CallNode(directCallNode)))))))));
 
         }
 
@@ -264,6 +263,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         @GenerateWrapper
         abstract static class SamplerTestInstrumentableNode extends SamplerTestNode implements InstrumentableNode {
+
+            SourceSection sourceSection;
+
             public abstract Object execute(VirtualFrame frame);
 
             @Override
@@ -290,10 +292,10 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
         }
 
-        static class Wrapper extends SamplerTestNode {
+        static class DummyNode extends SamplerTestNode {
             @Child SamplerTestNode node;
 
-            Wrapper(SamplerTestNode node) {
+            DummyNode(SamplerTestNode node) {
                 this.node = node;
             }
 
@@ -303,17 +305,16 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
         }
 
-        static class Statement extends SamplerTestInstrumentableNode {
+        static class StatementNode extends SamplerTestInstrumentableNode {
 
             @Child SamplerTestNode node;
-            SourceSection sourceSection;
 
-            Statement(Statement other) {
+            StatementNode(StatementNode other) {
                 node = other.node;
                 sourceSection = other.sourceSection;
             }
 
-            Statement(SourceSection sourceSection, SamplerTestNode node) {
+            StatementNode(SourceSection sourceSection, SamplerTestNode node) {
                 this.sourceSection = sourceSection;
                 this.node = node;
             }
@@ -334,12 +335,12 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
         }
 
-        static class Root extends SamplerTestInstrumentableNode {
+        static class RootNode extends SamplerTestInstrumentableNode {
 
             @Child SamplerTestNode node;
-            SourceSection sourceSection;
 
-            Root(Root other) {
+
+            RootNode(RootNode other) {
                 node = other.node;
                 sourceSection = other.sourceSection;
             }
@@ -349,7 +350,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 return sourceSection;
             }
 
-            Root(SourceSection sourceSection, SamplerTestNode node) {
+            RootNode(SourceSection sourceSection, SamplerTestNode node) {
                 this.sourceSection = sourceSection;
                 this.node = node;
             }
@@ -365,7 +366,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
         }
 
-        static class SRootNode extends RootNode {
+        static class SRootNode extends com.oracle.truffle.api.nodes.RootNode {
 
             private final RecreateShadowStackTestLanguage language;
             @Child SamplerTestNode child;
