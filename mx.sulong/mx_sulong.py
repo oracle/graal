@@ -119,6 +119,10 @@ add_config_participant(_unittest_config_participant)
 
 
 def _sulong_gate_runner(args, tasks):
+    with Task('CheckCopyright', tasks, tags=['style']) as t:
+        if t:
+            if mx.checkcopyrights(['--primary']) != 0:
+                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformatcheck()
     with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:

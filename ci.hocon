@@ -1,3 +1,5 @@
+overlay = fa8b5cf06baa73cad0145b6379969885eb46b634
+
 java8: {name: labsjdk, version: "8u172-jvmci-0.46", platformspecific: true}
 eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
 dragonegg: {name: dragonegg, version: "3.2", platformspecific: true}
