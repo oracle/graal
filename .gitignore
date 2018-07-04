@@ -8,6 +8,8 @@ mx.sulong/eclipse-launches/**
 mx.sulong/libs/*.ll
 mx.sulong/libs/*.bc
 mx.sulong/*.iml
+mx.sulong/.project
+mx.sulong/.pydevproject
 .DS_Store
 build.xml
 workingsets.xml
@@ -29,6 +31,9 @@ projects/*/\bin
 projects/*/\.checkstyle
 projects/*/*.iml
 projects/*/\.factorypath
+projects/SULONG.dist/
+projects/SULONG_LAUNCHER.dist/
+projects/SULONG_TEST.dist/
 
 cache/**
 projects/com.oracle.truffle.llvm.bench/languagegame/**
