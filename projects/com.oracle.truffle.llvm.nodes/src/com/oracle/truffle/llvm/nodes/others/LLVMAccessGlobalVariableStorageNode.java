@@ -41,12 +41,12 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
         this.descriptor = descriptor;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public LLVMGlobal getDescriptor() {
         return descriptor;
     }
 
-    public LLVMGlobal getDescriptor() {
-        return descriptor;
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return descriptor.getTarget();
     }
 }

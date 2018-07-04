@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -37,8 +36,6 @@ import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadObjectNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -55,12 +52,6 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     public LLVMStructByValueNode(LLVMMemMoveNode memMove, LLVMExpressionNode stackAllocationNode) {
         this.memMove = memMove;
         this.stackAllocationNode = stackAllocationNode;
-    }
-
-    @Specialization
-    protected Object byValue(VirtualFrame frame, LLVMGlobal source,
-                    @Cached("create()") ReadObjectNode access) {
-        return byValueImp(frame, access.execute(source));
     }
 
     @Specialization

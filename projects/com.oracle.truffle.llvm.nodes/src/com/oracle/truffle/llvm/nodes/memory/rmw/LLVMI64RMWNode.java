@@ -37,7 +37,6 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -56,13 +55,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWXchgNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndSetI64(adr, value);
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
@@ -83,13 +75,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWAddNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndAddI64(adr, value);
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
@@ -111,13 +96,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWSubNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndSubI64(adr, value);
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
@@ -139,13 +117,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWAndNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI64(adr, value, (a, b) -> a & b);
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
@@ -167,13 +138,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWNandNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI64(adr, value, (a, b) -> ~(a & b));
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
@@ -195,13 +159,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWOrNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI64(adr, value, (a, b) -> a | b);
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
@@ -223,13 +180,6 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64RMWXorNode extends LLVMI64RMWNode {
-        @Specialization
-        protected long doOp(LLVMGlobal address, long value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI64(adr, value, (a, b) -> a ^ b);
-        }
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,

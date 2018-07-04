@@ -29,12 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -46,12 +43,6 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
 
     public LLVM80BitFloatStoreNode(LLVMSourceLocation sourceLocation) {
         super(sourceLocation);
-    }
-
-    @Specialization
-    protected void doOp(LLVMGlobal address, LLVM80BitFloat value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        getLLVMMemoryCached().put80BitFloat(globalAccess.executeWithTarget(address), value);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")

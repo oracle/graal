@@ -35,16 +35,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -95,23 +90,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doPointee(LLVMGlobal addr, int incr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readObject,
-                        @Cached("create()") BranchProfile notNativeBranch) {
-            /*
-             * TODO(rs): avoid TO_NATIVE transformation
-             */
-            Object globalObject = readObject.execute(addr);
-            if (LLVMManagedPointer.isInstance(globalObject)) {
-                notNativeBranch.enter();
-                return LLVMPointer.cast(globalObject).increment(incr);
-            } else {
-                return globalAccess.executeWithTarget(addr).increment(incr);
-            }
-        }
-
-        @Specialization
         protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int incr) {
             if (addr.getValue() instanceof Long) {
                 return LLVMNativePointer.create((long) addr.getValue() + incr);
@@ -133,23 +111,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
-            }
-        }
-
-        @Specialization
-        protected Object doPointee(LLVMGlobal addr, long incr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readObject,
-                        @Cached("create()") BranchProfile notNativeBranch) {
-            /*
-             * TODO(rs): avoid TO_NATIVE transformation
-             */
-            Object globalObject = readObject.execute(addr);
-            if (LLVMManagedPointer.isInstance(globalObject)) {
-                notNativeBranch.enter();
-                return LLVMManagedPointer.cast(globalObject).increment(incr);
-            } else {
-                return globalAccess.executeWithTarget(addr).increment(incr);
             }
         }
     }

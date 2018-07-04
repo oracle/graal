@@ -36,11 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
@@ -109,12 +105,6 @@ abstract class ToI16 extends ForeignToLLVM {
         return (short) toNative.executeWithTarget(fd).asNative();
     }
 
-    @Specialization
-    protected short fromSharedDescriptor(LLVMSharedGlobalVariable shared,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (short) access.executeWithTarget(shared.getDescriptor()).asNative();
-    }
-
     private short recursiveConvert(Object o) {
         if (toI16 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -137,9 +127,6 @@ abstract class ToI16 extends ForeignToLLVM {
             return (short) ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
-        } else if (value instanceof LLVMSharedGlobalVariable) {
-            LLVMContext context = LLVMLanguage.getLLVMContextReference().get();
-            return (short) LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).asNative();
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
             return slowPathPrimitiveConvert(memory, thiz, thiz.fromForeign((TruffleObject) value));
         } else {

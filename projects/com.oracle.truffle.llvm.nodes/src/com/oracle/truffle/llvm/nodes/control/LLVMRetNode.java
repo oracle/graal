@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -44,12 +43,10 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -310,12 +307,6 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode implements Instrum
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMPointer retResult) {
             return returnStruct(frame, retResult);
-        }
-
-        @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMGlobal retResult,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-            return returnStruct(frame, globalAccess.executeWithTarget(retResult));
         }
 
         private Object returnStruct(VirtualFrame frame, Object retResult) {

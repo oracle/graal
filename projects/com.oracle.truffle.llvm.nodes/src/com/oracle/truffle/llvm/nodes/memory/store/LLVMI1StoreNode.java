@@ -35,8 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI1Node;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -49,12 +47,6 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNodeCommon {
 
     public LLVMI1StoreNode(LLVMSourceLocation sourceLocation) {
         super(sourceLocation);
-    }
-
-    @Specialization
-    protected void doOp(LLVMGlobal address, boolean value,
-                    @Cached("create()") WriteI1Node globalAccess) {
-        globalAccess.execute(address, value);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")

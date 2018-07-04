@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -106,12 +105,4 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     protected boolean isManagedMallocObject(LLVMManagedPointer object) {
         return object.getObject() instanceof ManagedMallocObject;
     }
-
-    @Specialization
-    protected void memset(LLVMGlobal global, byte value, long length,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memset(globalAccess.executeWithTarget(global), value, length, memory);
-    }
-
 }

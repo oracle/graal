@@ -29,26 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeGen.FindLLVMGlobalNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -58,9 +47,26 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
         return LLVMTypeIDNodeGen.create(child);
     }
 
+    @CompilationFinal private LLVMInteropType cachedType;
+
+    protected final LLVMInteropType getType(LLVMPointer pointer) {
+        if (cachedType == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            LLVMGlobal global = getContextReference().get().findGlobal(pointer);
+            if (global == null) {
+                return null;
+            }
+            cachedType = global.getInteropType();
+        } else {
+            // the type this resolved to needs to stay the same
+            assert getContextReference().get().findGlobal(pointer).getInteropType() == cachedType;
+        }
+        return cachedType;
+    }
+
     @Specialization
-    LLVMInteropType.Structured doGlobal(LLVMGlobal typeid) {
-        LLVMInteropType type = typeid.getInteropType();
+    LLVMInteropType.Structured doGlobal(LLVMPointer pointer) {
+        LLVMInteropType type = getType(pointer);
         if (type instanceof LLVMInteropType.Array) {
             type = ((LLVMInteropType.Array) type).getElementType();
             if (type instanceof LLVMInteropType.Structured) {
@@ -69,83 +75,12 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
         }
 
         CompilerDirectives.transferToInterpreter();
-        return fallback(typeid);
-    }
-
-    @Specialization
-    LLVMInteropType.Structured doGlobal(LLVMPointer pointer,
-                    @Cached("create()") FindLLVMGlobalNode findGlobal) {
-        return doGlobal(findGlobal.executeWithTarget(pointer));
+        return fallback(pointer);
     }
 
     @Fallback
     LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
         CompilerDirectives.transferToInterpreter();
         throw new LLVMPolyglotException(this, "Don't call __polyglot_as_typeid function directly, use POLYGLOT_DECLARE_* macros.");
-    }
-
-    /**
-     * This node assumes that it is always called with a constant pointer.
-     */
-    abstract static class FindLLVMGlobalNode extends LLVMNode {
-        @CompilationFinal private ContextReference<LLVMContext> contextRef;
-        @CompilationFinal private LLVMPointer cachedPointer;
-
-        public abstract LLVMGlobal executeWithTarget(LLVMPointer pointer);
-
-        @Specialization(assumptions = "getSingleContextAssumption()")
-        protected LLVMGlobal doSingleContext(LLVMPointer pointer,
-                        @Cached("findGlobal(pointer)") LLVMGlobal global) {
-            cachePointer(pointer);
-            return global;
-        }
-
-        @Specialization(replaces = "doSingleContext")
-        protected LLVMGlobal doMultipleContexts(LLVMPointer pointer) {
-            cachePointer(pointer);
-            return findGlobal(pointer);
-        }
-
-        protected LLVMGlobal findGlobal(LLVMPointer pointer) {
-            LLVMContext context = getContext();
-            MaterializedFrame frame = context.getGlobalFrame();
-            for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-                if (slot.getKind() == FrameSlotKind.Object) {
-                    try {
-                        if (pointer.equals(frame.getObject(slot))) {
-                            return (LLVMGlobal) slot.getIdentifier();
-                        }
-                    } catch (FrameSlotTypeException e) {
-                        throw new IllegalStateException();
-                    }
-                }
-            }
-
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Could not find pointer " + pointer);
-        }
-
-        protected Assumption getSingleContextAssumption() {
-            return LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION;
-        }
-
-        private LLVMContext getContext() {
-            if (contextRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = LLVMLanguage.getLLVMContextReference();
-            }
-            return contextRef.get();
-        }
-
-        private void cachePointer(LLVMPointer pointer) {
-            if (cachedPointer == null) {
-                cachedPointer = pointer;
-            }
-            assert pointer.equals(cachedPointer);
-        }
-
-        public static FindLLVMGlobalNode create() {
-            return FindLLVMGlobalNodeGen.create();
-        }
     }
 }

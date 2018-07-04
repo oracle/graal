@@ -39,7 +39,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -55,14 +54,6 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     public LLVMFunctionArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
         this.values = values;
         this.stride = stride;
-    }
-
-    @Specialization
-    protected LLVMNativePointer handleGlobal(VirtualFrame frame, LLVMGlobal array,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return handleAddress(frame, globalAccess.executeWithTarget(array), toNative, memory);
     }
 
     @Specialization

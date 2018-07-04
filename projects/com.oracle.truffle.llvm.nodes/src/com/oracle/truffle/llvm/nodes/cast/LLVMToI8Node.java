@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -55,12 +54,6 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
     protected byte doI8(LLVMFunctionDescriptor from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(from).asNative();
-    }
-
-    @Specialization
-    protected byte doGlobal(LLVMGlobal from,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (byte) access.executeWithTarget(from).asNative();
     }
 
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I8);

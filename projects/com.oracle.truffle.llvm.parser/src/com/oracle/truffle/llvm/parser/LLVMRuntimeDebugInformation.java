@@ -122,7 +122,7 @@ final class LLVMRuntimeDebugInformation {
         private void visitSimpleConstant(SymbolImpl constant) {
             final LLVMExpressionNode node = symbols.resolve(constant);
             assert node != null;
-            final LLVMDebugObjectBuilder value = factory.createDebugDynamicValue(node);
+            final LLVMDebugObjectBuilder value = factory.createDebugStaticValue(node, false);
             context.getSourceContext().registerStatic(symbol, value);
             variable.addStaticValue();
         }

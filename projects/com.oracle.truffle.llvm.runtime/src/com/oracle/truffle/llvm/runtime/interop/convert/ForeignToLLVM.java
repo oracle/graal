@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -263,35 +264,42 @@ public abstract class ForeignToLLVM extends LLVMNode {
     }
 
     public static final class SlowPathForeignToLLVM extends ForeignToLLVM {
+        @CompilationFinal private LLVMMemory memory;
+
         @TruffleBoundary
-        public Object convert(Type type, LLVMMemory memory, Object value) {
-            return convert(memory, ForeignToLLVM.convert(type), value);
+        public Object convert(Type type, Object value) {
+            return convert(ForeignToLLVM.convert(type), value);
         }
 
         @TruffleBoundary
-        public Object convert(LLVMMemory memory, ForeignToLLVMType type, Object value) {
-            switch (type) {
-                case ANY:
-                    return ToAnyLLVM.slowPathPrimitiveConvert(value);
-                case DOUBLE:
-                    return ToDouble.slowPathPrimitiveConvert(memory, this, value);
-                case FLOAT:
-                    return ToFloat.slowPathPrimitiveConvert(memory, this, value);
-                case I1:
-                    return ToI1.slowPathPrimitiveConvert(memory, this, value);
-                case I16:
-                    return ToI16.slowPathPrimitiveConvert(memory, this, value);
-                case I32:
-                    return ToI32.slowPathPrimitiveConvert(memory, this, value);
-                case I64:
-                    return ToI64.slowPathPrimitiveConvert(memory, this, value);
-                case I8:
-                    return ToI8.slowPathPrimitiveConvert(memory, this, value);
-                case POINTER:
-                    return ToPointer.slowPathPrimitiveConvert(value);
-                default:
-                    throw new IllegalStateException(type.toString());
-
+        public Object convert(ForeignToLLVMType type, Object value) {
+            if (type == ForeignToLLVMType.ANY) {
+                return ToAnyLLVM.slowPathPrimitiveConvert(value);
+            } else if (type == ForeignToLLVMType.POINTER) {
+                return ToPointer.slowPathPrimitiveConvert(value);
+            } else {
+                if (memory == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    memory = getLLVMMemory();
+                }
+                switch (type) {
+                    case DOUBLE:
+                        return ToDouble.slowPathPrimitiveConvert(memory, this, value);
+                    case FLOAT:
+                        return ToFloat.slowPathPrimitiveConvert(memory, this, value);
+                    case I1:
+                        return ToI1.slowPathPrimitiveConvert(memory, this, value);
+                    case I16:
+                        return ToI16.slowPathPrimitiveConvert(memory, this, value);
+                    case I32:
+                        return ToI32.slowPathPrimitiveConvert(memory, this, value);
+                    case I64:
+                        return ToI64.slowPathPrimitiveConvert(memory, this, value);
+                    case I8:
+                        return ToI8.slowPathPrimitiveConvert(memory, this, value);
+                    default:
+                        throw new IllegalStateException(type.toString());
+                }
             }
         }
 

@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -57,12 +55,6 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected void doOpDerefHandle(LLVMNativePointer addr, Object value) {
         doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
-    }
-
-    @Specialization
-    protected void doOp(LLVMGlobal address, Object value,
-                    @Cached("create()") WriteObjectNode globalAccess) {
-        globalAccess.execute(address, value);
     }
 
     @Specialization

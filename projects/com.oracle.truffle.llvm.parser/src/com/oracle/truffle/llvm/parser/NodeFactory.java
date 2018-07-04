@@ -197,9 +197,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
-    LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode);
-
-    LLVMDebugObjectBuilder createDebugDynamicValue(LLVMExpressionNode valueNode);
+    LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal);
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 

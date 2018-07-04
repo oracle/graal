@@ -35,8 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadFloatNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -45,12 +43,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
 
     private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
-
-    @Specialization
-    protected float doFloat(LLVMGlobal addr,
-                    @Cached("create()") ReadFloatNode globalAccess) {
-        return profile.profile(globalAccess.execute(addr));
-    }
 
     @Specialization
     protected float doFloat(LLVMVirtualAllocationAddress address,

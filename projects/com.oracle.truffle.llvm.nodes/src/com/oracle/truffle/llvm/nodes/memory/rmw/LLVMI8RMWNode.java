@@ -37,10 +37,8 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -56,13 +54,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWXchgNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> b);
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
@@ -83,13 +74,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWAddNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a + b)));
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
@@ -110,13 +94,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWSubNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a - b)));
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
@@ -137,13 +114,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWAndNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a & b)));
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
@@ -164,13 +134,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWNandNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) ~(a & b)));
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
@@ -191,13 +154,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWOrNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a | b)));
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,
@@ -218,13 +174,6 @@ public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8RMWXorNode extends LLVMI8RMWNode {
-        @Specialization
-        protected byte doOp(LLVMGlobal address, byte value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a ^ b)));
-        }
 
         @Specialization
         protected byte doOp(LLVMNativePointer address, byte value,

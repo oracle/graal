@@ -35,8 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadDoubleNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -45,12 +43,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class LLVMDoubleLoadNode extends LLVMAbstractLoadNode {
 
     private final DoubleValueProfile profile = DoubleValueProfile.createRawIdentityProfile();
-
-    @Specialization
-    protected double doDouble(LLVMGlobal addr,
-                    @Cached("create()") ReadDoubleNode globalAccess) {
-        return profile.profile(globalAccess.execute(addr));
-    }
 
     @Specialization
     protected double doDouble(LLVMVirtualAllocationAddress address,

@@ -113,6 +113,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -356,6 +357,7 @@ public final class Runner {
         ExternalLibrary[] sulongLibraries = parseDependencies(parserResults, dependencyQueue);
         assert dependencyQueue.isEmpty();
 
+        allocateGlobals(parserResults);
         addExternalSymbolsToScopes(parserResults);
         bindUnresolvedSymbols(parserResults);
 
@@ -366,6 +368,18 @@ public final class Runner {
         registerDynamicLinkChain(parserResults);
         callStructors(initializationOrder);
         return createLibraryCallTarget(source.getName(), parserResults);
+    }
+
+    private void allocateGlobals(List<LLVMParserResult> parserResults) {
+        for (LLVMParserResult res : parserResults) {
+            ArrayList<LLVMGlobal> globals = new ArrayList<>();
+            for (LLVMSymbol symbol : res.getRuntime().getFileScope().values()) {
+                if (symbol instanceof LLVMGlobal) {
+                    globals.add((LLVMGlobal) symbol);
+                }
+            }
+            context.allocateGlobals(globals);
+        }
     }
 
     /**
@@ -584,7 +598,7 @@ public final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
                     globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
@@ -626,7 +640,7 @@ public final class Runner {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(context, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                global.bindToNativeAddress(context, pointerIntoLibrary.getAddress());
+                global.setTarget(LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
 

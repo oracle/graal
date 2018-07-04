@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -39,10 +38,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -51,14 +47,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValue.Builder {
 
-    private final ContextReference<LLVMContext> contextRef;
-
     @Child protected Node isPointer = Message.IS_POINTER.createNode();
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
-
-    protected LLVMToDebugDeclarationNode(ContextReference<LLVMContext> contextRef) {
-        this.contextRef = contextRef;
-    }
 
     protected static boolean notLLVM(TruffleObject object) {
         return LLVMExpressionNode.notLLVM(object);
@@ -92,18 +82,6 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
         } else {
             return unavailable();
         }
-    }
-
-    @Specialization
-    protected LLVMDebugValue fromGlobal(LLVMGlobal value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return new LLVMConstantGlobalValueProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.create(contextRef));
-    }
-
-    @Specialization
-    protected LLVMDebugValue fromSharedGlobal(LLVMSharedGlobalVariable value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return fromGlobal(value.getDescriptor(), memory);
     }
 
     @Specialization(guards = "notLLVM(obj)")

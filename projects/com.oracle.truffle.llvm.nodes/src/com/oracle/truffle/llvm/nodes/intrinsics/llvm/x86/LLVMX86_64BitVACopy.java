@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -40,13 +38,11 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementP
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = int.class, name = "numberExplicitArguments")
@@ -119,13 +115,6 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
     public abstract int getNumberExplicitArguments();
 
     @Specialization
-    protected Object doVoid(LLVMGlobal dest, LLVMGlobal source,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
-        return doVoid(globalAccess1.executeWithTarget(dest), globalAccess2.executeWithTarget(source));
-    }
-
-    @Fallback
     protected Object doVoid(Object dest, Object source) {
 
         /*

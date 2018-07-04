@@ -37,10 +37,8 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI1LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI1LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI1StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI1StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -56,13 +54,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWXchgNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> b);
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
@@ -83,13 +74,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWAddNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> a ^ b);
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
@@ -110,13 +94,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWSubNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> a ^ b);
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
@@ -137,13 +114,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWAndNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> a & b);
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
@@ -164,13 +134,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWNandNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> !(a & b));
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
@@ -191,13 +154,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWOrNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> a | b);
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
@@ -218,13 +174,6 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI1RMWXorNode extends LLVMI1RMWNode {
-        @Specialization
-        protected boolean doOp(LLVMGlobal address, boolean value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMNativePointer adr = toNative.executeWithTarget(address);
-            return memory.getAndOpI1(adr, value, (a, b) -> a ^ b);
-        }
 
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,

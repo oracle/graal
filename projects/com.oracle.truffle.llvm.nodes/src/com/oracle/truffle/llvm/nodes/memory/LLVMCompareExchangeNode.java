@@ -54,7 +54,6 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI32;
@@ -63,7 +62,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI8;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -81,12 +79,6 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMPointer address, Object comparisonValue, Object newValue) {
         return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue);
-    }
-
-    @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMGlobal address, Object comparisonValue, Object newValue,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        return cmpxch.executeWithTarget(frame, globalAccess.executeWithTarget(address), comparisonValue, newValue);
     }
 
     abstract static class LLVMCMPXCHInternalNode extends LLVMNode {
