@@ -26,12 +26,19 @@ package com.oracle.truffle.espresso.classfile;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.CONSTANT_VALUE;
+import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.FLAGS;
+import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.NAME;
+import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.TYPE;
+
+import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.FieldInfo;
 import com.oracle.truffle.espresso.runtime.Klass;
 import com.oracle.truffle.espresso.runtime.KlassRegistry;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
@@ -80,6 +87,8 @@ public class ClassfileParser {
     private int superClassIndex;
     private Klass superClass;
     private Klass[] localInterfaces;
+
+    private char[] fieldData;
 
     public ClassfileParser(DynamicObject classLoader, ClasspathFile classpathFile, TypeDescriptor requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
@@ -182,7 +191,110 @@ public class ClassfileParser {
         }
 
         parseSuperClass();
+        parseInterfaces();
+
+        parseFields();
+        // parseMethods();
+
         throw EspressoLanguage.unimplemented();
+    }
+
+    private void parseFields() {
+        // The field array starts with tuples of shorts
+        // [access, name index, sig index, initial value index, byte offset].
+        // A generic signature slot only exists for field with generic
+        // signature attribute. And the access flag is set with
+        // JVM_ACC_FIELD_HAS_GENERIC_SIGNATURE for that field. The generic
+        // signature slots are at the end of the field array and after all
+        // other fields data.
+        //
+        // f1: [access, name index, sig index, initial value index, low_offset, high_offset]
+        // f2: [access, name index, sig index, initial value index, low_offset, high_offset]
+        // ...
+        // fn: [access, name index, sig index, initial value index, low_offset, high_offset]
+        // [generic signature index]
+        // [generic signature index]
+        // ...
+        //
+        // Allocate a temporary resource array for field data. For each field,
+        // a slot is reserved in the temporary array for the generic signature
+        // index. After parsing all fields, the data are copied to a permanent
+        // array and any unused slots will be discarded.
+
+        int count = stream.readU2();
+        fieldData = FieldInfo.allocateFieldData(count);
+        char[] genericSignatureData = null;// new char[count];
+        int genericSignatureDataIndex = 0;
+        FieldInfo currentField = new FieldInfo(pool, fieldData);
+
+        for (int i = 0; i < count; i++) {
+            currentField.initForField(i);
+            int flags = stream.readU2();
+            final int nameIndex = stream.readU2();
+            final int descriptorIndex = stream.readU2();
+            currentField.set(FLAGS, flags);
+            currentField.set(NAME, nameIndex);
+            currentField.set(TYPE, descriptorIndex);
+
+            // final Utf8Constant name = pool.utf8ConstantAt(nameIndex, "field name");
+            // verifyFieldName(name);
+
+            final boolean isStatic = Modifier.isStatic(flags);
+
+            final TypeDescriptor descriptor = pool.makeTypeDescriptor(pool.utf8At(descriptorIndex).toString());
+            // verifyFieldFlags(name.toString(), flags, isInterface);
+
+            char constantValueIndex = 0;
+            int genericSignatureIndex = 0;
+            byte[] runtimeVisibleAnnotationsBytes = {};
+
+            int nAttributes = stream.readU2();
+            while (nAttributes-- != 0) {
+                final int attributeNameIndex = stream.readU2();
+                final String attributeName = pool.utf8At(attributeNameIndex, "attribute name").toString();
+                final int attributeSize = stream.readS4();
+                final int startPosition = stream.getPosition();
+                if (isStatic && attributeName.equals("ConstantValue")) {
+                    if (constantValueIndex != 0) {
+                        throw classfile.classFormatError("Duplicate ConstantValue attribute");
+                    }
+                    constantValueIndex = (char) stream.readU2();
+                    if (constantValueIndex == 0) {
+                        throw classfile.classFormatError("Invalid ConstantValue index %d", constantValueIndex);
+                    }
+                } else if (majorVersion >= JAVA_5_VERSION) {
+                    if (attributeName.equals("Signature")) {
+                        genericSignatureIndex = stream.readU2();
+                    } else if (attributeName.equals("RuntimeVisibleAnnotations")) {
+                        runtimeVisibleAnnotationsBytes = stream.readByteArray(attributeSize);
+                    } else {
+                        stream.skip(attributeSize);
+                    }
+                } else {
+                    stream.skip(attributeSize);
+                }
+
+                if (attributeSize != stream.getPosition() - startPosition) {
+                    throw classfile.classFormatError("Invalid attribute_length for " + attributeName + " attribute");
+                }
+            }
+
+            currentField.set(CONSTANT_VALUE, constantValueIndex);
+
+            if (genericSignatureIndex != 0) {
+                if (genericSignatureData == null) {
+                    genericSignatureData = FieldInfo.allocateFieldGenericSignatureData(count - i);
+                }
+                genericSignatureData[genericSignatureDataIndex++] = PoolConstant.u2(genericSignatureIndex);
+            }
+            // classRegistry.set(GENERIC_SIGNATURE, fieldActor, genericSignature);
+            // classRegistry.set(RUNTIME_VISIBLE_ANNOTATION_BYTES, fieldActor,
+            // runtimeVisibleAnnotationsBytes);
+
+        }
+        if (genericSignatureData != null) {
+            fieldData = FieldInfo.mergeFieldData(fieldData, genericSignatureData, genericSignatureDataIndex);
+        }
     }
 
     /**
@@ -331,7 +443,7 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
             // package by prepending its host class's package name to its class name.
             if (hostPackageName != null) {
                 String newClassName = 'L' + hostPackageName + '/' + this.className.toJavaName() + ';';
-                this.className = context.getLanguage().getTypeDescriptors().make(newClassName);
+                this.className = pool.makeTypeDescriptor(newClassName);
             }
         } else {
             String packageName = getPackageName(this.className.toString());

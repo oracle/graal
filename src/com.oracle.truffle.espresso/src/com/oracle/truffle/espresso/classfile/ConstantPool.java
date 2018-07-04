@@ -41,6 +41,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public final class ConstantPool {
 
@@ -457,4 +458,9 @@ public final class ConstantPool {
         }
         return buf.toString();
     }
+
+    public TypeDescriptor makeTypeDescriptor(String value) {
+        return context.getLanguage().getTypeDescriptors().make(value);
+    }
+
 }
