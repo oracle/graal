@@ -24,9 +24,9 @@
  */
 package org.graalvm.compiler.lir.amd64.vector;
 
-import static org.graalvm.compiler.asm.amd64.AMD64VectorAssembler.VexRVMOp.VPXOR;
-import static org.graalvm.compiler.asm.amd64.AMD64VectorAssembler.VexRVMOp.VXORPD;
-import static org.graalvm.compiler.asm.amd64.AMD64VectorAssembler.VexRVMOp.VXORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;

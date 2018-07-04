@@ -37,6 +37,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AMD64VectorAssembler;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -80,7 +81,7 @@ public class AMD64ControlFlow {
              * the upper half of the register unused, so we don't destroy any value here.
              */
             if (masm.supports(CPUFeature.AVX)) {
-                masm.vzeroupper();
+                ((AMD64VectorAssembler) masm).vzeroupper();
             }
             masm.ret(0);
         }
