@@ -428,32 +428,25 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
         ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        Assert.assertEquals("Stack not correct", "Root", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
+        current = checkStackState(current, "Root", false);
+        current = checkStackState(current, "Statement", false);
+        current = checkStackState(current, "Statement", false);
+        current = checkStackState(current, "Root", false);
+        current = checkStackState(current, "Statement", false);
+        current = checkStackState(current, "Statement", false);
+        checkStackState(current, "Statement", true);
+    }
 
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Statement", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
+    private ProfilerNode<CPUSampler.Payload> checkStackState(ProfilerNode<CPUSampler.Payload> current, String expectedSource, boolean top) {
+        Assert.assertEquals("Stack not correct", expectedSource, current.getSourceSection().getCharacters().toString());
+        if (top) {
+            Assert.assertFalse("Stack too deep", current.getChildren().iterator().hasNext());
+            return null;
+        } else {
+            Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
+            return current.getChildren().iterator().next();
+        }
 
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Statement", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Root", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Statement", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Statement", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Statement", current.getSourceSection().getCharacters().toString());
-        Assert.assertFalse("Stack too deep", current.getChildren().iterator().hasNext());
     }
 
     @Test
@@ -465,15 +458,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
         ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        Assert.assertEquals("Stack not correct", "Root", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Root", current.getSourceSection().getCharacters().toString());
-        Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-
-        current = current.getChildren().iterator().next();
-        Assert.assertEquals("Stack not correct", "Root", current.getSourceSection().getCharacters().toString());
-        Assert.assertFalse("Stack too deep", current.getChildren().iterator().hasNext());
+        current = checkStackState(current, "Root", false);
+        current = checkStackState(current, "Root", false);
+        checkStackState(current, "Root", true);
     }
 }
