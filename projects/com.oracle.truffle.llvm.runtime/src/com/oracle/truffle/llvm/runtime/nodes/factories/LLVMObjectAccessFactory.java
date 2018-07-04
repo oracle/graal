@@ -60,8 +60,8 @@ public abstract class LLVMObjectAccessFactory {
         return CachedReadNodeGen.create(type);
     }
 
-    public static LLVMObjectWriteNode createWrite() {
-        return CachedWriteNodeGen.create();
+    public static LLVMObjectWriteNode createWrite(ForeignToLLVMType type) {
+        return CachedWriteNodeGen.create(type);
     }
 
     abstract static class CachedReadNode extends LLVMObjectReadNode {
@@ -178,6 +178,12 @@ public abstract class LLVMObjectAccessFactory {
 
         static final int TYPE_LIMIT = 8;
 
+        private final ForeignToLLVMType type;
+
+        CachedWriteNode(ForeignToLLVMType type) {
+            this.type = type;
+        }
+
         @Override
         public boolean canAccess(Object obj) {
             return obj instanceof LLVMObjectAccess || obj instanceof TruffleObject;
@@ -196,9 +202,9 @@ public abstract class LLVMObjectAccessFactory {
 
         LLVMObjectWriteNode createWriteNode(Object obj) {
             if (obj instanceof LLVMObjectAccess) {
-                return ((LLVMObjectAccess) obj).createWriteNode();
+                return ((LLVMObjectAccess) obj).createWriteNode(type);
             } else if (obj instanceof DynamicObject) {
-                return DynamicObjectWriteNodeGen.create();
+                return DynamicObjectWriteNodeGen.create(type);
             } else {
                 return new FallbackWriteNode(false);
             }
@@ -208,6 +214,12 @@ public abstract class LLVMObjectAccessFactory {
     abstract static class DynamicObjectWriteNode extends LLVMObjectWriteNode {
 
         static final int TYPE_LIMIT = 8;
+
+        private final ForeignToLLVMType type;
+
+        DynamicObjectWriteNode(ForeignToLLVMType type) {
+            this.type = type;
+        }
 
         @Override
         public boolean canAccess(Object obj) {
@@ -235,7 +247,7 @@ public abstract class LLVMObjectAccessFactory {
         LLVMObjectWriteNode createWriteNode(Shape shape) {
             ObjectType objectType = shape.getObjectType();
             if (objectType instanceof LLVMObjectAccess) {
-                return ((LLVMObjectAccess) objectType).createWriteNode();
+                return ((LLVMObjectAccess) objectType).createWriteNode(type);
             } else {
                 return new FallbackWriteNode(true);
             }

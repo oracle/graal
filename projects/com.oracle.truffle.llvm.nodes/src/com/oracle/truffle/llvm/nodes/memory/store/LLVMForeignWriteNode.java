@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
@@ -41,8 +42,8 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     @Child private LLVMObjectWriteNode write;
 
-    protected LLVMForeignWriteNode() {
-        this.write = LLVMObjectAccessFactory.createWrite();
+    protected LLVMForeignWriteNode(ForeignToLLVMType type) {
+        this.write = LLVMObjectAccessFactory.createWrite(type);
     }
 
     public abstract void execute(LLVMManagedPointer addr, Object value);

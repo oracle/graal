@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -158,7 +159,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.I1).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES);
         }
     }
@@ -169,7 +170,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.I8).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
     }
@@ -180,7 +181,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.I16).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES);
         }
     }
@@ -191,7 +192,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.I32).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES);
         }
     }
@@ -202,7 +203,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.FLOAT).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES);
         }
     }
@@ -213,7 +214,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.DOUBLE).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES);
         }
     }
@@ -224,7 +225,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.I64).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
     }
@@ -235,7 +236,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.POINTER).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
         }
     }
@@ -246,7 +247,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode().execute(currentPtr, value.getValue(i));
+            getForeignWriteNode(ForeignToLLVMType.POINTER).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
     }

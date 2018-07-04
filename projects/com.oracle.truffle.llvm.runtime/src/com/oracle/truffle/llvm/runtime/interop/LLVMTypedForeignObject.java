@@ -82,7 +82,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     }
 
     @Override
-    public LLVMObjectWriteNode createWriteNode() {
+    public LLVMObjectWriteNode createWriteNode(ForeignToLLVMType toLLVMType) {
         return new ForeignWriteNode();
     }
 

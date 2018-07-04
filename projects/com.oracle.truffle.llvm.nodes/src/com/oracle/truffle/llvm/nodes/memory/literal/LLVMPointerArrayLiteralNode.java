@@ -36,6 +36,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -82,7 +83,7 @@ public abstract class LLVMPointerArrayLiteralNode extends LLVMExpressionNode {
     protected LLVMForeignWriteNode[] createForeignWrites() {
         LLVMForeignWriteNode[] writes = new LLVMForeignWriteNode[values.length];
         for (int i = 0; i < writes.length; i++) {
-            writes[i] = LLVMForeignWriteNodeGen.create();
+            writes[i] = LLVMForeignWriteNodeGen.create(ForeignToLLVMType.POINTER);
         }
         return writes;
     }

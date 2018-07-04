@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -81,6 +82,6 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doTruffleObject(LLVMManagedPointer address, Object value) {
-        getForeignWriteNode().execute(address, value);
+        getForeignWriteNode(ForeignToLLVMType.POINTER).execute(address, value);
     }
 }
