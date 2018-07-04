@@ -99,8 +99,13 @@ public class CommandTestBase extends TestBase implements CommandInput {
         param = rparam = new CatalogIterable.RemoteComponentParam(url, spec, spec, this, false);
     }
 
+    protected Iterable<ComponentParam> paramIterable;
+
     @Override
     public Iterable<ComponentParam> existingFiles() throws FailedOperationException {
+        if (paramIterable != null) {
+            return paramIterable;
+        }
         return new Iterable<ComponentParam>() {
             @Override
             public Iterator<ComponentParam> iterator() {

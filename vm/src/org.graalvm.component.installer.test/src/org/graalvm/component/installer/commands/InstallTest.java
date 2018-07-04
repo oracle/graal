@@ -298,7 +298,7 @@ public class InstallTest extends CommandTestBase {
         delegateFeedback(new FeedbackAdapter() {
             @Override
             public boolean verbatimOut(String aMsg, boolean beVerbose) {
-                if (aMsg.contains("IMPORTANT")) { // NOI18N
+                if (aMsg.contains("Ruby openssl")) { // NOI18N
                     formatted[0] = aMsg;
                 }
                 return super.verbatimOut(aMsg, beVerbose);

@@ -114,10 +114,13 @@ public class InstallCommand implements InstallerCommand {
             return 1;
         }
         executeStep(this::prepareInstallation, false);
-        if (!validateBeforeInstall) {
-            executeStep(this::doInstallation, false);
-            executeStep(this::printMessages, true);
+        if (validateBeforeInstall) {
+            return 0;
         }
+        executeStep(this::completeInstallers, false);
+        executeStep(this::doInstallation, false);
+        // execute the post-install steps for all processed installers
+        executeStep(this::printMessages, true);
         if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
             Path p = Paths.get(CommonConstants.PATH_JRE_BIN);
             feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
@@ -249,7 +252,7 @@ public class InstallCommand implements InstallerCommand {
     }
 
     void printMessages() {
-        for (Installer i : realInstallers.values()) {
+        for (Installer i : executedInstallers) {
             String msg = i.getComponentInfo().getPostinstMessage();
             if (msg != null) {
                 String replaced = replaceTokens(i.getComponentInfo(), msg);
@@ -261,7 +264,10 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
-    void doInstallation() throws IOException {
+    /**
+     * Creates installers with complete info. Revalidates the installers as they are now complete.
+     */
+    void completeInstallers() throws IOException {
         // now create real installers for parameters which were omitted
         for (ComponentParam p : new ArrayList<>(realInstallers.keySet())) {
             Installer i = realInstallers.get(p);
@@ -280,7 +286,9 @@ public class InstallCommand implements InstallerCommand {
                 realInstallers.put(p, i);
             }
         }
+    }
 
+    void doInstallation() throws IOException {
         for (Installer i : realInstallers.values()) {
             current = i.getComponentInfo().getName();
             ensureExistingComponentRemoved(i.getComponentInfo());
