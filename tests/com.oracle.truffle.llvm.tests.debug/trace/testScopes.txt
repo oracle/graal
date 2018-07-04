@@ -1,4 +1,4 @@
-BREAK "50" "CONTINUE" "start"
+BREAK "79" "CONTINUE" "start"
 
 OPEN_SCOPE
 
@@ -11,7 +11,7 @@ MEMBER int "int" "lastId" "-1"
 
 
 
-BREAK "45" "CONTINUE" "getX"
+BREAK "74" "CONTINUE" "getX"
 
 OPEN_SCOPE
 
@@ -24,7 +24,7 @@ MEMBER int "int" "lastId" "-1"
 
 
 
-BREAK "11" "CONTINUE" "getNextId"
+BREAK "40" "CONTINUE" "getNextId"
 
 OPEN_SCOPE
 
@@ -41,7 +41,7 @@ MEMBER int "int" "lastId" "-1"
 
 
 
-BREAK "32" "CONTINUE" "MyClass"
+BREAK "61" "CONTINUE" "MyClass"
 
 OPEN_SCOPE
 
@@ -59,7 +59,7 @@ MEMBER int "int" "lastId" "72"
 
 
 
-BREAK "56" "CONTINUE" "start"
+BREAK "85" "CONTINUE" "start"
 
 OPEN_SCOPE
 
@@ -78,7 +78,7 @@ MEMBER int "int" "lastId" "72"
 
 
 
-BREAK "60" "CONTINUE" "start"
+BREAK "89" "CONTINUE" "start"
 
 OPEN_SCOPE
 

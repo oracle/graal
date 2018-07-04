@@ -1,4 +1,4 @@
-BREAK 24 CONTINUE "myMethod"
+BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER int "int" "a" "16"
@@ -15,7 +15,7 @@ BREAK 24 CONTINUE "myMethod"
 
 
 
-BREAK 28 CONTINUE "myStaticMethod"
+BREAK 57 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -32,7 +32,7 @@ BREAK 28 CONTINUE "myStaticMethod"
 
 
 
-BREAK 24 CONTINUE "myMethod"
+BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER int "int" "a" "16"
@@ -49,7 +49,7 @@ BREAK 24 CONTINUE "myMethod"
 
 
 
-BREAK 28 CONTINUE "myStaticMethod"
+BREAK 57 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -66,7 +66,7 @@ BREAK 28 CONTINUE "myStaticMethod"
 
 
 
-BREAK 24 CONTINUE "myMethod"
+BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER int "int" "a" "16"
@@ -83,7 +83,7 @@ BREAK 24 CONTINUE "myMethod"
 
 
 
-BREAK 28 CONTINUE "myStaticMethod"
+BREAK 57 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -100,7 +100,7 @@ BREAK 28 CONTINUE "myStaticMethod"
 
 
 
-BREAK 24 CONTINUE "myMethod"
+BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER int "int" "a" "16"
@@ -117,7 +117,7 @@ BREAK 24 CONTINUE "myMethod"
 
 
 
-BREAK 28 CONTINUE "myStaticMethod"
+BREAK 57 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -135,7 +135,7 @@ BREAK 28 CONTINUE "myStaticMethod"
 
 
 
-BREAK 50 CONTINUE "start"
+BREAK 79 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "MyClass" "localObj"
             MEMBER int "int" "a" "16"

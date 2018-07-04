@@ -1,4 +1,4 @@
-BREAK "44" "CONTINUE" "testCombinedStructArg"
+BREAK "73" "CONTINUE" "testCombinedStructArg"
 
 OPEN_SCOPE
 
@@ -16,7 +16,7 @@ END_MEMBERS
 
 
 
-BREAK "51" "CONTINUE" "testSplittedStructArg"
+BREAK "80" "CONTINUE" "testSplittedStructArg"
 
 OPEN_SCOPE
 
@@ -34,7 +34,7 @@ END_MEMBERS
 
 
 
-BREAK "86" "CONTINUE" "start"
+BREAK "115" "CONTINUE" "start"
 
 OPEN_SCOPE
 

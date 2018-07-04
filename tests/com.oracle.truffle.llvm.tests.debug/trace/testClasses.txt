@@ -1,4 +1,4 @@
-BREAK "18" "CONTINUE" "SimpleClass"
+BREAK "47" "CONTINUE" "SimpleClass"
 
 OPEN_SCOPE
 
@@ -13,7 +13,7 @@ END_MEMBERS
 
 
 
-BREAK "35" "CONTINUE" "print"
+BREAK "64" "CONTINUE" "print"
 
 OPEN_SCOPE
 
@@ -25,7 +25,7 @@ END_MEMBERS
 
 
 
-BREAK "23" "CONTINUE" "SimpleClass"
+BREAK "52" "CONTINUE" "SimpleClass"
 
 OPEN_SCOPE
 
@@ -39,7 +39,7 @@ END_MEMBERS
 
 
 
-BREAK "35" "CONTINUE" "print"
+BREAK "64" "CONTINUE" "print"
 
 OPEN_SCOPE
 
@@ -51,7 +51,7 @@ END_MEMBERS
 
 
 
-BREAK "31" "CONTINUE" "SimpleClass"
+BREAK "60" "CONTINUE" "SimpleClass"
 
 OPEN_SCOPE
 
@@ -66,7 +66,7 @@ END_MEMBERS
 
 
 
-BREAK "35" "CONTINUE" "print"
+BREAK "64" "CONTINUE" "print"
 
 OPEN_SCOPE
 
@@ -78,7 +78,7 @@ END_MEMBERS
 
 
 
-BREAK "50" "CONTINUE" "Point"
+BREAK "79" "CONTINUE" "Point"
 
 OPEN_SCOPE
 
@@ -91,7 +91,7 @@ END_MEMBERS
 
 
 
-BREAK "79" "CONTINUE" "Shape"
+BREAK "108" "CONTINUE" "Shape"
 
 OPEN_SCOPE
 
@@ -108,7 +108,7 @@ END_MEMBERS
 
 
 
-BREAK "106" "CONTINUE" "Circle"
+BREAK "135" "CONTINUE" "Circle"
 
 OPEN_SCOPE
 
@@ -130,7 +130,7 @@ END_MEMBERS
 
 
 
-BREAK "62" "CONTINUE" "getY"
+BREAK "91" "CONTINUE" "getY"
 
 OPEN_SCOPE
 
@@ -141,7 +141,7 @@ END_MEMBERS
 
 
 
-BREAK "85" "CONTINUE" "moveUp"
+BREAK "114" "CONTINUE" "moveUp"
 
 OPEN_SCOPE
 
@@ -156,7 +156,7 @@ END_MEMBERS
 
 
 
-BREAK "50" "CONTINUE" "Point"
+BREAK "79" "CONTINUE" "Point"
 
 OPEN_SCOPE
 
@@ -169,7 +169,7 @@ END_MEMBERS
 
 
 
-BREAK "79" "CONTINUE" "Shape"
+BREAK "108" "CONTINUE" "Shape"
 
 OPEN_SCOPE
 
@@ -186,7 +186,7 @@ END_MEMBERS
 
 
 
-BREAK "122" "CONTINUE" "Rectangle"
+BREAK "151" "CONTINUE" "Rectangle"
 
 OPEN_SCOPE
 
@@ -210,7 +210,7 @@ END_MEMBERS
 
 
 
-BREAK "131" "CONTINUE" "Square"
+BREAK "160" "CONTINUE" "Square"
 
 OPEN_SCOPE
 
@@ -234,7 +234,7 @@ END_MEMBERS
 
 
 
-BREAK "54" "CONTINUE" "getX"
+BREAK "83" "CONTINUE" "getX"
 
 OPEN_SCOPE
 
@@ -245,7 +245,7 @@ END_MEMBERS
 
 
 
-BREAK "91" "CONTINUE" "moveLeft"
+BREAK "120" "CONTINUE" "moveLeft"
 
 OPEN_SCOPE
 
@@ -260,7 +260,7 @@ END_MEMBERS
 
 
 
-BREAK "50" "CONTINUE" "Point"
+BREAK "79" "CONTINUE" "Point"
 
 OPEN_SCOPE
 
@@ -273,7 +273,7 @@ END_MEMBERS
 
 
 
-BREAK "31" "CONTINUE" "SimpleClass"
+BREAK "60" "CONTINUE" "SimpleClass"
 
 OPEN_SCOPE
 
@@ -288,7 +288,7 @@ END_MEMBERS
 
 
 
-BREAK "79" "CONTINUE" "Shape"
+BREAK "108" "CONTINUE" "Shape"
 
 OPEN_SCOPE
 
@@ -305,7 +305,7 @@ END_MEMBERS
 
 
 
-BREAK "122" "CONTINUE" "Rectangle"
+BREAK "151" "CONTINUE" "Rectangle"
 
 OPEN_SCOPE
 
@@ -329,7 +329,7 @@ END_MEMBERS
 
 
 
-BREAK "131" "CONTINUE" "Square"
+BREAK "160" "CONTINUE" "Square"
 
 OPEN_SCOPE
 
@@ -353,7 +353,7 @@ END_MEMBERS
 
 
 
-BREAK "141" "CONTINUE" "SimpleSquare"
+BREAK "170" "CONTINUE" "SimpleSquare"
 
 OPEN_SCOPE
 
@@ -385,7 +385,7 @@ END_MEMBERS
 
 
 
-BREAK "35" "CONTINUE" "print"
+BREAK "64" "CONTINUE" "print"
 
 OPEN_SCOPE
 
@@ -397,7 +397,7 @@ END_MEMBERS
 
 
 
-BREAK "166" "CONTINUE" "start"
+BREAK "195" "CONTINUE" "start"
 
 OPEN_SCOPE
 
