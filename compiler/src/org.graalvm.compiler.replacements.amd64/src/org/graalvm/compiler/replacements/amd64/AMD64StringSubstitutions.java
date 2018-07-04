@@ -115,7 +115,7 @@ public class AMD64StringSubstitutions {
             }
             return result;
         } else {
-            return indexOf(source, ch, fromIndex);
+            return indexOf(source, ch, origFromIndex);
         }
     }
 
