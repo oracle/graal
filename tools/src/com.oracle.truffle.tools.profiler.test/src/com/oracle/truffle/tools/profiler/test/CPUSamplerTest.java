@@ -233,19 +233,20 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             SourceSection root = null;
             StatementNode startSamplerChild = null;
 
-            // Case when we want to test statements and roots
-            if (source.getCharacters().toString().equals("Statement Root")) {
+            String sourceString = source.getCharacters().toString();
+            if (sourceString.equals("Statement Root")) {
+                // Case when we want to test statements and roots
                 statement = source.createSection(0, 9);
                 root = source.createSection(10, 4);
                 startSamplerChild = new StatementNode(statement, new SleepNode());
-            }
-
-            // Case when we want to test roots only
-            if (source.getCharacters().toString().equals("Root Root")) {
+            } else if (sourceString.equals("Root Root")) {
+                // Case when we want to test roots only
                 statement = source.createUnavailableSection();
                 root = source.createSection(0, 4);
                 RootCallTarget sleepTarget = Truffle.getRuntime().createCallTarget(new SRootNode(this, new RootNode(root, new SleepNode())));
                 startSamplerChild = new StatementNode(statement, new CallNode(Truffle.getRuntime().createDirectCallNode(sleepTarget)));
+            } else {
+                Assert.fail("Unsupported parse request.");
             }
 
             RootCallTarget innerTarget = Truffle.getRuntime().createCallTarget(
