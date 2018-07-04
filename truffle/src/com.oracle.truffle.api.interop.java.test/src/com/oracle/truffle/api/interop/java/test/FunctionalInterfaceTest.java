@@ -30,6 +30,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Collections;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
@@ -38,13 +39,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -86,7 +91,7 @@ public class FunctionalInterfaceTest {
         }
 
         public String requestHandler2(LegacyFunctionalInterface<String> handler) {
-            return handler.run();
+            return handler.get();
         }
 
         public String unsupported(NonFunctionalInterface handler) {
@@ -134,7 +139,7 @@ public class FunctionalInterfaceTest {
         LegacyFunctionalInterface<String> lfi = () -> EXPECTED_RESULT;
         Value lfiValue = context.asValue(lfi);
         assertFalse(lfiValue.canExecute());
-        assertTrue(lfiValue.getMember("run").canExecute());
+        assertTrue(lfiValue.getMember("get").canExecute());
         try {
             lfiValue.execute();
             fail("expected UnsupportedOperationException");
@@ -151,7 +156,7 @@ public class FunctionalInterfaceTest {
         Supplier<?> fi = value.as(Supplier.class);
         assertEquals(EXPECTED_RESULT, fi.get());
         LegacyFunctionalInterface<?> lfi = value.as(LegacyFunctionalInterface.class);
-        assertEquals(EXPECTED_RESULT, lfi.run());
+        assertEquals(EXPECTED_RESULT, lfi.get());
         try {
             value.as(NonFunctionalInterface.class);
             fail("expected ClassCastException");
@@ -159,17 +164,44 @@ public class FunctionalInterfaceTest {
         }
     }
 
+    @Test
+    public void testExecutableAndHasMembers() {
+        Value value = context.asValue(new TestRunnable(env));
+        assertTrue(value.canExecute());
+        assertTrue(value.hasMembers());
+        assertEquals("EXECUTE", value.execute().asString());
+        assertEquals("READ+EXECUTE", value.getMember("get").execute().asString());
+
+        Supplier<?> fi = value.as(Supplier.class);
+        assertEquals("EXECUTE", fi.get());
+        LegacyFunctionalInterface<?> lfi = value.as(LegacyFunctionalInterface.class);
+        assertEquals("EXECUTE", lfi.get());
+        NonFunctionalInterface nfi = value.as(NonFunctionalInterface.class);
+        assertEquals("READ+EXECUTE", nfi.get());
+    }
+
     public interface LegacyFunctionalInterface<T> {
-        T run();
+        T get();
     }
 
     public interface NonFunctionalInterface {
-        default void run() {
+        default String get() {
+            throw new UnsupportedOperationException();
         }
     }
 
     @MessageResolution(receiverType = TestExecutable.class)
     static final class TestExecutable implements TruffleObject {
+        final String result;
+
+        TestExecutable(String result) {
+            this.result = result;
+        }
+
+        TestExecutable() {
+            this(EXPECTED_RESULT);
+        }
+
         static boolean isInstance(TruffleObject obj) {
             return obj instanceof TestExecutable;
         }
@@ -179,19 +211,65 @@ public class FunctionalInterfaceTest {
             return TestExecutableForeign.ACCESS;
         }
 
-        @SuppressWarnings("unused")
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutable extends Node {
-            boolean access(TestExecutable obj) {
-                return true;
+        @Resolve(message = "EXECUTE")
+        abstract static class Execute extends Node {
+            String access(TestExecutable obj, @SuppressWarnings("unused") Object[] args) {
+                return obj.result;
+            }
+        }
+    }
+
+    @MessageResolution(receiverType = TestRunnable.class)
+    static final class TestRunnable implements TruffleObject {
+        final TruffleLanguage.Env env;
+
+        TestRunnable(TruffleLanguage.Env env) {
+            this.env = env;
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof TestRunnable;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return TestRunnableForeign.ACCESS;
+        }
+
+        @Resolve(message = "EXECUTE")
+        abstract static class Execute extends Node {
+            @SuppressWarnings("unused")
+            String access(TestRunnable obj, Object[] args) {
+                return "EXECUTE";
+            }
+        }
+
+        @Resolve(message = "KEYS")
+        abstract static class Keys extends Node {
+            @TruffleBoundary
+            Object access(TestRunnable obj) {
+                return obj.env.asGuestValue(Collections.singletonList("get"));
             }
         }
 
         @SuppressWarnings("unused")
-        @Resolve(message = "EXECUTE")
-        abstract static class Execute extends Node {
-            String access(TestExecutable obj, Object... args) {
-                return EXPECTED_RESULT;
+        @Resolve(message = "READ")
+        abstract static class Read extends Node {
+            @TruffleBoundary
+            Object access(TestRunnable obj, String name) {
+                if (name.equals("get")) {
+                    return new TestExecutable("READ+EXECUTE");
+                }
+                throw UnknownIdentifierException.raise(name);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Resolve(message = "KEY_INFO")
+        abstract static class KeyI extends Node {
+            @TruffleBoundary
+            Object access(TestRunnable obj, String name) {
+                return name.equals("get") ? KeyInfo.READABLE : KeyInfo.NONE;
             }
         }
     }
