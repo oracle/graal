@@ -262,6 +262,21 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             public abstract Object execute(VirtualFrame frame);
         }
 
+        @GenerateWrapper
+        abstract static class SamplerTestInstrumentableNode extends SamplerTestNode implements InstrumentableNode {
+            public abstract Object execute(VirtualFrame frame);
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new SamplerTestInstrumentableNodeWrapper(this, probe);
+            }
+        }
+
         static class SleepNode extends SamplerTestNode {
 
             @Override
@@ -289,8 +304,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
         }
 
-        @GenerateWrapper
-        static class Statement extends SamplerTestNode implements InstrumentableNode {
+        static class Statement extends SamplerTestInstrumentableNode {
 
             @Child SamplerTestNode node;
             SourceSection sourceSection;
@@ -312,16 +326,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
 
             @Override
-            public boolean isInstrumentable() {
-                return true;
-            }
-
-            @Override
-            public WrapperNode createWrapper(ProbeNode probe) {
-                return new StatementWrapper(this, this, probe);
-            }
-
-            @Override
             public boolean hasTag(Class<? extends Tag> tag) {
                 return tag == StandardTags.StatementTag.class;
             }
@@ -332,8 +336,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             }
         }
 
-        @GenerateWrapper
-        static class Root extends SamplerTestNode implements InstrumentableNode {
+        static class Root extends SamplerTestInstrumentableNode {
 
             @Child SamplerTestNode node;
             SourceSection sourceSection;
@@ -352,16 +355,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             Root(SourceSection sourceSection, SamplerTestNode node) {
                 this.sourceSection = sourceSection;
                 this.node = node;
-            }
-
-            @Override
-            public boolean isInstrumentable() {
-                return true;
-            }
-
-            @Override
-            public WrapperNode createWrapper(ProbeNode probe) {
-                return new RootWrapper(this, this, probe);
             }
 
             @Override
