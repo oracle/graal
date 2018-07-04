@@ -430,10 +430,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
         ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        current = checkStackState(current, "Root", false);
         current = checkStackState(current, "Statement", false);
         current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Root", false);
         current = checkStackState(current, "Statement", false);
         current = checkStackState(current, "Statement", false);
         checkStackState(current, "Statement", true);

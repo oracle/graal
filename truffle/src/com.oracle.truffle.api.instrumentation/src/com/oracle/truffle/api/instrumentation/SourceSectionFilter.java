@@ -26,6 +26,7 @@ package com.oracle.truffle.api.instrumentation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -103,6 +104,23 @@ public final class SourceSectionFilter {
         }
         b.append("]");
         return b.toString();
+    }
+
+    // TODO: Javadoc
+    public boolean allows(Node node) {
+        if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
+            return false;
+        }
+        Set<Class<?>> tags = new HashSet<>();
+        for (int i = 0; i < StandardTags.ALL_TAGS.length; i++) {
+            tags.add(StandardTags.ALL_TAGS[i]);
+        }
+        for (EventFilterExpression exp : expressions) {
+            if (!exp.isIncluded(tags, node, node.getSourceSection())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
