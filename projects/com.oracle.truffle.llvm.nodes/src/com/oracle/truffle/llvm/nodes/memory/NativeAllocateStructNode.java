@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.LLVMGlobalVariableMessageResolutionForeign;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 
-public final class LLVMSharedGlobalVariable implements LLVMInternalTruffleObject {
+public final class NativeAllocateStructNode extends LLVMNode implements LLVMAllocateStructNode {
 
-    private final LLVMGlobal descriptor;
+    private final long size;
+    private final LLVMMemory memory;
 
-    public LLVMSharedGlobalVariable(LLVMGlobal descriptor) {
-        this.descriptor = descriptor;
-    }
-
-    public LLVMGlobal getDescriptor() {
-        return descriptor;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMSharedGlobalVariable;
+    public NativeAllocateStructNode(LLVMContext context, StructureType type) {
+        this.size = context.getByteSize(type);
+        this.memory = getLLVMMemory();
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMGlobalVariableMessageResolutionForeign.ACCESS;
+    public LLVMNativePointer executeWithTarget() {
+        return memory.allocateMemory(size);
     }
 }

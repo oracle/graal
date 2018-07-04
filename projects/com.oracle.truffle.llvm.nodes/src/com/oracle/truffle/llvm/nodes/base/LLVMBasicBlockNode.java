@@ -127,8 +127,8 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
         double successorBranchProbability;
 
         /*
-         * It is possible to get race conditions (compiler and AST interpeter thread). This avoids a
-         * probability > 1.
+         * It is possible to get race conditions (compiler and AST interpreter thread). This avoids
+         * a probability > 1.
          *
          * We make sure that we read each element only once. We also make sure that the compiler
          * reduces the conditions to constants.

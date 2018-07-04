@@ -101,11 +101,14 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -113,6 +116,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -356,6 +362,7 @@ public final class Runner {
         ExternalLibrary[] sulongLibraries = parseDependencies(parserResults, dependencyQueue);
         assert dependencyQueue.isEmpty();
 
+        allocateGlobals(parserResults);
         addExternalSymbolsToScopes(parserResults);
         bindUnresolvedSymbols(parserResults);
 
@@ -366,6 +373,65 @@ public final class Runner {
         registerDynamicLinkChain(parserResults);
         callStructors(initializationOrder);
         return createLibraryCallTarget(source.getName(), parserResults);
+    }
+
+    private void allocateGlobals(List<LLVMParserResult> parserResults) {
+        for (LLVMParserResult res : parserResults) {
+            ArrayList<LLVMGlobal> globals = new ArrayList<>();
+            for (GlobalVariable symbol : res.getDefinedGlobals()) {
+                LLVMGlobal global = res.getRuntime().getFileScope().getGlobalVariable(symbol.getName());
+                globals.add(global);
+            }
+            allocateGlobals(globals);
+        }
+    }
+
+    private void allocateGlobals(ArrayList<LLVMGlobal> globals) {
+        DataLayout dataLayout = context.getDataSpecConverter();
+
+        // divide into pointer and non-pointer globals
+        ArrayList<Type> nonPointerTypes = new ArrayList<>();
+        for (LLVMGlobal global : globals) {
+            Type type = global.getPointeeType();
+            if (!isSpecialGlobalSlot(type)) {
+                // allocate at least one byte per global (to make the pointers unique)
+                if (type.getSize(dataLayout) == 0) {
+                    nonPointerTypes.add(PrimitiveType.getIntegerType(8));
+                }
+                nonPointerTypes.add(type);
+            }
+        }
+
+        StructureType structType = new StructureType("globals_struct", false, nonPointerTypes.toArray(new Type[0]));
+        LLVMAllocateStructNode allocationNode = nodeFactory.createAllocateStruct(context, structType);
+        LLVMPointer nonPointerStore = allocationNode.executeWithTarget();
+
+        HashMap<LLVMPointer, LLVMGlobal> reverseMap = new HashMap<>();
+        int nonPointerOffset = 0;
+        for (LLVMGlobal global : globals) {
+            Type type = global.getPointeeType();
+            LLVMPointer ref;
+            if (isSpecialGlobalSlot(global.getPointeeType())) {
+                ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
+            } else {
+                // allocate at least one byte per global (to make the pointers unique)
+                if (type.getSize(dataLayout) == 0) {
+                    type = PrimitiveType.getIntegerType(8);
+                }
+                nonPointerOffset += Type.getPadding(nonPointerOffset, type, dataLayout);
+                ref = nonPointerStore.increment(nonPointerOffset);
+                nonPointerOffset += type.getSize(dataLayout);
+            }
+            global.setTarget(ref);
+            reverseMap.put(ref, global);
+        }
+
+        context.registerGlobals(nonPointerStore, reverseMap);
+    }
+
+    private static boolean isSpecialGlobalSlot(Type type) {
+        // globals of pointer type can potentially contain a TruffleObject
+        return type instanceof PointerType;
     }
 
     /**
@@ -584,7 +650,7 @@ public final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
                     globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
@@ -626,7 +692,7 @@ public final class Runner {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(context, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                global.bindToNativeAddress(context, pointerIntoLibrary.getAddress());
+                global.setTarget(LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
 

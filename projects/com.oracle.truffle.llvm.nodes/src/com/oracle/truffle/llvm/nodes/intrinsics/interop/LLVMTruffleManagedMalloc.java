@@ -128,7 +128,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         }
 
         @Override
-        public LLVMObjectWriteNode createWriteNode() {
+        public LLVMObjectWriteNode createWriteNode(ForeignToLLVMType type) {
             return new ManagedWriteNode();
         }
     }

@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -43,22 +42,23 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.NullFunction;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -71,14 +71,16 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 
 public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
+
+    // map that contains all non-native globals, needed for pointer->global lookups
+    private final HashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new HashMap<>();
+    // allocations used to store non-pointer globals (need to be freed when context is disposed)
+    private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
 
     private DataLayout dataLayout;
 
@@ -107,7 +109,6 @@ public final class LLVMContext {
     private final EconomicMap<LLVMNativePointer, Handle> handleFromPointer;
 
     private final LLVMSourceContext sourceContext;
-    private final LLVMGlobalsStack globalStack;
 
     private final LLVMLanguage language;
     private final Env env;
@@ -117,8 +118,6 @@ public final class LLVMContext {
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
     private final List<ContextExtension> contextExtensions;
-
-    private final MaterializedFrame globalFrame = Truffle.getRuntime().createMaterializedFrame(new Object[0]);
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new HashMap<>();
@@ -134,65 +133,6 @@ public final class LLVMContext {
     private boolean defaultLibrariesLoaded;
 
     private final InteropNodeFactory interopNodeFactory;
-
-    public static final class LLVMGlobalsStack {
-        private static final int ALIGNMENT = 8;
-        private static final int SIZE = 10 * 1024 * 1024;
-        private static final int LARGE_ALLOC = 512 * 1024;
-
-        private final LLVMMemory memory;
-        private final long lowerBounds;
-        private final long upperBounds;
-
-        private long[] overflowSlots;
-        private int nextFreeOverflowSlot;
-        private long stackPointer;
-
-        @SuppressWarnings("deprecation")
-        public LLVMGlobalsStack() {
-            this.memory = LLVMMemory.getInstance();
-            long stackAllocation = memory.allocateMemory(SIZE).asNative();
-            this.lowerBounds = stackAllocation;
-            this.upperBounds = stackAllocation + SIZE;
-            this.stackPointer = upperBounds;
-            this.nextFreeOverflowSlot = 0;
-            this.overflowSlots = null;
-        }
-
-        @TruffleBoundary
-        public synchronized void free() {
-            memory.free(lowerBounds);
-            for (int i = 0; i < nextFreeOverflowSlot; i++) {
-                memory.free(overflowSlots[i]);
-            }
-        }
-
-        @TruffleBoundary
-        public synchronized long allocateStackMemory(final long size) {
-            assert size >= 0;
-            if (size < LARGE_ALLOC) {
-                final long alignedAllocation = (stackPointer - size) & -ALIGNMENT;
-                assert alignedAllocation <= stackPointer;
-                if (alignedAllocation >= lowerBounds) {
-                    stackPointer = alignedAllocation;
-                    return alignedAllocation;
-                }
-            }
-
-            return overflowAlloc(size);
-        }
-
-        private long overflowAlloc(final long size) {
-            if (overflowSlots == null) {
-                overflowSlots = new long[8];
-            } else if (nextFreeOverflowSlot >= overflowSlots.length) {
-                overflowSlots = Arrays.copyOf(overflowSlots, 2 * overflowSlots.length);
-            }
-            long allocation = memory.allocateMemory(size).asNative();
-            overflowSlots[nextFreeOverflowSlot++] = allocation;
-            return allocation;
-        }
-    }
 
     private final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 0;
@@ -226,7 +166,6 @@ public final class LLVMContext {
 
         this.dataLayout = new DataLayout();
         this.destructorFunctions = new ArrayList<>();
-        this.globalStack = new LLVMGlobalsStack();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
         this.sigDfl = LLVMNativePointer.create(0);
@@ -331,11 +270,26 @@ public final class LLVMContext {
         }
 
         threadingStack.freeMainStack(memory);
-        globalStack.free();
-    }
 
-    public LLVMGlobalsStack getGlobalsStack() {
-        return globalStack;
+        // free the space allocated for non-pointer globals
+        LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
+        RootCallTarget free = provider.generateIntrinsic("@free", null);
+
+        for (LLVMPointer store : globalsNonPointerStore) {
+            if (store != null) {
+                free.call(-1, store);
+            }
+        }
+
+        // free the space which might have been when putting pointer-type globals into native memory
+        for (LLVMPointer pointer : globalsReverseMap.keySet()) {
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                TruffleObject object = LLVMManagedPointer.cast(pointer).getObject();
+                if (object instanceof LLVMGlobalContainer) {
+                    ((LLVMGlobalContainer) object).dispose();
+                }
+            }
+        }
     }
 
     public InteropNodeFactory getInteropNodeFactory() {
@@ -667,10 +621,6 @@ public final class LLVMContext {
         return Collections.unmodifiableList(runningThreads);
     }
 
-    public interface FunctionFactory {
-        LLVMFunctionDescriptor create(int index);
-    }
-
     public void addDataLayout(DataLayout layout) {
         this.dataLayout = this.dataLayout.merge(layout);
     }
@@ -679,42 +629,19 @@ public final class LLVMContext {
         return sourceContext;
     }
 
-    public MaterializedFrame getGlobalFrame() {
-        return globalFrame;
+    public LLVMGlobal findGlobal(LLVMPointer pointer) {
+        CompilerAsserts.neverPartOfCompilation();
+
+        LLVMGlobal result = globalsReverseMap.get(pointer);
+        if (result == null) {
+            throw new IllegalStateException("Could not find pointer " + pointer);
+        }
+        return result;
     }
 
-    public FrameSlot getGlobalFrameSlot(Object symbol, Type type) {
-        FrameSlotKind kind;
-        if (type instanceof PrimitiveType) {
-            switch (((PrimitiveType) type).getPrimitiveKind()) {
-                case DOUBLE:
-                    kind = FrameSlotKind.Double;
-                    break;
-                case FLOAT:
-                    kind = FrameSlotKind.Float;
-                    break;
-                case HALF:
-                case I16:
-                case I32:
-                    kind = FrameSlotKind.Int;
-                    break;
-                case I1:
-                    kind = FrameSlotKind.Boolean;
-                    break;
-                case I64:
-                    kind = FrameSlotKind.Long;
-                    break;
-                case I8:
-                    kind = FrameSlotKind.Byte;
-                    break;
-                default:
-                    kind = FrameSlotKind.Object;
-                    break;
-            }
-        } else {
-            kind = FrameSlotKind.Object;
-        }
-        return globalFrame.getFrameDescriptor().findOrAddFrameSlot(symbol, type, kind);
+    public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
+        globalsNonPointerStore.add(nonPointerStore);
+        globalsReverseMap.putAll(reverseMap);
     }
 
     public void setCleanupNecessary(boolean value) {
@@ -735,6 +662,7 @@ public final class LLVMContext {
     }
 
     public static class ExternalLibrary {
+
         private final String name;
         private final Path path;
 

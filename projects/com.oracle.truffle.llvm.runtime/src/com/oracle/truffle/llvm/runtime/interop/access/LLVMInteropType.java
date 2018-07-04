@@ -248,7 +248,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         return new InteropTypeFactory().getStructured(type);
     }
 
-    private static class InteropTypeFactory {
+    private static final class InteropTypeFactory {
 
         private final IdentityHashMap<LLVMSourceType, LLVMInteropType> typeCache = new IdentityHashMap<>();
 

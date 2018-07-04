@@ -35,8 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteFloatNode;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -49,12 +48,6 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
 
     public LLVMFloatStoreNode(LLVMSourceLocation sourceLocation) {
         super(sourceLocation);
-    }
-
-    @Specialization
-    protected void doOp(LLVMGlobal address, float value,
-                    @Cached("create()") WriteFloatNode globalAccess) {
-        globalAccess.execute(address, value);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
@@ -75,7 +68,7 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doOpManaged(LLVMManagedPointer address, float value) {
-        getForeignWriteNode().execute(address, value);
+        getForeignWriteNode(ForeignToLLVMType.FLOAT).execute(address, value);
     }
 
     @Specialization

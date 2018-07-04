@@ -39,12 +39,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -66,12 +64,6 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Specialization
     protected LLVMNativePointer doPointer(LLVMNativePointer from) {
         return from;
-    }
-
-    @Specialization
-    protected LLVMNativePointer doGlobal(LLVMGlobal from,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return access.executeWithTarget(from);
     }
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();

@@ -35,8 +35,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -100,11 +98,6 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMGlobal fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
-        return shared.getDescriptor();
-    }
-
-    @Specialization
     protected LLVMPointer fromPointer(LLVMPointer pointer) {
         return pointer;
     }
@@ -133,8 +126,6 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMFunctionDescriptor) {
             return value;
-        } else if (value instanceof LLVMSharedGlobalVariable) {
-            return ((LLVMSharedGlobalVariable) value).getDescriptor();
         } else if (LLVMPointer.isInstance(value)) {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {

@@ -30,16 +30,13 @@
 package com.oracle.truffle.llvm.nodes.memory.literal;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -54,12 +51,6 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         this.values = values;
         this.stride = stride;
         this.memMove = memMove;
-    }
-
-    @Specialization
-    protected LLVMNativePointer write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return writeDouble(frame, toNative.executeWithTarget(global));
     }
 
     @Specialization

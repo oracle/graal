@@ -75,6 +75,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected boolean eq(LLVMNativePointer val1, long val2) {
+            return val1.asNative() == val2;
+        }
+
+        @Specialization
+        protected boolean eq(long val1, LLVMNativePointer val2) {
+            return val1 == val2.asNative();
+        }
+
+        @Specialization
         protected boolean eq(LLVMIVarBit val1, LLVMIVarBit val2) {
             return val1.compare(val2) == 0;
         }
@@ -144,6 +154,11 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         @Specialization
         protected boolean nq(long val1, LLVMNativePointer val2) {
             return val1 != val2.asNative();
+        }
+
+        @Specialization
+        protected boolean nq(LLVMNativePointer val1, long val2) {
+            return val1.asNative() != val2;
         }
 
         @Specialization
@@ -229,6 +244,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected boolean slt(long val1, LLVMNativePointer val2) {
+            return val1 < val2.asNative();
+        }
+
+        @Specialization
+        protected boolean slt(LLVMNativePointer val1, long val2) {
+            return val1.asNative() < val2;
+        }
+
+        @Specialization
         protected boolean slt(byte val1, byte val2) {
             return val1 < val2;
         }
@@ -278,6 +303,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         @Specialization
         protected boolean sle(long val1, long val2) {
             return val1 <= val2;
+        }
+
+        @Specialization
+        protected boolean sle(long val1, LLVMNativePointer val2) {
+            return val1 <= val2.asNative();
+        }
+
+        @Specialization
+        protected boolean sle(LLVMNativePointer val1, long val2) {
+            return val1.asNative() <= val2;
         }
 
         @Specialization
@@ -333,6 +368,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected boolean gt(long val1, LLVMNativePointer val2) {
+            return val1 > val2.asNative();
+        }
+
+        @Specialization
+        protected boolean gt(LLVMNativePointer val1, long val2) {
+            return val1.asNative() > val2;
+        }
+
+        @Specialization
         protected boolean sgt(byte val1, byte val2) {
             return val1 > val2;
         }
@@ -382,6 +427,16 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         @Specialization
         protected boolean sge(long val1, long val2) {
             return val1 >= val2;
+        }
+
+        @Specialization
+        protected boolean sge(long val1, LLVMNativePointer val2) {
+            return val1 >= val2.asNative();
+        }
+
+        @Specialization
+        protected boolean sge(LLVMNativePointer val1, long val2) {
+            return val1.asNative() >= val2;
         }
 
         @Specialization

@@ -33,6 +33,10 @@ int *returnPointerToGlobal() {
   return &globalInt;
 }
 
+void setPointer(int* address, int value) {
+  *address = value;
+}
+
 int returnGlobal() {
   return globalInt;
 }

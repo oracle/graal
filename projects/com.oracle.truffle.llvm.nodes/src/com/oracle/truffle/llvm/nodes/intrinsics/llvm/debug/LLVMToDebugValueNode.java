@@ -29,14 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -45,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -53,14 +52,9 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValue.Builder {
-
-    protected final ContextReference<LLVMContext> contextRef;
-
-    protected LLVMToDebugValueNode(ContextReference<LLVMContext> contextRef) {
-        this.contextRef = contextRef;
-    }
 
     public abstract LLVMDebugValue executeWithTarget(Object target);
 
@@ -130,22 +124,6 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         return new LLVMConstantValueProvider.BigFloat(value);
     }
 
-    protected LLVMDebugValue createFromGlobal(@SuppressWarnings("unused") LLVMGlobal value, @SuppressWarnings("unused") LLVMMemory memory) {
-        return LLVMDebugValue.UNAVAILABLE;
-    }
-
-    @Specialization
-    protected LLVMDebugValue fromGlobal(LLVMGlobal value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return createFromGlobal(value, memory);
-    }
-
-    @Specialization
-    protected LLVMDebugValue fromSharedGlobal(LLVMSharedGlobalVariable value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return fromGlobal(value.getDescriptor(), memory);
-    }
-
     @Specialization
     protected LLVMDebugValue fromI1Vector(LLVMI1Vector value) {
         return new LLVMConstantVectorValueProvider.I1(value);
@@ -191,35 +169,24 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         return new LLVMConstantValueProvider.InteropValue(value.getObject(), value.getOffset());
     }
 
-    @Specialization
-    protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object value) {
+    protected LLVMDebugValue createFromGlobal(@SuppressWarnings("unused") LLVMGlobal value, @SuppressWarnings("unused") LLVMMemory memory) {
         return LLVMDebugValue.UNAVAILABLE;
     }
 
-    public abstract static class LLVMToStaticDebugValueNode extends LLVMToDebugValueNode {
-
-        protected LLVMToStaticDebugValueNode(ContextReference<LLVMContext> contextRef) {
-            super(contextRef);
+    @Specialization
+    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        LLVMGlobal global = value.getDescriptor();
+        Object target = global.getTarget();
+        if (!LLVMPointer.isInstance(target)) {
+            // a non-pointer was stored as a pointer in this global
+            return executeWithTarget(target);
         }
-
-        @Override
-        protected LLVMDebugValue createFromGlobal(LLVMGlobal value, LLVMMemory memory) {
-            // global as value container, all referenced globals should instead be treated as
-            // pointers
-            return new LLVMConstantGlobalValueProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.LLVMToDynamicDebugValueNodeGen.create(contextRef));
-        }
+        return new LLVMConstantGlobalValueProvider(memory, global, this);
     }
 
-    public abstract static class LLVMToDynamicDebugValueNode extends LLVMToDebugValueNode {
-
-        protected LLVMToDynamicDebugValueNode(ContextReference<LLVMContext> contextRef) {
-            super(contextRef);
-        }
-
-        @Override
-        protected LLVMDebugValue createFromGlobal(LLVMGlobal value, LLVMMemory memory) {
-            // global as pointer value
-            return new LLVMConstantGlobalPointerProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.LLVMToDynamicDebugValueNodeGen.create(contextRef));
-        }
+    @Fallback
+    protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object value) {
+        return LLVMDebugValue.UNAVAILABLE;
     }
 }

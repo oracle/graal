@@ -37,11 +37,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -56,7 +56,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobal panicLocVar,
+    protected Object doOp(LLVMPointer panicLocVar,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("createPanicLocation()") PanicLocType panicLoc,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {

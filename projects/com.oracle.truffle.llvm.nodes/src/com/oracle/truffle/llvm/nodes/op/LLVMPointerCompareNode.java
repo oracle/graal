@@ -54,8 +54,6 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -326,11 +324,6 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doGlobal(LLVMGlobal g1, LLVMGlobal g2) {
-            return g1 == g2;
-        }
-
-        @Specialization
         protected boolean doVirtual(LLVMVirtualAllocationAddress v1, LLVMVirtualAllocationAddress v2) {
             return v1.getObject() == v2.getObject() && v1.getOffset() == v2.getOffset();
         }
@@ -338,22 +331,6 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doFunctionDescriptor(LLVMFunctionDescriptor f1, LLVMFunctionDescriptor f2) {
             return f1 == f2;
-        }
-
-        @Specialization
-        protected boolean doForeign(LLVMGlobal g1, LLVMManagedPointer obj2,
-                        @Cached("create()") LLVMManagedEqualsNode recursive,
-                        @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readGlobalNode) {
-            Object value = readGlobalNode.execute(g1);
-            return recursive.execute(value, obj2);
-        }
-
-        @Specialization
-        protected boolean doForeign(LLVMManagedPointer obj1, LLVMGlobal g2,
-                        @Cached("create()") LLVMManagedEqualsNode recursive,
-                        @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readGlobalNode) {
-            Object value = readGlobalNode.execute(g2);
-            return recursive.execute(obj1, value);
         }
 
         protected boolean isNative(LLVMPointer p) {

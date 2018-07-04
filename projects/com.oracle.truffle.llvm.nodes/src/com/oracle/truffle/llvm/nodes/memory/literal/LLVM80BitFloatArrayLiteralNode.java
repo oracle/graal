@@ -39,10 +39,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -55,13 +53,6 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
     public LLVM80BitFloatArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
         this.values = values;
         this.stride = stride;
-    }
-
-    @Specialization
-    protected LLVMNativePointer write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return write80BitFloat(frame, toNative.executeWithTarget(global), memory);
     }
 
     @Specialization

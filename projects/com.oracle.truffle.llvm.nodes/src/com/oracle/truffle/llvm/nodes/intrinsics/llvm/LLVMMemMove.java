@@ -29,14 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMMemMove {
@@ -56,31 +53,6 @@ public abstract class LLVMMemMove {
         @Specialization
         protected Object doVoid(LLVMPointer dest, LLVMPointer source, long length, int align, boolean isVolatile) {
             memMove.executeWithTarget(dest, source, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMGlobal dest, LLVMPointer source, long length, int align, boolean isVolatile,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-            memMove.executeWithTarget(globalAccess.executeWithTarget(dest), source, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMPointer dest, LLVMGlobal source, long length, int align, boolean isVolatile,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-            memMove.executeWithTarget(dest, globalAccess.executeWithTarget(source), length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMGlobal dest, LLVMGlobal source, long length, int align, boolean isVolatile,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
-            memMove.executeWithTarget(globalAccess1.executeWithTarget(dest), globalAccess2.executeWithTarget(source), length);
             return null;
         }
     }

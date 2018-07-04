@@ -46,7 +46,7 @@ public interface LLVMObjectAccess {
 
     LLVMObjectReadNode createReadNode(ForeignToLLVMType type);
 
-    LLVMObjectWriteNode createWriteNode();
+    LLVMObjectWriteNode createWriteNode(ForeignToLLVMType type);
 
     abstract class LLVMObjectAccessNode extends LLVMNode {
 

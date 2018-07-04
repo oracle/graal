@@ -33,10 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
@@ -79,12 +76,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization
-        protected LLVMI1Vector doI1Vector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-            return getLLVMMemoryCached().getI1Vector(globalAccess.executeWithTarget(addr), getSize());
-        }
-
-        @Specialization
         @ExplodeLoop
         protected LLVMI1Vector doForeign(LLVMManagedPointer addr,
                         @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
@@ -103,12 +94,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadI8VectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMI8Vector doI8Vector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getI8Vector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMI8Vector doI8VectorNative(LLVMNativePointer addr) {
@@ -140,12 +125,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadI16VectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMI16Vector doI16Vector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getI16Vector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMI16Vector doI16VectorNative(LLVMNativePointer addr) {
@@ -177,12 +156,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadI32VectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMI32Vector doI32Vector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getI32Vector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMI32Vector doI32VectorNative(LLVMNativePointer addr) {
@@ -214,12 +187,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadI64VectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMI64Vector doI64Vector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getI64Vector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMI64Vector doI64VectorNative(LLVMNativePointer addr) {
@@ -251,12 +218,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadFloatVectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMFloatVector doFloatVector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getFloatVector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMFloatVector doFloatVectorNative(LLVMNativePointer addr) {
@@ -288,12 +249,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadDoubleVectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMDoubleVector doDoubleVector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getDoubleVector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMDoubleVector doDoubleVectorNative(LLVMNativePointer addr) {
@@ -325,12 +280,6 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
     }
 
     public abstract static class LLVMLoadPointerVectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMPointerVector doPointerVector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getPointerVector(globalAccess.executeWithTarget(addr), getSize());
-        }
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMPointerVector doPointerVectorNative(LLVMNativePointer addr) {

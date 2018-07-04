@@ -35,11 +35,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI64Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -53,7 +50,7 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected long doI64DerefHandle(LLVMNativePointer addr) {
+    protected Object doI64DerefHandle(LLVMNativePointer addr) {
         return doI64Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
@@ -63,21 +60,14 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
         return address.getI64(memory);
     }
 
-    @Specialization
-    protected long doI64(LLVMGlobal addr,
-                    @Cached("create()") ReadI64Node globalAccess,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(globalAccess.execute(addr)).asNative();
-    }
-
     @Override
     LLVMForeignReadNode createForeignRead() {
         return new LLVMForeignReadNode(ForeignToLLVMType.I64);
     }
 
     @Specialization
-    protected long doI64Managed(LLVMManagedPointer addr) {
-        return (long) getForeignReadNode().execute(addr);
+    protected Object doI64Managed(LLVMManagedPointer addr) {
+        return getForeignReadNode().execute(addr);
     }
 
     @Specialization

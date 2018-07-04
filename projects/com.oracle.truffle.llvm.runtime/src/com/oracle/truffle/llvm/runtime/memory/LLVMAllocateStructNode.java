@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,35 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.global;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMGlobalVariableDebugAccess {
-
-    public static boolean isInitialized(LLVMContext context, LLVMGlobal global) {
-        return context.getGlobalFrame().getValue(global.getSlot()) != null;
-    }
-
-    public static boolean isInNative(LLVMContext context, LLVMGlobal global) {
-        return LLVMNativePointer.isInstance(context.getGlobalFrame().getValue(global.getSlot()));
-    }
-
-    public static LLVMNativePointer getNativeLocation(LLVMContext context, LLVMGlobal global) {
-        if (!isInNative(context, global)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Global is not in native memory!");
-        }
-        return LLVMNativePointer.cast(context.getGlobalFrame().getValue(global.getSlot()));
-    }
-
-    public static Object getManagedValue(LLVMContext context, LLVMGlobal global) {
-        if (isInNative(context, global)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Global is not managed!");
-        }
-        return LLVMGlobal.fromManagedStore(context.getGlobalFrame().getValue(global.getSlot()));
-    }
+public interface LLVMAllocateStructNode extends NodeInterface {
+    LLVMPointer executeWithTarget();
 }

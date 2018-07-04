@@ -35,8 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI8Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -60,12 +58,6 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
     protected byte doI8(LLVMVirtualAllocationAddress address,
                     @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
         return address.getI8(memory);
-    }
-
-    @Specialization
-    protected byte doI8(LLVMGlobal addr,
-                    @Cached("create()") ReadI8Node globalAccess) {
-        return profile.profile(globalAccess.execute(addr));
     }
 
     @Override

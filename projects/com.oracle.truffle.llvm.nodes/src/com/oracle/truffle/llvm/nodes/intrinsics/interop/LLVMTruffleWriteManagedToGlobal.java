@@ -30,72 +30,33 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+/**
+ * Replaces a global variable with a different object. This does not change the value stored in the
+ * global, but it modifies the position of the global itself. This is an expensive operation, and it
+ * will only influence future lookups of the global variable address, so that existing pointers to
+ * the global variable will remain unchanged.
+ */
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
 
     @Child AttachInteropTypeNode attachType = AttachInteropTypeNodeGen.create();
 
-    @Specialization
-    protected LLVMManagedPointer doGlobal(LLVMGlobal address, LLVMManagedPointer value,
-                    @Cached("create()") LLVMGlobal.GetFrame getFrameNode,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        LLVMManagedPointer typedValue = LLVMManagedPointer.cast(attachType.execute(value, address.getInteropType()));
-        MaterializedFrame globalFrame = getFrameNode.execute(context.get());
-        globalFrame.setObject(address.getSlot(), typedValue);
-        return typedValue;
-    }
-
-    @Specialization
-    protected LLVMBoxedPrimitive doGlobal(LLVMGlobal address, LLVMBoxedPrimitive value,
-                    @Cached("create()") LLVMGlobal.GetFrame getFrameNode,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        MaterializedFrame globalFrame = getFrameNode.execute(context.get());
-        globalFrame.setObject(address.getSlot(), value);
-        return value;
-    }
-
-    // this is a workaround because @Fallback does not support @Cached
     @TruffleBoundary
-    @Specialization(guards = "isOther(address)")
-    protected Object doOther(Object address, Object value,
-                    @Cached("create()") LLVMGlobal.GetFrame getFrameNode,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        // TODO: (timfel) This is so slow :(
-        MaterializedFrame globalFrame = getFrameNode.execute(context.get());
-        for (FrameSlot slot : globalFrame.getFrameDescriptor().getSlots()) {
-            if (slot.getKind() == FrameSlotKind.Object) {
-                try {
-                    if (globalFrame.getObject(slot) == address) {
-                        globalFrame.setObject(slot, value);
-                        return value;
-                    }
-                } catch (FrameSlotTypeException e) {
-                    throw new IllegalStateException();
-                }
-            }
-        }
-        return address;
-    }
-
-    protected static boolean isOther(Object address) {
-        return !(address instanceof LLVMGlobal);
+    @Specialization
+    protected Object write(LLVMPointer address, Object value) {
+        LLVMGlobal global = getContextReference().get().findGlobal(address);
+        Object newValue = attachType.execute(value, global.getInteropType());
+        global.setTarget(newValue);
+        return newValue;
     }
 }

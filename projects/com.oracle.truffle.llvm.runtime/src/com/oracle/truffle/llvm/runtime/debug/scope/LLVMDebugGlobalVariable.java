@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,17 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.others;
+package com.oracle.truffle.llvm.runtime.debug.scope;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 
-public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
+/**
+ * This class is used to wrap global variables when they are added to debug scopes by the LLVM
+ * parser, so that the LLVMToDebugValueNode later on recognizes them.
+ */
+public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject {
 
-    protected final LLVMGlobal descriptor;
+    private final LLVMGlobal descriptor;
 
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor) {
+    public LLVMDebugGlobalVariable(LLVMGlobal descriptor) {
         this.descriptor = descriptor;
     }
 
@@ -45,8 +50,12 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
         return descriptor;
     }
 
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMDebugGlobalVariable;
+    }
+
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return descriptor.getTarget();
+    public ForeignAccess getForeignAccess() {
+        throw new RuntimeException("should not reach here - should not escape out of Sulong");
     }
 }

@@ -45,12 +45,13 @@ import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
@@ -60,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -197,9 +199,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
-    LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode);
-
-    LLVMDebugObjectBuilder createDebugDynamicValue(LLVMExpressionNode valueNode);
+    LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal);
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 
@@ -210,4 +210,6 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMMemSetNode createMemSet();
 
     LLVMAllocateStringNode createAllocateString();
+
+    LLVMAllocateStructNode createAllocateStruct(LLVMContext context, StructureType structType);
 }

@@ -35,8 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI8Node;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -68,14 +67,8 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected void doOp(LLVMGlobal address, byte value,
-                    @Cached("create()") WriteI8Node globalAccess) {
-        globalAccess.execute(address, value);
-    }
-
-    @Specialization
     protected void doOpManaged(LLVMManagedPointer address, byte value) {
-        getForeignWriteNode().execute(address, value);
+        getForeignWriteNode(ForeignToLLVMType.I8).execute(address, value);
     }
 
     @Specialization
