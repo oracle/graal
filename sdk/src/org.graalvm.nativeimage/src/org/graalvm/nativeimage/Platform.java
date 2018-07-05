@@ -29,8 +29,9 @@ package org.graalvm.nativeimage;
  * <p>
  * A platform group (e.g., an architecture or OS) is an interface extending {@link Platform}. A leaf
  * platform, e.g., a supported architecture-OS-combination, is a class that implements all the
- * groups that it belongs to. It is good practice to make leaf platform classes {@code final}, to
- * prevent accidental subclassing.
+ * groups that it belongs to. A leaf platform class must be non-abstract and must have a no-argument
+ * constructor. It is good practice to make leaf platform classes {@code final} (to prevent
+ * accidental subclassing) and to avoid state (i.e., no fields).
  * <p>
  * The annotation {@link Platforms} restricts a type, method, or field to certain platform groups or
  * leaf platforms.
@@ -157,4 +158,14 @@ public interface Platform {
     static boolean includedIn(Class<? extends Platform> platformGroup) {
         return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
     }
+
+    /**
+     * The system property name that specifies the fully qualified name of the {@link Platform}
+     * implementation class that should be used. If the property is not specified, the platform
+     * class is inferred from the standard architectures and operating systems specified in this
+     * file, i.e., in most cases it is not necessary to use this property.
+     *
+     * @since 1.0
+     */
+    String PLATFORM_PROPERTY_NAME = "svm.platform";
 }

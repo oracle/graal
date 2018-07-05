@@ -278,7 +278,38 @@ public class NativeImageGenerator {
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
     }
 
-    public static Platform defaultPlatform() {
+    public static Platform defaultPlatform(ClassLoader classLoader) {
+        /*
+         * We cannot use a regular hosted option for the platform class: The code that instantiates
+         * the platform class runs before options are parsed, because option parsing depends on the
+         * platform (there can be platform-specific options). So we need to use a regular system
+         * property to specify a platform class explicitly on the command line.
+         */
+        String platformClassName = System.getProperty(Platform.PLATFORM_PROPERTY_NAME);
+        if (platformClassName != null) {
+            Class<?> platformClass;
+            try {
+                platformClass = classLoader.loadClass(platformClassName);
+            } catch (ClassNotFoundException ex) {
+                throw UserError.abort("Could not find platform class " + platformClassName +
+                                " that was specified explicitly on the command line using the system property " + Platform.PLATFORM_PROPERTY_NAME);
+            }
+
+            Object result;
+            try {
+                Constructor<?> constructor = platformClass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                result = constructor.newInstance();
+            } catch (ReflectiveOperationException ex) {
+                throw UserError.abort("Could not instantiated platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.");
+            }
+
+            if (!(result instanceof Platform)) {
+                throw UserError.abort("Platform class " + platformClassName + " does not implement " + Platform.class.getTypeName());
+            }
+            return (Platform) result;
+        }
+
         Architecture hostedArchitecture = GraalAccess.getOriginalTarget().arch;
         if (hostedArchitecture instanceof AMD64) {
             final String osName = System.getProperty("os.name");
@@ -435,7 +466,7 @@ public class NativeImageGenerator {
             try (Indent indent = debug.logAndIndent("start analysis pass")) {
                 try (StopTimer t = new Timer("setup").start()) {
                     // TODO Make customizable via command line parameter.
-                    Platform platform = defaultPlatform();
+                    Platform platform = defaultPlatform(loader.getClassLoader());
 
                     TargetDescription target = createTarget(platform);
                     ObjectLayout objectLayout = new ObjectLayout(target, SubstrateAMD64Backend.getDeoptScatchSpace());
