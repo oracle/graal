@@ -172,6 +172,6 @@ builds += [
       [mx, --dynamicimports, "/substratevm,sulong", --disable-polyglot, --disable-libpolyglot, gate, --tags, "build,sulong"]
     ]
     timelimit: "35:00"
-    name: gate-vm-native-sulong
+    name: gate-vm-native-sulong-tip
   },
 ]
