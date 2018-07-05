@@ -267,6 +267,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             SourceSection sourceSection;
 
+            @Override
             public abstract Object execute(VirtualFrame frame);
 
             @Override
@@ -437,7 +438,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         checkStackState(current, "Statement", true);
     }
 
-    private ProfilerNode<CPUSampler.Payload> checkStackState(ProfilerNode<CPUSampler.Payload> current, String expectedSource, boolean top) {
+    private static ProfilerNode<CPUSampler.Payload> checkStackState(ProfilerNode<CPUSampler.Payload> current, String expectedSource, boolean top) {
         Assert.assertEquals("Stack not correct", expectedSource, current.getSourceSection().getCharacters().toString());
         if (top) {
             Assert.assertFalse("Stack too deep", current.getChildren().iterator().hasNext());
