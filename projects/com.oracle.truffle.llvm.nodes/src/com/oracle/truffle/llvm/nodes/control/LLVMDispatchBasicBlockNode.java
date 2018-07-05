@@ -56,7 +56,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     private final FrameSlot exceptionValueSlot;
     private final LLVMSourceLocation source;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
-    @Child LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
+    @Child private LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
     @Children private final LLVMStatementNode[] copyArgumentsToFrame;

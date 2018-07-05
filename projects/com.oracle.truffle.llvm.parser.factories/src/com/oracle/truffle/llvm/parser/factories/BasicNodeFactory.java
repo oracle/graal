@@ -369,6 +369,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNodeGen;
@@ -1465,9 +1466,10 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegion uniquesRegion, FrameSlot[][] beforeBlockNuller,
+    public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
+                    FrameSlot[][] beforeBlockNuller,
                     FrameSlot[][] afterBlockNuller, LLVMSourceLocation location, LLVMStatementNode[] copyArgumentsToFrame) {
-        LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegion);
+        LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
         return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), uniquesRegionAllocNode, beforeBlockNuller,
                         afterBlockNuller, location,
                         copyArgumentsToFrame);

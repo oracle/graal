@@ -115,8 +115,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         List<LLVMStatementNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMStatementNode[copyArgumentsToFrame.size()]);
-        LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(), uniquesRegion, nullableBeforeBlock,
-                        nullableAfterBlock, location, copyArgumentsToFrameArray);
+        LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(), uniquesRegion.build(),
+                        nullableBeforeBlock, nullableAfterBlock, location, copyArgumentsToFrameArray);
 
         RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(runtime.getContext(), body, method.getSourceSection(), frame, method, source, location);
         method.onAfterParse();

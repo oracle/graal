@@ -35,16 +35,16 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
-    private final UniquesRegion uniquesRegion;
+    private final UniquesRegionAllocator allocator;
 
     @CompilationFinal private FrameSlot stackPointer;
 
-    public LLVMUniquesRegionAllocNode(UniquesRegion uniquesRegion) {
-        this.uniquesRegion = uniquesRegion;
+    public LLVMUniquesRegionAllocNode(UniquesRegionAllocator allocator) {
+        this.allocator = allocator;
     }
 
     public abstract void execute(VirtualFrame frame);
@@ -59,7 +59,7 @@ public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
 
     @Specialization
     protected void doOp(VirtualFrame frame, @Cached("getLLVMMemory()") LLVMMemory memory) {
-        uniquesRegion.allocate(frame, memory, getStackPointerSlot());
+        allocator.allocate(frame, memory, getStackPointerSlot());
     }
 
 }
