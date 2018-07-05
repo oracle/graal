@@ -1,6 +1,7 @@
 vm_subdir: "vm"
 vm_java: ${openjdk8}
-vm_base_suites: "/substratevm,/tools,sulong,/graal-nodejs"
+svm_suite: "/substratevm"
+vm_base_suites: ${svm_suite}",/tools,sulong,/graal-nodejs"
 vm_all_suites: ${vm_base_suites}",truffleruby,graalpython,fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
