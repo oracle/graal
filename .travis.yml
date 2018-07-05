@@ -7,6 +7,7 @@ dist: trusty
 sudo: required
 language: generic
 install:
+  - cd ..
   - gem install mdl
   - pip install astroid==1.1.0 --user
   - pip install pylint==1.1.0 --user
@@ -18,7 +19,7 @@ install:
   - wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/jvmci-0.46/openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
   - tar -xzf openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
   - mkdir llvmDir
-  - export SULONG_ENV=mx.sulong/env
+  - export SULONG_ENV=sulong/mx.sulong/env
 # Travis' pyenv prepends some directories to PATH with an older LLVM, we use mx to restore it
   - echo PATH=`pwd`/llvmDir:$PATH >> $SULONG_ENV
   - echo ECLIPSE_EXE=`pwd`/eclipse/eclipse >> $SULONG_ENV
@@ -26,15 +27,16 @@ install:
   - echo JAVA_HOME=`pwd`/openjdk1.8.0_172-jvmci-0.46 >> $SULONG_ENV
   - echo MAKEFLAGS=-j2 >> $SULONG_ENV
   - echo CPPFLAGS=-g >> $SULONG_ENV
+  - cd sulong
   - mx sforceimports
 script:
-  - cd llvmDir
+  - cd ../llvmDir
   - ln -s /usr/bin/clang-$LLVM_VER clang
   - ln -s /usr/bin/clang++-$LLVM_VER clang++
   - ln -s /usr/bin/opt-$LLVM_VER opt
   - ln -s /usr/bin/llvm-link-$LLVM_VER llvm-link
   - export PATH=`pwd`:$PATH
-  - cd ..
+  - cd ../sulong
   - test -z "$COMPILE_COMMAND" || $COMPILE_COMMAND
   - test -z "$GATE_TAGS" || mx gate --tags $GATE_TAGS
   - test -z "$DOWNSTREAM_COMMAND" || mx testdownstream -R $DOWNSTREAM_REPO --suitedir $DOWNSTREAM_SUITE -C "$DOWNSTREAM_COMMAND"
