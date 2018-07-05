@@ -174,4 +174,13 @@ builds += [
     timelimit: "35:00"
     name: gate-vm-native-sulong-tip
   },
+  ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${vm_linux} {
+    targets: [daily]
+    run: [
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "/substratevm,sulong", --disable-polyglot, --disable-libpolyglot, gate, --tags, "build,sulong"]
+    ]
+    timelimit: "35:00"
+    name: daily-vm-native-sulong
+  },
 ]
