@@ -37,6 +37,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugGenericValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
@@ -44,10 +46,12 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugVector;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 import java.util.ArrayList;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -55,6 +59,20 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class LLVMDebuggerScopeFactory {
+
+    private static LLVMSourceLocation findSourceLocation(Node suspendedNode) {
+        for (Node node = suspendedNode; node != null; node = node.getParent()) {
+            if (node instanceof LLVMNode) {
+                final LLVMSourceLocation sourceLocation = ((LLVMNode) node).getSourceLocation();
+                if (sourceLocation != null) {
+                    return sourceLocation;
+                }
+            } else if (node instanceof RootNode) {
+                return null;
+            }
+        }
+        return null;
+    }
 
     @TruffleBoundary
     private static LLVMDebuggerScopeEntries getIRLevelEntries(Frame frame) {
@@ -76,39 +94,58 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    public static Iterable<Scope> createIRLevelScope(Node node, Frame frame) {
-        final Scope scope = Scope.newBuilder(DEFAULT_NAME, getIRLevelEntries(frame)).node(node).build();
-        return Collections.singletonList(scope);
+    private static LLVMDebuggerValue asValue(LLVMGlobal global) {
+        return new LLVMDebugGenericValue(String.valueOf(global.getTarget()), String.valueOf(global.getPointeeType()));
     }
 
-    private static LLVMNode findStatementNode(Node suspendedNode) {
-        for (Node node = suspendedNode; node != null; node = node.getParent()) {
-            if (node instanceof LLVMNode) {
-                final LLVMNode llvmNode = (LLVMNode) node;
-                if (llvmNode.getSourceLocation() != null) {
-                    return llvmNode;
-                }
-            } else if (node instanceof RootNode) {
-                return null;
+    @TruffleBoundary
+    private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMScope scope) {
+        final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
+        for (LLVMSymbol symbol : scope.values()) {
+            if (symbol.isGlobalVariable()) {
+                entries.add(symbol.getName(), asValue(symbol.asGlobalVariable()));
             }
         }
+        return entries;
+    }
 
-        return null;
+    @TruffleBoundary
+    private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMSourceLocation.TextModule irScope) {
+        final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
+        for (LLVMGlobal global : irScope) {
+            entries.add(global.getName(), asValue(global));
+        }
+        return entries;
+    }
+
+    @TruffleBoundary
+    private static LLVMDebuggerScopeEntries getIRLevelEntries(Node node, LLVMScope llvmScope) {
+        for (LLVMSourceLocation location = findSourceLocation(node); location != null; location = location.getParent()) {
+            if (location instanceof LLVMSourceLocation.TextModule) {
+                return toDebuggerScope((LLVMSourceLocation.TextModule) location);
+            }
+        }
+        return toDebuggerScope(llvmScope);
+    }
+
+    @TruffleBoundary
+    public static Iterable<Scope> createIRLevelScope(Node node, Frame frame, LLVMContext context) {
+        final Scope localScope = Scope.newBuilder("function", getIRLevelEntries(frame)).node(node).build();
+        final Scope globalScope = Scope.newBuilder("module", getIRLevelEntries(node, context.getGlobalScope())).build();
+        return Arrays.asList(localScope, globalScope);
     }
 
     @TruffleBoundary
     public static Iterable<Scope> createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
+        LLVMSourceLocation scope = findSourceLocation(node);
 
-        LLVMNode llvmNode = findStatementNode(node);
-
-        if (rootNode == null || llvmNode == null) {
+        if (rootNode == null || scope == null) {
             return Collections.singleton(new LLVMDebuggerScopeFactory(sourceContext, node).toScope(frame));
         }
 
-        LLVMSourceLocation scope = llvmNode.getSourceLocation();
-        final SourceSection sourceSection = llvmNode.getSourceSection();
+        final SourceSection sourceSection = scope.getSourceSection();
 
         LLVMDebuggerScopeFactory baseScope = new LLVMDebuggerScopeFactory(sourceContext, new LinkedList<>(), rootNode);
         LLVMDebuggerScopeFactory staticScope = null;

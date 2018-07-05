@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.text;
 import java.util.LinkedList;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -174,13 +175,13 @@ final class LLInstructionMapper {
         }
     }
 
-    static void setSourceLocations(LLSourceMap sourceMap, FunctionDefinition functionDefinition) {
+    static void setSourceLocations(LLSourceMap sourceMap, FunctionDefinition functionDefinition, LLVMParserRuntime runtime) {
         final LLSourceMap.Function function = sourceMap.getFunction(functionDefinition.getName());
         if (function == null) {
             return;
         }
 
-        final LLVMSourceLocation location = function.toSourceLocation(sourceMap.getLLSource());
+        final LLVMSourceLocation location = function.toSourceLocation(sourceMap, runtime);
         SourceFunction sourceFunction = functionDefinition.getSourceFunction();
         sourceFunction = new SourceFunction(location, sourceFunction.getSourceType());
         functionDefinition.setSourceFunction(sourceFunction);

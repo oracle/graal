@@ -231,7 +231,7 @@ public final class Sulong extends LLVMLanguage {
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             return LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
         } else {
-            return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame);
+            return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context);
         }
     }
 }

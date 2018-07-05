@@ -137,6 +137,9 @@ final class LLScanner {
             // function body may contain only statements, comments and empty lines between blocks
             parseInstruction(line);
 
+        } else if (line.startsWith("@")) {
+            parseGlobal(line);
+
         } else if (line.startsWith("!0")) {
             // this is the first entry of the metadata list in the *.ll file
             // after it, no more functions will be defined, so we stop scanning here
@@ -158,7 +161,7 @@ final class LLScanner {
             String functionName = matcher.group("functionName");
             functionName = LLVMIdentifier.toGlobalIdentifier(functionName);
             function = new LLSourceMap.Function(functionName, currentLine);
-            map.register(functionName, function);
+            map.registerFunction(functionName, function);
 
         } else {
             throw new AssertionError(getErrorMessage("function", line));
@@ -194,6 +197,19 @@ final class LLScanner {
         assert function != null;
         function.setEndLine(currentLine);
         function = null;
+    }
+
+    private static final Pattern GLOBAL_NAME_REGEX = Pattern.compile("@\"?(?<globalName>\\S+)\"? =.*");
+
+    private void parseGlobal(String line) {
+        final Matcher matcher = GLOBAL_NAME_REGEX.matcher(line);
+        if (matcher.matches()) {
+            String globalName = matcher.group("globalName");
+            globalName = LLVMIdentifier.toGlobalIdentifier(globalName);
+            map.registerGlobal(globalName);
+        } else {
+            throw new AssertionError(getErrorMessage("global", line));
+        }
     }
 
     private String getErrorMessage(String parsing, String line) {
