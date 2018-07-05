@@ -29,6 +29,8 @@ install:
   - echo CPPFLAGS=-g >> $SULONG_ENV
   - cd sulong
   - mx sforceimports
+# the style gate needs the full commit history for checking copyright years
+  - test "$GATE_TAGS" != "style" || git fetch --unshallow
 script:
   - cd ../llvmDir
   - ln -s /usr/bin/clang-$LLVM_VER clang
