@@ -64,7 +64,7 @@ final class SourceLocation {
             if (rootNode.getName() == null) {
                 return rootNode.toString();
             } else {
-                return  rootNode.getName();
+                return rootNode.getName();
             }
         } else {
             return "<Unknown>";

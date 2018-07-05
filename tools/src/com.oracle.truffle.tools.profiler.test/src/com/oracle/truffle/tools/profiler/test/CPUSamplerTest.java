@@ -251,10 +251,12 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             RootCallTarget innerTarget = Truffle.getRuntime().createCallTarget(
                             new SRootNode(this, new RootNode(root,
-                                            new DummyNode(new StatementNode(statement, new DummyNode(new StatementNode(statement, new DummyNode(new StartSamplerNode(sampler, startSamplerChild)))))))));
+                                            new DummyNode(new StatementNode(statement,
+                                                            new DummyNode(new StatementNode(statement, new DummyNode(new StartSamplerNode(sampler, startSamplerChild)))))))));
             DirectCallNode directCallNode = Truffle.getRuntime().createDirectCallNode(innerTarget);
             return Truffle.getRuntime().createCallTarget(
-                            new SRootNode(this, new RootNode(root, new DummyNode(new StatementNode(statement, new DummyNode(new StatementNode(statement, new DummyNode(new CallNode(directCallNode)))))))));
+                            new SRootNode(this,
+                                            new RootNode(root, new DummyNode(new StatementNode(statement, new DummyNode(new StatementNode(statement, new DummyNode(new CallNode(directCallNode)))))))));
 
         }
 
@@ -340,7 +342,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         static class RootNode extends SamplerTestInstrumentableNode {
 
             @Child SamplerTestNode node;
-
 
             RootNode(RootNode other) {
                 node = other.node;
