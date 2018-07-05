@@ -978,9 +978,10 @@ public final class TruffleLogger {
                 final int currentLevel = DEFAULT_VALUE;
                 return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
             }
-            if (levelsByContext.size() == 1) {
-                return true;
-            }
+            // GR-10762 does not work if contexts are GCed
+            // if (levelsByContext.size() == 1) {
+            // return true;
+            // }
             final int currentLevel = Math.min(computeLevel(loggerName, current), DEFAULT_VALUE);
             return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
         }
