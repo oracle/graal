@@ -70,6 +70,9 @@ public interface LLVMManagedPointer extends LLVMPointer {
     LLVMManagedPointer increment(long offset);
 
     @Override
+    LLVMManagedPointer and(long value);
+
+    @Override
     LLVMManagedPointer export(LLVMInteropType newType);
 
     /**

@@ -124,6 +124,12 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
     }
 
     @Override
+    public LLVMPointerImpl and(long value) {
+        // reset type, since the result points to something else now
+        return new LLVMPointerImpl(object, offset & value, null);
+    }
+
+    @Override
     public LLVMPointerImpl export(LLVMInteropType newType) {
         return new LLVMPointerImpl(object, offset, newType);
     }

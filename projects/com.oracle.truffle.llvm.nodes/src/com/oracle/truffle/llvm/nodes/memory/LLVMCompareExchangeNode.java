@@ -54,6 +54,7 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI32;
@@ -65,6 +66,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "address"), @NodeChild(type = LLVMExpressionNode.class, value = "comparisonValue"),
                 @NodeChild(type = LLVMExpressionNode.class, value = "newValue")})
@@ -72,7 +74,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
     @Child private LLVMCMPXCHInternalNode cmpxch;
 
-    public LLVMCompareExchangeNode(int resultSize, long secondValueOffset) {
+    public LLVMCompareExchangeNode(LLVMContext context, AggregateType returnType) {
+        int resultSize = context.getByteSize(returnType);
+        long secondValueOffset = context.getIndexOffset(1, returnType);
         this.cmpxch = LLVMCMPXCHInternalNodeGen.create(resultSize, secondValueOffset);
     }
 
@@ -146,11 +150,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMNativePointer address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue.asNative(), newValue.asNative());
-            LLVMNativePointer allocation = allocateResult(frame, memory);
-            memory.putI64(allocation, compareAndSwapI64.getValue());
-            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI64.isSwap());
-            return allocation;
+            return doOp(frame, address, comparisonValue.asNative(), newValue.asNative(), memory);
         }
 
         @Specialization

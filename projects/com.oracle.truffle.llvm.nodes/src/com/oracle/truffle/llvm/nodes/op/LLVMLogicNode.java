@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -45,13 +46,18 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAndNode extends LLVMLogicNode {
         @Specialization
-        protected short and(short left, short right) {
-            return (short) (left & right);
+        protected boolean and(boolean left, boolean right) {
+            return left & right;
         }
 
         @Specialization
-        protected boolean and(boolean left, boolean right) {
-            return left & right;
+        protected byte and(byte left, byte right) {
+            return (byte) (left & right);
+        }
+
+        @Specialization
+        protected short and(short left, short right) {
+            return (short) (left & right);
         }
 
         @Specialization
@@ -65,8 +71,8 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte and(byte left, byte right) {
-            return (byte) (left & right);
+        protected LLVMPointer and(LLVMPointer left, long right) {
+            return left.and(right);
         }
 
         @Specialization

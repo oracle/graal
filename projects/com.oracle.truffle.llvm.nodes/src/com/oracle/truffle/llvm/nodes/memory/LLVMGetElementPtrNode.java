@@ -61,6 +61,13 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
     }
 
     @Specialization
+    protected Object longIncrement(Object addr, LLVMNativePointer val,
+                    @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
+        long incr = getTypeWidth() * val.asNative();
+        return incrementNode.executeWithTarget(addr, incr);
+    }
+
+    @Specialization
     protected Object intIncrement(Object addr, int val,
                     @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         long incr = getTypeWidth() * val;
