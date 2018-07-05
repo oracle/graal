@@ -63,8 +63,9 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
-    protected Object doManaged(LLVMManagedPointer from) {
-        return from;
+    protected long doManaged(LLVMManagedPointer from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
+        return toAddress.executeWithTarget(from).asNative();
     }
 
     @Specialization
