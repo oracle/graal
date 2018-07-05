@@ -439,6 +439,9 @@ public final class LLVMIVarBit {
     @Override
     @TruffleBoundary
     public String toString() {
+        if (arr == null) {
+            return Integer.toString(0);
+        }
         return String.format("i%d %s", getBitSize(), asBigInteger().toString());
     }
 
