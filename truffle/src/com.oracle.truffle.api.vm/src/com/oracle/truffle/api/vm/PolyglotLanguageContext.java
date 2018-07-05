@@ -84,7 +84,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     volatile boolean creating;
     volatile boolean initialized;
     volatile boolean finalized;
-    @CompilationFinal private volatile Object guestBindings;
     @CompilationFinal private volatile Value hostBindings;
     @CompilationFinal private volatile Lazy lazy;
 
@@ -137,6 +136,21 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     Value getHostBindings() {
         assert initialized;
+        if (this.hostBindings == null) {
+            synchronized (this) {
+                if (this.hostBindings == null) {
+                    Object prev = context.enterIfNeeded();
+                    try {
+                        Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
+                        this.hostBindings = this.toHostValue(new PolyglotLanguageBindings(scopes));
+                    } catch (Throwable t) {
+                        throw PolyglotImpl.wrapGuestException(this, t);
+                    } finally {
+                        context.leaveIfNeeded(prev);
+                    }
+                }
+            }
+        }
         return this.hostBindings;
     }
 
@@ -317,10 +331,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             }
                             LANGUAGE.initializeThread(env, threadInfo.thread);
                         }
-
-                        Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
-                        this.guestBindings = new PolyglotLanguageBindings(scopes);
-                        this.hostBindings = this.toHostValue(guestBindings);
 
                         wasInitialized = true;
                     } catch (Throwable e) {
