@@ -539,8 +539,6 @@ def svm_gate_body(args, tasks):
 def native_junit(native_image, unittest_args, build_args=None, run_args=None):
     build_args = build_args or []
     run_args = run_args or []
-    print('build_args', build_args)
-    print('run_args', run_args)
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
@@ -554,8 +552,7 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
         unittest_image = native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         mx.run([unittest_image] + run_args)
     finally:
-        #remove_tree(junit_tmp_dir)
-        print('junit_tmp_dir', junit_tmp_dir)
+        remove_tree(junit_tmp_dir)
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
