@@ -84,7 +84,7 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
             CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
             assert cc.getArgumentCount() == 1;
             Register arg0 = ((RegisterValue) cc.getArgument(0)).getRegister();
-            masm.movx(arg0, thread);
+            masm.mov(64, arg0, thread);
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 masm.stp(64, fp, lr, AArch64Address.createPreIndexedImmediateAddress(sp, -2));
                 AArch64Call.directCall(crb, masm, enableStackReservedZone, sc.getRegister(), null);
