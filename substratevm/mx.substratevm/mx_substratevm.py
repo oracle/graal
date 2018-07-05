@@ -41,7 +41,6 @@ from shutil import copy2
 # from time import strftime, gmtime
 import time
 # } GR-8964
-import functools
 import collections
 import itertools
 import glob
@@ -453,7 +452,6 @@ GraalTags = Tags([
     'maven',
     'js',
     'ruby',
-    'sulong',
     'python',
 ])
 
@@ -534,8 +532,6 @@ def svm_gate_body(args, tasks):
                 python = build_python(native_image, debug_gr_8964=debug_gr_8964)
                 test_python_smoke([python])
 
-        gate_sulong(native_image, tasks)
-
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
             maven_plugin_install([])
@@ -560,23 +556,6 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
     finally:
         #remove_tree(junit_tmp_dir)
         print('junit_tmp_dir', junit_tmp_dir)
-
-def gate_sulong(native_image, tasks):
-
-    # Debug GR-8964 on Darwin gates
-    debug_gr_8964 = (mx.get_os() == 'darwin')
-
-    with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
-        if t:
-            sulong = truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964)
-            lli = native_image(['--language:llvm'])
-            sulong.extensions.testLLVMImage(lli, unittestArgs=['--enable-timing'])
-
-    with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
-        if t:
-            sulong = truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964)
-            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--language:llvm']))
-
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
