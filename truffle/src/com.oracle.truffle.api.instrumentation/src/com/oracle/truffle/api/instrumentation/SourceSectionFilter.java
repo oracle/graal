@@ -107,7 +107,7 @@ public final class SourceSectionFilter {
     }
 
     // TODO: Javadoc
-    public boolean allows(Node node) {
+    public boolean includes(Node node) {
         if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
             return false;
         }

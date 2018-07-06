@@ -296,7 +296,7 @@ final class ShadowStack {
             // We exclude the node itself as it will be pushed on the stack by the StackPushPopNode
             Node current = node.getParent();
             while (current != null) {
-                if (sourceSectionFilter.allows(current)) {
+                if (sourceSectionFilter.includes(current)) {
                     sourceLocations.add(new SourceLocation(instrumenter, current));
                 }
                 current = current.getParent();
