@@ -57,10 +57,12 @@ final class ShadowStack {
     private final ConcurrentHashMap<Thread, ThreadLocalStack> stacks = new ConcurrentHashMap<>();
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
+    private final Instrumenter instrumenter;
 
-    ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter) {
+    ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter) {
         this.stackLimit = stackLimit;
         this.sourceSectionFilter = sourceSectionFilter;
+        this.instrumenter = instrumenter;
     }
 
     ThreadLocalStack getStack(Thread thread) {
@@ -173,7 +175,7 @@ final class ShadowStack {
             Thread currentThread = Thread.currentThread();
             ThreadLocalStack stack = profilerStack.stacks.get(currentThread);
             if (stack == null) {
-                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, profilerStack.sourceSectionFilter, location.getInstrumentedNode());
+                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, profilerStack.sourceSectionFilter, profilerStack.instrumenter, location.getInstrumentedNode());
                 ThreadLocalStack prevStack = profilerStack.stacks.putIfAbsent(currentThread, stack);
                 if (prevStack != null) {
                     stack = prevStack;
@@ -206,9 +208,9 @@ final class ShadowStack {
 
         private int stackIndex;
 
-        ThreadLocalStack(Thread thread, int stackLimit, SourceSectionFilter sourceSectionFilter, Node instrumentedNode) {
+        ThreadLocalStack(Thread thread, int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter, Node instrumentedNode) {
             this.thread = thread;
-            ArrayList<SourceLocation> init = getInitialStack(sourceSectionFilter, instrumentedNode);
+            ArrayList<SourceLocation> init = getInitialStack(sourceSectionFilter, instrumentedNode, instrumenter);
             this.stack = init.toArray(new SourceLocation[stackLimit]);
             this.stackIndex = init.size() - 1;
             this.compiledStack = new boolean[stackLimit];
@@ -273,13 +275,13 @@ final class ShadowStack {
             return stackOverflowed;
         }
 
-        private static ArrayList<SourceLocation> getInitialStack(SourceSectionFilter sourceSectionFilter, Node instrumentedNode) {
+        private static ArrayList<SourceLocation> getInitialStack(SourceSectionFilter sourceSectionFilter, Node instrumentedNode, Instrumenter instrumenter) {
             ArrayList<SourceLocation> sourceLocations = new ArrayList<>();
-            reconstructStack(sourceLocations, instrumentedNode, sourceSectionFilter);
+            reconstructStack(sourceLocations, instrumentedNode, sourceSectionFilter, instrumenter);
             Truffle.getRuntime().iterateFrames(frame -> {
                 Node node = frame.getCallNode();
                 if (node != null) {
-                    reconstructStack(sourceLocations, node, sourceSectionFilter);
+                    reconstructStack(sourceLocations, node, sourceSectionFilter, instrumenter);
                 }
                 return null;
             });
@@ -287,7 +289,7 @@ final class ShadowStack {
             return sourceLocations;
         }
 
-        private static void reconstructStack(ArrayList<SourceLocation> sourceLocations, Node node, SourceSectionFilter sourceSectionFilter) {
+        private static void reconstructStack(ArrayList<SourceLocation> sourceLocations, Node node, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter) {
             if (node == null || sourceSectionFilter == null) {
                 return;
             }
@@ -295,7 +297,7 @@ final class ShadowStack {
             Node current = node.getParent();
             while (current != null) {
                 if (sourceSectionFilter.allows(current)) {
-                    sourceLocations.add(new SourceLocation(current));
+                    sourceLocations.add(new SourceLocation(instrumenter, current));
                 }
                 current = current.getParent();
             }
