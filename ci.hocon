@@ -144,7 +144,7 @@ vm-downstream-test: ${requireGCC} {
     VM_REPO: "https://github.com/graalvm/graal.git",
     VM_SUITEDIR: vm,
   },
-  run: [[mx, testdownstream, -R, "${VM_REPO}", --suitedir, "${VM_SUITEDIR}", -C, "--disable-polyglot --disable-libpolyglot gate --tags build,sulong"]]
+  run: [[mx, testdownstream, -R, "${VM_REPO}", --suitedir, "${VM_SUITEDIR}", -C, "--disable-polyglot --disable-libpolyglot gate -B=--force-deprecation-as-warning --tags build,sulong"]]
 }
 
 gate-asm-parser: ${gateCommon} ${linux-amd64} {

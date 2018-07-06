@@ -188,7 +188,7 @@ matrix:
           - llvm-3.8
           - libc++1
           - libc++-dev
-  - env: LLVM_VER=3.8 DOWNSTREAM_REPO='https://github.com/graalvm/graal.git' DOWNSTREAM_SUITE='vm' DYNAMIC_IMPORTS='sulong,/substratevm' NATIVE_IMAGE_TESTING='True' DOWNSTREAM_COMMAND='--disable-polyglot --disable-libpolyglot gate --tags build,sulong'
+  - env: LLVM_VER=3.8 DOWNSTREAM_REPO='https://github.com/graalvm/graal.git' DOWNSTREAM_SUITE='vm' DYNAMIC_IMPORTS='sulong,/substratevm' NATIVE_IMAGE_TESTING='True' DOWNSTREAM_COMMAND='--disable-polyglot --disable-libpolyglot gate -B=--force-deprecation-as-warning --tags build,sulong'
     addons:
       apt:
         packages:
