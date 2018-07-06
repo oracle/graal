@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -110,16 +111,27 @@ public final class SourceSectionFilter {
         if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
             return false;
         }
-        Set<Class<?>> tags = new HashSet<>();
-        for (int i = 0; i < StandardTags.ALL_TAGS.length; i++) {
-            tags.add(StandardTags.ALL_TAGS[i]);
-        }
+        Set<Class<?>> tags = getProvidedTags(node);
         for (EventFilterExpression exp : expressions) {
             if (!exp.isIncluded(tags, node, node.getSourceSection())) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static Set<Class<?>> getProvidedTags(Node node) {
+        Objects.requireNonNull(node);
+        RootNode root = node.getRootNode();
+        if (root == null) {
+            return Collections.emptySet();
+        }
+        Object sourceVM = InstrumentationHandler.AccessorInstrumentHandler.nodesAccess().getSourceVM(root);
+        if (sourceVM == null) {
+            return Collections.emptySet();
+        }
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentationHandler.AccessorInstrumentHandler.engineAccess().getInstrumentationHandler(sourceVM);
+        return handler.getProvidedTags(node);
     }
 
     /**
