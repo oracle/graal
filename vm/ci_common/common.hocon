@@ -216,6 +216,7 @@ builds += [
     name: gate-vm-native-truffleruby-tip
   },
   ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${vm_linux} {
+    targets: [daily]
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [export, "NATIVE_IMAGE_TESTING=True"]
