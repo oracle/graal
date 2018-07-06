@@ -24,15 +24,14 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.util.Objects;
+import java.util.Set;
+
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Collections;
-
-import java.util.Objects;
-import java.util.Set;
 
 /**
  * Source information of a particular source location in the profiler.

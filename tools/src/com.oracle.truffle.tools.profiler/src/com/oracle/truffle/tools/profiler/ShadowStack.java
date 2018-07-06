@@ -57,12 +57,12 @@ final class ShadowStack {
     private final ConcurrentHashMap<Thread, ThreadLocalStack> stacks = new ConcurrentHashMap<>();
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
-    private final Instrumenter instrumenter;
+    private final Instrumenter initInstrumenter;
 
     ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter) {
         this.stackLimit = stackLimit;
         this.sourceSectionFilter = sourceSectionFilter;
-        this.instrumenter = instrumenter;
+        this.initInstrumenter = instrumenter;
     }
 
     ThreadLocalStack getStack(Thread thread) {
@@ -175,7 +175,7 @@ final class ShadowStack {
             Thread currentThread = Thread.currentThread();
             ThreadLocalStack stack = profilerStack.stacks.get(currentThread);
             if (stack == null) {
-                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, profilerStack.sourceSectionFilter, profilerStack.instrumenter, location.getInstrumentedNode());
+                stack = new ThreadLocalStack(currentThread, profilerStack.stackLimit, profilerStack.sourceSectionFilter, profilerStack.initInstrumenter, location.getInstrumentedNode());
                 ThreadLocalStack prevStack = profilerStack.stacks.putIfAbsent(currentThread, stack);
                 if (prevStack != null) {
                     stack = prevStack;
