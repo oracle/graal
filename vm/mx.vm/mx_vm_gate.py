@@ -91,7 +91,7 @@ def graalvm_svm():
     native_image_cmd = join(mx_vm.graalvm_output(), 'bin', 'native-image')
     svm = mx.suite('substratevm')
     if not exists(native_image_cmd) or not svm:
-        mx.abort("Image building not accessible in GraalVM {}. Build GraalVM with native-image support".format(graalvm_dist_name()))
+        mx.abort("Image building not accessible in GraalVM {}. Build GraalVM with native-image support".format(mx_vm.graalvm_dist_name()))
     @contextmanager
     def native_image_context(common_args=None, hosted_assertions=True):
         with svm.extensions.native_image_context(common_args, hosted_assertions, native_image_cmd=native_image_cmd) as native_image:
