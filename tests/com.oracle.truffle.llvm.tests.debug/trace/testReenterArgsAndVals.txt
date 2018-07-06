@@ -1,39 +1,48 @@
-BREAK "33" CONTINUE "fnc"
-    OPEN_SCOPE
-        MEMBER int "int" "n" 11
-        MEMBER int "int" "m" 20
 
-BREAK "38" STEP_OVER "fnc"
+BREAK "33" "CONTINUE" "fnc"
     OPEN_SCOPE
-        MEMBER int "int" "n" 9
-        MEMBER int "int" "m" 10
-        MEMBER int "int" "x" 121
+        MEMBER "int" "int" "m" "20"
+        MEMBER "int" "int" "n" "11"
 
-STOP "39" UNWIND "fnc"
-    OPEN_SCOPE
-        MEMBER int "int" "n" 9
-        MEMBER int "int" "m" 10
-        MEMBER int "int" "x" 121
 
-STOP "44" CONTINUE "main"
+BREAK "38" "STEP_OVER" "fnc"
     OPEN_SCOPE
-        MEMBER int "int" "argc" 0
-        MEMBER any "char**" "argv"
-        MEMBER int "int" "i" 11
+        MEMBER "int" "int" "x" "121"
+        MEMBER "int" "int" "m" "10"
+        MEMBER "int" "int" "n" "9"
 
-BREAK "33" CONTINUE "fnc"
-    OPEN_SCOPE
-        MEMBER int "int" "n" 11
-        MEMBER int "int" "m" 20
 
-BREAK "38" STEP_OUT "fnc"
+STOP "39" "UNWIND" "fnc"
     OPEN_SCOPE
-        MEMBER int "int" "n" 9
-        MEMBER int "int" "m" 10
-        MEMBER int "int" "x" 121
+        MEMBER "int" "int" "x" "121"
+        MEMBER "int" "int" "m" "10"
+        MEMBER "int" "int" "n" "9"
 
-STOP "44" CONTINUE "main"
+
+STOP "44" "CONTINUE" "main"
     OPEN_SCOPE
-        MEMBER int "int" "argc" 0
-        MEMBER any "char**" "argv"
-        MEMBER int "int" "i" 11
+        MEMBER "int" "int" "argc" "0"
+        MEMBER "int" "int" "i" "11"
+        MEMBER "any" "char**" "argv"
+
+
+BREAK "33" "CONTINUE" "fnc"
+    OPEN_SCOPE
+        MEMBER "int" "int" "m" "20"
+        MEMBER "int" "int" "n" "11"
+
+
+BREAK "38" "STEP_OUT" "fnc"
+    OPEN_SCOPE
+        MEMBER "int" "int" "x" "121"
+        MEMBER "int" "int" "m" "10"
+        MEMBER "int" "int" "n" "9"
+
+
+STOP "44" "CONTINUE" "main"
+    OPEN_SCOPE
+        MEMBER "int" "int" "argc" "0"
+        MEMBER "int" "int" "i" "11"
+        MEMBER "any" "char**" "argv"
+
+

@@ -1,38 +1,45 @@
-BREAK 20 STEP_OVER "@test"
-    OPEN_SCOPE partial
-        MEMBER structured "< 4 x i32 >" "%3"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "2"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "6"
+
+BREAK "20" "STEP_OVER" "@test"
+    OPEN_SCOPE "partial"
+        MEMBER "structured" "< 4 x i32 >" "%3"
+            MEMBER "int" "i32" "0" "0"
+            MEMBER "int" "i32" "1" "2"
+            MEMBER "int" "i32" "2" "4"
+            MEMBER "int" "i32" "3" "6"
         END_MEMBERS
 
-STOP 21 CONTINUE "@test"
-    OPEN_SCOPE partial
 
-BREAK 24 CONTINUE "@test"
-    OPEN_SCOPE partial
-        MEMBER structured "< 4 x i32 >" "%6"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "1"
-            MEMBER int "i32" "2" "4"
-            MEMBER int "i32" "3" "9"
+STOP "21" "CONTINUE" "@test"
+    OPEN_SCOPE "partial"
+
+
+BREAK "24" "CONTINUE" "@test"
+    OPEN_SCOPE "partial"
+        MEMBER "structured" "< 4 x i32 >" "%6"
+            MEMBER "int" "i32" "0" "0"
+            MEMBER "int" "i32" "1" "1"
+            MEMBER "int" "i32" "2" "4"
+            MEMBER "int" "i32" "3" "9"
         END_MEMBERS
 
-BREAK 28 CONTINUE "@test"
-    OPEN_SCOPE partial
-        MEMBER structured "< 4 x i32 >" "%9"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "-1"
-            MEMBER int "i32" "2" "0"
-            MEMBER int "i32" "3" "3"
+
+BREAK "28" "CONTINUE" "@test"
+    OPEN_SCOPE "partial"
+        MEMBER "structured" "< 4 x i32 >" "%9"
+            MEMBER "int" "i32" "0" "0"
+            MEMBER "int" "i32" "1" "-1"
+            MEMBER "int" "i32" "2" "0"
+            MEMBER "int" "i32" "3" "3"
         END_MEMBERS
 
-BREAK 38 CONTINUE "@test"
-    OPEN_SCOPE partial
-        MEMBER structured "< 4 x i32 >" "%18"
-            MEMBER int "i32" "0" "0"
-            MEMBER int "i32" "1" "4"
-            MEMBER int "i32" "2" "12"
-            MEMBER int "i32" "3" "24"
+
+BREAK "38" "CONTINUE" "@test"
+    OPEN_SCOPE "partial"
+        MEMBER "structured" "< 4 x i32 >" "%18"
+            MEMBER "int" "i32" "0" "0"
+            MEMBER "int" "i32" "1" "4"
+            MEMBER "int" "i32" "2" "12"
+            MEMBER "int" "i32" "3" "24"
         END_MEMBERS
+
+

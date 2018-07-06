@@ -1,90 +1,62 @@
+
 BREAK "79" "CONTINUE" "start"
-
-OPEN_SCOPE
-
-MEMBER int "int" "x" "0"
-
-OPEN_SCOPE "<static>"
-
-MEMBER int "int" "globalX" "512"
-MEMBER int "int" "lastId" "-1"
-
+    OPEN_SCOPE
+        MEMBER "int" "int" "x" "0"
+    OPEN_SCOPE "<static>"
+        MEMBER "int" "int" "globalX" "512"
+        MEMBER "int" "int" "lastId" "-1"
 
 
 BREAK "74" "CONTINUE" "getX"
-
-OPEN_SCOPE
-
-MEMBER int "int" "x" "512"
-
-OPEN_SCOPE "<static>"
-
-MEMBER int "int" "globalX" "513"
-MEMBER int "int" "lastId" "-1"
-
+    OPEN_SCOPE
+        MEMBER "int" "int" "x" "512"
+    OPEN_SCOPE "<static>"
+        MEMBER "int" "int" "globalX" "513"
+        MEMBER "int" "int" "lastId" "-1"
 
 
 BREAK "40" "CONTINUE" "getNextId"
-
-OPEN_SCOPE
-
-MEMBER int "int" "result" "72"
-
-OPEN_SCOPE "namespace MyNamespace"
-
-MEMBER int "int" "nextID" "73"
-
-OPEN_SCOPE "<static>"
-
-MEMBER int "int" "globalX" "513"
-MEMBER int "int" "lastId" "-1"
-
+    OPEN_SCOPE
+        MEMBER "int" "int" "result" "72"
+    OPEN_SCOPE "namespace MyNamespace"
+        MEMBER "int" "int" "nextID" "73"
+    OPEN_SCOPE "<static>"
+        MEMBER "int" "int" "globalX" "513"
+        MEMBER "int" "int" "lastId" "-1"
 
 
 BREAK "61" "CONTINUE" "MyClass"
-
-OPEN_SCOPE
-
-MEMBER structured "MyClass*" "this"
-    MEMBER int "int" "id" "72"
-    MEMBER structured "" "<static>"
-        MEMBER int "int" "lastId" "72"
-    END_MEMBERS
-END_MEMBERS
-
-OPEN_SCOPE "<static>"
-
-MEMBER int "int" "globalX" "513"
-MEMBER int "int" "lastId" "72"
-
+    OPEN_SCOPE
+        MEMBER "structured" "MyClass*" "this"
+            MEMBER "structured" "" "<static>"
+                MEMBER "int" "int" "lastId" "72"
+            END_MEMBERS
+            MEMBER "int" "int" "id" "72"
+        END_MEMBERS
+    OPEN_SCOPE "<static>"
+        MEMBER "int" "int" "globalX" "513"
+        MEMBER "int" "int" "lastId" "72"
 
 
 BREAK "85" "CONTINUE" "start"
-
-OPEN_SCOPE
-
-MEMBER structured "MyClass" "a"
-    MEMBER int "int" "id" "72"
-    MEMBER structured "" "<static>"
-        MEMBER int "int" "lastId" "72"
-    END_MEMBERS
-END_MEMBERS
-MEMBER int "int" "x" "72"
-
-OPEN_SCOPE "<static>"
-
-MEMBER int "int" "globalX" "513"
-MEMBER int "int" "lastId" "72"
-
+    OPEN_SCOPE
+        MEMBER "structured" "MyClass" "a"
+            MEMBER "structured" "" "<static>"
+                MEMBER "int" "int" "lastId" "72"
+            END_MEMBERS
+            MEMBER "int" "int" "id" "72"
+        END_MEMBERS
+        MEMBER "int" "int" "x" "72"
+    OPEN_SCOPE "<static>"
+        MEMBER "int" "int" "globalX" "513"
+        MEMBER "int" "int" "lastId" "72"
 
 
 BREAK "89" "CONTINUE" "start"
+    OPEN_SCOPE
+        MEMBER "int" "int" "x" "512"
+    OPEN_SCOPE "<static>"
+        MEMBER "int" "int" "globalX" "513"
+        MEMBER "int" "int" "lastId" "72"
 
-OPEN_SCOPE
 
-MEMBER int "int" "x" "512"
-
-OPEN_SCOPE "<static>"
-
-MEMBER int "int" "globalX" "513"
-MEMBER int "int" "lastId" "72"
