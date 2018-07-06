@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -81,6 +82,10 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMNativePointer(executeGeneric(frame));
+    }
+
+    public LLVMManagedPointer executeLLVMManagedPointer(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMManagedPointer(executeGeneric(frame));
     }
 
     public TruffleObject executeTruffleObject(VirtualFrame frame) throws UnexpectedResultException {

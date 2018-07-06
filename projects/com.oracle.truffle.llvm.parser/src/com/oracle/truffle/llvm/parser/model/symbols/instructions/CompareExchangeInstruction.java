@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
 
 public final class CompareExchangeInstruction extends ValueInstruction {
 
@@ -49,7 +49,8 @@ public final class CompareExchangeInstruction extends ValueInstruction {
     private final boolean isWeak;
     private final boolean isVolatile;
 
-    private CompareExchangeInstruction(Type type, AtomicOrdering successOrdering, AtomicOrdering failureOrdering, SynchronizationScope synchronizationScope, boolean isWeak, boolean isVolatile) {
+    private CompareExchangeInstruction(AggregateType type, AtomicOrdering successOrdering, AtomicOrdering failureOrdering, SynchronizationScope synchronizationScope, boolean isWeak,
+                    boolean isVolatile) {
         super(type);
         this.successOrdering = successOrdering;
         this.failureOrdering = failureOrdering;
@@ -68,6 +69,11 @@ public final class CompareExchangeInstruction extends ValueInstruction {
 
     public SymbolImpl getReplace() {
         return replace;
+    }
+
+    @Override
+    public AggregateType getType() {
+        return (AggregateType) super.getType();
     }
 
     public AtomicOrdering getSuccessOrdering() {
@@ -108,8 +114,8 @@ public final class CompareExchangeInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    public static CompareExchangeInstruction fromSymbols(SymbolTable symbols, Type type, int ptr, int cmp, int replace, boolean isVolatile, long successOrderingId, long synchronizationScopeId,
-                    long failureOrderingId, boolean isWeak) {
+    public static CompareExchangeInstruction fromSymbols(SymbolTable symbols, AggregateType type, int ptr, int cmp, int replace, boolean isVolatile, long successOrderingId,
+                    long synchronizationScopeId, long failureOrderingId, boolean isWeak) {
         final AtomicOrdering successOrdering = AtomicOrdering.decode(successOrderingId);
         final SynchronizationScope synchronizationScope = SynchronizationScope.decode(synchronizationScopeId);
         final AtomicOrdering failureOrdering = AtomicOrdering.getOrStrongestFailureOrdering(failureOrderingId, successOrdering);

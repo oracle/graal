@@ -40,6 +40,10 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -53,13 +57,18 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAddNode extends LLVMArithmeticNode {
         @Specialization
-        protected short add(short left, short right) {
-            return (short) (left + right);
+        protected boolean add(boolean left, boolean right) {
+            return left ^ right;
         }
 
         @Specialization
-        protected boolean add(boolean left, boolean right) {
-            return left ^ right;
+        protected byte add(byte left, byte right) {
+            return (byte) (left + right);
+        }
+
+        @Specialization
+        protected short add(short left, short right) {
+            return (short) (left + right);
         }
 
         @Specialization
@@ -73,8 +82,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte add(byte left, byte right) {
-            return (byte) (left + right);
+        protected LLVMPointer add(LLVMPointer left, long right) {
+            return left.increment(right);
+        }
+
+        @Specialization
+        protected LLVMPointer add(long left, LLVMPointer right) {
+            return right.increment(left);
         }
 
         @Specialization
@@ -144,15 +158,19 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMMulNode extends LLVMArithmeticNode {
+        @Specialization
+        protected boolean mul(boolean left, boolean right) {
+            return left & right;
+        }
+
+        @Specialization
+        protected byte mul(byte left, byte right) {
+            return (byte) (left * right);
+        }
 
         @Specialization
         protected short mul(short left, short right) {
             return (short) (left * right);
-        }
-
-        @Specialization
-        protected boolean mul(boolean left, boolean right) {
-            return left & right;
         }
 
         @Specialization
@@ -163,11 +181,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long mul(long left, long right) {
             return left * right;
-        }
-
-        @Specialization
-        protected byte mul(byte left, byte right) {
-            return (byte) (left * right);
         }
 
         @Specialization
@@ -237,15 +250,19 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMSubNode extends LLVMArithmeticNode {
+        @Specialization
+        protected boolean sub(boolean left, boolean right) {
+            return left ^ right;
+        }
+
+        @Specialization
+        protected byte sub(byte left, byte right) {
+            return (byte) (left - right);
+        }
 
         @Specialization
         protected short sub(short left, short right) {
             return (short) (left - right);
-        }
-
-        @Specialization
-        protected boolean sub(boolean left, boolean right) {
-            return left ^ right;
         }
 
         @Specialization
@@ -258,9 +275,45 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return left - right;
         }
 
+        @Specialization(guards = "left.getObject() == right.getObject()")
+        protected long sub(LLVMManagedPointer left, LLVMManagedPointer right) {
+            return sub(left.getOffset(), right.getOffset());
+        }
+
+        @Specialization(guards = "left.getObject() != right.getObject()")
+        protected long sub(LLVMManagedPointer left, LLVMManagedPointer right,
+                        @Cached("createToComparableValue()") ToComparableValue toComparableValueLeft,
+                        @Cached("createToComparableValue()") ToComparableValue toComparableValueRight) {
+            return sub(toComparableValueLeft.execute(left), toComparableValueRight.execute(right));
+        }
+
         @Specialization
-        protected byte sub(byte left, byte right) {
-            return (byte) (left - right);
+        protected long sub(LLVMManagedPointer left, LLVMNativePointer right,
+                        @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
+            return sub(left, right.asNative(), toComparableValue);
+        }
+
+        @Specialization
+        protected long sub(LLVMNativePointer left, LLVMManagedPointer right,
+                        @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
+            return sub(left.asNative(), right, toComparableValue);
+        }
+
+        @Specialization
+        protected long sub(LLVMNativePointer left, LLVMNativePointer right) {
+            return sub(left.asNative(), right.asNative());
+        }
+
+        @Specialization
+        protected long sub(long left, LLVMPointer right,
+                        @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
+            return sub(left, toComparableValue.execute(right));
+        }
+
+        @Specialization
+        protected long sub(LLVMPointer left, long right,
+                        @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
+            return toComparableValue.execute(left) - right;
         }
 
         @Specialization
@@ -327,15 +380,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         protected LLVMI8Vector sub(LLVMI8Vector left, LLVMI8Vector right) {
             return left.sub(right);
         }
+
+        protected static ToComparableValue createToComparableValue() {
+            return ToComparableValueNodeGen.create();
+        }
     }
 
     public abstract static class LLVMDivNode extends LLVMArithmeticNode {
-
-        @Specialization
-        protected short div(short left, short right) {
-            return (short) (left / right);
-        }
-
         @Specialization
         protected boolean div(boolean left, boolean right) {
             if (!right) {
@@ -346,6 +397,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected byte div(byte left, byte right) {
+            return (byte) (left / right);
+        }
+
+        @Specialization
+        protected short div(short left, short right) {
+            return (short) (left / right);
+        }
+
+        @Specialization
         protected int div(int left, int right) {
             return left / right;
         }
@@ -353,11 +414,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long div(long left, long right) {
             return left / right;
-        }
-
-        @Specialization
-        protected byte div(byte left, byte right) {
-            return (byte) (left / right);
         }
 
         @Specialization
@@ -429,17 +485,22 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMUDivNode extends LLVMArithmeticNode {
 
         @Specialization
-        protected short udiv(short left, short right) {
-            return (short) (Short.toUnsignedInt(left) / Short.toUnsignedInt(right));
-        }
-
-        @Specialization
         protected boolean udiv(boolean left, boolean right) {
             if (!right) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArithmeticException("Division by zero!");
             }
             return left;
+        }
+
+        @Specialization
+        protected byte udiv(byte left, byte right) {
+            return (byte) (Byte.toUnsignedInt(left) / Byte.toUnsignedInt(right));
+        }
+
+        @Specialization
+        protected short udiv(short left, short right) {
+            return (short) (Short.toUnsignedInt(left) / Short.toUnsignedInt(right));
         }
 
         @Specialization
@@ -450,11 +511,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long udiv(long left, long right) {
             return Long.divideUnsigned(left, right);
-        }
-
-        @Specialization
-        protected byte udiv(byte left, byte right) {
-            return (byte) (Byte.toUnsignedInt(left) / Byte.toUnsignedInt(right));
         }
 
         @Specialization
@@ -491,12 +547,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMRemNode extends LLVMArithmeticNode {
-
-        @Specialization
-        protected short rem(short left, short right) {
-            return (short) (left % right);
-        }
-
         @Specialization
         protected boolean rem(@SuppressWarnings("unused") boolean left, boolean right) {
             if (!right) {
@@ -507,6 +557,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected byte rem(byte left, byte right) {
+            return (byte) (left % right);
+        }
+
+        @Specialization
+        protected short rem(short left, short right) {
+            return (short) (left % right);
+        }
+
+        @Specialization
         protected int rem(int left, int right) {
             return left % right;
         }
@@ -514,11 +574,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long rem(long left, long right) {
             return left % right;
-        }
-
-        @Specialization
-        protected byte rem(byte left, byte right) {
-            return (byte) (left % right);
         }
 
         @Specialization
@@ -590,6 +645,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMURemNode extends LLVMArithmeticNode {
 
         @Specialization
+        protected byte urem(byte left, byte right) {
+            return (byte) (Byte.toUnsignedInt(left) % Byte.toUnsignedInt(right));
+        }
+
+        @Specialization
         protected short urem(short left, short right) {
             return (short) (Short.toUnsignedInt(left) % Short.toUnsignedInt(right));
         }
@@ -614,8 +674,36 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte urem(byte left, byte right) {
-            return (byte) (Byte.toUnsignedInt(left) % Byte.toUnsignedInt(right));
+        protected long urem(LLVMNativePointer left, long right) {
+            return urem(left.asNative(), right);
+        }
+
+        @Specialization
+        protected long urem(long left, LLVMNativePointer right) {
+            return urem(left, right.asNative());
+        }
+
+        @Specialization
+        protected long urem(LLVMNativePointer left, LLVMNativePointer right) {
+            return urem(left.asNative(), right.asNative());
+        }
+
+        @Specialization
+        protected long urem(LLVMManagedPointer left, long right,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return urem(toNative.executeWithTarget(left).asNative(), right);
+        }
+
+        @Specialization
+        protected long urem(long left, LLVMManagedPointer right,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return urem(left, toNative.executeWithTarget(right).asNative());
+        }
+
+        @Specialization
+        protected long urem(LLVMManagedPointer left, LLVMManagedPointer right,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return urem(toNative.executeWithTarget(left).asNative(), toNative.executeWithTarget(right).asNative());
         }
 
         @Specialization

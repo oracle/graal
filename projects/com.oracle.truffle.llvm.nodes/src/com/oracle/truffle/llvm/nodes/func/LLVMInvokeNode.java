@@ -41,14 +41,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMAddressProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI16ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI1ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -115,37 +107,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
 
         private void initializeReturnValueProfileNode() {
             CompilerAsserts.neverPartOfCompilation();
-            if (type.getReturnType() instanceof PrimitiveType) {
-                switch (((PrimitiveType) type.getReturnType()).getPrimitiveKind()) {
-                    case I8:
-                        this.returnValueProfile = LLVMI8ProfiledValueNodeGen.create(null);
-                        break;
-                    case I32:
-                        this.returnValueProfile = LLVMI32ProfiledValueNodeGen.create(null);
-                        break;
-                    case I64:
-                        this.returnValueProfile = LLVMI64ProfiledValueNodeGen.create(null);
-                        break;
-                    case FLOAT:
-                        this.returnValueProfile = LLVMFloatProfiledValueNodeGen.create(null);
-                        break;
-                    case DOUBLE:
-                        this.returnValueProfile = LLVMDoubleProfiledValueNodeGen.create(null);
-                        break;
-                    case I1:
-                        this.returnValueProfile = LLVMI1ProfiledValueNodeGen.create(null);
-                        break;
-                    case I16:
-                        this.returnValueProfile = LLVMI16ProfiledValueNodeGen.create(null);
-                        break;
-                    default:
-                        this.returnValueProfile = null;
-                }
-            } else if (type.getReturnType() instanceof PointerType) {
-                this.returnValueProfile = LLVMAddressProfiledValueNodeGen.create(null);
-            } else {
-                this.returnValueProfile = null;
-            }
+            this.returnValueProfile = (LLVMValueProfilingNode) LLVMValueProfilingNode.create(null, type.getReturnType());
         }
 
         @Override
