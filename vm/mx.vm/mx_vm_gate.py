@@ -32,8 +32,9 @@ from mx_gate import Task
 
 import re
 import subprocess
-from os.path import join
+from os.path import join, exists
 import functools
+from contextlib import contextmanager
 
 _suite = mx.suite('vm')
 
@@ -42,6 +43,7 @@ class VmGateTasks:
     graal = 'graal'
     graal_js = 'graal-js'
     sulong = 'sulong'
+    ruby = 'ruby'
 
 
 _openjdk_version_regex = re.compile(r'openjdk version \"[0-9_.]+\"\nOpenJDK Runtime Environment \(build [0-9a-z_\-.]+\)\nGraalVM (?P<graalvm_version>[0-9a-z_\-.]+) \(build [0-9a-z\-.]+, mixed mode\)')
@@ -80,6 +82,21 @@ def gate(args, tasks):
                 pass
 
     gate_sulong(tasks)
+    gate_ruby(tasks)
+
+def graalvm_svm():
+    """
+    Gives access to image building withing the GraalVM release. Requires dynamic import of substratevm.
+    """
+    native_image_cmd = join(mx_vm.graalvm_output(), 'bin', 'native-image')
+    svm = mx.suite('substratevm')
+    if not exists(native_image_cmd) or not svm:
+        mx.abort("Image building not accessible in GraalVM {}. Build GraalVM with native-image support".format(graalvm_dist_name()))
+    @contextmanager
+    def native_image_context(common_args=None, hosted_assertions=True):
+        with svm.extensions.native_image_context(common_args, hosted_assertions, native_image_cmd=native_image_cmd) as native_image:
+            yield native_image
+    return native_image_context, svm.extensions
 
 def gate_sulong(tasks):
     with Task('Run SulongSuite tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
@@ -91,9 +108,8 @@ def gate_sulong(tasks):
     with Task('Run Sulong interop tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
         if t:
             sulong = mx.suite('sulong')
-            svm = mx.suite('substratevm')
-            native_image_cmd = join(mx_vm.graalvm_output(), 'bin', 'native-image')
-            with svm.extensions.native_image_context(svm.extensions.IMAGE_ASSERTION_FLAGS, native_image_cmd=native_image_cmd) as native_image:
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_LIBS
                 sulong_libs = join(mx_vm.graalvm_output(), 'jre', 'languages', 'llvm')
                 def distribution_paths(dname):
@@ -102,4 +118,17 @@ def gate_sulong(tasks):
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
-                sulong.extensions.runLLVMUnittests(functools.partial(svm.extensions.native_junit, native_image, build_args=['--language:llvm']))
+                sulong.extensions.runLLVMUnittests(functools.partial(svm.native_junit, native_image, build_args=['--language:llvm']))
+
+def gate_ruby(tasks):
+    with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
+        if t:
+            # Debug GR-9912 on Ruby gate runs. If debug_gr_9912 goes away the custom image building below is not required anymore and
+            # test_ruby can be called with the original graalvm ruby-rauncher
+            debug_gr_9912 = 16
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                ruby_bindir = join(mx_vm.graalvm_output(), 'jre', 'languages', 'ruby', 'bin')
+                ruby_image = native_image(['--language:ruby', '-H:Name=truffleruby.tmp', '-H:Path=' + ruby_bindir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
+                truffleruby_suite = mx.suite('truffleruby')
+                truffleruby_suite.extensions.ruby_testdownstream_aot([ruby_image, 'spec', 'release'])
