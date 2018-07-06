@@ -24,11 +24,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +32,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A source section filter represents an expression for a subset of tagged source sections that are
@@ -106,7 +106,14 @@ public final class SourceSectionFilter {
         return b.toString();
     }
 
-    // TODO: Javadoc
+    /**
+     * Checks if the filter includes the given node, i.e. do the properties of the node's source
+     * section meet the conditions set by the filter.
+     *
+     * @param node The node to check.
+     * @return True of the filter includes the node, false otherwise.
+     * @since 1.0.0. RC4
+     */
     public boolean includes(Node node) {
         if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
             return false;
