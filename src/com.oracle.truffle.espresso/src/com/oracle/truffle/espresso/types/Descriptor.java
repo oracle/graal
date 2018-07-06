@@ -37,7 +37,6 @@ public abstract class Descriptor implements Comparable<Descriptor> {
 
     public abstract void verify();
 
-
     public static String dottified(String className) {
         return className.replace('/', '.');
     }

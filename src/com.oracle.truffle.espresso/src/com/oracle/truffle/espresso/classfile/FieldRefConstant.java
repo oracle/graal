@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.runtime.FieldInfo;
+import com.oracle.truffle.espresso.runtime.FieldInfoView;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public interface FieldRefConstant extends MemberRefConstant {
@@ -36,7 +36,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
     TypeDescriptor getType(ConstantPool pool, int thisIndex);
 
-    FieldInfo resolve(ConstantPool pool, int thisIndex);
+    FieldInfoView resolve(ConstantPool pool, int thisIndex);
 
     @Override
     default String toString(ConstantPool pool, int thisIndex) {
@@ -45,17 +45,17 @@ public interface FieldRefConstant extends MemberRefConstant {
 
     public static final class Resolved implements FieldRefConstant {
 
-        private final FieldInfo field;
+        private final FieldInfoView field;
 
-        public FieldInfo field() {
+        public FieldInfoView field() {
             return field;
         }
 
-        public Resolved(FieldInfo field) {
+        public Resolved(FieldInfoView field) {
             this.field = field;
         }
 
-        public FieldInfo resolve(ConstantPool pool, int index) {
+        public FieldInfoView resolve(ConstantPool pool, int index) {
             return field;
         }
 
@@ -85,7 +85,7 @@ public interface FieldRefConstant extends MemberRefConstant {
             return type;
         }
 
-        public FieldInfo resolve(ConstantPool pool, int thisIndex) {
+        public FieldInfoView resolve(ConstantPool pool, int thisIndex) {
             throw EspressoLanguage.unimplemented();
         }
     }
@@ -106,7 +106,7 @@ public interface FieldRefConstant extends MemberRefConstant {
             return (FieldRefConstant) super.replace(pool, thisIndex);
         }
 
-        public FieldInfo resolve(ConstantPool pool, int thisIndex) {
+        public FieldInfoView resolve(ConstantPool pool, int thisIndex) {
             return replace(pool, thisIndex).resolve(pool, thisIndex);
         }
 

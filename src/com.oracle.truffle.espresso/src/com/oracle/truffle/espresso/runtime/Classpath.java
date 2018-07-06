@@ -22,8 +22,8 @@ public class Classpath {
 
     /**
      * An entry in a classpath is a file system path that denotes an existing {@linkplain Directory
-     * directory}, an existing {@linkplain Archive zip/jar} file or a {@linkplain PlainFile
-     * neither}.
+     * directory}, an existing {@linkplain Archive zip/jar} file or a {@linkplain PlainFile neither}
+     * .
      */
     public abstract static class Entry {
 

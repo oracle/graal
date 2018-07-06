@@ -33,9 +33,8 @@ import com.oracle.truffle.espresso.types.TypeDescriptor;
 public final class Klass {
 
     private final TypeDescriptor name;
-    private final boolean primitive;
-    private final boolean array;
-    private final boolean iface;
+    private final boolean isArray;
+    private final boolean isInterface;
     private final ConstantPool pool = null;
 
     /**
@@ -55,9 +54,10 @@ public final class Klass {
     *     ...
     * //@formatter:on
     */
-    @CompilationFinal(dimensions = 1) private final short[] fields;
+    @CompilationFinal(dimensions = 1) private final FieldInfo[] fields;
     private final Klass superclass;
     private final Klass[] interfaces;
+    private final MethodInfo[] methods;
 
     @CompilationFinal private boolean initialized;
     @CompilationFinal private int modifiers;
@@ -67,30 +67,30 @@ public final class Klass {
     @CompilationFinal private DynamicObject staticClassObject;
     @CompilationFinal private Klass componentType;
 
-    public static Klass create(TypeDescriptor name, Klass superclass, Klass[] interfaces, short[] fields, boolean isInterface, int modifiers) {
+    public static Klass create(TypeDescriptor name, Klass superclass, Klass[] interfaces, FieldInfo[] fields, MethodInfo[] methods, boolean isInterface, int modifiers) {
         CompilerAsserts.neverPartOfCompilation();
-        return new Klass(name, superclass, interfaces, fields, false, isInterface, modifiers);
+        return new Klass(name, superclass, interfaces, fields, methods, isInterface, modifiers);
     }
 
     /**
      * The private constructor. Use {@link #create} instead from outside.
-     *
+     * 
      * @param name
      * @param superclass
      * @param interfaces
      * @param fields
-     * @param primitive
+     * @param methods
      * @param isInterface
      * @param modifiers
      */
-    private Klass(TypeDescriptor name, Klass superclass, Klass[] interfaces, short[] fields, boolean primitive, boolean isInterface, int modifiers) {
+    private Klass(TypeDescriptor name, Klass superclass, Klass[] interfaces, FieldInfo[] fields, MethodInfo[] methods, boolean isInterface, int modifiers) {
         this.name = name;
         this.superclass = superclass;
         this.interfaces = interfaces;
         this.fields = fields;
-        this.primitive = primitive;
-        this.iface = isInterface;
-        this.array = name.toString().charAt(0) == '[';
+        this.methods = methods;
+        this.isInterface = isInterface;
+        this.isArray = name.toString().charAt(0) == '[';
         this.modifiers = modifiers;
         this.initialized = false;
     }
@@ -100,15 +100,11 @@ public final class Klass {
     }
 
     public boolean isInterface() {
-        return iface;
-    }
-
-    public boolean isPrimitive() {
-        return primitive;
+        return isInterface;
     }
 
     public boolean isArray() {
-        return array;
+        return isArray;
     }
 
     public Klass getSuperclass() {

@@ -26,22 +26,22 @@ package com.oracle.truffle.espresso.classfile;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.CONSTANT_VALUE;
-import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.FLAGS;
-import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.NAME;
-import static com.oracle.truffle.espresso.runtime.FieldInfo.Offset.TYPE;
-
-import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
+import com.oracle.truffle.espresso.runtime.CodeAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.ExceptionHandlerEntry;
 import com.oracle.truffle.espresso.runtime.FieldInfo;
 import com.oracle.truffle.espresso.runtime.Klass;
 import com.oracle.truffle.espresso.runtime.KlassRegistry;
+import com.oracle.truffle.espresso.runtime.MethodInfo;
+import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
+
+import java.lang.reflect.Modifier;
 
 public class ClassfileParser {
 
@@ -66,6 +66,7 @@ public class ClassfileParser {
 
     private final DynamicObject classLoader;
     private final ClasspathFile classfile;
+
     private final TypeDescriptor requestedClassName;
     private final EspressoContext context;
     private final ClassfileStream stream;
@@ -73,7 +74,9 @@ public class ClassfileParser {
     private TypeDescriptor className;
     private int minorVersion;
     private int majorVersion;
+
     private ConstantPool pool;
+
     private int maxBootstrapMethodAttrIndex;
     private boolean needVerify;
     private int accessFlags;
@@ -88,7 +91,9 @@ public class ClassfileParser {
     private Klass superClass;
     private Klass[] localInterfaces;
 
-    private char[] fieldData;
+    private MethodInfo[] methods;
+    private AttributeInfo[] attributes;
+    private FieldInfo[] fields;
 
     public ClassfileParser(DynamicObject classLoader, ClasspathFile classpathFile, TypeDescriptor requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
@@ -130,7 +135,6 @@ public class ClassfileParser {
     }
 
     public Klass loadClass() {
-
         // magic
         int magic = stream.readS4();
         if (magic != MAGIC) {
@@ -172,11 +176,11 @@ public class ClassfileParser {
         // This class and superclass
         int thisClassIndex = stream.readU2();
 
-        TypeDescriptor classNameInCP = pool.classAt(thisClassIndex).getTypeDescriptor(pool, thisClassIndex);
+        TypeDescriptor typeDescriptor = pool.classAt(thisClassIndex).getTypeDescriptor(pool, thisClassIndex);
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
-        className = classNameInCP;
+        className = typeDescriptor;
 
         // Checks if name in class file matches requested name
         if (requestedClassName != null && !requestedClassName.equals(className)) {
@@ -190,111 +194,107 @@ public class ClassfileParser {
             fixAnonymousClassName();
         }
 
-        parseSuperClass();
-        parseInterfaces();
+        this.superClassIndex = parseSuperClass();
+        this.localInterfaces = parseInterfaces();
+        this.fields = parseFields();
+        this.methods = parseMethods();
+        this.attributes = parseAttributes();
 
-        parseFields();
-        // parseMethods();
+        TypeDescriptor superTypeDescriptor = pool.classAt(superClassIndex).getTypeDescriptor(pool, superClassIndex);
 
-        throw EspressoLanguage.unimplemented();
+        this.superClass = KlassRegistry.get(context, classLoader, superTypeDescriptor);
+
+        boolean isInterface = Modifier.isInterface(accessFlags);
+
+        return Klass.create(className, superClass, localInterfaces, fields, methods, isInterface, accessFlags);
     }
 
-    private void parseFields() {
-        // The field array starts with tuples of shorts
-        // [access, name index, sig index, initial value index, byte offset].
-        // A generic signature slot only exists for field with generic
-        // signature attribute. And the access flag is set with
-        // JVM_ACC_FIELD_HAS_GENERIC_SIGNATURE for that field. The generic
-        // signature slots are at the end of the field array and after all
-        // other fields data.
-        //
-        // f1: [access, name index, sig index, initial value index, low_offset, high_offset]
-        // f2: [access, name index, sig index, initial value index, low_offset, high_offset]
-        // ...
-        // fn: [access, name index, sig index, initial value index, low_offset, high_offset]
-        // [generic signature index]
-        // [generic signature index]
-        // ...
-        //
-        // Allocate a temporary resource array for field data. For each field,
-        // a slot is reserved in the temporary array for the generic signature
-        // index. After parsing all fields, the data are copied to a permanent
-        // array and any unused slots will be discarded.
+    private MethodInfo[] parseMethods() {
+        int methodCount = stream.readU2();
+        methods = new MethodInfo[methodCount];
+        for (int i = 0; i < methodCount; ++i) {
+            methods[i] = parseMethod();
+        }
+        return methods;
+    }
 
+    private MethodInfo parseMethod() {
+        int flags = stream.readU2();
+        int nameIndex = stream.readU2();
+        Utf8Constant name = pool.utf8ConstantAt(nameIndex, "method_name");
+
+        int descriptorIndex = stream.readU2();
+        String value = pool.utf8At(descriptorIndex).getValue();
+        SignatureDescriptor signatureDescriptor = context.getLanguage().getSignatureDescriptors().make(value);
+        AttributeInfo[] attributes = parseAttributes();
+        return new MethodInfo(name, signatureDescriptor, flags, attributes);
+    }
+
+    private AttributeInfo[] parseAttributes() {
         int count = stream.readU2();
-        fieldData = FieldInfo.allocateFieldData(count);
-        char[] genericSignatureData = null;// new char[count];
-        int genericSignatureDataIndex = 0;
-        FieldInfo currentField = new FieldInfo(pool, fieldData);
-
+        AttributeInfo[] attributes = new AttributeInfo[count];
         for (int i = 0; i < count; i++) {
-            currentField.initForField(i);
-            int flags = stream.readU2();
-            final int nameIndex = stream.readU2();
-            final int descriptorIndex = stream.readU2();
-            currentField.set(FLAGS, flags);
-            currentField.set(NAME, nameIndex);
-            currentField.set(TYPE, descriptorIndex);
-
-            // final Utf8Constant name = pool.utf8ConstantAt(nameIndex, "field name");
-            // verifyFieldName(name);
-
-            final boolean isStatic = Modifier.isStatic(flags);
-
-            final TypeDescriptor descriptor = pool.makeTypeDescriptor(pool.utf8At(descriptorIndex).toString());
-            // verifyFieldFlags(name.toString(), flags, isInterface);
-
-            char constantValueIndex = 0;
-            int genericSignatureIndex = 0;
-            byte[] runtimeVisibleAnnotationsBytes = {};
-
-            int nAttributes = stream.readU2();
-            while (nAttributes-- != 0) {
-                final int attributeNameIndex = stream.readU2();
-                final String attributeName = pool.utf8At(attributeNameIndex, "attribute name").toString();
-                final int attributeSize = stream.readS4();
-                final int startPosition = stream.getPosition();
-                if (isStatic && attributeName.equals("ConstantValue")) {
-                    if (constantValueIndex != 0) {
-                        throw classfile.classFormatError("Duplicate ConstantValue attribute");
-                    }
-                    constantValueIndex = (char) stream.readU2();
-                    if (constantValueIndex == 0) {
-                        throw classfile.classFormatError("Invalid ConstantValue index %d", constantValueIndex);
-                    }
-                } else if (majorVersion >= JAVA_5_VERSION) {
-                    if (attributeName.equals("Signature")) {
-                        genericSignatureIndex = stream.readU2();
-                    } else if (attributeName.equals("RuntimeVisibleAnnotations")) {
-                        runtimeVisibleAnnotationsBytes = stream.readByteArray(attributeSize);
-                    } else {
-                        stream.skip(attributeSize);
-                    }
-                } else {
-                    stream.skip(attributeSize);
-                }
-
-                if (attributeSize != stream.getPosition() - startPosition) {
-                    throw classfile.classFormatError("Invalid attribute_length for " + attributeName + " attribute");
-                }
-            }
-
-            currentField.set(CONSTANT_VALUE, constantValueIndex);
-
-            if (genericSignatureIndex != 0) {
-                if (genericSignatureData == null) {
-                    genericSignatureData = FieldInfo.allocateFieldGenericSignatureData(count - i);
-                }
-                genericSignatureData[genericSignatureDataIndex++] = PoolConstant.u2(genericSignatureIndex);
-            }
-            // classRegistry.set(GENERIC_SIGNATURE, fieldActor, genericSignature);
-            // classRegistry.set(RUNTIME_VISIBLE_ANNOTATION_BYTES, fieldActor,
-            // runtimeVisibleAnnotationsBytes);
-
+            attributes[i] = parseAttribute();
         }
-        if (genericSignatureData != null) {
-            fieldData = FieldInfo.mergeFieldData(fieldData, genericSignatureData, genericSignatureDataIndex);
+        return attributes;
+    }
+
+    private AttributeInfo parseAttribute() {
+        int nameIndex = stream.readU2();
+        Utf8Constant name = pool.utf8ConstantAt(nameIndex, "attribute_name");
+        if (name.getValue().equals("Code")) {
+            return parseCodeAttribute(name);
+        } else {
+            int length = stream.readS4();
+            byte[] info = stream.readByteArray(length);
+            return new AttributeInfo(name, info);
         }
+    }
+
+    private CodeAttribute parseCodeAttribute(Utf8Constant name) {
+        int length = stream.readS4();
+        int maxStack = stream.readU2();
+        int maxLocals = stream.readU2();
+        int codeLength = stream.readS4();
+        byte[] code = stream.readByteArray(codeLength);
+        ExceptionHandlerEntry[] entries = parseExceptionHandlerEntries();
+        AttributeInfo[] attributes = parseAttributes();
+        return new CodeAttribute(name, maxStack, maxLocals, code, entries, attributes);
+    }
+
+    private ExceptionHandlerEntry[] parseExceptionHandlerEntries() {
+        int count = stream.readU2();
+        ExceptionHandlerEntry[] entries = new ExceptionHandlerEntry[count];
+        for (int i = 0; i < count; i++) {
+            int startPc = stream.readU2();
+            int endPc = stream.readU2();
+            int handlerPc = stream.readU2();
+            int catchTypeIndex = stream.readU2();
+            if (catchTypeIndex != 0) {
+                pool.classAt(catchTypeIndex, "catch_type");
+            }
+            entries[i] = new ExceptionHandlerEntry(startPc, endPc, handlerPc, catchTypeIndex);
+        }
+        return entries;
+    }
+
+    private FieldInfo parseField() {
+        int flags = stream.readU2();
+        final int nameIndex = stream.readU2();
+        final int descriptorIndex = stream.readU2();
+        Utf8Constant name = pool.utf8ConstantAt(nameIndex, "field name");
+        TypeDescriptor descriptor = pool.makeTypeDescriptor(pool.utf8At(descriptorIndex).toString());
+        AttributeInfo[] attributes = parseAttributes();
+        return new FieldInfo(name, flags, descriptor, attributes);
+    }
+
+    private FieldInfo[] parseFields() {
+        int fieldCount = stream.readU2();
+        FieldInfo[] fields = new FieldInfo[fieldCount];
+        for (int i = 0; i < fieldCount; i++) {
+            fields[i] = parseField();
+        }
+        return fields;
     }
 
     /**
@@ -302,114 +302,27 @@ public class ClassfileParser {
      * parsing the current class file so that resolution is only attempted if there are no format
      * errors in the current class file.
      */
-    private void parseSuperClass() {
-        superClassIndex = stream.readU2();
-        if (superClassIndex == 0) {
+    private int parseSuperClass() {
+        int index = stream.readU2();
+        if (index == 0) {
             if (!className.equals("Ljava/lang/Object;")) {
                 throw classfile.classFormatError("Invalid superclass index 0");
             }
         }
+        return index;
     }
 
-    private void parseInterfaces() {
-        int interfaceCount = stream.readU2();
-        localInterfaces = new Klass[interfaceCount];
-        for (int i = 0; i < interfaceCount; i++) {
+    private Klass[] parseInterfaces() {
+        int count = stream.readU2();
+        Klass[] interfaces = new Klass[count];
+        for (int i = 0; i < count; i++) {
             int interfaceIndex = stream.readU2();
             TypeDescriptor interfaceDescriptor = pool.classAt(interfaceIndex).getTypeDescriptor(pool, interfaceIndex);
             Klass interfaceKlass = KlassRegistry.get(context, classLoader, interfaceDescriptor);
-            localInterfaces[i] = interfaceKlass;
+            interfaces[i] = interfaceKlass;
         }
+        return interfaces;
     }
-
-    // @formatter:off
-/*
-// Side-effects: populates the _local_interfaces field
-void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
-                                       const int itfs_len,
-                                       ConstantPool* const cp,
-                                       bool* const has_nonstatic_concrete_methods,
-                                       TRAPS) {
-  assert(stream != NULL, "invariant");
-  assert(cp != NULL, "invariant");
-  assert(has_nonstatic_concrete_methods != NULL, "invariant");
-
-  if (itfs_len == 0) {
-    _local_interfaces = Universe::the_empty_klass_array();
-  } else {
-    assert(itfs_len > 0, "only called for len>0");
-    _local_interfaces = MetadataFactory::new_array<Klass*>(_loader_data, itfs_len, NULL, CHECK);
-
-    int index;
-    for (index = 0; index < itfs_len; index++) {
-      const u2 interface_index = stream->get_u2(CHECK);
-      Klass* interf;
-      check_property(
-        valid_klass_reference_at(interface_index),
-        "Interface name has bad constant pool index %u in class file %s",
-        interface_index, CHECK);
-      if (cp->tag_at(interface_index).is_klass()) {
-        interf = cp->resolved_klass_at(interface_index);
-      } else {
-        Symbol* const unresolved_klass  = cp->klass_name_at(interface_index);
-
-        // Don't need to check legal name because it's checked when parsing constant pool.
-        // But need to make sure it's not an array type.
-        guarantee_property(unresolved_klass->byte_at(0) != JVM_SIGNATURE_ARRAY,
-                           "Bad interface name in class file %s", CHECK);
-
-        // Call resolve_super so classcircularity is checked
-        interf = SystemDictionary::resolve_super_or_fail(
-                                                  _class_name,
-                                                  unresolved_klass,
-                                                  Handle(THREAD, _loader_data->class_loader()),
-                                                  _protection_domain,
-                                                  false,
-                                                  CHECK);
-      }
-
-      if (!interf->is_interface()) {
-        THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
-                   "Implementing class");
-      }
-
-      if (InstanceKlass::cast(interf)->has_nonstatic_concrete_methods()) {
-        *has_nonstatic_concrete_methods = true;
-      }
-      _local_interfaces->at_put(index, interf);
-    }
-
-    if (!_need_verify || itfs_len <= 1) {
-      return;
-    }
-
-    // Check if there's any duplicates in interfaces
-    ResourceMark rm(THREAD);
-    NameSigHash** interface_names = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD,
-                                                                 NameSigHash*,
-                                                                 HASH_ROW_SIZE);
-    initialize_hashtable(interface_names);
-    bool dup = false;
-    const Symbol* name = NULL;
-    {
-      debug_only(NoSafepointVerifier nsv;)
-      for (index = 0; index < itfs_len; index++) {
-        const Klass* const k = _local_interfaces->at(index);
-        name = InstanceKlass::cast(k)->name();
-        // If no duplicates, add (name, NULL) in hashtable interface_names.
-        if (!put_after_lookup(name, NULL, interface_names)) {
-          dup = true;
-          break;
-        }
-      }
-    }
-    if (dup) {
-      classfile_parse_error("Duplicate interface name \"%s\" in class file %s",
-                             name->as_C_string(), CHECK);
-    }
-  }
-}
- */
 
     private static String getPackageName(String fqn) {
         int slash = fqn.lastIndexOf('/');
