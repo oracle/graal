@@ -218,7 +218,7 @@ public class FrameDescriptorTest {
         assertEquals("a", frame.getObject(slot1));
         assertEquals("b", frame.getObject(slot2));
         assertEquals(2, frameDescriptor.getSize());
-        // assertEquals(2, getShallowCopy(frameDescriptor).getSize());
+        assertEquals(2, getShallowCopy(frameDescriptor).getSize());
 
         frameDescriptor.removeFrameSlot("var1");
         assertNull(frameDescriptor.findFrameSlot("var1"));

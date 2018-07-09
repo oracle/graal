@@ -41,8 +41,20 @@ public final class FrameSlot implements Cloneable {
     private final Object identifier;
     private final Object info;
     private final int index;
+    /*
+     * The sharedWith has to be precisely tracked per FrameSlot. If it was tracked in
+     * FrameDescriptor then it could cause large number of invalidations. When a single
+     * FrameDescriptor is used as a template and large number of FrameDescriptors is created based
+     * of it with shallowCopy, then any kind change in one of them would invalidate all of them.
+     */
     Map<FrameDescriptor, Object> sharedWith;
-    @CompilationFinal FrameSlotKind kind;
+    /*
+     * The FrameSlot cannot be made immutable by moving the kind field to FrameDescriptor, because
+     * it would force getFrameSlotKind and setFrameSlotKind to check frameSlot removal which would
+     * require locking the FrameDescriptor, instead of current simple read from the volatile kind
+     * field.
+     */
+    @CompilationFinal volatile FrameSlotKind kind;
 
     FrameSlot(FrameDescriptor descriptor, Object identifier, Object info, FrameSlotKind kind, int index) {
         this.descriptor = descriptor;

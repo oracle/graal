@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
@@ -491,10 +492,12 @@ public abstract class Accessor {
 
     }
 
-    protected abstract static class Frames {
+    public abstract static class Frames {
         protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+
+        public abstract FrameDescriptor makeThreadSafe(FrameDescriptor frameDescriptor, ReentrantLock lock);
     }
 
     @CompilationFinal private static Accessor.LanguageSupport API;
