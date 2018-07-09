@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -94,37 +95,41 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
 
         ListenerImpl config = new ListenerImpl(engine, onEnter, onReturn, collectInputValues, collectReturnValues, collectErrors);
 
-        filterBuilder.sourceIs((s) -> {
-            String language = s.getLanguage();
-            if (language == null) {
-                return false;
-            } else if (!engine.idToLanguage.containsKey(language)) {
-                return false;
-            } else if (sourceFilter != null) {
-                try {
-                    return sourceFilter.test(engineImpl.getPolyglotSource(s));
-                } catch (Throwable e) {
-                    if (config.closing) {
-                        // configuration is closing ignore errors.
-                        return false;
+        filterBuilder.sourceIs(new SourcePredicate() {
+            public boolean test(com.oracle.truffle.api.source.Source s) {
+                String language = s.getLanguage();
+                if (language == null) {
+                    return false;
+                } else if (!engine.idToLanguage.containsKey(language)) {
+                    return false;
+                } else if (sourceFilter != null) {
+                    try {
+                        return sourceFilter.test(engineImpl.getPolyglotSource(s));
+                    } catch (Throwable e) {
+                        if (config.closing) {
+                            // configuration is closing ignore errors.
+                            return false;
+                        }
+                        throw new HostException(e);
                     }
-                    throw new HostException(e);
+                } else {
+                    return true;
                 }
-            } else {
-                return true;
             }
         });
 
         if (rootFilter != null) {
-            filterBuilder.rootNameIs((s) -> {
-                try {
-                    return rootFilter.test(s);
-                } catch (Throwable e) {
-                    if (config.closing) {
-                        // configuration is closing ignore errors.
-                        return false;
+            filterBuilder.rootNameIs(new Predicate<String>() {
+                public boolean test(String s) {
+                    try {
+                        return rootFilter.test(s);
+                    } catch (Throwable e) {
+                        if (config.closing) {
+                            // configuration is closing ignore errors.
+                            return false;
+                        }
+                        throw new HostException(e);
                     }
-                    throw new HostException(e);
                 }
             });
         }
