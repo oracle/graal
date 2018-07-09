@@ -113,22 +113,23 @@ public final class StackValue {
  * This class contains <a href="https://github.com/jtulach/codesnippet4javadoc/">code snippets</a>
  * used when generating the Javadoc.
  */
+@SuppressWarnings("unused")
 @CContext(CContext.Directives.class)
 final class StackValueSnippets {
     // BEGIN: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
     @CStruct
     static interface ComplexNumber extends PointerBase {
         @CField("re")
-        public double realPart();
+        double realPart();
 
         @CField("re")
-        public void realPart(double re);
+        void realPart(double re);
 
         @CField("im")
-        public double imagineryPart();
+        double imagineryPart();
 
         @CField("im")
-        public void imagineryPart(double im);
+        void imagineryPart(double im);
     }
     // END: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
 
@@ -148,6 +149,7 @@ final class StackValueSnippets {
         return Math.sqrt(reSquare + imSquare);
     }
 
+    @SuppressWarnings("StackValueGetClass")
     private static void withSizeOf() {
         // BEGIN: org.graalvm.nativeimage.StackValueSnippets#withSizeOf
         ComplexNumber numberOnStack = StackValue.get(
@@ -197,6 +199,7 @@ final class StackValueSnippets {
         return sum;
     }
 
+    @SuppressWarnings("StackValueGetClass")
     private static void withSizeOfArray() {
         // BEGIN: org.graalvm.nativeimage.StackValueSnippets#withSizeOfArray
         IntOrDouble arrayOnStack = StackValue.get(
