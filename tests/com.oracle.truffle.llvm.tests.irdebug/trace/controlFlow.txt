@@ -1,0 +1,20 @@
+BREAK "22" "STEP_INTO" "@test"
+    OPEN_SCOPE "partial"
+
+STOP "14" "STEP_INTO" "@foo"
+    OPEN_SCOPE "partial"
+
+STOP "9" "STEP_OVER" "@bar"
+    OPEN_SCOPE "partial"
+
+STOP "14" "STEP_OVER" "@foo"
+    OPEN_SCOPE "partial"
+
+STOP "15" "STEP_OUT" "@foo"
+    OPEN_SCOPE "partial"
+
+STOP "22" "STEP_INTO" "@test"
+    OPEN_SCOPE "partial"
+
+STOP "23" "CONTINUE" "@test"
+    OPEN_SCOPE "partial"
