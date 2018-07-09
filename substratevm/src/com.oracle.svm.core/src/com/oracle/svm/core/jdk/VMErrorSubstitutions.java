@@ -51,7 +51,7 @@ final class Target_com_oracle_svm_core_util_VMError {
     private static RuntimeException shouldNotReachHere() {
         ThreadStackPrinter.printBacktrace();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        VMErrorSubstitutions.shutdown();
+        VMErrorSubstitutions.shutdown(null, null);
         return null;
     }
 
@@ -60,7 +60,7 @@ final class Target_com_oracle_svm_core_util_VMError {
     private static RuntimeException shouldNotReachHere(String msg) {
         ThreadStackPrinter.printBacktrace();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        VMErrorSubstitutions.shutdown(msg);
+        VMErrorSubstitutions.shutdown(msg, null);
         return null;
     }
 
@@ -69,7 +69,16 @@ final class Target_com_oracle_svm_core_util_VMError {
     private static RuntimeException shouldNotReachHere(Throwable ex) {
         ThreadStackPrinter.printBacktrace();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        VMErrorSubstitutions.shutdown(ex);
+        VMErrorSubstitutions.shutdown(null, ex);
+        return null;
+    }
+
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Substitute
+    private static RuntimeException shouldNotReachHere(String msg, Throwable ex) {
+        ThreadStackPrinter.printBacktrace();
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        VMErrorSubstitutions.shutdown(msg, ex);
         return null;
     }
 
@@ -106,45 +115,34 @@ public class VMErrorSubstitutions {
 
     @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    static void shutdown() {
+    static void shutdown(String msg, Throwable ex) {
         Log log = Log.log();
         log.autoflush(true);
-        log.string("VMError.shouldNotReachHere").newline();
-        doShutdown(log);
-    }
+        log.string("VMError.shouldNotReachHere");
+        if (msg != null) {
+            log.string(": ").string(msg);
+        }
+        if (ex != null) {
+            /*
+             * We do not want to call getMessage(), since it can be overridden by subclasses of
+             * Throwable. So we access the raw detailMessage directly from the field in Throwable.
+             * That is better than printing nothing.
+             */
+            String detailMessage = JDKUtils.getRawMessage(ex);
+            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(ex);
 
-    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    static void shutdown(String msg) {
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("VMError.shouldNotReachHere: ").string(msg).newline();
-        doShutdown(log);
-    }
-
-    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    static void shutdown(Throwable ex) {
-        /*
-         * We do not want to call getMessage(), since it can be overriden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        String detailMessage = JDKUtils.getRawMessage(ex);
-        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(ex);
-
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("VMError.shouldNotReachHere: ").string(ex.getClass().getName()).string(": ").string(detailMessage).newline();
-        if (stackTrace != null) {
-            for (StackTraceElement element : stackTrace) {
-                if (element != null) {
-                    log.string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                    log.string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
-                    log.newline();
+            log.string(": ").string(ex.getClass().getName()).string(": ").string(detailMessage);
+            if (stackTrace != null) {
+                for (StackTraceElement element : stackTrace) {
+                    if (element != null) {
+                        log.newline();
+                        log.string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
+                        log.string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+                    }
                 }
             }
         }
+        log.newline();
         doShutdown(log);
     }
 

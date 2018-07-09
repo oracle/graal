@@ -293,12 +293,9 @@ public abstract class ObjectScanner {
     }
 
     private boolean checkCorrectClassloaders(WorklistEntry entry, Object valueObj) {
-        boolean result = valueObj.getClass().getClassLoader() == null ||
-                        valueObj.getClass().getClassLoader() == Thread.currentThread().getContextClassLoader() ||
-                        valueObj.getClass().getClassLoader() == ClassLoader.getSystemClassLoader() ||
-                        valueObj.getClass().getClassLoader() == ClassLoader.getSystemClassLoader().getParent();
+        boolean result = bb.isValidClassLoader(valueObj);
         if (!result) {
-            System.err.println("detected an invalid object from previous compilations: " + valueObj.toString());
+            System.err.println("detected an object that originates from previous compilations: " + valueObj.toString());
             Object reason = entry.getReason();
             while (reason instanceof WorklistEntry) {
                 Object value = bb.getSnippetReflectionProvider().asObject(Object.class, ((WorklistEntry) reason).constant);

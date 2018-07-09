@@ -557,6 +557,10 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             builder.startFor().startGroup().string(";;").end().end().startBlock();
             builder.declaration("boolean", VAR_RETURN_CALLED, "false");
             builder.startTryBlock();
+            if (wrappedExecute.getThrownTypes().contains(context.getType(UnexpectedResultException.class))) {
+                builder.startTryBlock();
+            }
+
             builder.startStatement().startCall(FIELD_PROBE, METHOD_ON_ENTER).string(frameParameterName).end().end();
 
             CodeTreeBuilder callDelegate = builder.create();
@@ -592,7 +596,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     builder.tree(createCallConverter(outgoingConverterMethod, frameParameterName, CodeTreeBuilder.singleString("e.getResult()")));
                 }
                 builder.end().end();
-                builder.startThrow().string("e").end();
+                builder.startThrow().string("e").end().end();
             }
             builder.end().startCatchBlock(context.getType(Throwable.class), "t");
             CodeTreeBuilder callExOrUnwind = builder.create();

@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.component.installer.CatalogIterable;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
@@ -43,6 +44,7 @@ import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Before;
@@ -252,5 +254,63 @@ public class InstallTest extends CommandTestBase {
         Files.delete(offending);
         Files.delete(offending.getParent());
         assertFalse(Files.list(targetPath).findFirst().isPresent());
+    }
+
+    @Test
+    public void testPostinstMessagePrinted() throws Exception {
+        AtomicBoolean printed = new AtomicBoolean();
+        delegateFeedback(new FeedbackAdapter() {
+            @Override
+            public boolean verbatimOut(String aMsg, boolean beVerbose) {
+                if ("Postinst".equals(aMsg)) {
+                    printed.set(true);
+                }
+                return super.verbatimOut(aMsg, beVerbose);
+            }
+        });
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        inst.execute();
+        assertTrue("Postinst message must be printed", printed.get());
+    }
+
+    /**
+     * The exact message contents. Whitespaces are important, incl. newlines.
+     */
+    private static final String GOLDEN_MESSAGE = "\n" +
+                    "IMPORTANT NOTE:\n" +
+                    "---------------\n" +
+                    "The Ruby openssl C extension needs to be recompiled on your system to work with the installed libssl.\n" +
+                    "Make sure headers for libssl are installed, see https://github.com/oracle/truffleruby/blob/master/doc/user/installing-libssl.md for details.\n" +
+                    "Then run the following command:\n" +
+                    "      ${graalvm_home}/jre/languages/ruby/lib/truffle/post_install_hook.sh\n"; // exactly
+                                                                                                   // 6
+                                                                                                   // spaces
+                                                                                                   // at
+                                                                                                   // the
+                                                                                                   // beginning
+
+    @Test
+    public void testPostinstMessageFormat() throws Exception {
+        String[] formatted = new String[1];
+        files.set(0, dataFile("postinst.jar").toFile());
+        delegateFeedback(new FeedbackAdapter() {
+            @Override
+            public boolean verbatimOut(String aMsg, boolean beVerbose) {
+                if (aMsg.contains("Ruby openssl")) { // NOI18N
+                    formatted[0] = aMsg;
+                }
+                return super.verbatimOut(aMsg, beVerbose);
+            }
+        });
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        inst.execute();
+        assertNotNull("Postinst message must be printed", formatted[0]);
+
+        String check = GOLDEN_MESSAGE.replace("${graalvm_home}", getGraalHomePath().toString());
+        assertEquals(check, formatted[0]);
     }
 }

@@ -143,6 +143,15 @@ gateLinuxAMD64TraceRASingleBlock : ${gateLinuxAMD64} {
   }
 }
 
+gateJAOTC : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,jaotc"]
+  ]
+}
+
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
 gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }

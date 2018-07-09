@@ -69,13 +69,13 @@ fastr_linux: ${fastr} {
   packages: {
     readline: "==6.3"
     pcre: ">=8.38"
-    zlib: ">=1.2.8"
+    zlib: ">=1.2.11"
     curl: ">=7.50.1"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
-    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/zlib/1.2.8/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/curl/7.50.1/include"""
-    PKG_LDFLAGS_OVERRIDE : """-L/cm/shared/apps/zlib/1.2.8/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64"""
+    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/curl/7.50.1/include"""
+    PKG_LDFLAGS_OVERRIDE : """-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64"""
   }
 }
 
@@ -133,7 +133,7 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} ${linux-deploy} {
+  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${linux-deploy} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SUITES="${vm_all_suites}]
       [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
@@ -144,5 +144,45 @@ builds += [
     ]
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
+  },
+  ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${darwin-deploy} ${custom_vm_darwin} ${gate_vm_darwin} {
+    run: [
+      [export, "SUITES="${vm_base_suites}]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+    ]
+    timelimit: "3:00:00"
+    name: ondemand-vm-build-base-darwin-amd64
+    targets: [on-demand]  # override target on darwin for now to get a lighter gate
+  },
+  ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${darwin-deploy} ${custom_vm_darwin} ${gate_vm_darwin} {
+    run: [
+      [export, "SUITES=/substratevm,/tools,sulong,/graal-nodejs,truffleruby,graalpython,fastr"]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+    ]
+    timelimit: "3:00:00"
+    name: ondemand-vm-build-all-darwin-amd64
+    targets: [on-demand]  # override target on darwin for now to get a lighter gate
+  },
+  ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
+    run: [
+      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/sulong.git"], "../../sulong"]
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,sulong", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,sulong"]
+    ]
+    timelimit: "35:00"
+    name: gate-vm-native-sulong-tip
+  },
+  ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${vm_linux} {
+    targets: [daily]
+    run: [
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,sulong", --disable-polyglot, --disable-libpolyglot, gate, --tags, "build,sulong"]
+    ]
+    timelimit: "35:00"
+    name: daily-vm-native-sulong
   },
 ]

@@ -73,6 +73,9 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import org.graalvm.polyglot.io.FileSystem;
 
 /*
@@ -153,7 +156,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler) {
         ensureInitialized();
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
@@ -168,14 +171,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
-            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
         }
         if (impl == null) {
             impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
-                            contextClassLoader, boundEngine);
+                            contextClassLoader, boundEngine, logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;
@@ -196,7 +199,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                         INSTRUMENT.createDispatchOutput(System.out),
                         INSTRUMENT.createDispatchOutput(System.err),
                         System.in,
-                        TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader());
+                        TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(),
+                        PolyglotLogHandler.createStreamHandler(System.out, false));
         preInitializedEngineRef.set(preInitializedEngine);
     }
 
@@ -499,7 +503,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return foundLanguage;
         }
 
-        private static boolean isPrimitive(final Object value) {
+        static boolean isPrimitive(final Object value) {
             final Class<?> valueClass = value.getClass();
             return valueClass == Boolean.class || valueClass == Byte.class || valueClass == Short.class || valueClass == Integer.class || valueClass == Long.class ||
                             valueClass == Float.class || valueClass == Double.class ||
@@ -928,6 +932,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
             return getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+        }
+
+        @Override
+        public Handler getLogHandler() {
+            return PolyglotLogHandler.INSTANCE;
+        }
+
+        @Override
+        public LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown) {
+            return PolyglotLogHandler.createLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
+        }
+
+        @Override
+        public Object getCurrentOuterContext() {
+            return PolyglotLogHandler.getCurrentOuterContext();
         }
     }
 }

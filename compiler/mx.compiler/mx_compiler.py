@@ -49,6 +49,7 @@ import mx_unittest
 from mx_unittest import unittest
 
 from mx_javamodules import as_java_module
+import mx_jaotc
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
@@ -647,6 +648,7 @@ graal_bootstrap_tests = [
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
+    mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -1176,12 +1178,20 @@ def updategraalinopenjdk(args):
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         GraalJDKModule('jdk.internal.vm.compiler.management',
             [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+        GraalJDKModule('jdk.aot',
+            [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
 
     package_renamings = {
         'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
         'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
     }
+
+    replacements = {
+        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
+    }
+
+    blacklist = ['"Classpath" exception']
 
     jdkrepo = args.jdkrepo
 
@@ -1266,6 +1276,7 @@ def updategraalinopenjdk(args):
                         dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
                         with open(src_file) as fp:
                             contents = fp.read()
+                        old_line_count = len(contents.split('\n'))
                         if filename.endswith('.java'):
                             for old_name, new_name in package_renamings.iteritems():
                                 old_name_as_dir = old_name.replace('.', os.sep)
@@ -1274,6 +1285,20 @@ def updategraalinopenjdk(args):
                                     dst = src_file.replace(old_name_as_dir, new_name_as_dir)
                                     dst_file = join(target_dir, os.path.relpath(dst, source_dir))
                                 contents = contents.replace(old_name, new_name)
+                            for old_line, new_line in replacements.iteritems():
+                                contents = contents.replace(old_line, new_line)
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count > old_line_count:
+                                mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
+                            else:
+                                if new_line_count < old_line_count:
+                                    contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count != old_line_count:
+                                mx.abort('Unable to correct line count for {}'.format(src_file))
+                            for forbidden in blacklist:
+                                if forbidden in contents:
+                                    mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
                         dst_dir = os.path.dirname(dst_file)
                         if not exists(dst_dir):
                             os.makedirs(dst_dir)
@@ -1335,6 +1360,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
+    'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
+    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],

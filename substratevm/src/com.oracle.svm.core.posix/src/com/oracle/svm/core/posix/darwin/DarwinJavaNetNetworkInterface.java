@@ -41,6 +41,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface.netif;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
 import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -89,7 +91,7 @@ public class DarwinJavaNetNetworkInterface {
             if (Ifaddrs.getifaddrs(origifa_Pointer) != 0) {
                 // 1933 NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException",
                 // 1934 "getifaddrs() function failed");
-                throw new SocketException("getifaddrs() function failed");
+                throw new SocketException(PosixUtils.lastErrorString("getifaddrs() function failed"));
                 // 1935 return ifs;
                 /* Unreachable code. */
             }
@@ -159,7 +161,7 @@ public class DarwinJavaNetNetworkInterface {
             if (Ifaddrs.getifaddrs(origifa_Pointer) != 0) {
                 // 2009         NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException",
                 // 2010                          "getifaddrs() function failed");
-                throw new SocketException("getifaddrs() function failed");
+                throw new SocketException(PosixUtils.lastErrorString("getifaddrs() function failed"));
                 // 2011         return ifs;
                 /* Unreachable code. */
             }
@@ -186,13 +188,14 @@ public class DarwinJavaNetNetworkInterface {
                 // 2025
                 // 2026         if (ioctl(sock, SIOCGIFNETMASK_IN6, (caddr_t)&ifr6) < 0) {
                 if (Ioctl.ioctl(sock, DarwinNetinet6In6_var.SIOCGIFNETMASK_IN6(), ifr6) < 0) {
+                    final int savedErrno = Errno.errno();
                     // 2027             NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException",
                     // 2028                              "ioctl SIOCGIFNETMASK_IN6 failed");
                     // 2029             freeifaddrs(origifa);
                     Ifaddrs.freeifaddrs(origifa_Pointer.read());
                     // 2030             freeif(ifs);
                     JavaNetNetworkInterface.freeif(ifs);
-                    throw new SocketException("ioctl SIOCGIFNETMASK_IN6 failed");
+                    throw new SocketException(PosixUtils.errorString(savedErrno, "ioctl SIOCGIFNETMASK_IN6 failed"));
                     // 2031             return NULL;
                     /* Unreachable code. */
                 }
@@ -303,7 +306,7 @@ public class DarwinJavaNetNetworkInterface {
             // 2090   if (ioctl(sock, SIOCGIFFLAGS, (char *)&if2) < 0) {
             if (Ioctl.ioctl(sock, Socket.SIOCGIFFLAGS(), if2) < 0) {
                 // 2091       NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "IOCTL SIOCGIFFLAGS failed");
-                throw new SocketException("IOCTL SIOCGIFFLAGS failed");
+                throw new SocketException(PosixUtils.lastErrorString("IOCTL SIOCGIFFLAGS failed"));
                 // 2092       return ret;
                 /* Unreachable code. */
             }
@@ -314,7 +317,7 @@ public class DarwinJavaNetNetworkInterface {
                 // 2097       if (ioctl(sock, SIOCGIFBRDADDR, (char *)&if2) < 0) {
                 if (Ioctl.ioctl(sock,  Socket.SIOCGIFBRDADDR(), if2) < 0) {
                     // 2098           NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "IOCTL SIOCGIFBRDADDR failed");
-                    throw new SocketException("IOCTL SIOCGIFBRDADDR failed");
+                    throw new SocketException(PosixUtils.lastErrorString("IOCTL SIOCGIFBRDADDR failed"));
                     // 2099           return ret;
                     /* Unreachable code. */
                 }
@@ -351,7 +354,7 @@ public class DarwinJavaNetNetworkInterface {
             // 2121     if (ioctl(sock, SIOCGIFNETMASK, (char *)&if2) < 0) {
             if (Ioctl.ioctl(sock, Socket.SIOCGIFNETMASK(), if2) < 0) {
                 // 2122         NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "IOCTL SIOCGIFNETMASK failed");
-                throw new SocketException("IOCTL SIOCGIFNETMASK failed");
+                throw new SocketException(PosixUtils.lastErrorString("IOCTL SIOCGIFNETMASK failed"));
                 // 2123         return -1;
                 /* Unreachable code. */
             }

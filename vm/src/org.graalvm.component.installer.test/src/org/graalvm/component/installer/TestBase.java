@@ -264,11 +264,19 @@ public class TestBase implements Feedback {
         return key;
     }
 
+    public String reallyl10n(ResourceBundle bundle, String key, Object... params) {
+        ResourceBundle b = bundle != null ? bundle : defaultBundle;
+        return MessageFormat.format(b.getString(key), params);
+    }
+
     @Override
     public boolean verbatimOut(String msg, boolean verboseOutput) {
         if (verboseOutput) {
             verboseOutput((ResourceBundle) null, msg);
         } else {
+            if (feedbackDelegate != null) {
+                feedbackDelegate.verbatimOut(msg, verboseOutput);
+            }
             output((ResourceBundle) null, msg);
         }
         return verboseOutput;

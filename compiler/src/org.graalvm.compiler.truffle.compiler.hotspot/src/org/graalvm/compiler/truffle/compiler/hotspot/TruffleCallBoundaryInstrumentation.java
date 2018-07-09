@@ -41,8 +41,8 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -57,9 +57,8 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
     protected final MetaAccessProvider metaAccess;
 
     public TruffleCallBoundaryInstrumentation(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
-                    FrameContext frameContext,
-                    OptionValues options, DebugContext debug, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult);
+                    FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
+        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, null);
         this.metaAccess = metaAccess;
         this.config = config;
         this.registers = registers;
@@ -80,7 +79,7 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
     private static int getFieldOffset(String name, ResolvedJavaType declaringType) {
         for (ResolvedJavaField field : declaringType.getInstanceFields(false)) {
             if (field.getName().equals(name)) {
-                return ((HotSpotResolvedJavaField) field).offset();
+                return field.getOffset();
             }
         }
         throw new NoSuchFieldError(declaringType.toJavaName() + "." + name);

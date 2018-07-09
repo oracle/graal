@@ -69,6 +69,16 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
+    protected StructuredGraph.Builder customizeStructuredGraphBuilder(StructuredGraph.Builder builder) {
+        /*
+         * Substrate VM does not need a complete list of methods that were inlined during
+         * compilation. Therefore, we do not even store this information in encoded graphs that are
+         * part of the image heap.
+         */
+        return super.customizeStructuredGraphBuilder(builder).recordInlinedMethods(false);
+    }
+
+    @Override
     protected void doGraphPE(CompilableTruffleAST callTarget, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision) {
         super.doGraphPE(callTarget, graph, tierContext, inliningDecision);
 

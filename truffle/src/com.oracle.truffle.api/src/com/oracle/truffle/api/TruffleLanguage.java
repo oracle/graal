@@ -68,6 +68,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.logging.Level;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1495,6 +1496,17 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns <code>true</code> if the argument is a Java host language function wrapped using
+         * Truffle interop.
+         *
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public boolean isHostFunction(Object value) {
+            return AccessAPI.javaAccess().isHostFunction(value);
+        }
+
+        /**
          * Find a meta-object of a value, if any. The meta-object represents a description of the
          * object, reveals it's kind and it's features. Some information that a meta-object might
          * define includes the base object's type, interface, class, methods, attributes, etc.
@@ -2278,6 +2290,15 @@ public abstract class TruffleLanguage<C> {
             assert file instanceof FileAdapter : "File must be " + FileAdapter.class.getSimpleName();
             final TruffleFile tf = ((FileAdapter) file).getTruffleFile();
             return tf.readAllBytes();
+        }
+
+        @Override
+        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels) {
+            if (logLevels == null) {
+                TruffleLogger.LoggerCache.getInstance().removeLogLevelsForContext(polyglotContext);
+            } else {
+                TruffleLogger.LoggerCache.getInstance().addLogLevelsForContext(polyglotContext, logLevels);
+            }
         }
     }
 }

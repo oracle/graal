@@ -518,12 +518,8 @@ class JavaNetNetUtilMD {
         } else {
             // 290 errno = errorNumber;
             Errno.set_errno(errorNumber);
-            /*
-             * FIXME: Not implementing JNU_ThrowByNameWithLastError which might be like
-             * PosixOSInterface.lastErrorString.
-             */
             // 291 JNU_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", msg);
-            throw new SocketException(msg);
+            throw new SocketException(PosixUtils.lastErrorString(msg));
         }
     }
 

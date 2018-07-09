@@ -1,6 +1,14 @@
 suite = {
     "mxversion": "5.138.0",
     "name": "substratevm",
+    "url" : "https://github.com/oracle/graal/tree/master/substratevm",
+
+    "developer" : {
+        "name" : "SubstrateVM developers",
+        "email" : "graal-dev@openjdk.java.net",
+        "organization" : "Graal",
+        "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    },
 
     "defaultLicense" : "GPLv2-CPE",
 
@@ -17,13 +25,6 @@ suite = {
             },
             {
                 "name": "regex",
-                "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
-            },
-            {
-                "name" : "tools",
                 "subdir": True,
                 "urls" : [
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -426,24 +427,6 @@ suite = {
                 "OS": "<os>"
             },
         },
-
-        "bootstrap.native-image" : {
-            "class" : "BootstrapNativeImage",
-            "buildDependencies": [
-                "SVM_DRIVER",
-                'tools:CHROMEINSPECTOR',
-                'tools:TRUFFLE_PROFILER',
-            ],
-            "svm" : [
-                "SVM"
-            ],
-            "svmSupport" : [
-                "LIBRARY_SUPPORT"
-            ],
-            "graal" : [
-                "compiler:GRAAL"
-            ],
-        },
     },
 
     "distributions": {
@@ -452,6 +435,7 @@ suite = {
         #
         "SVM": {
             "subDir": "src",
+            "description" : "SubstrateVM image builder components",
             "dependencies": [
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
@@ -494,6 +478,7 @@ suite = {
 
         "LIBRARY_SUPPORT": {
             "subDir": "src",
+            "description" : "SubstrateVM basic library-support components",
             "dependencies": [
                 "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
@@ -513,6 +498,7 @@ suite = {
 
         "OBJECTFILE": {
             "subDir": "src",
+            "description" : "SubstrateVM object file writing library",
             "dependencies": [
                 "com.oracle.objectfile"
             ]
@@ -528,6 +514,11 @@ suite = {
             ],
             "native": True,
             "platformDependent" : True,
+            "platforms" : [
+                "linux-amd64",
+                "darwin-amd64",
+            ],
+            "description" : "SubstrateVM image builder native components",
             "relpath": True,
             "output": "clibraries",
         },
@@ -537,6 +528,7 @@ suite = {
         #
         "SVM_DRIVER": {
             "subDir": "src",
+            "description" : "SubstrateVM native-image building tool",
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
@@ -548,6 +540,7 @@ suite = {
 
         "POINTSTO": {
             "subDir": "src",
+            "description" : "SubstrateVM static analysis to find ahead-of-time the code",
             "dependencies": [
                 "com.oracle.graal.pointsto",
             ],
@@ -556,14 +549,6 @@ suite = {
             ],
             "exclude": [
             ]
-        },
-
-        "NATIVE_IMAGE": {
-            "native": True,
-            "dependencies": [
-                "bootstrap.native-image",
-            ],
-            "output": "svmbuild/native-image-root",
         },
 
         "POLYGLOT_NATIVE_API" : {
@@ -606,6 +591,14 @@ suite = {
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+            },
+        },
+
+        "NATIVE_IMAGE_JUNIT_SUPPORT" : {
+            "native" : True,
+            "description" : "Native-image based junit testing support",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/tools-junit.properties",
             },
         },
     },

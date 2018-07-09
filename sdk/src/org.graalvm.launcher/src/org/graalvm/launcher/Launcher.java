@@ -45,6 +45,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -619,6 +620,17 @@ public abstract class Launcher {
                 String group = key;
                 if (index >= 0) {
                     group = group.substring(0, index);
+                }
+                if ("log".equals(group)) {
+                    if (key.endsWith(".level")) {
+                        try {
+                            Level.parse(value);
+                            options.put(key, value);
+                            return true;
+                        } catch (IllegalArgumentException e) {
+                            throw abort(String.format("Invalid log level %s specified. %s'", arg, e.getMessage()));
+                        }
+                    }
                 }
                 OptionDescriptor descriptor = findPolyglotOptionDescriptor(group, key);
                 if (descriptor == null) {
@@ -1393,6 +1405,12 @@ public abstract class Launcher {
             } else {
                 home = jreOrJdk;
             }
+            if (!isJreHome(home) && !isJdkHome(home)) {
+                if (verbose) {
+                    System.out.println(String.format("GraalVM home was found from language home but it's not a JRE/JDK home (ignoring it): %s", home));
+                }
+                return null;
+            }
             if (verbose) {
                 System.out.println(String.format("Resolving GraalVM home from language home: languageHome=%s -> home=%s", languageHome, home));
             }
@@ -1464,7 +1482,8 @@ public abstract class Launcher {
                 home = null;
             }
             if (home != null && !isJreHome(home)) {
-                System.err.println(String.format("WARNING: %s was found as GraalVM home but it does not contain `bin/java`", home));
+                System.err.println(String.format("WARNING: %s was found as GraalVM home but it does not contain `bin/java`, ignoring it.", home));
+                return null;
             }
             if (verbose) {
                 System.out.println(String.format("Resolving GraalVM home with fallback: executable=%s -> home=%s", executable, home));

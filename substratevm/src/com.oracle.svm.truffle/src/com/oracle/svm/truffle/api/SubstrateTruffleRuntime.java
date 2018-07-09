@@ -40,6 +40,7 @@ import java.util.concurrent.TimeoutException;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -129,6 +130,15 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
         return callMethods.anyFrameMethod;
+    }
+
+    @Override
+    protected String getCompilerConfigurationName() {
+        TruffleCompiler compiler = getTruffleCompiler();
+        if (compiler != null) {
+            return compiler.getCompilerConfigurationName();
+        }
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -49,7 +49,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.ArpaInet;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetIf;
@@ -112,7 +114,7 @@ public class LinuxJavaNetNetworkInterface {
                 if (Ioctl.ioctl(sock, Socket.SIOCGIFCONF(), ifc) < 0) {
                     // 1129 NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException", "ioctl
                     // SIOCGIFCONF failed");
-                    throw new SocketException("ioctl SIOCGIFCONF failed");
+                    throw new SocketException(PosixUtils.lastErrorString("ioctl SIOCGIFCONF failed"));
                     // 1130 return ifs;
                 }
                 // 1132 #elif defined(_AIX)
@@ -150,12 +152,13 @@ public class LinuxJavaNetNetworkInterface {
             // 1145 #endif
             // 1146 if (ioctl(sock, siocgifconfRequest, (char *)&ifc) < 0) {
             if (Ioctl.ioctl(sock, siocgifconfRequest, ifc) < 0) {
+                final int savedErrno = Errno.errno();
                 // 1147 NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException", "ioctl
                 // SIOCGIFCONF failed");
                 // 1148 (void) free(buf);
                 // 1149 return ifs;
                 LibC.free(buf);
-                throw new SocketException("ioctl SIOCGIFCONF failed");
+                throw new SocketException(PosixUtils.errorString(savedErrno, "ioctl SIOCGIFCONF failed"));
             }
             // 1151
             // 1152 /*
@@ -307,7 +310,7 @@ public class LinuxJavaNetNetworkInterface {
             // 1356   if (ioctl(sock, SIOCGIFFLAGS, (char *)&if2)  < 0) {
             if (Ioctl.ioctl(sock, Socket.SIOCGIFFLAGS(), if2) < 0) {
                 // 1357       NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "IOCTL  SIOCGIFFLAGS failed");
-                throw new SocketException("IOCTL  SIOCGIFFLAGS failed");
+                throw new SocketException(PosixUtils.lastErrorString("IOCTL  SIOCGIFFLAGS failed"));
                 // 1358       return ret;
                 /* Unreachable code. */
             }
@@ -318,7 +321,7 @@ public class LinuxJavaNetNetworkInterface {
                 // 1363       if (ioctl(sock, SIOCGIFBRDADDR, (char *)&if2) < 0) {
                 if (Ioctl.ioctl(sock,  Socket.SIOCGIFBRDADDR(), if2) < 0) {
                     // 1364           NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "IOCTL SIOCGIFBRDADDR failed");
-                    throw new SocketException("IOCTL SIOCGIFBRDADDR failed");
+                    throw new SocketException(PosixUtils.lastErrorString("IOCTL SIOCGIFBRDADDR failed"));
                     // 1365           return ret;
                     /* Unreachable code. */
                 }
@@ -355,7 +358,7 @@ public class LinuxJavaNetNetworkInterface {
             // 1387     if (ioctl(sock, SIOCGIFNETMASK, (char *)&if2) < 0) {
             if (Ioctl.ioctl(sock, Socket.SIOCGIFNETMASK(), if2) < 0) {
                 // 1388         NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "IOCTL SIOCGIFNETMASK failed");
-                throw new SocketException("IOCTL SIOCGIFNETMASK failed");
+                throw new SocketException(PosixUtils.lastErrorString("IOCTL SIOCGIFNETMASK failed"));
                 // 1389         return -1;
                 /* Unreachable code. */
             }

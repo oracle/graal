@@ -161,6 +161,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Dirent;
@@ -776,11 +777,10 @@ public final class PosixJavaNIOSubstitutions {
                 // 254                        sizeof(int)) < 0) {
                 if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_V6ONLY(), arg_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
                     try {
-                        /* FIXME: Not implementing JNU_ThrowByNameWithLastError. */
                         // 255             JNU_ThrowByNameWithLastError(env,
                         // 256                                          JNU_JAVANETPKG "SocketException",
                         // 257                                          "Unable to set IPV6_V6ONLY");
-                        throw new java.net.SocketException("Unable to set IPV6_V6ONLY");
+                        throw new java.net.SocketException(PosixUtils.lastErrorString("Unable to set IPV6_V6ONLY"));
                     } finally {
                         // 258             close(fd);
                         Unistd.close(fd);
@@ -799,11 +799,10 @@ public final class PosixJavaNIOSubstitutions {
                 // 267                        sizeof(arg)) < 0) {
                 if (Socket.setsockopt(fd, Socket.SOL_SOCKET(), Socket.SO_REUSEADDR(), arg_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
                     try {
-                        /* FIXME: Not implementing JNU_ThrowByNameWithLastError. */
                         // 268             JNU_ThrowByNameWithLastError(env,
                         // 269                                          JNU_JAVANETPKG "SocketException",
                         // 270                                          "Unable to set SO_REUSEADDR");
-                        throw new java.net.SocketException("Unable to set SO_REUSEADDR");
+                        throw new java.net.SocketException(PosixUtils.lastErrorString("Unable to set SO_REUSEADDR"));
                     } finally {
                         // 271             close(fd);
                         Unistd.close(fd);
@@ -827,11 +826,10 @@ public final class PosixJavaNIOSubstitutions {
                                     (Errno.errno() != Errno.ENOPROTOOPT())) {
 
                         try {
-                            /* FIXME: Not implementing JNU_ThrowByNameWithLastError. */
                             // 282             JNU_ThrowByNameWithLastError(env,
                             // 283                                          JNU_JAVANETPKG "SocketException",
                             // 284                                          "Unable to set IP_MULTICAST_ALL");
-                            throw new java.net.SocketException("Unable to set IP_MULTICAST_ALL");
+                            throw new java.net.SocketException(PosixUtils.lastErrorString("Unable to set IP_MULTICAST_ALL"));
                         } finally {
                             // 285             close(fd);
                             Unistd.close(fd);
@@ -854,11 +852,10 @@ public final class PosixJavaNIOSubstitutions {
                     // 296                        sizeof(arg)) < 0) {
                     if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_HOPS(), arg_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
                         try {
-                            /* FIXME: Not implementing JNU_ThrowByNameWithLastError. */
                             // 297             JNU_ThrowByNameWithLastError(env,
                             // 298                                          JNU_JAVANETPKG "SocketException",
                             // 299                                          "Unable to set IPV6_MULTICAST_HOPS");
-                            throw new java.net.SocketException("Unable to set IPV6_MULTICAST_HOPS");
+                            throw new java.net.SocketException(PosixUtils.lastErrorString("Unable to set IPV6_MULTICAST_HOPS"));
                         } finally {
                             // 300             close(fd);
                             Unistd.close(fd);
@@ -991,7 +988,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 461         JNU_ThrowByNameWithLastError(env,
                 // 462                                      JNU_JAVANETPKG "SocketException",
                 // 463                                      "sun.nio.ch.Net.getIntOption");
-                throw new SocketException("sun.nio.ch.Net.getIntOption");
+                throw new SocketException(PosixUtils.lastErrorString("sun.nio.ch.Net.getIntOption"));
                 // 464         return -1;
             }
             // 466
@@ -1100,7 +1097,7 @@ public final class PosixJavaNIOSubstitutions {
                     //         521         JNU_ThrowByNameWithLastError(env,
                     //         522                                      JNU_JAVANETPKG "SocketException",
                     //         523                                      "sun.nio.ch.Net.setIntOption");
-                    throw new SocketException("sun.nio.ch.Net.setIntOption");
+                    throw new SocketException(PosixUtils.lastErrorString("sun.nio.ch.Net.setIntOption"));
                 }
             } finally {
                 //         525 #ifdef __linux__
@@ -1270,39 +1267,38 @@ public final class PosixJavaNIOSubstitutions {
                 // 819         case EPROTO:
             } else if (errorValue == Errno.EPROTO()) {
                 // 820             xn = JNU_JAVANETPKG "ProtocolException";
-                xn = new java.net.ProtocolException(exceptionString);
+                xn = new java.net.ProtocolException(PosixUtils.errorString(errorValue, exceptionString));
                 // 821             break;
                 // 822 #endif
                 // 823         case ECONNREFUSED:
             } else if (errorValue == Errno.ECONNREFUSED()) {
                 // 824             xn = JNU_JAVANETPKG "ConnectException";
-                xn = new java.net.ConnectException(exceptionString);
+                xn = new java.net.ConnectException(PosixUtils.errorString(errorValue, exceptionString));
                 // 825             break;
                 // 826         case ETIMEDOUT:
             } else if (errorValue == Errno.ETIMEDOUT()) {
                 // 827             xn = JNU_JAVANETPKG "ConnectException";
-                xn = new java.net.ConnectException(exceptionString);
+                xn = new java.net.ConnectException(PosixUtils.errorString(errorValue, exceptionString));
                 // 828             break;
                 // 829         case EHOSTUNREACH:
             } else if (errorValue == Errno.EHOSTUNREACH()) {
                 // 830             xn = JNU_JAVANETPKG "NoRouteToHostException";
-                xn = new java.net.NoRouteToHostException(exceptionString);
+                xn = new java.net.NoRouteToHostException(PosixUtils.errorString(errorValue, exceptionString));
                 // 831             break;
                 // 832         case EADDRINUSE:  /* Fall through */
                 // 833         case EADDRNOTAVAIL:
             } else if ((errorValue == Errno.EADDRINUSE()) || (errorValue == Errno.EADDRNOTAVAIL())) {
                 // 834             xn = JNU_JAVANETPKG "BindException";
-                xn = new java.net.BindException(exceptionString);
+                xn = new java.net.BindException(PosixUtils.errorString(errorValue, exceptionString));
                 // 835             break;
                 // 836         default:
             } else {
                 // 837             xn = JNU_JAVANETPKG "SocketException";
-                xn = new java.net.SocketException(exceptionString);
+                xn = new java.net.SocketException(PosixUtils.errorString(errorValue, exceptionString));
                 // 838             break;
             }
             // 840     errno = errorValue;
             Errno.set_errno(errorValue);
-            /* FIXME: Not implementing JNU_ThrowByNameWithLastError. */
             // 841     JNU_ThrowByNameWithLastError(env, xn, "NioSocketError");
             throw xn;
             // 842     return IOS_THROWN;
@@ -3021,7 +3017,8 @@ public final class PosixJavaNIOSubstitutions {
         }
     }
 
-    @TargetClass(className = "java.nio.Bits")
+    /** This class exists in JDK-9, but these methods do not. */
+    @TargetClass(className = "java.nio.Bits", onlyWith = JDK8OrEarlier.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_java_nio_Bits {
 

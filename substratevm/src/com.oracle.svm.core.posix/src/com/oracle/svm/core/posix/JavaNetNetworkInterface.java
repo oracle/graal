@@ -921,7 +921,7 @@ public class JavaNetNetworkInterface {
             // 1068         if (errno != EPROTONOSUPPORT) {
             if (Errno.errno() != Errno.EPROTONOSUPPORT()) {
                 // 1069             NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException", "Socket creation failed");
-                throw new SocketException("Socket creation failed");
+                throw new SocketException(PosixUtils.lastErrorString("Socket creation failed"));
             }
             // 1071         return -1;
         }

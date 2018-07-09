@@ -51,6 +51,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -316,37 +317,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/internal/misc/Unsafe.compareAndExchangeShortAcquire(Ljava/lang/Object;JSS)S",
                             "jdk/internal/misc/Unsafe.compareAndExchangeShortRelease(Ljava/lang/Object;JSS)S",
 
-                            // Mapped to get*Volatile
-                            "jdk/internal/misc/Unsafe.getBooleanAcquire(Ljava/lang/Object;J)Z",
-                            "jdk/internal/misc/Unsafe.getBooleanOpaque(Ljava/lang/Object;J)Z",
-                            "jdk/internal/misc/Unsafe.getByteAcquire(Ljava/lang/Object;J)B",
-                            "jdk/internal/misc/Unsafe.getByteOpaque(Ljava/lang/Object;J)B",
-                            "jdk/internal/misc/Unsafe.getCharAcquire(Ljava/lang/Object;J)C",
-                            "jdk/internal/misc/Unsafe.getCharOpaque(Ljava/lang/Object;J)C",
-                            "jdk/internal/misc/Unsafe.getDoubleAcquire(Ljava/lang/Object;J)D",
-                            "jdk/internal/misc/Unsafe.getDoubleOpaque(Ljava/lang/Object;J)D",
-                            "jdk/internal/misc/Unsafe.getFloatAcquire(Ljava/lang/Object;J)F",
-                            "jdk/internal/misc/Unsafe.getFloatOpaque(Ljava/lang/Object;J)F",
-                            "jdk/internal/misc/Unsafe.getIntAcquire(Ljava/lang/Object;J)I",
-                            "jdk/internal/misc/Unsafe.getIntOpaque(Ljava/lang/Object;J)I",
-                            "jdk/internal/misc/Unsafe.getLongAcquire(Ljava/lang/Object;J)J",
-                            "jdk/internal/misc/Unsafe.getLongOpaque(Ljava/lang/Object;J)J",
-                            "jdk/internal/misc/Unsafe.getObjectAcquire(Ljava/lang/Object;J)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.getObjectOpaque(Ljava/lang/Object;J)Ljava/lang/Object;",
-                            "jdk/internal/misc/Unsafe.getShortAcquire(Ljava/lang/Object;J)S",
-                            "jdk/internal/misc/Unsafe.getShortOpaque(Ljava/lang/Object;J)S",
-
-                            // Mapped to put*Volatile
-                            "jdk/internal/misc/Unsafe.putBooleanOpaque(Ljava/lang/Object;JZ)V",
-                            "jdk/internal/misc/Unsafe.putByteOpaque(Ljava/lang/Object;JB)V",
-                            "jdk/internal/misc/Unsafe.putCharOpaque(Ljava/lang/Object;JC)V",
-                            "jdk/internal/misc/Unsafe.putDoubleOpaque(Ljava/lang/Object;JD)V",
-                            "jdk/internal/misc/Unsafe.putFloatOpaque(Ljava/lang/Object;JF)V",
-                            "jdk/internal/misc/Unsafe.putIntOpaque(Ljava/lang/Object;JI)V",
-                            "jdk/internal/misc/Unsafe.putLongOpaque(Ljava/lang/Object;JJ)V",
-                            "jdk/internal/misc/Unsafe.putObjectOpaque(Ljava/lang/Object;JLjava/lang/Object;)V",
-                            "jdk/internal/misc/Unsafe.putShortOpaque(Ljava/lang/Object;JS)V",
-
                             // Mapped to compareAndSet*
                             "jdk/internal/misc/Unsafe.weakCompareAndSetByte(Ljava/lang/Object;JBB)Z",
                             "jdk/internal/misc/Unsafe.weakCompareAndSetByteAcquire(Ljava/lang/Object;JBB)Z",
@@ -401,6 +371,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (isJDK11OrHigher()) {
             // Relevant for Java flight recorder
             add(toBeInvestigated,
+                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
 
@@ -430,16 +401,19 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             if (isJDK9OrHigher()) {
+                if (!(arch instanceof AArch64)) {
+                    add(toBeInvestigated,
+                                    "java/lang/StringLatin1.compareTo([B[B)I",
+                                    "java/lang/StringLatin1.compareToUTF16([B[B)I",
+                                    "java/lang/StringUTF16.compareTo([B[B)I",
+                                    "java/lang/StringUTF16.compareToLatin1([B[B)I",
+                                    "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
+                                    "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
+                                    "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
+                                    "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
+                                    "jdk/internal/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
+                }
                 add(toBeInvestigated,
-                                "java/lang/StringLatin1.compareTo([B[B)I",
-                                "java/lang/StringLatin1.compareToUTF16([B[B)I",
-                                "java/lang/StringUTF16.compareTo([B[B)I",
-                                "java/lang/StringUTF16.compareToLatin1([B[B)I",
-                                "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
-                                "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
-                                "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
-                                "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
-                                "jdk/internal/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
                                 "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
                                 "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",

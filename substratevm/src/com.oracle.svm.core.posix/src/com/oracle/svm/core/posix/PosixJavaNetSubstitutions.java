@@ -48,6 +48,7 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,6 +66,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
@@ -221,13 +225,31 @@ final class Target_java_net_InetAddress {
 
     @Alias static int IPv6;
 
-    // TODO: I am re-using the static field rather than caching it locally in a translation of
-    // Inet6AddressImpl::initializeInetClasses().
-    @Alias static boolean preferIPv6Address;
+    @Alias //
+    @TargetElement(name = "preferIPv6Address", onlyWith = JDK8OrEarlier.class) //
+    static boolean preferIPv6AddressJDK8OrEarlier;
+
+    @Alias //
+    @TargetElement(name = "preferIPv6Address", onlyWith = JDK9OrLater.class) //
+    static int preferIPv6AddressJDK9OrLater;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static /* final */ int PREFER_IPV4_VALUE;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static /* final */ int PREFER_IPV6_VALUE;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static /* final */ int PREFER_SYSTEM_VALUE;
 
     @Alias Target_java_net_InetAddress_InetAddressHolder holder;
 
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.FromAlias) //
     static HashMap<String, Void> lookupTable = new HashMap<>();
 
     /**
@@ -238,23 +260,42 @@ final class Target_java_net_InetAddress {
      * {@link Target_java_net_InetAddress_Cache#cache} - that is easier since it does not require us
      * to instantiate a non-public JDK class during image generation.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
     static boolean addressCacheInit = false;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
     static InetAddress[] unknown_array;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
-    static InetAddress cachedLocalHost;
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    @Alias //
+    @TargetElement(name = "cachedLocalHost", onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    static InetAddress cachedLocalHostJDK8OrEarlier;
+
+    @Alias //
+    @TargetElement(name = "cachedLocalHost", onlyWith = JDK9OrLater.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    static Target_java_net_InetAddress_CachedLocalHost cachedLocalHostJDK9OrLater;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = Kind.Reset) //
     static long cacheTime;
 }
 
-@TargetClass(className = "java.net.InetAddress", innerClass = "Cache")
+@TargetClass(className = "java.net.InetAddress", innerClass = "Cache", onlyWith = JDK8OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_Cache {
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = LinkedHashMap.class)//
     LinkedHashMap<String, Object> cache;
+}
+
+@TargetClass(className = "java.net.InetAddress", innerClass = "CachedLocalHost", onlyWith = JDK9OrLater.class)
+final class Target_java_net_InetAddress_CachedLocalHost {
 }
 
 /** Methods to operate on java.net.InetAddress instances. */
@@ -1069,8 +1110,9 @@ final class Target_java_net_Inet6AddressImpl {
                     int i = 0;
                     int inetCount = 0;
                     int inet6Count = 0;
-                    int inetIndex;
-                    int inet6Index;
+                    int inetIndex = 0;
+                    int inet6Index = 0;
+                    int originalIndex = 0;
                     Netdb.addrinfo itr;
                     Netdb.addrinfo last = WordFactory.nullPointer();
                     Netdb.addrinfo iterator = res;
@@ -1141,14 +1183,28 @@ final class Target_java_net_Inet6AddressImpl {
 
                     ret = new InetAddress[retLen];
 
-                    if (Target_java_net_InetAddress.preferIPv6Address) {
-                        /* AF_INET addresses will be offset by inet6Count */
-                        inetIndex = inet6Count;
-                        inet6Index = 0;
+                    if (GraalServices.Java8OrEarlier) {
+                        if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
+                            /* AF_INET addresses will be offset by inet6Count */
+                            inetIndex = inet6Count;
+                            inet6Index = 0;
+                        } else {
+                            /* AF_INET6 addresses will be offset by inetCount */
+                            inetIndex = 0;
+                            inet6Index = inetCount;
+                        }
                     } else {
-                        /* AF_INET6 addresses will be offset by inetCount */
-                        inetIndex = 0;
-                        inet6Index = inetCount;
+                        if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) {
+                            inetIndex = inet6Count;
+                            inet6Index = 0;
+                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV4_VALUE) {
+                            inetIndex = 0;
+                            inet6Index = inetCount;
+                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
+                            inetIndex = 0;
+                            inet6Index = 0;
+                            originalIndex = 0;
+                        }
                     }
 
                     while (iterator.isNonNull()) {
@@ -1157,7 +1213,7 @@ final class Target_java_net_Inet6AddressImpl {
                             Inet4Address iaObj = Util_java_net_Inet4Address.new_Inet4Address();
                             JavaNetNetUtil.setInetAddress_addr(iaObj, NetinetIn.ntohl(((NetinetIn.sockaddr_in) iterator.ai_addr()).sin_addr().s_addr()));
                             JavaNetNetUtil.setInetAddress_hostName(iaObj, host);
-                            ret[inetIndex] = iaObj;
+                            ret[inetIndex | originalIndex] = iaObj;
                             inetIndex++;
                         } else if (iterator.ai_family() == Socket.AF_INET6()) {
                             // 455 jint scope = 0;
@@ -1190,9 +1246,16 @@ final class Target_java_net_Inet6AddressImpl {
                             // 472 setInetAddress_hostName(env, iaObj, host);
                             JavaNetNetUtil.setInetAddress_hostName(iaObj, host);
                             // 473 (*env)->SetObjectArrayElement(env, ret, inet6Index, iaObj);
-                            ret[inet6Index] = iaObj;
+                            ret[inet6Index | originalIndex] = iaObj;
                             // 474 inet6Index++;
                             inet6Index++;
+                        }
+                        if (!GraalServices.Java8OrEarlier) {
+                            if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
+                                originalIndex++;
+                                inetIndex = 0;
+                                inet6Index = 0;
+                            }
                         }
                         iterator = iterator.ai_next();
                     }
@@ -1293,12 +1356,19 @@ final class Util_java_net_Inet6AddressImpl {
                 /* Create and fill the Java array. */
                 int arraySize = addrs4 + addrs6 - (includeLoopback ? 0 : (numV4Loopbacks + numV6Loopbacks));
                 result = new InetAddress[arraySize];
-                if (Target_java_net_InetAddress.preferIPv6Address) {
-                    i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
-                    j = 0;
+                if (GraalServices.Java8OrEarlier) {
+                    if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
+                        i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
+                        j = 0;
+                    } else {
+                        i = 0;
+                        j = includeLoopback ? addrs4 : (addrs4 - numV4Loopbacks);
+                    }
                 } else {
+                    /* TODO: `i` and `j` need to be initialized. But to what values? */
                     i = 0;
-                    j = includeLoopback ? addrs4 : (addrs4 - numV4Loopbacks);
+                    j = 0;
+                    throw VMError.unsupportedFeature("JDK9OrLater: PosixJavaNetSubstitutions.Util_java_net_Inet6AddressImpl.lookupIfLocalhost: https://bugs.openjdk.java.net/browse/JDK-8205076");
                 }
                 // Now loop around the ifaddrs
                 iter = ifa;
@@ -1589,7 +1659,7 @@ final class Target_java_net_SocketInputStream {
                         } else {
                             // 114                      NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
                             // 115                                                   "select/poll failed");
-                            throw new SocketException("select/poll failed");
+                            throw new SocketException(PosixUtils.lastErrorString("select/poll failed"));
                         }
                         // 117             } else if (nread == JVM_IO_INTR) {
                     } else if (nread == Target_jvm.JVM_IO_INTR()) {
@@ -1640,7 +1710,7 @@ final class Target_java_net_SocketInputStream {
                     } else {
                         // 151                     NET_ThrowByNameWithLastError(env,
                         // 152                         JNU_JAVANETPKG "SocketException", "Read failed");
-                        throw new SocketException("Read failed");
+                        throw new SocketException(PosixUtils.lastErrorString("Read failed"));
                     }
                 }
             } else {
@@ -1766,7 +1836,7 @@ final class Target_java_net_SocketOutputStream {
                             } else {
                                 // 120                     NET_ThrowByNameWithLastError(env, "java/net/SocketException",
                                 // 121                         "Write failed");
-                                throw new SocketException("Write failed");
+                                throw new SocketException(PosixUtils.lastErrorString("Write failed"));
                             }
                         }
                     } finally {
@@ -2002,7 +2072,7 @@ final class Target_java_net_PlainSocketImpl {
             } else {
                 // 822             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
                 // 823                                          "ioctl FIONREAD failed");
-                throw new SocketException("ioctl FIONREAD failed");
+                throw new SocketException(PosixUtils.lastErrorString("ioctl FIONREAD failed"));
             }
         }
         // 826     return ret;
@@ -2065,11 +2135,11 @@ final class Target_java_net_PlainSocketImpl {
                             Errno.errno() == Errno.EPERM() || Errno.errno() == Errno.EACCES()) {
         // 580             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "BindException",
         // 581                            "Bind failed");
-                throw new BindException("Bind failed");
+                throw new BindException(PosixUtils.lastErrorString("Bind failed"));
             } else {
         // 583             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
         // 584                            "Bind failed");
-                throw new SocketException("Bind failed");
+                throw new SocketException(PosixUtils.lastErrorString("Bind failed"));
             }
         // 586         return;
         }
@@ -2087,7 +2157,7 @@ final class Target_java_net_PlainSocketImpl {
         // 598             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
         // 599                            "Error getting socket name");
         // 600             return;
-                throw new SocketException("Error getting socket name");
+                throw new SocketException(PosixUtils.lastErrorString("Error getting socket name"));
             }
         // 602         localport = NET_GetPortFromSockaddr((struct sockaddr *)&him);
             localport = JavaNetNetUtilMD.NET_GetPortFromSockaddr(him);
@@ -2281,8 +2351,7 @@ final class Target_java_net_PlainSocketImpl {
                     // 373                 NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "ConnectException",
                     // 374                              "connect failed");
                     try {
-                        /* FIXME: Not implementing NET_ThrowByNameWithLastError. */
-                        throw new ConnectException("connect failed");
+                        throw new ConnectException(PosixUtils.lastErrorString("connect failed"));
                     } finally {
                         // 375                 SET_BLOCKING(fd);
                         Util_java_net_PlainSocketImpl.SET_BLOCKING(fd);
@@ -2439,37 +2508,37 @@ final class Target_java_net_PlainSocketImpl {
             } else if (Errno.errno() == Errno.EPROTO()) {
                 // 493             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "ProtocolException",
                 // 494                            "Protocol error");
-                throw new ProtocolException("Protocol error");
+                throw new ProtocolException(PosixUtils.lastErrorString("Protocol error"));
                 // 495 #endif
                 // 496         } else if (errno == ECONNREFUSED) {
             } else if (Errno.errno() == Errno.ECONNREFUSED()) {
                 // 497             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "ConnectException",
                 // 498                            "Connection refused");
-                throw new ConnectException("Connection refused");
+                throw new ConnectException(PosixUtils.lastErrorString("Connection refused"));
                 // 499         } else if (errno == ETIMEDOUT) {
             } else if (Errno.errno() == Errno.ETIMEDOUT()) {
                 // 500             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "ConnectException",
                 // 501                            "Connection timed out");
-                throw new ConnectException("Connection timed out");
+                throw new ConnectException(PosixUtils.lastErrorString("Connection timed out"));
                 // 502         } else if (errno == EHOSTUNREACH) {
             } else if (Errno.errno() == Errno.EHOSTUNREACH()) {
                 // 503             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "NoRouteToHostException",
                 // 504                            "Host unreachable");
-                throw new NoRouteToHostException("Host unreachable");
+                throw new NoRouteToHostException(PosixUtils.lastErrorString("Host unreachable"));
                 // 505         } else if (errno == EADDRNOTAVAIL) {
             } else if (Errno.errno() == Errno.EADDRNOTAVAIL()) {
                 // 506             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "NoRouteToHostException",
                 // 507                              "Address not available");
-                throw new NoRouteToHostException("Address not available");
+                throw new NoRouteToHostException(PosixUtils.lastErrorString("Address not available"));
                 // 508         } else if ((errno == EISCONN) || (errno == EBADF)) {
             } else if ((Errno.errno() == Errno.EISCONN()) || (Errno.errno() == Errno.EBADF())) {
                 // 509             JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
                 // 510                             "Socket closed");
-                throw new SocketException("Socket closed");
+                throw new SocketException(PosixUtils.lastErrorString("Socket closed"));
                 // 511         } else {
             } else {
                 // 512             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "connect failed");
-                throw new SocketException("connect failed");
+                throw new SocketException(PosixUtils.lastErrorString("connect failed"));
             }
             // 514         return;
             /* Elided return because the "throw"s above do that. */
@@ -2497,7 +2566,7 @@ final class Target_java_net_PlainSocketImpl {
             if (VmPrimsJVM.JVM_GetSockName(fd, him, len_Pointer) == -1) {
                 // 534             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
                 // 535                            "Error getting socket name");
-                throw new SocketException("Error getting socket name");
+                throw new SocketException(PosixUtils.lastErrorString("Error getting socket name"));
             } else {
                 // 537             localport = NET_GetPortFromSockaddr((struct sockaddr *)&him);
                 localport = JavaNetNetUtilMD.NET_GetPortFromSockaddr(him);
@@ -2549,7 +2618,7 @@ final class Target_java_net_PlainSocketImpl {
         if (VmPrimsJVM.JVM_Listen(fd, count) == JavavmExportJvm.JvmIoErrorCode.JVM_IO_ERR()) {
         // 639         NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
         // 640                        "Listen failed");
-            throw new SocketException("Listen failed");
+            throw new SocketException(PosixUtils.lastErrorString("Listen failed"));
         }
     }
     /* @formatter:on */
@@ -2666,7 +2735,7 @@ final class Target_java_net_PlainSocketImpl {
                         throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
                     } else {
                         // 721                NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
-                        throw new SocketException("Accept failed");
+                        throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
                     }
                     // 723             return;
                     // 724         } else if (ret == JVM_IO_INTR) {
@@ -2735,7 +2804,7 @@ final class Target_java_net_PlainSocketImpl {
                         throw new SocketException("Socket closed");
                     } else {
                         // 768                 NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Accept failed");
-                        throw new SocketException("Accept failed");
+                        throw new SocketException(PosixUtils.lastErrorString("Accept failed"));
                     }
                 }
                 // 771         return;
@@ -2967,7 +3036,7 @@ final class Target_java_net_PlainSocketImpl {
         // 976 #endif /* __solaris__ */
         // 977         NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
         // 978                                       "Error setting socket option");
-            throw new SocketException("Error setting socket option");
+            throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
         }
     }
     /* @formatter:on */
@@ -3045,10 +3114,20 @@ final class Target_sun_net_spi_DefaultProxySelector {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings({"static-method", "unused"})
     /* FIXME: No proxies, yet. */
-    private synchronized Proxy getSystemProxy(String protocol, String host) {
-        VMError.unimplemented();
+    private synchronized /* native */ Proxy getSystemProxy(String protocol, String host) {
+        VMError.unsupportedFeature("Target_sun_net_spi_DefaultProxySelector.getSystemProxy");
+        return null;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    /* FIXME: No proxies, yet. */
+    private synchronized /* native */ Proxy[] getSystemProxies(String protocol, String host) {
+        VMError.unsupportedFeature("Target_sun_net_spi_DefaultProxySelector.getSystemProxies");
         return null;
     }
 }
