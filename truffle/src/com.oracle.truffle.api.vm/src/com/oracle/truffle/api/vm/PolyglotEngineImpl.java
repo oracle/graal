@@ -1006,6 +1006,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
         }
 
+        Handler useHandler = logHandler != null ? logHandler : this.logHandler;
+        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(useOut, false, true);
+
         final InputStream useIn = configIn == null ? this.in : configIn;
 
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
