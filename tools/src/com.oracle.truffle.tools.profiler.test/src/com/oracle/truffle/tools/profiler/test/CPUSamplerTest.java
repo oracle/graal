@@ -267,7 +267,11 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         @GenerateWrapper
         abstract static class SamplerTestInstrumentableNode extends SamplerTestNode implements InstrumentableNode {
 
-            SourceSection sourceSection;
+            final SourceSection sourceSection;
+
+            protected SamplerTestInstrumentableNode(SourceSection sourceSection) {
+                this.sourceSection = sourceSection;
+            }
 
             @Override
             public abstract Object execute(VirtualFrame frame);
@@ -277,9 +281,15 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 return true;
             }
 
+
+            @Override
+            public SourceSection getSourceSection() {
+                return sourceSection;
+            }
+
             @Override
             public WrapperNode createWrapper(ProbeNode probe) {
-                return new SamplerTestInstrumentableNodeWrapper(this, probe);
+                return new SamplerTestInstrumentableNodeWrapper(sourceSection, this, probe);
             }
         }
 
@@ -313,19 +323,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             @Child SamplerTestNode node;
 
-            StatementNode(StatementNode other) {
-                node = other.node;
-                sourceSection = other.sourceSection;
-            }
-
             StatementNode(SourceSection sourceSection, SamplerTestNode node) {
-                this.sourceSection = sourceSection;
+                super(sourceSection);
                 this.node = node;
-            }
-
-            @Override
-            public SourceSection getSourceSection() {
-                return sourceSection;
             }
 
             @Override
@@ -343,18 +343,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             @Child SamplerTestNode node;
 
-            RootNode(RootNode other) {
-                node = other.node;
-                sourceSection = other.sourceSection;
-            }
-
-            @Override
-            public SourceSection getSourceSection() {
-                return sourceSection;
-            }
-
             RootNode(SourceSection sourceSection, SamplerTestNode node) {
-                this.sourceSection = sourceSection;
+                super(sourceSection);
                 this.node = node;
             }
 
@@ -378,12 +368,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 super(language);
                 this.language = language;
                 this.child = child;
-            }
-
-            protected SRootNode(SRootNode other) {
-                super(other.language);
-                language = other.language;
-                child = other.child;
             }
 
             @Override

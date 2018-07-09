@@ -47,7 +47,7 @@ final class SourceLocation {
         this.tags = instrumenter.queryTags(context.getInstrumentedNode());
         this.sourceSection = context.getInstrumentedSourceSection();
         this.instrumentedNode = context.getInstrumentedNode();
-        rootName = extractRootName(instrumentedNode);
+        this.rootName = extractRootName(instrumentedNode);
     }
 
     SourceLocation(Instrumenter instrumenter, Node node) {
