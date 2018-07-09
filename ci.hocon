@@ -1,4 +1,4 @@
-overlay = fa8b5cf06baa73cad0145b6379969885eb46b634
+overlay = 28a74bfc8ad6d6a7cffc2b7835f6cc27cd03993a
 
 java8: {name: labsjdk, version: "8u172-jvmci-0.46", platformspecific: true}
 eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
@@ -137,12 +137,14 @@ python-downstream-test: {
     ]
 }
 
-svm-downstream-test: ${requireGCC} {
+vm-downstream-test: ${requireGCC} {
   environment: {
-    SVM_REPO: "https://github.com/graalvm/graal.git",
-    SVM_SUITEDIR: substratevm,
+    DYNAMIC_IMPORTS: "sulong,/substratevm",
+    NATIVE_IMAGE_TESTING: "True",
+    VM_REPO: "https://github.com/graalvm/graal.git",
+    VM_SUITEDIR: vm,
   },
-  run: [[mx, testdownstream, -R, "${SVM_REPO}", --suitedir, "${SVM_SUITEDIR}", -C, "--dynamicimport sulong gate --tags build,sulong"]]
+  run: [[mx, testdownstream, -R, "${VM_REPO}", --suitedir, "${VM_SUITEDIR}", -C, "--disable-polyglot --disable-libpolyglot gate -B=--force-deprecation-as-warning --tags build,sulong"]]
 }
 
 gate-asm-parser: ${gateCommon} ${linux-amd64} {
@@ -169,7 +171,7 @@ builds = [
 
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
   ${gateTest38-linux} ${python-downstream-test} { name: gate-python-downstream }
-  ${gateTest38-linux} ${svm-downstream-test} { name: gate-substratevm-downstream }
+  ${gateTest38-linux} ${vm-downstream-test} { name: gate-vm-downstream }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
   ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }
