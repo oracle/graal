@@ -73,10 +73,10 @@ public final class ExecutionEvent {
      * <code>null</code> if input value collection is not
      * {@link ExecutionListener.Builder#collectInputValues(boolean) enabled}. Input values are
      * available in {@link ExecutionListener.Builder#onReturn(java.util.function.Consumer) OnReturn}
-     * or {@link ExecutionListener.Builder#onError(java.util.function.Consumer) OnReturn} events.The
-     * returned list may contain <code>null</code> values if input values were not evaluated or if
-     * an error occurred executing input values. The returned list is unmodifiable. The returned
-     * input values may escape the event consumer and remain valid until the context is closed.
+     * events.The returned list may contain <code>null</code> values if input values were not
+     * evaluated or if an error occurred executing input values. The returned list is unmodifiable.
+     * The returned input values may escape the event consumer and remain valid until the context is
+     * closed.
      *
      * @since 1.0
      */
@@ -102,9 +102,9 @@ public final class ExecutionEvent {
      * Returns the error of this source location after it was executed. This method returns
      * <code>null</code> if error collection is not
      * {@link ExecutionListener.Builder#collectErrors(boolean) enabled}. Errors are only available
-     * in {@link ExecutionListener.Builder#onError(java.util.function.Consumer) OnError} events. The
-     * returned value is allowed to escape the event consumer and remains valid until the context is
-     * closed.
+     * in {@link ExecutionListener.Builder#onReturn(java.util.function.Consumer) OnReturn} events if
+     * an error was thrown when the location was executed. The returned value is allowed to escape
+     * the event consumer and remains valid until the context is closed.
      *
      * @since 1.0
      */
@@ -113,7 +113,7 @@ public final class ExecutionEvent {
     }
 
     /**
-     * Returns <code>true</code> if the source location is marked as expressionm, else
+     * Returns <code>true</code> if the source location is marked as expression, else
      * <code>false</code>. The collection of expression events may be enabled by calling
      * {@link ExecutionListener.Builder#expressions(boolean)}.
      *
