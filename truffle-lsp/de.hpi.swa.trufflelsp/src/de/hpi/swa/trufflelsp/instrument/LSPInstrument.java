@@ -17,31 +17,8 @@ import de.hpi.swa.trufflelsp.launcher.TruffleLSPLauncher;
 public class LSPInstrument extends TruffleInstrument {
     public static final String ID = "lsp";
 
-// static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]",
-// DEFAULT_ADDRESS, (address) -> {
-// if (address.isEmpty() || address.equals("true")) {
-// return DEFAULT_ADDRESS;
-// } else {
-// int colon = address.indexOf(':');
-// String port;
-// String host;
-// if (colon >= 0) {
-// port = address.substring(colon + 1);
-// host = address.substring(0, colon);
-// } else {
-// port = address;
-// host = null;
-// }
-// return new HostAndPort(host, port);
-// }
-// }, (address) -> address.verify());
-
     @com.oracle.truffle.api.Option(name = "", help = "Truffle Language Server", category = OptionCategory.USER) //
     static final OptionKey<Boolean> Lsp = new OptionKey<>(true);
-//
-// @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category =
-// OptionCategory.EXPERT) //
-// static final OptionKey<Boolean> Remote = new OptionKey<>(false);
 
     @com.oracle.truffle.api.Option(name = "Languagespecific.hacks", help = "Enable language specific hacks to get features which are not supported by some languages yet. (default:true)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> LanguageSpecificHacksOption = new OptionKey<>(true);

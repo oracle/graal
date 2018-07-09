@@ -74,7 +74,7 @@ public class LanguageSpecificHacks {
         return false;
     }
 
-    public static String getDocumentationForTruffleObject(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
+    public static String getSignatureForCallable(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
         if (enableLanguageSpecificHacks) {
             if (langId.equals("python")) {
                 try {
@@ -117,9 +117,9 @@ public class LanguageSpecificHacks {
     }
 
     public static Object getBoxedObject(Object object, String langId) {
-        // TODO(ds) What we really want is a BOXED-message which we can send to get a TruffleObject which
-        // wraps the primitive typed value (Integers, floats, bools, etc.) to be able to send them the KEYS
-        // message
+        // TODO(ds) What we really want is a BOXED-message which we can send to get a TruffleObject
+        // which wraps the primitive typed value (Integers, floats, bools, etc.) to be able to send
+        // them the KEYS message
         if (enableLanguageSpecificHacks) {
             if (langId.equals("python")) {
                 try {

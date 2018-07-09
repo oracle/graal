@@ -33,6 +33,8 @@ import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.MarkedString;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SignatureHelp;
+import org.eclipse.lsp4j.SignatureInformation;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -51,6 +53,8 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
@@ -67,6 +71,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -103,7 +108,8 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     private static final class SourceUriFilter implements SourcePredicate {
 
         public boolean test(Source source) {
-            return source.getName().startsWith("file://"); // TODO(ds) how to filter? tag is STATEMENT && source.isAvailable()?
+            return source.getName().startsWith("file://"); // TODO(ds) how to filter? tag is
+                                                           // STATEMENT && source.isAvailable()?
         }
     }
 
@@ -290,33 +296,20 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         List<SymbolInformation> symbolInformation = new ArrayList<>();
 
         TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
-        Iterable<Scope> topScopes = env.findTopScopes(surrogate.getLangId());
-        Map<String, Map<Object, Object>> scopeMap = scopesToObjectMap(topScopes);
-        for (Entry<String, Map<Object, Object>> scopeEntry : scopeMap.entrySet()) {
-            for (Entry<Object, Object> entry : scopeEntry.getValue().entrySet()) {
-                if (entry.getValue() instanceof TruffleObject) {
-                    TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
+        env.getInstrumenter().attachLoadSourceSectionListener(
+                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getParsedSourceWrapper().getSource()).tagIs(StandardTags.RootTag.class).build(),
+                        new LoadSourceSectionListener() {
 
-                    SourceSection sourceLocation = this.findSourceLocation(truffleObjVal);
-                    if (sourceLocation != null && uri.equals(sourceLocation.getSource().getURI())) {
-                        Range range = sourceSectionToRange(sourceLocation);
+                            public void onLoad(LoadSourceSectionEvent event) {
+                                Node node = event.getNode();
+                                SymbolKind kind = SymbolKind.Function;
+                                Range range = TruffleAdapter.sourceSectionToRange(node.getSourceSection());
+                                SymbolInformation si = new SymbolInformation(node.getRootNode().getName(),
+                                                kind, new Location(node.getSourceSection().getSource().getURI().toString(), range));
+                                symbolInformation.add(si);
+                            }
+                        }, true).dispose();
 
-                        SymbolKind kind = SymbolKind.Variable;
-                        boolean isExecutable = ForeignAccess.sendIsExecutable(IS_EXECUTABLE, truffleObjVal);
-                        boolean isInstatiatable = ForeignAccess.sendIsExecutable(IS_INSTANTIABLE, truffleObjVal);
-                        if (isExecutable) {
-                            kind = SymbolKind.Function;
-                        }
-                        if (isInstatiatable) {
-                            kind = SymbolKind.Class;
-                        }
-
-                        SymbolInformation si = new SymbolInformation(entry.getKey().toString(), kind, new Location(uri.toString(), range), scopeEntry.getKey());
-                        symbolInformation.add(si);
-                    }
-                }
-            }
-        }
         return symbolInformation;
     }
 
@@ -593,7 +586,8 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                 for (Entry<Object, Object> entry : scopeEntry.getValue().entrySet()) {
                     String key = entry.getKey().toString();
                     if (completionKeys.contains(key)) {
-                        // Scopes are provided from inner to outer, so we need to detect duplicate keys and only take
+                        // Scopes are provided from inner to outer, so we need to detect duplicate
+                        // keys and only take
                         // those from the most inner scope
                         continue;
                     } else {
@@ -607,7 +601,8 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                         continue;
                     }
                     CompletionItem completion = new CompletionItem(key);
-                    // Inner scopes should be displayed first, so sort by priority and scopeCounter (the innermost scope
+                    // Inner scopes should be displayed first, so sort by priority and scopeCounter
+                    // (the innermost scope
                     // has the lowest counter)
                     completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
                     CompletionItemKind completionItemKind = findCompletionItemKind(object);
@@ -669,7 +664,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             completions.getItems().add(completion);
             String documentation = "";
 
-            documentation = LanguageSpecificHacks.getDocumentationForTruffleObject(langId, entry, completion, documentation);
+            documentation = LanguageSpecificHacks.getSignatureForCallable(langId, entry, completion, documentation);
 
             documentation += "of meta object: " + metaObject.toString();
             completion.setDocumentation(documentation);
@@ -766,7 +761,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return highlights;
     }
 
-    private static Range sourceSectionToRange(SourceSection section) {
+    public static Range sourceSectionToRange(SourceSection section) {
         if (section == null) {
             return new Range(new Position(), new Position());
         }
@@ -821,7 +816,8 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
 
         // Clean-up
-        // TODO(ds) how to do this without dropping everything? If we have different tests, the coverage run
+        // TODO(ds) how to do this without dropping everything? If we have different tests, the
+        // coverage run
         // of one test will remove any coverage info provided from the other tests.
         this.uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage());
 
@@ -956,6 +952,10 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             }
         }
         return new Hover(contents);
+    }
+
+    public synchronized SignatureHelp signatureHelp(URI uri, int line, int character) {
+        return new SignatureHelp();
     }
 
     private synchronized Context getGlobalInnerContext() {

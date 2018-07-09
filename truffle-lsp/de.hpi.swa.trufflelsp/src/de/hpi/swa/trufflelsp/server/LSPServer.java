@@ -26,6 +26,7 @@ import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionOptions;
+import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
@@ -54,6 +55,7 @@ import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.SignatureHelp;
+import org.eclipse.lsp4j.SignatureHelpOptions;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentPositionParams;
@@ -100,8 +102,9 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-        List<String> triggerCharacters = Arrays.asList("=", ".");
-// final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(triggerCharacters);
+// List<String> signatureTriggerChars = Arrays.asList(".");
+// final SignatureHelpOptions signatureHelpOptions = new
+// SignatureHelpOptions(signatureTriggerChars);
 
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
@@ -112,10 +115,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         capabilities.setCodeLensProvider(new CodeLensOptions(false));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
+        List<String> triggerCharacters = Arrays.asList(".");
         completionOptions.setTriggerCharacters(triggerCharacters);
         capabilities.setCompletionProvider(completionOptions);
         capabilities.setCodeActionProvider(true);
-        // capabilities.setSignatureHelpProvider(signatureHelpOptions);
+// capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(true);
 
         capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE)));
@@ -193,9 +197,9 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     @Override
-    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(
-                    TextDocumentPositionParams position) {
+    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams position) {
         try {
+            System.out.println(position.getContext());
             CompletionList result = this.truffle.getCompletions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
             return CompletableFuture.supplyAsync(() -> Either.forRight(result));
         } finally {
@@ -217,8 +221,8 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<SignatureHelp> signatureHelp(TextDocumentPositionParams position) {
-        // TODO Auto-generated method stub
-        return null;
+        SignatureHelp help = this.truffle.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.completedFuture(help);
     }
 
     @Override
@@ -431,6 +435,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                     try {
                         info.println("[Truffle LSP] Starting server on " + serverSocket.getLocalSocketAddress());
                         info.flush();
+                        if (serverSocket.isClosed()) {
+                            err.println("[Truffle LSP] Server socket is closed.");
+                            err.flush();
+                            return;
+                        }
                         Socket clientSocket = serverSocket.accept();
                         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(LSPServer.this,
                                         clientSocket.getInputStream(), clientSocket.getOutputStream());
@@ -440,9 +449,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                             listenFuture.get();
                         } catch (InterruptedException | ExecutionException e) {
                             err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
+                            err.flush();
                         }
                     } catch (IOException e) {
                         err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
+                        err.flush();
                     }
                 }
             }

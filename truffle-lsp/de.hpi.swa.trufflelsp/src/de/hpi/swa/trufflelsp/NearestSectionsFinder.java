@@ -60,22 +60,26 @@ public final class NearestSectionsFinder {
             nearestNode = null;
             locationType = null;
         } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, column, containsSection)) {
-            // Our caret is directly behind the containing section, so we can simply use that one to find local
+            // Our caret is directly behind the containing section, so we can simply use that one to
+            // find local
             // scope objects
             nearestNode = (Node) nearestSections.getContainsNode();
             locationType = NodeLocationType.CONTAINS_END;
         } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
-            // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the same scope as
+            // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the
+            // same scope as
             // we are and we can use it to get local scope objects
             nearestNode = (Node) nearestSections.getNextNode();
             locationType = NodeLocationType.NEXT;
         } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getPreviousNode(), (Node) nearestSections.getContainsNode())) {
-            // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local scope
+            // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local
+            // scope
             // objects which are valid behind that node
             nearestNode = (Node) nearestSections.getPreviousNode();
             locationType = NodeLocationType.PREVIOUS;
         } else {
-            // No next or previous node is in the same scope like us, so we can only take our containing node to
+            // No next or previous node is in the same scope like us, so we can only take our
+            // containing node to
             // get local scope objects
             nearestNode = (Node) nearestSections.getContainsNode();
             locationType = NodeLocationType.CONTAINS;
@@ -137,10 +141,13 @@ public final class NearestSectionsFinder {
         }, true).dispose();
 
         env.getInstrumenter().attachLoadSourceSectionListener(
-                        SourceSectionFilter.ANY,
-                        // SourceSectionFilter.newBuilder().sourceIs(source).build(),
-                        sectionsCollector, true).dispose(); // TODO(ds) this is depending on an underlying weak list and atm it works, because we actively hold
-                                                            // the nodes in SourceSectionProvider. Is this good?
+// SourceSectionFilter.ANY,
+                        SourceSectionFilter.newBuilder().sourceIs(source).build(),
+                        sectionsCollector, true).dispose(); // TODO(ds) this is depending on an
+                                                            // underlying weak list and atm it
+                                                            // works, because we actively hold
+                                                            // the nodes in SourceSectionProvider.
+                                                            // Is this good?
         return sectionsCollector;
     }
 
