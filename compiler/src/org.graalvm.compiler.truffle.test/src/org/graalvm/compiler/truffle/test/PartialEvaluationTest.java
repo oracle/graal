@@ -164,7 +164,6 @@ public abstract class PartialEvaluationTest extends GraalCompilerTest {
         } catch (IgnoreError e) {
         }
 
-        BailoutException lastBailout = null;
         OptionValues options = TruffleCompilerOptions.getOptions();
         DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
