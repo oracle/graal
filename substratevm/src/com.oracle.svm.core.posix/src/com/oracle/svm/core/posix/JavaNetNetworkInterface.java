@@ -641,8 +641,8 @@ public class JavaNetNetworkInterface {
         // 892     int ifnam_size = IFNAMSIZ;
         int ifnam_size = NetIf.IFNAMSIZ();
         // 893     char name[IFNAMSIZ], vname[IFNAMSIZ];
-        CCharPointer name = StackValue.get(NetIf.IFNAMSIZ(), SizeOf.get(CCharPointer.class));
-        CCharPointer vname = StackValue.get(NetIf.IFNAMSIZ(), SizeOf.get(CCharPointer.class));
+        CCharPointer name = StackValue.get(NetIf.IFNAMSIZ(), CCharPointer.class);
+        CCharPointer vname = StackValue.get(NetIf.IFNAMSIZ(), CCharPointer.class);
         // 894 #endif
         // 895
         // 896     char  *name_colonP;
@@ -654,7 +654,7 @@ public class JavaNetNetworkInterface {
         // 899     int addr_size;
         int addr_size;
         // 900     int flags = 0;
-        CIntPointer flags_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer flags_Pointer = StackValue.get(CIntPointer.class);
         flags_Pointer.write(0);
         // 901
         // 902     /*

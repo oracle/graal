@@ -116,9 +116,9 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         static int keventRegister(int kqfd, int fd, int filter, int flags) {
             // 077     struct kevent changes[1];
-            DarwinEvent.kevent changes = StackValue.get(1, SizeOf.get(DarwinEvent.kevent.class));
+            DarwinEvent.kevent changes = StackValue.get(1, DarwinEvent.kevent.class);
             //  078     struct timespec timeout = {0, 0};
-            Time.timespec timeout = StackValue.get(SizeOf.get(Time.timespec.class));
+            Time.timespec timeout = StackValue.get(Time.timespec.class);
             timeout.set_tv_sec(0);
             timeout.set_tv_nsec(0);
             // 079     int res;
@@ -193,11 +193,11 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         void register0(int kq, int fd, int r, int w) {
             // 112     struct kevent changes[2];
-            DarwinEvent.kevent changes = StackValue.get(2, SizeOf.get(DarwinEvent.kevent.class));
+            DarwinEvent.kevent changes = StackValue.get(2, DarwinEvent.kevent.class);
             // 113     struct kevent errors[2];
-            DarwinEvent.kevent errors = StackValue.get(2, SizeOf.get(DarwinEvent.kevent.class));
+            DarwinEvent.kevent errors = StackValue.get(2, DarwinEvent.kevent.class);
             // 114     struct timespec dontBlock = {0, 0};
-            Time.timespec dontBlock = StackValue.get(SizeOf.get(Time.timespec.class));
+            Time.timespec dontBlock = StackValue.get(Time.timespec.class);
             dontBlock.set_tv_sec(0);
             dontBlock.set_tv_nsec(0);
             // 115
@@ -237,7 +237,7 @@ public final class DarwinNIOSubstitutions {
             // 132     struct kevent *kevs = (struct kevent *)jlong_to_ptr(kevAddr);
             DarwinEvent.kevent keys = WordFactory.pointer(kevAddr);
             // 133     struct timespec ts;
-            Time.timespec ts = StackValue.get(SizeOf.get(Time.timespec.class));
+            Time.timespec ts = StackValue.get(Time.timespec.class);
             // 134     struct timespec *tsp;
             Time.timespec tsp;
             // 135     int result;
@@ -283,7 +283,7 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         static void interrupt(int fd) throws IOException {
             // 166     char c = 1;
-            CCharPointer cPointer = StackValue.get(SizeOf.get(CCharPointer.class));
+            CCharPointer cPointer = StackValue.get(CCharPointer.class);
             cPointer.write((byte) 1);
             // 167     if (1 != write(fd, &c, 1)) {
             if (1 != (int) Unistd.write(fd, cPointer, WordFactory.unsigned(1)).rawValue()) {
@@ -305,7 +305,7 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         static void socketpair(int[] sv) throws IOException {
             // 040     int sp[2];
-            CIntPointer sp = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer sp = StackValue.get(2, CIntPointer.class);
             // 041     if (socketpair(PF_UNIX, SOCK_STREAM, 0, sp) == -1) {
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == -1) {
                 // 042         JNU_ThrowIOExceptionWithLastError(env, "socketpair failed");
@@ -327,7 +327,7 @@ public final class DarwinNIOSubstitutions {
             // 053     int res;
             int res;
             // 054     int buf[1];
-            CIntPointer buf = StackValue.get(1, SizeOf.get(CIntPointer.class));
+            CIntPointer buf = StackValue.get(1, CIntPointer.class);
             // 055     buf[0] = 1;
             buf.write(0, 1);
             // 056     RESTARTABLE(write(fd, buf, 1), res);
@@ -350,7 +350,7 @@ public final class DarwinNIOSubstitutions {
             // 064     int res;
             int res;
             // 065     char buf[1];
-            CIntPointer buf = StackValue.get(1, SizeOf.get(CIntPointer.class));
+            CIntPointer buf = StackValue.get(1, CIntPointer.class);
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
                 do {

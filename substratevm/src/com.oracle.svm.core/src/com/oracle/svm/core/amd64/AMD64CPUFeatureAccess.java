@@ -46,7 +46,7 @@ public class AMD64CPUFeatureAccess {
     public static EnumSet<AMD64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
 
-        LibCHelper.CPUFeatures cpuFeatures = StackValue.get(SizeOf.get(LibCHelper.CPUFeatures.class));
+        LibCHelper.CPUFeatures cpuFeatures = StackValue.get(LibCHelper.CPUFeatures.class);
 
         MemoryUtil.fillToMemoryAtomic((Pointer) cpuFeatures, SizeOf.unsigned(LibCHelper.CPUFeatures.class), (byte) 0);
 

@@ -51,7 +51,7 @@ final class Target_java_util_zip_Adler32 {
     @Substitute
     private static int update(int adler, int b) {
         // Only the low eight bits of the argument b should be used
-        CCharPointer bytes = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer bytes = StackValue.get(CCharPointer.class);
         bytes.write((byte) b);
         return (int) ZLib.adler32(WordFactory.unsigned(adler), bytes, 1).rawValue();
     }
@@ -81,7 +81,7 @@ final class Target_java_util_zip_CRC32 {
     @Substitute
     private static int update(int crc, int b) {
         // Only the low eight bits of the argument b should be used
-        CCharPointer bytes = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer bytes = StackValue.get(CCharPointer.class);
         bytes.write((byte) b);
         return (int) ZLib.crc32(WordFactory.unsigned(crc), bytes, 1).rawValue();
     }
