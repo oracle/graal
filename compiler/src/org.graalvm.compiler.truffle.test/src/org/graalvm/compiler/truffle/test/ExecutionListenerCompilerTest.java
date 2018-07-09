@@ -109,15 +109,11 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
     public void testOnEnterCompilation() {
         testListener(null, "return42", new Return42Node());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onEnter(empty) //
-                        .expressions(true), //
+        testListener(ExecutionListener.newBuilder().onEnter(empty).expressions(true),
                         "return42", //
                         new Return42Node());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onEnter(counting) //
-                        .expressions(true), //
+        testListener(ExecutionListener.newBuilder().onEnter(counting).expressions(true),
                         "return42AndIncrement", //
                         new Return42Node());
     }
@@ -126,15 +122,11 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
     public void testOnReturnCompilation() {
         testListener(null, "return42", new Return42Node());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onReturn(empty) //
-                        .expressions(true), //
-                        "return42", //
+        testListener(ExecutionListener.newBuilder().onReturn(empty).expressions(true),
+                        "return42",
                         new Return42Node());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onReturn(counting) //
-                        .expressions(true), //
+        testListener(ExecutionListener.newBuilder().onReturn(counting).expressions(true),
                         "return42AndIncrement", //
                         new Return42Node());
     }
@@ -143,15 +135,11 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
     public void testOnErrorCompilation() {
         testListener(null, "throwError", new ThrowErrorNode());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onReturn(empty) //
-                        .expressions(true), //
+        testListener(ExecutionListener.newBuilder().onReturn(empty).expressions(true),
                         "throwError", //
                         new ThrowErrorNode());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onReturn(counting) //
-                        .expressions(true), //
+        testListener(ExecutionListener.newBuilder().onReturn(counting).expressions(true),
                         "throwErrorAndIncrement", //
                         new ThrowErrorNode());
     }
@@ -164,16 +152,12 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
     public void testOnErrorNoException() {
         testListener(null, "returnNull", new ReturnNullNode());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onEnter(empty).onReturn(empty) //
-                        .expressions(true).collectReturnValue(true).collectInputValues(true), //
-                        "returnNull", //
+        testListener(ExecutionListener.newBuilder().onEnter(empty).onReturn(empty).expressions(true).collectReturnValue(true).collectInputValues(true), //
+                        "returnNull",
                         new ReturnNullNode());
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onEnter(empty).onReturn(counting) //
-                        .expressions(true).collectReturnValue(true).collectInputValues(true), //
-                        "returnNullAndIncrement", //
+        testListener(ExecutionListener.newBuilder().onEnter(empty).onReturn(counting).expressions(true).collectReturnValue(true).collectInputValues(true), //
+                        "returnNullAndIncrement",
                         new ReturnNullNode());
 
     }
@@ -182,9 +166,7 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
     public void testMultipleCounts() {
         testListener(null, "return84", new ExecuteTwoChildrenNode(new Return42Node(), new Return42Node()));
 
-        testListener(ExecutionListener.newBuilder() //
-                        .onEnter(counting) //
-                        .expressions(true),
+        testListener(ExecutionListener.newBuilder().onEnter(counting).expressions(true),
                         "return84AndIncrementThrice",
                         new ExecuteTwoChildrenNode(new Return42Node(), new Return42Node()));
     }
