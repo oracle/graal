@@ -6,7 +6,7 @@ suite = {
         "suites": [{
             "name": "truffle",
             "subdir": True,
-            "version": "fd932e5e710ab6b7c1342fb7a6dcbc4a4a519635",
+            "version": "f731a8c22f486419208f072b8c05e98f049ca511",
             "urls": [{
                 "url": "https://github.com/graalvm/graal",
                 "kind": "git"
@@ -16,29 +16,29 @@ suite = {
 
     "libraries": {
         "LSP4J" : {
-            "sha1" : "cc1df3852ded574cf35a6cb81f1629695bab35eb",
+            "sha1" : "90e34b7c7e0257e3993ca5a939ae94f889d31340",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j",
-                "version" : "0.3.0",
+                "version" : "0.4.1",
             },
             "dependencies" : ["LSP4J-JSONRPC", "LSP4J-GENERATOR"],
         },
         "LSP4J-JSONRPC" : {
-            "sha1" : "16296abd1cb9fa647ef0fd6c5615e11c69878bc6",
+            "sha1" : "f3f93f50bbeb7d58b50e6ffca615cbfc76491846",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j.jsonrpc",
-                "version" : "0.3.0",
+                "version" : "0.4.1",
             },
             "dependencies" : ["GSON"],
         },
         "LSP4J-GENERATOR" : {
-            "sha1" : "be95c0dcef23d74e9d8418a215aa5584c507f7cb",
+            "sha1" : "467f27e91fd694c05eb663532f2ede0404025afe",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j.generator",
-                "version" : "0.3.0",
+                "version" : "0.4.1",
             },
             "dependencies" : ["XTEND-LIB"],
         },
@@ -103,6 +103,7 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
                 "truffle:TRUFFLE_NFI",
                 "sdk:GRAAL_SDK",
+		"sdk:LAUNCHER_COMMON",
                 "LSP4J"
             ],
             "checkstyle": "de.hpi.swa.trufflelsp",
