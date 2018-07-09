@@ -37,7 +37,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerI
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
 
 /**
- * Execution listeners allow instrument the execution of guest languages. For example, it is
+ * Execution listeners allow to instrument the execution of guest languages. For example, it is
  * possible to attach an execution listeners that is invoked for every statement of the guest
  * language program, similar to how a debugger would single-step through the program.
  * <p>
