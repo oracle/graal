@@ -423,7 +423,7 @@ final class Target_java_io_UnixFileSystem {
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(f.getPath())) {
             CCharPointer pathPtr = pathPin.get();
             if (stat(pathPtr, stat) == 0) {
-                timeval timeval = StackValue.get(2, SizeOf.get(timeval.class));
+                timeval timeval = StackValue.get(2, timeval.class);
 
                 // preserve access time
                 timeval access = timeval.addressOf(0);

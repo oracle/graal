@@ -50,7 +50,7 @@ class DarwinPhysicalMemory extends PhysicalMemory {
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
         @Override
         public UnsignedWord size() {
-            final CIntPointer namePointer = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            final CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
             namePointer.write(0, DarwinSysctl.CTL_HW());
             namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
             final CLongPointer physicalMemoryPointer = StackValue.get(CLongPointer.class);

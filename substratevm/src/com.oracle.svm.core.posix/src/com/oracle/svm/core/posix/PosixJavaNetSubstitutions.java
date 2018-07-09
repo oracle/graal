@@ -486,7 +486,7 @@ final class Target_java_net_Inet4AddressImpl {
     @SuppressWarnings({"static-method"})
     public String getLocalHostName() {
         // 355     char hostname[NI_MAXHOST+1];
-        CCharPointer hostname = StackValue.get(Netdb.NI_MAXHOST() + 1, SizeOf.get(CCharPointer.class));
+        CCharPointer hostname = StackValue.get(Netdb.NI_MAXHOST() + 1, CCharPointer.class);
         // 357     hostname[0] = '\0';
         hostname.write(0, (byte) '\0');
         // 358     if (JVM_GetHostName(hostname, sizeof(hostname))) {
@@ -751,13 +751,13 @@ final class Target_java_net_Inet4AddressImpl {
         // 535     jstring ret = NULL;
         String ret = null;
         // 537     char host[NI_MAXHOST+1];
-        CCharPointer host = StackValue.get(Netdb.NI_MAXHOST() + 1, SizeOf.get(CCharPointer.class));
+        CCharPointer host = StackValue.get(Netdb.NI_MAXHOST() + 1, CCharPointer.class);
         // 538     int error = 0;
         int error = 0;
         // 539     int len = 0;
         int len = 0;
         // 540     jbyte caddr[4];
-        CCharPointer caddr = StackValue.get(4, SizeOf.get(CCharPointer.class));
+        CCharPointer caddr = StackValue.get(4, CCharPointer.class);
         // 542     struct sockaddr_in him4;
         NetinetIn.sockaddr_in him4 = StackValue.get(NetinetIn.sockaddr_in.class);
         // 543     struct sockaddr *sa;
@@ -995,7 +995,7 @@ final class Target_java_net_Inet6AddressImpl {
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
     public String getLocalHostName() throws UnknownHostException {
-        CCharPointer hostname = StackValue.get(Netdb.NI_MAXHOST() + 1, SizeOf.get(CCharPointer.class));
+        CCharPointer hostname = StackValue.get(Netdb.NI_MAXHOST() + 1, CCharPointer.class);
         hostname.write(0, (byte) '\0');
         if (Unistd.gethostname(hostname, WordFactory.unsigned(Netdb.NI_MAXHOST() + 1)) != 0) {
             /* Something went wrong, maybe networking is not setup? */
@@ -1288,7 +1288,7 @@ final class Util_java_net_Inet6AddressImpl {
         if (IsDefined.MACOSX()) {
             /* also called from Inet4AddressImpl.c */
             InetAddress[] result = null;
-            CCharPointer myhostname = StackValue.get(Netdb.NI_MAXHOST() + 1, SizeOf.get(CCharPointer.class));
+            CCharPointer myhostname = StackValue.get(Netdb.NI_MAXHOST() + 1, CCharPointer.class);
             Ifaddrs.ifaddrs ifa = WordFactory.nullPointer();
             Ifaddrs.ifaddrsPointer ifaPointer = StackValue.get(Ifaddrs.ifaddrsPointer.class);
             int i;
@@ -1584,7 +1584,7 @@ final class Target_java_net_SocketInputStream {
     private int socketRead0(FileDescriptor fdObj, byte[] data, int off, int lenArg, int timeout) throws IOException, OutOfMemoryError, sun.net.ConnectionResetException {
         int len = lenArg;
         // 065     char BUF[MAX_BUFFER_LEN];
-        CCharPointer BUF = StackValue.get(JavaNetNetUtilMD.MAX_BUFFER_LEN(), SizeOf.get(CCharPointer.class));
+        CCharPointer BUF = StackValue.get(JavaNetNetUtilMD.MAX_BUFFER_LEN(), CCharPointer.class);
         // 066     char *bufP;
         CCharPointer bufP = WordFactory.nullPointer();
         // 067     jint fd, nread;
@@ -1755,7 +1755,7 @@ final class Target_java_net_SocketOutputStream {
         // 066     char *bufP;
         CCharPointer bufP = WordFactory.nullPointer();
         // 067     char BUF[MAX_BUFFER_LEN];
-        CCharPointer BUF = StackValue.get(JavaNetNetUtilMD.MAX_BUFFER_LEN(), SizeOf.get(CCharPointer.class));
+        CCharPointer BUF = StackValue.get(JavaNetNetUtilMD.MAX_BUFFER_LEN(), CCharPointer.class);
         // 068     int buflen;
         int buflen;
         // 069     int fd;

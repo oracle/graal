@@ -308,7 +308,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static void interrupt(int fd) throws IOException {
             // 155     int fakebuf[1];
-            CIntPointer fakebuf = StackValue.get(1, SizeOf.get(CIntPointer.class));
+            CIntPointer fakebuf = StackValue.get(1, CIntPointer.class);
             // 156     fakebuf[0] = 1;
             fakebuf.write(0, 1);
             // 157     if (write(fd, fakebuf, 1) < 0) {
@@ -386,14 +386,14 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static void socketpair(int[] sv) throws IOException {
             // 040     int sp[2];
-            CIntPointer sp = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer sp = StackValue.get(2, CIntPointer.class);
             // 041     if (socketpair(PF_UNIX, SOCK_STREAM, 0, sp) == -1) {
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == -1) {
                 // 042         JNU_ThrowIOExceptionWithLastError(env, "socketpair failed");
                 throw new IOException("socketpair failed");
             } else {
                 // 044         jint res[2];
-                CIntPointer res = StackValue.get(2, SizeOf.get(CIntPointer.class));
+                CIntPointer res = StackValue.get(2, CIntPointer.class);
                 // 045         res[0] = (jint)sp[0];
                 res.write(0, sp.read(0));
                 // 046         res[1] = (jint)sp[1];

@@ -226,7 +226,7 @@ public class LinuxJavaNetNetworkInterface {
             // 1191     char addr6p[8][5];
             // 1192     int plen, scope, dad_status, if_idx;
             // 1193     uint8_t ipv6addr[16];
-            CCharPointer ipv6addr = StackValue.get(16, SizeOf.get(CCharPointer.class));
+            CCharPointer ipv6addr = StackValue.get(16, CCharPointer.class);
             // 1196         while (fscanf(f, "%4s%4s%4s%4s%4s%4s%4s%4s %08x %02x %02x %02x %20s\n",
             // 1197                          addr6p[0], addr6p[1], addr6p[2], addr6p[3], addr6p[4], addr6p[5], addr6p[6], addr6p[7],
             // 1198                          &if_idx, &plen, &scope, &dad_status, devname) != EOF) {

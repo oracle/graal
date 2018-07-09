@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.pthread;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;

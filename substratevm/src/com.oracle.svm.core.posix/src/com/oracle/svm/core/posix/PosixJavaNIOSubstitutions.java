@@ -496,7 +496,7 @@ public final class PosixJavaNIOSubstitutions {
          */
         @Substitute
         private static long makePipe(boolean blocking) throws IOException {
-            CIntPointer fd = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer fd = StackValue.get(2, CIntPointer.class);
 
             if (pipe(fd) < 0) {
                 throwIOExceptionWithLastError("Pipe failed");
@@ -516,7 +516,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static boolean drain(int fd) throws IOException {
             final int bufsize = 128;
-            CCharPointer buf = StackValue.get(bufsize, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(bufsize, CCharPointer.class);
             int tn = 0;
 
             for (;;) {
@@ -1546,7 +1546,7 @@ public final class PosixJavaNIOSubstitutions {
         static volatile boolean initialized;
 
         static void initialize() {
-            CIntPointer sp = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer sp = StackValue.get(2, CIntPointer.class);
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == 0) {
                 preCloseFD = sp.read(0);
                 close(sp.read(1));
@@ -1685,7 +1685,7 @@ public final class PosixJavaNIOSubstitutions {
         private static byte[] getcwd() throws Exception {
             byte[] result;
             int bufsize = PATH_MAX() + 1;
-            CCharPointer buf = StackValue.get(bufsize, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(bufsize, CCharPointer.class);
 
             /* EINTR not listed as a possible error */
             CCharPointer cwd = Unistd.getcwd(buf, WordFactory.unsigned(bufsize));
@@ -1887,7 +1887,7 @@ public final class PosixJavaNIOSubstitutions {
         private static byte[] readlink0(long pathAddress) throws Exception {
             byte[] result;
             int targetsize = PATH_MAX() + 1;
-            CCharPointer target = StackValue.get(targetsize, SizeOf.get(CCharPointer.class));
+            CCharPointer target = StackValue.get(targetsize, CCharPointer.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             /* EINTR not listed as a possible error */
@@ -1907,7 +1907,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static byte[] realpath0(long pathAddress) throws Exception {
             byte[] result;
-            CCharPointer resolved = StackValue.get(PATH_MAX() + 1, SizeOf.get(CCharPointer.class));
+            CCharPointer resolved = StackValue.get(PATH_MAX() + 1, CCharPointer.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             /* EINTR not listed as a possible error */
@@ -2071,7 +2071,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void utimes0(long pathAddress, long accessTime, long modificationTime) throws Exception {
             int err;
-            Time.timeval times = StackValue.get(2, SizeOf.get(Time.timeval.class));
+            Time.timeval times = StackValue.get(2, Time.timeval.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             times.addressOf(0).set_tv_sec(accessTime / 1000000);
@@ -2091,7 +2091,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static void futimes(int fd, long accessTime, long modificationTime) throws Exception {
-            Time.timeval times = StackValue.get(2, SizeOf.get(Time.timeval.class));
+            Time.timeval times = StackValue.get(2, Time.timeval.class);
             int err = 0;
 
             times.addressOf(0).set_tv_sec(accessTime / 1000000);
@@ -2612,7 +2612,7 @@ public final class PosixJavaNIOSubstitutions {
         private static int getmntent(long value, Target_sun_nio_fs_UnixMountEntry entry) {
             mntent ent = StackValue.get(mntent.class);
             int buflen = 1024;
-            CCharPointer buf = StackValue.get(buflen, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(buflen, CCharPointer.class);
             FILE fp = WordFactory.pointer(value);
 
             mntent m = getmntent_r(fp, ent, buf, buflen);
@@ -2978,7 +2978,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void transfer(int dst, int src, long cancelAddress) throws Exception {
             int bufsize = 8192;
-            CCharPointer buf = StackValue.get(bufsize, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(bufsize, CCharPointer.class);
             CIntPointer cancel = WordFactory.pointer(cancelAddress);
 
             for (;;) {

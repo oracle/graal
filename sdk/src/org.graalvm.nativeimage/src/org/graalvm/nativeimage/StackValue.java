@@ -46,7 +46,7 @@ public final class StackValue {
      * {@codesnippet org.graalvm.nativeimage.StackValueSnippets#withSizeOf}
      *
      * It can be used to allocate a structure on the stack. The following example allocates a
-     * {@code ComplexNumber} and then sends it as a regular parameter to another function to compute
+     * {@code ComplexValue} and then sends it as a regular parameter to another function to compute
      * absolute value of the number:
      * {@codesnippet org.graalvm.nativeimage.StackValueSnippets#ninePlusSixteenSqrt}
      *
@@ -116,9 +116,9 @@ public final class StackValue {
 @SuppressWarnings("unused")
 @CContext(CContext.Directives.class)
 final class StackValueSnippets {
-    // BEGIN: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
+    // BEGIN: org.graalvm.nativeimage.StackValueSnippets.ComplexValue
     @CStruct
-    static interface ComplexNumber extends PointerBase {
+    interface ComplexValue extends PointerBase {
         @CField("re")
         double realPart();
 
@@ -131,11 +131,11 @@ final class StackValueSnippets {
         @CField("im")
         void imagineryPart(double im);
     }
-    // END: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
+    // END: org.graalvm.nativeimage.StackValueSnippets.ComplexValue
 
     public static void ninePlusSixteenSqrt() {
         // BEGIN: org.graalvm.nativeimage.StackValueSnippets#ninePlusSixteenSqrt
-        ComplexNumber numberOnStack = StackValue.get(ComplexNumber.class);
+        ComplexValue numberOnStack = StackValue.get(ComplexValue.class);
         numberOnStack.realPart(3.0);
         numberOnStack.imagineryPart(4.0);
         double absoluteValue = absoluteValue(numberOnStack);
@@ -143,7 +143,7 @@ final class StackValueSnippets {
         // END: org.graalvm.nativeimage.StackValueSnippets#ninePlusSixteenSqrt
     }
 
-    private static double absoluteValue(ComplexNumber cn) {
+    private static double absoluteValue(ComplexValue cn) {
         double reSquare = cn.realPart() * cn.realPart();
         double imSquare = cn.imagineryPart() * cn.imagineryPart();
         return Math.sqrt(reSquare + imSquare);
@@ -152,8 +152,8 @@ final class StackValueSnippets {
     @SuppressWarnings("StackValueGetClass")
     private static void withSizeOf() {
         // BEGIN: org.graalvm.nativeimage.StackValueSnippets#withSizeOf
-        ComplexNumber numberOnStack = StackValue.get(
-                        SizeOf.get(ComplexNumber.class));
+        ComplexValue numberOnStack = StackValue.get(
+                        SizeOf.get(ComplexValue.class));
         // END: org.graalvm.nativeimage.StackValueSnippets#withSizeOf
 
     }

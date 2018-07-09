@@ -41,7 +41,7 @@ import org.graalvm.word.PointerBase;
  * with the appropriate memory or address arithmetic operations. Here is an example to define a
  * complex number structure:
  * 
- * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.ComplexNumber}
+ * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.ComplexValue}
  *
  * The annotated interface, or an outer class that contains the interface, must be annotated with
  * {@link CContext}. Allocate an instances of the {@code struct} either by
@@ -49,12 +49,14 @@ import org.graalvm.word.PointerBase;
  * {@link org.graalvm.nativeimage.UnmanagedMemory#malloc(org.graalvm.word.UnsignedWord)}.
  *
  * To access an array of structs one can define a special {@code addressOf} method:
+ * <p>
  * 
  * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.IntOrDouble}
  *
- * Implementation of such mehtod then allows one to do <em>array arithmetics</em> - e.g. obtain
+ * Implementation of such method then allows one to do <em>array arithmetics</em> - e.g. obtain
  * pointer to the first element of the array and then access the others:
- *
+ * <p>
+ * 
  * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.acceptIntIntDouble}
  *
  * @since 1.0

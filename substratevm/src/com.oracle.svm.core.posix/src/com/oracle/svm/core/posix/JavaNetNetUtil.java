@@ -54,7 +54,6 @@ import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Poll.pollfd;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Sysctl;
-import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
@@ -544,7 +543,7 @@ class JavaNetNetUtilMD {
             // 792 struct sockaddr_in6 *him6 = (struct sockaddr_in6 *)him;
             NetinetIn.sockaddr_in6 him6 = (NetinetIn.sockaddr_in6) him;
             // 793 jbyte caddr[16];
-            CCharPointer caddr = StackValue.get(16, SizeOf.get(CCharPointer.class));
+            CCharPointer caddr = StackValue.get(16, CCharPointer.class);
             // 794 jint address;
             int address;
             // 797 if (family == IPv4) { /* will convert to IPv4-mapped address */
@@ -1564,7 +1563,7 @@ class JavaNetNetUtilMD {
             //     1292 #if defined(KIPC_MAXSOCKBUF)
             if (IsDefined.sysctl_KIPC_MAXSOCKBUF()) {
                 //     1293     int mib[3];
-                mib = StackValue.get(3, SizeOf.get(CIntPointer.class));
+                mib = StackValue.get(3, CIntPointer.class);
                 //     1294     size_t rlen;
                 rlen_Pointer = StackValue.get(CLongPointer.class);
             }
@@ -2201,7 +2200,7 @@ class Target_os {
         // 204
         // 205   for(;;) {
         // 206     struct pollfd pfd;
-        Poll.pollfd pfd = StackValue.get(2, SizeOf.get(Time.timeval.class));
+        Poll.pollfd pfd = StackValue.get(Poll.pollfd.class);
         for (;;) {
             // 207
             // 208     pfd.fd = fd;
