@@ -701,7 +701,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         Type type = store.getSource().getType();
 
         LLVMSourceLocation source = null;
-        if (!(store.getSource() instanceof CallInstruction || store.getSource() instanceof InvokeInstruction)) {
+        if (!(store.getSource() instanceof CallInstruction || store.getSource() instanceof InvokeInstruction) || context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
             // otherwise the debugger would stop on both the call and the store of the return value
             source = getSourceLocation(store);
         }

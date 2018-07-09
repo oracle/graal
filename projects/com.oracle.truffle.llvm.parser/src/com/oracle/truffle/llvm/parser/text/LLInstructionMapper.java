@@ -75,118 +75,105 @@ final class LLInstructionMapper {
             return instruction.toSourceLocation(llSource, parentLocation);
         }
 
-        @Override
-        public void visitValueInstruction(ValueInstruction value) {
-            final LLSourceMap.Instruction expected = llInstructions.peekFirst();
-            if (expected == null) {
-                return;
-            }
-
-            if (value.getName().equals(expected.getDescriptor())) {
-                value.setSourceLocation(toLocation(expected));
-                llInstructions.pollFirst();
-            }
-        }
-
-        private void checkUnnamedInstruction(String opCode, Instruction inst) {
-            final LLSourceMap.Instruction expected = llInstructions.peekFirst();
-            if (expected == null) {
-                return;
-            }
-
-            if (opCode.equals(expected.getDescriptor())) {
-                inst.setSourceLocation(toLocation(expected));
-                llInstructions.pollFirst();
-            }
-        }
-
-        private void checkUnnamedInstruction(Instruction inst, String... opCodes) {
-            final LLSourceMap.Instruction expected = llInstructions.peekFirst();
-            if (expected == null) {
-                return;
-            }
-
-            for (String opCode : opCodes) {
-                if (opCode.equals(expected.getDescriptor())) {
-                    inst.setSourceLocation(toLocation(expected));
+        private void assignInstructionLocation(Instruction inst, String... opCodes) {
+            LLSourceMap.Instruction expected = llInstructions.peekFirst();
+            while (expected != null) {
+                for (String opCode : opCodes) {
+                    if (opCode.equals(expected.getDescriptor())) {
+                        inst.setSourceLocation(toLocation(expected));
+                        llInstructions.pollFirst();
+                        return;
+                    }
+                }
+                if (expected.getDescriptor().startsWith("%")) {
+                    // stop skipping remainders of multi-line instructions once we find the
+                    // definition of the next SSA-value
+                    return;
+                } else {
                     llInstructions.pollFirst();
+                    expected = llInstructions.peekFirst();
                 }
             }
         }
 
         @Override
+        public void visitValueInstruction(ValueInstruction value) {
+            assignInstructionLocation(value, value.getName());
+        }
+
+        @Override
         public void visit(BranchInstruction inst) {
-            checkUnnamedInstruction("br", inst);
+            assignInstructionLocation(inst, "br");
         }
 
         @Override
         public void visit(ConditionalBranchInstruction inst) {
-            checkUnnamedInstruction("br", inst);
+            assignInstructionLocation(inst, "br");
         }
 
         @Override
         public void visit(IndirectBranchInstruction inst) {
-            checkUnnamedInstruction("indirectbr", inst);
+            assignInstructionLocation(inst, "indirectbr");
         }
 
         @Override
         public void visit(ReturnInstruction inst) {
-            checkUnnamedInstruction("ret", inst);
+            assignInstructionLocation(inst, "ret");
         }
 
         @Override
         public void visit(StoreInstruction inst) {
-            checkUnnamedInstruction("store", inst);
+            assignInstructionLocation(inst, "store");
         }
 
         @Override
         public void visit(SwitchInstruction inst) {
-            checkUnnamedInstruction("switch", inst);
+            assignInstructionLocation(inst, "switch");
         }
 
         @Override
         public void visit(SwitchOldInstruction inst) {
-            checkUnnamedInstruction("switch", inst);
+            assignInstructionLocation(inst, "switch");
         }
 
         @Override
         public void visit(UnreachableInstruction inst) {
-            checkUnnamedInstruction("unreachable", inst);
+            assignInstructionLocation(inst, "unreachable");
         }
 
         @Override
         public void visit(VoidCallInstruction inst) {
-            checkUnnamedInstruction(inst, "tail", "musttail", "notail", "call");
+            assignInstructionLocation(inst, "tail", "musttail", "notail", "call");
         }
 
         @Override
         public void visit(VoidInvokeInstruction inst) {
-            checkUnnamedInstruction("invoke", inst);
+            assignInstructionLocation(inst, "invoke");
         }
 
         @Override
         public void visit(ResumeInstruction inst) {
-            checkUnnamedInstruction("resume", inst);
+            assignInstructionLocation(inst, "resume");
         }
 
         @Override
         public void visit(FenceInstruction inst) {
-            checkUnnamedInstruction("fence", inst);
+            assignInstructionLocation(inst, "fence");
         }
 
         @Override
         public void visit(DbgDeclareInstruction inst) {
-            checkUnnamedInstruction(inst, "tail", "call");
+            assignInstructionLocation(inst, "tail", "call");
         }
 
         @Override
         public void visit(DbgValueInstruction inst) {
-            checkUnnamedInstruction(inst, "tail", "call");
+            assignInstructionLocation(inst, "tail", "call");
         }
 
         @Override
         public void visit(ReadModifyWriteInstruction inst) {
-            checkUnnamedInstruction("atomicrmw", inst);
+            assignInstructionLocation(inst, "atomicrmw");
         }
 
         @Override
