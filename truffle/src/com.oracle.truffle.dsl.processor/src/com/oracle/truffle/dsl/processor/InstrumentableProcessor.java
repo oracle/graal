@@ -551,7 +551,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             CodeTreeBuilder builder = wrappedExecute.createBuilder();
             TypeMirror returnTypeMirror = executeMethod.getReturnType();
             boolean executeReturnsVoid = ElementUtils.isVoid(returnTypeMirror);
-            if (executeReturnsVoid && genericExecuteDelegate != null) {
+            if (executeReturnsVoid && genericExecuteDelegate != null && executeMethod.getParameters().size() == genericExecuteDelegate.getParameters().size()) {
                 executeMethod = genericExecuteDelegate;
                 returnTypeMirror = genericExecuteDelegate.getReturnType();
                 executeReturnsVoid = false;
