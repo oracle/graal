@@ -35,17 +35,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -380,27 +376,7 @@ final class Target_sun_misc_NativeSignalHandler {
         // 038 /* We've lost the siginfo and context */
         // 039 (*(sig_handler_t)jlong_to_ptr(f))(sig, NULL, NULL);
         final Signal.AdvancedSignalDispatcher handler = WordFactory.pointer(f);
-        Util_sun_misc_NativeSignalHandler.handle0WithTransition(handler, sig);
-    }
-}
-
-final class Util_sun_misc_NativeSignalHandler {
-
-    /** Transition to native for the call of the handler. */
-    static void handle0WithTransition(Signal.AdvancedSignalDispatcher functionPointer, int sig) {
-        CFunctionPrologueNode.cFunctionPrologue();
-        handle0InNative(functionPointer, sig);
-        CFunctionEpilogueNode.cFunctionEpilogue();
-    }
-
-    /**
-     * This method is called after a transition to native. It can not access anything on the Java
-     * heap.
-     */
-    @Uninterruptible(reason = "Must not stop while in native.")
-    @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void handle0InNative(Signal.AdvancedSignalDispatcher functionPointer, int sig) {
-        functionPointer.dispatch(sig, WordFactory.nullPointer(), WordFactory.nullPointer());
+        handler.dispatch(sig, WordFactory.nullPointer(), WordFactory.nullPointer());
     }
 }
 
