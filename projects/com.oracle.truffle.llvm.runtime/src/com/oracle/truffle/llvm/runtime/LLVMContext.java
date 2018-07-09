@@ -39,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -213,7 +214,7 @@ public final class LLVMContext {
             LLVMFunctionDescriptor initContextDescriptor = globalScope.getFunction("@__sulong_init_context");
             RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunction();
             try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
-                Object[] args = new Object[]{stackPointer, toTruffleObjects(getApplicationArguments()), toTruffleObjects(getEnvironmentVariables())};
+                Object[] args = new Object[]{stackPointer, getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
                 initContextFunction.call(args);
             }
         }
@@ -227,7 +228,7 @@ public final class LLVMContext {
         defaultLibrariesLoaded = true;
     }
 
-    private String[] getApplicationArguments() {
+    private LLVMManagedPointer getApplicationArguments() {
         int mainArgsCount = mainArguments == null ? 0 : mainArguments.length;
         String[] result = new String[mainArgsCount + 1];
         // we don't have an application path at this point in time. it will be overwritten when
@@ -236,19 +237,38 @@ public final class LLVMContext {
         for (int i = 1; i < result.length; i++) {
             result[i] = mainArguments[i - 1].toString();
         }
-        return result;
+        return toTruffleObjects(result);
     }
 
-    private String[] getEnvironmentVariables() {
-        return environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
+    private LLVMManagedPointer getEnvironmentVariables() {
+        String[] result = environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
+        return toTruffleObjects(result);
+    }
+
+    private LLVMManagedPointer getRandomValues() {
+        byte[] result = new byte[16];
+        random().nextBytes(result);
+        return toManagedPointer(toTruffleObject(result));
+    }
+
+    private static Random random() {
+        return new Random();
     }
 
     private LLVMManagedPointer toTruffleObjects(String[] values) {
         TruffleObject[] result = new TruffleObject[values.length];
         for (int i = 0; i < values.length; i++) {
-            result[i] = (TruffleObject) env.asGuestValue(values[i].getBytes());
+            result[i] = toTruffleObject(values[i].getBytes());
         }
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown((TruffleObject) env.asGuestValue(result)));
+        return toManagedPointer(toTruffleObject(result));
+    }
+
+    private TruffleObject toTruffleObject(Object value) {
+        return (TruffleObject) env.asGuestValue(value);
+    }
+
+    private static LLVMManagedPointer toManagedPointer(TruffleObject value) {
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
     }
 
     public void dispose(LLVMMemory memory) {

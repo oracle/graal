@@ -37,6 +37,7 @@
 #else
 #define AT_NULL 0
 #define AT_PLATFORM 15
+#define AT_RANDOM 25
 #define AT_EXECFN 31
 typedef struct {
   uint64_t a_type;
@@ -76,10 +77,10 @@ void __sulong_init_libc(char **envp, char *pn) {
   // nothing to do
 }
 
-void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_arrays) {
+void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_arrays, void **random_java_byte_array) {
   int argc = polyglot_get_array_size(argv_java_byte_arrays);
   int envc = polyglot_get_array_size(envp_java_byte_arrays);
-  int auxc = 3;
+  int auxc = 4;
 
   size_t total_argument_size = sizeof(void *) + (argc + 1) * sizeof(char *) + (envc + 1) * sizeof(char *) + auxc * sizeof(Elf64_auxv_t);
   long *p = __sulong_start_arguments = malloc(total_argument_size);
@@ -98,8 +99,10 @@ void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_a
   aux[0].a_un.a_val = (uint64_t)argv[0];
   aux[1].a_type = AT_PLATFORM;
   aux[1].a_un.a_val = (uint64_t) "x86_64";
-  aux[2].a_type = AT_NULL;
-  aux[2].a_un.a_val = 0;
+  aux[2].a_type = AT_RANDOM;
+  aux[2].a_un.a_val = (uint64_t)__sulong_byte_array_to_native(random_java_byte_array);
+  aux[3].a_type = AT_NULL;
+  aux[3].a_un.a_val = 0;
 
   __sulong_init_libc(envp, argv[0]);
 }
