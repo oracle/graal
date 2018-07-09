@@ -243,7 +243,7 @@ public class BasicSystemContextExtension extends SystemContextExtension {
             case LLVMAMD64Syscall.SYS_pipe2:
                 return LLVMAMD64SyscallPipe2NodeGen.create();
             default:
-                return new LLVMAMD64UnknownSyscallNode((int) index);
+                return new LLVMAMD64UnknownSyscallNode(index);
         }
     }
 }
