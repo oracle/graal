@@ -87,14 +87,16 @@ final class PolyglotLogHandler extends Handler {
 
     /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
-     * 
-     * @param out the {@link OutputStream} to print log messages into.
+     *
+     * @param out the {@link OutputStream} to print log messages into
      * @param closeStream if true the {@link Handler#close() handler's close} method closes given
-     *            stream.
+     *            stream
+     * @param flushOnPublish if true the {@link Handler#flush() flush} method is called after
+     *            {@link Handler#publish(java.util.logging.LogRecord) publish}
      * @return the {@link Handler}
      */
-    static Handler createStreamHandler(final OutputStream out, final boolean closeStream) {
-        return new PolyglotStreamHandler(out, closeStream);
+    static Handler createStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
+        return new PolyglotStreamHandler(out, closeStream, flushOnPublish);
     }
 
     private static final class ImmutableLogRecord extends LogRecord {
@@ -205,11 +207,21 @@ final class PolyglotLogHandler extends Handler {
     private static final class PolyglotStreamHandler extends StreamHandler {
 
         private final boolean closeStream;
+        private final boolean flushOnPublish;
 
-        PolyglotStreamHandler(final OutputStream out, final boolean closeStream) {
+        PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
             super(out, FormatterImpl.INSTANCE);
             setLevel(Level.ALL);
             this.closeStream = closeStream;
+            this.flushOnPublish = flushOnPublish;
+        }
+
+        @Override
+        public synchronized void publish(LogRecord record) {
+            super.publish(record);
+            if (flushOnPublish) {
+                flush();
+            }
         }
 
         @Override

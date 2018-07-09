@@ -200,7 +200,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                         INSTRUMENT.createDispatchOutput(System.err),
                         System.in,
                         TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(),
-                        PolyglotLogHandler.createStreamHandler(System.out, false));
+                        PolyglotLogHandler.createStreamHandler(System.out, false, true));
         preInitializedEngineRef.set(preInitializedEngine);
     }
 
