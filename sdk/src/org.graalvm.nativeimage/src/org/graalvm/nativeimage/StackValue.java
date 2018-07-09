@@ -109,6 +109,10 @@ public final class StackValue {
     }
 }
 
+/**
+ * This class contains <a href="https://github.com/jtulach/codesnippet4javadoc/">code snippets</a>
+ * used when generating the Javadoc.
+ */
 @CContext(CContext.Directives.class)
 final class StackValueSnippets {
     // BEGIN: org.graalvm.nativeimage.StackValueSnippets.ComplexNumber
