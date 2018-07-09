@@ -678,8 +678,8 @@ public class UniverseBuilder {
 
         int startSize = superSize;
         if (clazz.getAnnotation(DeoptimizedFrame.ReserveDeoptScratchSpace.class) != null) {
-            assert startSize == ConfigurationValues.getObjectLayout().getFirstFieldOffset();
-            startSize += ConfigurationValues.getObjectLayout().getDeoptScratchSpace();
+            assert startSize <= DeoptimizedFrame.getScratchSpaceOffset();
+            startSize = DeoptimizedFrame.getScratchSpaceOffset() + ConfigurationValues.getObjectLayout().getDeoptScratchSpace();
         }
 
         if (HybridLayout.isHybrid(clazz)) {

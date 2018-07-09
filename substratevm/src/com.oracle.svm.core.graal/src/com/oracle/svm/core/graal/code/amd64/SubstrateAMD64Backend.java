@@ -597,8 +597,9 @@ public class SubstrateAMD64Backend extends Backend {
             asm.movq(rdi, new AMD64Address(rsp, 0));
 
             // Store the original return value registers
-            asm.movq(new AMD64Address(rdi, 8), rax);
-            asm.movq(new AMD64Address(rdi, 16), xmm0);
+            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+            asm.movq(new AMD64Address(rdi, scratchOffset), rax);
+            asm.movq(new AMD64Address(rdi, scratchOffset + 8), xmm0);
 
             super.enter(tasm);
         }
@@ -618,8 +619,9 @@ public class SubstrateAMD64Backend extends Backend {
             super.leave(tasm);
 
             // Restore the return value registers (the DeoptimizedFrame is in rax).
-            asm.movq(xmm0, new AMD64Address(rax, 16));
-            asm.movq(rax, new AMD64Address(rax, 8));
+            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+            asm.movq(xmm0, new AMD64Address(rax, scratchOffset + 8));
+            asm.movq(rax, new AMD64Address(rax, scratchOffset));
         }
     }
 
