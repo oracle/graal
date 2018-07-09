@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -153,7 +154,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createAlloca(LLVMContext context, Type type, int alignment);
 
-    LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion);
+    LLVMExpressionNode createGetUniqueStackSpace(LLVMContext context, Type type, UniquesRegion uniquesRegion);
 
     LLVMExpressionNode createAllocaArray(LLVMContext context, Type elementType, LLVMExpressionNode numElements, int alignment);
 
@@ -171,8 +172,8 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
-    LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegion uniquesRegion, FrameSlot[][] beforeBlockNuller,
-                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame);
+    LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegionAllocator uniquesRegionAllocator,
+                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame);
 
     RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader,
                     Source bcSource, LLVMSourceLocation location);

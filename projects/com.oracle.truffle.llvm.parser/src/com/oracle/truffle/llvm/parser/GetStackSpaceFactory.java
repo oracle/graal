@@ -42,8 +42,8 @@ public interface GetStackSpaceFactory {
         return (nodeFactory, context, type) -> nodeFactory.createAlloca(context, type);
     }
 
-    static GetStackSpaceFactory createGetStackSpaceFactory(UniquesRegion uniquesRegion) {
-        return (nodeFactory, context, type) -> nodeFactory.createGetStackSpace(context, type, uniquesRegion);
+    static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
+        return (nodeFactory, context, type) -> nodeFactory.createGetUniqueStackSpace(context, type, uniquesRegion);
     }
 
 }
