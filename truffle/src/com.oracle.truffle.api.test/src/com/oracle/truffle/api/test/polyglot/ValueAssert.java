@@ -553,8 +553,8 @@ public class ValueAssert {
     }
 
     public interface NonFunctionalInterface {
-        void foobarbaz();
-
+        default void foobarbaz() {
+        }
     }
 
     @FunctionalInterface
