@@ -1062,6 +1062,32 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError(type);
             }
+        } else if (type instanceof VectorType) {
+            VectorType vectorType = (VectorType) type;
+            if (vectorType.getElementType() instanceof PrimitiveType) {
+                switch (((PrimitiveType) vectorType.getElementType()).getPrimitiveKind()) {
+                    case I1:
+                        return LLVMLoadI1VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    case I8:
+                        return LLVMLoadI8VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    case I16:
+                        return LLVMLoadI16VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    case I32:
+                        return LLVMLoadI32VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    case I64:
+                        return LLVMLoadI64VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    case FLOAT:
+                        return LLVMLoadFloatVectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    case DOUBLE:
+                        return LLVMLoadDoubleVectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                    default:
+                        throw new AssertionError(type);
+                }
+            } else if (vectorType.getElementType() instanceof PointerType) {
+                return LLVMLoadPointerVectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+            } else {
+                throw new AssertionError(type);
+            }
         } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
             return LLVMPointerDirectLoadNodeGen.create(targetAddress);
         } else {
@@ -1348,6 +1374,8 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError(llvmType);
             }
+        } else if (llvmType instanceof VectorType) {
+            store = LLVMStoreVectorNodeGen.create(((VectorType) llvmType).getNumberOfElements(), null, null);
         } else if (llvmType instanceof PointerType) {
             store = LLVMPointerStoreNodeGen.create(null, null);
         } else {
