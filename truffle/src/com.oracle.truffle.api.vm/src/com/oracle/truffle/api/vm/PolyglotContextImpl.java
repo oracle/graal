@@ -994,7 +994,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     boolean patch(PolyglotContextConfig newConfig) {
         CompilerAsserts.neverPartOfCompilation();
 
-        ((FileSystems.PreInitializeContextFileSystem) config.fileSystem).patchDelegate(newConfig.fileSystem);
         this.config = newConfig;
         initializeStaticContext(this);
         if (!newConfig.logLevels.isEmpty()) {
