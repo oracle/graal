@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -164,23 +166,8 @@ final class Util_jdk_internal_misc_Signal {
                         VMError.guarantee(false, "Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
                     }
 
-                    /* Allocate the table of signal states. */
-                    final int signalCount = Signal.SignalEnum.values().length;
-                    /* Workaround for GR-7858: @Platform @CEnum members. */
-                    final int linuxSignalCount = IsDefined.isLinux() ? Signal.LinuxSignalEnum.values().length : 0;
                     /* Initialize the table of signal states. */
-                    signalState = new SignalState[signalCount + linuxSignalCount];
-                    for (int index = 0; index < signalCount; index += 1) {
-                        final Signal.SignalEnum value = Signal.SignalEnum.values()[index];
-                        signalState[index] = new SignalState(value.name(), value.getCValue());
-                    }
-                    /* Workaround for GR-7858: @Platform @CEnum members. */
-                    if (IsDefined.isLinux()) {
-                        for (int index = 0; index < linuxSignalCount; index += 1) {
-                            final Signal.LinuxSignalEnum value = Signal.LinuxSignalEnum.values()[index];
-                            signalState[signalCount + index] = new SignalState(value.name(), value.getCValue());
-                        }
-                    }
+                    signalState = createSignalStateTable();
 
                     /* Create and start a daemon thread to dispatch to Java signal handlers. */
                     dispatchThread = new Thread(new DispatchThread());
@@ -194,6 +181,30 @@ final class Util_jdk_internal_misc_Signal {
                 initializationLock.unlock();
             }
         }
+    }
+
+    /**
+     * Create a table of signal states. This would be straightforward, except for the
+     * platform-specific signals. See GR-7858: @Platform @CEnum members.
+     */
+    private static SignalState[] createSignalStateTable() {
+        /* Fill in the table. */
+        List<SignalState> signalStateList = new ArrayList<>();
+        for (Signal.SignalEnum value : Signal.SignalEnum.values()) {
+            signalStateList.add(new SignalState(value.name(), value.getCValue()));
+        }
+        if (IsDefined.isLinux()) {
+            for (Signal.LinuxSignalEnum value : Signal.LinuxSignalEnum.values()) {
+                signalStateList.add(new SignalState(value.name(), value.getCValue()));
+            }
+        }
+        if (IsDefined.isDarwin()) {
+            for (Signal.DarwinSignalEnum value : Signal.DarwinSignalEnum.values()) {
+                signalStateList.add(new SignalState(value.name(), value.getCValue()));
+            }
+        }
+        final SignalState[] result = signalStateList.toArray(new SignalState[0]);
+        return result;
     }
 
     /** Map from a Java signal name to a signal number. */
