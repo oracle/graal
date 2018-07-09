@@ -78,7 +78,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         Supplier<DefaultNode> node = adoptNode(instrumentedNode);
 
         VirtualFrame testFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
-        assertExecutionEvent(instrumentedNode, testFrame, null, () -> node.get().execute1(testFrame));
+        assertExecutionEvent(instrumentedNode, testFrame, "execute2", () -> node.get().execute1(testFrame));
         assertExecutionEvent(instrumentedNode, testFrame, "execute2", () -> node.get().execute2(testFrame));
         assertExecutionEvent(instrumentedNode, testFrame, 42, () -> node.get().execute3(testFrame));
         assertExecutionEvent(instrumentedNode, testFrame, "execute4", () -> node.get().execute4(testFrame));
