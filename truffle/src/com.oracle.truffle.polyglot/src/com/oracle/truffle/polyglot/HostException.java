@@ -64,17 +64,25 @@ final class HostException extends RuntimeException implements TruffleException {
         return getOriginal().getMessage();
     }
 
+    @SuppressWarnings("sync-override")
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return this;
     }
 
+    @Override
     public Node getLocation() {
         return null;
     }
 
+    @Override
     public boolean isCancelled() {
         return getOriginal() instanceof InterruptedException;
     }
 
+    @Override
+    public Object getExceptionObject() {
+        Throwable exception = getOriginal();
+        return PolyglotContextImpl.requireContext().getHostContext().toGuestValue(exception);
+    }
 }
