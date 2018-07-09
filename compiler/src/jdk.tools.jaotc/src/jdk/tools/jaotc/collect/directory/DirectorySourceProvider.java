@@ -38,7 +38,7 @@ import java.nio.file.Path;
 public final class DirectorySourceProvider implements SourceProvider {
     private final FileSupport fileSupport;
     private final FileSystem fileSystem;
-    public final static String TYPE = "directory";
+    public static final String TYPE = "directory";
 
     public DirectorySourceProvider(FileSupport fileSupport) {
         this.fileSupport = fileSupport;

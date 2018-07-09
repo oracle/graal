@@ -21,24 +21,24 @@ git clone https://github.com/graalvm/mx.git
 export PATH=$PWD/mx:$PATH
 ```
 
-Graal depends on a JDK that supports JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)). There is a JVMCI
-[port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and JVMCI is built into the JDK as of JDK 9.
+Graal depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)). There is a JVMCI
+[port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and the required JVMCI version is built into the JDK as of JDK 11-ea+20.
 
 Graal currently requires a JVMCI-enabled JDK 8 (download from [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or [build](#building-jvmci-jdk8) yourself) and will do so until all JDK 8 specific Graal code is factored out as [versioned sources](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
 Developing versioned sources specific to other JDKs requires them to be made
-available on the `EXTRA_JAVA_HOMES` environment variable. At the time of writing, this means JDK 9
-and JDK 11 ([early access builds](http://jdk.java.net/11/) should work but a build from
+available on the `EXTRA_JAVA_HOMES` environment variable. At the time of writing, this
+JDK 11-ea+20 ([early access build](http://jdk.java.net/11/) should work but a build from
 the [latest bits](http://hg.openjdk.java.net/jdk/jdk/) is required if Graal targets features not yet in an early access build).
 
 Here is a typical set up for specifying multiple JDKs on Linux:
 ```
 export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.44
-export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-9.0.4:/usr/lib/jvm/jdk-11
+export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
 ```
 And on macOS:
 ```
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/labsjdk1.8.0_172-jvmci-0.44/Contents/Home
-export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-9.0.4.jdk/Contents/Home:/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
+export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
 If you omit `EXTRA_JAVA_HOMES`, the associated sources will not be built. Note that `JAVA_HOME` defines the *primary* JDK for development. For instance, when running `mx vm`, this is the JDK that will be used so if you want to run on JDK 11, swap JDK 8 and JDK 11 in `JAVA_HOME` and `EXTRA_JAVA_HOMES`.
 

@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -75,6 +76,16 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      *            {@linkplain #append(ValueNode) appended}.
      */
     void push(JavaKind kind, ValueNode value);
+
+    /**
+     * Pops a value from the frame state stack using an explicit kind.
+     *
+     * @param slotKind the kind to use when type checking this operation
+     * @return the value on the top of the stack
+     */
+    default ValueNode pop(JavaKind slotKind) {
+        throw GraalError.unimplemented();
+    }
 
     /**
      * Adds a node to the graph. If the node is in the graph, returns immediately. If the node is a

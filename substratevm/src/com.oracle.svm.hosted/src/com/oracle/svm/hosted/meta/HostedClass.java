@@ -45,4 +45,9 @@ public abstract class HostedClass extends HostedType {
         assert !wrapped.isPrimitive();
         return false;
     }
+
+    @Override
+    public boolean isEnum() {
+        return wrapped.isEnum();
+    }
 }

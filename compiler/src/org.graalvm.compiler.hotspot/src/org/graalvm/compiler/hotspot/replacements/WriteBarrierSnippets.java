@@ -26,7 +26,7 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayIndexScale;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.cardTableShift;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.dirtyCardValue;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.g1CardQueueBufferOffset;
@@ -328,7 +328,7 @@ public class WriteBarrierSnippets implements Snippets {
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset(INJECTED_VMCONFIG));
         Word indexAddress = thread.add(g1SATBQueueIndexOffset(INJECTED_VMCONFIG));
         long indexValue = indexAddress.readWord(0).rawValue();
-        final int scale = arrayIndexScale(JavaKind.Object);
+        final int scale = HotSpotReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, JavaKind.Object);
         long start = getPointerToFirstArrayElement(address, length, elementStride);
 
         for (int i = 0; i < length; i++) {

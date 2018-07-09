@@ -3544,6 +3544,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
+    public ValueNode pop(JavaKind slotKind) {
+        return frameState.pop(slotKind);
+    }
+
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }

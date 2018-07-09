@@ -28,7 +28,8 @@ import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 public interface StaticDeoptimizingNode extends ValueNodeInterface {
 
@@ -40,7 +41,7 @@ public interface StaticDeoptimizingNode extends ValueNodeInterface {
 
     void setAction(DeoptimizationAction action);
 
-    JavaConstant getSpeculation();
+    Speculation getSpeculation();
 
     /**
      * Describes how much information is gathered when deoptimization triggers.
@@ -67,7 +68,8 @@ public interface StaticDeoptimizingNode extends ValueNodeInterface {
     }
 
     default GuardPriority computePriority() {
-        if (getSpeculation() != null && getSpeculation().isNonNull()) {
+        assert getSpeculation() != null;
+        if (!getSpeculation().equals(SpeculationLog.NO_SPECULATION)) {
             return GuardNode.GuardPriority.Speculation;
         }
         switch (getAction()) {

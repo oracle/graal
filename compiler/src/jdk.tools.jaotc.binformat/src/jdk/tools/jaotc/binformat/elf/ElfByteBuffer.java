@@ -27,8 +27,8 @@ package jdk.tools.jaotc.binformat.elf;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Ehdr;
-import jdk.tools.jaotc.binformat.elf.ElfTargetInfo;
 
 final class ElfByteBuffer {
 

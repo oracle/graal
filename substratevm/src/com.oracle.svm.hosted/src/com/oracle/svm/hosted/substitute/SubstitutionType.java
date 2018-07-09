@@ -28,8 +28,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-
 import com.oracle.svm.hosted.c.GraalAccess;
+
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -99,6 +99,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public boolean isPrimitive() {
         return annotated.isPrimitive();
+    }
+
+    @Override
+    public boolean isEnum() {
+        return annotated.isEnum();
     }
 
     @Override

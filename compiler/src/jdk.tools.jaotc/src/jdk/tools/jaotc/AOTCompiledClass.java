@@ -29,20 +29,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 
+import jdk.tools.jaotc.AOTDynamicTypeStore.AdapterLocation;
+import jdk.tools.jaotc.AOTDynamicTypeStore.AppendixLocation;
+import jdk.tools.jaotc.AOTDynamicTypeStore.Location;
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.ReadOnlyDataContainer;
 import jdk.tools.jaotc.binformat.Symbol.Binding;
 import jdk.tools.jaotc.binformat.Symbol.Kind;
-
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import jdk.tools.jaotc.AOTDynamicTypeStore.AdapterLocation;
-import jdk.tools.jaotc.AOTDynamicTypeStore.AppendixLocation;
-import jdk.tools.jaotc.AOTDynamicTypeStore.Location;
 
 /**
  * Class encapsulating Graal-compiled output of a Java class. The compilation result of all methods
@@ -86,9 +84,9 @@ final class AOTCompiledClass {
             String name = metadataName;
             Set<Location> locs = dynoStore.getDynamicClassLocationsForType(type);
             if (locs == null) {
-                return new String[] {name};
+                return new String[]{name};
             } else {
-                ArrayList<String> names = new ArrayList<String>();
+                ArrayList<String> names = new ArrayList<>();
                 names.add(name);
                 for (Location l : locs) {
                     HotSpotResolvedObjectType cpType = l.getHolder();
@@ -97,14 +95,14 @@ final class AOTCompiledClass {
                     // may record types that don't make it into the final graph.
                     // We can safely ignore those here.
                     if (data == null) {
-                       // Not a compiled or inlined method
-                       continue;
+                        // Not a compiled or inlined method
+                        continue;
                     }
                     int cpi = l.getCpi();
-                    String location = "<"+ data.classId + ":" + cpi + ">";
+                    String location = "<" + data.classId + ":" + cpi + ">";
                     if (l instanceof AdapterLocation) {
                         names.add("adapter" + location);
-                        AdapterLocation a = (AdapterLocation)l;
+                        AdapterLocation a = (AdapterLocation) l;
                         names.add("adapter:" + a.getMethodId() + location);
                     } else {
                         assert l instanceof AppendixLocation;
@@ -321,7 +319,7 @@ final class AOTCompiledClass {
     /**
      * Add a klass data.
      */
-    synchronized static AOTKlassData addAOTKlassData(BinaryContainer binaryContainer, HotSpotResolvedObjectType type) {
+    static synchronized AOTKlassData addAOTKlassData(BinaryContainer binaryContainer, HotSpotResolvedObjectType type) {
         String name = type.getName();
         AOTKlassData data = klassData.get(name);
         if (data != null) {
@@ -333,13 +331,13 @@ final class AOTCompiledClass {
         return data;
     }
 
-    private synchronized static AOTKlassData getAOTKlassData(String name) {
+    private static synchronized AOTKlassData getAOTKlassData(String name) {
         return klassData.get(name);
     }
 
-    synchronized static AOTKlassData getAOTKlassData(HotSpotResolvedObjectType type) {
+    static synchronized AOTKlassData getAOTKlassData(HotSpotResolvedObjectType type) {
         String name = type.getName();
-        AOTKlassData data =  getAOTKlassData(name);
+        AOTKlassData data = getAOTKlassData(name);
         assert data == null || data.getType() == type : "duplicate classes for name " + name;
         return data;
     }
@@ -365,17 +363,14 @@ final class AOTCompiledClass {
         }
     }
 
-    synchronized static AOTKlassData addFingerprintKlassData(BinaryContainer binaryContainer, HotSpotResolvedObjectType type) {
+    static synchronized AOTKlassData addFingerprintKlassData(BinaryContainer binaryContainer, HotSpotResolvedObjectType type) {
         if (type.isArray()) {
             return addAOTKlassData(binaryContainer, type);
         }
         assert type.getFingerprint() != 0 : "no fingerprint for " + type.getName();
         AOTKlassData old = getAOTKlassData(type);
         if (old != null) {
-            boolean assertsEnabled = false;
-            // Next assignment will be executed when asserts are enabled.
-            assert assertsEnabled = true;
-            if (assertsEnabled) {
+            if (areAssertionsEnabled()) {
                 HotSpotResolvedObjectType s = type.getSuperclass();
                 if (s != null) {
                     assert getAOTKlassData(s) != null : "fingerprint for super " + s.getName() + " needed for " + type.getName();
@@ -397,6 +392,14 @@ final class AOTCompiledClass {
         }
 
         return addAOTKlassData(binaryContainer, type);
+    }
+
+    @SuppressWarnings("all")
+    private static boolean areAssertionsEnabled() {
+        boolean assertsEnabled = false;
+        // Next assignment will be executed when asserts are enabled.
+        assert assertsEnabled = true;
+        return assertsEnabled;
     }
 
     /*
@@ -448,11 +451,11 @@ final class AOTCompiledClass {
 
     static String metadataName(Object ref) {
         if (ref instanceof HotSpotResolvedJavaMethod) {
-            HotSpotResolvedJavaMethod m = (HotSpotResolvedJavaMethod)ref;
+            HotSpotResolvedJavaMethod m = (HotSpotResolvedJavaMethod) ref;
             return metadataName(m);
         } else {
             assert ref instanceof HotSpotResolvedObjectType : "unexpected object type " + ref.getClass().getName();
-            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType)ref;
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) ref;
             return metadataName(type);
         }
     }

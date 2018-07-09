@@ -503,7 +503,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private URL getResource(String resourceName) {
         final String path = resolveName(getName(), resourceName);
         List<byte[]> arr = Resources.get(path);
-        return arr == null ? null : Resources.createURL(path, new ByteArrayInputStream(arr.get(0)));
+        return arr == null ? null : Resources.createURL(path, arr.get(0));
     }
 
     private String resolveName(String baseName, String resourceName) {

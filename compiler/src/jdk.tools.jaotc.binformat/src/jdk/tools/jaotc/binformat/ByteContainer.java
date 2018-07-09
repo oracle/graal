@@ -27,7 +27,6 @@ package jdk.tools.jaotc.binformat;
 
 import jdk.tools.jaotc.binformat.Symbol.Binding;
 import jdk.tools.jaotc.binformat.Symbol.Kind;
-import jdk.tools.jaotc.binformat.Container;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;

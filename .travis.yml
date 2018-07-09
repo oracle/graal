@@ -14,19 +14,19 @@ sudo: required
 dist: trusty
 
 jdk:
-    - oraclejdk10
+    - oraclejdk11
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.45"
+    - JVMCI_VERSION="jvmci-0.46"
     - JDK8_UPDATE_VERSION="172"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk10" GATE="style,fullbuild"
-    - JDK="jdk10" GATE="build,test"
-    - JDK="jdk10" GATE="build,bootstraplite"
+    - JDK="jdk11" GATE="style,fullbuild"
+    - JDK="jdk11" GATE="build,test"
+    - JDK="jdk11" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -62,10 +62,10 @@ install:
       export JAVA8_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       if [ "${JDK}" == "jdk8" ]
       then
-        export EXTRA_JAVA_HOMES=${JAVA_HOME} # JAVA_HOME is pointing to JDK10, which should be in EXTRA_JAVA_HOMES
+        export EXTRA_JAVA_HOMES=${JAVA_HOME} # JAVA_HOME is pointing to JDK11, which should be in EXTRA_JAVA_HOMES
         export JAVA_HOME=${JAVA8_HOME} # JAVA_HOME should point to JDK8
       fi
-      if [ "${JDK}" == "jdk10" ]
+      if [ "${JDK}" == "jdk11" ]
       then
         export EXTRA_JAVA_HOMES=${JAVA8_HOME} # JDK8 must be placed in EXTRA_JAVA_HOME
       fi

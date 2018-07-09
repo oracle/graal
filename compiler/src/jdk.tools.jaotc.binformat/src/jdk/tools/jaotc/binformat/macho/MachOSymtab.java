@@ -28,15 +28,13 @@ package jdk.tools.jaotc.binformat.macho;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-import jdk.tools.jaotc.binformat.macho.MachO.symtab_command;
 import jdk.tools.jaotc.binformat.macho.MachO.nlist_64;
-import jdk.tools.jaotc.binformat.macho.MachOSymbol;
-import jdk.tools.jaotc.binformat.macho.MachOByteBuffer;
+import jdk.tools.jaotc.binformat.macho.MachO.symtab_command;
 
 final class MachOSymtab {
 
     /**
-     * ByteBuffer holding the LC_SYMTAB command contents
+     * ByteBuffer holding the LC_SYMTAB command contents.
      */
     private final ByteBuffer symtabCmd;
 
@@ -47,12 +45,12 @@ final class MachOSymtab {
     private final ArrayList<MachOSymbol> undefSymbols = new ArrayList<>();
 
     /**
-     * number of symbols added
+     * Number of symbols added.
      */
     private int symbolCount;
 
     /**
-     * String holding symbol table strings
+     * String holding symbol table strings.
      */
     private final StringBuilder strTabContent = new StringBuilder();
 

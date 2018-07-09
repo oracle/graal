@@ -133,6 +133,11 @@ public class HostedField implements ReadableJavaField, SharedField, Comparable<H
     }
 
     @Override
+    public int getOffset() {
+        return wrapped.getOffset();
+    }
+
+    @Override
     public int hashCode() {
         return wrapped.hashCode();
     }
@@ -159,6 +164,8 @@ public class HostedField implements ReadableJavaField, SharedField, Comparable<H
     @Override
     public boolean allowConstantFolding() {
         if (location == LOC_CONSTANT_STATIC_FIELD) {
+            return true;
+        } else if (getDeclaringClass().isEnum()) {
             return true;
         } else if (!wrapped.isWritten()) {
             assert !Modifier.isStatic(getModifiers()) : "should have constantValue in this case";
