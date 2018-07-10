@@ -1459,7 +1459,13 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             mx.abort("No benchmark should be specified for the selected suite.")
         vmArgs = self.vmArgs(bmSuiteArgs)
         if mx_compiler.jdk.javaCompliance >= '9':
-            vmArgs += ["--add-modules", "java.xml.bind"]
+            if mx_compiler.jdk.javaCompliance < '11':
+                vmArgs += ["--add-modules", "java.xml.bind"]
+            else: # >= '11'
+                # JEP-320: Remove the Java EE and CORBA Modules in JDK11 http://openjdk.java.net/jeps/320
+                cp = []
+                mx.library("JAXB_IMPL_2.1.17").walk_deps(visit=lambda d, _: cp.append(d.get_path(resolve=True)))
+                vmArgs += ["--module-path", ":".join(cp), "--add-modules=jaxb.api,jaxb.impl,activation", "--add-opens=java.base/java.lang=jaxb.impl"]
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
 
