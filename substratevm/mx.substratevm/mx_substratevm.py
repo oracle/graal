@@ -623,15 +623,16 @@ def test_python_smoke(args):
         mx.abort('mx svm_test_python <python_svm_image_path>')
 
     out = mx.OutputCapture()
+    err = mx.OutputCapture()
     expected_output = "Hello from Python"
     with tempfile.NamedTemporaryFile() as f:
         f.write("print('%s')\n" % expected_output)
         f.flush()
         os.system("ls -l %s" % args[0])
         os.system("ls -l %s" % f.name)
-        exitcode = mx.run([args[0], f.name], nonZeroIsFatal=False, out=out)
+        exitcode = mx.run([args[0], f.name], nonZeroIsFatal=False, out=out, err=err)
         if exitcode != 0:
-            mx.abort("Python binary failed to execute: " + out.data)
+            mx.abort("Python binary failed to execute: out=" + out.data+ " err=" + err.data)
         if out.data != expected_output + "\n":
             mx.abort("Python smoke test failed")
         mx.log("Python binary says: " + out.data)

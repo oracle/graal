@@ -261,7 +261,8 @@ public abstract class TruffleInstrument {
         /**
          * Queries a {@link TruffleLanguage language implementation} for a special service. The
          * services can be provided by the language by directly implementing them when subclassing
-         * {@link TruffleLanguage}.
+         * {@link TruffleLanguage}. The truffle language needs to be entered on the current Thread
+         * otherwise an {@link AssertionError} is thrown.
          *
          * @param <S> the requested type
          * @param language identification of the language to query
@@ -664,7 +665,7 @@ public abstract class TruffleInstrument {
      *
      * @since 0.12
      */
-    @Retention(RetentionPolicy.SOURCE)
+    @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface Registration {
 

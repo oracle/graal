@@ -709,16 +709,6 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
 
             @Override
-            public TruffleLanguage<?> getLanguageSpi(LanguageInfo languageInfo) {
-                return languageInfo.getSpi();
-            }
-
-            @Override
-            public void setLanguageSpi(LanguageInfo languageInfo, TruffleLanguage<?> spi) {
-                languageInfo.setSpi(spi);
-            }
-
-            @Override
             public LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal) {
                 return new LanguageInfo(vmObject, id, name, version, mimeTypes, internal);
             }
@@ -726,6 +716,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             @Override
             public Object getSourceVM(RootNode rootNode) {
                 return rootNode.sourceVM;
+            }
+
+            @Override
+            public TruffleLanguage<?> getLanguage(RootNode rootNode) {
+                return rootNode.language;
             }
 
             @Override

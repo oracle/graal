@@ -1013,7 +1013,7 @@ public final class Context implements AutoCloseable {
                 engine = engineBuilder.build();
                 return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
-                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem, null);
+                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem, customLogHandler);
             } else {
                 return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,

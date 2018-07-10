@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -34,6 +33,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.StreamHandler;
+
+import com.oracle.truffle.api.interop.TruffleObject;
 
 final class PolyglotLogHandler extends Handler {
 
@@ -66,9 +67,9 @@ final class PolyglotLogHandler extends Handler {
         }
     }
 
-    private Handler findDelegate() {
+    private static Handler findDelegate() {
         final PolyglotContextImpl currentContext = getCurrentOuterContext();
-        return currentContext != null ? currentContext.logHandler : null;
+        return currentContext != null ? currentContext.config.logHandler : null;
     }
 
     static PolyglotContextImpl getCurrentOuterContext() {
@@ -224,6 +225,7 @@ final class PolyglotLogHandler extends Handler {
             }
         }
 
+        @SuppressWarnings("sync-override")
         @Override
         public void close() throws SecurityException {
             if (closeStream) {
