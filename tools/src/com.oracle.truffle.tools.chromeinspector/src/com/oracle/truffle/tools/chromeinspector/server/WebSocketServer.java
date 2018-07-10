@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.server;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
@@ -36,14 +37,22 @@ import java.io.PrintWriter;
 import java.io.PushbackInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLServerSocketFactory;
 
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoWSD;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -62,6 +71,11 @@ import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
  */
 public final class WebSocketServer extends NanoWSD {
 
+    private static final String KEY_STORE_FILE_PATH = "javax.net.ssl.keyStore";
+    private static final String KEY_STORE_TYPE = "javax.net.ssl.keyStoreType";
+    private static final String KEY_STORE_FILE_PASSWORD = "javax.net.ssl.keyStorePassword";
+    private static final String KEY_STORE_KEY_RECOVER_PASSWORD = "javax.net.ssl.keyPassword";
+
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 
     private final Map<String, ServerPathSession> sessions = new HashMap<>();
@@ -76,8 +90,8 @@ public final class WebSocketServer extends NanoWSD {
         }
     }
 
-    public static WebSocketServer get(InetSocketAddress isa, String path,
-                    TruffleExecutionContext context, boolean debugBrk, ConnectionWatcher connectionWatcher) throws IOException {
+    public static WebSocketServer get(InetSocketAddress isa, String path, TruffleExecutionContext context, boolean debugBrk,
+                    boolean secure, ConnectionWatcher connectionWatcher) throws IOException {
         WebSocketServer wss;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
@@ -96,6 +110,13 @@ public final class WebSocketServer extends NanoWSD {
                     }
                 }
                 wss = new WebSocketServer(isa, traceLog);
+                if (secure) {
+                    if (TruffleOptions.AOT) {
+                        throw new IOException("Secure connection is not available in the native-image yet.");
+                    } else {
+                        wss.makeSecure(createSSLFactory(), null);
+                    }
+                }
                 wss.start(Integer.MAX_VALUE);
                 SERVERS.put(isa, wss);
             }
@@ -104,6 +125,36 @@ public final class WebSocketServer extends NanoWSD {
             wss.sessions.put(path, new ServerPathSession(context, debugBrk, connectionWatcher));
         }
         return wss;
+    }
+
+    private static SSLServerSocketFactory createSSLFactory() throws IOException {
+        String keyStoreFile = System.getProperty(KEY_STORE_FILE_PATH);
+        if (keyStoreFile != null) {
+            try {
+                String filePasswordProperty = System.getProperty(KEY_STORE_FILE_PASSWORD);
+                // obtaining password for unlock keystore
+                char[] filePassword = filePasswordProperty == null ? "".toCharArray() : filePasswordProperty.toCharArray();
+                String keystoreType = System.getProperty(KEY_STORE_TYPE);
+                if (keystoreType == null) {
+                    keystoreType = KeyStore.getDefaultType();
+                }
+                KeyStore keystore = KeyStore.getInstance(keystoreType);
+                File keyFile = new File(keyStoreFile);
+                keystore.load(new FileInputStream(keyFile), filePassword);
+                String keyRecoverPasswordProperty = System.getProperty(KEY_STORE_KEY_RECOVER_PASSWORD);
+                char[] keyRecoverPassword = keyRecoverPasswordProperty == null ? filePassword : keyRecoverPasswordProperty.toCharArray();
+                final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                kmf.init(keystore, keyRecoverPassword);
+                return NanoHTTPD.makeSSLSocketFactory(keystore, kmf);
+            } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | UnrecoverableKeyException ex) {
+                throw new IOException(ex);
+            }
+        } else {
+            throw new IOException("Use Java system properties to specify the keystore: " + KEY_STORE_FILE_PATH + " to specify the keystore file path, " +
+                            KEY_STORE_TYPE + " to specify the keystore type (defaults to JKS), " +
+                            KEY_STORE_FILE_PASSWORD + " to specify the keystore password and " +
+                            KEY_STORE_KEY_RECOVER_PASSWORD + " to specify the password for recovering keys, if it's different from the keystore password.");
+        }
     }
 
     @Override
