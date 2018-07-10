@@ -28,7 +28,7 @@
  )
  */
 /**
- * The management package provides tools monitor and instrument the behavior of guest language
+ * The management package provides tools that monitor and instrument the behavior of guest language
  * programs.
  * <p>
  * See <link <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to

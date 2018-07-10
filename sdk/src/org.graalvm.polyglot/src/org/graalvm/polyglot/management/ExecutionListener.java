@@ -345,8 +345,9 @@ public final class ExecutionListener implements AutoCloseable {
         }
 
         /**
-         * Collect additional execution event data about return values. The error may be accessed in
-         * {@link #onReturn(Consumer) OnReturn} events with {@link ExecutionEvent#getReturnValue()}.
+         * Collect additional execution event data about return values. The return value may be
+         * accessed in {@link #onReturn(Consumer) OnReturn} events with
+         * {@link ExecutionEvent#getReturnValue()}.
          * <p>
          * If additional event data is collected then the peak performance overhead of execution
          * listeners is significant. It is not recommended to collect additional event data when
