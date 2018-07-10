@@ -31,8 +31,21 @@ package org.graalvm.nativeimage;
  * @since 1.0
  */
 public final class Image {
+
+    private Image() {
+    }
+
+    /**
+     * @since 1.0
+     */
     public static final String PROPERTY_ISAOT_KEY = "org.graalvm.nativeimage.isaot";
+    /**
+     * @since 1.0
+     */
     public static final String PROPERTY_ISAOT_VALUE_RUNTIME = "image.runtime";
+    /**
+     * @since 1.0
+     */
     public static final String PROPERTY_ISAOT_VALUE_BUILDTIME = "image.buildtime";
 
     /**
