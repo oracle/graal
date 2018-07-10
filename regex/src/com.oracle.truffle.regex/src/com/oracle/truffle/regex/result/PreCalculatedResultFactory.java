@@ -105,6 +105,9 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
     }
 
     private RegexResult createFromOffset(RegexObject regex, Object input, int offset) {
+        if (indices.length == 2) {
+            return new SingleResult(regex, input, indices[0] + offset, indices[1] + offset);
+        }
         final int[] realIndices = new int[indices.length];
         applyOffset(realIndices, offset);
         return new SingleIndexArrayResult(regex, input, realIndices);
