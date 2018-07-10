@@ -35,14 +35,30 @@ public final class Image {
     public static final String PROPERTY_ISAOT_VALUE_RUNTIME = "image.runtime";
     public static final String PROPERTY_ISAOT_VALUE_BUILDTIME = "image.buildtime";
 
+    /**
+     * @return true if code is currently executed as part of image building or during image runtime.
+     *         If code runs regular on JVM (not as part of image building) false is returned.
+     *
+     * @since 1.0
+     */
     public static boolean isAOT() {
         return System.getProperty(PROPERTY_ISAOT_KEY) != null;
     }
 
+    /**
+     * @return true if code is currently executed at image runtime.
+     *
+     * @since 1.0
+     */
     public static boolean isImageRuntime() {
         return PROPERTY_ISAOT_VALUE_RUNTIME.equals(System.getProperty(PROPERTY_ISAOT_KEY));
     }
 
+    /**
+     * @return true if code is executed during image buildtime (e.g. in a static initializer).
+     *
+     * @since 1.0
+     */
     public static boolean isImageBuildtime() {
         return PROPERTY_ISAOT_VALUE_BUILDTIME.equals(System.getProperty(PROPERTY_ISAOT_KEY));
     }
