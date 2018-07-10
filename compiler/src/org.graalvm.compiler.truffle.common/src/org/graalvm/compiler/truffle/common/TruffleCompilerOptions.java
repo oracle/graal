@@ -128,6 +128,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde)", type = OptionType.Debug)
     public static final OptionKey<String> TruffleCompileOnly = new OptionKey<>(null);
 
+    @Option(help = "Enable or disable truffle compilation.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TruffleCompilation = new OptionKey<>(true);
+
     @Option(help = "Compile immediately to test truffle compiler", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompileImmediately = new OptionKey<>(false);
 

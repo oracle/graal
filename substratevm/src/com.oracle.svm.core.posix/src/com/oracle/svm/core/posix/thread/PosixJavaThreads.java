@@ -100,7 +100,7 @@ public final class PosixJavaThreads extends JavaThreads {
 
     @Override
     protected void start0(Thread thread, long stackSize) {
-        pthread_attr_t attributes = StackValue.get(SizeOf.get(pthread_attr_t.class));
+        pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
         PosixUtils.checkStatusIs0(
                         Pthread.pthread_attr_init(attributes),
                         "PosixJavaThreads.start0: pthread_attr_init");
@@ -131,7 +131,7 @@ public final class PosixJavaThreads extends JavaThreads {
             JavaThreads.singleton().signalNonDaemonThreadStart();
         }
 
-        Pthread.pthread_tPointer newThread = StackValue.get(SizeOf.get(Pthread.pthread_tPointer.class));
+        Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
         PosixUtils.checkStatusIs0(
                         Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
                         "PosixJavaThreads.start0: pthread_create");
@@ -347,7 +347,7 @@ class PosixParkEvent extends ParkEvent {
     @Override
     protected WaitResult condTimedWait(long delayNanos) {
         /* Encode the delay as a deadline in a Time.timespec. */
-        Time.timespec deadlineTimespec = StackValue.get(SizeOf.get(Time.timespec.class));
+        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
 
         WaitResult result = WaitResult.UNPARKED;

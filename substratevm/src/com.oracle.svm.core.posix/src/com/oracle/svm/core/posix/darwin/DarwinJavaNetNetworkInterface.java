@@ -85,7 +85,7 @@ public class DarwinJavaNetNetworkInterface {
             JavaNetNetworkInterface.netif ifs = ifsParameter;
             // 1930 struct ifaddrs *ifa, *origifa;
             Ifaddrs.ifaddrs ifa;
-            Ifaddrs.ifaddrsPointer origifa_Pointer = StackValue.get(SizeOf.get(Ifaddrs.ifaddrsPointer.class));
+            Ifaddrs.ifaddrsPointer origifa_Pointer = StackValue.get(Ifaddrs.ifaddrsPointer.class);
             // 1931
             // 1932 if (getifaddrs(&origifa) != 0) {
             if (Ifaddrs.getifaddrs(origifa_Pointer) != 0) {
@@ -151,11 +151,11 @@ public class DarwinJavaNetNetworkInterface {
             netif ifs = ifsParameter;
             // 2004     struct ifaddrs *ifa, *origifa;
             Ifaddrs.ifaddrs ifa;
-            Ifaddrs.ifaddrsPointer origifa_Pointer = StackValue.get(SizeOf.get(Ifaddrs.ifaddrsPointer.class));
+            Ifaddrs.ifaddrsPointer origifa_Pointer = StackValue.get(Ifaddrs.ifaddrsPointer.class);
             // 2005     struct sockaddr_in6 *sin6;
             NetinetIn.sockaddr_in6 sin6;
             // 2006     struct in6_ifreq ifr6;
-            DarwinNetinet6In6_var.in6_ifreq ifr6 = StackValue.get(SizeOf.get(DarwinNetinet6In6_var.in6_ifreq.class));
+            DarwinNetinet6In6_var.in6_ifreq ifr6 = StackValue.get(DarwinNetinet6In6_var.in6_ifreq.class);
             // 2007
             // 2008     if (getifaddrs(&origifa) != 0) {
             if (Ifaddrs.getifaddrs(origifa_Pointer) != 0) {
@@ -295,7 +295,7 @@ public class DarwinJavaNetNetworkInterface {
             // 2083   struct sockaddr *ret = NULL;
             Socket.sockaddr ret = WordFactory.nullPointer();
             // 2084   struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             // 2085
             // 2086   memset((char *) &if2, 0, sizeof(if2));
             LibC.memset(if2, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
@@ -344,7 +344,7 @@ public class DarwinJavaNetNetworkInterface {
             // 2115     short ret;
             short ret;
             // 2116     struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             // 2117
             // 2118     memset((char *) &if2, 0, sizeof(if2));
             LibC.memset(if2, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
@@ -379,7 +379,7 @@ public class DarwinJavaNetNetworkInterface {
         // 2182 static int getFlags(int sock, const char *ifname, int *flags) {
         public int getFlags(int sock, CCharPointer ifname, CIntPointer flags) {
             // 2183   struct ifreq if2;
-            NetIf.ifreq if2 = StackValue.get(SizeOf.get(NetIf.ifreq.class));
+            NetIf.ifreq if2 = StackValue.get(NetIf.ifreq.class);
             // 2184   int ret = -1;
             /* `ret` is unused. */
             // 2185

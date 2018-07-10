@@ -1,6 +1,5 @@
 gateCmdSuffix : ["-v", "--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
-gateCmdLenient : ["mx"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
   targets: ["weekly"]
@@ -11,15 +10,6 @@ gateTest : {
   }
   run : [
     ${gateCmd} ["build,test"]
-  ]
-}
-
-gateTestLenient : {
-  environment : {
-    EXTRA_VM_ARGS : ""
-  }
-  run : [
-    ${gateCmdLenient} ["build,test"]
   ]
 }
 

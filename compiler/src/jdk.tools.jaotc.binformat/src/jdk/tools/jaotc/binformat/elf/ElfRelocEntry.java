@@ -28,7 +28,6 @@ package jdk.tools.jaotc.binformat.elf;
 import java.nio.ByteBuffer;
 
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rela;
-import jdk.tools.jaotc.binformat.elf.ElfByteBuffer;
 
 final class ElfRelocEntry {
     private final ByteBuffer entry;

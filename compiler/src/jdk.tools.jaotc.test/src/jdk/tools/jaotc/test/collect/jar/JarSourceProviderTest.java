@@ -38,21 +38,21 @@
 
 package jdk.tools.jaotc.test.collect.jar;
 
-import jdk.tools.jaotc.collect.ClassSource;
-import jdk.tools.jaotc.collect.jar.JarSourceProvider;
-import jdk.tools.jaotc.test.collect.FakeFileSupport;
-import jdk.tools.jaotc.test.collect.FakeSearchPath;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import static jdk.tools.jaotc.test.collect.Utils.mkpath;
+import static jdk.tools.jaotc.test.collect.Utils.set;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.ProviderNotFoundException;
-import java.util.Set;
 
-import static jdk.tools.jaotc.test.collect.Utils.mkpath;
-import static jdk.tools.jaotc.test.collect.Utils.set;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import jdk.tools.jaotc.collect.ClassSource;
+import jdk.tools.jaotc.collect.jar.JarSourceProvider;
+import jdk.tools.jaotc.test.collect.FakeFileSupport;
+import jdk.tools.jaotc.test.collect.FakeSearchPath;
 
 public class JarSourceProviderTest {
 
@@ -67,17 +67,14 @@ public class JarSourceProviderTest {
 
     @Test
     public void itShouldUseSearchPathToFindPath() {
-        Set<String> visited = set();
-        JarSourceProvider target = new JarSourceProvider(fileSupport);
         FakeSearchPath searchPath = new FakeSearchPath(null);
-        ClassSource source = target.findSource("hello", searchPath);
+        target.findSource("hello", searchPath);
 
         Assert.assertEquals(set("hello"), searchPath.entries);
     }
 
     @Test
     public void itShouldReturnNullIfPathIsNull() {
-        JarSourceProvider target = new JarSourceProvider(fileSupport);
         ClassSource source = target.findSource("foobar", new FakeSearchPath(null));
         Assert.assertNull(source);
     }

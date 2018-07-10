@@ -559,7 +559,7 @@ public class JavaInteropTest {
     }
 
     private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
-        Method isFunctionaInterface = JavaInterop.class.getDeclaredMethod("isJavaFunctionInterface", Class.class);
+        Method isFunctionaInterface = Class.forName(JavaInterop.class.getName().concat("Reflect")).getDeclaredMethod("isFunctionalInterface", Class.class);
         ReflectionUtils.setAccessible(isFunctionaInterface, true);
         return (boolean) isFunctionaInterface.invoke(null, clazz);
     }

@@ -383,7 +383,7 @@ public final class NativeImageBuildServer {
         URLClassLoader imageClassLoader;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            imageClassLoader = NativeImageGeneratorRunner.installURLClassLoader(classpath);
+            imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath);
             final ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader);
             try {
                 tasks.add(task);

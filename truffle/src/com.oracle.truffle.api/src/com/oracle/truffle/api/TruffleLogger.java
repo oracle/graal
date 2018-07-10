@@ -95,6 +95,20 @@ public final class TruffleLogger {
     }
 
     /**
+     * Find or create a root logger for a given language or instrument. If the root logger for given
+     * language or instrument already exists it's returned, otherwise a new root logger is created.
+     *
+     * @param id the unique id of language or instrument
+     * @return a {@link Logger}
+     * @throws NullPointerException if {@code id} is null
+     * @since 1.0
+     */
+    public static TruffleLogger getLogger(final String id) {
+        Objects.requireNonNull(id, "LanguageId must be non null.");
+        return LoggerCache.getInstance().getOrCreateLogger(id);
+    }
+
+    /**
      * Find or create a logger for a given language or instrument class. If a logger for the class
      * already exists it's returned, otherwise a new logger is created.
      *

@@ -6,14 +6,13 @@ overlay = 1deeaf6e01f16b72271b066cfc8d73d8ab3977d9
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.45", platformspecific: true}
-  openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.45", platformspecific: true}
-  labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.45-fastdebug", platformspecific: true}
-  oraclejdk9:    {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
-  oraclejdk10:   {name : oraclejdk, version : "10+46", platformspecific: true}
+  labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.46", platformspecific: true}
+  openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.46", platformspecific: true}
+  labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.46-fastdebug", platformspecific: true}
+  oraclejdk11:   {name : oraclejdk, version : "11+20", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180618-110011", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180629-011203", platformspecific: true}
 
 }
 
@@ -25,14 +24,12 @@ mx : {
   }
 }
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},        EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10},       EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
-oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdkSNAPSHOT}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk10} ]} }}
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"
@@ -128,27 +125,6 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   environment : {
     PATH : "$MAVEN_HOME/bin:$JAVA_HOME/bin:/usr/local/bin:$PATH"
   }
-}
-
-deploy-binaries : {
-  targets : [post-merge, deploy]
-  run : [
-    ["mx", "--strict-compliance", "build"]
-    ["mx", "deploy-binary", "--all-suites", "--skip-existing", ${binaries-repository}]
-  ]
-}
-
-deploy-binaries-no-rewrites : ${deploy-binaries} {
-  run : [
-     ["export", "PREV_MX_URLREWRITES=$MX_URLREWRITES"]
-     ["unset", "MX_URLREWRITES"]
-  ] ${deploy-binaries.run} [
-     ["export", "MX_URLREWRITES=$PREV_MX_URLREWRITES"]
-  ]
-}
-
-deploy-binaries-both : ${deploy-binaries} {
-  run : ${deploy-binaries.run} ${deploy-binaries-no-rewrites.run}
 }
 
 maven-deploy-dry-run : {

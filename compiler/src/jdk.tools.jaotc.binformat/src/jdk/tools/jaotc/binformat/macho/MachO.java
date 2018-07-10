@@ -26,6 +26,8 @@
 package jdk.tools.jaotc.binformat.macho;
 
 //@formatter:off
+//@Checkstyle: stop
+
 /**
  *
  * Support for the creation of Mach-o Object files. Current support is limited to 64 bit x86_64.
@@ -307,4 +309,3 @@ final class MachO {
         static final int X86_64_RELOC_UNSIGNED  = 0x0;
     }
 }
-//@formatter:on

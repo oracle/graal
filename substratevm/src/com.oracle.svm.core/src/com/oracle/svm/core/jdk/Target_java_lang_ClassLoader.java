@@ -85,7 +85,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     private static URL getSystemResource(String name) {
         List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, new ByteArrayInputStream(arr.get(0)));
+        return arr == null ? null : Resources.createURL(name, arr.get(0));
     }
 
     @Substitute
@@ -101,7 +101,7 @@ public final class Target_java_lang_ClassLoader {
         }
         List<URL> res = new ArrayList<>(arr.size());
         for (byte[] data : arr) {
-            res.add(Resources.createURL(name, new ByteArrayInputStream(data)));
+            res.add(Resources.createURL(name, data));
         }
         return Collections.enumeration(res);
     }

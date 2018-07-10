@@ -28,7 +28,6 @@ package jdk.tools.jaotc.binformat.macho;
 import java.nio.ByteBuffer;
 
 import jdk.tools.jaotc.binformat.macho.MachO.dysymtab_command;
-import jdk.tools.jaotc.binformat.macho.MachOByteBuffer;
 
 final class MachODySymtab {
     private final ByteBuffer dysymtab;

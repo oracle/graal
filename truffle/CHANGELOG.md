@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 1.0.0 RC4
 * Added `TruffleLanguage.Env.isHostFunction`.
+* Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
+* Added a method to obtain language (instrument) root `TruffleLogger`.
 
 ## Version 1.0.0 RC3
 

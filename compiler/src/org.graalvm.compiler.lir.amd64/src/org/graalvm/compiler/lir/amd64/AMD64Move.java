@@ -572,6 +572,7 @@ public class AMD64Move {
         if (asRegister(input).equals(asRegister(result))) {
             return;
         }
+        assert asRegister(result).getRegisterCategory().equals(asRegister(input).getRegisterCategory());
         switch (kind) {
             case BYTE:
             case WORD:

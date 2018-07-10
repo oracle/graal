@@ -27,11 +27,10 @@ package jdk.tools.jaotc.binformat.elf;
 
 import java.nio.ByteBuffer;
 
-import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Shdr;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rel;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rela;
+import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Shdr;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Sym;
-import jdk.tools.jaotc.binformat.elf.ElfByteBuffer;
 
 final class ElfSection {
     private final String name;
@@ -41,9 +40,9 @@ final class ElfSection {
     private final int sectionIndex;
 
     /**
-     * String holding section name strings
+     * String holding section name strings.
      */
-    private final static StringBuilder sectNameTab = new StringBuilder();
+    private static final StringBuilder sectNameTab = new StringBuilder();
 
     /**
      * Keeps track of bytes in section string table since strTabContent.length() is number of chars,

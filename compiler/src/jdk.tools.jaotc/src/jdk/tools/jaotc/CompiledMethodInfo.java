@@ -149,7 +149,7 @@ final class CompiledMethodInfo {
     }
 
     /**
-     * Method name
+     * Method name.
      */
     private String name;
 

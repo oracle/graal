@@ -24,25 +24,26 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -165,23 +166,8 @@ final class Util_jdk_internal_misc_Signal {
                         VMError.guarantee(false, "Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
                     }
 
-                    /* Allocate the table of signal states. */
-                    final int signalCount = Signal.SignalEnum.values().length;
-                    /* Workaround for GR-7858: @Platform @CEnum members. */
-                    final int linuxSignalCount = IsDefined.isLinux() ? Signal.LinuxSignalEnum.values().length : 0;
                     /* Initialize the table of signal states. */
-                    signalState = new SignalState[signalCount + linuxSignalCount];
-                    for (int index = 0; index < signalCount; index += 1) {
-                        final Signal.SignalEnum value = Signal.SignalEnum.values()[index];
-                        signalState[index] = new SignalState(value.name(), value.getCValue());
-                    }
-                    /* Workaround for GR-7858: @Platform @CEnum members. */
-                    if (IsDefined.isLinux()) {
-                        for (int index = 0; index < linuxSignalCount; index += 1) {
-                            final Signal.LinuxSignalEnum value = Signal.LinuxSignalEnum.values()[index];
-                            signalState[signalCount + index] = new SignalState(value.name(), value.getCValue());
-                        }
-                    }
+                    signalState = createSignalStateTable();
 
                     /* Create and start a daemon thread to dispatch to Java signal handlers. */
                     dispatchThread = new Thread(new DispatchThread());
@@ -195,6 +181,30 @@ final class Util_jdk_internal_misc_Signal {
                 initializationLock.unlock();
             }
         }
+    }
+
+    /**
+     * Create a table of signal states. This would be straightforward, except for the
+     * platform-specific signals. See GR-7858: @Platform @CEnum members.
+     */
+    private static SignalState[] createSignalStateTable() {
+        /* Fill in the table. */
+        List<SignalState> signalStateList = new ArrayList<>();
+        for (Signal.SignalEnum value : Signal.SignalEnum.values()) {
+            signalStateList.add(new SignalState(value.name(), value.getCValue()));
+        }
+        if (IsDefined.isLinux()) {
+            for (Signal.LinuxSignalEnum value : Signal.LinuxSignalEnum.values()) {
+                signalStateList.add(new SignalState(value.name(), value.getCValue()));
+            }
+        }
+        if (IsDefined.isDarwin()) {
+            for (Signal.DarwinSignalEnum value : Signal.DarwinSignalEnum.values()) {
+                signalStateList.add(new SignalState(value.name(), value.getCValue()));
+            }
+        }
+        final SignalState[] result = signalStateList.toArray(new SignalState[0]);
+        return result;
     }
 
     /** Map from a Java signal name to a signal number. */
@@ -377,27 +387,34 @@ final class Target_sun_misc_NativeSignalHandler {
         // 038 /* We've lost the siginfo and context */
         // 039 (*(sig_handler_t)jlong_to_ptr(f))(sig, NULL, NULL);
         final Signal.AdvancedSignalDispatcher handler = WordFactory.pointer(f);
-        Util_sun_misc_NativeSignalHandler.handle0WithTransition(handler, sig);
+        handler.dispatch(sig, WordFactory.nullPointer(), WordFactory.nullPointer());
     }
 }
 
-final class Util_sun_misc_NativeSignalHandler {
+@AutomaticFeature
+class IgnoreSIGPIPEFeature implements Feature {
 
-    /** Transition to native for the call of the handler. */
-    static void handle0WithTransition(Signal.AdvancedSignalDispatcher functionPointer, int sig) {
-        CFunctionPrologueNode.cFunctionPrologue();
-        handle0InNative(functionPointer, sig);
-        CFunctionEpilogueNode.cFunctionEpilogue();
-    }
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
 
-    /**
-     * This method is called after a transition to native. It can not access anything on the Java
-     * heap.
-     */
-    @Uninterruptible(reason = "Must not stop while in native.")
-    @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void handle0InNative(Signal.AdvancedSignalDispatcher functionPointer, int sig) {
-        functionPointer.dispatch(sig, WordFactory.nullPointer(), WordFactory.nullPointer());
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new Runnable() {
+
+            @Override
+            /**
+             * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide
+             * signal whose default action is to terminate the process, will instead return an error
+             * code from the specific write operation.
+             *
+             * From pipe(7}: If all file descriptors referring to the read end of a pipe have been
+             * closed, then a write(2) will cause a SIGPIPE signal to be generated for the calling
+             * process. If the calling process is ignoring this signal, then write(2) fails with the
+             * error EPIPE.
+             */
+            public void run() {
+                final Signal.SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+                VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+            }
+        });
     }
 }
 

@@ -440,8 +440,8 @@ public final class PosixJavaNIOSubstitutions {
                 // 067
                 // 068     sigset_t ss;
                 // 069     struct sigaction sa, osa;
-                Signal.sigaction saPointer = StackValue.get(SizeOf.get(Signal.sigaction.class));
-                Signal.sigaction osaPointer = StackValue.get(SizeOf.get(Signal.sigaction.class));
+                Signal.sigaction saPointer = StackValue.get(Signal.sigaction.class);
+                Signal.sigaction osaPointer = StackValue.get(Signal.sigaction.class);
                 // 070     sa.sa_handler = nullHandler;
                 saPointer.sa_handler(Util_sun_nio_ch_NativeThread.nullDispatcher.getFunctionPointer());
                 // 071     sa.sa_flags = 0;
@@ -496,7 +496,7 @@ public final class PosixJavaNIOSubstitutions {
          */
         @Substitute
         private static long makePipe(boolean blocking) throws IOException {
-            CIntPointer fd = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer fd = StackValue.get(2, CIntPointer.class);
 
             if (pipe(fd) < 0) {
                 throwIOExceptionWithLastError("Pipe failed");
@@ -516,7 +516,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static boolean drain(int fd) throws IOException {
             final int bufsize = 128;
-            CCharPointer buf = StackValue.get(bufsize, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(bufsize, CCharPointer.class);
             int tn = 0;
 
             for (;;) {
@@ -543,7 +543,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static int fdLimit() throws IOException {
-            rlimit rlp = StackValue.get(SizeOf.get(rlimit.class));
+            rlimit rlp = StackValue.get(rlimit.class);
             if (getrlimit(RLIMIT_NOFILE(), rlp) < 0) {
                 throw throwIOExceptionWithLastError("getrlimit failed");
             }
@@ -581,7 +581,7 @@ public final class PosixJavaNIOSubstitutions {
             // 337     SOCKADDR sa;
             sockaddr sa_Pointer = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 338     int sa_len = SOCKADDR_LEN;
-            CIntPointer sa_len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer sa_len_Pointer = StackValue.get(CIntPointer.class);
             sa_len_Pointer.write(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 339     int rv;
             int rv;
@@ -629,10 +629,10 @@ public final class PosixJavaNIOSubstitutions {
             // 396     SOCKADDR sa;
             sockaddr sa_Pointer = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 397     socklen_t sa_len = SOCKADDR_LEN;
-            CIntPointer sa_len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer sa_len_Pointer = StackValue.get(CIntPointer.class);
             sa_len_Pointer.write(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 398     int port;
-            CIntPointer port_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer port_Pointer = StackValue.get(CIntPointer.class);
             // 399     if (getsockname(fdval(env, fdo), (struct sockaddr *)&sa, &sa_len) < 0) {
             if (Socket.getsockname(PosixJavaNIOSubstitutions.fdval(fdo), sa_Pointer, sa_len_Pointer) < 0) {
                 /* TODO: Assuming #undef_ALLBSD_SOURCE */
@@ -675,7 +675,7 @@ public final class PosixJavaNIOSubstitutions {
             // 362 SOCKADDR sa;
             sockaddr sa_Pointer = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 363 socklen_t sa_len = SOCKADDR_LEN;
-            CIntPointer sa_len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer sa_len_Pointer = StackValue.get(CIntPointer.class);
             sa_len_Pointer.write(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 364 if (getsockname(fdval(env, fdo), (struct sockaddr *)&sa, &sa_len) < 0) {
             if (Socket.getsockname(PosixJavaNIOSubstitutions.fdval(fdo), sa_Pointer, sa_len_Pointer) < 0) {
@@ -717,7 +717,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         static int poll(FileDescriptor fdo, int events, long timeout) throws IOException {
             // 756     struct pollfd pfd;
-            Poll.pollfd pfd = StackValue.get(SizeOf.get(Poll.pollfd.class));
+            Poll.pollfd pfd = StackValue.get(Poll.pollfd.class);
             // 757     int rv;
             int rv;
             // 758     pfd.fd = fdval(env, fdo);
@@ -771,7 +771,7 @@ public final class PosixJavaNIOSubstitutions {
             // 251     if (domain == AF_INET6) {
             if (domain == Socket.AF_INET6()) {
                 // 252         int arg = 0;
-                CIntPointer arg_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                CIntPointer arg_Pointer = StackValue.get(CIntPointer.class);
                 arg_Pointer.write(0);
                 // 253         if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&arg,
                 // 254                        sizeof(int)) < 0) {
@@ -793,7 +793,7 @@ public final class PosixJavaNIOSubstitutions {
             // 264     if (reuse) {
             if (reuse) {
                 // 265         int arg = 1;
-                CIntPointer arg_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                CIntPointer arg_Pointer = StackValue.get(CIntPointer.class);
                 arg_Pointer.write(1);
                 // 266         if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&arg,
                 // 267                        sizeof(arg)) < 0) {
@@ -816,7 +816,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 277     if (type == SOCK_DGRAM) {
                 if (type == Socket.SOCK_DGRAM()) {
                     // 278         int arg = 0;
-                    CIntPointer arg_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                    CIntPointer arg_Pointer = StackValue.get(CIntPointer.class);
                     arg_Pointer.write(0);
                     // 279         int level = (domain == AF_INET6) ? IPPROTO_IPV6 : IPPROTO_IP;
                     int level = (domain == Socket.AF_INET6()) ? NetinetIn.IPPROTO_IPV6() : NetinetIn.IPPROTO_IP();
@@ -846,7 +846,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 293     if (domain == AF_INET6 && type == SOCK_DGRAM) {
                 if ((domain == Socket.AF_INET6()) && (type == Socket.SOCK_DGRAM())) {
                     // 294         int arg = 1;
-                    CIntPointer arg_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                    CIntPointer arg_Pointer = StackValue.get(CIntPointer.class);
                     arg_Pointer.write(1);
                     // 295         if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &arg,
                     // 296                        sizeof(arg)) < 0) {
@@ -890,7 +890,7 @@ public final class PosixJavaNIOSubstitutions {
             // 269     SOCKADDR sa;
             Socket.sockaddr sa = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 270     int sa_len = SOCKADDR_LEN;
-            CIntPointer sa_len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer sa_len_Pointer = StackValue.get(CIntPointer.class);
             sa_len_Pointer.write(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 271     int rv = 0;
             int rv = 0;
@@ -938,15 +938,15 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         static int getIntOption0(FileDescriptor fdo, boolean mayNeedConversion, int level, int opt) throws IOException {
             // 432     int result;
-            CIntPointer result_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer result_Pointer = StackValue.get(CIntPointer.class);
             // 433     struct linger linger;
-            Socket.linger linger = StackValue.get(SizeOf.get(Socket.linger.class));
+            Socket.linger linger = StackValue.get(Socket.linger.class);
             // 434     u_char carg;
-            CCharPointer carg_Pointer = StackValue.get(SizeOf.get(CCharPointer.class));
+            CCharPointer carg_Pointer = StackValue.get(CCharPointer.class);
             // 435     void *arg;
             VoidPointer arg;
             // 436     socklen_t arglen;
-            CIntPointer arglen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer arglen_Pointer = StackValue.get(CIntPointer.class);
             // 437     int n;
             int n;
             // 438
@@ -1030,13 +1030,13 @@ public final class PosixJavaNIOSubstitutions {
                                   int            arg,
                                   boolean        isIPv6) throws IOException {
             /* Make a local copy of arg so I can get the address of it. */
-            CIntPointer local_arg = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer local_arg = StackValue.get(CIntPointer.class);
             local_arg.write(arg);
             //         484     int result;
             //         485     struct linger linger;
-            Socket.linger linger = StackValue.get(SizeOf.get(Socket.linger.class));
+            Socket.linger linger = StackValue.get(Socket.linger.class);
             //         486     u_char carg;
-            CCharPointer carg_Pointer = StackValue.get(SizeOf.get(CCharPointer.class));
+            CCharPointer carg_Pointer = StackValue.get(CCharPointer.class);
             //         487     void *parg;
             WordPointer parg;
             //         488     socklen_t arglen;
@@ -1177,15 +1177,15 @@ public final class PosixJavaNIOSubstitutions {
             //        074     jint newfd;
             int newfd;
             //        075     struct sockaddr *sa;
-            Socket.sockaddrPointer sa_Pointer = StackValue.get(SizeOf.get(Socket.sockaddrPointer.class));
+            Socket.sockaddrPointer sa_Pointer = StackValue.get(Socket.sockaddrPointer.class);
             //        076     int alloc_len;
-            CIntPointer alloc_len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer alloc_len_Pointer = StackValue.get(CIntPointer.class);
             //        077     jobject remote_ia = 0;
             InetAddress remote_ia = null;
             //        078     jobject isa;
             InetSocketAddress isa;
             //        079     jint remote_port;
-            CIntPointer remote_port_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer remote_port_Pointer = StackValue.get(CIntPointer.class);
             //        080
             //        081     NET_AllocSockaddr(&sa, &alloc_len);
             JavaNetNetUtilMD.NET_AllocSockaddr(sa_Pointer, alloc_len_Pointer);
@@ -1198,7 +1198,7 @@ public final class PosixJavaNIOSubstitutions {
             //        088     for (;;) {
             for (;;) {
                 //        089         socklen_t sa_len = alloc_len;
-                CIntPointer sa_len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+                CIntPointer sa_len_Pointer = StackValue.get(CIntPointer.class);
                 sa_len_Pointer.write(alloc_len_Pointer.read());
                 //        090         newfd = accept(ssfd, sa, &sa_len);
                 newfd = Socket.accept(ssfd, sa_Pointer.read(), sa_len_Pointer);
@@ -1432,7 +1432,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static long size0(FileDescriptor fdo) throws IOException {
-            Stat.stat fbuf = StackValue.get(SizeOf.get(Stat.stat.class));
+            Stat.stat fbuf = StackValue.get(Stat.stat.class);
 
             if (fstat(fdval(fdo), fbuf) < 0) {
                 return handle(-1, "Size failed");
@@ -1445,7 +1445,7 @@ public final class PosixJavaNIOSubstitutions {
             int fd = fdval(fdo);
             int lockResult = 0;
             int cmd = 0;
-            flock fl = StackValue.get(SizeOf.get(flock.class));
+            flock fl = StackValue.get(flock.class);
 
             fl.set_l_whence(SEEK_SET());
             if (size == Long.MAX_VALUE) {
@@ -1481,7 +1481,7 @@ public final class PosixJavaNIOSubstitutions {
         private static void release0(FileDescriptor fdo, long pos, long size) throws IOException {
             int fd = fdval(fdo);
             int lockResult = 0;
-            flock fl = StackValue.get(SizeOf.get(flock.class));
+            flock fl = StackValue.get(flock.class);
             int cmd = F_SETLK();
 
             fl.set_l_whence(SEEK_SET());
@@ -1546,7 +1546,7 @@ public final class PosixJavaNIOSubstitutions {
         static volatile boolean initialized;
 
         static void initialize() {
-            CIntPointer sp = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer sp = StackValue.get(2, CIntPointer.class);
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == 0) {
                 preCloseFD = sp.read(0);
                 close(sp.read(1));
@@ -1685,7 +1685,7 @@ public final class PosixJavaNIOSubstitutions {
         private static byte[] getcwd() throws Exception {
             byte[] result;
             int bufsize = PATH_MAX() + 1;
-            CCharPointer buf = StackValue.get(bufsize, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(bufsize, CCharPointer.class);
 
             /* EINTR not listed as a possible error */
             CCharPointer cwd = Unistd.getcwd(buf, WordFactory.unsigned(bufsize));
@@ -1887,7 +1887,7 @@ public final class PosixJavaNIOSubstitutions {
         private static byte[] readlink0(long pathAddress) throws Exception {
             byte[] result;
             int targetsize = PATH_MAX() + 1;
-            CCharPointer target = StackValue.get(targetsize, SizeOf.get(CCharPointer.class));
+            CCharPointer target = StackValue.get(targetsize, CCharPointer.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             /* EINTR not listed as a possible error */
@@ -1907,7 +1907,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static byte[] realpath0(long pathAddress) throws Exception {
             byte[] result;
-            CCharPointer resolved = StackValue.get(PATH_MAX() + 1, SizeOf.get(CCharPointer.class));
+            CCharPointer resolved = StackValue.get(PATH_MAX() + 1, CCharPointer.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             /* EINTR not listed as a possible error */
@@ -1933,7 +1933,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void stat0(long pathAddress, Target_sun_nio_fs_UnixFileAttributes attrs) throws Exception {
             int err;
-            Stat.stat buf = StackValue.get(SizeOf.get(Stat.stat.class));
+            Stat.stat buf = StackValue.get(Stat.stat.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             do {
@@ -1950,7 +1950,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void lstat0(long pathAddress, Target_sun_nio_fs_UnixFileAttributes attrs) throws Exception {
             int err;
-            Stat.stat buf = StackValue.get(SizeOf.get(Stat.stat.class));
+            Stat.stat buf = StackValue.get(Stat.stat.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             do {
@@ -1967,7 +1967,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void fstat(int fd, Target_sun_nio_fs_UnixFileAttributes attrs) throws Exception {
             int err;
-            Stat.stat buf = StackValue.get(SizeOf.get(Stat.stat.class));
+            Stat.stat buf = StackValue.get(Stat.stat.class);
 
             do {
                 err = Stat.fstat(fd, buf);
@@ -1983,7 +1983,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void fstatat0(int dfd, long pathAddress, int flag, Target_sun_nio_fs_UnixFileAttributes attrs) throws Exception {
             int err;
-            Stat.stat buf = StackValue.get(SizeOf.get(Stat.stat.class));
+            Stat.stat buf = StackValue.get(Stat.stat.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             if (Util_sun_nio_fs_UnixNativeDispatcher.my_fstatat64_func.isNull()) {
@@ -2071,7 +2071,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void utimes0(long pathAddress, long accessTime, long modificationTime) throws Exception {
             int err;
-            Time.timeval times = StackValue.get(2, SizeOf.get(Time.timeval.class));
+            Time.timeval times = StackValue.get(2, Time.timeval.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             times.addressOf(0).set_tv_sec(accessTime / 1000000);
@@ -2091,7 +2091,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static void futimes(int fd, long accessTime, long modificationTime) throws Exception {
-            Time.timeval times = StackValue.get(2, SizeOf.get(Time.timeval.class));
+            Time.timeval times = StackValue.get(2, Time.timeval.class);
             int err = 0;
 
             times.addressOf(0).set_tv_sec(accessTime / 1000000);
@@ -2162,7 +2162,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static byte[] readdir(long value) throws Exception {
-            direntPointer result = StackValue.get(SizeOf.get(direntPointer.class));
+            direntPointer result = StackValue.get(direntPointer.class);
             dirent ptr = StackValue.get(SizeOf.get(dirent.class) + PATH_MAX() + 1);
 
             int res;
@@ -2239,8 +2239,8 @@ public final class PosixJavaNIOSubstitutions {
             if (pwbuf.isNull()) {
                 throw throwOutOfMemoryError("native heap");
             } else {
-                passwd pwent = StackValue.get(SizeOf.get(passwd.class));
-                passwdPointer p = StackValue.get(SizeOf.get(passwdPointer.class));
+                passwd pwent = StackValue.get(passwd.class);
+                passwdPointer p = StackValue.get(passwdPointer.class);
                 p.write(WordFactory.nullPointer());
                 int res = 0;
 
@@ -2280,8 +2280,8 @@ public final class PosixJavaNIOSubstitutions {
             }
 
             do {
-                group grent = StackValue.get(SizeOf.get(group.class));
-                groupPointer g = StackValue.get(SizeOf.get(groupPointer.class));
+                group grent = StackValue.get(group.class);
+                groupPointer g = StackValue.get(groupPointer.class);
                 g.write(WordFactory.nullPointer());
                 int res = 0;
 
@@ -2336,8 +2336,8 @@ public final class PosixJavaNIOSubstitutions {
             if (pwbuf.isNull()) {
                 throw throwOutOfMemoryError("native heap");
             } else {
-                passwd pwent = StackValue.get(SizeOf.get(passwd.class));
-                passwdPointer p = StackValue.get(SizeOf.get(passwdPointer.class));
+                passwd pwent = StackValue.get(passwd.class);
+                passwdPointer p = StackValue.get(passwdPointer.class);
                 p.write(WordFactory.nullPointer());
                 int res = 0;
                 CCharPointer name = WordFactory.pointer(nameAddress);
@@ -2378,8 +2378,8 @@ public final class PosixJavaNIOSubstitutions {
             }
 
             do {
-                group grent = StackValue.get(SizeOf.get(group.class));
-                groupPointer g = StackValue.get(SizeOf.get(groupPointer.class));
+                group grent = StackValue.get(group.class);
+                groupPointer g = StackValue.get(groupPointer.class);
                 g.write(WordFactory.nullPointer());
                 int res = 0;
                 CCharPointer grbuf;
@@ -2425,7 +2425,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void statvfs0(long pathAddress, Target_sun_nio_fs_UnixFileStoreAttributes attrs) throws Exception {
             int err;
-            Statvfs.statvfs buf = StackValue.get(SizeOf.get(Statvfs.statvfs.class));
+            Statvfs.statvfs buf = StackValue.get(Statvfs.statvfs.class);
             CCharPointer path = WordFactory.pointer(pathAddress);
 
             do {
@@ -2610,9 +2610,9 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static int getmntent(long value, Target_sun_nio_fs_UnixMountEntry entry) {
-            mntent ent = StackValue.get(SizeOf.get(mntent.class));
+            mntent ent = StackValue.get(mntent.class);
             int buflen = 1024;
-            CCharPointer buf = StackValue.get(buflen, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(buflen, CCharPointer.class);
             FILE fp = WordFactory.pointer(value);
 
             mntent m = getmntent_r(fp, ent, buf, buflen);
@@ -2875,7 +2875,7 @@ public final class PosixJavaNIOSubstitutions {
         @TargetElement(name = "transferTo0")
         @Platforms(Platform.LINUX.class)
         private long transferTo0Linux(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
-            CLongPointer offset = StackValue.get(SizeOf.get(CLongPointer.class));
+            CLongPointer offset = StackValue.get(CLongPointer.class);
             offset.write(position);
 
             SignedWord n = sendfile(fdval(dst), fdval(src), offset, WordFactory.unsigned(count));
@@ -2898,7 +2898,7 @@ public final class PosixJavaNIOSubstitutions {
         @TargetElement(name = "transferTo0")
         @Platforms(Platform.DARWIN.class)
         private long transferTo0Darwin(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
-            CLongPointer numBytes = StackValue.get(SizeOf.get(CLongPointer.class));
+            CLongPointer numBytes = StackValue.get(CLongPointer.class);
             int result;
 
             numBytes.write(count);
@@ -2948,7 +2948,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private void init(FileDescriptor fdo) throws IOException {
-            Stat.stat fbuf = StackValue.get(SizeOf.get(Stat.stat.class));
+            Stat.stat fbuf = StackValue.get(Stat.stat.class);
             int res;
 
             do {
@@ -2978,7 +2978,7 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         private static void transfer(int dst, int src, long cancelAddress) throws Exception {
             int bufsize = 8192;
-            CCharPointer buf = StackValue.get(bufsize, SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(bufsize, CCharPointer.class);
             CIntPointer cancel = WordFactory.pointer(cancelAddress);
 
             for (;;) {
@@ -3100,17 +3100,17 @@ public final class PosixJavaNIOSubstitutions {
         @Substitute
         static int checkConnect(FileDescriptor fdo, boolean block, boolean ready) throws IOException {
             // 053 int error = 0;
-            CIntPointer error_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer error_Pointer = StackValue.get(CIntPointer.class);
             error_Pointer.write(0);
             // 054 socklen_t n = sizeof(int);
-            CIntPointer n_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer n_Pointer = StackValue.get(CIntPointer.class);
             n_Pointer.write(SizeOf.get(CIntPointer.class));
             // 055 jint fd = fdval(env, fdo);
             int fd = fdval(fdo);
             // 056 int result = 0;
             int result = 0;
             // 057 struct pollfd poller;
-            Poll.pollfd poller = StackValue.get(SizeOf.get(Poll.pollfd.class));
+            Poll.pollfd poller = StackValue.get(Poll.pollfd.class);
             // 058
             // 059 poller.revents = 1;
             poller.set_revents(1);
@@ -3177,10 +3177,10 @@ public final class PosixJavaNIOSubstitutions {
         // 040     jobject this, int fd)
         static void checkConnect(int fd) throws IOException {
             // 042     int error = 0;
-            CIntPointer errorPointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer errorPointer = StackValue.get(CIntPointer.class);
             errorPointer.write(0);
             // 043     socklen_t arglen = sizeof(error);
-            CIntPointer arglenPointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer arglenPointer = StackValue.get(CIntPointer.class);
             arglenPointer.write(SizeOf.get(CIntPointer.class));
             // 044     int result;
             int result;

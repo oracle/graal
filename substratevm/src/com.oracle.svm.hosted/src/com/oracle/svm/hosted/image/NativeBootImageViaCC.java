@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted.image;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map.Entry;
@@ -114,7 +115,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         // HACK: guess which compiler from the native object file format
         CCLinkerInvocation inv = (ObjectFile.getNativeFormat() == ObjectFile.Format.MACH_O) ? new DarwinCCLinkerInvocation() : new BinutilsCCLinkerInvocation();
-        inv.setOutputFile(outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix()));
+        Path outputFile = outputDirectory.resolve(imageName + getBootImageKind().getFilenameSuffix());
+        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
+        inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
 
         inv.addLibPath(tempDirectory.toString());

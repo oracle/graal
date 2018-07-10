@@ -25,28 +25,11 @@
 
 package jdk.tools.jaotc.binformat.elf;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-
 import jdk.tools.jaotc.binformat.BinaryContainer;
-import jdk.tools.jaotc.binformat.ByteContainer;
-import jdk.tools.jaotc.binformat.CodeContainer;
-import jdk.tools.jaotc.binformat.ReadOnlyDataContainer;
 import jdk.tools.jaotc.binformat.Relocation;
 import jdk.tools.jaotc.binformat.Relocation.RelocType;
 import jdk.tools.jaotc.binformat.Symbol;
-import jdk.tools.jaotc.binformat.Symbol.Binding;
-import jdk.tools.jaotc.binformat.Symbol.Kind;
-
-import jdk.tools.jaotc.binformat.elf.ElfSymbol;
-import jdk.tools.jaotc.binformat.elf.ElfTargetInfo;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Ehdr;
-import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Shdr;
-import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Sym;
 import jdk.tools.jaotc.binformat.elf.Elf.Elf64_Rela;
 
 public class AMD64JELFRelocObject extends JELFRelocObject {
@@ -55,6 +38,7 @@ public class AMD64JELFRelocObject extends JELFRelocObject {
         super(binContainer, outputFileName);
     }
 
+    @Override
     protected void createRelocation(Symbol symbol, Relocation reloc, ElfRelocTable elfRelocTable) {
         RelocType relocType = reloc.getType();
 
@@ -97,31 +81,30 @@ public class AMD64JELFRelocObject extends JELFRelocObject {
         elfRelocTable.createRelocationEntry(sectindex, offset, symno, elfRelocType, addend);
     }
 
-    private int getELFRelocationType(RelocType relocType) {
+    private static int getELFRelocationType(RelocType relocType) {
         int elfRelocType = 0; // R_<ARCH>_NONE if #define'd to 0 for all values of ARCH
         switch (ElfTargetInfo.getElfArch()) {
-        case Elf64_Ehdr.EM_X86_64:
-            // Return R_X86_64_* entries based on relocType
-            if (relocType == RelocType.JAVA_CALL_DIRECT ||
-                relocType == RelocType.FOREIGN_CALL_INDIRECT_GOT) {
-                elfRelocType = Elf64_Rela.R_X86_64_PLT32;
-            } else if (relocType == RelocType.STUB_CALL_DIRECT) {
-                elfRelocType = Elf64_Rela.R_X86_64_PC32;
-            } else if (relocType == RelocType.JAVA_CALL_INDIRECT) {
-                elfRelocType = Elf64_Rela.R_X86_64_NONE;
-            } else if (relocType == RelocType.METASPACE_GOT_REFERENCE ||
-                       relocType == RelocType.EXTERNAL_PLT_TO_GOT) {
-                elfRelocType = Elf64_Rela.R_X86_64_PC32;
-            } else if (relocType == RelocType.EXTERNAL_GOT_TO_PLT) {
-                elfRelocType = Elf64_Rela.R_X86_64_64;
-            } else {
-                assert false : "Unhandled relocation type: " + relocType;
-            }
-            break;
+            case Elf64_Ehdr.EM_X86_64:
+                // Return R_X86_64_* entries based on relocType
+                if (relocType == RelocType.JAVA_CALL_DIRECT ||
+                                relocType == RelocType.FOREIGN_CALL_INDIRECT_GOT) {
+                    elfRelocType = Elf64_Rela.R_X86_64_PLT32;
+                } else if (relocType == RelocType.STUB_CALL_DIRECT) {
+                    elfRelocType = Elf64_Rela.R_X86_64_PC32;
+                } else if (relocType == RelocType.JAVA_CALL_INDIRECT) {
+                    elfRelocType = Elf64_Rela.R_X86_64_NONE;
+                } else if (relocType == RelocType.METASPACE_GOT_REFERENCE ||
+                                relocType == RelocType.EXTERNAL_PLT_TO_GOT) {
+                    elfRelocType = Elf64_Rela.R_X86_64_PC32;
+                } else if (relocType == RelocType.EXTERNAL_GOT_TO_PLT) {
+                    elfRelocType = Elf64_Rela.R_X86_64_64;
+                } else {
+                    assert false : "Unhandled relocation type: " + relocType;
+                }
+                break;
 
-        default:
-            System.out.println("Relocation Type mapping: Unhandled architecture: "
-                               + ElfTargetInfo.getElfArch());
+            default:
+                System.out.println("Relocation Type mapping: Unhandled architecture: " + ElfTargetInfo.getElfArch());
         }
         return elfRelocType;
     }
