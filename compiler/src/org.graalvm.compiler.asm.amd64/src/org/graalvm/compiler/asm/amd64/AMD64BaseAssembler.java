@@ -24,10 +24,29 @@
  */
 package org.graalvm.compiler.asm.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.amd64.AMD64.r12;
 import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B1;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.L512;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z1;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.L128;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.L256;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.LIG;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.M_0F;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.M_0F38;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.M_0F3A;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.P_;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.P_66;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.P_F2;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.P_F3;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.W0;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.W1;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
 import org.graalvm.compiler.asm.Assembler;
@@ -250,7 +269,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected static int encode(Register r) {
-        assert r.encoding < 16 && r.encoding >= 0 : "encoding out of range: " + r.encoding;
+        assert r.encoding >= 0 && (r.getRegisterCategory().equals(XMM) ? r.encoding < 32 : r.encoding < 16) : "encoding out of range: " + r.encoding;
         return r.encoding & 0x7;
     }
 
@@ -676,22 +695,27 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
-    public static final int L128 = 0;
-    public static final int L256 = 1;
-    public static final int LIG = 0;
+    public static final class VEXPrefixConfig {
+        public static final int L128 = 0;
+        public static final int L256 = 1;
+        public static final int LIG = 0;
 
-    public static final int W0 = 0;
-    public static final int W1 = 1;
-    public static final int WIG = 0;
+        public static final int W0 = 0;
+        public static final int W1 = 1;
+        public static final int WIG = 0;
 
-    public static final int P_ = 0x0;
-    public static final int P_66 = 0x1;
-    public static final int P_F3 = 0x2;
-    public static final int P_F2 = 0x3;
+        public static final int P_ = 0x0;
+        public static final int P_66 = 0x1;
+        public static final int P_F3 = 0x2;
+        public static final int P_F2 = 0x3;
 
-    public static final int M_0F = 0x1;
-    public static final int M_0F38 = 0x2;
-    public static final int M_0F3A = 0x3;
+        public static final int M_0F = 0x1;
+        public static final int M_0F38 = 0x2;
+        public static final int M_0F3A = 0x3;
+
+        private VEXPrefixConfig() {
+        }
+    }
 
     private class VEXEncoderImpl implements SIMDEncoder {
 
@@ -819,6 +843,8 @@ public abstract class AMD64BaseAssembler extends Assembler {
                 return L128;
             case YMM:
                 return L256;
+            case ZMM:
+                return L512;
             default:
                 return LIG;
         }
@@ -832,13 +858,94 @@ public abstract class AMD64BaseAssembler extends Assembler {
         emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0);
     }
 
-    @SuppressWarnings("unused")
-    public static final void evexPrefix(Register dst, Register nds, Register src, OperandSize size, int prefix, boolean isRexW) {
-        throw GraalError.unimplemented("Evex encoder is not implemented yet.");
+    protected static final class EVEXPrefixConfig {
+        public static final int L512 = 2;
+
+        public static final int Z0 = 0x0;
+        public static final int Z1 = 0x1;
+
+        public static final int B0 = 0x0;
+        public static final int B1 = 0x1;
+
+        private EVEXPrefixConfig() {
+        }
     }
 
-    @SuppressWarnings("unused")
-    public static final void evexPrefix(Register dst, Register nds, AMD64Address src, OperandSize size, int prefix, boolean isRexW) {
-        throw GraalError.unimplemented("Evex encoder is not implemented yet.");
+    /**
+     * Low-level function to encode and emit the EVEX prefix.
+     * <p>
+     * 62 [0 1 1 0 0 0 1 0]<br>
+     * P1 [R X B R'0 0 m m]<br>
+     * P2 [W v v v v 1 p p]<br>
+     * P3 [z L'L b V'a a a]
+     * <p>
+     * The pp field encodes an extension to the opcode:<br>
+     * 00: no extension<br>
+     * 01: 66<br>
+     * 10: F3<br>
+     * 11: F2
+     * <p>
+     * The mm field encodes the leading bytes of the opcode:<br>
+     * 00001: implied 0F leading opcode byte (default in 2-byte encoding)<br>
+     * 00010: implied 0F 38 leading opcode bytes<br>
+     * 00011: implied 0F 3A leading opcode bytes
+     * <p>
+     * The z field encodes the merging mode (merge or zero).
+     * <p>
+     * The b field encodes the source broadcast or data rounding modes.
+     * <p>
+     * The aaa field encodes the operand mask register.
+     */
+    private void emitEVEX(int l, int pp, int mm, int w, int rxb, int reg, int vvvvv, int z, int b, int aaa) {
+        assert ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX512F) : "emitting EVEX prefix on a CPU without AVX512 support";
+
+        assert l == L128 || l == L256 || l == L512 || l == LIG : "invalid value for EVEX.L'L";
+        assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for EVEX.pp";
+        assert mm == M_0F || mm == M_0F38 || mm == M_0F3A : "invalid value for EVEX.mm";
+        assert w == W0 || w == W1 || w == WIG : "invalid value for EVEX.W";
+
+        assert (rxb & 0x07) == rxb : "invalid value for EVEX.RXB";
+        assert (reg & 0x1F) == reg : "invalid value for EVEX.R'";
+        assert (vvvvv & 0x1F) == vvvvv : "invalid value for EVEX.vvvvv";
+
+        assert z == Z0 || z == Z1 : "invalid value for EVEX.z";
+        assert b == B0 || b == B1 : "invalid value for EVEX.b";
+        assert (aaa & 0x07) == aaa : "invalid value for EVEX.aaa";
+
+        emitByte(0x62);
+        int p1 = 0;
+        p1 |= ((rxb ^ 0x07) & 0x07) << 5;
+        p1 |= reg < 16 ? 0x10 : 0;
+        p1 |= mm;
+        emitByte(p1);
+
+        int p2 = 0;
+        p2 |= w << 7;
+        p2 |= ((vvvvv ^ 0x0F) & 0x0F) << 3;
+        p2 |= 0x4;
+        p2 |= pp;
+        emitByte(p2);
+
+        int p3 = 0;
+        p3 |= z << 7;
+        p3 |= l << 5;
+        p3 |= b << 4;
+        p3 |= vvvvv < 16 ? 0x08 : 0;
+        p3 |= aaa;
+        emitByte(p3);
+    }
+
+    private static int getRXBForEVEX(Register reg, Register rm) {
+        int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
+        rxb |= (rm == null ? 0 : rm.encoding & 0x018) >> 3;
+        return rxb;
+    }
+
+    public final void evexPrefix(Register dst, Register nds, Register src, Register mask, AVXSize size, int pp, int mm, int w, int z, int b) {
+        emitEVEX(getLFlag(size), pp, mm, w, getRXBForEVEX(dst, src), dst.encoding, nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0);
+    }
+
+    public final void evexPrefix(Register dst, Register nds, AMD64Address src, Register mask, AVXSize size, int pp, int mm, int w, int z, int b) {
+        emitEVEX(getLFlag(size), pp, mm, w, getRXB(dst, src), dst.encoding, nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0);
     }
 }
