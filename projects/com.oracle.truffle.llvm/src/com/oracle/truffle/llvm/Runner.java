@@ -377,56 +377,83 @@ public final class Runner {
 
     private void allocateGlobals(List<LLVMParserResult> parserResults) {
         for (LLVMParserResult res : parserResults) {
-            ArrayList<LLVMGlobal> globals = new ArrayList<>();
-            for (GlobalVariable symbol : res.getDefinedGlobals()) {
-                LLVMGlobal global = res.getRuntime().getFileScope().getGlobalVariable(symbol.getName());
-                globals.add(global);
-            }
-            allocateGlobals(globals);
+            allocateGlobals(res);
         }
     }
 
-    private void allocateGlobals(ArrayList<LLVMGlobal> globals) {
+    private void allocateGlobals(LLVMParserResult res) {
         DataLayout dataLayout = context.getDataSpecConverter();
 
-        // divide into pointer and non-pointer globals
-        ArrayList<Type> nonPointerTypes = new ArrayList<>();
-        for (LLVMGlobal global : globals) {
-            Type type = global.getPointeeType();
-            if (!isSpecialGlobalSlot(type)) {
-                // allocate at least one byte per global (to make the pointers unique)
-                if (type.getSize(dataLayout) == 0) {
-                    nonPointerTypes.add(PrimitiveType.getIntegerType(8));
-                }
-                nonPointerTypes.add(type);
-            }
-        }
-
-        StructureType structType = new StructureType("globals_struct", false, nonPointerTypes.toArray(new Type[0]));
+        // allocate all non-pointer types as one struct
+        ArrayList<Type> nonPointerTypes = getNonPointerTypes(res, dataLayout);
+        StructureType structType = new StructureType("globals_struct", true, nonPointerTypes.toArray(new Type[0]));
         LLVMAllocateStructNode allocationNode = nodeFactory.createAllocateStruct(context, structType);
         LLVMPointer nonPointerStore = allocationNode.executeWithTarget();
+        LLVMScope fileScope = res.getRuntime().getFileScope();
 
         HashMap<LLVMPointer, LLVMGlobal> reverseMap = new HashMap<>();
         int nonPointerOffset = 0;
-        for (LLVMGlobal global : globals) {
-            Type type = global.getPointeeType();
+        for (GlobalVariable global : res.getDefinedGlobals()) {
+            Type type = global.getType().getPointeeType();
             LLVMPointer ref;
-            if (isSpecialGlobalSlot(global.getPointeeType())) {
+            if (isSpecialGlobalSlot(global.getType().getPointeeType())) {
                 ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
             } else {
                 // allocate at least one byte per global (to make the pointers unique)
                 if (type.getSize(dataLayout) == 0) {
                     type = PrimitiveType.getIntegerType(8);
                 }
-                nonPointerOffset += Type.getPadding(nonPointerOffset, type, dataLayout);
+                int alignment = getAlignment(dataLayout, global, type);
+                nonPointerOffset += Type.getPadding(nonPointerOffset, alignment);
                 ref = nonPointerStore.increment(nonPointerOffset);
                 nonPointerOffset += type.getSize(dataLayout);
             }
-            global.setTarget(ref);
-            reverseMap.put(ref, global);
+
+            LLVMGlobal descriptor = fileScope.getGlobalVariable(global.getName());
+            if (!descriptor.isInitialized()) {
+                // because of our symbol overriding support, it can happen that the global was
+                // already bound before to a different target location
+                descriptor.setTarget(ref);
+                reverseMap.put(ref, descriptor);
+            }
         }
 
         context.registerGlobals(nonPointerStore, reverseMap);
+    }
+
+    private static ArrayList<Type> getNonPointerTypes(LLVMParserResult res, DataLayout dataLayout) {
+        ArrayList<Type> result = new ArrayList<>();
+        int nonPointerOffset = 0;
+        for (GlobalVariable global : res.getDefinedGlobals()) {
+            Type type = global.getType().getPointeeType();
+            if (!isSpecialGlobalSlot(type)) {
+                // allocate at least one byte per global (to make the pointers unique)
+                if (type.getSize(dataLayout) == 0) {
+                    type = PrimitiveType.getIntegerType(8);
+                }
+                int alignment = getAlignment(dataLayout, global, type);
+                int padding = Type.getPadding(nonPointerOffset, alignment);
+                addPaddingTypes(result, padding);
+                nonPointerOffset += padding;
+                result.add(type);
+                nonPointerOffset += type.getSize(dataLayout);
+            }
+        }
+        return result;
+    }
+
+    private static void addPaddingTypes(ArrayList<Type> result, int padding) {
+        assert padding >= 0;
+        int remaining = padding;
+        while (remaining > 0) {
+            int size = Math.min(Long.BYTES, Integer.highestOneBit(remaining));
+            result.add(PrimitiveType.getIntegerType(size * Byte.SIZE));
+            remaining -= size;
+        }
+    }
+
+    private static int getAlignment(DataLayout dataLayout, GlobalVariable global, Type type) {
+        return global.getAlign() > 0 ? 1 << (global.getAlign() - 1) : type.getAlignment(dataLayout);
     }
 
     private static boolean isSpecialGlobalSlot(Type type) {
