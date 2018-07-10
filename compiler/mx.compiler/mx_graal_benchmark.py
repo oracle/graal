@@ -1034,7 +1034,11 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
         return "DACAPO_SCALA"
 
     def daCapoIterations(self):
-        return _daCapoScalaConfig
+        result = _daCapoScalaConfig.copy()
+        if not mx_compiler.jdk_includes_corba(mx_compiler.jdk):
+            mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
+            del result['actors']
+        return result
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
         skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
