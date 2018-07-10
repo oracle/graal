@@ -239,6 +239,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
             } else if (n instanceof StringIndexOfNode) {
                 lowerIndexOf((StringIndexOfNode) n);
+            } else if (n instanceof StringLatin1IndexOfNode) {
+                lowerLatin1IndexOf((StringLatin1IndexOfNode) n);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
             } else {
@@ -264,6 +266,23 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 }
             };
             SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Char), n.stamp(NodeView.DEFAULT), n.toArgumentArray());
+            n.graph().add(snippetLower);
+            n.graph().replaceFixedWithFixed(n, snippetLower);
+        }
+    }
+
+    private void lowerLatin1IndexOf(StringLatin1IndexOfNode n) {
+        if (n.getArgument(2).isConstant()) {
+            SnippetLowering lowering = new SnippetLowering() {
+                @Override
+                public void lower(SnippetLowerableMemoryNode node, LoweringTool tool) {
+                    if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                        return;
+                    }
+                    indexOfSnippets.lowerLatin1(node, tool);
+                }
+            };
+            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), n.stamp(NodeView.DEFAULT), n.toArgumentArray());
             n.graph().add(snippetLower);
             n.graph().replaceFixedWithFixed(n, snippetLower);
         }
