@@ -29,11 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
@@ -286,6 +290,33 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         @Specialization
         protected long ashr(long left, long right) {
             return left >>> right;
+        }
+
+        @Specialization
+        protected long ashr(LLVMNativePointer left, long right) {
+            return ashr(left.asNative(), right);
+        }
+
+        @Specialization
+        protected long ashr(long left, LLVMNativePointer right) {
+            return ashr(left, right.asNative());
+        }
+
+        @Specialization
+        protected long ashr(LLVMNativePointer left, LLVMNativePointer right) {
+            return ashr(left.asNative(), right.asNative());
+        }
+
+        @Specialization
+        protected long ashr(LLVMManagedPointer left, long right,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return ashr(toNative.executeWithTarget(left), right);
+        }
+
+        @Specialization
+        protected long ashr(LLVMManagedPointer left, LLVMNativePointer right,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return ashr(toNative.executeWithTarget(left), right.asNative());
         }
 
         @Specialization

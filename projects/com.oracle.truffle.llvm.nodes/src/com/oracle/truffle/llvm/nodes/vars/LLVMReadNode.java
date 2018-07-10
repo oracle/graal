@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -81,19 +82,23 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64ReadNode extends LLVMReadNode {
-
-        protected final boolean isLongSlot() {
-            return getSlot().getKind() == FrameSlotKind.Long;
+        @Specialization(rewriteOn = FrameSlotTypeException.class)
+        protected long readI64(VirtualFrame frame) throws FrameSlotTypeException {
+            return frame.getLong(getSlot());
         }
 
-        @Specialization(guards = "isLongSlot()")
-        protected long readI64(VirtualFrame frame) {
-            return FrameUtil.getLongSafe(frame, getSlot());
+        @Specialization(rewriteOn = FrameSlotTypeException.class)
+        protected Object readObject(VirtualFrame frame) throws FrameSlotTypeException {
+            return frame.getObject(getSlot());
         }
 
-        @Specialization(guards = "!isLongSlot()")
-        protected Object readI64Object(VirtualFrame frame) {
-            return FrameUtil.getObjectSafe(frame, getSlot());
+        @Specialization
+        protected Object readGeneric(VirtualFrame frame) {
+            if (getSlot().getKind() == FrameSlotKind.Long) {
+                return FrameUtil.getLongSafe(frame, getSlot());
+            } else {
+                return FrameUtil.getObjectSafe(frame, getSlot());
+            }
         }
     }
 
