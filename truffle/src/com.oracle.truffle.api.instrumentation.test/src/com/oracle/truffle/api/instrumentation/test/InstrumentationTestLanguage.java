@@ -66,7 +66,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.Tag.Identifier;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTest.ReturnLanguageEnv;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ConstantTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
