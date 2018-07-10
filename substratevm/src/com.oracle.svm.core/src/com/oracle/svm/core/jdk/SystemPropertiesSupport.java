@@ -64,6 +64,8 @@ public abstract class SystemPropertiesSupport {
 
     private volatile boolean fullyInitialized;
 
+    private static final String vmName = "Substrate VM";
+
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SystemPropertiesSupport() {
         properties = new Properties();
@@ -73,6 +75,7 @@ public abstract class SystemPropertiesSupport {
         }
 
         lazyRuntimeValues = new HashMap<>();
+        lazyRuntimeValues.put("java.vm.name", () -> vmName);
         lazyRuntimeValues.put("user.name", this::userNameValue);
         lazyRuntimeValues.put("user.home", this::userHomeValue);
         lazyRuntimeValues.put("user.dir", this::userDirValue);
