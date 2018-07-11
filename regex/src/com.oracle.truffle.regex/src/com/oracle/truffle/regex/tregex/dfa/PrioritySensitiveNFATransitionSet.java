@@ -133,10 +133,10 @@ public final class PrioritySensitiveNFATransitionSet extends NFATransitionSet {
 
     /**
      * Checks if the set is equal to another given set. Two sets are considered equal only if both
-     * are {@link PrioritySensitiveNFATransitionSet}s and have the same target states
-     * <em>in the same order</em> - This means that if both sets are iterated in
-     * <em>insertion order</em>, their transitions must yield the same sequence of target states (as
-     * returned by {@link NFAStateTransition#getTarget(boolean)}).
+     * are {@link PrioritySensitiveNFATransitionSet}s and have the same target states <em>in the
+     * same order</em> - This means that if both sets are iterated in <em>insertion order</em>,
+     * their transitions must yield the same sequence of target states (as returned by
+     * {@link NFAStateTransition#getTarget(boolean)}).
      */
     @Override
     public boolean equals(Object obj) {

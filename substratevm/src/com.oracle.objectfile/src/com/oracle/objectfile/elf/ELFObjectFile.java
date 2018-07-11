@@ -96,6 +96,10 @@ public class ELFObjectFile extends ObjectFile {
         this.fileClass = fileClass;
     }
 
+    @Override
+    public void setMainEntryPoint(String name) {
+    }
+
     /**
      * This class implements the shstrtab section. It's simply a {@link ELFStrtab} whose content is
      * grabbed from the set of section names.

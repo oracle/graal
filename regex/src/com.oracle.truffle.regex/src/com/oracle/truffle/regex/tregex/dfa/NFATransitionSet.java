@@ -218,8 +218,8 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     /**
      * Returns the hash code value for this set.
      *
-     * The hash is equal to the hashcode of a {@link NFAStateSet} containing all
-     * <em>target states</em> of the transitions in this transition set.
+     * The hash is equal to the hashcode of a {@link NFAStateSet} containing all <em>target
+     * states</em> of the transitions in this transition set.
      */
     @Override
     public int hashCode() {
