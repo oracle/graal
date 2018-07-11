@@ -49,6 +49,9 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMLogicNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAndNode extends LLVMLogicNode {
+        private static final long ALIGNMENT_BITS = 8;
+        private static final long IS_ALIGNMENT = (-1L) >>> ALIGNMENT_BITS;
+
         @Specialization
         protected boolean and(boolean left, boolean right) {
             return left & right;
@@ -75,8 +78,18 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMPointer and(LLVMPointer left, long right) {
+        protected LLVMNativePointer and(LLVMNativePointer left, long right) {
             return left.and(right);
+        }
+
+        @Specialization(guards = "doesAlignment(right)")
+        protected LLVMPointer andAlign(LLVMManagedPointer left, long right) {
+            return left.andAlign(right);
+        }
+
+        @Specialization(guards = "!doesAlignment(right)")
+        protected long andRem(LLVMManagedPointer left, long right) {
+            return left.andRem(right);
         }
 
         @Specialization
@@ -107,6 +120,12 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         @Specialization
         protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.and(right);
+        }
+
+        protected static boolean doesAlignment(long right) {
+            // we assume that the AND operation is used for alignment if all upper bits of the right
+            // AND operand are 1
+            return (right >>> ALIGNMENT_BITS) == IS_ALIGNMENT;
         }
     }
 

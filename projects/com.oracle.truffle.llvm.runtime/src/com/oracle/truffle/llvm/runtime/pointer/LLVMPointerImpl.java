@@ -124,9 +124,26 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
     }
 
     @Override
-    public LLVMPointerImpl and(long value) {
-        // reset type, since the result points to something else now
+    public LLVMNativePointer and(long value) {
+        assert isNative();
         return new LLVMPointerImpl(object, offset & value, null);
+    }
+
+    @Override
+    public LLVMPointerImpl andAlign(long value) {
+        assert isManaged();
+        return new LLVMPointerImpl(object, offset & value, null);
+    }
+
+    @Override
+    public long andRem(long value) {
+        assert isManaged();
+        return offset & value;
+    }
+
+    @Override
+    public long urem(long value) {
+        return Long.remainderUnsigned(offset, value);
     }
 
     @Override
