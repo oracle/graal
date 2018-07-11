@@ -147,6 +147,14 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         contents = value;
     }
 
+    public boolean isInNative() {
+        return address != 0;
+    }
+
+    public long getAddress() {
+        return address;
+    }
+
     @SuppressWarnings("static-method")
     public int getSize() {
         return 1;
@@ -318,6 +326,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         if (address != 0) {
             LLVMMemory memory = LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
             memory.free(address);
+            address = 0;
         }
     }
 }

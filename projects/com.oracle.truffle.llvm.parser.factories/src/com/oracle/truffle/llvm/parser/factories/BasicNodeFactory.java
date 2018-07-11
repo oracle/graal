@@ -1892,20 +1892,16 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal) {
         LLVMDebugValue.Builder toDebugNode = LLVMToDebugValueNodeGen.create();
 
-        Object value;
+        Object value = null;
         if (isGlobal) {
             assert valueNode instanceof LLVMAccessGlobalVariableStorageNode;
             LLVMAccessGlobalVariableStorageNode node = (LLVMAccessGlobalVariableStorageNode) valueNode;
             value = new LLVMDebugGlobalVariable(node.getDescriptor());
         } else {
-            if (valueNode == null) {
-                return LLVMDebugObjectBuilder.UNAVAILABLE;
-            }
             try {
                 value = valueNode.executeGeneric(null);
-            } catch (Throwable t) {
+            } catch (Throwable ignored) {
                 // constant values should not need frame access
-                value = null;
             }
         }
 
