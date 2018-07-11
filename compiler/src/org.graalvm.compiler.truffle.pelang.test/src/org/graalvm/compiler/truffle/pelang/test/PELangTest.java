@@ -24,7 +24,6 @@ package org.graalvm.compiler.truffle.pelang.test;
 
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
-import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -40,6 +39,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PELangTest extends PartialEvaluationTest {
@@ -55,6 +55,18 @@ public abstract class PELangTest extends PartialEvaluationTest {
         callTarget.call(arguments);
     }
 
+    protected StructuredGraph partiallyEvaluateAndCompile(OptimizedCallTarget callTarget) {
+        try {
+            // do a first run and swallow code install exceptions
+            StructuredGraph graph = partiallyEvaluate(callTarget);
+            return compileGraph(graph, callTarget);
+        } catch (BailoutException e) {
+            // swallow exception and try again
+            StructuredGraph graph = partiallyEvaluate(callTarget);
+            return compileGraph(graph, callTarget);
+        }
+    }
+
     protected StructuredGraph partiallyEvaluate(OptimizedCallTarget callTarget) {
         CompilationIdentifier compilationId = truffleCompiler.getCompilationIdentifier(callTarget);
         OptionValues options = TruffleCompilerOptions.getOptions();
@@ -63,10 +75,9 @@ public abstract class PELangTest extends PartialEvaluationTest {
         return truffleCompiler.getPartialEvaluator().createGraph(getDebugContext(options), callTarget, inliningDecision, AllowAssumptions.YES, compilationId, speculationLog, null);
     }
 
-    protected CompilationResult compileGraph(StructuredGraph graph, OptimizedCallTarget callTarget) {
-        CompilationResult result = truffleCompiler.compilePEGraph(graph, callTarget.toString(), null, callTarget, asCompilationRequest(graph.compilationId()), null);
-        removeFrameStates(graph);
-        return result;
+    protected StructuredGraph compileGraph(StructuredGraph graph, OptimizedCallTarget callTarget) {
+        truffleCompiler.compilePEGraph(graph, callTarget.toString(), null, callTarget, asCompilationRequest(graph.compilationId()), null);
+        return graph;
     }
 
     protected void assertCallResultEquals(Object expected, CallTarget callTarget) {

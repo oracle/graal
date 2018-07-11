@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.util.PELangBCFGenerator;
 import org.graalvm.compiler.truffle.pelang.util.PELangSample;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class PELangBCFTest extends PELangTest {
@@ -41,8 +40,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -54,8 +52,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -67,8 +64,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -80,8 +76,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        partiallyEvaluateAndCompile(callTarget);
         // TODO: add partial evaluation asserts
     }
 
@@ -93,8 +88,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -106,8 +100,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -119,8 +112,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -132,8 +124,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -145,9 +136,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        // TODO: add partial evaluation asserts
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
+        assertGraphEquals("constant10", graph);
     }
 
     @Test
@@ -158,9 +148,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        Assert.assertTrue(graph.isTrivial());
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -171,9 +160,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        Assert.assertTrue(graph.isTrivial());
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -184,9 +172,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        Assert.assertTrue(graph.isTrivial());
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -197,9 +184,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        Assert.assertTrue(graph.isTrivial());
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -210,9 +196,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals("Foo", callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        Assert.assertTrue(graph.isTrivial());
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
     }
 
     @Test(expected = PELangException.class)
@@ -220,9 +205,7 @@ public class PELangBCFTest extends PELangTest {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.invalidBranch());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
-        warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        callTarget.call();
     }
 
     @Test(expected = PELangException.class)
@@ -230,9 +213,7 @@ public class PELangBCFTest extends PELangTest {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.invalidLoop());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
-        warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        callTarget.call();
     }
 
     @Test
@@ -243,8 +224,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -256,8 +236,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -269,8 +248,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -282,8 +260,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -295,8 +272,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -308,8 +284,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
         assertGraphEquals("constant10", graph);
     }
 
@@ -321,8 +296,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        partiallyEvaluateAndCompile(callTarget);
         // TODO: add partial evaluation asserts
     }
 
@@ -332,17 +306,9 @@ public class PELangBCFTest extends PELangTest {
         PELangRootNode rootNode = g.generate(PELangSample.loopWithGlobalReadWrite());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
         assertCallResultEquals(10L, callTarget);
-        warmupCallTarget(callTarget);
 
-        try {
-            // do a first run and swallow code install exceptions
-            StructuredGraph graph = partiallyEvaluate(callTarget);
-            compileGraph(graph, callTarget);
-        } catch (Exception e) {
-            // swallow exception
-        }
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        warmupCallTarget(callTarget);
+        partiallyEvaluateAndCompile(callTarget);
         // TODO: add partial evaluation asserts
     }
 
@@ -354,8 +320,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        partiallyEvaluateAndCompile(callTarget);
         // TODO: add partial evaluation asserts
     }
 
@@ -367,9 +332,8 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
-        // TODO: add partial evaluation asserts
+        StructuredGraph graph = partiallyEvaluateAndCompile(callTarget);
+        assertGraphEquals("constant10", graph);
     }
 
     @Test
@@ -380,8 +344,7 @@ public class PELangBCFTest extends PELangTest {
         assertCallResultEquals(10L, callTarget);
 
         warmupCallTarget(callTarget);
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        partiallyEvaluateAndCompile(callTarget);
         // TODO: add partial evaluation asserts
     }
 
@@ -390,17 +353,9 @@ public class PELangBCFTest extends PELangTest {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.binaryTrees());
         OptimizedCallTarget callTarget = createCallTarget(rootNode);
-        warmupCallTarget(callTarget, 10L);
 
-        try {
-            // do a first run and swallow code install exceptions
-            StructuredGraph graph = partiallyEvaluate(callTarget);
-            compileGraph(graph, callTarget);
-        } catch (Exception e) {
-            // swallow exception
-        }
-        StructuredGraph graph = partiallyEvaluate(callTarget);
-        compileGraph(graph, callTarget);
+        warmupCallTarget(callTarget, 10L);
+        partiallyEvaluateAndCompile(callTarget);
         // TODO: add partial evaluation asserts
     }
 
