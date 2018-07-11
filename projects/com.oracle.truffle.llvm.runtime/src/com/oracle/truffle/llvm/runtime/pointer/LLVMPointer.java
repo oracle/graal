@@ -70,10 +70,9 @@ public interface LLVMPointer extends TruffleObject {
     LLVMPointer increment(long offset);
 
     /**
-     * Does a binary AND operation (typically for alignment). The {@link #getExportType export type}
-     * of the result pointer is reset to {@code null}.
+     * Computes the unsigned remainder.
      */
-    LLVMPointer and(long value);
+    long urem(long value);
 
     /**
      * Get the {@link LLVMInteropType} of this pointer. This type is used to determine access

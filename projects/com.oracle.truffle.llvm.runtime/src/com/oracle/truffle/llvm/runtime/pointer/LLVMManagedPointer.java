@@ -70,10 +70,19 @@ public interface LLVMManagedPointer extends LLVMPointer {
     LLVMManagedPointer increment(long offset);
 
     @Override
-    LLVMManagedPointer and(long value);
-
-    @Override
     LLVMManagedPointer export(LLVMInteropType newType);
+
+    /**
+     * Aligns the pointer by doing a binary AND operation. The {@link #getExportType export type} of
+     * the result pointer is reset to {@code null}.
+     */
+    LLVMPointerImpl andAlign(long value);
+
+    /**
+     * Computes the remainder by doing a binary AND operation. The {@link #getExportType export
+     * type} of the result pointer is reset to {@code null}.
+     */
+    long andRem(long value);
 
     /**
      * Create a new managed pointer, pointing to the beginning of a managed object.

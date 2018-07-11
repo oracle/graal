@@ -58,7 +58,11 @@ public abstract class LLVMPointerArrayLiteralNode extends LLVMExpressionNode {
         this.stride = stride;
     }
 
-    public LLVMToNativeNode[] getNativeValues() {
+    public LLVMExpressionNode[] getValues() {
+        return values;
+    }
+
+    private LLVMToNativeNode[] getNativeValues() {
         if (nativeValues == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeValues = getForceNativeNodes(values);

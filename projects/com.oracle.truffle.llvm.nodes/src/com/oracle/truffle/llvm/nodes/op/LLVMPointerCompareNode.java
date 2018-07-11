@@ -51,7 +51,7 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
 
     @Specialization
     protected boolean doGenericCompare(Object val1, Object val2) {
-        return op.compare(convertVal1.execute(val1), convertVal2.execute(val2));
+        return op.compare(convertVal1.executeWithTarget(val1), convertVal2.executeWithTarget(val2));
     }
 
     public enum Kind {

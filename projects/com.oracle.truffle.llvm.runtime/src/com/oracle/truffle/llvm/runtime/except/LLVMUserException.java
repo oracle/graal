@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.except;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
@@ -40,19 +41,19 @@ public final class LLVMUserException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
-    private final Object unwindHeader;
+    private final LLVMPointer unwindHeader;
 
-    public LLVMUserException(Node location, Object unwindHeader) {
+    public LLVMUserException(Node location, LLVMPointer unwindHeader) {
         super(location);
         this.unwindHeader = unwindHeader;
     }
 
-    public Object getUnwindHeader() {
+    public LLVMPointer getUnwindHeader() {
         return unwindHeader;
     }
 
     @Override
-    public Object getExceptionObject() {
+    public LLVMPointer getExceptionObject() {
         return unwindHeader;
     }
 

@@ -29,17 +29,23 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-
 import static com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64Time.CLOCK_MONOTONIC;
 import static com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64Time.CLOCK_REALTIME;
 
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
 public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperationNode {
+
+    @Child private LLVMI64StoreNode writeI64;
+
+    public LLVMAMD64SyscallClockGetTimeNode() {
+        this.writeI64 = LLVMI64StoreNodeGen.create(null, null);
+    }
 
     @Override
     public final String getName() {
@@ -47,39 +53,27 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
     }
 
     @Specialization
-    protected long doI64(long clkId, LLVMNativePointer tp,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return clockGetTime(memory, (int) clkId, tp);
+    protected long doI64(long clkId, LLVMPointer tp) {
+        return clockGetTime((int) clkId, tp);
     }
 
     @Specialization
-    protected long doI64(long clkId, long tp,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doI64(clkId, LLVMNativePointer.create(tp), memory);
+    protected long doI64(long clkId, long tp) {
+        return doI64(clkId, LLVMNativePointer.create(tp));
     }
 
-    @TruffleBoundary
-    private static long currentTimeMillis() {
-        return System.currentTimeMillis();
-    }
-
-    @TruffleBoundary
-    private static long nanoTime() {
-        return System.nanoTime();
-    }
-
-    private static int clockGetTime(LLVMMemory memory, int clkId, LLVMNativePointer timespec) {
+    private int clockGetTime(int clkId, LLVMPointer timespec) {
         long s;
         long ns;
         switch (clkId) {
             case CLOCK_REALTIME: {
-                long t = currentTimeMillis();
+                long t = System.currentTimeMillis();
                 s = t / 1000;
                 ns = (t % 1000) * 1000000;
                 break;
             }
             case CLOCK_MONOTONIC: {
-                long t = nanoTime();
+                long t = System.nanoTime();
                 s = t / 1000000000L;
                 ns = (t % 1000000000L);
                 break;
@@ -87,10 +81,10 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
             default:
                 return -LLVMAMD64Error.EINVAL;
         }
-        LLVMNativePointer ptr = timespec;
-        memory.putI64(ptr, s);
+        LLVMPointer ptr = timespec;
+        writeI64.executeWithTarget(ptr, s);
         ptr = ptr.increment(8);
-        memory.putI64(ptr, ns);
+        writeI64.executeWithTarget(ptr, ns);
         return 0;
     }
 }

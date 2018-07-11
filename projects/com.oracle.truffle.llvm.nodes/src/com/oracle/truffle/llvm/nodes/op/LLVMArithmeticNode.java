@@ -284,7 +284,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         protected long sub(LLVMManagedPointer left, LLVMManagedPointer right,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValueLeft,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValueRight) {
-            return sub(toComparableValueLeft.execute(left), toComparableValueRight.execute(right));
+            return sub(toComparableValueLeft.executeWithTarget(left), toComparableValueRight.executeWithTarget(right));
         }
 
         @Specialization
@@ -307,13 +307,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long sub(long left, LLVMPointer right,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
-            return sub(left, toComparableValue.execute(right));
+            return sub(left, toComparableValue.executeWithTarget(right));
         }
 
         @Specialization
         protected long sub(LLVMPointer left, long right,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
-            return toComparableValue.execute(left) - right;
+            return toComparableValue.executeWithTarget(left) - right;
         }
 
         @Specialization
@@ -674,8 +674,19 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long urem(LLVMNativePointer left, long right) {
-            return urem(left.asNative(), right);
+        protected long urem(LLVMPointer left, long right) {
+            return left.urem(right);
+        }
+
+        @Specialization
+        protected long urem(LLVMPointer left, LLVMNativePointer right) {
+            return urem(left, right.asNative());
+        }
+
+        @Specialization
+        protected long urem(LLVMPointer left, LLVMManagedPointer right,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return urem(left, toNative.executeWithTarget(right).asNative());
         }
 
         @Specialization
@@ -684,26 +695,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long urem(LLVMNativePointer left, LLVMNativePointer right) {
-            return urem(left.asNative(), right.asNative());
-        }
-
-        @Specialization
-        protected long urem(LLVMManagedPointer left, long right,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            return urem(toNative.executeWithTarget(left).asNative(), right);
-        }
-
-        @Specialization
         protected long urem(long left, LLVMManagedPointer right,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
             return urem(left, toNative.executeWithTarget(right).asNative());
-        }
-
-        @Specialization
-        protected long urem(LLVMManagedPointer left, LLVMManagedPointer right,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            return urem(toNative.executeWithTarget(left).asNative(), toNative.executeWithTarget(right).asNative());
         }
 
         @Specialization
