@@ -30,27 +30,38 @@ package org.graalvm.nativeimage;
  *
  * @since 1.0
  */
-public final class Image {
+public final class ImageInfo {
 
-    private Image() {
+    private ImageInfo() {
     }
 
     /**
+     * Field that holds the string that can be used as system property key to access information
+     * about the context in which code is currently executed.
+     *
      * @since 1.0
      */
     public static final String PROPERTY_ISAOT_KEY = "org.graalvm.nativeimage.isaot";
     /**
+     * Field that holds the string that will be returned by the system property for
+     * {@link ImageInfo#PROPERTY_ISAOT_KEY} if code is executing at image runtime.
+     *
      * @since 1.0
      */
     public static final String PROPERTY_ISAOT_VALUE_RUNTIME = "image.runtime";
     /**
+     * Field that holds the string that will be returned by the system property for
+     * {@link ImageInfo#PROPERTY_ISAOT_KEY} if code is executing in the context of image building
+     * (e.g. in a static initializer of class that will be contained in the image).
+     *
      * @since 1.0
      */
     public static final String PROPERTY_ISAOT_VALUE_BUILDTIME = "image.buildtime";
 
     /**
-     * @return true if code is currently executed as part of image building or during image runtime.
-     *         If code runs regular on JVM (not as part of image building) false is returned.
+     * @return true if (at the time of the call) code is executing in the context of image building
+     *         or during image runtime. If code is executing on JVM (but not in the context of image
+     *         building) false is returned.
      *
      * @since 1.0
      */
@@ -59,7 +70,7 @@ public final class Image {
     }
 
     /**
-     * @return true if code is currently executed at image runtime.
+     * @return true if (at the time of the call) code is executing at image runtime.
      *
      * @since 1.0
      */
@@ -68,7 +79,8 @@ public final class Image {
     }
 
     /**
-     * @return true if code is executed during image buildtime (e.g. in a static initializer).
+     * @return true if (at the time of the call) code is executing in the context of image building
+     *         (e.g. in a static initializer of class that will be contained in the image).
      *
      * @since 1.0
      */

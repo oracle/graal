@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
-import org.graalvm.nativeimage.Image;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -81,11 +81,11 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.dir", this::userDirValue);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
 
-        lazyRuntimeValues.put(Image.PROPERTY_ISAOT_KEY, () -> Image.PROPERTY_ISAOT_VALUE_RUNTIME);
+        lazyRuntimeValues.put(ImageInfo.PROPERTY_ISAOT_KEY, () -> ImageInfo.PROPERTY_ISAOT_VALUE_RUNTIME);
     }
 
     static {
-        System.setProperty(Image.PROPERTY_ISAOT_KEY, Image.PROPERTY_ISAOT_VALUE_BUILDTIME);
+        System.setProperty(ImageInfo.PROPERTY_ISAOT_KEY, ImageInfo.PROPERTY_ISAOT_VALUE_BUILDTIME);
     }
 
     public Properties getProperties() {
