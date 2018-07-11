@@ -1013,7 +1013,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
-                        classFilter, arguments, allowedLanguages, options, fs, logHandler);
+                        classFilter, arguments, allowedLanguages, options, fs, useHandler);
 
         PolyglotContextImpl context = loadPreinitializedContext(config);
         if (context == null) {
