@@ -39,6 +39,7 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangAddNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangArrayType;
 import org.graalvm.compiler.truffle.pelang.expr.PELangDivNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNode;
@@ -49,10 +50,10 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralArrayNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralNullNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangNewObjectNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangMinusNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNewArrayNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangNewObjectNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangReadArgumentNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangReadArrayNode;
@@ -118,12 +119,12 @@ public class PELangBuilder {
         return new PELangNewObjectNode();
     }
 
-    public PELangExpressionNode newArray(Class<?> type, PELangExpressionNode dimensionsNode) {
-        return new PELangNewArrayNode(type, dimensionsNode);
+    public PELangExpressionNode newArray(PELangArrayType arrayType, PELangExpressionNode dimensionsNode) {
+        return PELangNewArrayNode.createNode(arrayType, dimensionsNode);
     }
 
     public PELangExpressionNode array(Object array) {
-        return PELangLiteralArrayNode.createNode(array);
+        return new PELangLiteralArrayNode(array);
     }
 
     public PELangExpressionNode null$() {

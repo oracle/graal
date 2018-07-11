@@ -27,37 +27,24 @@ import java.lang.reflect.Array;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
 
-public final class PELangNewArrayNode extends PELangExpressionNode {
+@NodeField(name = "arrayType", type = PELangArrayType.class)
+@NodeChild("dimensionsNode")
+public abstract class PELangNewArrayNode extends PELangExpressionNode {
 
-    private final Class<?> type;
-    @Child private PELangExpressionNode dimensionsNode;
+    protected abstract PELangArrayType getArrayType();
 
-    public PELangNewArrayNode(Class<?> type, PELangExpressionNode dimensionsNode) {
-        this.type = type;
-        this.dimensionsNode = dimensionsNode;
+    @Specialization
+    public Object newSingleArray(long dimension) {
+        return newArray(getArrayType().getJavaClass(), (int) dimension);
     }
 
-    public Class<?> getType() {
-        return type;
-    }
-
-    public PELangExpressionNode getDimensionsNode() {
-        return dimensionsNode;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        long[] longs = dimensionsNode.evaluateLongArray(frame);
-        int[] dimensions = toIntArray(longs);
-        return newArray(type, dimensions);
-    }
-
-    @Override
-    public Object executeArray(VirtualFrame frame) throws UnexpectedResultException {
-        return executeGeneric(frame);
+    @Specialization
+    public Object newMultiArray(long[] dimensions) {
+        return newArray(getArrayType().getJavaClass(), toIntArray(dimensions));
     }
 
     private static int[] toIntArray(long[] longs) {
@@ -70,8 +57,12 @@ public final class PELangNewArrayNode extends PELangExpressionNode {
     }
 
     @TruffleBoundary
-    private static Object newArray(Class<?> type, int[] dimensions) {
+    private static Object newArray(Class<?> type, int... dimensions) {
         return Array.newInstance(type, dimensions);
+    }
+
+    public static PELangNewArrayNode createNode(PELangArrayType arrayType, PELangExpressionNode dimensionsNode) {
+        return PELangNewArrayNodeGen.create(dimensionsNode, arrayType);
     }
 
 }

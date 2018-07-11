@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.pelang.util;
 
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangArrayType;
 
 public class PELangSample {
 
@@ -568,7 +569,7 @@ public class PELangSample {
                     b.long$(1L))),
                 b.writeLocal("resultsDimensions", b.array(new long[1])),
                 b.writeArray(b.readLocal("resultsDimensions"), b.array(new long[] {0L}), b.readLocal("resultsSize")),
-                b.writeLocal("results", b.newArray(String.class, b.readLocal("resultsDimensions"))),
+                b.writeLocal("results", b.newArray(PELangArrayType.String, b.readLocal("resultsDimensions"))),
                 b.writeLocal("d", b.readLocal("MIN_DEPTH")),
                 b.while$(
                     b.not(b.gt(b.readLocal("d"), b.readLocal("maxDepth"))),

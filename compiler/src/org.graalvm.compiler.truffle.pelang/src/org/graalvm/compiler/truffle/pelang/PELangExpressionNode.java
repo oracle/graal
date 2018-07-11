@@ -39,16 +39,8 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         return expectLong(executeGeneric(frame));
     }
 
-    public long[] executeLongArray(VirtualFrame frame) throws UnexpectedResultException {
-        return expectLongArray(executeGeneric(frame));
-    }
-
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
         return expectString(executeGeneric(frame));
-    }
-
-    public String[] executeStringArray(VirtualFrame frame) throws UnexpectedResultException {
-        return expectStringArray(executeGeneric(frame));
     }
 
     public PELangFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
@@ -59,10 +51,6 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         return expectObject(executeGeneric(frame));
     }
 
-    public Object executeArray(VirtualFrame frame) throws UnexpectedResultException {
-        return expectArray(executeGeneric(frame));
-    }
-
     public long evaluateLong(VirtualFrame frame) {
         try {
             return executeLong(frame);
@@ -71,27 +59,11 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         }
     }
 
-    public long[] evaluateLongArray(VirtualFrame frame) {
-        try {
-            return executeLongArray(frame);
-        } catch (UnexpectedResultException ex) {
-            throw new PELangException("expected value of type long[]", this);
-        }
-    }
-
     public String evaluateString(VirtualFrame frame) {
         try {
             return executeString(frame);
         } catch (UnexpectedResultException ex) {
             throw new PELangException("expected value of type String", this);
-        }
-    }
-
-    public String[] evaluateStringArray(VirtualFrame frame) {
-        try {
-            return executeStringArray(frame);
-        } catch (UnexpectedResultException ex) {
-            throw new PELangException("expected value of type String[]", this);
         }
     }
 
@@ -111,14 +83,6 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         }
     }
 
-    public Object evaluateArray(VirtualFrame frame) {
-        try {
-            return executeArray(frame);
-        } catch (UnexpectedResultException ex) {
-            throw new PELangException("expected value to be an array", this);
-        }
-    }
-
     private static long expectLong(Object value) throws UnexpectedResultException {
         if (value instanceof Long) {
             return (long) value;
@@ -126,23 +90,9 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         throw new UnexpectedResultException(value);
     }
 
-    private static long[] expectLongArray(Object value) throws UnexpectedResultException {
-        if (value instanceof long[]) {
-            return (long[]) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
     private static String expectString(Object value) throws UnexpectedResultException {
         if (value instanceof String) {
             return (String) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
-    private static String[] expectStringArray(Object value) throws UnexpectedResultException {
-        if (value instanceof String[]) {
-            return (String[]) value;
         }
         throw new UnexpectedResultException(value);
     }
@@ -157,13 +107,6 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
     private static DynamicObject expectObject(Object value) throws UnexpectedResultException {
         if (value instanceof DynamicObject) {
             return (DynamicObject) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
-    private static Object expectArray(Object value) throws UnexpectedResultException {
-        if (value.getClass().isArray()) {
-            return value;
         }
         throw new UnexpectedResultException(value);
     }

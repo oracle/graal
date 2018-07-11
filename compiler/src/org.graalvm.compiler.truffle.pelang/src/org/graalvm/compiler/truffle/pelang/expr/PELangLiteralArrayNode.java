@@ -2,49 +2,26 @@ package org.graalvm.compiler.truffle.pelang.expr;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-@NodeField(name = "array", type = Object.class)
-public abstract class PELangLiteralArrayNode extends PELangExpressionNode {
+public final class PELangLiteralArrayNode extends PELangExpressionNode {
 
-    public abstract Object getArray();
+    private final Object array;
 
-    @Override
-    @Specialization(guards = "isLongArray()")
-    public long[] executeLongArray(VirtualFrame frame) {
-        return (long[]) getArray();
+    public PELangLiteralArrayNode(Object array) {
+        if (!array.getClass().isArray()) {
+            throw new IllegalArgumentException("argument is not an array");
+        }
+        this.array = array;
+    }
+
+    public Object getArray() {
+        return array;
     }
 
     @Override
-    @Specialization(guards = "isStringArray()")
-    public String[] executeStringArray(VirtualFrame frame) {
-        return (String[]) getArray();
-    }
-
-    @Override
-    @Specialization(guards = "isArray()")
-    public Object executeArray(VirtualFrame frame) {
-        return getArray();
-    }
-
-    protected boolean isLongArray() {
-        return getArray() instanceof long[];
-    }
-
-    protected boolean isStringArray() {
-        return getArray() instanceof String[];
-    }
-
-    @TruffleBoundary
-    protected boolean isArray() {
-        return getArray().getClass().isArray();
-    }
-
-    public static PELangLiteralArrayNode createNode(Object array) {
-        return PELangLiteralArrayNodeGen.create(array);
+    public Object executeGeneric(VirtualFrame frame) {
+        return array;
     }
 
 }
