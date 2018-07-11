@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -71,7 +72,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     public Path write(NativeCodeInfo nativeCodeInfo) {
         nativeCodeInfo.accept(this);
 
-        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_").concat(CSourceCodeWriter.C_SOURCE_FILE_EXTENSION);
+        String srcFileExtension = Platform.includedIn(Platform.WINDOWS.class) ? CSourceCodeWriter.CXX_SOURCE_FILE_EXTENSION : CSourceCodeWriter.C_SOURCE_FILE_EXTENSION;
+        String sourceFileName = nativeCodeInfo.getName().replaceAll("\\W", "_").concat(srcFileExtension);
         return writer.writeFile(sourceFileName);
     }
 
@@ -100,17 +102,24 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             writer.includeFiles(nativeCodeInfo.getDirectives().getHeaderFiles());
         }
 
-        writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>"));
+        writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>", "<memory.h>"));
 
         writeCStandardHeaders(writer);
 
         /* Write general macro definitions. */
         writer.appendln();
+
         /*
-         * Here we use the GNU C extension, typeof() to prevent the type promotion (to signed int)
-         * caused by the inversion operation.
+         * On Posix systems we use the GNU C extension, typeof() to prevent the type promotion (to
+         * signed int) caused by the inversion operation. On Windows we generate c++ files so we can
+         * use decltype.
          */
-        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && ((typeof(a)) ~(a)) >= 0L)");
+        writer.appendln("#ifndef _WIN64");
+        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && (typeof(a)) ~(a) >= 0L)");
+        writer.appendln("#else");
+        writer.appendln("#define ISUNSIGNED(a) ((a) >= 0L && (decltype(a)) ~(a) >= 0L)");
+        writer.appendln("#endif");
+        writer.appendln("#define IS_CONST_UNSIGNED(a) (a>=0 ? 1 : 0)");
 
         /* Write the main function with all the outputs for the children. */
         writer.appendln();
@@ -136,7 +145,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         switch (constantInfo.getKind()) {
             case INTEGER:
                 printUnsignedLong(constantInfo.getSizeInfo(), sizeOf(constantInfo));
-                printIsUnsigned(constantInfo.getSignednessInfo(), isUnsigned(constantInfo.getName()));
+                printIsUnsigned(constantInfo.getSignednessInfo(), isConstUnsigned(constantInfo.getName()));
                 printLongHex(constantInfo.getValueInfo(), constantInfo.getName());
                 break;
             case POINTER:
@@ -177,8 +186,12 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         if (fieldInfo.getKind() == ElementKind.INTEGER) {
             String tempVar = getUniqueTempVarName(fieldInfo.getParent());
             registerElementForCurrentLine(fieldInfo.getParent().getAnnotatedElement());
+            writer.indents().appendln("{");
+            writer.indent();
             writer.indents().appendln(fieldInfo.getParent().getName() + " " + tempVar + ";");
             printIsUnsigned(fieldInfo.getSignednessInfo(), isUnsigned(tempVar + "." + fieldInfo.getName()));
+            writer.outdent();
+            writer.indents().appendln("}");
         }
     }
 
@@ -196,26 +209,31 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("  " + structName + " s;");
         writer.indents().appendln("  long long int pad;");
         writer.indents().appendln("} w;");
+        writer.indents().appendln("int is_unsigned;");
+        writer.indents().appendln("char *p;");
+        writer.indents().appendln("unsigned int byte_offset;");
+        writer.indents().appendln("int start_bit, end_bit;");
+        writer.indents().appendln("unsigned long long int v;");
         /* Set the structure to 0 bits (including the padding space). */
         writer.indents().appendln("memset(&w, 0x0, sizeof(w));");
         /* Fill the actual bitfield with 1 bits. Maximum size is 64 bits. */
         registerElementForCurrentLine(bitfieldInfo.getAnnotatedElement());
         writer.indents().appendln("w.s." + bitfieldName + " = 0xffffffffffffffff;");
         /* All bits are set, so signed bitfields are < 0; */
-        writer.indents().appendln("int is_unsigned =  (w.s." + bitfieldName + " >= 0);");
+        writer.indents().appendln("is_unsigned =  (w.s." + bitfieldName + " >= 0);");
         /* Find the first byte that is used by the bitfield, i.e., the first byte with a bit set. */
-        writer.indents().appendln("char *p = (char*)&w.s;");
-        writer.indents().appendln("unsigned int byte_offset = 0;");
+        writer.indents().appendln("p = (char*)&w.s;");
+        writer.indents().appendln("byte_offset = 0;");
         writer.indents().appendln("while (byte_offset < sizeof(w.s) && *(p + byte_offset) == 0) {");
         writer.indents().appendln("  byte_offset++;");
         writer.indents().appendln("}");
         /* It is an error if no non-zero byte was found. */
-        writer.indents().appendln("int start_bit = 0, end_bit = 0;");
+        writer.indents().appendln("start_bit = 0, end_bit = 0;");
         writer.indents().appendln("if (byte_offset >= sizeof(w.s)) {");
         writer.indents().appendln("  start_bit = end_bit = -1;");
         writer.indents().appendln("} else {");
         /* Read the 64 bits starting at the byte offset we found. */
-        writer.indents().appendln("  unsigned long long int v = *((unsigned long long int*) (p + byte_offset));");
+        writer.indents().appendln("  v = *((unsigned long long int*) (p + byte_offset));");
         /* Find the first bit that is set. */
         writer.indents().appendln("  while ((v & 0x1) == 0) {");
         writer.indents().appendln("    start_bit++;");
@@ -244,8 +262,12 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         if (pointerToInfo.getKind() == ElementKind.INTEGER) {
             String tempVar = getUniqueTempVarName(pointerToInfo);
             registerElementForCurrentLine(pointerToInfo.getAnnotatedElement());
+            writer.indents().appendln("{");
+            writer.indent();
             writer.indents().appendln(pointerToInfo.getName() + " " + tempVar + ";");
             printIsUnsigned(pointerToInfo.getSignednessInfo(), isUnsigned(tempVar));
+            writer.outdent();
+            writer.indents().appendln("}");
         }
     }
 
@@ -253,7 +275,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     protected void visitEnumConstantInfo(EnumConstantInfo constantInfo) {
         assert constantInfo.getKind() == ElementKind.INTEGER;
         printUnsignedLong(constantInfo.getSizeInfo(), sizeOf(constantInfo));
-        printIsUnsigned(constantInfo.getSignednessInfo(), isUnsigned(constantInfo.getName()));
+        printIsUnsigned(constantInfo.getSignednessInfo(), isConstUnsigned(constantInfo.getName()));
         printLongHex(constantInfo.getValueInfo(), constantInfo.getName());
     }
 
@@ -295,7 +317,9 @@ public class QueryCodeWriter extends InfoTreeVisitor {
     }
 
     private static String sizeOf(ElementInfo element) {
-        return "sizeof(" + element.getName() + ")";
+        String elementName = element.getName();
+        /* sizeof(void) is undefined and an error on some compilers */
+        return elementName.equals("void") ? "1" : "sizeof(" + elementName + ")";
     }
 
     private static String sizeOfField(StructFieldInfo field) {
@@ -308,6 +332,10 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     private static String isUnsigned(String symbolName) {
         return "ISUNSIGNED(" + symbolName + ")";
+    }
+
+    private static String isConstUnsigned(String symbolName) {
+        return "IS_CONST_UNSIGNED(" + symbolName + ")";
     }
 
     private void registerElementForCurrentLine(Object element) {

@@ -439,6 +439,7 @@ final class Target_java_lang_ProcessImpl {
     }
 }
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Java_lang_UNIXProcess_Supplement {
 
     static final ThreadFactory reaperFactory = new ThreadFactory() {
@@ -748,6 +749,7 @@ final class Target_java_lang_System {
 }
 
 @TargetClass(className = "java.lang.Shutdown")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_Shutdown {
 
     @Substitute
@@ -772,6 +774,7 @@ final class Target_java_lang_Runtime {
 }
 
 /** Dummy class to have a class with the file's name. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixJavaLangSubstitutions {
 
     /** Private constructor: No instances. */
