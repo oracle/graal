@@ -128,7 +128,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
             return GetDynamicType.INSTANCE.createNode();
         }
 
-        @Specialization(guards = "clazz.isInstance(object)")
+        @Specialization(guards = "clazz.isInstance(object.getForeign())")
         public LLVMInteropType.Structured doCached(LLVMTypedForeignObject object,
                         @Cached("object.getForeign().getClass()") @SuppressWarnings("unused") Class<?> clazz,
                         @Cached("create()") TypeCacheNode typeCache) {
