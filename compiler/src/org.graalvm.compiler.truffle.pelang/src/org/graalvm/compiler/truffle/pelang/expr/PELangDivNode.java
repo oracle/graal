@@ -36,7 +36,7 @@ public abstract class PELangDivNode extends PELangExpressionNode {
         return left / right;
     }
 
-    public static PELangDivNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public static PELangDivNode createNode(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangDivNodeGen.create(leftNode, rightNode);
     }
 

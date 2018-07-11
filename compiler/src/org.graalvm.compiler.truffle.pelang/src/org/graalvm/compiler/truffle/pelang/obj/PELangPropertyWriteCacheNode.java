@@ -84,7 +84,7 @@ public abstract class PELangPropertyWriteCacheNode extends PELangPropertyCacheNo
         writeUncached(receiver, name, value);
     }
 
-    public static PELangPropertyWriteCacheNode create() {
+    public static PELangPropertyWriteCacheNode createNode() {
         return PELangPropertyWriteCacheNodeGen.create();
     }
 

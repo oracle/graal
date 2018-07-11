@@ -123,7 +123,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode array(Object array) {
-        return PELangLiteralArrayNode.create(array);
+        return PELangLiteralArrayNode.createNode(array);
     }
 
     public PELangExpressionNode null$() {
@@ -135,7 +135,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode add(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangAddNode.create(leftNode, rightNode);
+        return PELangAddNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode add(PELangExpressionNode... nodes) {
@@ -148,14 +148,14 @@ public class PELangBuilder {
 
     private PELangExpressionNode add_(List<PELangExpressionNode> nodes) {
         if (nodes.size() == 2) {
-            return PELangAddNode.create(nodes.get(0), nodes.get(1));
+            return PELangAddNode.createNode(nodes.get(0), nodes.get(1));
         } else {
-            return PELangAddNode.create(nodes.get(0), add_(nodes.subList(1, nodes.size())));
+            return PELangAddNode.createNode(nodes.get(0), add_(nodes.subList(1, nodes.size())));
         }
     }
 
     public PELangExpressionNode minus(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangMinusNode.create(leftNode, rightNode);
+        return PELangMinusNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode minus(PELangExpressionNode... nodes) {
@@ -168,22 +168,22 @@ public class PELangBuilder {
 
     private PELangExpressionNode minus_(List<PELangExpressionNode> nodes) {
         if (nodes.size() == 2) {
-            return PELangMinusNode.create(nodes.get(0), nodes.get(1));
+            return PELangMinusNode.createNode(nodes.get(0), nodes.get(1));
         } else {
-            return PELangMinusNode.create(nodes.get(0), add_(nodes.subList(1, nodes.size())));
+            return PELangMinusNode.createNode(nodes.get(0), add_(nodes.subList(1, nodes.size())));
         }
     }
 
     public PELangExpressionNode leftShift(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangLeftShiftNode.create(leftNode, rightNode);
+        return PELangLeftShiftNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode div(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangDivNode.create(leftNode, rightNode);
+        return PELangDivNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode eq(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangEqualsNode.create(leftNode, rightNode);
+        return PELangEqualsNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode not(PELangExpressionNode bodyNode) {
@@ -191,11 +191,11 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode lt(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangLessThanNode.create(leftNode, rightNode);
+        return PELangLessThanNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode gt(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangGreaterThanNode.create(leftNode, rightNode);
+        return PELangGreaterThanNode.createNode(leftNode, rightNode);
     }
 
     public PELangStatementNode block(PELangStatementNode... bodyNodes) {
@@ -227,11 +227,11 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode readLocal(String identifier) {
-        return PELangLocalReadNode.create(frameDescriptor.findOrAddFrameSlot(identifier));
+        return PELangLocalReadNode.createNode(frameDescriptor.findOrAddFrameSlot(identifier));
     }
 
     public PELangExpressionNode readGlobal(String identifier) {
-        return PELangGlobalReadNode.create(identifier);
+        return PELangGlobalReadNode.createNode(identifier);
     }
 
     public PELangExpressionNode readArgument(int index) {
@@ -239,7 +239,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode readArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
-        return PELangReadArrayNode.create(arrayNode, indicesNode);
+        return PELangReadArrayNode.createNode(arrayNode, indicesNode);
     }
 
     public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, String name) {
@@ -247,15 +247,15 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode writeLocal(String identifier, PELangExpressionNode valueNode) {
-        return PELangLocalWriteNode.create(frameDescriptor.findOrAddFrameSlot(identifier), valueNode);
+        return PELangLocalWriteNode.createNode(frameDescriptor.findOrAddFrameSlot(identifier), valueNode);
     }
 
     public PELangExpressionNode writeGlobal(String identifier, PELangExpressionNode valueNode) {
-        return PELangGlobalWriteNode.create(identifier, valueNode);
+        return PELangGlobalWriteNode.createNode(identifier, valueNode);
     }
 
     public PELangExpressionNode writeArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
-        return PELangWriteArrayNode.create(arrayNode, indicesNode, valueNode);
+        return PELangWriteArrayNode.createNode(arrayNode, indicesNode, valueNode);
     }
 
     public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, String name, PELangExpressionNode valueNode) {
@@ -279,7 +279,7 @@ public class PELangBuilder {
     }
 
     public PELangStatementNode print(PELangExpressionNode argumentNode) {
-        return PELangPrintNode.create(argumentNode);
+        return PELangPrintNode.createNode(argumentNode);
     }
 
     public PELangStatementNode dispatch(PELangBasicBlockNode... blockNodes) {

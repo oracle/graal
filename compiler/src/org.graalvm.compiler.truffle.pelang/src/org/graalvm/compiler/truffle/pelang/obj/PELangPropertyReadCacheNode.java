@@ -45,7 +45,7 @@ public abstract class PELangPropertyReadCacheNode extends PELangPropertyCacheNod
         return readUncached(receiver, name);
     }
 
-    public static PELangPropertyReadCacheNode create() {
+    public static PELangPropertyReadCacheNode createNode() {
         return PELangPropertyReadCacheNodeGen.create();
     }
 

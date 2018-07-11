@@ -33,7 +33,7 @@ public final class PELangPropertyReadNode extends PELangExpressionNode {
 
     @Child private PELangExpressionNode receiverNode;
     private final String name;
-    @Child private PELangPropertyReadCacheNode readNode = PELangPropertyReadCacheNode.create();
+    @Child private PELangPropertyReadCacheNode readNode = PELangPropertyReadCacheNode.createNode();
 
     public PELangPropertyReadNode(PELangExpressionNode receiverNode, String name) {
         this.receiverNode = receiverNode;

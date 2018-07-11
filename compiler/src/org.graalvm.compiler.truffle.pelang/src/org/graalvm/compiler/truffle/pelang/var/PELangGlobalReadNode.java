@@ -46,7 +46,7 @@ public abstract class PELangGlobalReadNode extends PELangExpressionNode {
         return getState().isLongGlobal(getIdentifier());
     }
 
-    public static PELangGlobalReadNode create(String identifier) {
+    public static PELangGlobalReadNode createNode(String identifier) {
         return PELangGlobalReadNodeGen.create(identifier);
     }
 

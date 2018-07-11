@@ -72,7 +72,7 @@ public abstract class PELangLocalReadNode extends PELangExpressionNode {
         return getSlot().getKind() == FrameSlotKind.Long;
     }
 
-    public static PELangLocalReadNode create(FrameSlot slot) {
+    public static PELangLocalReadNode createNode(FrameSlot slot) {
         return PELangLocalReadNodeGen.create(slot);
     }
 }

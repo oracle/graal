@@ -43,7 +43,7 @@ public abstract class PELangReadArrayNode extends PELangExpressionNode {
         return Array.get(array, index);
     }
 
-    public static PELangReadArrayNode create(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
+    public static PELangReadArrayNode createNode(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
         return PELangReadArrayNodeGen.create(arrayNode, indicesNode);
     }
 

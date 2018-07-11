@@ -62,7 +62,7 @@ public abstract class PELangWriteArrayNode extends PELangExpressionNode {
         Array.set(array, index, value);
     }
 
-    public static PELangWriteArrayNode create(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
+    public static PELangWriteArrayNode createNode(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
         return PELangWriteArrayNodeGen.create(arrayNode, indicesNode, valueNode);
     }
 

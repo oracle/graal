@@ -43,7 +43,7 @@ public abstract class PELangLiteralArrayNode extends PELangExpressionNode {
         return getArray().getClass().isArray();
     }
 
-    public static PELangLiteralArrayNode create(Object array) {
+    public static PELangLiteralArrayNode createNode(Object array) {
         return PELangLiteralArrayNodeGen.create(array);
     }
 

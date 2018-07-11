@@ -48,7 +48,7 @@ public abstract class PELangAddNode extends PELangExpressionNode {
         return left.toString() + right.toString();
     }
 
-    public static PELangAddNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public static PELangAddNode createNode(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangAddNodeGen.create(leftNode, rightNode);
     }
 

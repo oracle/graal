@@ -34,12 +34,11 @@ public final class PELangInvokeNode extends PELangExpressionNode {
 
     @Child private PELangExpressionNode functionNode;
     @Children private final PELangExpressionNode[] argumentNodes;
-    @Child private PELangDispatchNode dispatchNode;
+    @Child private PELangDispatchNode dispatchNode = PELangDispatchNode.createNode();
 
     public PELangInvokeNode(PELangExpressionNode functionNode, PELangExpressionNode[] argumentNodes) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
-        dispatchNode = PELangDispatchNode.create();
     }
 
     public PELangExpressionNode getFunctionNode() {

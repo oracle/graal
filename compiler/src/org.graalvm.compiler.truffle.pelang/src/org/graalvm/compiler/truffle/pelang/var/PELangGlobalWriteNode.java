@@ -48,7 +48,7 @@ public abstract class PELangGlobalWriteNode extends PELangExpressionNode {
         return getState().isLongGlobal(getIdentifier());
     }
 
-    public static PELangGlobalWriteNode create(String identifier, PELangExpressionNode valueNode) {
+    public static PELangGlobalWriteNode createNode(String identifier, PELangExpressionNode valueNode) {
         return PELangGlobalWriteNodeGen.create(valueNode, identifier);
     }
 

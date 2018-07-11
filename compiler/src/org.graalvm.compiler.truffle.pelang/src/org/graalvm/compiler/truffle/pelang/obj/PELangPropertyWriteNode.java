@@ -34,7 +34,7 @@ public final class PELangPropertyWriteNode extends PELangExpressionNode {
     @Child private PELangExpressionNode receiverNode;
     private final String name;
     @Child private PELangExpressionNode valueNode;
-    @Child private PELangPropertyWriteCacheNode writeNode = PELangPropertyWriteCacheNode.create();
+    @Child private PELangPropertyWriteCacheNode writeNode = PELangPropertyWriteCacheNode.createNode();
 
     public PELangPropertyWriteNode(PELangExpressionNode receiverNode, String name, PELangExpressionNode valueNode) {
         this.receiverNode = receiverNode;

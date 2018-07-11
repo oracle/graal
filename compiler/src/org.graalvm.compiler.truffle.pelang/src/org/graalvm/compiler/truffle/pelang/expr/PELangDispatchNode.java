@@ -30,7 +30,7 @@ public abstract class PELangDispatchNode extends Node {
         return callNode.call(function.getCallTarget(), arguments);
     }
 
-    public static PELangDispatchNode create() {
+    public static PELangDispatchNode createNode() {
         return PELangDispatchNodeGen.create();
     }
 

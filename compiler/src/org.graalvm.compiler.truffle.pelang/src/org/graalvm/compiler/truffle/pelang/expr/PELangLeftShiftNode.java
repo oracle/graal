@@ -36,7 +36,7 @@ public abstract class PELangLeftShiftNode extends PELangExpressionNode {
         return left << right;
     }
 
-    public static PELangLeftShiftNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public static PELangLeftShiftNode createNode(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangLeftShiftNodeGen.create(leftNode, rightNode);
     }
 

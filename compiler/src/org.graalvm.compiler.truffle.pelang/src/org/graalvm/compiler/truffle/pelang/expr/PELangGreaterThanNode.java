@@ -41,7 +41,7 @@ public abstract class PELangGreaterThanNode extends PELangExpressionNode {
         return (left.compareTo(right) == 1) ? 0L : 1L;
     }
 
-    public static PELangGreaterThanNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public static PELangGreaterThanNode createNode(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangGreaterThanNodeGen.create(leftNode, rightNode);
     }
 

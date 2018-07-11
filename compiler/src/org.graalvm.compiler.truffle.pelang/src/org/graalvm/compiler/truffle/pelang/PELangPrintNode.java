@@ -37,7 +37,7 @@ public abstract class PELangPrintNode extends PELangStatementNode {
         System.out.println(argument);
     }
 
-    public static PELangPrintNode create(PELangExpressionNode argumentNode) {
+    public static PELangPrintNode createNode(PELangExpressionNode argumentNode) {
         return PELangPrintNodeGen.create(argumentNode);
     }
 
