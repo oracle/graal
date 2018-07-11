@@ -79,9 +79,9 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.addConst("target", latin1IndexOf.getArgument(2));
             args.add("targetCount", latin1IndexOf.getArgument(3));
             args.add("origFromIndex", latin1IndexOf.getArgument(4));
-            char[] targetCharArray = snippetReflection.asObject(char[].class, latin1IndexOf.getArgument(2).asJavaConstant());
-            args.addConst("md2", md2(targetCharArray));
-            args.addConst("cache", computeCache(targetCharArray));
+            byte[] targetByteArray = snippetReflection.asObject(byte[].class, latin1IndexOf.getArgument(2).asJavaConstant());
+            args.addConst("md2", md2(targetByteArray));
+            args.addConst("cache", computeCache(targetByteArray));
             template(latin1IndexOf, args).instantiate(providers.getMetaAccess(), latin1IndexOf, DEFAULT_REPLACER, args);
         }
     }
@@ -102,6 +102,31 @@ public class ConstantStringIndexOfSnippets implements Snippets {
     }
 
     static long computeCache(char[] s) {
+        int c = s.length;
+        int cache = 0;
+        int i;
+        for (i = 0; i < c - 1; i++) {
+            cache |= (1 << (s[i] & 63));
+        }
+        return cache;
+    }
+
+    static int md2(byte[] target) {
+        int c = target.length;
+        if (c == 0) {
+            return 0;
+        }
+        byte lastByte = target[c - 1];
+        int md2 = c;
+        for (int i = 0; i < c - 1; i++) {
+            if (target[i] == lastByte) {
+                md2 = (c - 1) - i;
+            }
+        }
+        return md2;
+    }
+
+    static long computeCache(byte[] s) {
         int c = s.length;
         int cache = 0;
         int i;
