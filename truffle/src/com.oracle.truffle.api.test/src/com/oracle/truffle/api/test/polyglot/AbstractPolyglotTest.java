@@ -34,6 +34,7 @@ import org.junit.After;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
@@ -53,6 +54,7 @@ public abstract class AbstractPolyglotTest {
     protected TruffleLanguage.Env languageEnv;
     protected TruffleLanguage<?> language;
     protected TruffleInstrument.Env instrumentEnv;
+    protected boolean cleanupOnSetup;
 
     protected final void setupEnv(Context newContext, ProxyInstrument instrument) {
         setupEnv(newContext, null, instrument);
@@ -63,7 +65,9 @@ public abstract class AbstractPolyglotTest {
     }
 
     protected final void setupEnv(Context newContext, ProxyLanguage language, ProxyInstrument instrument) {
-        cleanup();
+        if (cleanupOnSetup) {
+            cleanup();
+        }
         final ProxyLanguage usedLanguage;
         if (language == null) {
             usedLanguage = new ProxyLanguage();
@@ -85,10 +89,27 @@ public abstract class AbstractPolyglotTest {
         ProxyLanguage.setDelegate(usedLanguage);
         ProxyInstrument.setDelegate(usedInstrument);
 
+        Class<?> currentInstrumentClass = usedInstrument.getClass();
+        String instrumentId = null;
+        while (currentInstrumentClass != null && instrumentId == null) {
+            TruffleInstrument.Registration reg = currentInstrumentClass.getAnnotation(TruffleInstrument.Registration.class);
+            instrumentId = reg != null ? reg.id() : null;
+            currentInstrumentClass = currentInstrumentClass.getSuperclass();
+        }
+
         // forces initialization of instrument
-        newContext.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class);
+        newContext.getEngine().getInstruments().get(instrumentId).lookup(ProxyInstrument.Initialize.class);
         // force initialization of proxy language
-        newContext.initialize(ProxyLanguage.ID);
+
+        Class<?> currentLanguageClass = usedLanguage.getClass();
+        String languageId = null;
+        while (currentLanguageClass != null && languageId == null) {
+            Registration reg = currentLanguageClass.getAnnotation(Registration.class);
+            languageId = reg != null ? reg.id() : null;
+            currentLanguageClass = currentLanguageClass.getSuperclass();
+        }
+
+        newContext.initialize(languageId);
         // enter current context
         newContext.enter();
 
@@ -121,7 +142,7 @@ public abstract class AbstractPolyglotTest {
     }
 
     @After
-    public void cleanup() {
+    public final void cleanup() {
         if (context != null) {
             context.leave();
             context.close();

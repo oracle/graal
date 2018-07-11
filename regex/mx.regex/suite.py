@@ -36,6 +36,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "exports" : [
         "com.oracle.truffle.regex",
+        "com.oracle.truffle.regex.chardata",
         "com.oracle.truffle.regex.result",
         "com.oracle.truffle.regex.tregex.nodes.input",
         "com.oracle.truffle.regex.tregex.parser",

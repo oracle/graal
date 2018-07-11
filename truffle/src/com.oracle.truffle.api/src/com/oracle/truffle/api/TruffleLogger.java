@@ -129,7 +129,7 @@ public final class TruffleLogger {
      *
      * @param id the unique id of language or instrument
      * @param loggerName the the name of a {@link Logger}, if a {@code loggerName} is null or empty
-     *            a root logger for language (instrument) is returned
+     *            a root logger for language or instrument is returned
      * @return a {@link Logger}
      * @throws NullPointerException if {@code id} is null
      * @since 1.0
@@ -978,9 +978,10 @@ public final class TruffleLogger {
                 final int currentLevel = DEFAULT_VALUE;
                 return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
             }
-            if (levelsByContext.size() == 1) {
-                return true;
-            }
+            // GR-10762 does not work if contexts are GCed
+            // if (levelsByContext.size() == 1) {
+            // return true;
+            // }
             final int currentLevel = Math.min(computeLevel(loggerName, current), DEFAULT_VALUE);
             return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
         }

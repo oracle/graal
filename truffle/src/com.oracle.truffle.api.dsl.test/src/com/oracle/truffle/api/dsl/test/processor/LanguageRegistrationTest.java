@@ -94,29 +94,4 @@ public class LanguageRegistrationTest {
 
     }
 
-    @TruffleLanguage.Registration(name = "myLangGood", version = "0", mimeType = "text/x-my")
-    public static final class MyLangNoPublicConstructor extends TruffleLanguage<Object> {
-        private MyLangNoPublicConstructor() {
-            super();
-        }
-
-        @ExpectError("Using a singleton field is deprecated. Please provide a public no-argument constructor instead.") //
-        public static final MyLangGood INSTANCE = new MyLangGood();
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
-        protected CallTarget parse(ParsingRequest env) throws IOException {
-            throw new IOException();
-        }
-
-        @Override
-        protected Object createContext(Env env) {
-            return env;
-        }
-
-    }
 }

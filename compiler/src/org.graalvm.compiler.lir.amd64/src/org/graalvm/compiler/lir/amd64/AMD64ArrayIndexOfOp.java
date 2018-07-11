@@ -24,17 +24,18 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64VectorAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -42,9 +43,12 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  */
@@ -151,7 +155,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.movl(slotsRemaining, arrayLength);
         // move search value to vector
         if (asm.supports(CPUFeature.AVX)) {
-            AMD64VectorAssembler.VexMoveOp.VMOVD.emit((AMD64VectorAssembler) asm, AVXKind.AVXSize.DWORD, vecCmp, searchValue);
+            VexMoveOp.VMOVD.emit(asm, AVXKind.AVXSize.DWORD, vecCmp, searchValue);
         } else {
             asm.movdl(vecCmp, searchValue);
         }
@@ -313,21 +317,21 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     private void emitBroadcast(AMD64MacroAssembler asm, Register vecDst, Register vecTmp, AVXKind.AVXSize vectorSize) {
         if (asm.supports(CPUFeature.AVX2)) {
             if (byteMode()) {
-                AMD64VectorAssembler.VexRMOp.VPBROADCASTB.emit((AMD64VectorAssembler) asm, vectorSize, vecDst, vecDst);
+                VexRMOp.VPBROADCASTB.emit(asm, vectorSize, vecDst, vecDst);
             } else {
-                AMD64VectorAssembler.VexRMOp.VPBROADCASTW.emit((AMD64VectorAssembler) asm, vectorSize, vecDst, vecDst);
+                VexRMOp.VPBROADCASTW.emit(asm, vectorSize, vecDst, vecDst);
             }
         } else if (asm.supports(CPUFeature.AVX)) {
             if (byteMode()) {
                 // fill vecTmp with zeroes
-                AMD64VectorAssembler.VexRVMOp.VPXOR.emit((AMD64VectorAssembler) asm, vectorSize, vecTmp, vecTmp, vecTmp);
+                VexRVMOp.VPXOR.emit(asm, vectorSize, vecTmp, vecTmp, vecTmp);
                 // broadcast loaded search value
-                AMD64VectorAssembler.VexRVMOp.VPSHUFB.emit((AMD64VectorAssembler) asm, vectorSize, vecDst, vecDst, vecTmp);
+                VexRVMOp.VPSHUFB.emit(asm, vectorSize, vecDst, vecDst, vecTmp);
             } else {
                 // fill low qword
-                AMD64VectorAssembler.VexRMIOp.VPSHUFLW.emit((AMD64VectorAssembler) asm, vectorSize, vecDst, vecDst, 0);
+                VexRMIOp.VPSHUFLW.emit(asm, vectorSize, vecDst, vecDst, 0);
                 // copy low qword to high qword
-                AMD64VectorAssembler.VexRMIOp.VPSHUFD.emit((AMD64VectorAssembler) asm, vectorSize, vecDst, vecDst, 0);
+                VexRMIOp.VPSHUFD.emit(asm, vectorSize, vecDst, vecDst, 0);
             }
         } else {
             // SSE version
@@ -434,8 +438,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     private static void emitArrayLoad(AMD64MacroAssembler asm, AVXKind.AVXSize vectorSize, Register vecDst, Register arrayPtr, int offset, boolean alignedLoad) {
         AMD64Address src = new AMD64Address(arrayPtr, offset);
         if (asm.supports(CPUFeature.AVX)) {
-            AMD64VectorAssembler.VexMoveOp loadOp = alignedLoad ? AMD64VectorAssembler.VexMoveOp.VMOVDQA : AMD64VectorAssembler.VexMoveOp.VMOVDQU;
-            loadOp.emit((AMD64VectorAssembler) asm, vectorSize, vecDst, src);
+            VexMoveOp loadOp = alignedLoad ? VexMoveOp.VMOVDQA : VexMoveOp.VMOVDQU;
+            loadOp.emit(asm, vectorSize, vecDst, src);
         } else {
             // SSE
             asm.movdqu(vecDst, src);
@@ -447,9 +451,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         // matching bytes are set to 0xff, non-matching bytes are set to 0x00.
         if (asm.supports(CPUFeature.AVX)) {
             if (byteMode()) {
-                AMD64VectorAssembler.VexRVMOp.VPCMPEQB.emit((AMD64VectorAssembler) asm, vectorSize, vecArray, vecCmp, vecArray);
+                VexRVMOp.VPCMPEQB.emit(asm, vectorSize, vecArray, vecCmp, vecArray);
             } else {
-                AMD64VectorAssembler.VexRVMOp.VPCMPEQW.emit((AMD64VectorAssembler) asm, vectorSize, vecArray, vecCmp, vecArray);
+                VexRVMOp.VPCMPEQW.emit(asm, vectorSize, vecArray, vecCmp, vecArray);
             }
         } else {
             // SSE
@@ -463,7 +467,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
     private static void emitMOVMSK(AMD64MacroAssembler asm, AVXKind.AVXSize vectorSize, Register dst, Register vecSrc) {
         if (asm.supports(CPUFeature.AVX)) {
-            AMD64VectorAssembler.VexRMOp.VPMOVMSKB.emit((AMD64VectorAssembler) asm, vectorSize, dst, vecSrc);
+            VexRMOp.VPMOVMSKB.emit(asm, vectorSize, dst, vecSrc);
         } else {
             // SSE
             asm.pmovmskb(dst, vecSrc);

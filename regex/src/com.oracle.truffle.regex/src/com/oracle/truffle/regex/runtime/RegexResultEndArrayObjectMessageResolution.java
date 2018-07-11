@@ -29,6 +29,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -50,7 +51,7 @@ public class RegexResultEndArrayObjectMessageResolution {
 
         @Specialization(guards = {"isNoMatch(receiver)"})
         int doNoMatch(@SuppressWarnings("unused") RegexResult receiver, int groupNumber) {
-            return outOfBoundsException(groupNumber, 0);
+            throw unknownIdentifierException(groupNumber);
         }
 
         static boolean isNoMatch(RegexResult receiver) {
@@ -64,7 +65,7 @@ public class RegexResultEndArrayObjectMessageResolution {
 
         @Specialization(guards = {"groupNumber != 0"})
         int doSingleResultOutOfBounds(@SuppressWarnings("unused") SingleResult receiver, int groupNumber) {
-            return outOfBoundsException(groupNumber, 1);
+            throw unknownIdentifierException(groupNumber);
         }
 
         @Specialization(guards = {"groupNumber == 0"})
@@ -74,12 +75,16 @@ public class RegexResultEndArrayObjectMessageResolution {
 
         @Specialization(guards = {"groupNumber != 0"})
         int doSingleResultLazyStartOutOfBounds(@SuppressWarnings("unused") SingleResultLazyStart receiver, int groupNumber) {
-            return outOfBoundsException(groupNumber, 1);
+            throw unknownIdentifierException(groupNumber);
         }
 
         @Specialization
         int doStartsEndsIndexArray(StartsEndsIndexArrayResult receiver, int groupNumber) {
-            return receiver.getEnds()[groupNumber];
+            try {
+                return receiver.getEnds()[groupNumber];
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw unknownIdentifierException(groupNumber);
+            }
         }
 
         @Specialization
@@ -100,7 +105,11 @@ public class RegexResultEndArrayObjectMessageResolution {
         }
 
         private static int fromSingleArray(int[] array, int groupNumber) {
-            return array[groupNumber * 2 + 1];
+            try {
+                return array[groupNumber * 2 + 1];
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw unknownIdentifierException(groupNumber);
+            }
         }
 
         public static RegexResultGetEndNode create() {
@@ -108,9 +117,9 @@ public class RegexResultEndArrayObjectMessageResolution {
         }
     }
 
-    private static int outOfBoundsException(int groupNumber, int size) {
+    private static RuntimeException unknownIdentifierException(int groupNumber) {
         CompilerDirectives.transferToInterpreter();
-        throw new IndexOutOfBoundsException(String.format("index: %d, size: %d", groupNumber, size));
+        return UnknownIdentifierException.raise(Integer.toString(groupNumber));
     }
 
     @Resolve(message = "READ")
