@@ -8,7 +8,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public final class PELangLiteralNullNode extends PELangExpressionNode {
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public PELangNull executeGeneric(VirtualFrame frame) {
         return PELangNull.getInstance();
     }
 

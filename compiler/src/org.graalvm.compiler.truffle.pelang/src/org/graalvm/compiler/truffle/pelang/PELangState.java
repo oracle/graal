@@ -33,9 +33,10 @@ import com.oracle.truffle.api.object.Shape;
 public final class PELangState {
 
     private static final Layout LAYOUT = Layout.createLayout();
+    private static final ObjectType OBJECT_TYPE = new ObjectType();
 
     private final EconomicMap<String, Object> globals = EconomicMap.create();
-    private final Shape emptyShape = LAYOUT.createShape(PELangObjectType.INSTANCE);
+    private final Shape emptyShape = LAYOUT.createShape(OBJECT_TYPE);
 
     @TruffleBoundary
     public Object readGlobal(String identifier) {
@@ -52,16 +53,7 @@ public final class PELangState {
     }
 
     public static boolean isPELangObject(Object object) {
-        return LAYOUT.getType().isInstance(object) && LAYOUT.getType().cast(object).getShape().getObjectType() == PELangObjectType.INSTANCE;
-    }
-
-    private static final class PELangObjectType extends ObjectType {
-
-        static final ObjectType INSTANCE = new PELangObjectType();
-
-        private PELangObjectType() {
-        }
-
+        return LAYOUT.getType().isInstance(object) && LAYOUT.getType().cast(object).getShape().getObjectType() == OBJECT_TYPE;
     }
 
 }

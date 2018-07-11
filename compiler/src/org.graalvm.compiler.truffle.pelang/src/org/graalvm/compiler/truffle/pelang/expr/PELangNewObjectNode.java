@@ -25,18 +25,12 @@ package org.graalvm.compiler.truffle.pelang.expr;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 
 public final class PELangNewObjectNode extends PELangExpressionNode {
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return getState().createObject();
-    }
-
-    @Override
-    public DynamicObject executeObject(VirtualFrame frame) throws UnexpectedResultException {
+    public DynamicObject executeGeneric(VirtualFrame frame) {
         return getState().createObject();
     }
 

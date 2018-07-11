@@ -49,7 +49,7 @@ public final class PELangWhileRepeatingNode extends Node implements RepeatingNod
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        if (conditionNode.evaluateLong(frame) == 0L) {
+        if (conditionNode.evaluateCondition(frame) == 0L) {
             bodyNode.executeVoid(frame);
             return true;
         } else {

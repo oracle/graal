@@ -34,16 +34,12 @@ public abstract class PELangStatementNode extends Node {
     public abstract void executeVoid(VirtualFrame frame);
 
     public PELangState getState() {
-        ensureStateInitialized();
-        return state;
-    }
-
-    private void ensureStateInitialized() {
         if (state == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             PELangRootNode rootNode = (PELangRootNode) getRootNode();
             state = rootNode.getState();
         }
+        return state;
     }
 
 }

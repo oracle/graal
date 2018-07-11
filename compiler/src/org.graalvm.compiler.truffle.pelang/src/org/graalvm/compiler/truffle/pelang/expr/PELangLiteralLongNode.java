@@ -25,7 +25,6 @@ package org.graalvm.compiler.truffle.pelang.expr;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public final class PELangLiteralLongNode extends PELangExpressionNode {
 
@@ -40,12 +39,12 @@ public final class PELangLiteralLongNode extends PELangExpressionNode {
     }
 
     @Override
-    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return value;
+    public Long executeGeneric(VirtualFrame frame) {
+        return executeLong(frame);
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public long executeLong(VirtualFrame frame) {
         return value;
     }
 

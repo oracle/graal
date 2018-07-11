@@ -39,31 +39,19 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         return expectLong(executeGeneric(frame));
     }
 
-    public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return expectString(executeGeneric(frame));
-    }
-
     public PELangFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
         return expectFunction(executeGeneric(frame));
     }
 
-    public DynamicObject executeObject(VirtualFrame frame) throws UnexpectedResultException {
-        return expectObject(executeGeneric(frame));
+    public DynamicObject executeDynamic(VirtualFrame frame) throws UnexpectedResultException {
+        return expectDynamic(executeGeneric(frame));
     }
 
-    public long evaluateLong(VirtualFrame frame) {
+    public long evaluateCondition(VirtualFrame frame) {
         try {
             return executeLong(frame);
         } catch (UnexpectedResultException ex) {
             throw new PELangException("expected value of type long", this);
-        }
-    }
-
-    public String evaluateString(VirtualFrame frame) {
-        try {
-            return executeString(frame);
-        } catch (UnexpectedResultException ex) {
-            throw new PELangException("expected value of type String", this);
         }
     }
 
@@ -75,9 +63,9 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         }
     }
 
-    public DynamicObject evaluateObject(VirtualFrame frame) {
+    public DynamicObject evaluateDynamic(VirtualFrame frame) {
         try {
-            return executeObject(frame);
+            return executeDynamic(frame);
         } catch (UnexpectedResultException ex) {
             throw new PELangException("expected value of type DynamicObject", this);
         }
@@ -90,13 +78,6 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         throw new UnexpectedResultException(value);
     }
 
-    private static String expectString(Object value) throws UnexpectedResultException {
-        if (value instanceof String) {
-            return (String) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
     private static PELangFunction expectFunction(Object value) throws UnexpectedResultException {
         if (value instanceof PELangFunction) {
             return (PELangFunction) value;
@@ -104,7 +85,7 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         throw new UnexpectedResultException(value);
     }
 
-    private static DynamicObject expectObject(Object value) throws UnexpectedResultException {
+    private static DynamicObject expectDynamic(Object value) throws UnexpectedResultException {
         if (value instanceof DynamicObject) {
             return (DynamicObject) value;
         }

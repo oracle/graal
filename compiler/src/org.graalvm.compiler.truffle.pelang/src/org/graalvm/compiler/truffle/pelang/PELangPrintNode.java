@@ -12,24 +12,24 @@ public abstract class PELangPrintNode extends PELangStatementNode {
         doPrint(argument);
     }
 
-    @TruffleBoundary
-    private static void doPrint(long argument) {
-        System.out.println(argument);
-    }
-
     @Specialization
     public void println(String argument) {
         doPrint(argument);
     }
 
-    @TruffleBoundary
-    private static void doPrint(String argument) {
-        System.out.println(argument);
-    }
-
     @Specialization
     public void println(Object argument) {
         doPrint(argument);
+    }
+
+    @TruffleBoundary
+    private static void doPrint(long argument) {
+        System.out.println(argument);
+    }
+
+    @TruffleBoundary
+    private static void doPrint(String argument) {
+        System.out.println(argument);
     }
 
     @TruffleBoundary

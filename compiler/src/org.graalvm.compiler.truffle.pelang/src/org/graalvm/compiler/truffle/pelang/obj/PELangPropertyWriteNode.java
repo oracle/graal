@@ -56,7 +56,7 @@ public final class PELangPropertyWriteNode extends PELangExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        DynamicObject receiver = receiverNode.evaluateObject(frame);
+        DynamicObject receiver = receiverNode.evaluateDynamic(frame);
 
         if (!PELangState.isPELangObject(receiver)) {
             throw new PELangException("receiver must be a PELangObject", this);

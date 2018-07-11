@@ -37,15 +37,14 @@ public abstract class PELangAddNode extends PELangExpressionNode {
         return left + right;
     }
 
-    @Specialization
-    public String add(String left, String right) {
-        return left + right;
-    }
-
-    @Specialization
+    @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
     public String add(Object left, Object right) {
         return left.toString() + right.toString();
+    }
+
+    protected boolean isString(Object a, Object b) {
+        return a instanceof String || b instanceof String;
     }
 
     public static PELangAddNode createNode(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
