@@ -3166,6 +3166,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.UnixAsynchronousSocketChannelImpl")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_UnixAsynchronousSocketChannelImpl {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3202,6 +3203,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl {
 
         /* { Do not format quoted code: @formatter:off */

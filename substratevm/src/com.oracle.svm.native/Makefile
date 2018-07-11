@@ -46,7 +46,11 @@ else
 all :	strictmath libchelper jni
 endif
 
+ifeq (${OS}, windows)
+export TARGET_DIR = $(shell cmd.exe /c echo %cd%)\${OS}-${ARCH}
+else
 export TARGET_DIR := $(shell pwd)/${OS}-${ARCH}
+endif
 
 strictmath:
 	$(MAKE) -C $(VPATH)/strictmath

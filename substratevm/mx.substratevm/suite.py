@@ -77,6 +77,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.core.posix",
+                "com.oracle.svm.core.windows",
                 "compiler:GRAAL",
             ],
             "checkstyle": "com.oracle.svm.core",
@@ -90,6 +91,21 @@ suite = {
         },
 
         "com.oracle.svm.core.posix": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "1.8",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "findbugs": "false",
+        },
+
+        "com.oracle.svm.core.windows": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
@@ -442,6 +458,7 @@ suite = {
                 "com.oracle.svm.junit",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.posix",
+                "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],
             "overlaps" : [
@@ -464,6 +481,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.posix",
+                "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.graal",
                 "com.oracle.svm.core.genscavenge",
             ],
@@ -576,10 +594,34 @@ suite = {
             "native" : True,
             "platformDependent" : True,
             "description" : "polyglot.nativeapi support distribution for the GraalVM",
-            "layout" : {
-                "./" : [
-                    "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                ],
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                         "layout" : {
+                             "./" : [
+                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
+                             ],
+                         },
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                         "layout" : {
+                             "./" : [
+                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
+                             ],
+                         },
+                    },
+                },
+                "windows": {
+                    "amd64" : {
+                         "layout" : {
+                             "./" : [
+                                 "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.obj",
+                             ],
+                         },
+                    },
+                },
             },
         },
 
