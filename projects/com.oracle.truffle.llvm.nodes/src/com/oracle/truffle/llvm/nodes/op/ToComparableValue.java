@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class ToComparableValue extends LLVMNode {
-    protected abstract long execute(Object obj);
+    public abstract long executeWithTarget(Object obj);
 
     @Specialization(guards = "lib.guard(obj)")
     protected long doNativeCached(Object obj,
@@ -62,7 +62,7 @@ public abstract class ToComparableValue extends LLVMNode {
     protected long doNative(Object obj,
                     @Cached("createGeneric()") LLVMObjectNativeLibrary lib,
                     @Cached("createToComparable()") NativeToComparableValue toComparable) {
-        return toComparable.execute(obj, lib);
+        return toComparable.executeWithTarget(obj, lib);
     }
 
     protected static NativeToComparableValue createToComparable() {
@@ -76,7 +76,7 @@ public abstract class ToComparableValue extends LLVMNode {
 
     protected abstract static class ForeignToComparableValue extends LLVMNode {
 
-        abstract long execute(TruffleObject obj);
+        abstract long executeWithTarget(TruffleObject obj);
 
         public static ForeignToComparableValue create() {
             return ForeignToComparableValueNodeGen.create();
@@ -96,7 +96,7 @@ public abstract class ToComparableValue extends LLVMNode {
     @ImportStatic(ForeignToLLVMType.class)
     protected abstract static class ManagedToComparableValue extends LLVMNode {
 
-        abstract long execute(Object obj);
+        abstract long executeWithTarget(Object obj);
 
         @Specialization
         protected long doAddress(long address) {
@@ -115,7 +115,7 @@ public abstract class ToComparableValue extends LLVMNode {
         @Specialization
         protected long doManaged(LLVMManagedPointer address,
                         @Cached("create()") ForeignToComparableValue toComparable) {
-            return toComparable.execute(address.getObject()) + address.getOffset();
+            return toComparable.executeWithTarget(address.getObject()) + address.getOffset();
         }
 
         @Specialization
@@ -131,7 +131,7 @@ public abstract class ToComparableValue extends LLVMNode {
 
     protected abstract static class NativeToComparableValue extends LLVMNode {
 
-        protected abstract long execute(Object obj, LLVMObjectNativeLibrary lib);
+        protected abstract long executeWithTarget(Object obj, LLVMObjectNativeLibrary lib);
 
         @Specialization(guards = "lib.isPointer(obj)")
         protected long doPointer(Object obj, LLVMObjectNativeLibrary lib) {
@@ -146,7 +146,7 @@ public abstract class ToComparableValue extends LLVMNode {
         @SuppressWarnings("unused")
         protected long doManaged(Object obj, LLVMObjectNativeLibrary lib,
                         @Cached("create()") ManagedToComparableValue toComparable) {
-            return toComparable.execute(obj);
+            return toComparable.executeWithTarget(obj);
         }
     }
 }

@@ -30,75 +30,69 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.nodes.op.ToComparableValue;
+import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMLandingpadNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode getStack;
-    @Child private LLVMToNativeNode allocateLandingPadValue;
+    @Child private LLVMExpressionNode allocateLandingPadValue;
+    @Child private LLVMPointerStoreNode writePointer;
+    @Child private LLVMI32StoreNode writeI32;
     @Children private final LandingpadEntryNode[] entries;
     private final FrameSlot exceptionSlot;
     private final boolean cleanup;
 
-    @Child private LLVMToNativeNode unwindHeaderToNative;
-
     public LLVMLandingpadNode(LLVMExpressionNode getStack, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup,
                     LandingpadEntryNode[] entries) {
         this.getStack = getStack;
-        this.allocateLandingPadValue = LLVMToNativeNodeGen.create(allocateLandingPadValue);
+        this.allocateLandingPadValue = allocateLandingPadValue;
+        this.writePointer = LLVMPointerStoreNodeGen.create(null, null);
+        this.writeI32 = LLVMI32StoreNodeGen.create(null, null);
         this.exceptionSlot = exceptionSlot;
         this.cleanup = cleanup;
         this.entries = entries;
-        this.unwindHeaderToNative = LLVMToNativeNode.createToNativeWithTarget();
-    }
-
-    @CompilationFinal private LLVMMemory memory;
-
-    private LLVMMemory getMemory() {
-        if (memory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memory = getLLVMMemory();
-        }
-        return memory;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
             LLVMUserException exception = (LLVMUserException) frame.getObject(exceptionSlot);
-            Object unwindHeader = exception.getUnwindHeader();
+            LLVMPointer unwindHeader = exception.getUnwindHeader();
             LLVMStack.StackPointer stack = (LLVMStack.StackPointer) getStack.executeGeneric(frame);
 
             int clauseId = getEntryIdentifier(frame, stack, unwindHeader);
             if (clauseId == 0 && !cleanup) {
                 throw exception;
             } else {
-                LLVMNativePointer landingPadValue = allocateLandingPadValue.execute(frame);
-                getMemory().putPointer(landingPadValue, unwindHeaderToNative.executeWithTarget(unwindHeader));
-                getMemory().putI32(landingPadValue.increment(LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES), clauseId);
+                LLVMPointer landingPadValue = allocateLandingPadValue.executeLLVMPointer(frame);
+                writePointer.executeWithTarget(landingPadValue, unwindHeader);
+                writeI32.executeWithTarget(landingPadValue.increment(LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES), clauseId);
                 return landingPadValue;
             }
-        } catch (FrameSlotTypeException e) {
+        } catch (FrameSlotTypeException | UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
 
     @ExplodeLoop
-    private int getEntryIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, Object unwindHeader) {
+    private int getEntryIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, LLVMPointer unwindHeader) {
         for (int i = 0; i < entries.length; i++) {
             int clauseId = entries[i].getIdentifier(frame, stack, unwindHeader);
             if (clauseId != 0) {
@@ -110,7 +104,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
 
     public abstract static class LandingpadEntryNode extends LLVMExpressionNode {
 
-        public abstract int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, Object unwindHeader);
+        public abstract int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, LLVMPointer unwindHeader);
 
         @Override
         public final Object executeGeneric(VirtualFrame frame) {
@@ -121,11 +115,13 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
 
     public static final class LandingpadCatchEntryNode extends LandingpadEntryNode {
 
-        @Child private LLVMToNativeNode catchType;
+        @Child private LLVMExpressionNode catchType;
         @Child private LLVMBitcodeLibraryFunctions.SulongCanCatchNode canCatch;
+        @Child private ToComparableValue toComparableValue;
 
         public LandingpadCatchEntryNode(LLVMExpressionNode catchType) {
-            this.catchType = LLVMToNativeNodeGen.create(catchType);
+            this.catchType = catchType;
+            this.toComparableValue = ToComparableValueNodeGen.create();
         }
 
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
@@ -138,28 +134,33 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         }
 
         @Override
-        public int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, Object unwindHeader) {
-            LLVMNativePointer catchAddress = catchType.execute(frame);
-            if (catchAddress.asNative() == 0) {
-                /*
-                 * If ExcType is null, any exception matches, so the landing pad should always be
-                 * entered. catch (...)
-                 */
-                return 1;
+        public int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, LLVMPointer unwindHeader) {
+            try {
+                LLVMPointer catchAddress = catchType.executeLLVMPointer(frame);
+                if (catchAddress.isNull()) {
+                    /*
+                     * If ExcType is null, any exception matches, so the landing pad should always
+                     * be entered. catch (...)
+                     */
+                    return 1;
+                }
+                if (getCanCatch().canCatch(stack, unwindHeader, catchAddress) != 0) {
+                    return (int) toComparableValue.executeWithTarget(catchAddress);
+                }
+                return 0;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
             }
-            if (getCanCatch().canCatch(stack, unwindHeader, catchAddress) != 0) {
-                return (int) catchAddress.asNative();
-            }
-            return 0;
         }
     }
 
     public static final class LandingpadFilterEntryNode extends LandingpadEntryNode {
 
-        @Children private final LLVMToNativeNode[] filterTypes;
+        @Children private final LLVMExpressionNode[] filterTypes;
         @Child private LLVMBitcodeLibraryFunctions.SulongCanCatchNode canCatch;
 
-        public LandingpadFilterEntryNode(LLVMToNativeNode[] filterTypes) {
+        public LandingpadFilterEntryNode(LLVMExpressionNode[] filterTypes) {
             this.filterTypes = filterTypes;
         }
 
@@ -173,7 +174,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         }
 
         @Override
-        public int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, Object unwindHeader) {
+        public int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, LLVMPointer unwindHeader) {
             if (!filterMatches(frame, stack, unwindHeader)) {
                 // when this clause is matched, the selector value has to be negative
                 return -1;
@@ -182,26 +183,30 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
         }
 
         @ExplodeLoop
-        private boolean filterMatches(VirtualFrame frame, LLVMStack.StackPointer stack, Object unwindHeader) {
+        private boolean filterMatches(VirtualFrame frame, LLVMStack.StackPointer stack, LLVMPointer unwindHeader) {
             /*
              * Landingpad should be entered if the exception being thrown does not match any of the
              * types in the list
              */
-            for (int i = 0; i < filterTypes.length; i++) {
-                LLVMNativePointer filterAddress = filterTypes[i].execute(frame);
-                if (filterAddress.asNative() == 0) {
-                    /*
-                     * If ExcType is null, any exception matches, so the landing pad should always
-                     * be entered. catch (...)
-                     */
-                    return true;
+            try {
+                for (int i = 0; i < filterTypes.length; i++) {
+                    LLVMPointer filterAddress = filterTypes[i].executeLLVMPointer(frame);
+                    if (filterAddress.isNull()) {
+                        /*
+                         * If ExcType is null, any exception matches, so the landing pad should
+                         * always be entered. catch (...)
+                         */
+                        return true;
+                    }
+                    if (getCanCatch().canCatch(stack, unwindHeader, filterAddress) != 0) {
+                        return true;
+                    }
                 }
-                if (getCanCatch().canCatch(stack, unwindHeader, filterAddress) != 0) {
-                    return true;
-                }
+                return false;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
             }
-            return false;
         }
     }
-
 }

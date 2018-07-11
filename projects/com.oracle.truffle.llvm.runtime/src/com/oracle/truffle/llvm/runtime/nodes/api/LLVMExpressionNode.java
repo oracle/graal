@@ -80,6 +80,10 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
         return LLVMTypesGen.expectLLVM80BitFloat(executeGeneric(frame));
     }
 
+    public LLVMPointer executeLLVMPointer(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMPointer(executeGeneric(frame));
+    }
+
     public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMNativePointer(executeGeneric(frame));
     }

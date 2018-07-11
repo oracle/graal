@@ -284,7 +284,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         protected long sub(LLVMManagedPointer left, LLVMManagedPointer right,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValueLeft,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValueRight) {
-            return sub(toComparableValueLeft.execute(left), toComparableValueRight.execute(right));
+            return sub(toComparableValueLeft.executeWithTarget(left), toComparableValueRight.executeWithTarget(right));
         }
 
         @Specialization
@@ -307,13 +307,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long sub(long left, LLVMPointer right,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
-            return sub(left, toComparableValue.execute(right));
+            return sub(left, toComparableValue.executeWithTarget(right));
         }
 
         @Specialization
         protected long sub(LLVMPointer left, long right,
                         @Cached("createToComparableValue()") ToComparableValue toComparableValue) {
-            return toComparableValue.execute(left) - right;
+            return toComparableValue.executeWithTarget(left) - right;
         }
 
         @Specialization
