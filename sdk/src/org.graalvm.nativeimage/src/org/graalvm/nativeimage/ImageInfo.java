@@ -36,55 +36,50 @@ public final class ImageInfo {
     }
 
     /**
-     * Field that holds the string that can be used as system property key to access information
-     * about the context in which code is currently executed.
+     * Holds the string key that can be used to access a system property that provides information
+     * about the stage in which (at the time of requesting the property) code is currently executed.
      *
      * @since 1.0
      */
-    public static final String PROPERTY_ISAOT_KEY = "org.graalvm.nativeimage.isaot";
-    /**
-     * Field that holds the string that will be returned by the system property for
-     * {@link ImageInfo#PROPERTY_ISAOT_KEY} if code is executing at image runtime.
-     *
-     * @since 1.0
-     */
-    public static final String PROPERTY_ISAOT_VALUE_RUNTIME = "image.runtime";
-    /**
-     * Field that holds the string that will be returned by the system property for
-     * {@link ImageInfo#PROPERTY_ISAOT_KEY} if code is executing in the context of image building
-     * (e.g. in a static initializer of class that will be contained in the image).
-     *
-     * @since 1.0
-     */
-    public static final String PROPERTY_ISAOT_VALUE_BUILDTIME = "image.buildtime";
+    public static final String PROPERTY_IMAGE_STAGE_KEY = "org.graalvm.nativeimage.stage";
 
     /**
-     * @return true if (at the time of the call) code is executing in the context of image building
-     *         or during image runtime. If code is executing on JVM (but not in the context of image
-     *         building) false is returned.
+     * Describes the stages during which code execution for native images can happen.
      *
      * @since 1.0
      */
-    public static boolean isAOT() {
-        return System.getProperty(PROPERTY_ISAOT_KEY) != null;
+    public enum ImageStage {
+        /**
+         * Describes the stage during which code is executing in the context of image building (e.g.
+         * in a static initializer of class that will be contained in the image). The
+         * {@linkplain Enum#name() name of this enum constant} is also used as the string that will
+         * be returned by a corresponding system property for
+         * {@link ImageInfo#PROPERTY_IMAGE_STAGE_KEY}.
+         * 
+         * @since 1.0
+         */
+        BuildTime,
+        /**
+         * Describes the stage during which code is executing at image runtime. The
+         * {@linkplain Enum#name() name of this enum constant} is also used as the string that will
+         * be returned by a corresponding system property for
+         * {@link ImageInfo#PROPERTY_IMAGE_STAGE_KEY}.
+         * 
+         * @since 1.0
+         */
+        RunTime
     }
 
     /**
-     * @return true if (at the time of the call) code is executing at image runtime.
+     * @return {@link ImageStage#BuildTime} if, at the time of the call, code is executing in the
+     *         context of image building or {@link ImageStage#RunTime} if code is executing at image
+     *         runtime. If code is executing on the JVM (but <b>not</b> in the context of image
+     *         building) <b>null</b> is returned.
      *
      * @since 1.0
      */
-    public static boolean isImageRuntime() {
-        return PROPERTY_ISAOT_VALUE_RUNTIME.equals(System.getProperty(PROPERTY_ISAOT_KEY));
-    }
-
-    /**
-     * @return true if (at the time of the call) code is executing in the context of image building
-     *         (e.g. in a static initializer of class that will be contained in the image).
-     *
-     * @since 1.0
-     */
-    public static boolean isImageBuildtime() {
-        return PROPERTY_ISAOT_VALUE_BUILDTIME.equals(System.getProperty(PROPERTY_ISAOT_KEY));
+    public static ImageStage stage() {
+        String propertyValue = System.getProperty(PROPERTY_IMAGE_STAGE_KEY);
+        return propertyValue != null ? ImageStage.valueOf(propertyValue) : null;
     }
 }

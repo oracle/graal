@@ -81,11 +81,8 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.dir", this::userDirValue);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
 
-        lazyRuntimeValues.put(ImageInfo.PROPERTY_ISAOT_KEY, () -> ImageInfo.PROPERTY_ISAOT_VALUE_RUNTIME);
-    }
-
-    static {
-        System.setProperty(ImageInfo.PROPERTY_ISAOT_KEY, ImageInfo.PROPERTY_ISAOT_VALUE_BUILDTIME);
+        System.setProperty(ImageInfo.PROPERTY_IMAGE_STAGE_KEY, ImageInfo.ImageStage.BuildTime.name());
+        lazyRuntimeValues.put(ImageInfo.PROPERTY_IMAGE_STAGE_KEY, () -> ImageInfo.ImageStage.RunTime.name());
     }
 
     public Properties getProperties() {
