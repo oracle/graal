@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
@@ -78,7 +79,7 @@ public final class BasicConfiguration implements Configuration {
     @SuppressWarnings("deprecation")
     public <E> E getCapability(Class<E> type) {
         if (type.equals(LLVMMemory.class)) {
-            return type.cast(LLVMMemory.getInstance());
+            return type.cast(LLVMNativeMemory.getInstance());
         } else if (type.equals(UnsafeArrayAccess.class)) {
             return type.cast(UnsafeArrayAccess.getInstance());
         }

@@ -44,7 +44,7 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create(LLVMMemory.getDerefHandleObjectMask()));
+            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
         }
         return derefHandleGetReceiverNode;
     }

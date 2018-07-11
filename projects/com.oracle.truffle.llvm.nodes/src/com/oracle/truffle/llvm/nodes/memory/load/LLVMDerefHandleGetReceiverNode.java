@@ -34,18 +34,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public class LLVMDerefHandleGetReceiverNode extends LLVMNode {
 
-    protected final long mask;
     @CompilationFinal private ContextReference<LLVMContext> context;
-
-    protected LLVMDerefHandleGetReceiverNode(long mask) {
-        this.mask = mask;
-    }
 
     protected LLVMContext getContext() {
         if (context == null) {
@@ -56,14 +52,14 @@ public class LLVMDerefHandleGetReceiverNode extends LLVMNode {
     }
 
     public LLVMManagedPointer execute(LLVMNativePointer addr) {
+        long mask = LLVMNativeMemory.getDerefHandleObjectMask();
         LLVMNativePointer objectBaseAddr = LLVMNativePointer.create(addr.asNative() & ~mask);
         TruffleObject receiver = getContext().getManagedObjectForHandle(objectBaseAddr);
         LLVMManagedPointer pointerToForeign = LLVMManagedPointer.create(receiver);
         return pointerToForeign.increment(addr.asNative() & mask);
     }
 
-    public static LLVMDerefHandleGetReceiverNode create(long bitmask) {
-        return new LLVMDerefHandleGetReceiverNode(bitmask);
+    public static LLVMDerefHandleGetReceiverNode create() {
+        return new LLVMDerefHandleGetReceiverNode();
     }
-
 }
