@@ -28,12 +28,12 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 public class PELangSample {
 
     public static PELangRootNode simpleAdd() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
         return b.root("main", b.return$(b.add(b.long$(5L), b.long$(5L))));
     }
 
     public static PELangRootNode simpleBlock() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -50,7 +50,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleLocalReadWrite() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -62,7 +62,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleGlobalReadWrite() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -74,7 +74,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleBranch() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -90,7 +90,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleLoop() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -105,7 +105,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleSwitch() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -121,7 +121,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleInvoke() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -136,7 +136,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleObject() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -149,7 +149,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleArrayRead() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -162,7 +162,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleMultiArrayRead() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -179,7 +179,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleArrayWrite() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -198,7 +198,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode simpleMultiArrayWrite() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -220,7 +220,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode complexStringArray() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -251,7 +251,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode invalidBranch() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -267,7 +267,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode invalidLoop() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -282,7 +282,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedAdds() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -297,7 +297,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedBlocks() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -323,7 +323,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedLocalReadWrites() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -343,7 +343,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedBranches() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -364,7 +364,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedLoops() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -384,7 +384,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedSwitches() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -405,7 +405,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedObjectProperties() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -419,7 +419,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode branchWithGlobalReadWrite() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -435,7 +435,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode loopWithGlobalReadWrite() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -450,7 +450,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode nestedLoopsWithMultipleBackEdges() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -476,7 +476,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode irreducibleLoop() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -494,7 +494,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode invokeObjectFunctionProperty() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
@@ -513,7 +513,7 @@ public class PELangSample {
     }
 
     public static PELangRootNode binaryTrees() {
-        PELangBuilder b = PELangBuilder.create();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(

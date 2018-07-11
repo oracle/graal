@@ -77,13 +77,13 @@ public class PELangBuilder {
     private final FrameDescriptor frameDescriptor;
     private final PELangState state;
 
+    public PELangBuilder() {
+        this(new FrameDescriptor(), new PELangState());
+    }
+
     private PELangBuilder(FrameDescriptor frameDescriptor, PELangState state) {
         this.frameDescriptor = frameDescriptor;
         this.state = state;
-    }
-
-    public static PELangBuilder create() {
-        return new PELangBuilder(new FrameDescriptor(), new PELangState());
     }
 
     public PELangRootNode root(String name, PELangStatementNode bodyNode) {
