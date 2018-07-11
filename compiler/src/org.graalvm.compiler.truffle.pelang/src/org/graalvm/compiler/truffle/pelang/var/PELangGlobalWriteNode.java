@@ -24,32 +24,31 @@ package org.graalvm.compiler.truffle.pelang.var;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-@NodeChild("valueNode")
-@NodeField(name = "identifier", type = String.class)
-public abstract class PELangGlobalWriteNode extends PELangExpressionNode {
+public final class PELangGlobalWriteNode extends PELangExpressionNode {
 
-    protected abstract String getIdentifier();
+    private final String identifier;
+    @Child private PELangExpressionNode valueNode;
 
-    @Specialization(guards = "isLong()")
-    protected long writeLong(long value) {
-        return getState().writeLongGlobal(getIdentifier(), value);
+    public PELangGlobalWriteNode(String identifier, PELangExpressionNode valueNode) {
+        this.identifier = identifier;
+        this.valueNode = valueNode;
     }
 
-    @Specialization(replaces = {"writeLong"})
-    protected Object write(Object value) {
-        return getState().writeGlobal(getIdentifier(), value);
+    public String getIdentifier() {
+        return identifier;
     }
 
-    protected boolean isLong() {
-        return getState().isLongGlobal(getIdentifier());
+    public PELangExpressionNode getValueNode() {
+        return valueNode;
     }
 
-    public static PELangGlobalWriteNode createNode(String identifier, PELangExpressionNode valueNode) {
-        return PELangGlobalWriteNodeGen.create(valueNode, identifier);
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        Object value = valueNode.executeGeneric(frame);
+        getState().writeGlobal(identifier, value);
+        return value;
     }
 
 }

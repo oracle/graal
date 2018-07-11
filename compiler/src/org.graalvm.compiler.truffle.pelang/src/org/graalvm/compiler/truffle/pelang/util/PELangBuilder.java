@@ -231,7 +231,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode readGlobal(String identifier) {
-        return PELangGlobalReadNode.createNode(identifier);
+        return new PELangGlobalReadNode(identifier);
     }
 
     public PELangExpressionNode readArgument(int index) {
@@ -251,7 +251,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode writeGlobal(String identifier, PELangExpressionNode valueNode) {
-        return PELangGlobalWriteNode.createNode(identifier, valueNode);
+        return new PELangGlobalWriteNode(identifier, valueNode);
     }
 
     public PELangExpressionNode writeArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
