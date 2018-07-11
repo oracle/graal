@@ -278,8 +278,7 @@ public class InstalledCodeBuilder {
             values[count] = value;
             count++;
 
-            assert offset % FrameAccess.wordSize() == 0;
-            referenceMap.markReferenceAtIndex(offset / FrameAccess.wordSize());
+            referenceMap.markReferenceAtOffset(offset);
         }
     }
 

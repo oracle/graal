@@ -30,6 +30,7 @@ import java.util.BitSet;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.options.Option;
@@ -586,9 +587,9 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-        int idx = (int) (objRef.rawValue() / SubstrateReferenceMap.getSlotSizeInBytes());
-        assert !result.isIndexMarked(idx);
-        result.markReferenceAtIndex(idx, compressed);
+        int offset = NumUtil.safeToInt(objRef.rawValue());
+        assert !result.isOffsetMarked(offset);
+        result.markReferenceAtOffset(offset, compressed);
         return true;
     }
 }
