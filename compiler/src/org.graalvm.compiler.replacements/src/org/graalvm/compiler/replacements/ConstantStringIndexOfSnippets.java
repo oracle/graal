@@ -226,10 +226,10 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         int sourceEnd = sourceCount - targetCountLess1;
 
         long base = byteArrayBaseOffset(INJECTED);
-        int lastByte = UnsafeAccess.UNSAFE.getByte(target, base + targetCountLess1 * 2);
+        int lastByte = UnsafeAccess.UNSAFE.getByte(target, base + targetCountLess1);
 
         outer_loop: for (long i = fromIndex; i < sourceEnd;) {
-            int src = UnsafeAccess.UNSAFE.getByte(source, base + (i + targetCountLess1) * 2);
+            int src = UnsafeAccess.UNSAFE.getByte(source, base + i + targetCountLess1);
             if (src == lastByte) {
                 // With random strings and a 4-character alphabet,
                 // reverse matching at this point sets up 0.8% fewer
@@ -243,8 +243,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                     ExplodeLoopNode.explodeLoop();
                 }
                 for (long j = 0; j < targetCountLess1; j++) {
-                    byte sourceByte = UnsafeAccess.UNSAFE.getByte(source, base + (i + j) * 2);
-                    if (UnsafeAccess.UNSAFE.getByte(target, base + j * 2) != sourceByte) {
+                    byte sourceByte = UnsafeAccess.UNSAFE.getByte(source, base + i + j);
+                    if (UnsafeAccess.UNSAFE.getByte(target, base + j) != sourceByte) {
                         if ((cache & (1 << sourceByte)) == 0) {
                             if (md2 < j + 1) {
                                 i += j + 1;
