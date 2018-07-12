@@ -26,7 +26,10 @@
 package org.graalvm.nativeimage;
 
 /**
- * Utility class to retrieve information about the context in which code gets executed.
+ * Utility class to retrieve information about the context in which code gets executed. The provided
+ * string constants are part of the API and guaranteed to remain unchanged in future versions. This
+ * allows to use {@link System#getProperty(String)} directly with the string literals defined here
+ * thus eliminating the need to depend on this class.
  *
  * @since 1.0
  */
@@ -36,7 +39,7 @@ public final class ImageInfo {
     }
 
     /**
-     * Holds the string that can be used as system property key to access information about the
+     * Holds the string that is the name of the system property providing information about the
      * context in which code is currently executing. If the property returns the string given by
      * {@link #PROPERTY_IMAGE_CODE_VALUE_BUILDTIME} the code is executing in the context of image
      * building (e.g. in a static initializer of a class that will be contained in the image). If
@@ -66,10 +69,10 @@ public final class ImageInfo {
     public static final String PROPERTY_IMAGE_CODE_VALUE_RUNTIME = "runtime";
 
     /**
-     * @return true if (at the time of the call) code is executing in the context of image building
-     *         or during image runtime, else false. This method will be const-folded so that it can
-     *         be used to hide parts of an application that only work when running on the JVM. For
-     *         example: {@code if (!ImageInfo.inImageCode()) { ... JVM specific code here ... }}
+     * Returns true if (at the time of the call) code is executing in the context of image building
+     * or during image runtime, else false. This method will be const-folded so that it can be used
+     * to hide parts of an application that only work when running on the JVM. For example:
+     * {@code if (!ImageInfo.inImageCode()) { ... JVM specific code here ... }}
      *
      * @since 1.0
      */
@@ -78,9 +81,9 @@ public final class ImageInfo {
     }
 
     /**
-     * @return true if (at the time of the call) code is executing at image runtime. This method
-     *         will be const-folded. It can be used to hide parts of an application that only work
-     *         when running as native image.
+     * Returns true if (at the time of the call) code is executing at image runtime. This method
+     * will be const-folded. It can be used to hide parts of an application that only work when
+     * running as native image.
      *
      * @since 1.0
      */
@@ -89,8 +92,8 @@ public final class ImageInfo {
     }
 
     /**
-     * @return true if (at the time of the call) code is executing in the context of image building
-     *         (e.g. in a static initializer of class that will be contained in the image).
+     * Returns true if (at the time of the call) code is executing in the context of image building
+     * (e.g. in a static initializer of class that will be contained in the image).
      *
      * @since 1.0
      */
