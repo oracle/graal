@@ -77,7 +77,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
  * <p>
  * All execution listeners are automatically closed when the engine {@link Engine#close() closed}.
  * To close a listener earlier {@link #close()} may be invoked. Execution listeners are
- * {@link AutoCloseable} and can therefore be used in try-with-resource blocks.
+ * {@link AutoCloseable} and can therefore be used in try-with-resources blocks.
  *
  * <h3>Event Consumers</h3>
  *
@@ -163,6 +163,15 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
  * notice. There are no compatibility guarantees for that provided by the polyglot SDK. Certain
  * language implementations may do so. Please see the language implementation documentation for
  * further details.
+ *
+ * <h3>Use-cases</h3>
+ *
+ * Execution listeners are designed as simple API for polyglot embedders to capture cross cutting
+ * concerns of the execution of programs. For example, it can be used to count all statements
+ * executed in order to detect potentially malicious code. It is not designed to be an API for
+ * implementing fully fledged tools. The
+ * <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/implement-instrument/">Truffle
+ * instrumentation framework</a> should be used for that purpose instead.
  *
  * @since 1.0
  */
@@ -261,9 +270,9 @@ public final class ExecutionListener implements AutoCloseable {
         }
 
         /**
-         * Set an addition filter execution events by source. By default all sources are included.
-         * Source predicates must be stable, i.e. always return the same result for a source. The
-         * filter predicate may be invoked on multiple threads at the same time.
+         * Set an addition filter that filters execution events by source. By default all sources
+         * are included. Source predicates must be stable, i.e. always return the same result for a
+         * source. The filter predicate may be invoked on multiple threads at the same time.
          *
          * @param predicate the source predicate that returns <code>true</code> for a source to be
          *            included and <code>false</code> otherwise.
@@ -329,8 +338,9 @@ public final class ExecutionListener implements AutoCloseable {
         }
 
         /**
-         * Collect additional execution event data for input values. The error may be accessed in
-         * {@link #onReturn(Consumer) OnReturn} events with {@link ExecutionEvent#getInputValues()}.
+         * Collect additional execution event data for input values. The input values may be
+         * accessed in {@link #onReturn(Consumer) OnReturn} events with
+         * {@link ExecutionEvent#getInputValues()}.
          * <p>
          * If additional event data is collected then the peak performance overhead of execution
          * listeners is significant. It is not recommended to collect additional event data when

@@ -31,11 +31,11 @@
  * The management package provides tools that monitor and instrument the behavior of guest language
  * programs.
  * <p>
- * See <link <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to
- * use this API.
+ * See <link <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for
+ * more examples on how to use this API.
  *
  * @see org.graalvm.polyglot.management.ExecutionListener Execution listeners allow to instrument
- *      the execution of guest languages..
+ *      the execution of guest languages.
  * @since 1.0
  */
 package org.graalvm.polyglot.management;

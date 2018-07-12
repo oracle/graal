@@ -201,12 +201,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
 
     @Override
     public SourceSection getLocation(Object impl) {
-        try {
-            return ((Event) impl).getLocation();
-        } catch (Throwable t) {
-            assert false;
-            throw t;
-        }
+        return ((Event) impl).getLocation();
     }
 
     @Override
