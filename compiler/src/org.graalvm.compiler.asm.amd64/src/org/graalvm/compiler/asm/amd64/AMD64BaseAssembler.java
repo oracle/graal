@@ -575,7 +575,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
             }
             emitInt(disp);
         } else if (base.isValid()) {
+            boolean overriddenForce4Byte = force4Byte;
             int baseenc = base.isValid() ? encode(base) : 0;
+
             if (index.isValid()) {
                 int indexenc = encode(index) << 3;
                 // [base + indexscale + disp]
@@ -586,18 +588,18 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     emitByte(0x04 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
                 } else {
-                    if (evexDisp8Scale > 1 && !force4Byte) {
+                    if (evexDisp8Scale > 1 && !overriddenForce4Byte) {
                         if (disp % evexDisp8Scale == 0) {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !force4Byte;
+                                assert isByte(disp) && !overriddenForce4Byte;
                             }
                         } else {
-                            force4Byte = true;
+                            overriddenForce4Byte = true;
                         }
                     }
-                    if (isByte(disp) && !force4Byte) {
+                    if (isByte(disp) && !overriddenForce4Byte) {
                         // [base + indexscale + imm8]
                         // [01 reg 100][ss index base] imm8
                         assert !index.equals(rsp) : "illegal addressing mode";
@@ -621,18 +623,18 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     emitByte(0x04 | regenc);
                     emitByte(0x24);
                 } else {
-                    if (evexDisp8Scale > 1 && !force4Byte) {
+                    if (evexDisp8Scale > 1 && !overriddenForce4Byte) {
                         if (disp % evexDisp8Scale == 0) {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !force4Byte;
+                                assert isByte(disp) && !overriddenForce4Byte;
                             }
                         } else {
-                            force4Byte = true;
+                            overriddenForce4Byte = true;
                         }
                     }
-                    if (isByte(disp) && !force4Byte) {
+                    if (isByte(disp) && !overriddenForce4Byte) {
                         // [rsp + imm8]
                         // [01 reg 100][00 100 100] disp8
                         emitByte(0x44 | regenc);
@@ -654,18 +656,18 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     // [00 reg base]
                     emitByte(0x00 | regenc | baseenc);
                 } else {
-                    if (evexDisp8Scale > 1 && !force4Byte) {
+                    if (evexDisp8Scale > 1 && !overriddenForce4Byte) {
                         if (disp % evexDisp8Scale == 0) {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !force4Byte;
+                                assert isByte(disp) && !overriddenForce4Byte;
                             }
                         } else {
-                            force4Byte = true;
+                            overriddenForce4Byte = true;
                         }
                     }
-                    if (isByte(disp) && !force4Byte) {
+                    if (isByte(disp) && !overriddenForce4Byte) {
                         // [base + disp8]
                         // [01 reg base] disp8
                         emitByte(0x40 | regenc | baseenc);
@@ -955,7 +957,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         private final int scalingFactorVL256;
         private final int scalingFactorVL512;
 
-        private EVEXTuple(int scalingFactorVL128, int scalingFactorVL256, int scalingFactorVL512) {
+        EVEXTuple(int scalingFactorVL128, int scalingFactorVL256, int scalingFactorVL512) {
             this.scalingFactorVL128 = scalingFactorVL128;
             this.scalingFactorVL256 = scalingFactorVL256;
             this.scalingFactorVL512 = scalingFactorVL512;
