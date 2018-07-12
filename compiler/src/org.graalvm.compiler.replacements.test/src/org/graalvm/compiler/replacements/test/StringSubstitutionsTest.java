@@ -108,9 +108,18 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
         test("indexOfConstant");
     }
 
-    public void indexOfConstant() {
+    public int indexOfConstant() {
         String foobar = "foobar";
         String bar = "bar";
-        foobar.indexOf(bar);
+        return foobar.indexOf(bar);
+    }
+
+    @Test
+    public void testIndexOfConstantUTF16() {
+        test("indexOfConstantUTF16");
+    }
+
+    public int indexOfConstantUTF16() {
+        return "grga čvarak".indexOf("čvarak");
     }
 }

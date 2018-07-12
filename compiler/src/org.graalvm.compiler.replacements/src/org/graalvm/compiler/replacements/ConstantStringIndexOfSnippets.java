@@ -50,6 +50,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
 
         private final SnippetInfo indexOfConstant = snippet(ConstantStringIndexOfSnippets.class, "indexOfConstant");
         private final SnippetInfo latin1IndexOfConstant = snippet(ConstantStringIndexOfSnippets.class, "latin1IndexOfConstant");
+        private final SnippetInfo utf16IndexOfConstant = snippet(ConstantStringIndexOfSnippets.class, "utf16IndexOfConstant");
 
         public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             super(options, factories, providers, snippetReflection, target);
@@ -83,6 +84,20 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.addConst("md2", md2(targetByteArray));
             args.addConst("cache", computeCache(targetByteArray));
             template(latin1IndexOf, args).instantiate(providers.getMetaAccess(), latin1IndexOf, DEFAULT_REPLACER, args);
+        }
+
+        public void lowerUTF16(SnippetLowerableMemoryNode utf16IndexOf, LoweringTool tool) {
+            StructuredGraph graph = utf16IndexOf.graph();
+            Arguments args = new Arguments(utf16IndexOfConstant, graph.getGuardsStage(), tool.getLoweringStage());
+            args.add("source", utf16IndexOf.getArgument(0));
+            args.add("sourceCount", utf16IndexOf.getArgument(1));
+            args.addConst("target", utf16IndexOf.getArgument(2));
+            args.add("targetCount", utf16IndexOf.getArgument(3));
+            args.add("origFromIndex", utf16IndexOf.getArgument(4));
+            byte[] targetByteArray = snippetReflection.asObject(byte[].class, utf16IndexOf.getArgument(2).asJavaConstant());
+            args.addConst("md2", md2(targetByteArray));
+            args.addConst("cache", computeCache(targetByteArray));
+            template(utf16IndexOf, args).instantiate(providers.getMetaAccess(), utf16IndexOf, DEFAULT_REPLACER, args);
         }
     }
 
@@ -198,6 +213,64 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                     }
                 }
                 return (int) (i - sourceOffset);
+            }
+            if ((cache & (1 << src)) == 0) {
+                i += targetCountLess1;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    @Snippet
+    public static int utf16IndexOfConstant(byte[] source, int sourceCount,
+                    @ConstantParameter byte[] target, int targetCount,
+                    int origFromIndex, @ConstantParameter int md2, @ConstantParameter long cache) {
+        int fromIndex = origFromIndex;
+        if (fromIndex >= sourceCount) {
+            return (targetCount == 0 ? sourceCount : -1);
+        }
+        if (fromIndex < 0) {
+            fromIndex = 0;
+        }
+        if (targetCount == 0) {
+            return fromIndex;
+        }
+
+        int targetCountLess1 = targetCount - 1;
+        int sourceEnd = sourceCount - targetCountLess1;
+
+        long base = byteArrayBaseOffset(INJECTED);
+        int lastByte = UnsafeAccess.UNSAFE.getByte(target, base + targetCountLess1 * 2);
+
+        outer_loop: for (long i = fromIndex; i < sourceEnd;) {
+            int src = UnsafeAccess.UNSAFE.getByte(source, base + (i + targetCountLess1) * 2);
+            if (src == lastByte) {
+                // With random strings and a 4-character alphabet,
+                // reverse matching at this point sets up 0.8% fewer
+                // frames, but (paradoxically) makes 0.3% more probes.
+                // Since those probes are nearer the lastByte probe,
+                // there is may be a net D$ win with reverse matching.
+                // But, reversing loop inhibits unroll of inner loop
+                // for unknown reason. So, does running outer loop from
+                // (sourceOffset - targetCountLess1) to (sourceOffset + sourceCount)
+                if (targetCount <= 8) {
+                    ExplodeLoopNode.explodeLoop();
+                }
+                for (long j = 0; j < targetCountLess1; j++) {
+                    byte sourceByte = UnsafeAccess.UNSAFE.getByte(source, base + (i + j) * 2);
+                    if (UnsafeAccess.UNSAFE.getByte(target, base + j * 2) != sourceByte) {
+                        if ((cache & (1 << sourceByte)) == 0) {
+                            if (md2 < j + 1) {
+                                i += j + 1;
+                                continue outer_loop;
+                            }
+                        }
+                        i += md2;
+                        continue outer_loop;
+                    }
+                }
+                return (int) i;
             }
             if ((cache & (1 << src)) == 0) {
                 i += targetCountLess1;

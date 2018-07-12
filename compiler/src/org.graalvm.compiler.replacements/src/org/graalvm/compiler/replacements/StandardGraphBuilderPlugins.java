@@ -205,6 +205,9 @@ public class StandardGraphBuilderPlugins {
             final Registration latin1r = new Registration(plugins, "java.lang.StringLatin1", bytecodeProvider);
             latin1r.register5("indexOf", byte[].class, int.class, byte[].class, int.class, int.class, new StringLatin1IndexOfConstantPlugin());
 
+            final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
+            utf16r.register5("indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class, new StringUTF16IndexOfConstantPlugin());
+
             Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
@@ -584,6 +587,24 @@ public class StandardGraphBuilderPlugins {
             if (target.isConstant()) {
                 b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
                                 source, sourceCount, target, targetCount, origFromIndex));
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class StringUTF16IndexOfConstantPlugin implements InvocationPlugin {
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
+                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
+            if (target.isConstant()) {
+                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
+                        source, sourceCount, target, targetCount, origFromIndex));
                 return true;
             }
             return false;
