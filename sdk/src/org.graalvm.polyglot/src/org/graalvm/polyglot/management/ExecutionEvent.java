@@ -33,8 +33,8 @@ import static org.graalvm.polyglot.management.ExecutionListener.IMPL;
 
 /**
  * An execution event object passed to an execution listener consumer. Execution event instances
- * remain valid until the engine is closed. Values and returned errors will only remain valid until
- * the context was closed.
+ * remain valid until the engine is closed. Values and returned exceptions will only remain valid
+ * until the context was closed.
  *
  * @see ExecutionListener For further details.
  * @since 1.0
@@ -74,9 +74,9 @@ public final class ExecutionEvent {
      * {@link ExecutionListener.Builder#collectInputValues(boolean) enabled}. Input values are
      * available in {@link ExecutionListener.Builder#onReturn(java.util.function.Consumer) OnReturn}
      * events.The returned list may contain <code>null</code> values if input values were not
-     * evaluated or if an error occurred executing input values. The returned list is unmodifiable.
-     * The returned input values may escape the event consumer and remain valid until the context is
-     * closed.
+     * evaluated or if an exception occurred executing input values. The returned list is
+     * unmodifiable. The returned input values may escape the event consumer and remain valid until
+     * the context is closed.
      *
      * @since 1.0
      */
@@ -99,17 +99,17 @@ public final class ExecutionEvent {
     }
 
     /**
-     * Returns the error of this source location after it was executed. This method returns
-     * <code>null</code> if error collection is not
-     * {@link ExecutionListener.Builder#collectErrors(boolean) enabled}. Errors are only available
-     * in {@link ExecutionListener.Builder#onReturn(java.util.function.Consumer) OnReturn} events if
-     * an error was thrown when the location was executed. The returned value is allowed to escape
-     * the event consumer and remains valid until the context is closed.
+     * Returns the exception of this source location after it was executed. This method returns
+     * <code>null</code> if exception collection is not
+     * {@link ExecutionListener.Builder#collectExceptions(boolean) enabled}. Exceptions are only
+     * available in {@link ExecutionListener.Builder#onReturn(java.util.function.Consumer) OnReturn}
+     * events if an exception was thrown when the location was executed. The returned value is
+     * allowed to escape the event consumer and remains valid until the context is closed.
      *
      * @since 1.0
      */
-    public PolyglotException getError() {
-        return IMPL.getError(impl);
+    public PolyglotException getException() {
+        return IMPL.getException(impl);
     }
 
     /**
@@ -174,9 +174,9 @@ public final class ExecutionEvent {
         if (returnValue != null) {
             b.append("returnValue=").append(returnValue).append(", ");
         }
-        PolyglotException error = getError();
-        if (error != null) {
-            b.append("error=").append(error).append(", ");
+        PolyglotException exception = getException();
+        if (exception != null) {
+            b.append("exception=").append(exception).append(", ");
         }
         b.append("location=").append(getLocation());
         b.append("]");

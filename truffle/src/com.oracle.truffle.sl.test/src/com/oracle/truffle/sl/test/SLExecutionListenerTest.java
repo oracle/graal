@@ -84,7 +84,7 @@ public class SLExecutionListenerTest {
     public void testRootsAndStatements() {
         ExecutionListener.newBuilder().onEnter(this::add).onReturn(this::add).//
                         roots(true).statements(true).//
-                        collectErrors(true).collectInputValues(true).collectReturnValue(true).//
+                        collectExceptions(true).collectInputValues(true).collectReturnValue(true).//
                         attach(context.getEngine());
 
         eval("return 2;");
@@ -99,7 +99,7 @@ public class SLExecutionListenerTest {
     public void testStatements() {
         ExecutionListener.newBuilder().onEnter(this::add).onReturn(this::add).//
                         statements(true).//
-                        collectErrors(true).collectInputValues(true).collectReturnValue(true).//
+                        collectExceptions(true).collectInputValues(true).collectReturnValue(true).//
                         attach(context.getEngine());
 
         eval("2 + 3;");
@@ -117,7 +117,7 @@ public class SLExecutionListenerTest {
     public void testExpressions() {
         ExecutionListener.newBuilder().onEnter(this::add).onReturn(this::add).//
                         expressions(true).//
-                        collectErrors(true).collectInputValues(true).collectReturnValue(true).//
+                        collectExceptions(true).collectInputValues(true).collectReturnValue(true).//
                         attach(context.getEngine());
         eval("2 + 3;");
 
@@ -133,7 +133,7 @@ public class SLExecutionListenerTest {
     public void testRoots() {
         ExecutionListener.newBuilder().onEnter(this::add).onReturn(this::add).//
                         roots(true).//
-                        collectErrors(true).collectInputValues(true).collectReturnValue(true).//
+                        collectExceptions(true).collectInputValues(true).collectReturnValue(true).//
                         attach(context.getEngine());
 
         eval("return 2;");
@@ -146,7 +146,7 @@ public class SLExecutionListenerTest {
     public void testExpressionsStatementsAndRoots() {
         ExecutionListener.newBuilder().onEnter(this::add).onReturn(this::add).//
                         expressions(true).statements(true).//
-                        collectErrors(true).collectInputValues(true).collectReturnValue(true).//
+                        collectExceptions(true).collectInputValues(true).collectReturnValue(true).//
                         attach(context.getEngine());
 
         eval("2 + 3;");
@@ -174,7 +174,7 @@ public class SLExecutionListenerTest {
         Value factorial = context.getBindings("sl").getMember("fac");
         ExecutionListener.newBuilder().onReturn(this::add).onEnter(this::add).//
                         expressions(true).statements(true).roots(true).//
-                        collectErrors(true).collectInputValues(true).collectReturnValue(true).//
+                        collectExceptions(true).collectInputValues(true).collectReturnValue(true).//
                         attach(context.getEngine());
         expectedRootName = "fac";
         assertEquals(0, events.size());

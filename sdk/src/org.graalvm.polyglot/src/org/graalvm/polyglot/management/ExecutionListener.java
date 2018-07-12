@@ -109,8 +109,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
  * <li>{@link Builder#collectInputValues(boolean) Input values}: Enables access to
  * {@link ExecutionEvent#getInputValues() input values} in {@link Builder#onReturn(Consumer)
  * OnReturn} events.
- * <li>{@link Builder#collectErrors(boolean) Errors}: Enables access to
- * {@link ExecutionEvent#getError() errors} in {@link Builder#onReturn(Consumer) OnReturn} events.
+ * <li>{@link Builder#collectExceptions(boolean) Errors}: Enables access to
+ * {@link ExecutionEvent#getException() errors} in {@link Builder#onReturn(Consumer) OnReturn}
+ * events.
  * </ul>
  * If additional event data is collected then the peak performance overhead of execution listeners
  * is significant. It is not recommended to collect additional event data when running production
@@ -178,7 +179,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
 public final class ExecutionListener implements AutoCloseable {
 
     private static final ExecutionListener EMPTY = new ExecutionListener(null);
-
     private final Object impl;
 
     private ExecutionListener(Object impl) {
@@ -243,7 +243,7 @@ public final class ExecutionListener implements AutoCloseable {
         private Predicate<String> rootNameFilter;
         private boolean collectInputValues;
         private boolean collectReturnValues;
-        private boolean collectErrors;
+        private boolean collectExceptions;
 
         Builder() {
         }
@@ -373,7 +373,7 @@ public final class ExecutionListener implements AutoCloseable {
 
         /**
          * Collect additional execution event data about errors. The error may be accessed in
-         * {@link #onReturn(Consumer) OnReturn} events with {@link ExecutionEvent#getError()}.
+         * {@link #onReturn(Consumer) OnReturn} events with {@link ExecutionEvent#getException()}.
          * <p>
          * If additional event data is collected then the peak performance overhead of execution
          * listeners is significant. It is not recommended to collect additional event data when
@@ -382,8 +382,8 @@ public final class ExecutionListener implements AutoCloseable {
          * @param enabled <code>true</code> if enabled, else <code>false</code>
          * @since 1.0
          */
-        public Builder collectErrors(boolean enabled) {
-            this.collectErrors = enabled;
+        public Builder collectExceptions(boolean enabled) {
+            this.collectExceptions = enabled;
             return this;
         }
 
@@ -412,7 +412,7 @@ public final class ExecutionListener implements AutoCloseable {
         public ExecutionListener attach(Engine engine) {
             return new ExecutionListener(
                             IMPL.attachExecutionListener(engine, onEnter, onReturn, expressions, statements, roots,
-                                            sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectErrors));
+                                            sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectExceptions));
         }
     }
 

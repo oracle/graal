@@ -181,9 +181,9 @@ public abstract class AbstractPolyglotImpl {
                         boolean expressions,
                         boolean statements,
                         boolean roots,
-                        Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors);
+                        Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
-        public abstract PolyglotException getError(Object impl);
+        public abstract PolyglotException getException(Object impl);
 
     }
 

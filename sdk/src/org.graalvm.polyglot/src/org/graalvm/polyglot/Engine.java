@@ -605,7 +605,7 @@ public final class Engine implements AutoCloseable {
                 }
 
                 @Override
-                public PolyglotException getError(Object impl) {
+                public PolyglotException getException(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 

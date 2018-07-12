@@ -90,7 +90,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("EXPRESSION");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertFalse(event.isRoot());
@@ -115,7 +115,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("STATEMENT");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertFalse(event.isRoot());
@@ -140,7 +140,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("ROOT");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertTrue(event.isRoot());
@@ -165,7 +165,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("EXPRESSION");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertFalse(event.isRoot());
@@ -190,7 +190,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("STATEMENT");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertFalse(event.isRoot());
@@ -215,7 +215,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("ROOT");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertTrue(event.isRoot());
@@ -240,7 +240,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("TRY(EXPRESSION(THROW(error, message)), CATCH(error))");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertFalse(event.isRoot());
@@ -265,7 +265,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("TRY(STATEMENT(THROW(error, message)), CATCH(error))");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertFalse(event.isRoot());
@@ -289,7 +289,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         eval("TRY(ROOT(THROW(error, message)), CATCH(error))");
 
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
         assertNull(event.getInputValues());
         assertNull(event.getReturnValue());
         assertTrue(event.isRoot());
@@ -419,7 +419,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
     @Test
     public void testCollectErrors() {
         ExecutionEvent event;
-        setupListener(ExecutionListener.newBuilder().onReturn(this::add).expressions(true).collectErrors(true));
+        setupListener(ExecutionListener.newBuilder().onReturn(this::add).expressions(true).collectExceptions(true));
         PolyglotException thrownError = null;
         try {
             eval("EXPRESSION(THROW(foo, msg))");
@@ -429,19 +429,19 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
 
         assertNotNull(thrownError);
         event = events.pop();
-        assertNotNull(event.getError());
-        assertNotSame(event.getError(), thrownError);
-        assertEquals(event.getError(), thrownError);
-        assertNull(event.getError().getCause());
-        assertEquals("msg", event.getError().getMessage());
-        assertEquals("THROW(foo, msg)", event.getError().getSourceLocation().getCharacters());
-        assertEquals("foo: msg", event.getError().getGuestObject().asString());
+        assertNotNull(event.getException());
+        assertNotSame(event.getException(), thrownError);
+        assertEquals(event.getException(), thrownError);
+        assertNull(event.getException().getCause());
+        assertEquals("msg", event.getException().getMessage());
+        assertEquals("THROW(foo, msg)", event.getException().getSourceLocation().getCharacters());
+        assertEquals("foo: msg", event.getException().getGuestObject().asString());
 
         List<PolyglotException.StackFrame> stackFrames = new ArrayList<>();
-        event.getError().getPolyglotStackTrace().forEach(stackFrames::add);
+        event.getException().getPolyglotStackTrace().forEach(stackFrames::add);
         assertEquals(context.getEngine().getLanguages().get(InstrumentationTestLanguage.ID), stackFrames.get(0).getLanguage());
         assertFalse(stackFrames.get(0).isHostFrame());
-        assertEquals(event.getError().getSourceLocation(), stackFrames.get(0).getSourceLocation());
+        assertEquals(event.getException().getSourceLocation(), stackFrames.get(0).getSourceLocation());
         assertTrue(stackFrames.get(0).isGuestFrame());
         // assert trailing host frames
         for (int i = 1; i < stackFrames.size(); i++) {
@@ -455,27 +455,27 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         }
 
         event = events.pop();
-        assertNotNull(event.getError());
-        assertNotSame(event.getError(), thrownError);
-        assertEquals(event.getError(), thrownError);
-        assertNull(event.getError().getCause());
-        assertTrue(event.getError().isInternalError());
-        assertEquals("internal: msg", event.getError().getGuestObject().asString());
+        assertNotNull(event.getException());
+        assertNotSame(event.getException(), thrownError);
+        assertEquals(event.getException(), thrownError);
+        assertNull(event.getException().getCause());
+        assertTrue(event.getException().isInternalError());
+        assertEquals("internal: msg", event.getException().getGuestObject().asString());
     }
 
     @Test
     public void testCollectErrorsOnReturn() {
         ExecutionEvent event;
-        setupListener(ExecutionListener.newBuilder().onReturn(this::add).expressions(true).collectErrors(true));
+        setupListener(ExecutionListener.newBuilder().onReturn(this::add).expressions(true).collectExceptions(true));
         eval("EXPRESSION");
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
     }
 
     @Test
     public void testCollectErrorsOnEnter() {
         ExecutionEvent event;
-        setupListener(ExecutionListener.newBuilder().onEnter(this::add).expressions(true).collectErrors(true));
+        setupListener(ExecutionListener.newBuilder().onEnter(this::add).expressions(true).collectExceptions(true));
         PolyglotException thrownError = null;
         try {
             eval("EXPRESSION(THROW(foo, msg))");
@@ -484,13 +484,13 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         }
         assertNotNull(thrownError);
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
     }
 
     @Test
     public void testCollectErrorsDisabled() {
         ExecutionEvent event;
-        setupListener(ExecutionListener.newBuilder().onReturn(this::add).expressions(true).collectErrors(false));
+        setupListener(ExecutionListener.newBuilder().onReturn(this::add).expressions(true).collectExceptions(false));
         PolyglotException thrownError = null;
         try {
             eval("EXPRESSION(THROW(foo, msg))");
@@ -499,7 +499,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         }
         assertNotNull(thrownError);
         event = events.pop();
-        assertNull(event.getError());
+        assertNull(event.getException());
     }
 
     @Test
@@ -694,7 +694,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
 
         setupListener(ExecutionListener.newBuilder().onEnter((e) -> {
             throw new RuntimeException();
-        }).expressions(true).collectErrors(true).collectInputValues(true).collectReturnValue(true));
+        }).expressions(true).collectExceptions(true).collectInputValues(true).collectReturnValue(true));
 
         try {
             eval("EXPRESSION");
@@ -719,7 +719,7 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
 
         setupListener(ExecutionListener.newBuilder().onReturn((e) -> {
             throw new RuntimeException();
-        }).expressions(true).collectErrors(true).collectInputValues(true).collectReturnValue(true));
+        }).expressions(true).collectExceptions(true).collectInputValues(true).collectReturnValue(true));
 
         try {
             eval("EXPRESSION");
@@ -743,8 +743,8 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         }
 
         setupListener(ExecutionListener.newBuilder().onReturn((e) -> {
-            throw new RuntimeException(e.getError());
-        }).expressions(true).collectErrors(true).collectInputValues(true).collectReturnValue(true));
+            throw new RuntimeException(e.getException());
+        }).expressions(true).collectExceptions(true).collectInputValues(true).collectReturnValue(true));
 
         try {
             eval("TRY(EXPRESSION(THROW(error, message)), CATCH(error))");
