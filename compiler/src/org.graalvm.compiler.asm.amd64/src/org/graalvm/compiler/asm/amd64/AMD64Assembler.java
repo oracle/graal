@@ -3448,7 +3448,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert dst.getRegisterCategory().equals(XMM);
         evexPrefix(dst, Register.None, src, Register.None, AVXSize.ZMM, P_F3, M_0F, W1, Z0, B0);
         emitByte(0x6F);
-        emitOperandHelper(dst, src, 0, EVEXTuple.FVM.getSIBDispScalingFactor(AVXSize.ZMM));
+        emitEVEXOperandHelper(dst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXSize.ZMM));
     }
 
     public final void evpmovzxbw(Register dst, AMD64Address src) {
@@ -3456,7 +3456,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert dst.getRegisterCategory().equals(XMM);
         evexPrefix(dst, Register.None, src, Register.None, AVXSize.ZMM, P_66, M_0F38, WIG, Z0, B0);
         emitByte(0x30);
-        emitOperandHelper(dst, src, 0, EVEXTuple.HVM.getSIBDispScalingFactor(AVXSize.ZMM));
+        emitEVEXOperandHelper(dst, src, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXSize.ZMM));
     }
 
     public final void evpcmpeqb(Register kdst, Register nds, AMD64Address src) {
@@ -3464,6 +3464,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert kdst.getRegisterCategory().equals(MASK) && nds.getRegisterCategory().equals(XMM);
         evexPrefix(kdst, nds, src, Register.None, AVXSize.ZMM, P_66, M_0F, WIG, Z0, B0);
         emitByte(0x74);
-        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getSIBDispScalingFactor(AVXSize.ZMM));
+        emitEVEXOperandHelper(kdst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXSize.ZMM));
     }
 }

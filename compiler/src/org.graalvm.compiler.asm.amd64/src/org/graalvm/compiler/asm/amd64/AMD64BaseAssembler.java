@@ -539,9 +539,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
         emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, 1);
     }
 
-    protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize, int dispScale) {
+    protected final void emitEVEXOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize, int evexDisp8Scale) {
         assert !reg.equals(Register.None);
-        emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, dispScale);
+        emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, evexDisp8Scale);
     }
 
     /**
@@ -552,8 +552,11 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * @param additionalInstructionSize the number of bytes that will be emitted after the operand,
      *            so that the start position of the next instruction can be computed even though
      *            this instruction has not been completely emitted yet.
+     * @param evexDisp8Scale the scaling factor for computing the compressed displacement of
+     *            EVEX-encoded instructions. This scaling factor only matters when the emitted
+     *            instruction uses one-byte-displacement form.
      */
-    private void emitOperandHelper(int reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize, int dispScale) {
+    private void emitOperandHelper(int reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize, int evexDisp8Scale) {
         assert (reg & 0x07) == reg;
         int regenc = reg << 3;
 
@@ -583,9 +586,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     emitByte(0x04 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
                 } else {
-                    if (dispScale > 1 && !force4Byte) {
-                        if (disp % dispScale == 0) {
-                            int newDisp = disp / dispScale;
+                    if (evexDisp8Scale > 1 && !force4Byte) {
+                        if (disp % evexDisp8Scale == 0) {
+                            int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
                                 assert isByte(disp) && !force4Byte;
@@ -618,9 +621,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     emitByte(0x04 | regenc);
                     emitByte(0x24);
                 } else {
-                    if (dispScale > 1 && !force4Byte) {
-                        if (disp % dispScale == 0) {
-                            int newDisp = disp / dispScale;
+                    if (evexDisp8Scale > 1 && !force4Byte) {
+                        if (disp % evexDisp8Scale == 0) {
+                            int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
                                 assert isByte(disp) && !force4Byte;
@@ -651,9 +654,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     // [00 reg base]
                     emitByte(0x00 | regenc | baseenc);
                 } else {
-                    if (dispScale > 1 && !force4Byte) {
-                        if (disp % dispScale == 0) {
-                            int newDisp = disp / dispScale;
+                    if (evexDisp8Scale > 1 && !force4Byte) {
+                        if (disp % evexDisp8Scale == 0) {
+                            int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
                                 assert isByte(disp) && !force4Byte;
@@ -965,7 +968,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
             return scalingFactor;
         }
 
-        public int getSIBDispScalingFactor(AVXSize size) {
+        public int getDisp8ScalingFactor(AVXSize size) {
             switch (size) {
                 case XMM:
                     return verifyScalingFactor(scalingFactorVL128);
