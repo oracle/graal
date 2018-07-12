@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -166,11 +167,24 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value) {
-        return new LLVMConstantValueProvider.InteropValue(value.getObject(), value.getOffset());
+        final Object obj = value.getObject();
+        final long offset = value.getOffset();
+        if (offset == 0) {
+            final LLVMDebugValue unwrappedValue = executeWithTarget(obj);
+            if (unwrappedValue != LLVMDebugValue.UNAVAILABLE) {
+                return unwrappedValue;
+            }
+        }
+        return new LLVMConstantValueProvider.InteropValue(obj, offset);
     }
 
-    protected LLVMDebugValue createFromGlobal(@SuppressWarnings("unused") LLVMGlobal value, @SuppressWarnings("unused") LLVMMemory memory) {
-        return LLVMDebugValue.UNAVAILABLE;
+    @Specialization
+    protected LLVMDebugValue fromGlobalContainer(LLVMGlobalContainer value) {
+        if (value.isInNative()) {
+            return executeWithTarget(LLVMNativePointer.create(value.getAddress()));
+        } else {
+            return executeWithTarget(value.get());
+        }
     }
 
     @Specialization
