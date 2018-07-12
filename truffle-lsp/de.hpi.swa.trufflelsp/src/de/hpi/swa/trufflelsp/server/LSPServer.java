@@ -55,7 +55,6 @@ import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.SignatureHelp;
-import org.eclipse.lsp4j.SignatureHelpOptions;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentPositionParams;
@@ -72,13 +71,15 @@ import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 
+import com.google.gson.JsonPrimitive;
+
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 
 public class LSPServer implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
     private static final String SHOW_COVERAGE = "show_coverage";
     private static final String ANALYSE_COVERAGE = "analyse_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
-    private final TruffleAdapter truffle;
+    private final TruffleAdapter truffleAdapter;
     private final PrintWriter err;
     private final PrintWriter info;
 // private int shutdown = 1;
@@ -90,7 +91,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     private ServerSocket serverSocket;
 
     private LSPServer(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
-        this.truffle = adapter;
+        this.truffleAdapter = adapter;
         this.info = info;
         this.err = err;
     }
@@ -130,7 +131,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     public CompletableFuture<Object> shutdown() {
         info.println("[Truffle LSP] Shutting down server...");
-        info.flush();
         return CompletableFuture.completedFuture(null);
     }
 
@@ -142,7 +142,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         }
         this.executor.shutdownNow();
         info.println("[Truffle LSP] Server shutdown done.");
-        info.flush();
     }
 
     public TextDocumentService getTextDocumentService() {
@@ -199,8 +198,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams position) {
         try {
-            System.out.println(position.getContext());
-            CompletionList result = this.truffle.getCompletions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+            CompletionList result = this.truffleAdapter.getCompletions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
             return CompletableFuture.supplyAsync(() -> Either.forRight(result));
         } finally {
             reportCollectedDiagnostics();
@@ -215,19 +213,19 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<Hover> hover(TextDocumentPositionParams position) {
-        Hover hover = this.truffle.getHover(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+        Hover hover = this.truffleAdapter.getHover(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
         return CompletableFuture.completedFuture(hover);
     }
 
     @Override
     public CompletableFuture<SignatureHelp> signatureHelp(TextDocumentPositionParams position) {
-        SignatureHelp help = this.truffle.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+        SignatureHelp help = this.truffleAdapter.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
         return CompletableFuture.completedFuture(help);
     }
 
     @Override
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
-        List<? extends Location> result = this.truffle.getDefinitions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+        List<? extends Location> result = this.truffleAdapter.getDefinitions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
         return CompletableFuture.completedFuture(result);
     }
 
@@ -239,14 +237,14 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(TextDocumentPositionParams position) {
-        List<? extends DocumentHighlight> highlights = this.truffle.getHighlights(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
+        List<? extends DocumentHighlight> highlights = this.truffleAdapter.getHighlights(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
                         position.getPosition().getCharacter());
         return CompletableFuture.supplyAsync(() -> highlights);
     }
 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
-        List<? extends SymbolInformation> result = truffle.getSymbolInfo(URI.create(params.getTextDocument().getUri()));
+        List<? extends SymbolInformation> result = truffleAdapter.getSymbolInfo(URI.create(params.getTextDocument().getUri()));
         return CompletableFuture.completedFuture(result);
     }
 
@@ -306,7 +304,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         URI uri = URI.create(params.getTextDocument().getUri());
         this.openedFileUri2LangId.put(uri, params.getTextDocument().getLanguageId());
 
-        this.truffle.didOpen(uri, params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
+        this.truffleAdapter.didOpen(uri, params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
 
         parseDocument(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId(),
                         params.getTextDocument().getText());
@@ -334,12 +332,12 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     private void parseDocument(final String documentUri, final String langId, final String text) {
-        this.truffle.parse(text, langId, URI.create(documentUri));
+        this.truffleAdapter.parse(text, langId, URI.create(documentUri));
         reportCollectedDiagnostics(documentUri, true);
     }
 
     private void processChangesAndParseDocument(String documentUri, List<? extends TextDocumentContentChangeEvent> list) {
-        this.truffle.processChangesAndParse(list, URI.create(documentUri));
+        this.truffleAdapter.processChangesAndParse(list, URI.create(documentUri));
         reportCollectedDiagnostics(documentUri, true);
     }
 
@@ -349,7 +347,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         String removed = this.openedFileUri2LangId.remove(uri);
         assert removed != null : uri.toString();
 
-        this.truffle.didClose(uri);
+        this.truffleAdapter.didClose(uri);
     }
 
     @Override
@@ -366,6 +364,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params) {
+        // TODO(ds) client configs are not used atm...
         if (params.getSettings() instanceof Map<?, ?>) {
             Map<?, ?> settings = (Map<?, ?>) params.getSettings();
             if (settings.get("truffleLsp") instanceof Map<?, ?>) {
@@ -387,10 +386,10 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
         if (ANALYSE_COVERAGE.equals(params.getCommand())) {
             this.client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analysis..."));
-            String uri = (String) params.getArguments().get(0);
+            String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
             boolean hasErrors;
             try {
-                this.truffle.runConverageAnalysis(URI.create(uri));
+                this.truffleAdapter.runConverageAnalysis(URI.create(uri));
             } finally {
                 hasErrors = hasErrorsInDiagnostics();
                 reportCollectedDiagnostics();
@@ -405,7 +404,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             String uri = (String) params.getArguments().get(0);
 
             try {
-                this.truffle.showCoverage(URI.create(uri));
+                this.truffleAdapter.showCoverage(URI.create(uri));
             } finally {
                 reportCollectedDiagnostics(uri, true);
             }
@@ -418,7 +417,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         return "verbose".equals(this.trace_server);
     }
 
-    public void start(@SuppressWarnings("hiding") final ServerSocket serverSocket) throws InterruptedException, ExecutionException {
+    public Future<?> start(@SuppressWarnings("hiding") final ServerSocket serverSocket) {
         this.serverSocket = serverSocket;
         this.executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
@@ -428,36 +427,51 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                 return thread;
             }
         });
-        Future<Boolean> future = this.executor.submit(new Runnable() {
+        Future<?> future = this.executor.submit(new Runnable() {
 
             public void run() {
                 while (true) {
                     try {
-                        info.println("[Truffle LSP] Starting server on " + serverSocket.getLocalSocketAddress());
-                        info.flush();
                         if (serverSocket.isClosed()) {
                             err.println("[Truffle LSP] Server socket is closed.");
-                            err.flush();
                             return;
                         }
+
+                        info.println("[Truffle LSP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
                         Socket clientSocket = serverSocket.accept();
-                        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(LSPServer.this,
-                                        clientSocket.getInputStream(), clientSocket.getOutputStream());
+                        info.println("[Truffle LSP] Client connected on " + clientSocket.getRemoteSocketAddress());
+
+                        //@formatter:off
+                        Launcher<LanguageClient> launcher = new LSPLauncher.Builder<LanguageClient>()
+                            .setLocalService(LSPServer.this)
+                            .setRemoteInterface(LanguageClient.class)
+                            .setInput(clientSocket.getInputStream())
+                            .setOutput(clientSocket.getOutputStream())
+                            .setExecutorService(Executors.newCachedThreadPool(new ThreadFactory() {
+                                private final ThreadFactory factory = Executors.defaultThreadFactory();
+
+                                public Thread newThread(Runnable r) {
+                                    Thread thread = factory.newThread(r);
+                                    thread.setName("LSP server " + thread.getName());
+                                    return thread;
+                                }
+                            }))
+                            .create();
+                        //@formatter:on
+
                         LSPServer.this.connect(launcher.getRemoteProxy());
                         Future<?> listenFuture = launcher.startListening();
                         try {
                             listenFuture.get();
                         } catch (InterruptedException | ExecutionException e) {
                             err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
-                            err.flush();
                         }
                     } catch (IOException e) {
                         err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
-                        err.flush();
                     }
                 }
             }
         }, Boolean.TRUE);
-        future.get();
+        return future;
     }
 }

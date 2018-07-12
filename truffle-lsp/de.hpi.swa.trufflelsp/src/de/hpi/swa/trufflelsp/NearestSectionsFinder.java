@@ -25,11 +25,8 @@
 package de.hpi.swa.trufflelsp;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -61,26 +58,22 @@ public final class NearestSectionsFinder {
             locationType = null;
         } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, column, containsSection)) {
             // Our caret is directly behind the containing section, so we can simply use that one to
-            // find local
-            // scope objects
+            // find local scope objects
             nearestNode = (Node) nearestSections.getContainsNode();
             locationType = NodeLocationType.CONTAINS_END;
         } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
             // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the
-            // same scope as
-            // we are and we can use it to get local scope objects
+            // same scope as we are and we can use it to get local scope objects
             nearestNode = (Node) nearestSections.getNextNode();
             locationType = NodeLocationType.NEXT;
         } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getPreviousNode(), (Node) nearestSections.getContainsNode())) {
             // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local
-            // scope
-            // objects which are valid behind that node
+            // scope objects which are valid behind that node
             nearestNode = (Node) nearestSections.getPreviousNode();
             locationType = NodeLocationType.PREVIOUS;
         } else {
             // No next or previous node is in the same scope like us, so we can only take our
-            // containing node to
-            // get local scope objects
+            // containing node to get local scope objects
             nearestNode = (Node) nearestSections.getContainsNode();
             locationType = NodeLocationType.CONTAINS;
         }
@@ -133,13 +126,6 @@ public final class NearestSectionsFinder {
     protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset) {
         NearestSections sectionsCollector = new NearestSections(offset);
         // All SourceSections of the Source are loaded already when the source was parsed
-        env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
-
-            public void onLoad(LoadSourceEvent event) {
-                System.out.println(event.getSource().getURI());
-            }
-        }, true).dispose();
-
         env.getInstrumenter().attachLoadSourceSectionListener(
 // SourceSectionFilter.ANY,
                         SourceSectionFilter.newBuilder().sourceIs(source).build(),

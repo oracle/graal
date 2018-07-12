@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -34,20 +37,15 @@ import org.eclipse.lsp4j.MarkedString;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SignatureHelp;
-import org.eclipse.lsp4j.SignatureInformation;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -71,7 +69,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -79,14 +76,12 @@ import de.hpi.swa.trufflelsp.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
-import de.hpi.swa.trufflelsp.filesystem.VirtualLSPFileProvider;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
-public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider {
+public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRegistry {
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
     private static final String COVERAGE_SCRIPT = "COVERAGE_SCRIPT:";
-// public static final String NO_TYPES_HARVESTED = "NO_TYPES_HARVESTED";
     private static final Node HAS_SIZE = Message.HAS_SIZE.createNode();
     private static final Node KEYS = Message.KEYS.createNode();
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
@@ -95,15 +90,11 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
     protected final Map<SourceSection, SourceSection> section2definition = new HashMap<>();
 
-    private TruffleInstrument.Env env;
-    private PrintWriter err;
-    private PrintWriter info;
+    private final TruffleInstrument.Env env;
+    private final PrintWriter err;
     private final SourceProvider sourceProvider;
     private DiagnosticsPublisher diagnosticsPublisher;
-    private TruffleContext globalInnerContext;
-    private boolean isContextBeingCreated = false;
-    private Builder contextBuilder;
-    private Context globalContext;
+    private NestedEvaluator evaluator;
 
     private static final class SourceUriFilter implements SourcePredicate {
 
@@ -125,16 +116,11 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
     }
 
-    public TruffleAdapter(Builder contextBuilder) {
-        this.sourceProvider = new SourceProvider();
-        this.contextBuilder = contextBuilder;
-    }
-
-    @SuppressWarnings("hiding")
-    public void initialize(Env env, PrintWriter info, PrintWriter err) {
+    public TruffleAdapter(Env env) {
         this.env = env;
-        this.info = info;
-        this.err = err;
+        this.sourceProvider = new SourceProvider();
+
+        this.err = new PrintWriter(env.err(), true);
 
         env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs(new SourceUriFilter()).build(), this.sourceProvider, false);
         env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().sourceIs(new SourceUriFilter()).build(), this.sourceProvider, false);
@@ -145,7 +131,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         this.diagnosticsPublisher = diagnosticsPublisher;
     }
 
-    public synchronized void didOpen(URI uri, String text, String langId) {
+    public void didOpen(URI uri, String text, String langId) {
         this.uri2TextDocumentSurrogate.put(uri, new TextDocumentSurrogate(uri, langId, text));
     }
 
@@ -153,20 +139,23 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         this.uri2TextDocumentSurrogate.remove(uri);
     }
 
-    public synchronized void parse(final String text, final String langId, final URI uri) {
+    public void parse(final String text, final String langId, final URI uri) {
         TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.computeIfAbsent(uri, (_uri) -> new TextDocumentSurrogate(_uri, langId));
         surrogate.setEditorText(text);
 
-        doWithGlobalInnerContext(() -> parse(surrogate));
+        try {
+            doWithGlobalInnerContext(() -> parse(surrogate)).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace(err);
+        }
     }
 
-    protected synchronized CallTarget parse(final TextDocumentSurrogate surrogate) {
+    protected CallTarget parse(final TextDocumentSurrogate surrogate) {
         CallTarget callTarget = null;
         try {
             callTarget = parseInternal(surrogate);
         } catch (IllegalStateException e) {
             this.err.println(e.getLocalizedMessage());
-            this.err.flush();
         } catch (RuntimeException e) {
             if (e instanceof TruffleException) {
                 this.diagnosticsPublisher.addDiagnostics(surrogate.getUri(), new Diagnostic(getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
@@ -215,7 +204,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
     }
 
-    public synchronized void processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {
+    public void processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {
         if (list.isEmpty()) {
             return;
         }
@@ -224,7 +213,13 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         surrogate.getChangeEventsSinceLastSuccessfulParsing().addAll(list);
         surrogate.setEditorText(applyTextDocumentChanges(list, surrogate.getEditorText(), surrogate));
 
-        doWithGlobalInnerContext(() -> parse(surrogate));
+        try {
+            // TODO(ds) do we need to wait blocking? when not waiting -> diagnostics publishing
+            // needs to be done here and not in LSPServer + showCocerage in there
+            doWithGlobalInnerContext(() -> parse(surrogate)).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace(err);
+        }
         if (surrogate.hasCoverageData()) {
             showCoverage(uri);
         }
@@ -292,7 +287,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         }
     }
 
-    public synchronized List<? extends SymbolInformation> getSymbolInfo(URI uri) {
+    public List<? extends SymbolInformation> getSymbolInfo(URI uri) {
         List<SymbolInformation> symbolInformation = new ArrayList<>();
 
         TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
@@ -336,7 +331,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return map;
     }
 
-    public synchronized CompletionList getCompletions(final URI uri, int line, int originalCharacter) {
+    public CompletionList getCompletions(final URI uri, int line, int originalCharacter) {
         CompletionList completions = new CompletionList();
         completions.setIsIncomplete(false);
 
@@ -354,17 +349,20 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                 try {
                     textDocumentSurrogate.setFixedText(sourceFix.text);
 
-                    doWithGlobalInnerContext(() -> parseInternal(textDocumentSurrogate));
+                    doWithGlobalInnerContext(() -> parseInternal(textDocumentSurrogate)).get();
                     sourceWrapper = this.sourceProvider.getLoadedSource(langId, uri);
                     character = sourceFix.character;
                     isObjectPropertyCompletion = sourceFix.isObjectPropertyCompletion;
                 } catch (IllegalStateException e) {
                     this.err.println(e.getLocalizedMessage());
-                    this.err.flush();
                 } catch (RuntimeException e) {
                     if (!(e instanceof TruffleException)) {
                         throw new IllegalStateException(e);
                     }
+                } catch (InterruptedException e) {
+                    e.printStackTrace(err);
+                } catch (ExecutionException e) {
+                    e.printStackTrace(err);
                 }
             }
         }
@@ -386,9 +384,10 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                     if (isInstrumentable(nearestNode)) {
                         if (isObjectPropertyCompletion) {
                             if (locationType == NodeLocationType.CONTAINS_END) {
-                                EvaluationResult evalResult = tryDifferentEvalStrategies(textDocumentSurrogate, langId, sourceWrapper, nearestNode);
+                                Future<EvaluationResult> future = tryDifferentEvalStrategies(textDocumentSurrogate, langId, sourceWrapper, nearestNode);
+                                EvaluationResult evalResult = future.get();
                                 if (evalResult.isEvaluationDone() && !evalResult.isError()) {
-                                    doWithGlobalInnerContext(() -> fillCompletionsFromTruffleObject(completions, langId, evalResult.getResult()));
+                                    doWithGlobalInnerContext(() -> fillCompletionsFromTruffleObject(completions, langId, evalResult.getResult())).get();
                                 } else {
                                     this.diagnosticsPublisher.addDiagnostics(uri,
                                                     new Diagnostic(sourceSectionToRange(nearestNode.getSourceSection()), "No coverage information available for this source section.",
@@ -396,7 +395,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                                 }
                             }
                         } else {
-                            fillCompletionsWithLocals(textDocumentSurrogate, nearestNode, completions, null);
+                            fillCompletionsWithLocals(textDocumentSurrogate, nearestNode, completions, null).get();
                         }
                     }
                 } // isLineValid
@@ -406,9 +405,11 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             }
 
             if (!isObjectPropertyCompletion) {
-                fillCompletionsWithGlobals(textDocumentSurrogate, completions);
+                fillCompletionsWithGlobals(textDocumentSurrogate, completions).get();
             }
 
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace(err);
         } finally {
             // Clean up
             textDocumentSurrogate.setFixedText(null);
@@ -417,28 +418,37 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return completions;
     }
 
-    private EvaluationResult tryDifferentEvalStrategies(TextDocumentSurrogate textDocumentSurrogate, String langId, SourceWrapper sourceWrapper, Node nearestNode) {
-        EvaluationResult literalEvalResult = evalLiteral(langId, nearestNode);
-        if (literalEvalResult.isEvaluationDone() && !literalEvalResult.isError()) {
-            System.out.println("Literal shortcut!");
-            return literalEvalResult;
+    private Future<EvaluationResult> tryDifferentEvalStrategies(TextDocumentSurrogate textDocumentSurrogate, String langId, SourceWrapper sourceWrapper, Node nearestNode) {
+        try {
+            EvaluationResult literalEvalResult = evalLiteral(langId, nearestNode).get();
+            if (literalEvalResult.isEvaluationDone() && !literalEvalResult.isError()) {
+                System.out.println("Literal shortcut!");
+                return CompletableFuture.completedFuture(literalEvalResult);
+            }
+        } catch (InterruptedException e) {
+        } catch (ExecutionException e) {
         }
 
-        try (TruffleContextWrapper context = createNewContextFromOtherThread()) {
-            EvaluationResult coverageEvalResult = evalWithCoverageData(textDocumentSurrogate, nearestNode);
-            if (coverageEvalResult.isEvaluationDone() && !coverageEvalResult.isError()) {
-                return coverageEvalResult;
-            }
+        return doWithNewContext(new Supplier<EvaluationResult>() {
 
-            EvaluationResult runToSectionEvalResult = runToSectionAndEval(nearestNode, sourceWrapper);
-            if (runToSectionEvalResult.isEvaluationDone() && !runToSectionEvalResult.isError()) {
-                return runToSectionEvalResult;
-            }
+            public EvaluationResult get() {
+                EvaluationResult coverageEvalResult = evalWithCoverageData(textDocumentSurrogate, nearestNode);
+                if (coverageEvalResult.isEvaluationDone() && !coverageEvalResult.isError()) {
+                    return coverageEvalResult;
+                }
 
-            System.out.println("Trying global eval...");
-            EvaluationResult globalScopeEvalResult = evalInGlobalScope(langId, nearestNode);
-            return globalScopeEvalResult;
-        }
+                EvaluationResult runToSectionEvalResult = runToSectionAndEval(nearestNode, sourceWrapper);
+                if (runToSectionEvalResult.isEvaluationDone() && !runToSectionEvalResult.isError()) {
+                    return runToSectionEvalResult;
+                }
+
+                System.out.println("Trying global eval...");
+                EvaluationResult globalScopeEvalResult = evalInGlobalScope(langId, nearestNode);
+                return globalScopeEvalResult;
+
+            }
+        });
+
     }
 
     private static boolean isInstrumentable(Node node) {
@@ -477,7 +487,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return EvaluationResult.createEvaluationSectionNotReached();
     }
 
-    private EvaluationResult evalLiteral(String langId, Node nearestNode) {
+    private Future<EvaluationResult> evalLiteral(String langId, Node nearestNode) {
         return doWithGlobalInnerContext(() -> {
             Object literalObj = LanguageSpecificHacks.getLiteralObject(nearestNode, langId);
             if (literalObj != null) {
@@ -564,17 +574,17 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         // @formatter:on
     }
 
-    private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, CompletionList completions, VirtualFrame frame) {
-        fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable, SORTING_PRIORITY_LOCALS);
+    private Future<?> fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, CompletionList completions, VirtualFrame frame) {
+        return fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable, SORTING_PRIORITY_LOCALS);
     }
 
-    private void fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, CompletionList completions) {
-        fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findTopScopes(surrogate.getLangId()), null, SORTING_PRIORITY_GLOBALS);
+    private Future<?> fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, CompletionList completions) {
+        return fillCompletionsWithScopesValues(surrogate, completions, () -> this.env.findTopScopes(surrogate.getLangId()), null, SORTING_PRIORITY_GLOBALS);
     }
 
-    private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Supplier<Iterable<Scope>> scopesSupplier, CompletionItemKind completionItemKindDefault,
-                    int displayPriority) {
-        doWithGlobalInnerContext(() -> {
+    private Future<?> fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Supplier<Iterable<Scope>> scopesSupplier,
+                    CompletionItemKind completionItemKindDefault, int displayPriority) {
+        return doWithGlobalInnerContext(() -> {
             String langId = surrogate.getLangId();
             LinkedHashMap<String, Map<Object, Object>> scopeMap = scopesToObjectMap(scopesSupplier.get());
             // Filter duplicates
@@ -755,7 +765,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
     }
 
     @SuppressWarnings("unused")
-    public synchronized List<? extends DocumentHighlight> getHighlights(URI uri, int line, int character) {
+    public List<? extends DocumentHighlight> getHighlights(URI uri, int line, int character) {
         List<DocumentHighlight> highlights = new ArrayList<>();
 
         return highlights;
@@ -815,43 +825,44 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             return;
         }
 
-        // Clean-up
-        // TODO(ds) how to do this without dropping everything? If we have different tests, the
-        // coverage run
-        // of one test will remove any coverage info provided from the other tests.
+        // Clean-up TODO(ds) how to do this without dropping everything? If we have different tests,
+        // the coverage run of one test will remove any coverage info provided from the other tests.
         this.uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage());
 
         try {
             // TODO(ds) can we always assume the same language for the source and its test?
             TextDocumentSurrogate surrogateOfTestFile = this.uri2TextDocumentSurrogate.computeIfAbsent(coverageUri, (_uri) -> new TextDocumentSurrogate(_uri, surrogateOfOpendFile.getLangId()));
 
-            try (TruffleContextWrapper context = createNewContextFromOtherThread()) {
-                final CallTarget callTarget = parse(surrogateOfTestFile);
-                EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
-                                SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
-                                new ExecutionEventNodeFactory() {
+            doWithNewContext(new Runnable() {
 
-                                    public ExecutionEventNode create(final EventContext eventContext) {
-                                        final SourceSection section = eventContext.getInstrumentedSourceSection();
-                                        if (section != null && section.isAvailable()) {
-                                            final Node instrumentedNode = eventContext.getInstrumentedNode();
-                                            Function<URI, TextDocumentSurrogate> func = (sourceUri) -> TruffleAdapter.this.uri2TextDocumentSurrogate.computeIfAbsent(
-                                                            sourceUri,
-                                                            (_uri) -> new TextDocumentSurrogate(_uri, instrumentedNode.getRootNode().getLanguageInfo().getId()));
+                public void run() {
+                    final CallTarget callTarget = parse(surrogateOfTestFile);
+                    EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
+                                    SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
+                                    new ExecutionEventNodeFactory() {
 
-                                            return new CoverageEventNode(eventContext.getInstrumentedSourceSection(), coverageUri, func);
-                                        } else {
-                                            return new ExecutionEventNode() {
-                                            };
+                                        public ExecutionEventNode create(final EventContext eventContext) {
+                                            final SourceSection section = eventContext.getInstrumentedSourceSection();
+                                            if (section != null && section.isAvailable()) {
+                                                final Node instrumentedNode = eventContext.getInstrumentedNode();
+                                                Function<URI, TextDocumentSurrogate> func = (sourceUri) -> TruffleAdapter.this.uri2TextDocumentSurrogate.computeIfAbsent(
+                                                                sourceUri,
+                                                                (_uri) -> new TextDocumentSurrogate(_uri, instrumentedNode.getRootNode().getLanguageInfo().getId()));
+
+                                                return new CoverageEventNode(eventContext.getInstrumentedSourceSection(), coverageUri, func);
+                                            } else {
+                                                return new ExecutionEventNode() {
+                                                };
+                                            }
                                         }
-                                    }
-                                });
-                try {
-                    callTarget.call();
-                } finally {
-                    eventFactoryBinding.dispose();
+                                    });
+                    try {
+                        callTarget.call();
+                    } finally {
+                        eventFactoryBinding.dispose();
+                    }
                 }
-            }
+            }).get();
 
             surrogateOfOpendFile.setCoverageAnalysisDone(true);
 
@@ -872,39 +883,28 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
                 }
                 this.diagnosticsPublisher.addDiagnostics(uriOfErronousSource, new Diagnostic(getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Coverage analysis"));
             } else {
-                e.printStackTrace(this.err);
-                this.err.flush();
+                e.printStackTrace(err);
             }
         }
     }
 
-    private void doWithGlobalInnerContext(Runnable runnable) {
-        doWithContext(getGlobalInnerContext(), runnable);
+    private Future<?> doWithGlobalInnerContext(Runnable runnable) {
+        return evaluator.doWithDefaultContext(runnable);
     }
 
-    private static void doWithContext(Context context, Runnable runnable) {
-        context.enter();
-        try {
-            runnable.run();
-        } finally {
-            context.leave();
-        }
+    private <T> Future<T> doWithGlobalInnerContext(Supplier<T> supplier) {
+        return evaluator.doWithDefaultContext(supplier);
     }
 
-    private <T> T doWithGlobalInnerContext(Supplier<T> supplier) {
-        return doWithContext(getGlobalInnerContext(), supplier);
+    private Future<?> doWithNewContext(Runnable runnable) {
+        return evaluator.doWithNestedContext(runnable);
     }
 
-    private static <T> T doWithContext(Context context, Supplier<T> runnable) {
-        context.enter();
-        try {
-            return runnable.get();
-        } finally {
-            context.leave();
-        }
+    private <T> Future<T> doWithNewContext(Supplier<T> supplier) {
+        return evaluator.doWithNestedContext(supplier);
     }
 
-    public synchronized List<? extends Location> getDefinitions(URI uri, int line, int character) {
+    public List<? extends Location> getDefinitions(URI uri, int line, int character) {
         List<Location> locations = new ArrayList<>();
 
         String langId = this.uri2TextDocumentSurrogate.get(uri).getLangId();
@@ -934,7 +934,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return null;
     }
 
-    public synchronized Hover getHover(URI uri, int line, int character) {
+    public Hover getHover(URI uri, int line, int character) {
         List<Either<String, MarkedString>> contents = new ArrayList<>();
 
         String langId = this.uri2TextDocumentSurrogate.get(uri).getLangId();
@@ -954,16 +954,9 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return new Hover(contents);
     }
 
-    public synchronized SignatureHelp signatureHelp(URI uri, int line, int character) {
+    @SuppressWarnings("unused")
+    public SignatureHelp signatureHelp(URI uri, int line, int character) {
         return new SignatureHelp();
-    }
-
-    private synchronized Context getGlobalInnerContext() {
-// assert this.globalInnerContext != null : "Global inner Context not initialized yet";
-        if (globalContext == null) {
-            globalContext = contextBuilder.build();
-        }
-        return globalContext;
     }
 
     public String getSourceText(Path path) {
@@ -975,39 +968,7 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
         return this.uri2TextDocumentSurrogate.containsKey(path.toUri());
     }
 
-// private TruffleContext createNewContext() {
-// return this.contextProvider.apply(this);
-// }
-
-    private TruffleContextWrapper createNewContextFromOtherThread() {
-// return TruffleContextWrapper.createAndEnter(doWithGlobalInnerContext(() ->
-// this.contextProvider.apply(this)));
-        return TruffleContextWrapper.createAndEnter(contextBuilder.build());
-    }
-
-    public void onContextCreated(TruffleContext truffleContext) {
-    }
-
-    public void onLanguageContextCreated(TruffleContext truffleContext, LanguageInfo language) {
-    }
-
-    public void onLanguageContextInitialized(TruffleContext truffleContext, LanguageInfo language) {
-// if (this.globalInnerContext == null && !isContextBeingCreated) {
-// this.isContextBeingCreated = true;
-// this.globalInnerContext = createNewContext();
-// }
-    }
-
-    public void onLanguageContextFinalized(TruffleContext truffleContext, LanguageInfo language) {
-    }
-
-    public void onLanguageContextDisposed(TruffleContext truffleContext, LanguageInfo language) {
-    }
-
-    public void onContextClosed(TruffleContext truffleContext) {
-    }
-
-    public synchronized void showCoverage(URI uri) {
+    public void showCoverage(URI uri) {
         final TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
         if (surrogate.getParsedSourceWrapper() != null) {
             // @formatter:off
@@ -1025,5 +986,9 @@ public class TruffleAdapter implements ContextsListener, VirtualLSPFileProvider 
             this.diagnosticsPublisher.addDiagnostics(uri,
                             new Diagnostic(new Range(new Position(), new Position()), "No coverage information available", DiagnosticSeverity.Error, "Coverage Analysis"));
         }
+    }
+
+    public void register(NestedEvaluator nestedEvaluator) {
+        this.evaluator = nestedEvaluator;
     }
 }

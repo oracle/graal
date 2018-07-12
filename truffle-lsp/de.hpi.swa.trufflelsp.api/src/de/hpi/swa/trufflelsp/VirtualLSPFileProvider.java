@@ -1,12 +1,10 @@
-package de.hpi.swa.trufflelsp.filesystem;
+package de.hpi.swa.trufflelsp;
 
 import java.nio.file.Path;
 
 public interface VirtualLSPFileProvider {
 
     public String getSourceText(Path path);
-
-// public Path translatePath(Path uri);
 
     public boolean isVirtualFile(Path path);
 }

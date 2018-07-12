@@ -20,6 +20,8 @@ import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
 
+import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
+
 public class LSPFileSystem implements FileSystem {
 
     private final FileSystemProvider delegate;
