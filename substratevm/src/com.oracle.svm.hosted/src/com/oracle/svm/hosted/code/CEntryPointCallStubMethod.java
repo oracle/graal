@@ -490,7 +490,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     private void generateExceptionHandler(HostedProviders providers, SubstrateGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
-        if (entryPointData.getExceptionHandler() == CEntryPointOptions.FatalExceptionHandler.class) {
+        if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception));
             kit.append(new DeadEndNode());
         } else {

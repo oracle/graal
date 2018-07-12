@@ -48,7 +48,7 @@ public final class CEntryPointData {
     public static final CEntryPoint.Builtin DEFAULT_BUILTIN = CEntryPoint.Builtin.NoBuiltin;
     public static final Class<?> DEFAULT_PROLOGUE = CEntryPointOptions.AutomaticPrologue.class;
     public static final Class<?> DEFAULT_EPILOGUE = CEntryPointSetup.LeaveEpilogue.class;
-    public static final Class<?> DEFAULT_EXCEPTION_HANDLER = CEntryPointOptions.FatalExceptionHandler.class;
+    public static final Class<?> DEFAULT_EXCEPTION_HANDLER = CEntryPoint.FatalExceptionHandler.class;
 
     public static CEntryPointData create(ResolvedJavaMethod method) {
         return create(method.getAnnotation(CEntryPoint.class), method.getAnnotation(CEntryPointOptions.class),
@@ -72,6 +72,7 @@ public final class CEntryPointData {
         return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NoBuiltin, prologue, epilogue, exceptionHandler, publishAs);
     }
 
+    @SuppressWarnings("deprecation")
     private static CEntryPointData create(CEntryPoint annotation, CEntryPointOptions options, Supplier<String> alternativeNameSupplier) {
         String annotatedName = annotation.name();
         Class<? extends Function<String, String>> nameTransformation = DEFAULT_NAME_TRANSFORMATION;
@@ -79,13 +80,20 @@ public final class CEntryPointData {
         CEntryPoint.Builtin builtin = annotation.builtin();
         Class<?> prologue = DEFAULT_PROLOGUE;
         Class<?> epilogue = DEFAULT_EPILOGUE;
-        Class<?> exceptionHandler = DEFAULT_EXCEPTION_HANDLER;
+        Class<?> exceptionHandler = annotation.exceptionHandler();
         Publish publishAs = Publish.SymbolAndHeader;
         if (options != null) {
             nameTransformation = options.nameTransformation();
             prologue = options.prologue();
             epilogue = options.epilogue();
-            exceptionHandler = options.exceptionHandler();
+
+            /*
+             * Look at the deprecated specification for exceptionHandler too, until that code gets
+             * removed.
+             */
+            if (options.exceptionHandler() != CEntryPointData.DEFAULT_EXCEPTION_HANDLER) {
+                exceptionHandler = options.exceptionHandler();
+            }
             publishAs = options.publishAs();
         }
         return create(annotatedName, alternativeNameSupplier, nameTransformation, documentation, builtin, prologue, epilogue, exceptionHandler, publishAs);
