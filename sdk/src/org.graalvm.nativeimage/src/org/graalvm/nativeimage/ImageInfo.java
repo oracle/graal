@@ -26,7 +26,7 @@
 package org.graalvm.nativeimage;
 
 /**
- * Utility class to retrieve information about the context in which code is currently executed.
+ * Utility class to retrieve information about the context in which code gets executed.
  *
  * @since 1.0
  */
@@ -36,46 +36,56 @@ public final class ImageInfo {
     }
 
     /**
-     * Field that holds the string that can be used as system property key to access information
-     * about the context in which code is currently executed.
+     * Holds the string that can be used as system property key to access information about the
+     * context in which code is currently executing. If the property returns the string given by
+     * {@link #PROPERTY_IMAGE_CODE_VALUE_BUILDTIME} the code is executing in the context of image
+     * building (e.g. in a static initializer of a class that will be contained in the image). If
+     * the property returns the string given by {@link #PROPERTY_IMAGE_CODE_VALUE_RUNTIME} the code
+     * is executing at image runtime. If code is executing on the JVM (but <b>not</b> in the context
+     * of building an image) the property is not set.
      *
      * @since 1.0
      */
-    public static final String PROPERTY_ISAOT_KEY = "org.graalvm.nativeimage.isaot";
+    public static final String PROPERTY_IMAGE_CODE_KEY = "org.graalvm.nativeimage.imagecode";
+
     /**
-     * Field that holds the string that will be returned by the system property for
-     * {@link ImageInfo#PROPERTY_ISAOT_KEY} if code is executing at image runtime.
+     * Holds the string that will be returned by the system property for
+     * {@link ImageInfo#PROPERTY_IMAGE_CODE_KEY} if code is executing in the context of image
+     * building (e.g. in a static initializer of class that will be contained in the image).
      *
      * @since 1.0
      */
-    public static final String PROPERTY_ISAOT_VALUE_RUNTIME = "image.runtime";
+    public static final String PROPERTY_IMAGE_CODE_VALUE_BUILDTIME = "buildtime";
+
     /**
-     * Field that holds the string that will be returned by the system property for
-     * {@link ImageInfo#PROPERTY_ISAOT_KEY} if code is executing in the context of image building
-     * (e.g. in a static initializer of class that will be contained in the image).
+     * Holds the string that will be returned by the system property for
+     * {@link ImageInfo#PROPERTY_IMAGE_CODE_KEY} if code is executing at image runtime.
      *
      * @since 1.0
      */
-    public static final String PROPERTY_ISAOT_VALUE_BUILDTIME = "image.buildtime";
+    public static final String PROPERTY_IMAGE_CODE_VALUE_RUNTIME = "runtime";
 
     /**
      * @return true if (at the time of the call) code is executing in the context of image building
-     *         or during image runtime. If code is executing on JVM (but not in the context of image
-     *         building) false is returned.
+     *         or during image runtime, else false. This method will be const-folded so that it can
+     *         be used to hide parts of an application that only work when running on the JVM. For
+     *         example: {@code if (!ImageInfo.inImageCode()) { ... JVM specific code here ... }}
      *
      * @since 1.0
      */
-    public static boolean isAOT() {
-        return System.getProperty(PROPERTY_ISAOT_KEY) != null;
+    public static boolean inImageCode() {
+        return System.getProperty(PROPERTY_IMAGE_CODE_KEY) != null;
     }
 
     /**
-     * @return true if (at the time of the call) code is executing at image runtime.
+     * @return true if (at the time of the call) code is executing at image runtime. This method
+     *         will be const-folded. It can be used to hide parts of an application that only work
+     *         when running as native image.
      *
      * @since 1.0
      */
-    public static boolean isImageRuntime() {
-        return PROPERTY_ISAOT_VALUE_RUNTIME.equals(System.getProperty(PROPERTY_ISAOT_KEY));
+    public static boolean inImageRuntimeCode() {
+        return PROPERTY_IMAGE_CODE_VALUE_RUNTIME.equals(System.getProperty(PROPERTY_IMAGE_CODE_KEY));
     }
 
     /**
@@ -84,7 +94,7 @@ public final class ImageInfo {
      *
      * @since 1.0
      */
-    public static boolean isImageBuildtime() {
-        return PROPERTY_ISAOT_VALUE_BUILDTIME.equals(System.getProperty(PROPERTY_ISAOT_KEY));
+    public static boolean inImageBuildtimeCode() {
+        return PROPERTY_IMAGE_CODE_VALUE_BUILDTIME.equals(System.getProperty(PROPERTY_IMAGE_CODE_KEY));
     }
 }

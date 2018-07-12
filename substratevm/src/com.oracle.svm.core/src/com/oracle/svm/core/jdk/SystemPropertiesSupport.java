@@ -64,8 +64,6 @@ public abstract class SystemPropertiesSupport {
 
     private volatile boolean fullyInitialized;
 
-    private static final String vmName = "Substrate VM";
-
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SystemPropertiesSupport() {
         properties = new Properties();
@@ -75,17 +73,13 @@ public abstract class SystemPropertiesSupport {
         }
 
         lazyRuntimeValues = new HashMap<>();
-        lazyRuntimeValues.put("java.vm.name", () -> vmName);
+        lazyRuntimeValues.put("java.vm.name", () -> "Substrate VM");
         lazyRuntimeValues.put("user.name", this::userNameValue);
         lazyRuntimeValues.put("user.home", this::userHomeValue);
         lazyRuntimeValues.put("user.dir", this::userDirValue);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
 
-        lazyRuntimeValues.put(ImageInfo.PROPERTY_ISAOT_KEY, () -> ImageInfo.PROPERTY_ISAOT_VALUE_RUNTIME);
-    }
-
-    static {
-        System.setProperty(ImageInfo.PROPERTY_ISAOT_KEY, ImageInfo.PROPERTY_ISAOT_VALUE_BUILDTIME);
+        lazyRuntimeValues.put(ImageInfo.PROPERTY_IMAGE_CODE_KEY, () -> ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
     }
 
     public Properties getProperties() {
