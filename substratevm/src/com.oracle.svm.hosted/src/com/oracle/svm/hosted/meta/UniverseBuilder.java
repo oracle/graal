@@ -1082,7 +1082,7 @@ public class UniverseBuilder {
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
         for (HostedField field : fields) {
             if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && field.getAnnotation(ExcludeFromReferenceMap.class) == null) {
-                referenceMap.markReferenceAtOffset(field.getLocation());
+                referenceMap.markReferenceAtOffset(field.getLocation(), true);
             }
         }
         if (type.isInstanceClass()) {
@@ -1092,7 +1092,7 @@ public class UniverseBuilder {
              */
             final int monitorOffset = instanceClass.getMonitorFieldOffset();
             if (monitorOffset != 0) {
-                referenceMap.markReferenceAtOffset(monitorOffset);
+                referenceMap.markReferenceAtOffset(monitorOffset, true);
             }
         }
         return referenceMap;

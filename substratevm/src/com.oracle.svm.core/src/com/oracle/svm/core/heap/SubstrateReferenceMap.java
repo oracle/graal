@@ -28,9 +28,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceMapEncoder.OffsetIterator;
 
@@ -40,15 +38,12 @@ import jdk.vm.ci.meta.Value;
 
 public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapEncoder.Input {
 
-    private final BitSet input;
-    private final boolean defaultCompressed;
+    private final BitSet input = new BitSet();
 
     private Map<Integer, Object> debugAllUsedRegisters;
     private Map<Integer, Object> debugAllUsedStackSlots;
 
     public SubstrateReferenceMap() {
-        this.input = new BitSet();
-        this.defaultCompressed = SubstrateOptions.UseHeapBaseRegister.getValue();
         assert ConfigurationValues.getObjectLayout().getCompressedReferenceSize() > 2 : "needs to be three bits or more for encoding and validation";
     }
 
@@ -59,10 +54,6 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     public boolean isOffsetCompressed(int offset) {
         assert isOffsetMarked(offset);
         return input.get(offset + 1);
-    }
-
-    public void markReferenceAtOffset(int offset) {
-        markReferenceAtOffset(offset, defaultCompressed);
     }
 
     public void markReferenceAtOffset(int offset, boolean compressed) {
@@ -154,7 +145,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public int hashCode() {
-        return (input.hashCode() * 31 + Boolean.hashCode(defaultCompressed));
+        return input.hashCode();
     }
 
     @Override
@@ -163,7 +154,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             return true;
         } else if (obj instanceof SubstrateReferenceMap) {
             SubstrateReferenceMap other = (SubstrateReferenceMap) obj;
-            return Objects.equals(input, other.input) && defaultCompressed == other.defaultCompressed;
+            return input.equals(other.input);
         } else {
             return false;
         }
