@@ -214,4 +214,8 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMAllocateStringNode createAllocateString();
 
     LLVMAllocateStructNode createAllocateStruct(LLVMContext context, StructureType structType);
+
+    LLVMExpressionNode createStackSave(LLVMContext context, LLVMSourceLocation sourceSection);
+
+    LLVMExpressionNode createStackRestore(LLVMContext context, LLVMExpressionNode stackPointer, LLVMSourceLocation sourceSection);
 }

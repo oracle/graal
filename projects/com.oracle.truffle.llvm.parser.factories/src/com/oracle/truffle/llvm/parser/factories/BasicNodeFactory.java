@@ -1654,9 +1654,9 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.invariant.end.p0i8":
                 return LLVMInvariantEndNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.stacksave":
-                return LLVMStackSaveNodeGen.create(sourceSection);
+                return createStackSave(context, sourceSection);
             case "@llvm.stackrestore":
-                return LLVMStackRestoreNodeGen.create(args[1], sourceSection);
+                return createStackRestore(context, args[1], sourceSection);
             case "@llvm.frameaddress":
                 return LLVMFrameAddressNodeGen.create(args[1], sourceSection);
             case "@llvm.va_start":
@@ -1772,6 +1772,16 @@ public class BasicNodeFactory implements NodeFactory {
             default:
                 throw new IllegalStateException("Missing LLVM builtin: " + declaration.getName());
         }
+    }
+
+    @Override
+    public LLVMExpressionNode createStackSave(LLVMContext context, LLVMSourceLocation sourceSection) {
+        return LLVMStackSaveNodeGen.create(sourceSection);
+    }
+
+    @Override
+    public LLVMExpressionNode createStackRestore(LLVMContext context, LLVMExpressionNode stackPointer, LLVMSourceLocation sourceSection) {
+        return LLVMStackRestoreNodeGen.create(stackPointer, sourceSection);
     }
 
     private static long getOverflowFieldOffset(LLVMContext context, FunctionDeclaration declaration) {

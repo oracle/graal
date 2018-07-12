@@ -50,14 +50,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.Runner.SulongLibrary;
 import com.oracle.truffle.llvm.parser.NodeFactory;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -82,21 +81,15 @@ public final class Sulong extends LLVMLanguage {
     @TruffleBoundary
     @Override
     public <E> E getCapability(Class<E> type) {
-        String config = findLLVMContext().getEnv().getOptions().get(SulongEngineOption.CONFIGURATION);
-        E capability = null;
-        for (Configuration c : configurations) {
-            if (config.equals(c.getConfigurationName())) {
-                capability = c.getCapability(type);
-            }
-        }
-        return capability;
+        return getActiveConfiguration(findLLVMContext().getEnv()).getCapability(type);
     }
 
     private LLVMContext mainContext = null;
 
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        LLVMContext newContext = new LLVMContext(this, env, getContextExtensions(env), getNodeFactory(env), getLanguageHome());
+        Configuration activeConfiguration = getActiveConfiguration(env);
+        LLVMContext newContext = new LLVMContext(this, env, activeConfiguration.createContextExtensions(env, this), getNodeFactory(env), getLanguageHome());
         if (mainContext == null) {
             mainContext = newContext;
         } else {
@@ -175,16 +168,6 @@ public final class Sulong extends LLVMLanguage {
         return getContextReference().get();
     }
 
-    private List<ContextExtension> getContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        String config = env.getOptions().get(SulongEngineOption.CONFIGURATION);
-        for (Configuration c : configurations) {
-            if (config.equals(c.getConfigurationName())) {
-                return c.createContextExtensions(env, this);
-            }
-        }
-        throw new IllegalStateException();
-    }
-
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         List<OptionDescriptor> optionDescriptors = new ArrayList<>();
@@ -195,13 +178,18 @@ public final class Sulong extends LLVMLanguage {
     }
 
     private NodeFactory getNodeFactory(Env env) {
-        String config = env.getOptions().get(SulongEngineOption.CONFIGURATION);
-        for (Configuration c : configurations) {
-            if (config.equals(c.getConfigurationName())) {
-                return c.getNodeFactory(findLLVMContext());
+        return getActiveConfiguration(env).getNodeFactory(findLLVMContext());
+    }
+
+    @TruffleBoundary
+    private static Configuration getActiveConfiguration(Env env) {
+        String name = env.getOptions().get(SulongEngineOption.CONFIGURATION);
+        for (Configuration config : configurations) {
+            if (name.equals(config.getConfigurationName())) {
+                return config;
             }
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("Unknown configuration: " + name);
     }
 
     @Override
