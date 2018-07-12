@@ -1023,7 +1023,7 @@ public final class Deoptimizer {
                 }
                 log.string("  return address ").hex(targetFrame.returnAddress.returnAddress).newline();
 
-                if (Options.TraceDeoptimizationDetails.getValue()) {
+                if (printOnlyTopFrames || Options.TraceDeoptimizationDetails.getValue()) {
                     printVirtualFrame(log, targetFrame);
                 }
 
@@ -1050,7 +1050,7 @@ public final class Deoptimizer {
         log.string("            bci: ").signed(frameInfo.getBci());
         log.string("  deoptMethodOffset: ").signed(frameInfo.getDeoptMethodOffset());
         log.string("  deoptMethod: ").hex(frameInfo.getDeoptMethodAddress());
-        log.string("  return address: ").hex(virtualFrame.returnAddress.returnAddress);
+        log.string("  return address: ").hex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);
 
         for (int i = 0; i < frameInfo.getValueInfos().length; i++) {
             JavaConstant con = virtualFrame.getConstant(i);
@@ -1071,6 +1071,7 @@ public final class Deoptimizer {
                 } else {
                     log.string("  value: ").string(con.toValueString());
                 }
+                log.string("  offset: ").signed(virtualFrame.values[i].offset);
             }
         }
         log.newline();
