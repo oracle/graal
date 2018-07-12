@@ -318,6 +318,8 @@ public abstract class Accessor {
 
         public abstract Handler getLogHandler();
 
+        public abstract Map<String, Level> getLogLevels(Object context);
+
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();

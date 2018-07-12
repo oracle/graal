@@ -955,5 +955,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public Object getCurrentOuterContext() {
             return PolyglotLogHandler.getCurrentOuterContext();
         }
+
+        @Override
+        public Map<String, Level> getLogLevels(final Object context) {
+            if (!(context instanceof PolyglotContextImpl)) {
+                throw new AssertionError();
+            }
+            return ((PolyglotContextImpl) context).config.logLevels;
+        }
     }
 }
