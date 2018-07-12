@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "a2267424f072edbef5916cd519a08a0514658bdd",
+        "version" : "dc37c9a244fc97a92b7b37f716e484cb4b7ee5ed",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
