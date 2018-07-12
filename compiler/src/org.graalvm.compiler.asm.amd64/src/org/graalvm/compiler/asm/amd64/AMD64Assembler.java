@@ -41,6 +41,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.DEC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.INC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
@@ -80,7 +82,6 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.TargetDescription;
-import org.graalvm.nativeimage.Platform;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.
@@ -3445,24 +3446,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void evmovdquq(Register dst, AMD64Address src) {
         assert supports(CPUFeature.AVX512F);
         assert dst.getRegisterCategory().equals(XMM);
-        evexPrefix(dst, Register.None, src, Register.None, AVXSize.ZMM, P_F3, M_0F, 1, 0, 0);
+        evexPrefix(dst, Register.None, src, Register.None, AVXSize.ZMM, P_F3, M_0F, W1, Z0, B0);
         emitByte(0x6F);
-        emitOperandHelper(dst, src, true, 0);
+        emitOperandHelper(dst, src, 0, EVEXTuple.FVM.getSIBDispScalingFactor(AVXSize.ZMM));
     }
 
     public final void evpmovzxbw(Register dst, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert dst.getRegisterCategory().equals(XMM);
-        evexPrefix(dst, Register.None, src, Register.None, AVXSize.ZMM, P_66, M_0F38, 0, 0, 0);
+        evexPrefix(dst, Register.None, src, Register.None, AVXSize.ZMM, P_66, M_0F38, WIG, Z0, B0);
         emitByte(0x30);
-        emitOperandHelper(dst, src, true, 0);
+        emitOperandHelper(dst, src, 0, EVEXTuple.HVM.getSIBDispScalingFactor(AVXSize.ZMM));
     }
 
     public final void evpcmpeqb(Register kdst, Register nds, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
         assert kdst.getRegisterCategory().equals(MASK) && nds.getRegisterCategory().equals(XMM);
-        evexPrefix(kdst, nds, src, Register.None, AVXSize.ZMM, P_66, M_0F, 0, 0, 0);
+        evexPrefix(kdst, nds, src, Register.None, AVXSize.ZMM, P_66, M_0F, WIG, Z0, B0);
         emitByte(0x74);
-        emitOperandHelper(kdst, src, true, 0);
+        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getSIBDispScalingFactor(AVXSize.ZMM));
     }
 }

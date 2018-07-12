@@ -520,11 +520,6 @@ public abstract class AMD64BaseAssembler extends Assembler {
         emitModRM(reg.encoding & 0x07, rm);
     }
 
-    protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize) {
-        assert !reg.equals(Register.None);
-        emitOperandHelper(encode(reg), addr, false, additionalInstructionSize);
-    }
-
     /**
      * Emits the ModR/M byte and optionally the SIB byte for one register and one memory operand.
      *
@@ -532,11 +527,21 @@ public abstract class AMD64BaseAssembler extends Assembler {
      */
     protected final void emitOperandHelper(Register reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize) {
         assert !reg.equals(Register.None);
-        emitOperandHelper(encode(reg), addr, force4Byte, additionalInstructionSize);
+        emitOperandHelper(encode(reg), addr, force4Byte, additionalInstructionSize, 1);
     }
 
     protected final void emitOperandHelper(int reg, AMD64Address addr, int additionalInstructionSize) {
-        emitOperandHelper(reg, addr, false, additionalInstructionSize);
+        emitOperandHelper(reg, addr, false, additionalInstructionSize, 1);
+    }
+
+    protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize) {
+        assert !reg.equals(Register.None);
+        emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, 1);
+    }
+
+    protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize, int dispScale) {
+        assert !reg.equals(Register.None);
+        emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, dispScale);
     }
 
     /**
@@ -548,7 +553,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      *            so that the start position of the next instruction can be computed even though
      *            this instruction has not been completely emitted yet.
      */
-    private void emitOperandHelper(int reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize) {
+    private void emitOperandHelper(int reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize, int dispScale) {
         assert (reg & 0x07) == reg;
         int regenc = reg << 3;
 
@@ -577,20 +582,33 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x04 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
-                } else if (isByte(disp) && !force4Byte) {
-                    // [base + indexscale + imm8]
-                    // [01 reg 100][ss index base] imm8
-                    assert !index.equals(rsp) : "illegal addressing mode";
-                    emitByte(0x44 | regenc);
-                    emitByte(scale.log2 << 6 | indexenc | baseenc);
-                    emitByte(disp & 0xFF);
                 } else {
-                    // [base + indexscale + disp32]
-                    // [10 reg 100][ss index base] disp32
-                    assert !index.equals(rsp) : "illegal addressing mode";
-                    emitByte(0x84 | regenc);
-                    emitByte(scale.log2 << 6 | indexenc | baseenc);
-                    emitInt(disp);
+                    if (dispScale > 1 && !force4Byte) {
+                        if (disp % dispScale == 0) {
+                            int newDisp = disp / dispScale;
+                            if (isByte(newDisp)) {
+                                disp = newDisp;
+                                assert isByte(disp) && !force4Byte;
+                            }
+                        } else {
+                            force4Byte = true;
+                        }
+                    }
+                    if (isByte(disp) && !force4Byte) {
+                        // [base + indexscale + imm8]
+                        // [01 reg 100][ss index base] imm8
+                        assert !index.equals(rsp) : "illegal addressing mode";
+                        emitByte(0x44 | regenc);
+                        emitByte(scale.log2 << 6 | indexenc | baseenc);
+                        emitByte(disp & 0xFF);
+                    } else {
+                        // [base + indexscale + disp32]
+                        // [10 reg 100][ss index base] disp32
+                        assert !index.equals(rsp) : "illegal addressing mode";
+                        emitByte(0x84 | regenc);
+                        emitByte(scale.log2 << 6 | indexenc | baseenc);
+                        emitInt(disp);
+                    }
                 }
             } else if (base.equals(rsp) || base.equals(r12)) {
                 // [rsp + disp]
@@ -599,18 +617,31 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     // [00 reg 100][00 100 100]
                     emitByte(0x04 | regenc);
                     emitByte(0x24);
-                } else if (isByte(disp) && !force4Byte) {
-                    // [rsp + imm8]
-                    // [01 reg 100][00 100 100] disp8
-                    emitByte(0x44 | regenc);
-                    emitByte(0x24);
-                    emitByte(disp & 0xFF);
                 } else {
-                    // [rsp + imm32]
-                    // [10 reg 100][00 100 100] disp32
-                    emitByte(0x84 | regenc);
-                    emitByte(0x24);
-                    emitInt(disp);
+                    if (dispScale > 1 && !force4Byte) {
+                        if (disp % dispScale == 0) {
+                            int newDisp = disp / dispScale;
+                            if (isByte(newDisp)) {
+                                disp = newDisp;
+                                assert isByte(disp) && !force4Byte;
+                            }
+                        } else {
+                            force4Byte = true;
+                        }
+                    }
+                    if (isByte(disp) && !force4Byte) {
+                        // [rsp + imm8]
+                        // [01 reg 100][00 100 100] disp8
+                        emitByte(0x44 | regenc);
+                        emitByte(0x24);
+                        emitByte(disp & 0xFF);
+                    } else {
+                        // [rsp + imm32]
+                        // [10 reg 100][00 100 100] disp32
+                        emitByte(0x84 | regenc);
+                        emitByte(0x24);
+                        emitInt(disp);
+                    }
                 }
             } else {
                 // [base + disp]
@@ -619,16 +650,29 @@ public abstract class AMD64BaseAssembler extends Assembler {
                     // [base]
                     // [00 reg base]
                     emitByte(0x00 | regenc | baseenc);
-                } else if (isByte(disp) && !force4Byte) {
-                    // [base + disp8]
-                    // [01 reg base] disp8
-                    emitByte(0x40 | regenc | baseenc);
-                    emitByte(disp & 0xFF);
                 } else {
-                    // [base + disp32]
-                    // [10 reg base] disp32
-                    emitByte(0x80 | regenc | baseenc);
-                    emitInt(disp);
+                    if (dispScale > 1 && !force4Byte) {
+                        if (disp % dispScale == 0) {
+                            int newDisp = disp / dispScale;
+                            if (isByte(newDisp)) {
+                                disp = newDisp;
+                                assert isByte(disp) && !force4Byte;
+                            }
+                        } else {
+                            force4Byte = true;
+                        }
+                    }
+                    if (isByte(disp) && !force4Byte) {
+                        // [base + disp8]
+                        // [01 reg base] disp8
+                        emitByte(0x40 | regenc | baseenc);
+                        emitByte(disp & 0xFF);
+                    } else {
+                        // [base + disp32]
+                        // [10 reg base] disp32
+                        emitByte(0x80 | regenc | baseenc);
+                        emitInt(disp);
+                    }
                 }
             }
         } else {
@@ -868,6 +912,70 @@ public abstract class AMD64BaseAssembler extends Assembler {
         public static final int B1 = 0x1;
 
         private EVEXPrefixConfig() {
+        }
+    }
+
+    private static final int NOT_SUPPORTED_VECTOR_LENGTH = -1;
+
+    /**
+     * EVEX-encoded instructions use a compressed displacement scheme by multiplying disp8 with a
+     * scaling factor N depending on the tuple type and the vector length.
+     *
+     * Reference: Intel Software Developer's Manual Volume 2, Section 2.6.5
+     */
+    protected enum EVEXTuple {
+        FV_NO_BROADCAST_32BIT(16, 32, 64),
+        FV_BROADCAST_32BIT(4, 4, 4),
+        FV_NO_BROADCAST_64BIT(16, 32, 64),
+        FV_BROADCAST_64BIT(8, 8, 8),
+        HV_NO_BROADCAST_32BIT(8, 16, 32),
+        HV_BROADCAST_32BIT(4, 4, 4),
+        FVM(16, 32, 64),
+        T1S_8BIT(1, 1, 1),
+        T1S_16BIT(2, 2, 2),
+        T1S_32BIT(4, 4, 4),
+        T1S_64BIT(8, 8, 8),
+        T1F_32BIT(4, 4, 4),
+        T1F_64BIT(8, 8, 8),
+        T2_32BIT(8, 8, 8),
+        T2_64BIT(NOT_SUPPORTED_VECTOR_LENGTH, 16, 16),
+        T4_32BIT(NOT_SUPPORTED_VECTOR_LENGTH, 16, 16),
+        T4_64BIT(NOT_SUPPORTED_VECTOR_LENGTH, NOT_SUPPORTED_VECTOR_LENGTH, 32),
+        T8_32BIT(NOT_SUPPORTED_VECTOR_LENGTH, NOT_SUPPORTED_VECTOR_LENGTH, 32),
+        HVM(8, 16, 32),
+        QVM(4, 8, 16),
+        OVM(2, 4, 8),
+        M128(16, 16, 16),
+        DUP(8, 32, 64);
+
+        private final int scalingFactorVL128;
+        private final int scalingFactorVL256;
+        private final int scalingFactorVL512;
+
+        private EVEXTuple(int scalingFactorVL128, int scalingFactorVL256, int scalingFactorVL512) {
+            this.scalingFactorVL128 = scalingFactorVL128;
+            this.scalingFactorVL256 = scalingFactorVL256;
+            this.scalingFactorVL512 = scalingFactorVL512;
+        }
+
+        private static int verifyScalingFactor(int scalingFactor) {
+            if (scalingFactor == NOT_SUPPORTED_VECTOR_LENGTH) {
+                throw GraalError.shouldNotReachHere("Invalid scaling factor.");
+            }
+            return scalingFactor;
+        }
+
+        public int getSIBDispScalingFactor(AVXSize size) {
+            switch (size) {
+                case XMM:
+                    return verifyScalingFactor(scalingFactorVL128);
+                case YMM:
+                    return verifyScalingFactor(scalingFactorVL256);
+                case ZMM:
+                    return verifyScalingFactor(scalingFactorVL512);
+                default:
+                    throw GraalError.shouldNotReachHere("Unsupported vector size.");
+            }
         }
     }
 

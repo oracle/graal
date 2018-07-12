@@ -280,7 +280,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             movl(dst, (int) (src & 0xFFFFFFFF));
             movl(high, (int) (src >> 32));
         }
-
     }
 
     public final void setl(ConditionFlag cc, Register dst) {
