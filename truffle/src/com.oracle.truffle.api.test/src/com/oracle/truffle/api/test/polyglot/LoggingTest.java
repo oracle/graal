@@ -449,12 +449,7 @@ public class LoggingTest {
         Assert.assertEquals(expected, handler.getLog());
         Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
         gcedContext = null;
-        for (int i = 1; gcedContextRef.get() != null; i++) {
-            if (i == 10) {
-                throw new AssertionError("Cannot free context.");
-            }
-            System.gc();
-        }
+        assertGc("Cannot free context.", gcedContextRef);
         handler = new TestHandler();
         Context newContext = Context.newBuilder().logHandler(handler).build();
         newContext.eval(LoggingLanguageFirst.ID, "");
@@ -479,12 +474,7 @@ public class LoggingTest {
         Assert.assertEquals(expected, contextHandler.getLog());
         Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
         gcedContext = null;
-        for (int i = 1; gcedContextRef.get() != null; i++) {
-            if (i == 10) {
-                throw new AssertionError("Cannot free context.");
-            }
-            System.gc();
-        }
+        assertGc("Cannot free context.", gcedContextRef);
         contextHandler.clear();
         context.eval(LoggingLanguageFirst.ID, "");
         expected = new ArrayList<>();
@@ -612,6 +602,38 @@ public class LoggingTest {
             node.level = loggerLevel;
         }
         return root;
+    }
+
+    private static void assertGc(final String message, final Reference<?> ref) {
+        int blockSize = 100_000;
+        final List<byte[]> blocks = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            if (ref.get() == null) {
+                return;
+            }
+            try {
+                System.gc();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                System.runFinalization();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                blocks.add(new byte[blockSize]);
+                blockSize = (int) (blockSize * 1.3);
+            } catch (OutOfMemoryError oom) {
+                blockSize >>>= 1;
+            }
+            if (i % 10 == 0) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
+        }
+        Assert.fail(message);
     }
 
     public static final class LoggingContext {

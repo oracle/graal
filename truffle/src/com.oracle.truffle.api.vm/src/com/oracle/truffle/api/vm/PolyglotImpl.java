@@ -961,7 +961,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (!(context instanceof PolyglotContextImpl)) {
                 throw new AssertionError();
             }
-            return ((PolyglotContextImpl) context).logLevels;
+            return ((PolyglotContextImpl) context).config.logLevels;
         }
     }
 }
