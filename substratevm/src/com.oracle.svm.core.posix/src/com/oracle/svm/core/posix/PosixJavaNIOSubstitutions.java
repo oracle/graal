@@ -2245,6 +2245,7 @@ public final class PosixJavaNIOSubstitutions {
                 int res = 0;
 
                 // errno = 0;
+                Errno.set_errno(0);
                 // #ifdef __solaris__
                 // RESTARTABLE_RETURN_PTR(getpwuid_r((uid_t)uid, &pwent, pwbuf, (Unsigned)buflen),
                 // p);
@@ -2291,6 +2292,7 @@ public final class PosixJavaNIOSubstitutions {
                 }
 
                 // errno = 0;
+                Errno.set_errno(0);
                 // #ifdef __solaris__
                 // RESTARTABLE_RETURN_PTR(getgrgid_r((gid_t)gid, &grent, grbuf, (Unsigned)buflen),
                 // g);
@@ -2343,6 +2345,7 @@ public final class PosixJavaNIOSubstitutions {
                 CCharPointer name = WordFactory.pointer(nameAddress);
 
                 // errno = 0;
+                Errno.set_errno(0);
                 // #ifdef __solaris__
                 // RESTARTABLE_RETURN_PTR(getpwnam_r(name, &pwent, pwbuf, (Unsigned)buflen), p);
                 // #else
@@ -2391,6 +2394,7 @@ public final class PosixJavaNIOSubstitutions {
                 }
 
                 // errno = 0;
+                Errno.set_errno(0);
                 // #ifdef __solaris__
                 // RESTARTABLE_RETURN_PTR(getgrnam_r(name, &grent, grbuf, (Unsigned)buflen), g);
                 // #else
@@ -3141,7 +3145,7 @@ public final class PosixJavaNIOSubstitutions {
             // 073 if (poller.revents) {
             if (CTypeConversion.toBoolean(poller.revents())) {
                 // 074 errno = 0;
-                error_Pointer.write(0);
+                Errno.set_errno(0);
                 // 075 result = getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &n);
                 result = Socket.getsockopt(fd, Socket.SOL_SOCKET(), Socket.SO_ERROR(), error_Pointer, n_Pointer);
                 // 076 if (result < 0) {
