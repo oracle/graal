@@ -205,6 +205,8 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 
+    LLVMStatementNode createDebugTrap(LLVMSourceLocation location);
+
     LLVMStatementNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 
     LLVMMemMoveNode createMemMove();

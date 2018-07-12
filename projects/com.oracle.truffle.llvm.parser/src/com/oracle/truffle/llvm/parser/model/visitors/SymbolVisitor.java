@@ -65,6 +65,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruct
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
@@ -295,6 +296,10 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(DbgValueInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(DebugTrapInstruction inst) {
         defaultAction(inst);
     }
 

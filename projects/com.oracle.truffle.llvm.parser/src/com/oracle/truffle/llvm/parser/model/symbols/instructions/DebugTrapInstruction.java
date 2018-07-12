@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
+package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-void bar() {
-    printf("");
-}
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-void foo()
-{
-    bar();
-    bar();
-}
+public final class DebugTrapInstruction extends VoidInstruction {
 
-__attribute__((constructor)) int start()
-{
-    foo();
-    foo();
-    foo();
-    foo();
-    __builtin_debugtrap();
-    foo();
-    foo();
-    return 0;
+    public static DebugTrapInstruction create(VoidCallInstruction callToIntrinsic) {
+        final DebugTrapInstruction trap = new DebugTrapInstruction();
+        trap.setDebugLocation(callToIntrinsic.getDebugLocation());
+        return trap;
+    }
+
+    private DebugTrapInstruction() {
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
 }

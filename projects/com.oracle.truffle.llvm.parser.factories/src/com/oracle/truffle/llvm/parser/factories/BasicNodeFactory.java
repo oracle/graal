@@ -119,6 +119,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
@@ -1919,6 +1920,11 @@ public class BasicNodeFactory implements NodeFactory {
         } else {
             return LLVMDebugObjectBuilder.UNAVAILABLE;
         }
+    }
+
+    @Override
+    public LLVMStatementNode createDebugTrap(LLVMSourceLocation location) {
+        return new LLVMDebugTrapNode(location);
     }
 
     @Override
