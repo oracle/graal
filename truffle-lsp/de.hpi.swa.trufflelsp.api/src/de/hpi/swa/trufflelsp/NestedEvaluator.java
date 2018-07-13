@@ -23,4 +23,6 @@ public interface NestedEvaluator {
         });
     }
 
+    public void shutdown();
+
 }

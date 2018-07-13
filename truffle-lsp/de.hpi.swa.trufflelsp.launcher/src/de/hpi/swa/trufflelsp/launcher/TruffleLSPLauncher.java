@@ -104,6 +104,10 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
                     }
                 });
             }
+
+            public void shutdown() {
+                executor.shutdownNow();
+            }
         };
         registry.register(evaluator);
 
@@ -121,6 +125,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
             futureStartServer.get();
 
             evaluator.doWithDefaultContext(() -> defaultContext.leave()).get();
+            evaluator.shutdown();
         } catch (InterruptedException | ExecutionException e) {
             throw abort(e, -1);
         }

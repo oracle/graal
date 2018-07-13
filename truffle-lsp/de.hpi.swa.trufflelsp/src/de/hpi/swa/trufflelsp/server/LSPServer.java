@@ -74,6 +74,7 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import com.google.gson.JsonPrimitive;
 
 import de.hpi.swa.trufflelsp.TruffleAdapter;
+import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 
 public class LSPServer implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
     private static final String SHOW_COVERAGE = "show_coverage";
@@ -306,13 +307,21 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
         this.truffleAdapter.didOpen(uri, params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
 
-        parseDocument(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId(),
-                        params.getTextDocument().getText());
+        try {
+            parseDocument(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId(),
+                            params.getTextDocument().getText());
+        } catch (UnknownLanguageException e) {
+            this.client.showMessage(new MessageParams(MessageType.Error, "Unknown language: " + e.getMessage()));
+        }
     }
 
     @Override
     public void didChange(DidChangeTextDocumentParams params) {
-        processChanges(params.getTextDocument().getUri(), params.getContentChanges());
+        try {
+            processChanges(params.getTextDocument().getUri(), params.getContentChanges());
+        } catch (UnknownLanguageException e) {
+            this.client.showMessage(new MessageParams(MessageType.Error, "Unknown language: " + e.getMessage()));
+        }
     }
 
     private void processChanges(final String documentUri,
@@ -389,7 +398,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
             boolean hasErrors;
             try {
-                this.truffleAdapter.runConverageAnalysis(URI.create(uri));
+                this.truffleAdapter.runCoverageAnalysis(URI.create(uri));
             } finally {
                 hasErrors = hasErrorsInDiagnostics();
                 reportCollectedDiagnostics();
@@ -401,7 +410,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                 this.client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
             }
         } else if (SHOW_COVERAGE.equals(params.getCommand())) {
-            String uri = (String) params.getArguments().get(0);
+            String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
 
             try {
                 this.truffleAdapter.showCoverage(URI.create(uri));
@@ -423,53 +432,57 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
             public Thread newThread(Runnable r) {
                 Thread thread = Executors.defaultThreadFactory().newThread(r);
-                thread.setName("LSP server connection thread");
+                thread.setName("LSP client connection thread");
                 return thread;
             }
         });
         Future<?> future = this.executor.submit(new Runnable() {
 
             public void run() {
-                while (true) {
-                    try {
-                        if (serverSocket.isClosed()) {
-                            err.println("[Truffle LSP] Server socket is closed.");
-                            return;
+// while (true) {
+                try {
+                    if (serverSocket.isClosed()) {
+                        err.println("[Truffle LSP] Server socket is closed.");
+                        return;
+                    }
+
+                    info.println("[Truffle LSP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
+                    Socket clientSocket = serverSocket.accept();
+                    info.println("[Truffle LSP] Client connected on " + clientSocket.getRemoteSocketAddress());
+
+                    ExecutorService lspRequestExecutor = Executors.newCachedThreadPool(new ThreadFactory() {
+                        private final ThreadFactory factory = Executors.defaultThreadFactory();
+
+                        public Thread newThread(Runnable r) {
+                            Thread thread = factory.newThread(r);
+                            thread.setName("LSP client request handler " + thread.getName());
+                            return thread;
                         }
+                    });
 
-                        info.println("[Truffle LSP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
-                        Socket clientSocket = serverSocket.accept();
-                        info.println("[Truffle LSP] Client connected on " + clientSocket.getRemoteSocketAddress());
-
-                        //@formatter:off
+                    //@formatter:off
                         Launcher<LanguageClient> launcher = new LSPLauncher.Builder<LanguageClient>()
                             .setLocalService(LSPServer.this)
                             .setRemoteInterface(LanguageClient.class)
                             .setInput(clientSocket.getInputStream())
                             .setOutput(clientSocket.getOutputStream())
-                            .setExecutorService(Executors.newCachedThreadPool(new ThreadFactory() {
-                                private final ThreadFactory factory = Executors.defaultThreadFactory();
-
-                                public Thread newThread(Runnable r) {
-                                    Thread thread = factory.newThread(r);
-                                    thread.setName("LSP server " + thread.getName());
-                                    return thread;
-                                }
-                            }))
+                            .setExecutorService(lspRequestExecutor)
                             .create();
                         //@formatter:on
 
-                        LSPServer.this.connect(launcher.getRemoteProxy());
-                        Future<?> listenFuture = launcher.startListening();
-                        try {
-                            listenFuture.get();
-                        } catch (InterruptedException | ExecutionException e) {
-                            err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
-                        }
-                    } catch (IOException e) {
-                        err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
+                    LSPServer.this.connect(launcher.getRemoteProxy());
+                    Future<?> listenFuture = launcher.startListening();
+                    try {
+                        listenFuture.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
+                    } finally {
+                        lspRequestExecutor.shutdownNow();
                     }
+                } catch (IOException e) {
+                    err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
                 }
+// }
             }
         }, Boolean.TRUE);
         return future;

@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -76,6 +77,7 @@ import de.hpi.swa.trufflelsp.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
+import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
 public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRegistry {
@@ -146,11 +148,20 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         try {
             doWithGlobalInnerContext(() -> parse(surrogate)).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace(err);
+            // TODO(ds) exception handling - where? here or in LSPServer? who sends what to client?
+            if (e.getCause() instanceof UnknownLanguageException) {
+                throw (UnknownLanguageException) e.getCause();
+            } else {
+                e.printStackTrace(err);
+            }
         }
     }
 
     protected CallTarget parse(final TextDocumentSurrogate surrogate) {
+        if (!env.getLanguages().containsKey(surrogate.getLangId())) {
+            throw new UnknownLanguageException("Unknown language: " + surrogate.getLangId() + ". Known languages are: " + env.getLanguages().keySet());
+        }
+
         CallTarget callTarget = null;
         try {
             callTarget = parseInternal(surrogate);
@@ -160,7 +171,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             if (e instanceof TruffleException) {
                 this.diagnosticsPublisher.addDiagnostics(surrogate.getUri(), new Diagnostic(getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
             } else {
-                throw new RuntimeException(e);
+                throw e;
             }
         }
 
@@ -215,10 +226,14 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         try {
             // TODO(ds) do we need to wait blocking? when not waiting -> diagnostics publishing
-            // needs to be done here and not in LSPServer + showCocerage in there
+            // needs to be done here and not in LSPServer + showCoverage in there
             doWithGlobalInnerContext(() -> parse(surrogate)).get();
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace(err);
+            if (e.getCause() instanceof UnknownLanguageException) {
+                throw (UnknownLanguageException) e.getCause();
+            } else {
+                e.printStackTrace(err);
+            }
         }
         if (surrogate.hasCoverageData()) {
             showCoverage(uri);
@@ -288,7 +303,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public List<? extends SymbolInformation> getSymbolInfo(URI uri) {
-        List<SymbolInformation> symbolInformation = new ArrayList<>();
+        Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
 
         TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
         env.getInstrumenter().attachLoadSourceSectionListener(
@@ -305,7 +320,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                             }
                         }, true).dispose();
 
-        return symbolInformation;
+        return new ArrayList<>(symbolInformation);
     }
 
     public static LinkedHashMap<String, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {
@@ -355,14 +370,12 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                     isObjectPropertyCompletion = sourceFix.isObjectPropertyCompletion;
                 } catch (IllegalStateException e) {
                     this.err.println(e.getLocalizedMessage());
-                } catch (RuntimeException e) {
-                    if (!(e instanceof TruffleException)) {
-                        throw new IllegalStateException(e);
-                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace(err);
                 } catch (ExecutionException e) {
-                    e.printStackTrace(err);
+                    if (!(e.getCause() instanceof TruffleException)) {
+                        throw new IllegalStateException(e);
+                    }
                 }
             }
         }
@@ -462,24 +475,26 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         for (Node sibling : nearestNode.getParent().getChildren()) {
             SourceSection siblingSection = sibling.getSourceSection();
-            SourceLocation siblingLocation = SourceLocation.from(sibling.getSourceSection());
-            if (siblingSection != null && siblingSection.isAvailable() && textDocumentSurrogate.isLocationCovered(siblingLocation)) {
-                List<CoverageData> coverageDataObjects = textDocumentSurrogate.getCoverageData(siblingLocation);
+            if (siblingSection != null && siblingSection.isAvailable()) {
+                SourceLocation siblingLocation = SourceLocation.from(siblingSection);
+                if (textDocumentSurrogate.isLocationCovered(siblingLocation)) {
+                    List<CoverageData> coverageDataObjects = textDocumentSurrogate.getCoverageData(siblingLocation);
 
-                final LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
-                final String code = nearestNode.getSourceSection().getCharacters().toString();
-                final Source inlineEvalSource = Source.newBuilder(code).name("inline eval").language(info.getId()).mimeType("content/unknown").build();
-                for (CoverageData coverageData : coverageDataObjects) {
-                    final ExecutableNode executableNode = this.env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
-                    final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
-                    coverageEventNode.insertChild(executableNode);
-                    // TODO(ds) remove child after execution? There is no API for that?!
+                    final LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
+                    final String code = nearestNode.getSourceSection().getCharacters().toString();
+                    final Source inlineEvalSource = Source.newBuilder(code).name("inline eval").language(info.getId()).mimeType("content/unknown").build();
+                    for (CoverageData coverageData : coverageDataObjects) {
+                        final ExecutableNode executableNode = this.env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
+                        final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
+                        coverageEventNode.insertChild(executableNode);
+                        // TODO(ds) remove child after execution? There is no API for that?!
 
-                    try {
-                        System.out.println("Trying coverage-based eval...");
-                        Object result = executableNode.execute(coverageData.getFrame());
-                        return EvaluationResult.createResult(result);
-                    } catch (Exception e) {
+                        try {
+                            System.out.println("Trying coverage-based eval...");
+                            Object result = executableNode.execute(coverageData.getFrame());
+                            return EvaluationResult.createResult(result);
+                        } catch (Exception e) {
+                        }
                     }
                 }
             }
@@ -509,8 +524,10 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     private EvaluationResult runToSectionAndEval(final Node nearestNode, final SourceWrapper sourceWrapper) {
-        if (nearestNode instanceof InstrumentableNode && (((InstrumentableNode) nearestNode).hasTag(StandardTags.StatementTag.class)) ||
-                        ((InstrumentableNode) nearestNode).hasTag(StandardTags.ExpressionTag.class)) {
+// if (nearestNode instanceof InstrumentableNode && (((InstrumentableNode)
+// nearestNode).hasTag(StandardTags.StatementTag.class)) ||
+// ((InstrumentableNode) nearestNode).hasTag(StandardTags.ExpressionTag.class)) {
+        if (nearestNode instanceof InstrumentableNode) {
             final URI uri = sourceWrapper.getSource().getURI();
             final TextDocumentSurrogate surrogateOfOpenedFile = this.uri2TextDocumentSurrogate.get(uri);
             final SourceSection sourceSection = nearestNode.getSourceSection();
@@ -527,7 +544,8 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 }
 
                 if (coverageUri == null) {
-                    return EvaluationResult.createUnknownExecutionTarget();
+// return EvaluationResult.createUnknownExecutionTarget();
+                    coverageUri = uri;
                 }
             }
 
@@ -565,7 +583,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private static SourceSectionFilter createSourceSectionFilter(final URI uri, final SourceSection sourceSection, final String name) {
         // @formatter:off
         return SourceSectionFilter.newBuilder()
-                        .tagIs(StatementTag.class, ExpressionTag.class)
+//                        .tagIs(StatementTag.class, ExpressionTag.class)
                         .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
                         .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
                         .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
@@ -808,32 +826,37 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return null;
     }
 
-    public void runConverageAnalysis(final URI uri) {
+    public void runCoverageAnalysis(final URI uri) {
         final TextDocumentSurrogate surrogateOfOpendFile = this.uri2TextDocumentSurrogate.get(uri);
-        URI coverageUri;
+        URI tempCoverageUri;
         try {
-            coverageUri = extractCoverageScriptPath(surrogateOfOpendFile);
+            tempCoverageUri = extractCoverageScriptPath(surrogateOfOpendFile);
         } catch (InvalidCoverageScriptURI e) {
             this.diagnosticsPublisher.addDiagnostics(uri,
                             new Diagnostic(new Range(new Position(0, e.getIndex()), new Position(0, e.getLength())), e.getReason(), DiagnosticSeverity.Error, "Coverage analysis"));
             return;
         }
 
-        if (coverageUri == null) {
-            this.diagnosticsPublisher.addDiagnostics(uri, new Diagnostic(new Range(new Position(), new Position()), "No COVERAGE_SCRIPT:<path> found anywhere in first line.", DiagnosticSeverity.Error,
-                            "Coverage analysis"));
-            return;
+        if (tempCoverageUri == null) {
+// this.diagnosticsPublisher.addDiagnostics(uri, new Diagnostic(new Range(new Position(), new
+// Position()), "No COVERAGE_SCRIPT:<path> found anywhere in first line.", DiagnosticSeverity.Error,
+// "Coverage analysis"));
+// return;
+            tempCoverageUri = uri;
         }
+
+        final URI coverageUri = tempCoverageUri;
 
         // Clean-up TODO(ds) how to do this without dropping everything? If we have different tests,
         // the coverage run of one test will remove any coverage info provided from the other tests.
         this.uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage());
 
+        Future<?> future = null;
         try {
             // TODO(ds) can we always assume the same language for the source and its test?
             TextDocumentSurrogate surrogateOfTestFile = this.uri2TextDocumentSurrogate.computeIfAbsent(coverageUri, (_uri) -> new TextDocumentSurrogate(_uri, surrogateOfOpendFile.getLangId()));
 
-            doWithNewContext(new Runnable() {
+            future = doWithNewContext(new Runnable() {
 
                 public void run() {
                     final CallTarget callTarget = parse(surrogateOfTestFile);
@@ -862,11 +885,18 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                         eventFactoryBinding.dispose();
                     }
                 }
-            }).get();
+            });
+// future.get(5, TimeUnit.SECONDS);
+            future.get();
 
             surrogateOfOpendFile.setCoverageAnalysisDone(true);
 
             showCoverage(uri);
+// } catch (TimeoutException e) {
+// err.println("Coverage analysis timed out!");
+// if (future != null) {
+// future.cancel(true);
+// }
         } catch (Exception e) {
             if (e instanceof TruffleException) {
                 Node location = ((TruffleException) e).getLocation();
