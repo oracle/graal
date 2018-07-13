@@ -41,7 +41,7 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
     public static Collection<Object[]> data() {
         ArrayList<Object[]> tests = new ArrayList<>();
         String[] targets = new String[]{"foobar", "foo", "bar"};
-        String[] utf16targets = new String[]{"grga čvarak", "grga", "čvarak"};
+        String[] utf16targets = new String[]{"grga " + ((char) 0x10D) + "varak", "grga", ((char) 0x10D) + "varak"};
         addTargets(tests, targets);
         addTargets(tests, utf16targets);
         return tests;
