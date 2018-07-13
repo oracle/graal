@@ -44,8 +44,7 @@ public final class ImageInfo {
      * {@link #PROPERTY_IMAGE_CODE_VALUE_BUILDTIME} the code is executing in the context of image
      * building (e.g. in a static initializer of a class that will be contained in the image). If
      * the property returns the string given by {@link #PROPERTY_IMAGE_CODE_VALUE_RUNTIME} the code
-     * is executing at image runtime. If code is executing on the JVM (but <b>not</b> in the context
-     * of building an image) the property is not set.
+     * is executing at image runtime. Otherwise the property is not set.
      *
      * @since 1.0
      */
