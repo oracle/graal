@@ -25,7 +25,6 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.replacements.StringLatin1IndexOfNode;
 import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.junit.Test;
@@ -121,5 +120,14 @@ public class StringSubstitutionsTest extends MethodSubstitutionTest {
 
     public int indexOfConstantUTF16() {
         return "grga čvarak".indexOf("čvarak");
+    }
+
+    @Test
+    public void testCompareTo() {
+        test("compareTo");
+    }
+
+    public int compareTo() {
+        return "ofar".compareTo("rafo");
     }
 }

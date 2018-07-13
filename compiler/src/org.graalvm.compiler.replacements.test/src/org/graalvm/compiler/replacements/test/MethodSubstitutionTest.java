@@ -58,6 +58,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return testGraph(snippet, null);
     }
 
+    @SuppressWarnings("unused")
     public BasePhase<HighTierContext> createInliningPhase(StructuredGraph graph) {
         return new InliningPhase(new CanonicalizerPhase());
     }
