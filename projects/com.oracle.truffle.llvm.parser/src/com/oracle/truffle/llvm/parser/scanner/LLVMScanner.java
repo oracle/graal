@@ -189,7 +189,7 @@ public final class LLVMScanner {
         return CHAR6.charAt((int) value);
     }
 
-    private long readVBR(long width) {
+    private long readVBR(int width) {
         final long value = bitstream.readVBR(offset, width);
         offset += BitStream.widthVBR(value, width);
         return value;
