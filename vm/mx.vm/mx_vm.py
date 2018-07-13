@@ -150,6 +150,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             exclude_base = _jdk_dir
             if _src_jdk_base != '.':
                 exclude_base = join(exclude_base, _src_jdk_base)
+            if mx.get_os() == 'darwin':
+                hsdis = '/jre/lib/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
+            else:
+                hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
             _add(layout, base_dir, {
                 'source_type': 'file',
                 'path': _jdk_dir,
@@ -158,6 +162,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
                     exclude_base + '/lib/visualvm',
+                    exclude_base + hsdis,
                 ]
             })
 
