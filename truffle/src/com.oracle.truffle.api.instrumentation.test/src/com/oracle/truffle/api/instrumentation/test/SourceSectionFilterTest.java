@@ -60,9 +60,10 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
 
     private static boolean isInstrumentedNode(SourceSectionFilter filter, Node instrumentedNode) {
         try {
+            boolean includes = filter.includes(instrumentedNode);
             Method m = filter.getClass().getDeclaredMethod("isInstrumentedNode", Set.class, Node.class, SourceSection.class);
             ReflectionUtils.setAccessible(m, true);
-            return (boolean) m.invoke(filter, ALL_TAGS, instrumentedNode, instrumentedNode != null ? instrumentedNode.getSourceSection() : null);
+            return includes && (boolean) m.invoke(filter, ALL_TAGS, instrumentedNode, instrumentedNode != null ? instrumentedNode.getSourceSection() : null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -130,7 +131,14 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
     }
 
     private static Node createNode(final SourceSection section, final Class<?>... tags) {
-        return new SourceSectionNode(section, tags);
+        SourceSectionNode node = new SourceSectionNode(section, tags);
+        try {
+            RootNode rootNode = createRootNode(section, null, node);
+            rootNode.adoptChildren();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        return node;
     }
 
     static RootNode createRootNode(final SourceSection section, final Boolean internal, Node... children) throws Exception {
