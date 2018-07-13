@@ -281,7 +281,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 return true;
             }
 
-
             @Override
             public SourceSection getSourceSection() {
                 return sourceSection;
@@ -361,12 +360,10 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
         static class SRootNode extends com.oracle.truffle.api.nodes.RootNode {
 
-            private final RecreateShadowStackTestLanguage language;
             @Child SamplerTestNode child;
 
             SRootNode(RecreateShadowStackTestLanguage language, SamplerTestNode child) {
                 super(language);
-                this.language = language;
                 this.child = child;
             }
 
