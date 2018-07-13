@@ -1,7 +1,9 @@
 suite = {
     "name": "vm",
-    "version": "1.0.0-rc4-dev",
-    "mxversion": "5.174.2",
+    "version": "1.0.0-rc4",
+    "release" : False,
+    "groupId" : "org.graalvm",
+    "mxversion": "5.178.0",
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
@@ -152,6 +154,7 @@ suite = {
             "distDependencies": [
                 "INSTALLER",
             ],
+            "maven": False,
         },
         "INSTALLER_GRAALVM_SUPPORT": {
             "native": True,
@@ -162,6 +165,7 @@ suite = {
                 "bin/": "file:mx.vm/gu",
                 "components/polyglot/.registry" : "string:",
             },
+            "maven": False,
         },
         "VM_GRAALVM_SUPPORT": {
             "native": True,
@@ -170,6 +174,7 @@ suite = {
                 "LICENSE": "file:LICENSE_GRAALVM_CE",
                 "3rd_party_licenses.txt": "file:3rd_party_licenses_graalvm_ce.txt",
             },
+            "maven": False,
         },
     },
 }

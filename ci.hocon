@@ -1,7 +1,7 @@
 include "common.hocon"
 builds = []
 
-binaries-repository = "lafo-snapshots"
+binaries-repository = "lafo"
 
 #SDK
 include "sdk/ci.hocon"
