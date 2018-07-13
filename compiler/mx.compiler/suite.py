@@ -135,7 +135,35 @@ suite = {
     "UBENCH_AGENT_DIST" : {
       "urls" : ["https://github.com/oracle/graal/releases/download/java-ubench-agent-2e5becaf97a/java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
       "sha1" : "19087a34b80be8845e9a3e7f927ceb592de83762",
+    },
+
+    # Required to run SPECJBB2015 on JDK >=11
+    "ACTIVATION_1.1.1" : {
+      "sha1" : "485de3a253e23f645037828c07f1d7f1af40763a",
+      "maven" : {
+        "groupId" : "javax.activation",
+        "artifactId" : "activation",
+        "version" : "1.1.1",
+      },
+    },
+    "JAXB_API_2.1" : {
+      "sha1" : "d68570e722cffe2000358ce9c661a0b0bf1ebe11",
+      "maven" : {
+        "groupId" : "javax.xml.bind",
+        "artifactId" : "jaxb-api",
+        "version" : "2.1",
+      },
+    },
+    "JAXB_IMPL_2.1.17" : {
+      "sha1" : "26efa071c07deb2b80cd72b6567f1260a68a0da5",
+      "maven" : {
+        "groupId" : "com.sun.xml.bind",
+        "artifactId" : "jaxb-impl",
+        "version" : "2.1.17",
+      },
+      "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     }
+    # /SPECJBB2015
   },
 
   "projects" : {

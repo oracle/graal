@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.amd64.vector;
+package com.oracle.svm.core.windows;
 
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64VectorAssembler;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
-public abstract class AMD64VectorLIRInstruction extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64VectorLIRInstruction> TYPE = LIRInstructionClass.create(AMD64VectorLIRInstruction.class);
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.heap.PhysicalMemory;
 
-    protected AMD64VectorLIRInstruction(LIRInstructionClass<? extends AMD64LIRInstruction> c) {
-        super(c);
+@Platforms(Platform.WINDOWS.class)
+class WindowsPhysicalMemory extends PhysicalMemory {
+
+    static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
+        @Override
+        public UnsignedWord size() {
+            // 128MB for now
+            return WordFactory.unsigned(128 * 1024 * 1024);
+        }
     }
 
-    @Override
-    public final void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        emitCode(crb, (AMD64VectorAssembler) masm);
+    @AutomaticFeature
+    static class PhysicalMemoryFeature implements Feature {
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            ImageSingletons.add(PhysicalMemorySupport.class, new WindowsPhysicalMemorySupportImpl());
+        }
     }
-
-    public abstract void emitCode(CompilationResultBuilder crb, AMD64VectorAssembler vasm);
 }

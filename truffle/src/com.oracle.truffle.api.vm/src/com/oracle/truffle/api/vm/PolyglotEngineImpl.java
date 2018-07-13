@@ -309,8 +309,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     String key = (String) systemKey;
                     if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
                         String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                        if (!options.containsKey(engineKey) && (!preInitialization || idToPublicLanguage.containsKey(parseOptionGroup(engineKey)) ||
-                                        engineKey.equals(PolyglotImpl.OPTION_GROUP_ENGINE + '.' + PolyglotEngineOptions.PREINITIALIZE_CONTEXT_NAME))) {
+                        String optionGroup = parseOptionGroup(engineKey);
+                        if (!options.containsKey(engineKey) && (!preInitialization || idToPublicLanguage.containsKey(optionGroup) ||
+                                        engineKey.equals(PolyglotImpl.OPTION_GROUP_ENGINE + '.' + PolyglotEngineOptions.PREINITIALIZE_CONTEXT_NAME) ||
+                                        PolyglotEngineOptions.OPTION_GROUP_LOG.equals(optionGroup))) {
                             options.put(engineKey, System.getProperty(key));
                         }
                     }
@@ -1013,7 +1015,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
-                        classFilter, arguments, allowedLanguages, options, fs, logHandler);
+                        classFilter, arguments, allowedLanguages, options, fs, useHandler);
 
         PolyglotContextImpl context = loadPreinitializedContext(config);
         if (context == null) {

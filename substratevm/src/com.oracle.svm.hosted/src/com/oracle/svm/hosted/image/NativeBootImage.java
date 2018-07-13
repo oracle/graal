@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -726,7 +726,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     public NativeBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
 
         uniqueEntryPoints.addAll(entryPoints);
@@ -738,6 +738,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             if (objectFile == null) {
                 throw new Error("Unsupported objectfile format: " + ObjectFile.getNativeFormat());
             }
+        }
+
+        if (mainEntryPoint != null) {
+            objectFile.setMainEntryPoint(globalSymbolNameForMethod(mainEntryPoint));
         }
 
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());

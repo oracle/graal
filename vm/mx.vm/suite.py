@@ -12,19 +12,12 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
-            {
-                "name" : "compiler",
-                "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
-            },
             # Dynamic imports for components:
             {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "37b41b81c339d88c6f7f28e73a0caa728ff81d5a",
+                "version": "56d5878c7354ed402604fb5d81eff81916c3883c",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -34,7 +27,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "37b41b81c339d88c6f7f28e73a0caa728ff81d5a",
+                "version": "56d5878c7354ed402604fb5d81eff81916c3883c",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -42,7 +35,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "076421115b82e3801b6f5b5a5c0b6e94a6c49520",
+                "version": "09cac1a3582c5669aec73cb0f8f38f0c0c7f8669",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +59,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "d783b03d0d5fc23491a91556b44c6110b5ded0b1",
+                "version": "77a310dea06a0f7805e7670c27de8c747a800154",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +68,7 @@ suite = {
             },
             {
                 "name": "sulong",
-                "version": "cd19c65a18e654bc7c7555aeb2a22de14cc52f00",
+                "version": "0999f49991c1777791fb3a49ad4f76b462a72273",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/sulong.git", "kind": "git"},
@@ -94,18 +87,11 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "fcc14172e01bd600ff5db220086751dcd451e83c",
+                "version": "5e7ed7ff79659acdb4731b4ab6c551e8f58fc243",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
-            },
-            {
-                "name" : "tools",
-                "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
         ]
@@ -140,19 +126,6 @@ suite = {
             ],
             "javaCompliance" : "1.8",
             "checkstyle": "com.oracle.graalvm.locator",
-            "license" : "GPLv2-CPE",
-        },
-        "org.graalvm.truffle.tools.test" : {
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "dependencies": [
-                "mx:JUNIT",
-                "tools:TRUFFLE_PROFILER",
-                "compiler:GRAAL_TEST"
-            ],
-            "checkstyle" : "org.graalvm.compiler.graph",
-            "javaCompliance" : "1.8",
-            "workingSets" : "Graal,Truffle,Tools,Test",
             "license" : "GPLv2-CPE",
         },
     },

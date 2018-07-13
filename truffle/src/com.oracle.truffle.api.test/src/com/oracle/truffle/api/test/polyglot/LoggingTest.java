@@ -33,6 +33,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,10 +45,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
@@ -331,12 +337,13 @@ public class LoggingTest {
     @Test
     public void testParametersPrimitive() {
         final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
-        AbstractLoggingLanguage.action = new BiConsumer<LoggingContext, Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
             @Override
-            public void accept(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
                 for (TruffleLogger logger : loggers) {
                     logger.log(Level.WARNING, "Parameters", Arrays.copyOf(expected, expected.length));
                 }
+                return false;
             }
         };
         final TestHandler handler1 = new TestHandler();
@@ -344,10 +351,9 @@ public class LoggingTest {
             ctx1.eval(LoggingLanguageFirst.ID, "");
             boolean logged = false;
             for (LogRecord r : handler1.getRawLog()) {
-                if ("Parameters".equals(r.getMessage())) {
-                    logged = true;
-                    Assert.assertArrayEquals(expected, r.getParameters());
-                }
+                logged = true;
+                Assert.assertEquals("Parameters", r.getMessage());
+                Assert.assertArrayEquals(expected, r.getParameters());
             }
             Assert.assertTrue(logged);
         }
@@ -355,12 +361,13 @@ public class LoggingTest {
 
     @Test
     public void testParametersObjects() {
-        AbstractLoggingLanguage.action = new BiConsumer<LoggingContext, Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
             @Override
-            public void accept(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
                 for (TruffleLogger logger : loggers) {
                     logger.log(Level.WARNING, "Parameters", new LoggingLanguageObject("passed"));
                 }
+                return false;
             }
         };
         final TestHandler handler1 = new TestHandler();
@@ -368,10 +375,9 @@ public class LoggingTest {
             ctx1.eval(LoggingLanguageFirst.ID, "");
             boolean logged = false;
             for (LogRecord r : handler1.getRawLog()) {
-                if ("Parameters".equals(r.getMessage())) {
-                    logged = true;
-                    Assert.assertArrayEquals(new Object[]{"passed"}, r.getParameters());
-                }
+                logged = true;
+                Assert.assertEquals("Parameters", r.getMessage());
+                Assert.assertArrayEquals(new Object[]{"passed"}, r.getParameters());
             }
             Assert.assertTrue(logged);
         }
@@ -379,9 +385,9 @@ public class LoggingTest {
 
     @Test
     public void testInnerContextLogging() {
-        AbstractLoggingLanguage.action = new BiConsumer<LoggingContext, Collection<TruffleLogger>>() {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
             @Override
-            public void accept(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
                 TruffleContext tc = context.getEnv().newContextBuilder().build();
                 final Object prev = tc.enter();
                 try {
@@ -392,6 +398,7 @@ public class LoggingTest {
                     tc.leave(prev);
                     tc.close();
                 }
+                return true;
             }
         };
         TestHandler handler = new TestHandler();
@@ -404,6 +411,75 @@ public class LoggingTest {
             expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
             Assert.assertEquals(expected, handler.getLog());
         }
+    }
+
+    @Test
+    public void testPolyglotLogHandler() throws IOException {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+            @Override
+            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+                TruffleLogger.getLogger(LoggingLanguageFirst.ID).warning(LoggingLanguageFirst.ID);
+                TruffleLogger.getLogger(LoggingLanguageFirst.ID, "a").warning(LoggingLanguageFirst.ID + "::a");
+                return false;
+            }
+        };
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder().out(out).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        out.close();
+        final String output = new String(out.toByteArray());
+        final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
+        for (String line : output.split("\n")) {
+            final Matcher m = p.matcher(line);
+            Assert.assertTrue(m.matches());
+            final String loggerName = m.group(1);
+            final String message = m.group(2);
+            Assert.assertEquals(message, loggerName);
+        }
+    }
+
+    @Test
+    public void testGcedContext() {
+        TestHandler handler = new TestHandler();
+        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
+        gcedContext.eval(LoggingLanguageFirst.ID, "");
+        List<Map.Entry<Level, String>> expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+        Assert.assertEquals(expected, handler.getLog());
+        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
+        gcedContext = null;
+        assertGc("Cannot free context.", gcedContextRef);
+        handler = new TestHandler();
+        Context newContext = Context.newBuilder().logHandler(handler).build();
+        newContext.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap()));
+        Assert.assertEquals(expected, handler.getLog());
+    }
+
+    @Test
+    public void testGcedContext2() {
+        TestHandler gcedContextHandler = new TestHandler();
+        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(gcedContextHandler).build();
+        TestHandler contextHandler = new TestHandler();
+        Context context = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build();
+        gcedContext.eval(LoggingLanguageFirst.ID, "");
+        List<Map.Entry<Level, String>> expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+        Assert.assertEquals(expected, gcedContextHandler.getLog());
+        context.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+        Assert.assertEquals(expected, contextHandler.getLog());
+        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
+        gcedContext = null;
+        assertGc("Cannot free context.", gcedContextRef);
+        contextHandler.clear();
+        context.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+        Assert.assertEquals(expected, contextHandler.getLog());
     }
 
     private static void assertImmutable(final LogRecord r) {
@@ -528,6 +604,38 @@ public class LoggingTest {
         return root;
     }
 
+    private static void assertGc(final String message, final Reference<?> ref) {
+        int blockSize = 100_000;
+        final List<byte[]> blocks = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            if (ref.get() == null) {
+                return;
+            }
+            try {
+                System.gc();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                System.runFinalization();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                blocks.add(new byte[blockSize]);
+                blockSize = (int) (blockSize * 1.3);
+            } catch (OutOfMemoryError oom) {
+                blockSize >>>= 1;
+            }
+            if (i % 10 == 0) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
+        }
+        Assert.fail(message);
+    }
+
     public static final class LoggingContext {
         private final TruffleLanguage.Env env;
 
@@ -612,7 +720,7 @@ public class LoggingTest {
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {
         static final String[] LOGGER_NAMES = {"a", "a.a", "a.b", "a.a.a", "b", "b.a", "b.a.a.a"};
         static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
-        static BiConsumer<LoggingContext, Collection<TruffleLogger>> action;
+        static BiPredicate<LoggingContext, Collection<TruffleLogger>> action;
         private final Collection<TruffleLogger> allLoggers;
 
         AbstractLoggingLanguage(final String id) {
@@ -643,10 +751,13 @@ public class LoggingTest {
             final RootNode root = new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    boolean doDefaultLogging = true;
                     if (action != null) {
-                        action.accept(getContextReference().get(), allLoggers);
+                        doDefaultLogging = action.test(getContextReference().get(), allLoggers);
                     }
-                    doLog();
+                    if (doDefaultLogging) {
+                        doLog();
+                    }
                     return getContextReference().get().getEnv().asGuestValue(null);
                 }
             };

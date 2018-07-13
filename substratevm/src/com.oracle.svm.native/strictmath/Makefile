@@ -50,11 +50,19 @@ TARGET = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 $(TARGET) : $(OBJ_DIR)/StrictMath.$(OBJ_EXT) $(LIBM_OBJS) | $(TARGET_DIR)
 	$(AR) -cr $@ $^
 
+ifeq (${OS},windows)
+$(OBJ_DIR)/StrictMath.$(OBJ_EXT) : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< /Fo$@
+
+$(OBJ_DIR)/%.$(OBJ_EXT) : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< /Fo$@
+else
 $(OBJ_DIR)/StrictMath.$(OBJ_EXT) : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(OBJ_DIR)/%.$(OBJ_EXT) : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) $< -o $@
+endif
 
 $(TARGET_DIR) $(OBJ_DIR):
 	mkdir -p $@
