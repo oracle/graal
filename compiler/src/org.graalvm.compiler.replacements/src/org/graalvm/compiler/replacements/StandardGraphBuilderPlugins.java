@@ -195,7 +195,7 @@ public class StandardGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
                     b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                            b.getOptions(), b.getAssumptions(), value, field, false, false));
+                                    b.getOptions(), b.getAssumptions(), value, field, false, false));
                     return true;
                 }
             });
@@ -214,7 +214,7 @@ public class StandardGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
                     b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                            b.getOptions(), b.getAssumptions(), value, field, false, false));
+                                    b.getOptions(), b.getAssumptions(), value, field, false, false));
                     return true;
                 }
             });
@@ -604,7 +604,7 @@ public class StandardGraphBuilderPlugins {
                         ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
                 b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
-                        source, sourceCount, target, targetCount, origFromIndex));
+                                source, sourceCount, target, targetCount, origFromIndex));
                 return true;
             }
             return false;
