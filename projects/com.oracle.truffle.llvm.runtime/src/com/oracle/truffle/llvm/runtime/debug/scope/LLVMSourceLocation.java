@@ -35,12 +35,23 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class LLVMSourceLocation {
+
+    public abstract static class LazySourceSection {
+        public abstract SourceSection get();
+
+        public abstract Path getPath();
+
+        public abstract int getLine();
+
+        public abstract int getColumn();
+    }
 
     private static final int DEFAULT_SCOPE_CAPACITY = 2;
 
@@ -71,10 +82,61 @@ public abstract class LLVMSourceLocation {
     private final Kind kind;
     private final String name;
 
-    private LLVMSourceLocation(LLVMSourceLocation parent, Kind kind, String name) {
+    private final LazySourceSection lazySourceSection;
+    private SourceSection sourceSection;
+
+    private LLVMSourceLocation(LLVMSourceLocation parent, Kind kind, String name, LazySourceSection lazySourceSection) {
         this.parent = parent;
         this.kind = kind;
         this.name = name;
+        this.lazySourceSection = lazySourceSection;
+    }
+
+    private LLVMSourceLocation(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection) {
+        assert sourceSection != null;
+        this.parent = parent;
+        this.kind = kind;
+        this.name = name;
+        this.lazySourceSection = null;
+        this.sourceSection = sourceSection;
+    }
+
+    public SourceSection getSourceSection() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (sourceSection == null) {
+            sourceSection = lazySourceSection == null ? UNAVAILABLE_SECTION : lazySourceSection.get();
+        }
+        return sourceSection;
+    }
+
+    public String describeFile() {
+        CompilerAsserts.neverPartOfCompilation();
+        return lazySourceSection != null ? lazySourceSection.getPath().getFileName().toString() : sourceSection.getSource().getName();
+    }
+
+    private int getLine() {
+        return lazySourceSection != null ? lazySourceSection.getLine() : sourceSection.getStartLine();
+    }
+
+    private int getColumn() {
+        return lazySourceSection != null ? lazySourceSection.getColumn() : sourceSection.getStartColumn();
+    }
+
+    public String describeLocation() {
+        CompilerAsserts.neverPartOfCompilation();
+        String sourceName = getSourceSection().getSource().getName();
+        StringBuilder sb = new StringBuilder(sourceName);
+        if (getSourceSection().isAvailable()) {
+            int line = getSourceSection().getStartLine();
+            int col = getSourceSection().getStartColumn();
+            if (line >= 0) {
+                sb.append(':').append(line);
+                if (col >= 0) {
+                    sb.append(':').append(col);
+                }
+            }
+        }
+        return sb.toString();
     }
 
     public LLVMSourceLocation getParent() {
@@ -84,12 +146,6 @@ public abstract class LLVMSourceLocation {
     public Kind getKind() {
         return kind;
     }
-
-    public abstract SourceSection getSourceSection();
-
-    public abstract String describeFile();
-
-    public abstract String describeLocation();
 
     public void addSymbol(@SuppressWarnings("unused") LLVMSourceSymbol symbol) {
     }
@@ -196,7 +252,7 @@ public abstract class LLVMSourceLocation {
                 return false;
             }
 
-            if (!Objects.equals(describeLocation(), that.describeLocation())) {
+            if (getLine() != that.getLine() || getColumn() != that.getColumn()) {
                 return false;
             }
 
@@ -220,45 +276,23 @@ public abstract class LLVMSourceLocation {
 
     private static class LineScope extends LLVMSourceLocation {
 
-        private final SourceSection sourceSection;
+        LineScope(LLVMSourceLocation parent, Kind kind, String name, LazySourceSection lazySourceSection) {
+            super(parent, kind, name, lazySourceSection);
+        }
 
         LineScope(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection) {
-            super(parent, kind, name);
-            this.sourceSection = sourceSection;
-        }
-
-        @Override
-        public SourceSection getSourceSection() {
-            return sourceSection;
-        }
-
-        @Override
-        public String describeFile() {
-            return sourceSection.getSource().getName();
-        }
-
-        @Override
-        @TruffleBoundary
-        public String describeLocation() {
-            final String sourceName = sourceSection.getSource().getName();
-            final int line = sourceSection.getStartLine();
-            final int col = sourceSection.getStartColumn();
-            final StringBuilder sb = new StringBuilder(sourceName);
-            if (sourceSection.isAvailable()) {
-                if (line >= 0) {
-                    sb.append(':').append(line);
-                    if (col >= 0) {
-                        sb.append(':').append(col);
-                    }
-                }
-            }
-            return sb.toString();
+            super(parent, kind, name, sourceSection);
         }
     }
 
     private static class DefaultScope extends LineScope {
 
         @CompilationFinal private List<LLVMSourceSymbol> symbols;
+
+        DefaultScope(LLVMSourceLocation parent, Kind kind, String name, LazySourceSection lazySourceSection) {
+            super(parent, kind, name, lazySourceSection);
+            this.symbols = null;
+        }
 
         DefaultScope(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection) {
             super(parent, kind, name, sourceSection);
@@ -291,13 +325,12 @@ public abstract class LLVMSourceLocation {
 
         private final LLVMSourceLocation compileUnit;
 
-        FunctionScope(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection, LLVMSourceLocation compileUnit) {
-            super(parent, kind, name, sourceSection);
+        FunctionScope(LLVMSourceLocation parent, Kind kind, String name, LazySourceSection lazySourceSection, LLVMSourceLocation compileUnit) {
+            super(parent, kind, name, lazySourceSection);
             this.compileUnit = compileUnit;
         }
 
         @Override
-        @TruffleBoundary
         public String describeLocation() {
             return String.format("%s at %s", getName(), super.describeLocation());
         }
@@ -308,143 +341,27 @@ public abstract class LLVMSourceLocation {
         }
     }
 
-    private static final class UnavailableScope extends LLVMSourceLocation {
-
-        private final String file;
-        private final int line;
-        private final int col;
-        @CompilationFinal private List<LLVMSourceSymbol> symbols;
-
-        UnavailableScope(LLVMSourceLocation parent, Kind kind, String name, String file, int line, int col) {
-            super(parent, kind, name);
-            this.file = file;
-            this.line = line;
-            this.col = col;
-            this.symbols = null;
-        }
-
-        @TruffleBoundary
-        @Override
-        public void addSymbol(LLVMSourceSymbol symbol) {
-            CompilerAsserts.neverPartOfCompilation("Source-Scope may only grow when parsing!");
-            if (symbols == null) {
-                symbols = new ArrayList<>(2);
-            }
-            symbols.add(symbol);
-        }
-
-        @TruffleBoundary
-        @Override
-        public boolean hasSymbols() {
-            return symbols != null && !symbols.isEmpty();
-        }
-
-        @Override
-        public List<LLVMSourceSymbol> getSymbols() {
-            return symbols != null ? symbols : NO_SYMBOLS;
-        }
-
-        @Override
-        public SourceSection getSourceSection() {
-            return UNAVAILABLE_SECTION;
-        }
-
-        @Override
-        public String describeFile() {
-            return file != null ? file : "<unavailable file>";
-        }
-
-        @TruffleBoundary
-        @Override
-        public String describeLocation() {
-            final StringBuilder sb = new StringBuilder(describeFile());
-            if (line >= 0) {
-                sb.append(':').append(line);
-                if (col >= 0) {
-                    sb.append(':').append(col);
-                }
-            }
-            return sb.toString();
-        }
-
-    }
-
-    private static final class GlobalScope extends LLVMSourceLocation {
-
-        @CompilationFinal private List<LLVMSourceSymbol> symbols;
-
-        private GlobalScope(LLVMSourceLocation parent, Kind kind, String name) {
-            super(parent, kind, name);
-        }
-
-        @TruffleBoundary
-        @Override
-        public void addSymbol(LLVMSourceSymbol symbol) {
-            CompilerAsserts.neverPartOfCompilation("Source-Scope may only grow when parsing!");
-            if (symbols == null) {
-                symbols = new ArrayList<>();
-            }
-            symbols.add(symbol);
-        }
-
-        @TruffleBoundary
-        @Override
-        public boolean hasSymbols() {
-            return symbols != null && !symbols.isEmpty();
-        }
-
-        @Override
-        public List<LLVMSourceSymbol> getSymbols() {
-            return symbols != null ? symbols : NO_SYMBOLS;
-        }
-
-        @Override
-        public SourceSection getSourceSection() {
-            return UNAVAILABLE_SECTION;
-        }
-
-        @Override
-        public String describeFile() {
-            return getName();
-        }
-
-        @Override
-        public String describeLocation() {
-            return getName();
-        }
-    }
-
-    public static LLVMSourceLocation create(LLVMSourceLocation parent, LLVMSourceLocation.Kind kind, String name, SourceSection sourceSection, LLVMSourceLocation compileUnit) {
-        assert sourceSection != null;
-
+    public static LLVMSourceLocation create(LLVMSourceLocation parent, LLVMSourceLocation.Kind kind, String name, LazySourceSection lazySourceSection, LLVMSourceLocation compileUnit) {
         switch (kind) {
             case LINE:
             case GLOBAL:
             case LOCAL:
-                return new LineScope(parent, kind, name, sourceSection);
+                return new LineScope(parent, kind, name, lazySourceSection);
 
             case FUNCTION:
                 if (compileUnit != null) {
-                    return new FunctionScope(parent, kind, name, sourceSection, compileUnit);
+                    return new FunctionScope(parent, kind, name, lazySourceSection, compileUnit);
                 } else {
-                    return new DefaultScope(parent, kind, name, sourceSection);
+                    return new DefaultScope(parent, kind, name, lazySourceSection);
                 }
 
             default:
-                return new DefaultScope(parent, kind, name, sourceSection);
+                return new DefaultScope(parent, kind, name, lazySourceSection);
         }
     }
 
-    public static LLVMSourceLocation createGlobalScope(LLVMSourceLocation parent, LLVMSourceLocation.Kind kind, String name) {
-        return new GlobalScope(parent, kind, name);
-    }
-
-    public static LLVMSourceLocation createUnavailable(LLVMSourceLocation parent, LLVMSourceLocation.Kind kind, String name, String file, int line, int col) {
-        return new UnavailableScope(parent, kind, name, file, line, col);
-    }
-
-    public static LLVMSourceLocation createBitcodeFunction(String name, SourceSection simpleSection) {
-        return new DefaultScope(null, Kind.FUNCTION, name, simpleSection);
+    public static LLVMSourceLocation createBitcodeFunction(String name, SourceSection sourceSection) {
+        return new DefaultScope(null, Kind.FUNCTION, name, sourceSection != null ? sourceSection : UNAVAILABLE_SECTION);
     }
 
     public static LLVMSourceLocation createUnknown(SourceSection sourceSection) {

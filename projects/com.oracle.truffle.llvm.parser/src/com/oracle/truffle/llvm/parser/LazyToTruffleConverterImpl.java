@@ -118,7 +118,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(), uniquesRegion.build(),
                         nullableBeforeBlock, nullableAfterBlock, location, copyArgumentsToFrameArray);
 
-        RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(runtime.getContext(), body, method.getSourceSection(), frame, method, source, location);
+        RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(runtime.getContext(), body, frame, method, source, location);
         method.onAfterParse();
 
         return Truffle.getRuntime().createCallTarget(rootNode);
