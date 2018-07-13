@@ -34,6 +34,8 @@ public enum SynchronizationScope {
     SINGLE_THREAD(0L),
     CROSS_THREAD(1L);
 
+    private static final SynchronizationScope[] VALUES = values();
+
     private final long encodedValue;
 
     public long getEncodedValue() {
@@ -45,7 +47,7 @@ public enum SynchronizationScope {
     }
 
     public static SynchronizationScope decode(long id) {
-        for (SynchronizationScope synchronizationScope : values()) {
+        for (SynchronizationScope synchronizationScope : VALUES) {
             if (synchronizationScope.getEncodedValue() == id) {
                 return synchronizationScope;
             }

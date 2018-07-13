@@ -48,6 +48,8 @@ public enum Linkage {
     LINKER_PRIVATE_WEAK("linker_private_weak", 14L),
     LINK_ONCE_ODR_AUTO_HIDE("linkonce_odr_auto_hide", 15L);
 
+    private static final Linkage[] VALUES = values();
+
     private final String irString;
 
     private final long[] encodedValue;
@@ -62,7 +64,7 @@ public enum Linkage {
     }
 
     public static Linkage decode(long value) {
-        for (Linkage linkage : values()) {
+        for (Linkage linkage : VALUES) {
             for (long l : linkage.getEncodedValue()) {
                 if (l == value) {
                     return linkage;

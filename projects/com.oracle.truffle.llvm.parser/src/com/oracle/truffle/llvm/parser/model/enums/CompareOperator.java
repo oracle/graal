@@ -59,19 +59,19 @@ public enum CompareOperator {
     INT_SIGNED_LESS_THAN(false, "slt"),
     INT_SIGNED_LESS_OR_EQUAL(false, "sle");
 
+    private static final CompareOperator[] VALUES = values();
+
     private static final long INTEGER_OPERATOR_FLAG = 32L;
 
     public static CompareOperator decode(long opcode) {
-        CompareOperator[] ops = values();
-
         long fpops = FP_TRUE.ordinal() + 1;
 
         if (opcode >= 0 && opcode < fpops) {
-            return ops[(int) opcode];
+            return VALUES[(int) opcode];
         } else {
             long iopcode = (opcode + fpops) - INTEGER_OPERATOR_FLAG;
-            if (iopcode >= fpops && iopcode < values().length) {
-                return ops[(int) iopcode];
+            if (iopcode >= fpops && iopcode < VALUES.length) {
+                return VALUES[(int) iopcode];
             }
         }
         return null;

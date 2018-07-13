@@ -56,7 +56,9 @@ public enum ConstantsRecord {
     INLINEASM,
     CE_GEP_WITH_INRANGE_INDEX;
 
+    private static final ConstantsRecord[] VALUES = values();
+
     public static ConstantsRecord decode(long id) {
-        return values()[(int) id];
+        return VALUES[(int) id];
     }
 }

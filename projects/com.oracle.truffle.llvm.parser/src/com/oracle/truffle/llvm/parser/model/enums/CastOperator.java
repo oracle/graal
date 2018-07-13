@@ -45,10 +45,11 @@ public enum CastOperator {
     BITCAST("bitcast"),
     ADDRESS_SPACE_CAST("addrspacecast");
 
+    private static final CastOperator[] VALUES = values();
+
     public static CastOperator decode(int code) {
-        CastOperator[] ops = values();
-        if (code >= 0 && code < ops.length) {
-            return ops[code];
+        if (code >= 0 && code < VALUES.length) {
+            return VALUES[code];
         }
         return null;
     }

@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import java.util.Arrays;
-
 public abstract class MDType extends MDName {
 
     private final DwarfTag tag;
@@ -125,6 +123,8 @@ public abstract class MDType extends MDName {
         // removed tags
         DW_TAG_VECTOR_TYPE(0x103);       // MDCompositeType
 
+        private static final DwarfTag[] VALUES = values();
+
         private final int id;
 
         DwarfTag(int id) {
@@ -132,7 +132,12 @@ public abstract class MDType extends MDName {
         }
 
         static DwarfTag decode(long val) {
-            return Arrays.stream(values()).filter(e -> e.id == val).findAny().orElse(UNKNOWN);
+            for (DwarfTag tag : VALUES) {
+                if (tag.id == val) {
+                    return tag;
+                }
+            }
+            return UNKNOWN;
         }
     }
 }

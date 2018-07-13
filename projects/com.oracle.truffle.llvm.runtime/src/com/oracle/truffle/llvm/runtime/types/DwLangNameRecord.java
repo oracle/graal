@@ -61,8 +61,10 @@ public enum DwLangNameRecord {
     DW_LANG_MIPS_ASSEMBLER(0x8001),
     DW_LANG_HI_USER(0xFFFF); // upper boundary for user defined tags
 
+    private static final DwLangNameRecord[] VALUES = values();
+
     public static DwLangNameRecord decode(long code) {
-        for (DwLangNameRecord cc : values()) {
+        for (DwLangNameRecord cc : VALUES) {
             if (cc.code() == code) {
                 return cc;
             }

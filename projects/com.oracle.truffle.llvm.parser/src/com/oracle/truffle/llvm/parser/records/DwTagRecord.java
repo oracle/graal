@@ -111,6 +111,8 @@ public enum DwTagRecord {
     DW_TAG_RETURN_VARIABLE(0x102),
     DW_TAG_VECTOR_TYPE(0x103);
 
+    private static final DwTagRecord[] VALUES = values();
+
     private static final long DWARF_CONSTANT_VALUE_MASK = 0x0000FFFF;
     private static final long DWARF_CONSTANT_VERSION_MASK = 0xFFFF0000;
 
@@ -120,7 +122,7 @@ public enum DwTagRecord {
 
     public static DwTagRecord decode(long code) {
         long codePart = getDwarfConstant(code);
-        for (DwTagRecord cc : values()) {
+        for (DwTagRecord cc : VALUES) {
             if (cc.code() == codePart) {
                 return cc;
             }

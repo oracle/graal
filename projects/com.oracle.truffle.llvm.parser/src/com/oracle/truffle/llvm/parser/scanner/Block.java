@@ -59,6 +59,8 @@ public enum Block {
     SYMTAB(25),
     SYNC_SCOPE_NAMES(26, SKIP);
 
+    private static final Block[] VALUES = values();
+
     enum ParsingStrategy {
         EAGER,
         LAZY,
@@ -86,7 +88,7 @@ public enum Block {
     }
 
     static Block lookup(long id) {
-        for (Block block : values()) {
+        for (Block block : VALUES) {
             if (block.id == id) {
                 return block;
             }

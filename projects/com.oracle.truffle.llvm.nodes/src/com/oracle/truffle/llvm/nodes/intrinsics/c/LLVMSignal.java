@@ -369,9 +369,11 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         SIG_WINCH("WINCH"),
         SIG_UNUSED("UNUSED");
 
+        private static final Signals[] VALUES = values();
+
         @TruffleBoundary
         public static Signals decode(int code) throws NoSuchElementException {
-            for (Signals currentSignal : values()) {
+            for (Signals currentSignal : VALUES) {
                 if (currentSignal.signal() != null && currentSignal.signal().getNumber() == code) {
                     return currentSignal;
                 }

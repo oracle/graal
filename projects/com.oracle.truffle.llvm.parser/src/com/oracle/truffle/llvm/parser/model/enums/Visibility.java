@@ -35,6 +35,8 @@ public enum Visibility {
     HIDDEN("hidden", 1L),
     PROTECTED("protected", 2L);
 
+    private static final Visibility[] VALUES = values();
+
     private final String irString;
 
     Visibility(String irString, long encodedValue) {
@@ -49,7 +51,7 @@ public enum Visibility {
     }
 
     public static Visibility decode(long value) {
-        for (Visibility visibility : values()) {
+        for (Visibility visibility : VALUES) {
             if (visibility.getEncodedValue() == value) {
                 return visibility;
             }

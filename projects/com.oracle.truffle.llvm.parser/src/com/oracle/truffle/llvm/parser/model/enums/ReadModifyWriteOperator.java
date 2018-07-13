@@ -43,10 +43,11 @@ public enum ReadModifyWriteOperator {
     UMAX("umax"),
     UMIN("umin");
 
+    private static final ReadModifyWriteOperator[] VALUES = values();
+
     public static ReadModifyWriteOperator decode(int opcode) {
-        ReadModifyWriteOperator[] ops = values();
-        if (opcode >= 0 && opcode < ops.length) {
-            return ops[opcode];
+        if (opcode >= 0 && opcode < VALUES.length) {
+            return VALUES[opcode];
         }
         return null;
     }

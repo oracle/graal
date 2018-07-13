@@ -54,7 +54,9 @@ public enum TypesRecord {
     FUNCTION,
     TOKEN;
 
+    private static final TypesRecord[] VALUES = values();
+
     public static TypesRecord decode(long id) {
-        return values()[(int) id];
+        return VALUES[(int) id];
     }
 }
