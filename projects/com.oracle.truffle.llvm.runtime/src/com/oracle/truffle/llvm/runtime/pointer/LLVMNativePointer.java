@@ -66,12 +66,6 @@ public interface LLVMNativePointer extends LLVMPointer {
     LLVMNativePointer export(LLVMInteropType newType);
 
     /**
-     * Does a binary AND operation. The {@link #getExportType export type} of the result pointer is
-     * reset to {@code null}.
-     */
-    LLVMNativePointer and(long value);
-
-    /**
      * Create a null pointer.
      */
     static LLVMNativePointer createNull() {

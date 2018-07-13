@@ -34,9 +34,9 @@ import java.util.List;
 import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 
 public interface Configuration {
 

@@ -36,15 +36,13 @@ import java.util.Objects;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
+import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
@@ -90,8 +88,9 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -203,17 +202,14 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode lhs = symbols.resolve(operation.getLHS());
         LLVMExpressionNode rhs = symbols.resolve(operation.getRHS());
 
-        final Type type = operation.getType();
-        final LLVMArithmeticInstructionType opA = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
-        if (opA != null) {
-            final LLVMExpressionNode result = nodeFactory.createArithmeticOperation(lhs, rhs, opA, type, operation.getFlags());
+        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator());
+        if (result != null) {
             createFrameWrite(result, operation);
             return;
         }
 
-        final LLVMLogicalInstructionKind opL = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
-        if (opL != null) {
-            final LLVMExpressionNode result = nodeFactory.createLogicalOperation(lhs, rhs, opL, type, operation.getFlags());
+        result = LLVMBitcodeTypeHelper.createLogicalInstructionType(nodeFactory, lhs, rhs, operation.getOperator());
+        if (result != null) {
             createFrameWrite(result, operation);
             return;
         }
@@ -522,12 +518,11 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(CastInstruction cast) {
-        LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(cast.getOperator());
         LLVMExpressionNode fromNode = symbols.resolve(cast.getValue());
         Type from = cast.getValue().getType();
         Type to = cast.getType();
 
-        LLVMExpressionNode result = nodeFactory.createCast(fromNode, to, from, type);
+        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createCast(nodeFactory, fromNode, to, from, cast.getOperator());
         createFrameWrite(result, cast);
     }
 
@@ -726,9 +721,33 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final Type type = rmw.getValue().getType();
 
-        final LLVMExpressionNode result = nodeFactory.createReadModifyWrite(rmw.getOperator(), pointerNode, valueNode, type);
-
+        LLVMExpressionNode result = createReadModifyWrite(rmw.getOperator(), pointerNode, valueNode, type);
         createFrameWrite(result, rmw);
+    }
+
+    private LLVMExpressionNode createReadModifyWrite(ReadModifyWriteOperator op, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (op) {
+            case SUB:
+                return nodeFactory.createRMWSub(pointerNode, valueNode, type);
+            case XCHG:
+                return nodeFactory.createRMWXchg(pointerNode, valueNode, type);
+            case ADD:
+                return nodeFactory.createRMWAdd(pointerNode, valueNode, type);
+            case AND:
+                return nodeFactory.createRMWAnd(pointerNode, valueNode, type);
+            case NAND:
+                return nodeFactory.createRMWNand(pointerNode, valueNode, type);
+            case OR:
+                return nodeFactory.createRMWOr(pointerNode, valueNode, type);
+            case XOR:
+                return nodeFactory.createRMWXor(pointerNode, valueNode, type);
+            case MAX:
+            case MIN:
+            case UMIN:
+            case UMAX:
+            default:
+                throw new IllegalStateException("Unsupported read-modify-write operation: " + op);
+        }
     }
 
     @Override

@@ -77,7 +77,7 @@ public abstract class LLVMI64ArrayLiteralNode extends LLVMExpressionNode {
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         LLVMManagedPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
-            long currentValue = LLVMTypesGen.asLong(values[i].executeGeneric(frame));
+            Object currentValue = values[i].executeGeneric(frame);
             foreignWrite.execute(currentPtr, currentValue);
             currentPtr = currentPtr.increment(stride);
         }

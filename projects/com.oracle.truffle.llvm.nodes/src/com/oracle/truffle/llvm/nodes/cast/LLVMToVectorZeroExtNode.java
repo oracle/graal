@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
 
-    public abstract static class LLVMToI1VectorZeroExtNode extends LLVMToVectorNode {
+    public abstract static class LLVMUnsignedCastToI1VectorNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI1Vector doI1Vector(LLVMI1Vector from) {
@@ -47,7 +47,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
         }
     }
 
-    public abstract static class LLVMToI8VectorZeroExtNode extends LLVMToVectorNode {
+    public abstract static class LLVMUnsignedCastToI8VectorNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI8Vector doI1Vector(LLVMI1Vector from) {
@@ -64,7 +64,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
         }
     }
 
-    public abstract static class LLVMToI16VectorZeroExtNode extends LLVMToVectorNode {
+    public abstract static class LLVMUnsignedCastToI16VectorNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI16Vector doI1Vector(LLVMI1Vector from) {
@@ -90,7 +90,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
         }
     }
 
-    public abstract static class LLVMToI32VectorZeroExtNode extends LLVMToVectorNode {
+    public abstract static class LLVMUnsignedCastToI32VectorNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI32Vector doI1Vector(LLVMI1Vector from) {
@@ -125,7 +125,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
         }
     }
 
-    public abstract static class LLVMToI64VectorZeroExtNode extends LLVMToVectorNode {
+    public abstract static class LLVMUnsignedCastToI64VectorNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI64Vector doI1Vector(LLVMI1Vector from) {

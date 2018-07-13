@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,10 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.instructions;
+package com.oracle.truffle.llvm.runtime;
 
-public enum LLVMConversionType {
-    SIGNED_CAST,
-    UNSIGNED_CAST,
-    BITCAST;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
+
+public interface GetStackSpaceFactory {
+
+    LLVMExpressionNode createGetStackSpace(NodeFactory nodeFactory, LLVMContext context, Type type);
+
+    static GetStackSpaceFactory createAllocaFactory() {
+        return (nodeFactory, context, type) -> nodeFactory.createAlloca(context, type);
+    }
+
+    static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
+        return (nodeFactory, context, type) -> nodeFactory.createGetUniqueStackSpace(context, type, uniquesRegion);
+    }
+
 }

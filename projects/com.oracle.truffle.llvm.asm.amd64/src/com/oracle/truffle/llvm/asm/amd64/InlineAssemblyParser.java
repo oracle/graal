@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
@@ -350,7 +351,7 @@ public class InlineAssemblyParser extends Parser {
 	    }
 	}
 
-	public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, LLVMSourceLocation sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
+	public static LLVMInlineAssemblyRootNode parseInlineAssembly(NodeFactory nodeFactory, LLVMLanguage language, LLVMSourceLocation sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
 	    InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
 	    InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
 	    lexer.removeErrorListeners();
@@ -359,7 +360,7 @@ public class InlineAssemblyParser extends Parser {
 	    lexer.addErrorListener(listener);
 	    parser.addErrorListener(listener);
 	    parser.snippet = asmSnippet;
-	    parser.factory = new AsmFactory(language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
+	    parser.factory = new AsmFactory(nodeFactory, language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
 	    parser.inline_assembly();
 	    if (parser.root == null) {
 	        throw new IllegalStateException("no roots produced by inline assembly snippet");

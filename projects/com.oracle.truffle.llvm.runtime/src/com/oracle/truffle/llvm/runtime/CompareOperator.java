@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,23 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
+public enum CompareOperator {
+    FP_FALSE,
+    FP_ORDERED_EQUAL,
+    FP_ORDERED_GREATER_THAN,
+    FP_ORDERED_GREATER_OR_EQUAL,
+    FP_ORDERED_LESS_THAN,
+    FP_ORDERED_LESS_OR_EQUAL,
+    FP_ORDERED_NOT_EQUAL,
+    FP_ORDERED,
+    FP_UNORDERED,
+    FP_UNORDERED_EQUAL,
+    FP_UNORDERED_GREATER_THAN,
+    FP_UNORDERED_GREATER_OR_EQUAL,
+    FP_UNORDERED_LESS_THAN,
+    FP_UNORDERED_LESS_OR_EQUAL,
+    FP_UNORDERED_NOT_EQUAL,
+    FP_TRUE,
 
-public interface GetStackSpaceFactory {
-
-    LLVMExpressionNode createGetStackSpace(NodeFactory nodeFactory, LLVMContext context, Type type);
-
-    static GetStackSpaceFactory createAllocaFactory() {
-        return (nodeFactory, context, type) -> nodeFactory.createAlloca(context, type);
-    }
-
-    static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
-        return (nodeFactory, context, type) -> nodeFactory.createGetUniqueStackSpace(context, type, uniquesRegion);
-    }
-
+    INT_EQUAL,
+    INT_NOT_EQUAL,
+    INT_UNSIGNED_GREATER_THAN,
+    INT_UNSIGNED_GREATER_OR_EQUAL,
+    INT_UNSIGNED_LESS_THAN,
+    INT_UNSIGNED_LESS_OR_EQUAL,
+    INT_SIGNED_GREATER_THAN,
+    INT_SIGNED_GREATER_OR_EQUAL,
+    INT_SIGNED_LESS_THAN,
+    INT_SIGNED_LESS_OR_EQUAL;
 }

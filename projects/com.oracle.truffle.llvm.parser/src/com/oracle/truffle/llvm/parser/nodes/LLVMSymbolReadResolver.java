@@ -35,14 +35,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.parser.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.NodeFactory;
-import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -68,9 +62,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -256,17 +252,14 @@ public final class LLVMSymbolReadResolver {
         public void visit(BinaryOperationConstant operation) {
             final LLVMExpressionNode lhs = resolve(operation.getLHS());
             final LLVMExpressionNode rhs = resolve(operation.getRHS());
-            final Type baseType = operation.getType();
 
-            final LLVMArithmeticInstructionType arithmeticInstructionType = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
-            if (arithmeticInstructionType != null) {
-                resolvedNode = nodeFactory.createArithmeticOperation(lhs, rhs, arithmeticInstructionType, baseType, Flag.EMPTY_ARRAY);
+            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator());
+            if (resolvedNode != null) {
                 return;
             }
 
-            final LLVMLogicalInstructionKind logicalInstructionType = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
-            if (logicalInstructionType != null) {
-                resolvedNode = nodeFactory.createLogicalOperation(lhs, rhs, logicalInstructionType, baseType, Flag.EMPTY_ARRAY);
+            resolvedNode = LLVMBitcodeTypeHelper.createLogicalInstructionType(nodeFactory, lhs, rhs, operation.getOperator());
+            if (resolvedNode != null) {
                 return;
             }
 
@@ -282,9 +275,8 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(CastConstant constant) {
-            final LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(constant.getOperator());
             final LLVMExpressionNode fromNode = resolve(constant.getValue());
-            resolvedNode = nodeFactory.createCast(fromNode, constant.getType(), constant.getValue().getType(), type);
+            resolvedNode = LLVMBitcodeTypeHelper.createCast(nodeFactory, fromNode, constant.getType(), constant.getValue().getType(), constant.getOperator());
         }
 
         @Override

@@ -38,10 +38,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -75,7 +78,17 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
         return (boolean) toBool.executeWithTarget(from.getValue());
     }
 
-    public abstract static class LLVMToI1NoZeroExtNode extends LLVMToI1Node {
+    @Specialization
+    protected boolean doNativePointer(LLVMNativePointer from) {
+        return (from.asNative() & 1L) != 0;
+    }
+
+    public abstract static class LLVMSignedCastToI1Node extends LLVMToI1Node {
+        @Specialization
+        protected boolean doI1(boolean from) {
+            return from;
+        }
+
         @Specialization
         protected boolean doI1(byte from) {
             return (from & 1) != 0;
@@ -97,6 +110,11 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected boolean doI1(LLVMIVarBit from) {
+            return doI1(from.getByteValue());
+        }
+
+        @Specialization
         protected boolean doI1(float from) {
             return from != 0;
         }
@@ -107,12 +125,12 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doLLVMFunction(boolean from) {
-            return from;
+        protected boolean doLLVM80BitFloat(LLVM80BitFloat from) {
+            return from.getLongValue() != 0;
         }
     }
 
-    public abstract static class LLVMToI1BitNode extends LLVMToI1Node {
+    public abstract static class LLVMBitcastToI1Node extends LLVMToI1Node {
 
         @Specialization
         protected boolean doI1(boolean from) {

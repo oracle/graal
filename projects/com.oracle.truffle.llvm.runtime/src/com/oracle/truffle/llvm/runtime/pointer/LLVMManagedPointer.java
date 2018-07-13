@@ -73,22 +73,17 @@ public interface LLVMManagedPointer extends LLVMPointer {
     LLVMManagedPointer export(LLVMInteropType newType);
 
     /**
-     * Aligns the pointer by doing a binary AND operation. The {@link #getExportType export type} of
-     * the result pointer is reset to {@code null}.
-     */
-    LLVMPointerImpl andAlign(long value);
-
-    /**
-     * Computes the remainder by doing a binary AND operation. The {@link #getExportType export
-     * type} of the result pointer is reset to {@code null}.
-     */
-    long andRem(long value);
-
-    /**
      * Create a new managed pointer, pointing to the beginning of a managed object.
      */
     static LLVMManagedPointer create(TruffleObject object) {
-        return new LLVMPointerImpl(object, 0, null);
+        return create(object, 0L);
+    }
+
+    /**
+     * Create a new managed pointer, pointing to a particular offset of a managed object.
+     */
+    static LLVMManagedPointer create(TruffleObject object, long offset) {
+        return new LLVMPointerImpl(object, offset, null);
     }
 
     /**

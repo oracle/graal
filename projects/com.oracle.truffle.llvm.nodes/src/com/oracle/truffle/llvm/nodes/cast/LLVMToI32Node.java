@@ -33,7 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -72,7 +72,12 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         return (int) convert.executeWithTarget(from.getValue());
     }
 
-    public abstract static class LLVMToI32NoZeroExtNode extends LLVMToI32Node {
+    @Specialization
+    protected int doNativePointer(LLVMNativePointer from) {
+        return (int) from.asNative();
+    }
+
+    public abstract static class LLVMSignedCastToI32Node extends LLVMToI32Node {
 
         @Specialization
         protected int doI32(boolean from) {
@@ -90,8 +95,8 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doI32(LLVMNativePointer from) {
-            return (int) from.asNative();
+        protected int doI32(int from) {
+            return from;
         }
 
         @Specialization
@@ -118,42 +123,76 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         protected int doI32(LLVM80BitFloat from) {
             return from.getIntValue();
         }
-
-        @Specialization
-        protected int doI32(int from) {
-            return from;
-        }
     }
 
-    public abstract static class LLVMToI32ZeroExtNode extends LLVMToI32Node {
+    public abstract static class LLVMUnsignedCastToI32Node extends LLVMToI32Node {
+        private static final float MAX_INT_AS_FLOAT = Integer.MAX_VALUE;
+        private static final double MAX_INT_AS_DOUBLE = Integer.MAX_VALUE;
 
         @Specialization
-        protected int doI32(boolean from) {
+        protected int doI1(boolean from) {
             return from ? 1 : 0;
         }
 
         @Specialization
-        protected int doI32(byte from) {
+        protected int doI8(byte from) {
             return from & LLVMExpressionNode.I8_MASK;
         }
 
         @Specialization
-        protected int doI32(short from) {
+        protected int doI16(short from) {
             return from & LLVMExpressionNode.I16_MASK;
-        }
-
-        @Specialization
-        protected int doI32(LLVMIVarBit from) {
-            return from.getZeroExtendedIntValue();
         }
 
         @Specialization
         protected int doI32(int from) {
             return from;
         }
+
+        @Specialization
+        protected int doIVarBit(LLVMIVarBit from) {
+            return from.getZeroExtendedIntValue();
+        }
+
+        @Specialization(guards = "fitsIntoSignedInt(from)")
+        protected int doFloat(float from) {
+            return (int) from;
+        }
+
+        @Specialization(guards = "!fitsIntoSignedInt(from)")
+        protected int doFloatConversion(float from) {
+            return (int) (from + Integer.MIN_VALUE) - Integer.MIN_VALUE;
+        }
+
+        @Specialization(guards = "fitsIntoSignedInt(from)")
+        protected int doDouble(double from) {
+            return (int) from;
+        }
+
+        @Specialization(guards = "!fitsIntoSignedInt(from)")
+        protected int doDoubleConversion(double from) {
+            return (int) (from + Integer.MIN_VALUE) - Integer.MIN_VALUE;
+        }
+
+        @Specialization
+        protected int doLLVM80BitFloat(LLVM80BitFloat from) {
+            return from.getIntValue();
+        }
+
+        protected static boolean fitsIntoSignedInt(float from) {
+            return from < MAX_INT_AS_FLOAT;
+        }
+
+        protected static boolean fitsIntoSignedInt(double from) {
+            return from < MAX_INT_AS_DOUBLE;
+        }
     }
 
-    public abstract static class LLVMToI32BitNode extends LLVMToI32Node {
+    public abstract static class LLVMBitcastToI32Node extends LLVMToI32Node {
+        @Specialization
+        protected int doI32(int from) {
+            return from;
+        }
 
         @Specialization
         protected int doI32(float from) {
@@ -161,23 +200,18 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doI32(int from) {
-            return from;
-        }
-
-        @Specialization
         protected int doI1Vector(LLVMI1Vector from) {
-            return (int) LLVMToI64BitNode.castI1Vector(from, Integer.SIZE);
+            return (int) LLVMBitcastToI64Node.castI1Vector(from, Integer.SIZE);
         }
 
         @Specialization
         protected int doI8Vector(LLVMI8Vector from) {
-            return (int) LLVMToI64BitNode.castI8Vector(from, Integer.SIZE / Byte.SIZE);
+            return (int) LLVMBitcastToI64Node.castI8Vector(from, Integer.SIZE / Byte.SIZE);
         }
 
         @Specialization
         protected int doI16Vector(LLVMI16Vector from) {
-            return (int) LLVMToI64BitNode.castI16Vector(from, Integer.SIZE / Short.SIZE);
+            return (int) LLVMBitcastToI64Node.castI16Vector(from, Integer.SIZE / Short.SIZE);
         }
 
         @Specialization
@@ -196,22 +230,6 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
                 throw new AssertionError("invalid vector size!");
             }
             return Float.floatToIntBits(from.getValue(0));
-        }
-    }
-
-    public abstract static class LLVMToUnsignedI32Node extends LLVMToI32Node {
-
-        @Specialization
-        protected int doI32(double from) {
-            if (from > Integer.MAX_VALUE) {
-                return (int) (from + Integer.MIN_VALUE) - Integer.MIN_VALUE;
-            }
-            return (int) from;
-        }
-
-        @Specialization
-        protected int doI32(int from) {
-            return from;
         }
     }
 }
