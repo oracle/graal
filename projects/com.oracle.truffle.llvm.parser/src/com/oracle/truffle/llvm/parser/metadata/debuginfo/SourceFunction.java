@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 public final class SourceFunction {
 
     public static final String DEFAULT_SOURCE_NAME = LLVMIdentifier.UNKNOWN;
-    public static final SourceFunction DEFAULT = new SourceFunction(LLVMSourceLocation.createUnavailable(LLVMSourceLocation.Kind.FUNCTION, DEFAULT_SOURCE_NAME, "<unavailable>", 0, 0), null);
+    public static final SourceFunction DEFAULT = new SourceFunction(LLVMSourceLocation.createUnavailable(null, LLVMSourceLocation.Kind.FUNCTION, DEFAULT_SOURCE_NAME, "<unavailable>", 0, 0), null);
 
     private Map<LLVMSourceSymbol, SourceVariable> locals;
 

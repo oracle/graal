@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -64,18 +65,20 @@ public final class DebugInfoModuleProcessor {
     private DebugInfoModuleProcessor() {
     }
 
-    public static void processModule(ModelModule irModel, MetadataValueList metadata) {
+    public static void processModule(ModelModule irModel, MetadataValueList metadata, LLVMContext context) {
         MDUpgrade.perform(metadata);
 
         final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers());
+
+        ImportsProcessor.process(metadata, context, cache);
 
         final Map<LLVMSourceSymbol, SymbolImpl> globals = irModel.getSourceGlobals();
         final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers = irModel.getSourceStaticMembers();
 
         irModel.accept(new SymbolProcessor(cache, globals, staticMembers));
 
-        final MDBaseNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
         final MetadataProcessor mdParser = new MetadataProcessor(cache, globals, staticMembers);
+        final MDBaseNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
         if (cuNode != null) {
             cuNode.accept(mdParser);
         }

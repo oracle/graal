@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
 import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public final class LLVMScanner {
@@ -86,7 +87,7 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(ByteBuffer bytes) {
+    public static ModelModule parse(ByteBuffer bytes, LLVMContext context) {
         assert bytes != null;
         if (!isSupportedFile(bytes)) {
             return null;
@@ -133,7 +134,7 @@ public final class LLVMScanner {
             throw new LLVMParserException("Not a valid input file!");
         }
 
-        parseBitcodeBlock(bitcode, model);
+        parseBitcodeBlock(bitcode, model, context);
 
         return model;
     }
@@ -145,7 +146,7 @@ public final class LLVMScanner {
         return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
     }
 
-    private static void parseBitcodeBlock(ByteBuffer bitcode, ModelModule model) {
+    private static void parseBitcodeBlock(ByteBuffer bitcode, ModelModule model, LLVMContext context) {
         final BitStream bitstream = BitStream.create(bitcode);
         final BCFileRoot fileParser = new BCFileRoot(model);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
@@ -158,7 +159,7 @@ public final class LLVMScanner {
 
         // the root block does not exist in the LLVM file and is therefore never exited by the
         // scanner
-        fileParser.exit();
+        fileParser.exit(context);
     }
 
     private static <V> List<V> subList(List<V> original, int from) {

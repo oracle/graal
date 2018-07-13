@@ -190,9 +190,12 @@ public final class Metadata implements ParserListener {
                 break;
             }
 
-            case NAMESPACE:
-                metadata.add(MDNamespace.create38(args, metadata));
+            case NAMESPACE: {
+                final MDNamespace namespace = MDNamespace.create38(args, metadata);
+                metadata.registerExportedScope(namespace);
+                metadata.add(namespace);
                 break;
+            }
 
             case GLOBAL_VAR:
                 metadata.add(MDGlobalVariable.create38(args, metadata));
@@ -233,9 +236,12 @@ public final class Metadata implements ParserListener {
                 metadata.add(MDImportedEntity.create38(args, metadata));
                 break;
 
-            case MODULE:
-                metadata.add(MDModule.create38(args, metadata));
+            case MODULE: {
+                final MDModule module = MDModule.create38(args, metadata);
+                metadata.registerExportedScope(module);
+                metadata.add(module);
                 break;
+            }
 
             case MACRO:
                 metadata.add(MDMacro.create38(args, metadata));
