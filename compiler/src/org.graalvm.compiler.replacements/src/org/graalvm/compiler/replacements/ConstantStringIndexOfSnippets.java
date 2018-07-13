@@ -241,15 +241,15 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         int sourceEnd = sourceCount - targetCountLess1;
 
         long base = byteArrayBaseOffset(INJECTED);
-        int lastByte = UnsafeAccess.UNSAFE.getByte(target, base + targetCountLess1 * 2);
+        int lastChar = UnsafeAccess.UNSAFE.getChar(target, base + targetCountLess1 * 2);
 
         outer_loop: for (long i = fromIndex; i < sourceEnd;) {
-            int src = UnsafeAccess.UNSAFE.getByte(source, base + (i + targetCountLess1) * 2);
-            if (src == lastByte) {
+            int src = UnsafeAccess.UNSAFE.getChar(source, base + (i + targetCountLess1) * 2);
+            if (src == lastChar) {
                 // With random strings and a 4-character alphabet,
                 // reverse matching at this point sets up 0.8% fewer
                 // frames, but (paradoxically) makes 0.3% more probes.
-                // Since those probes are nearer the lastByte probe,
+                // Since those probes are nearer the lastChar probe,
                 // there is may be a net D$ win with reverse matching.
                 // But, reversing loop inhibits unroll of inner loop
                 // for unknown reason. So, does running outer loop from
@@ -258,9 +258,9 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                     ExplodeLoopNode.explodeLoop();
                 }
                 for (long j = 0; j < targetCountLess1; j++) {
-                    byte sourceByte = UnsafeAccess.UNSAFE.getByte(source, base + (i + j) * 2);
-                    if (UnsafeAccess.UNSAFE.getByte(target, base + j * 2) != sourceByte) {
-                        if ((cache & (1 << sourceByte)) == 0) {
+                    char sourceChar = UnsafeAccess.UNSAFE.getChar(source, base + (i + j) * 2);
+                    if (UnsafeAccess.UNSAFE.getChar(target, base + j * 2) != sourceChar) {
+                        if ((cache & (1 << sourceChar)) == 0) {
                             if (md2 < j + 1) {
                                 i += j + 1;
                                 continue outer_loop;
