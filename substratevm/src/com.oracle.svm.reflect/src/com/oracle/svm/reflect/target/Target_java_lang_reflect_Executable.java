@@ -28,6 +28,7 @@ package com.oracle.svm.reflect.target;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Parameter;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -56,11 +57,22 @@ public final class Target_java_lang_reflect_Executable {
         }
     }
 
+    public static final class ParameterComputer implements CustomFieldValueComputer {
+
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            Executable executable = (Executable) receiver;
+            return executable.getParameters();
+        }
+    }
+
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableDeclaredAnnotationsComputer.class) //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class) //
     Annotation[][] parameterAnnotations;
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterComputer.class) //
+    Parameter[] parameters;
 
     @Alias
     native Target_java_lang_reflect_Executable getRoot();
@@ -90,5 +102,19 @@ public final class Target_java_lang_reflect_Executable {
             throw VMError.shouldNotReachHere("Parameter annotations must be computed during native image generation");
         }
         return holder.parameterAnnotations;
+    }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    private Parameter[] privateGetParameters() {
+        Target_java_lang_reflect_Executable holder = getRoot();
+        if (holder == null) {
+            holder = this;
+        }
+
+        if (holder.parameters == null) {
+            throw VMError.shouldNotReachHere("Parameters must be computed during native image generation");
+        }
+        return holder.parameters;
     }
 }
