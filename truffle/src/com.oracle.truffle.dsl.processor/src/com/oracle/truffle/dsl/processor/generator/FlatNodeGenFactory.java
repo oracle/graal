@@ -889,7 +889,8 @@ class FlatNodeGenFactory {
                 TypeMirror evaluatedType = signatureParameters.get(i);
                 TypeMirror specializedType = specialization.findParameterOrDie(node.getChildExecutions().get(i)).getType();
 
-                if (!isSubtypeBoxed(context, evaluatedType, specializedType) && !isSubtypeBoxed(context, specializedType, evaluatedType)) {
+                if (typeSystem.lookupCast(evaluatedType, specializedType) == null && !isSubtypeBoxed(context, evaluatedType, specializedType) &&
+                                !isSubtypeBoxed(context, specializedType, evaluatedType)) {
                     // not compatible parameter
                     continue outer;
                 }

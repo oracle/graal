@@ -41,7 +41,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic1Factory;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic2Factory;
 import com.oracle.truffle.api.dsl.test.PolymorphicTestFactory.Polymorphic3Factory;
-import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
+import com.oracle.truffle.api.dsl.test.TestHelper.TestExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -86,7 +86,7 @@ public class PolymorphicTest {
         assertRuns(Polymorphic1Factory.getInstance(), //
                         array(42, 43, true, false, "a", "b"), //
                         array(42, 43, true, false, "a", "b"), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Polymorphic1 polymorphic = ((Polymorphic1) node.getNode());
                                 assertParent(node.getNode(), polymorphic.getA());
@@ -130,7 +130,7 @@ public class PolymorphicTest {
         assertRuns(Polymorphic2Factory.getInstance(), //
                         array(0, 1, 1, "1", "2", 2, 3), //
                         array(0, 1, 1, "1", "2", 2, 3), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Polymorphic2 polymorphic = ((Polymorphic2) node.getNode());
                                 assertParent(node.getNode(), polymorphic.getA());
@@ -172,7 +172,7 @@ public class PolymorphicTest {
         assertRuns(Polymorphic3Factory.getInstance(), //
                         array("0", "1", 1, 1, 2, 2, 3, 3), //
                         array("0", "1", 1, 1, 2, 2, 3, 3), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Polymorphic3 polymorphic = ((Polymorphic3) node.getNode());
                                 assertParent(node.getNode(), polymorphic.getA());

@@ -82,6 +82,10 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.initialized = initialized;
     }
 
+    PolyglotLanguageContext getCurrentLanguageContext() {
+        return PolyglotContextImpl.requireContext().contexts[index];
+    }
+
     boolean dependsOn(PolyglotLanguage otherLanguage) {
         Set<String> dependentLanguages = cache.getDependentLanguages();
         if (dependentLanguages.contains(otherLanguage.getId())) {

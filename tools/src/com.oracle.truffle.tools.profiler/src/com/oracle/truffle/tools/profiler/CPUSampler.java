@@ -493,7 +493,7 @@ public final class CPUSampler implements Closeable {
             f = DEFAULT_FILTER;
         }
         this.stackOverflowed = false;
-        this.shadowStack = new ShadowStack(stackLimit);
+        this.shadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter());
         this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
 
         this.samplerTask = new SamplingTimerTask();

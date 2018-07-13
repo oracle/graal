@@ -118,6 +118,10 @@ public abstract class Accessor {
 
         public abstract Source copySource(Source source);
 
+        public abstract void setPolyglotSource(Source source, org.graalvm.polyglot.Source polyglotSource);
+
+        public abstract org.graalvm.polyglot.Source getPolyglotSource(Source source);
+
     }
 
     public abstract static class DumpSupport {

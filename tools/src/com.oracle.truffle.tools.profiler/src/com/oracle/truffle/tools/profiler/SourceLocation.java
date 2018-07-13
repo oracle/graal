@@ -24,19 +24,17 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.util.Objects;
+import java.util.Set;
+
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-import java.util.Objects;
-import java.util.Set;
-
 /**
  * Source information of a particular source location in the profiler.
- * 
- * @since 0.30
  */
 final class SourceLocation {
 
@@ -49,15 +47,26 @@ final class SourceLocation {
         this.tags = instrumenter.queryTags(context.getInstrumentedNode());
         this.sourceSection = context.getInstrumentedSourceSection();
         this.instrumentedNode = context.getInstrumentedNode();
+        this.rootName = extractRootName(instrumentedNode);
+    }
+
+    SourceLocation(Instrumenter instrumenter, Node node) {
+        this.tags = instrumenter.queryTags(node);
+        this.sourceSection = node.getSourceSection();
+        this.instrumentedNode = node;
+        rootName = extractRootName(instrumentedNode);
+    }
+
+    private static String extractRootName(Node instrumentedNode) {
         RootNode rootNode = instrumentedNode.getRootNode();
         if (rootNode != null) {
             if (rootNode.getName() == null) {
-                this.rootName = rootNode.toString();
+                return rootNode.toString();
             } else {
-                this.rootName = rootNode.getName();
+                return rootNode.getName();
             }
         } else {
-            this.rootName = "<Unknown>";
+            return "<Unknown>";
         }
     }
 

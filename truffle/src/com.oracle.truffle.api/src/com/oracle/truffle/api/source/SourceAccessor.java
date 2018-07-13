@@ -71,5 +71,15 @@ final class SourceAccessor extends Accessor {
             return source.getSourceId();
         }
 
+        @Override
+        public org.graalvm.polyglot.Source getPolyglotSource(Source source) {
+            return source.polyglotSource;
+        }
+
+        @Override
+        public void setPolyglotSource(Source source, org.graalvm.polyglot.Source polyglotSource) {
+            source.polyglotSource = polyglotSource;
+        }
+
     }
 }
