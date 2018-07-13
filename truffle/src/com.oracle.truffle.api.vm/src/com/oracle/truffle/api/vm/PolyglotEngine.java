@@ -1524,5 +1524,10 @@ public class PolyglotEngine {
         public Object getCurrentOuterContext() {
             return null;
         }
+
+        @Override
+        public Map<String, Level> getLogLevels(Object context) {
+            return Collections.emptyMap();
+        }
     }
 }

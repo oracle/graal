@@ -33,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -98,8 +99,10 @@ public class MonitorSupport {
             return;
         }
 
+        ReentrantLock lockObject = null;
         try {
-            ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true).lock();
+            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
+            lockObject.lock();
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -112,7 +115,7 @@ public class MonitorSupport {
              * Finally, it would not be clear whether the monitor is locked or unlocked in case of
              * an exception.
              */
-            VMError.shouldNotReachHere(ex);
+            throw shouldNotReachHere("monitorEnter", obj, lockObject, ex);
         }
     }
 
@@ -130,8 +133,10 @@ public class MonitorSupport {
             return;
         }
 
+        ReentrantLock lockObject = null;
         try {
-            ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true).unlock();
+            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
+            lockObject.unlock();
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -141,8 +146,44 @@ public class MonitorSupport {
              * the Java Virtual Machine Specification, but it ensures that we never need to throw an
              * IllegalMonitorStateException.
              */
-            VMError.shouldNotReachHere(ex);
+            throw shouldNotReachHere("monitorExit", obj, lockObject, ex);
         }
+    }
+
+    private static RuntimeException shouldNotReachHere(String label, Object obj, ReentrantLock lockObject, Throwable ex) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Unexpected exception in MonitorSupport.").append(label);
+
+        if (obj != null) {
+            msg.append("  object: ");
+            appendObject(msg, obj);
+        }
+        if (lockObject != null) {
+            msg.append("  lock: ");
+            appendObject(msg, lockObject);
+
+            Target_java_util_concurrent_locks_ReentrantLock lockObjectTarget = KnownIntrinsics.unsafeCast(lockObject, Target_java_util_concurrent_locks_ReentrantLock.class);
+            Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = KnownIntrinsics.unsafeCast(lockObjectTarget.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
+
+            if (sync != null) {
+                msg.append("  sync: ");
+                appendObject(msg, sync);
+
+                Thread thread = sync.getExclusiveOwnerThread();
+                if (thread == null) {
+                    msg.append("  no exclusiveOwnerThread");
+                } else {
+                    msg.append("  exclusiveOwnerThread: ");
+                    appendObject(msg, thread);
+                }
+            }
+        }
+        msg.append("  raw exception: ");
+        throw VMError.shouldNotReachHere(msg.toString(), ex);
+    }
+
+    private static void appendObject(StringBuilder msg, Object obj) {
+        msg.append(obj.getClass().getName()).append("@").append(Long.toHexString(Word.objectToUntrackedPointer(obj).rawValue()));
     }
 
     /**

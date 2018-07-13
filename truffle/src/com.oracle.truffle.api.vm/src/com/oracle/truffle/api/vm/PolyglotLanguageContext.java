@@ -46,12 +46,16 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
+import java.util.logging.Level;
 
 @SuppressWarnings("deprecation")
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
+
+    private static final TruffleLogger LOG = TruffleLogger.getLogger("engine", PolyglotLanguageContext.class);
 
     /*
      * Lazily created when a language context is created.
@@ -388,6 +392,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void preInitialize() {
         ensureInitialized(null);
+        LOG.log(Level.FINE, "Pre-initialized context for language: {0}", language.getId());
     }
 
     boolean patch(PolyglotContextConfig newConfig) {
@@ -398,13 +403,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                 newConfig.fileSystem);
                 if (newEnv != null) {
                     env = newEnv;
+                    LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());
                     return true;
                 }
+                LOG.log(Level.FINE, "Failed to patch context of language: {0}", this.language.getId());
                 return false;
             } catch (Throwable t) {
                 if (t instanceof ThreadDeath) {
                     throw t;
                 }
+                LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
                 throw PolyglotImpl.wrapGuestException(this, t);
             }
         } else {

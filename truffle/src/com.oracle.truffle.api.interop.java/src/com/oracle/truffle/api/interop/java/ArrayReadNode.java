@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Array;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -34,10 +33,63 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.java.ArrayReadNodeGen.ArrayGetNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("deprecation")
 abstract class ArrayReadNode extends Node {
+
+    abstract static class ArrayGet extends Node {
+
+        protected abstract Object execute(Object array, int index);
+
+        @Specialization
+        boolean doBoolean(boolean[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        byte doByte(byte[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        short doShort(short[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        char doChar(char[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        int doInt(int[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        long doLong(long[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        float doFloat(float[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        double doDouble(double[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        Object doObject(Object[] array, int index) {
+            return array[index];
+        }
+    }
+
+    @Child private ArrayGet arrayGet = ArrayGetNodeGen.create();
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index);
 
@@ -81,12 +133,12 @@ abstract class ArrayReadNode extends Node {
         throw UnsupportedMessageException.raise(Message.READ);
     }
 
-    private static Object doArrayAccess(JavaObject object, int index) {
+    private Object doArrayAccess(JavaObject object, int index) {
         Object obj = object.obj;
         assert object.isArray();
         Object val = null;
         try {
-            val = Array.get(obj, index);
+            val = arrayGet.execute(obj, index);
         } catch (ArrayIndexOutOfBoundsException outOfBounds) {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.raise(String.valueOf(index));

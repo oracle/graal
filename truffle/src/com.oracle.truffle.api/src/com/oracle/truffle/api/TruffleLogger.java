@@ -37,7 +37,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -926,11 +925,12 @@ public final class TruffleLogger {
     }
 
     static final class LoggerCache {
+        private static final ReferenceQueue<Object> contextsRefQueue = new ReferenceQueue<>();
         private static final LoggerCache INSTANCE = new LoggerCache();
         private final TruffleLogger polyglotRootLogger;
         private final Map<String, NamedLoggerRef> loggers;
         private final LoggerNode root;
-        private final Map<Object, Map<String, Level>> levelsByContext;
+        private final Set<ContextWeakReference> activeContexts;
         private Map<String, Level> effectiveLevels;
 
         private LoggerCache() {
@@ -938,50 +938,44 @@ public final class TruffleLogger {
             this.loggers = new HashMap<>();
             this.loggers.put(ROOT_NAME, new NamedLoggerRef(this.polyglotRootLogger, ROOT_NAME));
             this.root = new LoggerNode(null, new NamedLoggerRef(this.polyglotRootLogger, ROOT_NAME));
-            this.levelsByContext = new WeakHashMap<>();
+            this.activeContexts = new HashSet<>();
             this.effectiveLevels = Collections.emptyMap();
         }
 
-        void addLogLevelsForContext(final Object context, final Map<String, Level> addedLevels) {
-            synchronized (this) {
-                levelsByContext.put(context, addedLevels);
-                final Collection<String> removedLevels = new HashSet<>();
-                final Collection<String> changedLevels = new HashSet<>();
-                effectiveLevels = computeEffectiveLevels(
-                                effectiveLevels,
-                                Collections.emptySet(),
-                                addedLevels,
-                                levelsByContext,
-                                removedLevels,
-                                changedLevels);
-                reconfigure(removedLevels, changedLevels);
-            }
+        synchronized void addLogLevelsForContext(final Object context, final Map<String, Level> addedLevels) {
+            activeContexts.add(new ContextWeakReference(context, contextsRefQueue, addedLevels));
+            final Set<String> toRemove = collectRemovedLevels();
+            reconfigure(addedLevels, toRemove);
         }
 
         synchronized void removeLogLevelsForContext(final Object context) {
-            final Map<String, Level> levels = levelsByContext.remove(context);
-            final Collection<String> removedLevels = new HashSet<>();
-            final Collection<String> changedLevels = new HashSet<>();
-            effectiveLevels = computeEffectiveLevels(
-                            effectiveLevels,
-                            levels.keySet(),
-                            Collections.emptyMap(),
-                            levelsByContext,
-                            removedLevels,
-                            changedLevels);
-            reconfigure(removedLevels, changedLevels);
+            final Set<String> toRemove = collectRemovedLevels();
+            for (Iterator<ContextWeakReference> it = activeContexts.iterator(); it.hasNext();) {
+                final Object activeContext = it.next().get();
+                if (context.equals(activeContext)) {
+                    toRemove.addAll(TruffleLanguage.AccessAPI.engineAccess().getLogLevels(context).keySet());
+                    it.remove();
+                    break;
+                }
+            }
+            reconfigure(Collections.emptyMap(), toRemove);
         }
 
         synchronized boolean isLoggable(final String loggerName, final Object currentContext, final Level level) {
-            final Map<String, Level> current = levelsByContext.get(currentContext);
-            if (current == null) {
+            final Set<String> toRemove = collectRemovedLevels();
+            if (!toRemove.isEmpty()) {
+                reconfigure(Collections.emptyMap(), toRemove);
+                // Logger's effective level may changed
+                return getLogger(loggerName).isLoggable(level);
+            }
+            final Map<String, Level> current = TruffleLanguage.AccessAPI.engineAccess().getLogLevels(currentContext);
+            if (current.isEmpty()) {
                 final int currentLevel = DEFAULT_VALUE;
                 return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
             }
-            // GR-10762 does not work if contexts are GCed
-            // if (levelsByContext.size() == 1) {
-            // return true;
-            // }
+            if (activeContexts.size() == 1) {
+                return true;
+            }
             final int currentLevel = Math.min(computeLevel(loggerName, current), DEFAULT_VALUE);
             return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
         }
@@ -1064,14 +1058,36 @@ public final class TruffleLogger {
             return effectiveLevels.get(loggerName);
         }
 
-        private void reconfigure(final Collection<? extends String> removedLoggers, final Collection<? extends String> changedLoogers) {
-            for (String loggerName : removedLoggers) {
+        private Set<String> collectRemovedLevels() {
+            assert Thread.holdsLock(this);
+            final Set<String> toRemove = new HashSet<>();
+            ContextWeakReference ref;
+            while ((ref = (ContextWeakReference) contextsRefQueue.poll()) != null) {
+                activeContexts.remove(ref);
+                toRemove.addAll(ref.configuredLoggerNames);
+            }
+            return toRemove;
+        }
+
+        private void reconfigure(final Map<String, Level> addedLevels, final Set<String> toRemove) {
+            assert Thread.holdsLock(this);
+            assert !addedLevels.isEmpty() || !toRemove.isEmpty();
+            final Collection<String> loggersWithRemovedLevels = new HashSet<>();
+            final Collection<String> loggersWithChangedLevels = new HashSet<>();
+            effectiveLevels = computeEffectiveLevels(
+                            effectiveLevels,
+                            toRemove,
+                            addedLevels,
+                            activeContexts,
+                            loggersWithRemovedLevels,
+                            loggersWithChangedLevels);
+            for (String loggerName : loggersWithRemovedLevels) {
                 final TruffleLogger logger = getLogger(loggerName);
                 if (logger != null) {
                     logger.setLevel(null);
                 }
             }
-            for (String loggerName : changedLoogers) {
+            for (String loggerName : loggersWithChangedLevels) {
                 final TruffleLogger logger = getLogger(loggerName);
                 if (logger != null) {
                     setLoggerLevel(logger, loggerName);
@@ -1137,18 +1153,18 @@ public final class TruffleLogger {
                         final Map<String, Level> currentEffectiveLevels,
                         final Set<String> removed,
                         final Map<String, Level> added,
-                        final Map<Object, Map<String, Level>> levelsByContext,
+                        final Collection<? extends Reference<Object>> contexts,
                         final Collection<? super String> removedLevels,
                         final Collection<? super String> changedLevels) {
             final Map<String, Level> newEffectiveLevels = new HashMap<>(currentEffectiveLevels);
             for (String loggerName : removed) {
-                final Level level = findMinLevel(loggerName, levelsByContext);
+                final Level level = findMinLevel(loggerName, contexts);
                 if (level == null) {
                     newEffectiveLevels.remove(loggerName);
                     removedLevels.add(loggerName);
                 } else {
                     final Level currentLevel = newEffectiveLevels.get(loggerName);
-                    if (min(level, currentLevel) != currentLevel) {
+                    if (currentLevel != level) {
                         newEffectiveLevels.put(loggerName, level);
                         changedLevels.add(loggerName);
                     }
@@ -1166,10 +1182,11 @@ public final class TruffleLogger {
             return newEffectiveLevels;
         }
 
-        private static Level findMinLevel(final String loggerName, final Map<Object, Map<String, Level>> levelsByContext) {
+        private static Level findMinLevel(final String loggerName, final Collection<? extends Reference<Object>> contexts) {
             Level min = null;
-            for (Map<String, Level> levels : levelsByContext.values()) {
-                Level level = levels.get(loggerName);
+            for (Reference<Object> contextRef : contexts) {
+                final Object context = contextRef.get();
+                final Level level = context == null ? null : TruffleLanguage.AccessAPI.engineAccess().getLogLevels(context).get(loggerName);
                 if (level == null) {
                     continue;
                 }
@@ -1257,6 +1274,15 @@ public final class TruffleLogger {
                         child.updateChildParentsImpl(parentLogger);
                     }
                 }
+            }
+        }
+
+        private static final class ContextWeakReference extends WeakReference<Object> {
+            private final Set<String> configuredLoggerNames;
+
+            ContextWeakReference(final Object context, final ReferenceQueue<Object> referenceQueue, final Map<String, Level> logLevels) {
+                super(context, referenceQueue);
+                configuredLoggerNames = logLevels.keySet();
             }
         }
     }
