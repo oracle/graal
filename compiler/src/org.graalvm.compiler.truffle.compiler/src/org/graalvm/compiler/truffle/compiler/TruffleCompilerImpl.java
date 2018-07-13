@@ -479,7 +479,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         return new CompilationResult(compilationIdentifier, name);
     }
 
-    protected abstract PhaseSuite<HighTierContext> createGraphBuilderSuite();
+    public abstract PhaseSuite<HighTierContext> createGraphBuilderSuite();
 
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;

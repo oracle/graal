@@ -150,6 +150,19 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof PolyglotExceptionImpl) {
+            return exception == ((PolyglotExceptionImpl) obj).exception;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return exception.hashCode();
+    }
+
+    @Override
     public org.graalvm.polyglot.SourceSection getSourceLocation() {
         return sourceLocation;
     }

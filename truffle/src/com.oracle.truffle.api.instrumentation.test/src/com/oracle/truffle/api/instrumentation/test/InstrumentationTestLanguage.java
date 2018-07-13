@@ -32,6 +32,7 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +61,11 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.Tag.Identifier;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ConstantTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
@@ -134,18 +139,22 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
 
+    @Identifier("DEFINE")
     static class DefineTag extends Tag {
 
     }
 
+    @Identifier("LOOP")
     static class LoopTag extends Tag {
 
     }
 
+    @Identifier("BLOCK")
     static class BlockTag extends Tag {
 
     }
 
+    @Identifier("CONSTANT")
     static class ConstantTag extends Tag {
 
     }
@@ -163,7 +172,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT, TRY_CATCH};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
                     "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT"};
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -233,6 +242,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
         RootCallTarget afterTarget = getContextReference().get().afterTarget;
         return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
+    }
+
+    public static RootNode parse(String code) {
+        InstrumentationTestLanguage testLanguage = getCurrentLanguage(InstrumentationTestLanguage.class);
+        Source source = Source.newBuilder(code).language(ID).name("test").build();
+        SourceSection outer = source.createSection(0, source.getLength());
+        BaseNode base = testLanguage.parse(source);
+        return new InstrumentationTestRootNode(testLanguage, "", outer, base);
     }
 
     @Override
@@ -330,6 +347,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
             }
+            List<String> multipleTags = null;
+            if (tag.equals("MULTIPLE")) {
+                multipleTags = multipleTags();
+            }
             String[] idents = new String[numberOfIdents];
             List<BaseNode> children = new ArrayList<>();
 
@@ -369,12 +390,39 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             SourceSection sourceSection = source.createSection(startIndex, current - startIndex);
             BaseNode[] childArray = children.toArray(new BaseNode[children.size()]);
-            BaseNode node = createNode(tag, idents, sourceSection, childArray);
+            BaseNode node = createNode(tag, idents, sourceSection, childArray, multipleTags);
             if (tag.equals("ARGUMENT")) {
                 ((ArgumentNode) node).setIndex(argumentIndex++);
             }
             node.setSourceSection(sourceSection);
             return node;
+        }
+
+        private List<String> multipleTags() {
+            List<String> multipleTags = new ArrayList<>();
+            if (follows() == '[') {
+                skipWhiteSpace();
+
+                if (current() == '[') {
+                    next();
+                    skipWhiteSpace();
+                    while (current() != ']') {
+                        skipWhiteSpace();
+                        multipleTags.add(ident());
+                        skipWhiteSpace();
+                        if (current() != ',') {
+                            break;
+                        }
+                        next();
+                    }
+                    if (current() != ']') {
+                        error("missing closing bracket");
+                    }
+                    next();
+                }
+
+            }
+            return multipleTags;
         }
 
         private static boolean isValidTag(String tag) {
@@ -387,7 +435,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return false;
         }
 
-        private BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray) throws AssertionError {
+        private BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray, List<String> multipleTags) throws AssertionError {
             switch (tag) {
                 case "DEFINE":
                     return new DefineNode(lang, idents[0], sourceSection, childArray);
@@ -441,6 +489,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new ThrowNode(idents[0], idents[1]);
                 case "UNEXPECTED_RESULT":
                     return new UnexpectedResultNode(idents[0]);
+                case "MULTIPLE":
+                    return new MultipleNode(childArray, multipleTags);
                 default:
                     throw new AssertionError();
             }
@@ -513,7 +563,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else {
                 this.functionRoot = new FunctionRootNode(expressions);
             }
-            functionRoot.setSourceSection(sourceSection);
+            this.functionRoot.setSourceSection(sourceSection);
         }
 
         @Override
@@ -553,7 +603,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public Object execute(VirtualFrame frame) {
             StringBuilder b = new StringBuilder();
-
             b.append("(");
             if (children != null) {
                 for (int i = 0; i < children.length; i++) {
@@ -693,7 +742,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public void setSourceSection(SourceSection sourceSection) {
             super.setSourceSection(sourceSection);
             int start = sourceSection.getCharIndex();
-            int end = catchNodes[0].getSourceSection().getCharIndex();
+            int end = catchNodes.length > 0 ? catchNodes[0].getSourceSection().getCharIndex() : sourceSection.getCharEndIndex();
             SourceSection trySection = sourceSection.getSource().createSection(start, end - start);
             CharSequence characters = trySection.getCharacters();
             int lastChar = trySection.getCharLength() - 1;
@@ -843,6 +892,39 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    static class MultipleNode extends BlockNode {
+
+        private final Set<Class<? extends Tag>> resolvedTags;
+
+        MultipleNode(BaseNode[] children, List<String> tags) {
+            super(children);
+            this.resolvedTags = new HashSet<>();
+            for (String tag : tags) {
+                // add support for more tags as needed
+                switch (tag) {
+                    case "EXPRESSION":
+                        resolvedTags.add(ExpressionTag.class);
+                        break;
+                    case "STATEMENT":
+                        resolvedTags.add(StatementTag.class);
+                        break;
+                    case "ROOT":
+                        resolvedTags.add(RootTag.class);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Invalid tag " + tag);
+                }
+            }
+
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return resolvedTags.contains(tag);
+        }
+
+    }
+
     static class ThrowNode extends InstrumentedNode {
 
         private final String type;
@@ -879,6 +961,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             @Override
             public Node getLocation() {
                 return throwNode;
+            }
+
+            public boolean isInternalError() {
+                return type.equals("internal");
             }
 
             @Override

@@ -151,7 +151,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 

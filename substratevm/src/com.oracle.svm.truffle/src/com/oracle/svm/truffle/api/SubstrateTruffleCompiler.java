@@ -69,7 +69,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         return null;
     }
 

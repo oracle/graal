@@ -40,7 +40,7 @@ import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.Fall
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest3Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest4Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationFallthroughTestFactory.FallthroughTest5Factory;
-import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
+import com.oracle.truffle.api.dsl.test.TestHelper.TestExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
@@ -51,7 +51,7 @@ public class SpecializationFallthroughTest {
         assertRuns(FallthroughTest0Factory.getInstance(), //
                         array(0, 0, 1, 2), //
                         array(0, 0, 1, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
                                     return;
@@ -95,7 +95,7 @@ public class SpecializationFallthroughTest {
         assertRuns(FallthroughTest1Factory.getInstance(), //
                         array(0, 0, 0, 1, 2), //
                         array(0, 0, 0, 1, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
                                     return;
@@ -141,7 +141,7 @@ public class SpecializationFallthroughTest {
         assertRuns(FallthroughTest2Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
                         array(0, 0, 1, 1, 2, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
                                     return;
@@ -197,7 +197,7 @@ public class SpecializationFallthroughTest {
         assertRuns(FallthroughTest3Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
                         array(0, 0, 1, 1, 2, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
                                     return;
@@ -245,7 +245,7 @@ public class SpecializationFallthroughTest {
         assertRuns(FallthroughTest4Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
                         array(0, 0, 1, 1, 2, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
                                     return;
@@ -298,7 +298,7 @@ public class SpecializationFallthroughTest {
         assertRuns(FallthroughTest5Factory.getInstance(), //
                         array(0, 0, 1, 1, 2, 2), //
                         array(0, 0, 1, 1, 2, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 if (!last) {
                                     return;

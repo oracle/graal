@@ -4,6 +4,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 
 ## Version 1.0 Rc4
 * `PolyglotException.getGuestObject()` now returns `null` to indicate that no exception object is available instead of returning a `Value` instance that returns `true` for `isNull()`.
+* Added new [execution listener](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html) API that allows for simple, efficient and fine grained introspection of executed code. 
 
 ## Version 1.0 RC3
 

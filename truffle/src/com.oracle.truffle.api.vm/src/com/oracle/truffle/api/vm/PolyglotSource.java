@@ -266,7 +266,10 @@ class PolyglotSource extends AbstractSourceImpl {
         builder.language(language);
 
         try {
-            return engineImpl.getAPIAccess().newSource(language, ((com.oracle.truffle.api.source.Source.Builder<IOException, ?, ?>) builder).build());
+            com.oracle.truffle.api.source.Source truffleSource = ((com.oracle.truffle.api.source.Source.Builder<IOException, ?, ?>) builder).build();
+            Source polyglotSource = engineImpl.getAPIAccess().newSource(language, truffleSource);
+            VMAccessor.SOURCE.setPolyglotSource(truffleSource, polyglotSource);
+            return polyglotSource;
         } catch (IOException e) {
             throw e;
         } catch (RuntimeException e) {
