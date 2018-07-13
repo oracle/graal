@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.junit.After;
@@ -99,7 +99,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLoadGraalVersionSimple() throws Exception {
         try (InputStream is = getClass().getResourceAsStream("release_simple.properties")) {
-            Files.copy(is, graalVMPath.resolve(Paths.get("release")));
+            Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
         }
         Map<String, String> result = storage.loadGraalVersionInfo();
         assertEquals(7, result.size());
@@ -115,7 +115,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLoadReleaseWithInvalidSourceVersions() throws Exception {
         try (InputStream is = getClass().getResourceAsStream("release_noVersion.properties")) {
-            Files.copy(is, graalVMPath.resolve(Paths.get("release")));
+            Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
         }
         exception.expect(FailedOperationException.class);
         exception.expectMessage("STORAGE_InvalidReleaseFile");
@@ -126,7 +126,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLoadGraalVersionCorrupted() throws Exception {
         try (InputStream is = getClass().getResourceAsStream("release_corrupted.properties")) {
-            Files.copy(is, graalVMPath.resolve(Paths.get("release")));
+            Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
         }
         exception.expect(FailedOperationException.class);
         exception.expectMessage("STORAGE_InvalidReleaseFile");
@@ -213,7 +213,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void loadComponentFilesMissing() throws Exception {
         copyDir("list1", registryPath);
-        Files.delete(registryPath.resolve("org.graalvm.fastr.filelist"));
+        Files.delete(registryPath.resolve(SystemUtils.fileName("org.graalvm.fastr.filelist")));
 
         ComponentInfo info = storage.loadComponentMetadata("fastr");
         storage.loadComponentFiles(info);
@@ -233,7 +233,7 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testLoadReplacedFiles() throws Exception {
         try (InputStream is = getClass().getResourceAsStream("replaced-files.properties")) {
-            Files.copy(is, registryPath.resolve(Paths.get("replaced-files.properties")));
+            Files.copy(is, registryPath.resolve(SystemUtils.fileName("replaced-files.properties")));
         }
         Map<String, Collection<String>> replaced = storage.readReplacedFiles();
         assertEquals(new HashSet<>(Arrays.asList("fastr", "ruby")), new HashSet<>(replaced.get("shared/lib/jline.jar")));
@@ -254,7 +254,7 @@ public class DirectoryStorageTest extends TestBase {
         Map<String, Collection<String>> files = new HashMap<>();
         files.put("whatever/lib.jar", Arrays.asList("fastr", "sulong"));
         storage.updateReplacedFiles(files);
-        Path regPath = registryPath.resolve(Paths.get("replaced-files.properties"));
+        Path regPath = registryPath.resolve(SystemUtils.fileName("replaced-files.properties"));
         Path goldenPath = dataFile("golden-replaced-files.properties");
         List<String> lines1 = Files.readAllLines(goldenPath);
         List<String> lines2 = Files.readAllLines(regPath).stream().filter((s) -> !s.startsWith("#")).collect(Collectors.toList());
@@ -267,11 +267,11 @@ public class DirectoryStorageTest extends TestBase {
     @Test
     public void testUpdateReplacedFilesNone() throws Exception {
         try (InputStream is = getClass().getResourceAsStream("replaced-files.properties")) {
-            Files.copy(is, registryPath.resolve(Paths.get("replaced-files.properties")));
+            Files.copy(is, registryPath.resolve(SystemUtils.fileName("replaced-files.properties")));
         }
         Map<String, Collection<String>> files = new HashMap<>();
         storage.updateReplacedFiles(files);
-        Path regPath = registryPath.resolve(Paths.get("replaced-files.properties"));
+        Path regPath = registryPath.resolve(SystemUtils.fileName("replaced-files.properties"));
         assertFalse(Files.exists(regPath));
     }
 
@@ -283,7 +283,7 @@ public class DirectoryStorageTest extends TestBase {
         Map<String, Collection<String>> files = new HashMap<>();
         // make some existing file
         Path goldenPath = dataFile("golden-replaced-files.properties");
-        Path regPath = registryPath.resolve(Paths.get("replaced-files.properties"));
+        Path regPath = registryPath.resolve(SystemUtils.fileName("replaced-files.properties"));
         Files.copy(goldenPath, regPath, StandardCopyOption.REPLACE_EXISTING);
         storage.updateReplacedFiles(files);
 
@@ -303,18 +303,18 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list2", registryPath);
         storage.deleteComponent("fastr");
 
-        Path fastrComp = registryPath.resolve("fastr.component");
-        Path fastrList = registryPath.resolve("fastr.filelist");
+        Path fastrComp = registryPath.resolve(SystemUtils.fileName("fastr.component"));
+        Path fastrList = registryPath.resolve(SystemUtils.fileName("fastr.filelist"));
 
         assertFalse(Files.exists(fastrComp));
         assertFalse(Files.exists(fastrList));
 
         storage.deleteComponent("sulong");
-        Path sulongComp = registryPath.resolve("sulong.component");
+        Path sulongComp = registryPath.resolve(SystemUtils.fileName("sulong.component"));
         assertFalse(Files.exists(sulongComp));
 
         storage.deleteComponent("leftover");
-        Path leftoverList = registryPath.resolve("leftover.filelist");
+        Path leftoverList = registryPath.resolve(SystemUtils.fileName("leftover.filelist"));
         assertFalse(Files.exists(leftoverList));
     }
 
@@ -323,6 +323,10 @@ public class DirectoryStorageTest extends TestBase {
      */
     @Test
     public void testDeleteComponentFailure() throws Exception {
+        if (isWindows()) {
+            return;
+        }
+
         copyDir("list2", registryPath);
         Files.setPosixFilePermissions(registryPath, PosixFilePermissions.fromString("r--r--r--"));
 
@@ -358,7 +362,7 @@ public class DirectoryStorageTest extends TestBase {
     public void testSaveComponent() throws Exception {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
         info.addRequiredValue("a", "b");
-        Path p = registryPath.resolve("x.component");
+        Path p = registryPath.resolve(SystemUtils.fileName("x.component"));
         assertFalse(Files.exists(p));
         storage.saveComponent(info);
         assertTrue(Files.exists(p));
@@ -381,7 +385,7 @@ public class DirectoryStorageTest extends TestBase {
                         "jre/languages/test/scrap",
                         "jre/lib/test/scrapdir"));
 
-        Path p = registryPath.resolve("x.component");
+        Path p = registryPath.resolve(SystemUtils.fileName("x.component"));
         assertFalse(Files.exists(p));
         storage.saveComponent(info);
         assertTrue(Files.exists(p));
@@ -402,7 +406,7 @@ public class DirectoryStorageTest extends TestBase {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
         info.addPaths(Arrays.asList("SecondPath/file", "FirstPath/directory/"));
 
-        Path p = registryPath.resolve("x.filelist");
+        Path p = registryPath.resolve(SystemUtils.fileName("x.filelist"));
         assertFalse(Files.exists(p));
         storage.saveComponentFileList(info);
         assertTrue(Files.exists(p));

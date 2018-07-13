@@ -27,7 +27,6 @@ package org.graalvm.component.installer.commands;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -40,6 +39,7 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 public class UninstallCommand implements InstallerCommand {
@@ -117,7 +117,7 @@ public class UninstallCommand implements InstallerCommand {
             }
         } finally {
             if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
-                Path p = Paths.get(CommonConstants.PATH_JRE_BIN);
+                Path p = SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
                 feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
             }
         }

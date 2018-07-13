@@ -25,6 +25,7 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOError;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -36,7 +37,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -207,7 +207,7 @@ public final class ComponentInstaller {
         } catch (DirectoryNotEmptyException ex) {
             env.error("INSTALLER_DirectoryNotEmpty", ex, ex.getMessage()); // NOI18N
             return 2;
-        } catch (IOException ex) {
+        } catch (IOError | IOException ex) {
             env.error("INSTALLER_IOException", ex, ex.getMessage()); // NOI18N
             return 2;
         } catch (MetadataException ex) {
@@ -235,13 +235,13 @@ public final class ComponentInstaller {
         String graalHome = System.getProperty("GRAAL_HOME", System.getenv("GRAAL_HOME")); // NOI18N
         Path graalPath = null;
         if (graalHome != null) {
-            graalPath = Paths.get(graalHome);
+            graalPath = SystemUtils.fromUserString(graalHome);
         } else {
             URL loc = getClass().getProtectionDomain().getCodeSource().getLocation();
             try {
                 File f = new File(loc.toURI());
                 if (f != null) {
-                    graalPath = f.toPath().resolve(GRAAL_DEFAULT_RELATIVE_PATH).normalize();
+                    graalPath = f.toPath().resolve(SystemUtils.fromCommonString(GRAAL_DEFAULT_RELATIVE_PATH)).toAbsolutePath();
                 }
             } catch (URISyntaxException ex) {
                 Logger.getLogger(ComponentInstaller.class.getName()).log(Level.SEVERE, null, ex);
@@ -250,10 +250,10 @@ public final class ComponentInstaller {
         if (graalPath == null) {
             throw env.failure("ERROR_NoGraalVMDirectory", null);
         }
-        if (!Files.isDirectory(graalPath) || !Files.exists(graalPath.resolve("release"))) {
+        if (!Files.isDirectory(graalPath) || !Files.exists(graalPath.resolve(SystemUtils.fileName("release")))) {
             throw env.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
         }
-        if (!Files.isDirectory(storagePath = graalPath.resolve(PATH_COMPONENT_STORAGE))) {
+        if (!Files.isDirectory(storagePath = graalPath.resolve(SystemUtils.fromCommonString(PATH_COMPONENT_STORAGE)))) {
             throw env.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
         }
         graalHomePath = graalPath;
