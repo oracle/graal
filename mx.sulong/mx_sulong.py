@@ -50,8 +50,6 @@ import mx_testsuites
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 
-os.environ["LC_NUMERIC"] = "C"  # required for some testcases
-
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
 _root = join(_suite.dir, "projects")
@@ -117,46 +115,62 @@ def _unittest_config_participant(config):
 
 add_config_participant(_unittest_config_participant)
 
+class TemporaryEnv(object):
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+        self.old_value = None
+
+    def __enter__(self):
+        self.old_value = os.environ.get(self.key)
+        os.environ[self.key] = self.value
+
+    def __exit__(self, ex_type, value, traceback):
+        if self.old_value is None:
+            del os.environ[self.key]
+        else:
+            os.environ[self.key] = self.old_value
 
 def _sulong_gate_runner(args, tasks):
-    with Task('CheckCopyright', tasks, tags=['style']) as t:
-        if t:
-            if mx.checkcopyrights(['--primary']) != 0:
-                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
-    with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
-        if t: clangformatcheck()
-    with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('shootout')
-    with Task('TestTypes', tasks, tags=['type', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('type')
-    with Task('TestPipe', tasks, tags=['pipe', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('pipe')
-    with Task('TestLLVM', tasks, tags=['llvm']) as t:
-        if t: mx_testsuites.runSuite('llvm')
-    with Task('TestNWCC', tasks, tags=['nwcc']) as t:
-        if t: mx_testsuites.runSuite('nwcc')
-    with Task('TestGCCParserTorture', tasks, tags=['parser']) as t:
-        if t: mx_testsuites.runSuite('parserTorture')
-    with Task('TestGCC_C', tasks, tags=['gcc_c']) as t:
-        if t: mx_testsuites.runSuite('gcc_c')
-    with Task('TestGCC_CPP', tasks, tags=['gcc_cpp']) as t:
-        if t: mx_testsuites.runSuite('gcc_cpp')
-    with Task('TestGCC_Fortran', tasks, tags=['gcc_fortran']) as t:
-        if t: mx_testsuites.runSuite('gcc_fortran')
-    with Task("TestSulong", tasks, tags=['sulong', 'sulongBasic']) as t:
-        if t: mx_unittest.unittest(['SulongSuite'])
-    with Task("TestInterop", tasks, tags=['interop', 'sulongBasic']) as t:
-        if t: mx_unittest.unittest(['com.oracle.truffle.llvm.test.interop'])
-    with Task("TestDebug", tasks, tags=['debug', 'sulongBasic']) as t:
-        if t: mx_unittest.unittest(['LLVMDebugTest'])
-    with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('assembly')
-    with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('args')
-    with Task('TestCallback', tasks, tags=['callback', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('callback')
-    with Task('TestVarargs', tasks, tags=['vaargs', 'sulongMisc']) as t:
-        if t: mx_testsuites.runSuite('vaargs')
+    with TemporaryEnv('LC_ALL', 'C'):
+        with Task('CheckCopyright', tasks, tags=['style']) as t:
+            if t:
+                if mx.checkcopyrights(['--primary']) != 0:
+                    t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
+        with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
+            if t: clangformatcheck()
+        with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('shootout')
+        with Task('TestTypes', tasks, tags=['type', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('type')
+        with Task('TestPipe', tasks, tags=['pipe', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('pipe')
+        with Task('TestLLVM', tasks, tags=['llvm']) as t:
+            if t: mx_testsuites.runSuite('llvm')
+        with Task('TestNWCC', tasks, tags=['nwcc']) as t:
+            if t: mx_testsuites.runSuite('nwcc')
+        with Task('TestGCCParserTorture', tasks, tags=['parser']) as t:
+            if t: mx_testsuites.runSuite('parserTorture')
+        with Task('TestGCC_C', tasks, tags=['gcc_c']) as t:
+            if t: mx_testsuites.runSuite('gcc_c')
+        with Task('TestGCC_CPP', tasks, tags=['gcc_cpp']) as t:
+            if t: mx_testsuites.runSuite('gcc_cpp')
+        with Task('TestGCC_Fortran', tasks, tags=['gcc_fortran']) as t:
+            if t: mx_testsuites.runSuite('gcc_fortran')
+        with Task("TestSulong", tasks, tags=['sulong', 'sulongBasic']) as t:
+            if t: mx_unittest.unittest(['SulongSuite'])
+        with Task("TestInterop", tasks, tags=['interop', 'sulongBasic']) as t:
+            if t: mx_unittest.unittest(['com.oracle.truffle.llvm.test.interop'])
+        with Task("TestDebug", tasks, tags=['debug', 'sulongBasic']) as t:
+            if t: mx_unittest.unittest(['LLVMDebugTest'])
+        with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('assembly')
+        with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('args')
+        with Task('TestCallback', tasks, tags=['callback', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('callback')
+        with Task('TestVarargs', tasks, tags=['vaargs', 'sulongMisc']) as t:
+            if t: mx_testsuites.runSuite('vaargs')
 
 add_gate_runner(_suite, _sulong_gate_runner)
 

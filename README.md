@@ -147,7 +147,7 @@ Set `JAVA_HOME` to point to the extracted labsjdk from above:
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:
 
-    echo MAKEFLAGS=-j9 > sulong/mx.sulong/env
+    echo MAKEFLAGS=-j9 >> sulong/mx.sulong/env
 
 Finally, build the project:
 
