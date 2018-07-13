@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.io.IOException;
 import java.util.zip.DataFormatException;
+import java.util.zip.ZipFile;
 
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.TargetElement;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -354,17 +358,6 @@ final class Util_java_util_zip_Inflater {
         return len - strm.avail_out();
     }
 
-}
-
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@TargetClass(java.util.jar.JarFile.class)
-final class Target_java_util_jar_JarFile {
-    // ZipFile.c-Java_java_util_jar_JarFile_getMetaInfEntryNames(JNIEnv *env, jobject obj)
-    @SuppressWarnings("static-method")
-    @Substitute
-    private String[] getMetaInfEntryNames() {
-        throw VMError.unsupportedFeature("java.util.zip.JarFile");
-    }
 }
 
 /** Dummy class to have a class with the file's name. */

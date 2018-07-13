@@ -33,6 +33,8 @@ package com.oracle.svm.core.posix.zipfile;
 // SVM start
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 import java.util.zip.ZipException;
@@ -1400,6 +1402,15 @@ public final class ZipFile implements ZipConstants, Closeable {
                  p += CENHDR + CENNAM(cen, p) + CENEXT(cen, p) + CENCOM(cen, p))
                 count++;
             return count;
+        }
+    }
+
+    @Platforms({ Platform.LINUX.class, Platform.DARWIN.class})
+    @TargetClass(java.util.jar.JarFile.class)
+    static final class Target_java_util_jar_JarFile {
+        @Substitute
+        private String[] getMetaInfEntryNames() {
+            return ((ZipFile)(Object)this).getMetaInfEntryNames();
         }
     }
 }
