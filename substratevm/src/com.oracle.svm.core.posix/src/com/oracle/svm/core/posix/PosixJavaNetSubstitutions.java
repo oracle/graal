@@ -3088,9 +3088,9 @@ final class Target_java_net_PlainSocketImpl {
         // 991     int fd;
         int fd;
         // 992     int level, optname, optlen;
-        CIntPointer level_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
-        CIntPointer optname_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
-        CIntPointer optlen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer level_Pointer = StackValue.get(CIntPointer.class);
+        CIntPointer optname_Pointer = StackValue.get(CIntPointer.class);
+        CIntPointer optlen_Pointer = StackValue.get(CIntPointer.class);
         /* Translated as a WordPointer to the larger of the arms. */
         // 993     union {
         // 994         int i;
@@ -3123,9 +3123,9 @@ final class Target_java_net_PlainSocketImpl {
             // 1012         SOCKADDR him;
             Socket.sockaddr him = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
             // 1013         socklen_t len = 0;
-            CIntPointer len_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
             // 1014         int port;
-            CIntPointer port_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer port_Pointer = StackValue.get(CIntPointer.class);
             // 1015         jobject iaObj;
             InetAddress iaObj;
             // 1016         jclass iaCntrClass;
