@@ -160,16 +160,18 @@ svm-common-linux: ${svm-common} ${linux-amd64} {
   timelimit: "55:00"
 }
 
-svm-capabilities-fast : {
-  capabilities : [linux, amd64, fast]
+# fast is necessary here as slow machines don't handle image builds well
+svm-capabilities: [linux, amd64, fast]
+svm-capabilities-base : {
+  capabilities : ${svm-capabilities}
 }
 
 svm-capabilities-avx2 : {
-  capabilities : [linux, amd64, avx2]
+  capabilities : ${svm-capabilities} [avx2]
 }
 
 svm-capabilities-manycores : {
-  capabilities : [linux, amd64, manycores, fast]
+  capabilities : ${svm-capabilities} [manycores]
 }
 
 svm-common-darwin: ${svm-common} ${darwin-amd64} {
