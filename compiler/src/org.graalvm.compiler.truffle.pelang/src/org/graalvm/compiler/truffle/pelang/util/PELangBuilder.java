@@ -212,8 +212,54 @@ public class PELangBuilder {
         return if$(conditionNode, thenNode, block());
     }
 
+    public PELangStatementNode ifSequence(int count, PELangExpressionNode conditionNode, PELangStatementNode thenNode,
+                    PELangStatementNode elseNode) {
+        PELangStatementNode[] ifNodes = new PELangStatementNode[count];
+
+        for (int i = 0; i < count; i++) {
+            ifNodes[i] = if$(conditionNode, thenNode, elseNode);
+        }
+        return new PELangBlockNode(ifNodes);
+    }
+
+    public PELangStatementNode ifSequence(int count, PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
+        return ifSequence(count, conditionNode, thenNode, block());
+    }
+
     public PELangStatementNode while$(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
         return new PELangWhileNode(conditionNode, bodyNode);
+    }
+
+    public PELangStatementNode whileSequence(int count, PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
+        PELangStatementNode[] whileNodes = new PELangStatementNode[count];
+
+        for (int i = 0; i < count; i++) {
+            whileNodes[i] = while$(conditionNode, bodyNode);
+        }
+        return new PELangBlockNode(whileNodes);
+    }
+
+    public PELangStatementNode whileNested(int count, PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
+        PELangStatementNode whileNode = while$(conditionNode, bodyNode);
+
+        for (int i = 0; i < count; i++) {
+            whileNode = while$(conditionNode, whileNode);
+        }
+        return whileNode;
+    }
+
+    public PELangStatementNode ifNested(int count, PELangExpressionNode conditionNode, PELangStatementNode thenNode,
+                    PELangStatementNode elseNode) {
+        PELangStatementNode ifNode = if$(conditionNode, thenNode, elseNode);
+
+        for (int i = 0; i < count; i++) {
+            ifNode = if$(conditionNode, ifNode);
+        }
+        return ifNode;
+    }
+
+    public PELangStatementNode ifNested(int count, PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
+        return ifNested(count, conditionNode, thenNode, block());
     }
 
     public PELangStatementNode switch$(PELangExpressionNode valueNode, Case... cases) {
@@ -221,6 +267,24 @@ public class PELangBuilder {
         PELangStatementNode[] caseBodyNodes = Arrays.stream(cases).map(Case::getBodyNode).toArray(PELangStatementNode[]::new);
 
         return new PELangSwitchNode(valueNode, caseValueNodes, caseBodyNodes);
+    }
+
+    public PELangStatementNode switchSequence(int count, PELangExpressionNode valueNode, Case... cases) {
+        PELangStatementNode[] switchNodes = new PELangStatementNode[count];
+
+        for (int i = 0; i < count; i++) {
+            switchNodes[i] = switch$(valueNode, cases);
+        }
+        return new PELangBlockNode(switchNodes);
+    }
+
+    public PELangStatementNode switchNested(int count, PELangExpressionNode valueNode, Case... cases) {
+        PELangStatementNode switchNode = switch$(valueNode, cases);
+
+        for (int i = 0; i < count; i++) {
+            switchNode = switch$(valueNode, case$(valueNode, switchNode));
+        }
+        return switchNode;
     }
 
     public Case case$(PELangExpressionNode valueNode, PELangStatementNode bodyNode) {
