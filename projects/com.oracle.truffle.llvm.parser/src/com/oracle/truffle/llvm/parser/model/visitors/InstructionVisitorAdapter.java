@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
@@ -214,5 +215,10 @@ public interface InstructionVisitorAdapter extends SymbolVisitor {
     @Override
     default void visit(FenceInstruction fence) {
         visitInstruction(fence);
+    }
+
+    @Override
+    default void visit(DebugTrapInstruction inst) {
+        visitInstruction(inst);
     }
 }

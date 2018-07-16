@@ -1,5 +1,10 @@
 # Version 1.0.0 RC4
 
+New features:
+
+* Support the `__builtin_debugtrap` function based on LLVM's `@llvmn.debugtrap`
+  intrinsic
+
 Improvements:
 
 * Support "zero-length array at end of struct" pattern when accessing polyglot

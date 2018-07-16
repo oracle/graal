@@ -52,6 +52,19 @@ functions in LLVM bitcode files only when they are first being executed. To inst
 eagerly and be able to set breakpoints also in functions not yet executed you can launch Sulong
 with the option `--llvm.lazyParsing=false`.
 
+#### Program-defined breakpoints using `__builtin_debugtrap()`
+
+The `__builtin_debugtrap` function enables you to mark locations in your program at which you explicitly
+want Sulong to halt the program and switch to the debugger. The debugger automatically halts at each call
+to this function as if a breakpoint were set on the call. You can use this feature to quickly reach the
+code you are actually trying to debug without having to first find and set a breakpoint on it after
+launching your application. You can also instruct Chrome Inspector not to suspend your program at the first
+source-level statement being executed. When doing so, Sulong will instead execute your program until it
+reaches a call to `__builtin_debugtrap()` before invoking the debugger. To enable this behaviour you need
+pass the arguments `--inspect.Suspend=false` and `--inspect.WaitAttached=true` (or
+`-Dpolyglot.inspect.Suspend=false` and `-Dpolyglot.inspect.WaitAttached=true` if you compiled Sulong
+from source).
+
 ## Netbeans
 
 ### Setup

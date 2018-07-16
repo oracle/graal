@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMAMD64BreakpointNode extends LLVMStatementNode {
-    private final LLVMSourceLocation source;
+public class LLVMDebugTrapNode extends LLVMStatementNode {
 
-    public LLVMAMD64BreakpointNode(LLVMSourceLocation source) {
-        this.source = source;
+    private final LLVMSourceLocation location;
+
+    public LLVMDebugTrapNode(LLVMSourceLocation location) {
+        this.location = location;
     }
 
     @Override
     public void execute(VirtualFrame frame) {
-        // nothing to do
+        // this node only exists to tell an attached debugger to suspend the program, it is a noop
+        // if no debugger is attached
     }
 
     @Override
     public LLVMSourceLocation getSourceLocation() {
-        return source;
+        return location;
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == DebuggerTags.AlwaysHalt.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
+        return tag == DebuggerTags.AlwaysHalt.class || tag == StandardTags.StatementTag.class || super.hasTag(tag);
     }
 }

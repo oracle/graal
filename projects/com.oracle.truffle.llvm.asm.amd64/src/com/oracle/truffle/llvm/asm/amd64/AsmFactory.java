@@ -49,7 +49,6 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndbNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BreakpointNode;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsflNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsfqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsfwNodeGen;
@@ -218,6 +217,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMToI64ZeroExtNodeG
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
@@ -390,7 +390,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(language, sourceLocation, frameDescriptor, statements.toArray(new LLVMStatementNode[statements.size()]), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, sourceLocation, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -400,7 +400,7 @@ class AsmFactory {
     void createInt(AsmImmediateOperand nr) {
         long id = nr.getValue();
         if (id == 3) {
-            statements.add(new LLVMAMD64BreakpointNode(sourceLocation));
+            statements.add(new LLVMDebugTrapNode(sourceLocation));
         } else {
             statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported interrupt " + nr));
         }

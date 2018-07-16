@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruct
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
@@ -146,7 +147,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     public LLVMStatementNode[] getInstructions() {
-        return blockInstructions.toArray(new LLVMStatementNode[0]);
+        return blockInstructions.toArray(LLVMStatementNode.NO_STATEMENTS);
     }
 
     public LLVMControlFlowNode getControlFlowNode() {
@@ -334,6 +335,11 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(DbgValueInstruction inst) {
         visitDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), inst.getIndex(), false);
+    }
+
+    @Override
+    public void visit(DebugTrapInstruction inst) {
+        addInstruction(nodeFactory.createDebugTrap(inst.getSourceLocation()));
     }
 
     @Override
