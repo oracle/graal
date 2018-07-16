@@ -46,7 +46,7 @@ public class AnnotationSubstitutionType extends CustomSubstitutionType<Annotatio
 
         String n = annotationInterfaceType.getName();
         assert n.endsWith(";");
-        name = n.substring(0, n.length() - 1) + "Impl;";
+        name = n.substring(0, n.length() - 1) + "$$ProxyImpl;";
     }
 
     @Override
