@@ -95,8 +95,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("targetCount", utf16IndexOf.getArgument(3));
             args.add("origFromIndex", utf16IndexOf.getArgument(4));
             byte[] targetByteArray = snippetReflection.asObject(byte[].class, utf16IndexOf.getArgument(2).asJavaConstant());
-            args.addConst("md2", md2(targetByteArray));
-            args.addConst("cache", computeCache(targetByteArray));
+            args.addConst("md2", md2Utf16(targetByteArray));
+            args.addConst("cache", computeCacheUtf16(targetByteArray));
             template(utf16IndexOf, args).instantiate(providers.getMetaAccess(), utf16IndexOf, DEFAULT_REPLACER, args);
         }
     }
@@ -147,6 +147,35 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         int i;
         for (i = 0; i < c - 1; i++) {
             cache |= (1 << (s[i] & 63));
+        }
+        return cache;
+    }
+
+    static int md2Utf16(byte[] target) {
+        int c = target.length / 2;
+        if (c == 0) {
+            return 0;
+        }
+        long base = UnsafeAccess.UNSAFE.arrayBaseOffset(byte[].class);
+        char lastChar = UnsafeAccess.UNSAFE.getChar(target, base + (c - 1) * 2);
+        int md2 = c;
+        for (int i = 0; i < c - 1; i++) {
+            char currChar = UnsafeAccess.UNSAFE.getChar(target, base + i * 2);
+            if (currChar == lastChar) {
+                md2 = (c - 1) - i;
+            }
+        }
+        return md2;
+    }
+
+    static long computeCacheUtf16(byte[] s) {
+        int c = s.length / 2;
+        int cache = 0;
+        int i;
+        long base = UnsafeAccess.UNSAFE.arrayBaseOffset(byte[].class);
+        for (i = 0; i < c - 1; i++) {
+            char currChar = UnsafeAccess.UNSAFE.getChar(s, base + i * 2);
+            cache |= (1 << (currChar & 63));
         }
         return cache;
     }
