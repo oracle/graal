@@ -154,6 +154,7 @@ public class AArch64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AArch64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AArch64StringLatin1Substitutions.class, "compareToUTF16", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AArch64StringLatin1Substitutions.class, "equals", byte[].class, byte[].class);
         }
     }
 
@@ -163,6 +164,7 @@ public class AArch64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AArch64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AArch64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AArch64StringUTF16Substitutions.class, "equals", byte[].class, byte[].class);
         }
     }
 
