@@ -45,6 +45,7 @@ import org.graalvm.compiler.truffle.test.nodes.NestedExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ObjectEqualsNode;
 import org.graalvm.compiler.truffle.test.nodes.ObjectHashCodeNode;
+import org.graalvm.compiler.truffle.test.nodes.PartialIntrinsicNode;
 import org.graalvm.compiler.truffle.test.nodes.RecursionTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.compiler.truffle.test.nodes.StoreLocalTestNode;
@@ -336,5 +337,20 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         OptimizedCallTarget compilable = compileHelper("loopExplosionPhi", rootNode, new Object[0]);
 
         Assert.assertEquals(1, compilable.call(new Object[0]));
+    }
+
+    @Test
+    public void partialIntrinsic() {
+        /*
+         * Object.notifyAll() is a partial intrinsic on JDK 11, i.e., the intrinsic calls the
+         * original implementation. Test that the call to the original implementation is not
+         * recursively inlined as an intrinsic again.
+         */
+        FrameDescriptor fd = new FrameDescriptor();
+        AbstractTestNode result = new PartialIntrinsicNode();
+        RootNode rootNode = new RootTestNode(fd, "partialIntrinsic", result);
+        OptimizedCallTarget compilable = compileHelper("partialIntrinsic", rootNode, new Object[0]);
+
+        Assert.assertEquals(42, compilable.call(new Object[0]));
     }
 }
