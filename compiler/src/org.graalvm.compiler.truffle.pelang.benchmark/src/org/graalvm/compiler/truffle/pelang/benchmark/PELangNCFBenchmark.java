@@ -258,4 +258,22 @@ public class PELangNCFBenchmark {
 
     }
 
+    public static class ArraySum extends PELangBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            return PELangSample.arraySum();
+        }
+
+    }
+
+    public static class ArrayCompare extends PELangBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            return PELangSample.arrayCompare();
+        }
+
+    }
+
 }

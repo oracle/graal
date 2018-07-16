@@ -359,6 +359,30 @@ public class PELangBCFTest extends PELangTest {
         // TODO: add partial evaluation asserts
     }
 
+    @Test
+    public void testArraySum() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.arraySum());
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
+    public void testArrayCompare() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.arrayCompare());
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(1L, callTarget);
+
+        warmupCallTarget(callTarget);
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
     protected Object constant10() {
         return 10L;
     }

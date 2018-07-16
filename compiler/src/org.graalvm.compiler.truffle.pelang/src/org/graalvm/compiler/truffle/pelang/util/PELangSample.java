@@ -617,4 +617,73 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode arraySum() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            "main",
+            b.block(
+                b.writeLocal("array", b.array(new long[] {1, 2, 3, 4})),
+                b.writeLocal("length", b.long$(4L)),
+                b.writeLocal("sum", b.long$(0L)),
+                b.writeLocal("i", b.long$(0L)),
+                b.while$(
+                    b.lt(b.readLocal("i"), b.readLocal("length")),
+                    b.block(
+                        b.incrementLocal("sum", b.readArray(b.readLocal("array"), b.readLocal("i"))),
+                        b.incrementLocal("i", b.long$(1L)))),
+                b.return$(b.readLocal("sum"))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode arrayCompare() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            "main",
+            b.block(
+                b.writeLocal("array1", b.array(new long[] {1, 2, 3, 4})),
+                b.writeLocal("array2", b.array(new long[] {1, 2, 3, 5})),
+                b.writeLocal("length", b.long$(4L)),
+                b.writeLocal("i", b.long$(0L)),
+                b.while$(
+                    b.lt(b.readLocal("i"), b.readLocal("length")),
+                    b.block(
+                        b.if$(
+                            b.not(b.eq(
+                                b.readArray(b.readLocal("array1"), b.readLocal("i")),
+                                b.readArray(b.readLocal("array2"), b.readLocal("i")))),
+                            b.return$(b.long$(1L))),
+                        b.incrementLocal("i", b.long$(1L)))),
+                b.return$(b.long$(0L))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode arrayCopy() {
+        PELangBuilder b = new PELangBuilder();
+        // TODO: implement body
+
+        // @formatter:off
+        return b.root(
+            "main",
+            b.block(
+                b.writeLocal("array1", b.array(new long[] {1, 2, 3, 4})),
+                b.writeLocal("array2", b.newArray(PELangArrayType.Long, b.long$(4L))),
+                b.writeLocal("length", b.long$(4L)),
+                b.writeLocal("i", b.long$(0L)),
+                b.while$(
+                    b.lt(b.readLocal("i"), b.readLocal("length")),
+                    b.block(
+                        b.if$(
+                            b.not(b.eq(
+                                b.readArray(b.readLocal("array1"), b.readLocal("i")),
+                                b.readArray(b.readLocal("array2"), b.readLocal("i")))),
+                            b.return$(b.long$(10L))),
+                        b.incrementLocal("i", b.long$(1L)))),
+                b.return$(b.long$(0L))));
+        // @formatter:on
+    }
+
 }

@@ -329,6 +329,28 @@ public class PELangNCFTest extends PELangTest {
         // TODO: add partial evaluation asserts
     }
 
+    @Test
+    public void testArraySum() {
+        PELangRootNode rootNode = PELangSample.arraySum();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
+    public void testArrayCompare() {
+        PELangRootNode rootNode = PELangSample.arrayCompare();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(1L, callTarget);
+
+        warmupCallTarget(callTarget);
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
     protected Object constant10() {
         return 10L;
     }

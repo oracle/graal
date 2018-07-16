@@ -294,4 +294,24 @@ public class PELangBCFBenchmark {
 
     }
 
+    public static class ArraySum extends PELangBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            PELangBCFGenerator g = new PELangBCFGenerator();
+            return g.generate(PELangSample.arraySum());
+        }
+
+    }
+
+    public static class ArrayCompare extends PELangBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            PELangBCFGenerator g = new PELangBCFGenerator();
+            return g.generate(PELangSample.arrayCompare());
+        }
+
+    }
+
 }
