@@ -102,7 +102,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Test
     public void simpleIfTest() {
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getInstrumentation();
+        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
         FrameDescriptor descriptor = new FrameDescriptor();
         SimpleIfTestNode result = new SimpleIfTestNode(5);
         RootTestNode rootNode = new RootTestNode(descriptor, "simpleIfRoot", result);
@@ -118,7 +118,7 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Test
     public void twoIfsTest() {
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getInstrumentation();
+        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
         FrameDescriptor descriptor = new FrameDescriptor();
         TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
         RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
