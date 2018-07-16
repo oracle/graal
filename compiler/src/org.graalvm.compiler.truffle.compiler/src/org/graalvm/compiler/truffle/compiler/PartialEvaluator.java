@@ -426,9 +426,6 @@ public abstract class PartialEvaluator {
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList, ResolvedJavaMethod callInlined,
                     SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
-        if (newConfig.trackNodeSourcePosition()) {
-            graph.setTrackNodeSourcePosition();
-        }
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();
@@ -461,6 +458,9 @@ public abstract class PartialEvaluator {
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin};
         }
 
+        if (configForParsing.trackNodeSourcePosition()) {
+            graph.setTrackNodeSourcePosition();
+        }
         SourceLanguagePositionProvider sourceLanguagePosition = new TruffleSourceLanguagePositionProvider(inliningDecision);
         PEGraphDecoder decoder = createGraphDecoder(graph, tierContext, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod,
                         sourceLanguagePosition);
