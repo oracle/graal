@@ -100,4 +100,8 @@ final class DebugInfoCache {
         scopeBuilder.clearLocalScopes();
     }
 
+    void importScope(MDBaseNode node, LLVMSourceLocation importedScope) {
+        scopeBuilder.importScope(node, importedScope);
+    }
+
 }

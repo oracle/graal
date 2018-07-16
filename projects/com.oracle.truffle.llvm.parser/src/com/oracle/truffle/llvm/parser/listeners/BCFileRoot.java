@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.util.SymbolNameMangling;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class BCFileRoot implements ParserListener {
@@ -65,12 +66,11 @@ public final class BCFileRoot implements ParserListener {
         }
     }
 
-    @Override
-    public void exit() {
+    public void exit(LLVMContext context) {
         int globalIndex = setMissingNames(module.getGlobalVariables(), 0);
         setMissingNames(module.getAliases(), globalIndex);
         SymbolNameMangling.demangleGlobals(module);
-        DebugInfoModuleProcessor.processModule(module, scope.getMetadata());
+        DebugInfoModuleProcessor.processModule(module, scope.getMetadata(), context);
     }
 
     private static int setMissingNames(List<? extends GlobalValueSymbol> globals, int startIndex) {

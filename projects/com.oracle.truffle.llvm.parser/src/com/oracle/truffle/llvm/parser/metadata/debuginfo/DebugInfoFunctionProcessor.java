@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -90,7 +91,8 @@ public final class DebugInfoFunctionProcessor {
         this.cache = cache;
     }
 
-    public void process(FunctionDefinition function, IRScope scope, Source bitcodeSource) {
+    public void process(FunctionDefinition function, IRScope scope, Source bitcodeSource, LLVMContext context) {
+        ImportsProcessor.process(scope.getMetadata(), context, cache);
         initSourceFunction(function, bitcodeSource);
         function.accept((FunctionVisitor) new SymbolProcessor(function.getSourceFunction()));
         scope.getMetadata().consumeLocals(new MetadataProcessor());

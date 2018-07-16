@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -160,6 +160,10 @@ final class DIScopeBuilder {
         localCache.clear();
     }
 
+    void importScope(MDBaseNode node, LLVMSourceLocation importedScope) {
+        globalCache.put(node, importedScope);
+    }
+
     private final class Builder implements MetadataVisitor {
 
         LLVMSourceLocation loc;
@@ -192,10 +196,13 @@ final class DIScopeBuilder {
                 if (sourceSection != null) {
                     loc = LLVMSourceLocation.create(parent, kind, name, sourceSection, compileUnit);
 
+                } else if (kind == LLVMSourceLocation.Kind.NAMESPACE || kind == LLVMSourceLocation.Kind.MODULE) {
+                    loc = LLVMSourceLocation.createGlobalScope(parent, kind, name);
+
                 } else {
                     final Path path = getPath(file);
                     final String fileName = path != null ? path.toString() : null;
-                    loc = LLVMSourceLocation.createUnavailable(kind, name, fileName, (int) line, (int) col);
+                    loc = LLVMSourceLocation.createUnavailable(parent, kind, name, fileName, (int) line, (int) col);
                 }
             }
 
@@ -264,7 +271,7 @@ final class DIScopeBuilder {
             } else {
                 final Path path = getPath(file);
                 final String fileName = path != null ? path.toString() : null;
-                loc = LLVMSourceLocation.createUnavailable(kind, name, fileName, (int) line, (int) col);
+                loc = LLVMSourceLocation.createUnavailable(parent, kind, name, fileName, (int) line, (int) col);
             }
         }
 
@@ -272,8 +279,6 @@ final class DIScopeBuilder {
         public void visit(MDNamespace md) {
             parent = buildLocation(md.getScope());
             kind = LLVMSourceLocation.Kind.NAMESPACE;
-            file = fileExtractor.extractFile(md);
-            line = md.getLine();
             name = MDNameExtractor.getName(md.getName());
         }
 
@@ -293,7 +298,6 @@ final class DIScopeBuilder {
         public void visit(MDModule md) {
             parent = buildLocation(md.getScope());
             kind = LLVMSourceLocation.Kind.MODULE;
-            file = fileExtractor.extractFile(md);
             name = MDNameExtractor.getName(md.getName());
         }
 
