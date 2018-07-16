@@ -676,6 +676,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             return super.instrumentSupport();
         }
 
+        @Override
+        protected Frames framesSupport() {
+            return super.framesSupport();
+        }
+
         static final class AccessNodes extends Accessor.Nodes {
 
             @Override

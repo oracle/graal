@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test.nodes;
+package com.oracle.truffle.api.frame;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.VirtualFrame;
+/**
+ * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
+ */
+@interface SuppressFBWarnings {
+    /**
+     * The set of FindBugs
+     * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
+     * suppressed in annotated element. The value can be a bug category, kind or pattern.
+     */
+    String[] value();
 
-public class StoreLocalTestNode extends AbstractTestNode {
-
-    private final FrameSlot slot;
-
-    @Child private AbstractTestNode valueNode;
-
-    public StoreLocalTestNode(String name, FrameDescriptor frameDescriptor, AbstractTestNode valueNode) {
-        this.slot = frameDescriptor.findOrAddFrameSlot(name);
-        this.valueNode = valueNode;
-    }
-
-    @Override
-    public int execute(VirtualFrame frame) {
-        frame.getFrameDescriptor().setFrameSlotKind(slot, FrameSlotKind.Int);
-        int value = valueNode.execute(frame);
-        frame.setInt(slot, value);
-        return value;
-    }
+    /**
+     * Reason why the warning is suppressed.
+     */
+    String justification();
 }
