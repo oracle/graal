@@ -17,8 +17,8 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * Added [SourceSectionFilter#includes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.html#includes-com.oracle.truffle.api.nodes.Node-)
 * Deprecating `FrameSlot#getKind` and `FrameSlot#setKind` in favor of `FrameDescriptor#getFrameSlotKind` and `FrameDescriptor#setFrameSlotKind`.
 * The `FrameDescriptor` is now thread-safe from the moment it is first passed to a RootNode constructor.
-  * The list returned by [FrameDescriptor#getSlots](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getSlots--) no longer reflects future changed in the FrameDescriptor. This is an incompatible change.
-  * The set returned by [FrameDescriptor#getIdentifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getIdentifiers--) no longer reflects future changed in the FrameDescriptor. This is an incompatible change.
+  * The list returned by [FrameDescriptor#getSlots](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getSlots--) no longer reflects future changes in the FrameDescriptor. This is an incompatible change.
+  * The set returned by [FrameDescriptor#getIdentifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getIdentifiers--) no longer reflects future changes in the FrameDescriptor. This is an incompatible change.
 
 ## Version 1.0.0 RC3
 
