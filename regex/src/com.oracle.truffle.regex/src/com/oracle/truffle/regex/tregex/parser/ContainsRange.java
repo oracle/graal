@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.regex.chardata.CodePointRange;
+
 public interface ContainsRange {
 
     CodePointRange getRange();

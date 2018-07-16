@@ -30,14 +30,14 @@ import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
-import com.oracle.truffle.regex.tregex.parser.CodePointRange;
-import com.oracle.truffle.regex.tregex.parser.CodePointSet;
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-import com.oracle.truffle.regex.util.Constants;
 
 import java.util.Arrays;
 import java.util.List;
