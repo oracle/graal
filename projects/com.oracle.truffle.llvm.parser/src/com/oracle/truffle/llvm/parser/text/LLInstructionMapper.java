@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
@@ -174,6 +175,11 @@ final class LLInstructionMapper {
         @Override
         public void visit(ReadModifyWriteInstruction inst) {
             assignInstructionLocation(inst, "atomicrmw");
+        }
+
+        @Override
+        public void visit(DebugTrapInstruction inst) {
+            assignInstructionLocation(inst, "tail", "call");
         }
 
         @Override
