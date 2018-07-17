@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop.java.test;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigInteger;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -256,6 +257,99 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
         public Object m1(double a0, String a1) {
             return "double,String";
+        }
+    }
+
+    @Test
+    public void testClassVsInterface() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        TruffleObject pool = asTruffleObject(new Pool());
+        TruffleObject concrete = asTruffleObject(new Concrete());
+        TruffleObject handler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
+        assertEquals(Concrete.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare1", "select", concrete, handler));
+        assertEquals(Concrete.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare2", "select", handler, concrete));
+    }
+
+    @Test
+    public void testClassVsInterface2() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        TruffleObject pool = asTruffleObject(new Pool());
+        TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
+        TruffleObject chandler = asTruffleObject(new CHander());
+        assertEquals(CHander.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare3", "select", chandler, thandler));
+        TruffleObject proxied = new AsCollectionsTest.MapBasedTO(Collections.singletonMap("handle", new FunctionalInterfaceTest.TestExecutable()));
+        assertEquals(IHandler.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare3", "select", proxied, thandler));
+    }
+
+    @Test
+    public void testClassVsInterface3() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        TruffleObject pool = asTruffleObject(new Pool());
+        TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
+        TruffleObject chandler = asTruffleObject(new CHander());
+        TruffleObject concrete = asTruffleObject(new Concrete());
+        assertEquals(IHandler.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare4", "select", chandler, 42));
+        assertEquals(IHandler.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare4", "select", thandler, 42));
+        assertEquals(Concrete.class.getName(), ForeignAccess.sendInvoke(n, pool, "prepare4", "select", concrete, 42));
+    }
+
+    @FunctionalInterface
+    public interface IHandler<T> {
+        void handle(T value);
+    }
+
+    public static class Concrete {
+    }
+
+    public static class CHander implements IHandler<String> {
+        public void handle(String value) {
+        }
+    }
+
+    public static class Pool {
+        @SuppressWarnings("unused")
+        public String prepare1(String query, Concrete concrete, IHandler<String> handler) {
+            return Concrete.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare1(String query, Iterable<?> iterable, IHandler<String> handler) {
+            return Iterable.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare2(String query, IHandler<String> handler, Concrete concrete) {
+            return Concrete.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare2(String query, IHandler<String> handler, Iterable<?> iterable) {
+            return Iterable.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare3(String query, CHander arg1, IHandler<String> arg2) {
+            return CHander.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare3(String query, IHandler<String> arg1, IHandler<String> arg2) {
+            return IHandler.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare4(String query, CHander arg1, String arg2) {
+            return CHander.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare4(String query, IHandler<String> arg1, int arg2) {
+            return IHandler.class.getName();
+        }
+
+        @SuppressWarnings("unused")
+        public String prepare4(String query, Concrete arg1, String arg2) {
+            return Concrete.class.getName();
         }
     }
 }
