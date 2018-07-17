@@ -34,8 +34,10 @@ public enum AsmDialect {
     AT_T(""),
     INTEL("inteldialect");
 
+    private static final AsmDialect[] VALUES = values();
+
     public static AsmDialect decode(long id) {
-        return values()[(int) id];
+        return VALUES[(int) id];
     }
 
     private final String irString;

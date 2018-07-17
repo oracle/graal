@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,10 +89,12 @@ public abstract class Attribute {
         WRITEONLY,
         SPECULATABLE;
 
+        private static final Kind[] VALUES = values();
+
         public static Kind decode(long id) {
             // NONE is not a valid attribute, but this default is in line with llvm
-            if (id > 0 && id < values().length) {
-                return values()[(int) id];
+            if (id > 0 && id < VALUES.length) {
+                return VALUES[(int) id];
             } else {
                 return NONE;
             }

@@ -54,10 +54,10 @@ public class LLVMFunctionStartNode extends RootNode {
     private final int explicitArgumentsCount;
     private final DebugInformation debugInformation;
 
-    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node,
-                    FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource, LLVMSourceLocation location) {
+    public LLVMFunctionStartNode(LLVMLanguage language, LLVMExpressionNode node, FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource,
+                    LLVMSourceLocation location) {
         super(language, frameDescriptor);
-        this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource, location);
+        this.debugInformation = new DebugInformation(originalName, bcSource, location);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
         this.name = name;
@@ -66,7 +66,7 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public SourceSection getSourceSection() {
-        return debugInformation.sourceSection;
+        return debugInformation.sourceLocation.getSourceSection();
     }
 
     @Override
@@ -119,9 +119,6 @@ public class LLVMFunctionStartNode extends RootNode {
     @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
         final HashMap<String, Object> properties = new HashMap<>();
-        if (debugInformation.sourceSection != null) {
-            properties.put("sourceSection", debugInformation.sourceSection);
-        }
         if (debugInformation.originalName != null) {
             properties.put("originalName", debugInformation.originalName);
         }
@@ -139,13 +136,11 @@ public class LLVMFunctionStartNode extends RootNode {
      * available.
      */
     private static final class DebugInformation {
-        private final SourceSection sourceSection;
         private final String originalName;
         private final Source bcSource;
         private final LLVMSourceLocation sourceLocation;
 
-        DebugInformation(SourceSection sourceSection, String originalName, Source bcSource, LLVMSourceLocation sourceLocation) {
-            this.sourceSection = sourceSection;
+        DebugInformation(String originalName, Source bcSource, LLVMSourceLocation sourceLocation) {
             this.originalName = originalName;
             this.bcSource = bcSource;
             this.sourceLocation = sourceLocation;

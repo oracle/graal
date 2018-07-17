@@ -50,7 +50,9 @@ public enum ModuleRecord {
     CODE_HASH,
     CODE_IFUNC;
 
+    private static final ModuleRecord[] VALUES = values();
+
     public static ModuleRecord decode(long id) {
-        return values()[(int) id];
+        return VALUES[(int) id];
     }
 }

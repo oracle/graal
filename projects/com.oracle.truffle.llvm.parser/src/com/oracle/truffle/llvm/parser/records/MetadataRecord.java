@@ -71,9 +71,11 @@ public enum MetadataRecord {
     INDEX_OFFSET,
     INDEX;
 
+    private static final MetadataRecord[] VALUES = values();
+
     public static MetadataRecord decode(long id) {
-        if (id >= 0 && id < values().length) {
-            return values()[(int) id];
+        if (id >= 0 && id < VALUES.length) {
+            return VALUES[(int) id];
         } else {
             return UNKNOWN;
         }

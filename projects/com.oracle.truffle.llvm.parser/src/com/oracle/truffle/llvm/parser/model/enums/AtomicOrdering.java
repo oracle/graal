@@ -38,6 +38,8 @@ public enum AtomicOrdering {
     ACQUIRE_RELEASE(5L, "acq_rel"),
     SEQUENTIALLY_CONSISTENT(6L, "seq_cst");
 
+    private static final AtomicOrdering[] VALUES = values();
+
     private final long encodedValue;
     private final String irString;
 
@@ -58,7 +60,7 @@ public enum AtomicOrdering {
     }
 
     public static AtomicOrdering decode(long id) {
-        for (AtomicOrdering atomicOrdering : values()) {
+        for (AtomicOrdering atomicOrdering : VALUES) {
             if (atomicOrdering.getEncodedValue() == id) {
                 return atomicOrdering;
             }
@@ -67,7 +69,7 @@ public enum AtomicOrdering {
     }
 
     public static AtomicOrdering getOrStrongestFailureOrdering(long id, AtomicOrdering successOrdering) {
-        for (AtomicOrdering atomicOrdering : values()) {
+        for (AtomicOrdering atomicOrdering : VALUES) {
             if (atomicOrdering.getEncodedValue() == id) {
                 return atomicOrdering;
             }

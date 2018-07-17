@@ -36,7 +36,9 @@ public enum ValueSymbolTableRecord {
     FUNCTION_ENTRY,
     COMBINED_FNENTRY;
 
+    private static final ValueSymbolTableRecord[] VALUES = values();
+
     public static ValueSymbolTableRecord decode(long id) {
-        return values()[(int) id];
+        return VALUES[(int) id];
     }
 }

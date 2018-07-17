@@ -87,7 +87,9 @@ public enum FunctionRecord {
     UNUSED_54,
     OPERAND_BUNDLE;
 
+    private static final FunctionRecord[] VALUES = values();
+
     public static FunctionRecord decode(long id) {
-        return values()[(int) id];
+        return VALUES[(int) id];
     }
 }

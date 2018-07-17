@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,19 +35,19 @@ import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 
 final class ScannerState {
 
-    private final List<List<AbbreviatedRecord>> abbreviatedRecords;
+    private final List<AbbreviatedRecord[]> abbreviatedRecords;
     private final Block block;
     private final int idSize;
     private final ParserListener parser;
 
-    ScannerState(List<List<AbbreviatedRecord>> abbreviatedRecords, Block block, int idSize, ParserListener parser) {
+    ScannerState(List<AbbreviatedRecord[]> abbreviatedRecords, Block block, int idSize, ParserListener parser) {
         this.abbreviatedRecords = abbreviatedRecords;
         this.block = block;
         this.idSize = idSize;
         this.parser = parser;
     }
 
-    List<List<AbbreviatedRecord>> getAbbreviatedRecords() {
+    List<AbbreviatedRecord[]> getAbbreviatedRecords() {
         return abbreviatedRecords;
     }
 
