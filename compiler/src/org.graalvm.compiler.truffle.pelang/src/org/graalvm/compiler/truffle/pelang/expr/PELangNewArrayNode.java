@@ -26,7 +26,6 @@ import java.lang.reflect.Array;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -39,12 +38,12 @@ public abstract class PELangNewArrayNode extends PELangExpressionNode {
 
     @Specialization
     public Object newSingleArray(long dimension) {
-        return newArray(getArrayType().getJavaClass(), (int) dimension);
+        return Array.newInstance(getArrayType().getJavaClass(), (int) dimension);
     }
 
     @Specialization
     public Object newMultiArray(long[] dimensions) {
-        return newArray(getArrayType().getJavaClass(), toIntArray(dimensions));
+        return Array.newInstance(getArrayType().getJavaClass(), toIntArray(dimensions));
     }
 
     private static int[] toIntArray(long[] longs) {
@@ -54,11 +53,6 @@ public abstract class PELangNewArrayNode extends PELangExpressionNode {
             ints[i] = (int) longs[i];
         }
         return ints;
-    }
-
-    @TruffleBoundary
-    private static Object newArray(Class<?> type, int... dimensions) {
-        return Array.newInstance(type, dimensions);
     }
 
     public static PELangNewArrayNode createNode(PELangArrayType arrayType, PELangExpressionNode dimensionsNode) {

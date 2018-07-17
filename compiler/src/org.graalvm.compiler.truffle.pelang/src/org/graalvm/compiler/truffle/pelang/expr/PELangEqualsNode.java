@@ -23,7 +23,6 @@
 package org.graalvm.compiler.truffle.pelang.expr;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-import org.graalvm.compiler.truffle.pelang.PELangFunction;
 import org.graalvm.compiler.truffle.pelang.PELangNull;
 
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -41,11 +40,6 @@ public abstract class PELangEqualsNode extends PELangExpressionNode {
     @Specialization
     public long equals(String left, String right) {
         return (left.equals(right)) ? 0L : 1L;
-    }
-
-    @Specialization
-    public long equals(PELangFunction left, PELangFunction right) {
-        return (left == right) ? 0L : 1L;
     }
 
     @Specialization
