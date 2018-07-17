@@ -234,6 +234,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (isValid()) {
                 // Stubs were deoptimized => reinstall.
                 runtime().bypassedInstalledCode();
+                return callBoundary(args);
             }
         } else {
             // We come here from compiled code
@@ -317,7 +318,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (!isCompiling()) {
+                if (!isCompiling() && !isValid()) {
                     compilationTask = task = runtime().submitForCompilation(this);
                 }
             }
