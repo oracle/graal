@@ -32,6 +32,7 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import java.util.Collection;
 
@@ -107,6 +108,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
@@ -431,11 +433,8 @@ public class SubstrateAMD64Backend extends Backend {
 
     public static final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
-        private final SharedMethod method;
-
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
-            this.method = (SharedMethod) graph.method();
         }
 
         @Override
@@ -516,14 +515,6 @@ public class SubstrateAMD64Backend extends Backend {
             append(new AMD64CGlobalDataLoadAddressOp(node.getDataInfo(), result));
             setResult(node, result);
         }
-
-        @Override
-        protected boolean allowObjectConstantToStackMove() {
-            if (method.isDeoptTarget()) {
-                return false;
-            }
-            return super.allowObjectConstantToStackMove();
-        }
     }
 
     protected static class SubstrateAMD64FrameContext implements FrameContext {
@@ -600,14 +591,15 @@ public class SubstrateAMD64Backend extends Backend {
         public void enter(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
 
-            assert getDeoptScatchSpace() >= 16;
+            assert getDeoptScratchSpace() >= 16;
 
             // Move the DeoptimizedFrame into rdi
             asm.movq(rdi, new AMD64Address(rsp, 0));
 
             // Store the original return value registers
-            asm.movq(new AMD64Address(rdi, 8), rax);
-            asm.movq(new AMD64Address(rdi, 16), xmm0);
+            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+            asm.movq(new AMD64Address(rdi, scratchOffset), rax);
+            asm.movq(new AMD64Address(rdi, scratchOffset + 8), xmm0);
 
             super.enter(tasm);
         }
@@ -622,13 +614,14 @@ public class SubstrateAMD64Backend extends Backend {
         public void leave(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
 
-            assert getDeoptScatchSpace() >= 16;
+            assert getDeoptScratchSpace() >= 16;
 
             super.leave(tasm);
 
             // Restore the return value registers (the DeoptimizedFrame is in rax).
-            asm.movq(xmm0, new AMD64Address(rax, 16));
-            asm.movq(rax, new AMD64Address(rax, 8));
+            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+            asm.movq(xmm0, new AMD64Address(rax, scratchOffset + 8));
+            asm.movq(rax, new AMD64Address(rax, scratchOffset));
         }
     }
 
@@ -639,13 +632,13 @@ public class SubstrateAMD64Backend extends Backend {
         }
     }
 
-    static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
+    protected static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
 
         private final SharedMethod method;
         private final LIRKindTool lirKindTool;
         private final SubstrateAMD64RegisterConfig registerConfig;
 
-        SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool, SubstrateAMD64RegisterConfig registerConfig) {
+        protected SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool, SubstrateAMD64RegisterConfig registerConfig) {
             super(backupSlotProvider);
             this.method = method;
             this.lirKindTool = lirKindTool;
@@ -657,13 +650,13 @@ public class SubstrateAMD64Backend extends Backend {
             if (constant instanceof SubstrateObjectConstant && method.isDeoptTarget()) {
                 return false;
             }
-            return true;
+            return super.allowConstantToStackMove(constant);
         }
 
         @Override
         public AMD64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createLoad(dst, JavaConstant.LONG_0);
+                return super.createLoad(dst, JavaConstant.INT_0);
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             }
@@ -673,15 +666,15 @@ public class SubstrateAMD64Backend extends Backend {
         @Override
         public LIRInstruction createStackLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createStackLoad(dst, JavaConstant.LONG_0);
+                return super.createStackLoad(dst, JavaConstant.INT_0);
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
 
-        private AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
-            if (!constant.isCompressed() && ReferenceAccess.singleton().haveCompressedReferences()) {
+        protected AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
+            if (ReferenceAccess.singleton().haveCompressedReferences()) {
                 RegisterValue heapBase = registerConfig.getHeapBaseRegister().asValue();
                 return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
             }
@@ -701,10 +694,16 @@ public class SubstrateAMD64Backend extends Backend {
          */
         public static final class LoadCompressedObjectConstantOp extends PointerCompressionOp implements LoadConstantOp {
             public static final LIRInstructionClass<LoadCompressedObjectConstantOp> TYPE = LIRInstructionClass.create(LoadCompressedObjectConstantOp.class);
+
+            static JavaConstant asCompressed(SubstrateObjectConstant constant) {
+                // We only want compressed references in code
+                return constant.isCompressed() ? constant : constant.compress();
+            }
+
             private final SubstrateObjectConstant constant;
 
             LoadCompressedObjectConstantOp(AllocatableValue result, SubstrateObjectConstant constant, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
-                super(TYPE, result, new ConstantValue(lirKindTool.getNarrowOopKind(), constant.compress()), baseRegister, encoding, true, lirKindTool);
+                super(TYPE, result, new ConstantValue(lirKindTool.getNarrowOopKind(), asCompressed(constant)), baseRegister, encoding, true, lirKindTool);
                 this.constant = constant;
             }
 
@@ -715,15 +714,24 @@ public class SubstrateAMD64Backend extends Backend {
 
             @Override
             public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-                move(lirKindTool.getNarrowOopKind(), crb, masm);
-
                 /*
                  * WARNING: must NOT have side effects. Preserve the flags register!
                  */
-                Register baseReg = getBaseRegister(crb);
-                assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
                 Register resultReg = getResultRegister();
-                masm.leaq(resultReg, new AMD64Address(baseReg, resultReg, Scale.fromShift(getShift())));
+                int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+                Constant inputConstant = asConstantValue(getInput()).getConstant();
+                if (masm.target.inlineObjects) {
+                    crb.recordInlineDataInCode(inputConstant);
+                    masm.movq(resultReg, 0xDEADDEADDEADDEADL, true);
+                } else {
+                    AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(inputConstant, referenceSize);
+                    masm.movq(resultReg, address);
+                }
+                if (!constant.isCompressed()) { // the result is expected to be uncompressed
+                    Register baseReg = getBaseRegister(crb);
+                    assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
+                    masm.leaq(resultReg, new AMD64Address(baseReg, resultReg, Scale.fromShift(getShift())));
+                }
             }
         }
     }
@@ -768,7 +776,7 @@ public class SubstrateAMD64Backend extends Backend {
         return new AMD64ArithmeticLIRGenerator(nullRegisterValue, null);
     }
 
-    private static SubstrateAMD64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
+    protected static SubstrateAMD64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
         return (SubstrateAMD64RegisterConfig) lirGenRes.getRegisterConfig();
     }
 
@@ -874,7 +882,7 @@ public class SubstrateAMD64Backend extends Backend {
      * Returns the amount of scratch space which must be reserved for return value registers in
      * {@link DeoptimizedFrame}.
      */
-    public static int getDeoptScatchSpace() {
+    public static int getDeoptScratchSpace() {
         // Space for two 64-bit registers: rax and xmm0
         return 2 * 8;
     }

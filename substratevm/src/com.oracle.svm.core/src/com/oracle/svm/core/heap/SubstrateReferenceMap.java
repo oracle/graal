@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceMapEncoder.OffsetIterator;
 
@@ -44,7 +45,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     private Map<Integer, Object> debugAllUsedStackSlots;
 
     public SubstrateReferenceMap() {
-        assert ConfigurationValues.getObjectLayout().getCompressedReferenceSize() > 2 : "needs to be three bits or more for encoding and validation";
+        assert ConfigurationValues.getObjectLayout().getReferenceSize() > 2 : "needs to be three bits or more for encoding and validation";
     }
 
     public boolean isOffsetMarked(int offset) {
@@ -65,8 +66,8 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     }
 
     private boolean isValidToMark(int offset, boolean isCompressed) {
-        int uncompressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        int compressedSize = ConfigurationValues.getObjectLayout().getCompressedReferenceSize();
+        int uncompressedSize = FrameAccess.uncompressedReferenceSize();
+        int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
 
         int previousOffset = input.previousSetBit(offset - 1);
         if (previousOffset != -1) {

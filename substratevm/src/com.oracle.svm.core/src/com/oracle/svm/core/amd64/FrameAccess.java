@@ -60,6 +60,10 @@ public final class FrameAccess {
         return ConfigurationValues.getTarget().arch.getWordSize();
     }
 
+    public static int uncompressedReferenceSize() {
+        return wordSize();
+    }
+
     public static JavaKind getWordKind() {
         return ConfigurationValues.getTarget().wordJavaKind;
     }

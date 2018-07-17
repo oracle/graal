@@ -504,11 +504,11 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         // Kind.Object && expectedType.getObjectHub().equals(actualHub.getValue());
 
         if (expectedType.isArray()) {
-            JavaKind kind = expectedType.getComponentType().getJavaKind();
+            JavaKind kind = ((SharedType) expectedType.getComponentType()).getStorageKind();
             int expectedLength = 0;
             for (int i = 0; i < expectedObject.getValues().length; i++) {
                 JavaValue expectedValue = expectedObject.getValues()[i];
-                UnsignedWord expectedOffset = WordFactory.unsigned(objectLayout.getArrayElementOffset(expectedType.getComponentType().getJavaKind(), expectedLength));
+                UnsignedWord expectedOffset = WordFactory.unsigned(objectLayout.getArrayElementOffset(kind, expectedLength));
                 ValueInfo actualValue = findActualArrayElement(actualObject, expectedOffset);
                 verifyValue(compilation, expectedValue, actualValue, actualFrame, visitedVirtualObjects);
 
@@ -574,7 +574,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         int curIdx = startIdx;
         while (curOffset.notEqual(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
-            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind(), value.isCompressedReference));
+            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
             curIdx++;
         }
         assert curOffset.equal(expectedOffset);

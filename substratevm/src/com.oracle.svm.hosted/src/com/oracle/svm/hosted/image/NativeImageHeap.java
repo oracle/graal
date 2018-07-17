@@ -46,6 +46,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -70,7 +71,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.base.NumUtil;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -478,7 +478,7 @@ public final class NativeImageHeap {
             }
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
-            final long size = layout.getArraySize(type.getComponentType().getJavaKind(), Array.getLength(canonicalObj));
+            final long size = layout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(canonicalObj));
             info = addToImageHeap(original, canonicalObj, clazz, size, identityHashCode, reason);
             recursiveAddObject(hub, canonicalizable, false, info);
             if (canonicalObj instanceof Object[]) {
@@ -584,12 +584,12 @@ public final class NativeImageHeap {
         }
     }
 
-    private int objectSize() {
-        return layout.sizeInBytes(JavaKind.Object, false);
+    private int referenceSize() {
+        return layout.getReferenceSize();
     }
 
-    private void mustBeAligned(int index) {
-        assert layout.isAligned(index) : "index " + index + " must be aligned.";
+    private void mustBeReferenceAligned(int index) {
+        assert (index % layout.getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
     }
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
@@ -630,16 +630,16 @@ public final class NativeImageHeap {
 
     void writeReference(RelocatableBuffer buffer, int index, Object target, Object reason) {
         assert !(target instanceof WordBase) : "word values are not references";
-        mustBeAligned(index);
+        mustBeReferenceAligned(index);
         if (target != null) {
             ObjectInfo targetInfo = objects.get(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
             if (useHeapBase()) {
                 CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
                 int shift = compressEncoding.getShift();
-                writePointer(buffer, index, targetInfo.getOffsetInSection() >>> shift);
+                writeReferenceValue(buffer, index, targetInfo.getOffsetInSection() >>> shift);
             } else {
-                addDirectRelocationWithoutAddend(buffer, index, target);
+                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), target);
             }
         }
     }
@@ -664,14 +664,14 @@ public final class NativeImageHeap {
 
     private void writeDynamicHub(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
         assert target != null : "Null DynamicHub found during native image generation.";
-        mustBeAligned(index);
+        mustBeReferenceAligned(index);
 
         ObjectInfo targetInfo = objects.get(target);
         assert targetInfo != null : "Unknown object " + target.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
 
         // Note that this object is allocated on the native image heap.
         if (useHeapBase()) {
-            writePointer(buffer, index, targetInfo.getOffsetInSection() | objectHeaderBits);
+            writeReferenceValue(buffer, index, targetInfo.getOffsetInSection() | objectHeaderBits);
         } else {
             // The address of the DynamicHub target will have to be added by the link editor.
             // DynamicHubs are the size of Object references.
@@ -679,9 +679,9 @@ public final class NativeImageHeap {
         }
     }
 
-    private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, Object target) {
+    private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, int size, Object target) {
         assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
-        buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
+        buffer.addDirectRelocationWithoutAddend(index, size, target);
         if (firstRelocatablePointerOffsetInSection == -1) {
             firstRelocatablePointerOffsetInSection = index;
         }
@@ -689,7 +689,7 @@ public final class NativeImageHeap {
 
     private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
         assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
-        buffer.addDirectRelocationWithAddend(index, objectSize(), objectHeaderBits, target);
+        buffer.addDirectRelocationWithAddend(index, referenceSize(), objectHeaderBits, target);
         if (firstRelocatablePointerOffsetInSection == -1) {
             firstRelocatablePointerOffsetInSection = index;
         }
@@ -699,14 +699,15 @@ public final class NativeImageHeap {
      * Adds a relocation for a code pointer or other non-data pointers.
      */
     private void addNonDataRelocation(RelocatableBuffer buffer, int index, RelocatedPointer pointer) {
-        mustBeAligned(index);
+        mustBeReferenceAligned(index);
         assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
         assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
 
         HostedMethod method = ((MethodPointer) pointer).getMethod();
         if (method.isCodeAddressOffsetValid()) {
             // Only compiled methods inserted in vtables require relocation.
-            addDirectRelocationWithoutAddend(buffer, index, pointer);
+            int pointerSize = ConfigurationValues.getTarget().wordSize;
+            addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
         }
     }
 
@@ -742,9 +743,14 @@ public final class NativeImageHeap {
         }
     }
 
-    private void writePointer(RelocatableBuffer buffer, int index, long value) {
-        assert objectSize() == Long.BYTES;
-        buffer.getBuffer().putLong(index, value);
+    private void writeReferenceValue(RelocatableBuffer buffer, int index, long value) {
+        if (referenceSize() == Long.BYTES) {
+            buffer.getBuffer().putLong(index, value);
+        } else if (referenceSize() == Integer.BYTES) {
+            buffer.getBuffer().putInt(index, Math.toIntExact(value));
+        } else {
+            throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
+        }
     }
 
     private void patchPartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
@@ -815,8 +821,8 @@ public final class NativeImageHeap {
          */
         final RelocatableBuffer buffer = bufferForPartition(info, roBuffer, rwBuffer);
         final int indexInSection = info.getIntIndexInSection(layout.getHubOffset());
-        assert layout.isReferenceAligned(info.getOffsetInPartition());
-        assert layout.isReferenceAligned(indexInSection);
+        assert layout.isAligned(info.getOffsetInPartition());
+        assert layout.isAligned(indexInSection);
 
         final HostedClass clazz = info.getClazz();
         final DynamicHub hub = clazz.getHub();
@@ -879,14 +885,14 @@ public final class NativeImageHeap {
                 buffer.putInt(info.getIntIndexInSection(layout.getArrayLengthOffset()), length);
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIntIndexInSection(hybridLayout.getArrayElementOffset(i));
-                    final JavaKind elementKind = hybridLayout.getArrayElementKind();
+                    final JavaKind elementStorageKind = hybridLayout.getArrayElementStorageKind();
                     final Object array = Array.get(hybridArray, i);
-                    writeConstant(buffer, elementIndex, elementKind, array, info);
+                    writeConstant(buffer, elementIndex, elementStorageKind, array, info);
                 }
             }
 
         } else if (clazz.isArray()) {
-            JavaKind kind = clazz.getComponentType().getJavaKind();
+            JavaKind kind = clazz.getComponentType().getStorageKind();
             Object array = info.getObject();
             int length = Array.getLength(array);
             buffer.putInt(info.getIntIndexInSection(layout.getArrayLengthOffset()), length);
@@ -1128,8 +1134,8 @@ public final class NativeImageHeap {
             assert partition == null;
             partition = objectPartition;
             offsetInPartition = partition.allocate(this);
-            assert layout.isReferenceAligned(offsetInPartition) : "start: " + offsetInPartition + " must be aligned.";
-            assert layout.isReferenceAligned(size) : "size: " + size + " must be aligned.";
+            assert layout.isAligned(offsetInPartition) : "start: " + offsetInPartition + " must be aligned.";
+            assert layout.isAligned(size) : "size: " + size + " must be aligned.";
         }
 
         private final Object object;
@@ -1190,7 +1196,7 @@ public final class NativeImageHeap {
         void setSection(String name, long offset) {
             sectionName = name;
             sectionOffset = offset;
-            assert heap.layout.isReferenceAligned(offset) : String.format("Partition: %s: offset: %d in section: %s must be aligned.", this.name, offsetInSection(), getSectionName());
+            assert heap.layout.isAligned(offset) : String.format("Partition: %s: offset: %d in section: %s must be aligned.", this.name, offsetInSection(), getSectionName());
         }
 
         String getSectionName() {

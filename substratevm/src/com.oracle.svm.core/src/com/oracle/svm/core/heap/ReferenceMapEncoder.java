@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeWriter;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
+import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.ByteArrayReader;
@@ -126,8 +127,8 @@ public class ReferenceMapEncoder {
      * @return The index into the final bytes.
      */
     private long encode(OffsetIterator offsets) {
-        int compressedSize = ConfigurationValues.getObjectLayout().getCompressedReferenceSize();
-        int uncompressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int uncompressedSize = FrameAccess.uncompressedReferenceSize();
 
         long startIndex = writeBuffer.getBytesWritten();
         int run = 0;

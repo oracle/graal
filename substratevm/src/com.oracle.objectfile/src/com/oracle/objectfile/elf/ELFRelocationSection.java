@@ -256,12 +256,14 @@ public class ELFRelocationSection extends ELFSection {
         for (Entry ent : entries.keySet()) {
             long offset = !isDynamic() ? ent.offset : (int) alreadyDecided.get(ent.section).getDecidedValue(LayoutDecision.Kind.VADDR) + ent.offset;
             long info;
+            int symIndex = syms.indexOf(ent.sym);
+            assert symIndex >= 0 : "symbol not found";
             switch (getOwner().getFileClass()) {
                 case ELFCLASS32:
-                    info = ((syms.indexOf(ent.sym) << 8) & 0xffffffffL) + (ent.t.toLong() & 0xffL);
+                    info = ((symIndex << 8) & 0xffffffffL) + (ent.t.toLong() & 0xffL);
                     break;
                 case ELFCLASS64:
-                    info = (((long) syms.indexOf(ent.sym)) << 32) + (ent.t.toLong() & 0xffffffffL);
+                    info = (((long) symIndex) << 32) + (ent.t.toLong() & 0xffffffffL);
                     break;
                 default:
                     throw new RuntimeException(getOwner().getFileClass().toString());

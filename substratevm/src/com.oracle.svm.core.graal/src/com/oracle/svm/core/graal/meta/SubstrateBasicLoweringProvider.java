@@ -185,8 +185,9 @@ public class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider 
 
         assert !object.isConstant() || object.asJavaConstant().isNull();
 
-        ValueNode memoryRead = createReadBaseWithOffset(graph, object, getObjectLayout().getHubOffset(), FrameAccess.getWordStamp());
-        ValueNode masked = graph.unique(new AndNode(memoryRead, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), ObjectHeader.BITS_CLEAR.rawValue(), graph)));
+        Stamp stamp = StampFactory.forUnsignedInteger(8 * getObjectLayout().getReferenceSize());
+        ValueNode memoryRead = createReadBaseWithOffset(graph, object, getObjectLayout().getHubOffset(), stamp);
+        ValueNode masked = graph.unique(new AndNode(memoryRead, ConstantNode.forIntegerStamp(stamp, ObjectHeader.BITS_CLEAR.rawValue(), graph)));
 
         return uncompress(graph.unique(new FloatingWordCastNode(dynamicHubStamp, masked)));
     }
@@ -205,6 +206,11 @@ public class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     public int arrayBaseOffset(JavaKind kind) {
         return getObjectLayout().getArrayBaseOffset(kind);
+    }
+
+    @Override
+    public int arrayScalingFactor(JavaKind elementKind) {
+        return getObjectLayout().getArrayIndexScale(elementKind);
     }
 
     @Override

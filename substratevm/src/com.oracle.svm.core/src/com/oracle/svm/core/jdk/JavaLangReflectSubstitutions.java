@@ -409,8 +409,8 @@ final class Util_java_lang_reflect_Array {
             DynamicHub subArrayHub = arrayHub.getComponentHub();
 
             UnsignedWord offset = LayoutEncoding.getArrayBaseOffset(arrayHub.getLayoutEncoding());
-            UnsignedWord size = LayoutEncoding.getArraySize(arrayHub.getLayoutEncoding(), length);
-            while (offset.belowThan(size)) {
+            UnsignedWord endOffset = LayoutEncoding.getArrayElementOffset(arrayHub.getLayoutEncoding(), length);
+            while (offset.belowThan(endOffset)) {
                 Object subArray = createMultiArrayAtIndex(nextIndex, subArrayHub, dimensions);
                 // Each subArray could create a cross-generational reference.
                 BarrieredAccess.writeObject(result, offset, subArray);
