@@ -28,6 +28,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.lang.Shutdown")
@@ -51,6 +52,7 @@ public final class Target_java_lang_Shutdown {
 
     /* Wormhole for invoking java.lang.ref.Finalizer.runAllFinalizers */
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     static void runAllFinalizers() {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
     }
