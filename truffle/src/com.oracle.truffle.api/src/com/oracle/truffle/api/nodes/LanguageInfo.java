@@ -41,14 +41,16 @@ public final class LanguageInfo {
     private final Set<String> mimeTypes;
     private final Object engineObject;
     private final boolean internal;
+    private final boolean interactive;
 
-    LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes, boolean internal) {
+    LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes, boolean internal, boolean interactive) {
         this.engineObject = engineObject;
         this.id = id;
         this.name = name;
         this.version = version;
         this.mimeTypes = mimeTypes;
         this.internal = internal;
+        this.interactive = interactive;
     }
 
     /**
@@ -102,5 +104,14 @@ public final class LanguageInfo {
      */
     public boolean isInternal() {
         return internal;
+    }
+
+    /**
+     * @return {@code true} if the language is {@link Registration#interactive() interactive},
+     *         {@code false} otherwise
+     * @since 1.0
+     */
+    public boolean isInteractive() {
+        return interactive;
     }
 }
