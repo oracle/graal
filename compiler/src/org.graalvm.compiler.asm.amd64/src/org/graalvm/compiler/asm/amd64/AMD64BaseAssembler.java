@@ -999,9 +999,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * 11: F2
      * <p>
      * The mm field encodes the leading bytes of the opcode:<br>
-     * 00001: implied 0F leading opcode byte (default in 2-byte encoding)<br>
-     * 00010: implied 0F 38 leading opcode bytes<br>
-     * 00011: implied 0F 3A leading opcode bytes
+     * 01: implied 0F leading opcode byte<br>
+     * 10: implied 0F 38 leading opcode bytes<br>
+     * 11: implied 0F 3A leading opcode bytes
      * <p>
      * The z field encodes the merging mode (merge or zero).
      * <p>
