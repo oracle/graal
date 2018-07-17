@@ -178,7 +178,7 @@ final class DIScopeBuilder {
         private final HashMap<Path, Source> sources;
         private final boolean extended;
 
-        public LazySourceSectionImpl(HashMap<Path, Source> sources, Path path, int line, int column, boolean extended) {
+        LazySourceSectionImpl(HashMap<Path, Source> sources, Path path, int line, int column, boolean extended) {
             this.sources = sources;
             this.path = path;
             this.line = line;
