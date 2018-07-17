@@ -32,10 +32,8 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.*;
 
-@SuppressWarnings("deprecation")
-public class VisibilityTest {
+public class VisibilityTest extends ProxyLanguageEnvTest {
     private static Class<?> run;
 
     static void setRun(Class<?> cls) {
@@ -253,8 +251,8 @@ public class VisibilityTest {
         invokeRun(new C3(), A8.class, 42);
     }
 
-    private static Object invokeRun(Object obj, Class<?> methodClass, Object... args) throws InteropException {
-        TruffleObject receiver = JavaInterop.asTruffleObject(obj);
+    private Object invokeRun(Object obj, Class<?> methodClass, Object... args) throws InteropException {
+        TruffleObject receiver = asTruffleObject(obj);
         try {
             Object result = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), receiver, "run", args);
             Assert.assertSame(methodClass, run);
@@ -315,8 +313,8 @@ public class VisibilityTest {
         Assert.assertNull(read(new F4(), "a"));
     }
 
-    private static Object read(Object obj, String name) throws InteropException {
-        TruffleObject receiver = JavaInterop.asTruffleObject(obj);
+    private Object read(Object obj, String name) throws InteropException {
+        TruffleObject receiver = obj instanceof Class<?> ? asTruffleHostSymbol((Class<?>) obj) : asTruffleObject(obj);
         try {
             return ForeignAccess.sendRead(Message.READ.createNode(), receiver, name);
         } catch (UnknownIdentifierException uie) {

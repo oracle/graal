@@ -56,6 +56,10 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         LanguageContext(Env env) {
             this.env = env;
         }
+
+        public Env getEnv() {
+            return env;
+        }
     }
 
     private static volatile ProxyLanguage delegate = new ProxyLanguage();

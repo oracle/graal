@@ -26,22 +26,17 @@ package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Collections;
 import java.util.function.Supplier;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -52,33 +47,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class FunctionalInterfaceTest {
+public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     private static final String EXPECTED_RESULT = "narf";
-    private Context context;
-    private Env env;
-
-    @Before
-    public void before() {
-        context = Context.newBuilder().allowAllAccess(true).build();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected LanguageContext createContext(Env contextEnv) {
-                env = contextEnv;
-                return super.createContext(contextEnv);
-            }
-        });
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
-        assertNotNull(env);
-    }
-
-    @After
-    public void after() {
-        context.leave();
-        context.close();
-    }
 
     @SuppressWarnings({"static-method", "unused"})
     public static final class HttpServer {

@@ -36,60 +36,59 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
-public class VarArgsTest {
+public class VarArgsTest extends ProxyLanguageEnvTest {
+
     @Test
     public void testStringJoin1() throws InteropException {
-        TruffleObject strClass = JavaInterop.asTruffleObject(String.class);
+        TruffleObject strClass = asTruffleHostSymbol(String.class);
 
         TruffleObject join = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), strClass, "join");
-        TruffleObject delimiter = JavaInterop.asTruffleObject(" ");
-        TruffleObject elements = JavaInterop.asTruffleObject(new String[]{"Hello", "World"});
+        TruffleObject delimiter = asTruffleObject(" ");
+        TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
         Object result = ForeignAccess.sendExecute(Message.createExecute(2).createNode(), join, new Object[]{delimiter, elements});
         Assert.assertEquals("Hello World", result);
     }
 
     @Test
     public void testStringJoin2() throws InteropException {
-        TruffleObject strClass = JavaInterop.asTruffleObject(String.class);
+        TruffleObject strClass = asTruffleHostSymbol(String.class);
 
         TruffleObject join = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), strClass, "join");
-        TruffleObject delimiter = JavaInterop.asTruffleObject(" ");
-        TruffleObject element1 = JavaInterop.asTruffleObject("Hello");
-        TruffleObject element2 = JavaInterop.asTruffleObject("World");
+        TruffleObject delimiter = asTruffleObject(" ");
+        TruffleObject element1 = asTruffleObject("Hello");
+        TruffleObject element2 = asTruffleObject("World");
         Object result = ForeignAccess.sendExecute(Message.createExecute(3).createNode(), join, new Object[]{delimiter, element1, element2});
         Assert.assertEquals("Hello World", result);
     }
 
     @Test
     public void testStringEllipsis() throws InteropException {
-        TruffleObject mainClass = JavaInterop.asTruffleObject(Join.class);
+        TruffleObject mainClass = asTruffleHostSymbol(Join.class);
 
         TruffleObject ellipsis = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), mainClass, "stringEllipsis");
-        TruffleObject element1 = JavaInterop.asTruffleObject("Hello");
-        TruffleObject element2 = JavaInterop.asTruffleObject("World");
+        TruffleObject element1 = asTruffleObject("Hello");
+        TruffleObject element2 = asTruffleObject("World");
         Object result = ForeignAccess.sendExecute(Message.createExecute(2).createNode(), ellipsis, new Object[]{element1, element2});
         Assert.assertEquals("Hello World", result);
 
-        TruffleObject elements = JavaInterop.asTruffleObject(new String[]{"Hello", "World"});
+        TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
         result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), ellipsis, elements);
         Assert.assertEquals("Hello World", result);
     }
 
     @Test
     public void testCharSequenceEllipsis() throws InteropException {
-        TruffleObject mainClass = JavaInterop.asTruffleObject(Join.class);
+        TruffleObject mainClass = asTruffleHostSymbol(Join.class);
 
         TruffleObject ellipsis = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), mainClass, "charSequenceEllipsis");
-        TruffleObject element1 = JavaInterop.asTruffleObject("Hello");
-        TruffleObject element2 = JavaInterop.asTruffleObject("World");
+        TruffleObject element1 = asTruffleObject("Hello");
+        TruffleObject element2 = asTruffleObject("World");
         Object result = ForeignAccess.sendExecute(Message.createExecute(2).createNode(), ellipsis, new Object[]{element1, element2});
         Assert.assertEquals("Hello World", result);
 
-        TruffleObject elements = JavaInterop.asTruffleObject(new String[]{"Hello", "World"});
+        TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
         result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), ellipsis, elements);
         Assert.assertEquals("Hello World", result);
     }
@@ -97,22 +96,22 @@ public class VarArgsTest {
     @Test
     public void testPathsGet() throws InteropException {
         Node n = Message.createInvoke(1).createNode();
-        TruffleObject paths = JavaInterop.asTruffleObject(Paths.class);
+        TruffleObject paths = asTruffleHostSymbol(Paths.class);
         TruffleObject result;
         result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir");
-        assertEquals("dir", JavaInterop.asJavaObject(Path.class, result).toString());
+        assertEquals("dir", asJavaObject(Path.class, result).toString());
         result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", "dir2");
-        assertEquals("dir1/dir2", JavaInterop.asJavaObject(Path.class, result).toString());
+        assertEquals("dir1/dir2", asJavaObject(Path.class, result).toString());
         result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", "dir2", "dir3");
-        assertEquals("dir1/dir2/dir3", JavaInterop.asJavaObject(Path.class, result).toString());
-        result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", JavaInterop.asTruffleObject(new String[]{"dir2", "dir3"}));
-        assertEquals("dir1/dir2/dir3", JavaInterop.asJavaObject(Path.class, result).toString());
+        assertEquals("dir1/dir2/dir3", asJavaObject(Path.class, result).toString());
+        result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", asTruffleObject(new String[]{"dir2", "dir3"}));
+        assertEquals("dir1/dir2/dir3", asJavaObject(Path.class, result).toString());
     }
 
     @Test
     public void testOverloadedVarArgsPrimitive() throws InteropException {
         Node n = Message.createInvoke(1).createNode();
-        TruffleObject paths = JavaInterop.asTruffleObject(Sum.class);
+        TruffleObject paths = asTruffleHostSymbol(Sum.class);
         Object result;
         result = ForeignAccess.sendInvoke(n, paths, "sum", 10);
         assertEquals("I", result);

@@ -37,11 +37,9 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
-public class OverloadedTest {
+public class OverloadedTest extends ProxyLanguageEnvTest {
     public static final class Data {
         public int x;
 
@@ -100,13 +98,13 @@ public class OverloadedTest {
     @Before
     public void initObjects() {
         data = new Data();
-        obj = JavaInterop.asTruffleObject(data);
+        obj = asTruffleObject(data);
     }
 
     @Test
     public void threeProperties() {
         TruffleObject ret = JavaInteropTest.sendKeys(obj);
-        List<?> list = JavaInterop.asJavaObject(List.class, ret);
+        List<?> list = context.asValue(ret).as(List.class);
         assertEquals("Just one (overloaded) property: " + list, 1, list.size());
         assertEquals("x", list.get(0));
     }
@@ -140,7 +138,9 @@ public class OverloadedTest {
         Node n = Message.createInvoke(1).createNode();
         ForeignAccess.sendInvoke(n, obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
-        ForeignAccess.sendInvoke(n, obj, "x", JavaInterop.asTruffleObject(10));
+        ForeignAccess.sendInvoke(n, obj, "x", env.asBoxedGuestValue(10));
+        assertEquals(20, data.x);
+        ForeignAccess.sendInvoke(n, obj, "x", 10);
         assertEquals(20, data.x);
     }
 
@@ -148,18 +148,18 @@ public class OverloadedTest {
     public void testOverloadingNumber() throws InteropException {
         Node n = Message.createInvoke(1).createNode();
         Num num = new Num();
-        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        TruffleObject numobj = asTruffleObject(num);
         ForeignAccess.sendInvoke(n, numobj, "x", new UnboxableToInt(21));
         assertEquals("int", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "x", JavaInterop.asTruffleObject(new AtomicInteger(22)));
+        ForeignAccess.sendInvoke(n, numobj, "x", asTruffleObject(new AtomicInteger(22)));
         assertEquals("Number", num.parameter);
-        ForeignAccess.sendInvoke(n, numobj, "x", JavaInterop.asTruffleObject(BigInteger.TEN));
+        ForeignAccess.sendInvoke(n, numobj, "x", asTruffleObject(BigInteger.TEN));
         assertEquals("BigInteger", num.parameter);
     }
 
     @Test
     public void testVarArgs() throws InteropException {
-        TruffleObject stringClass = JavaInterop.asTruffleObject(String.class);
+        TruffleObject stringClass = asTruffleHostSymbol(String.class);
         assertEquals("bla", ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), stringClass, "format", "bla"));
         assertEquals("42", ForeignAccess.sendInvoke(Message.createInvoke(2).createNode(), stringClass, "format", "%d", 42));
         assertEquals("1337", ForeignAccess.sendInvoke(Message.createInvoke(3).createNode(), stringClass, "format", "%d%d", 13, 37));
@@ -185,7 +185,7 @@ public class OverloadedTest {
 
     @Test
     public void testGenericReturnTypeBridgeMethod() throws InteropException {
-        TruffleObject thing = JavaInterop.asTruffleObject(new ActualRealThingWithIdentity());
+        TruffleObject thing = asTruffleObject(new ActualRealThingWithIdentity());
         assertEquals(42, ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), thing, "getId"));
     }
 
@@ -193,7 +193,7 @@ public class OverloadedTest {
     public void testWidening() throws InteropException {
         Node n = Message.createInvoke(1).createNode();
         Num num = new Num();
-        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        TruffleObject numobj = asTruffleObject(num);
         ForeignAccess.sendInvoke(n, numobj, "d", (byte) 42);
         assertEquals("int", num.parameter);
         ForeignAccess.sendInvoke(n, numobj, "d", (short) 42);
@@ -219,7 +219,7 @@ public class OverloadedTest {
     public void testNarrowing() throws InteropException {
         Node n = Message.createInvoke(1).createNode();
         Num num = new Num();
-        TruffleObject numobj = JavaInterop.asTruffleObject(num);
+        TruffleObject numobj = asTruffleObject(num);
         ForeignAccess.sendInvoke(n, numobj, "f", 42.5f);
         assertEquals("float", num.parameter);
         ForeignAccess.sendInvoke(n, numobj, "f", 42.5d);
