@@ -98,7 +98,7 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
 
-        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal);
+        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal, boolean interactive);
 
         public abstract Object getSourceVM(RootNode rootNode);
 

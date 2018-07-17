@@ -39,22 +39,30 @@ public final class ExceptionDetails {
     private static final AtomicLong LAST_ID = new AtomicLong(0);
 
     private final DebugException debugException;
+    private final String errorMessage;
     private final long exceptionId;
 
     public ExceptionDetails(DebugException debugException) {
         this.debugException = debugException;
+        this.errorMessage = debugException.getLocalizedMessage();
+        this.exceptionId = LAST_ID.incrementAndGet();
+    }
+
+    public ExceptionDetails(String errorMessage) {
+        this.debugException = null;
+        this.errorMessage = errorMessage;
         this.exceptionId = LAST_ID.incrementAndGet();
     }
 
     public JSONObject createJSON(TruffleExecutionContext context) {
         JSONObject json = new JSONObject();
         json.put("exceptionId", exceptionId);
-        if (debugException.getCatchLocation() != null) {
+        if (debugException == null || debugException.getCatchLocation() != null) {
             json.put("text", "Caught");
         } else {
             json.put("text", "Uncaught");
         }
-        SourceSection throwLocation = debugException.getThrowLocation();
+        SourceSection throwLocation = (debugException != null) ? debugException.getThrowLocation() : null;
         if (throwLocation != null) {
             json.put("lineNumber", throwLocation.getStartLine() - 1);
             json.put("columnNumber", throwLocation.getStartColumn() - 1);
@@ -71,16 +79,18 @@ public final class ExceptionDetails {
                 json.put("url", ScriptsHandler.getNiceStringFromURI(throwLocation.getSource().getURI()));
             }
         }
-        StackTrace stackTrace = new StackTrace(context, debugException.getDebugStackTrace());
-        json.put("stackTrace", stackTrace.toJSON());
-        DebugValue exceptionObject = debugException.getExceptionObject();
+        if (debugException != null) {
+            StackTrace stackTrace = new StackTrace(context, debugException.getDebugStackTrace());
+            json.put("stackTrace", stackTrace.toJSON());
+        }
+        DebugValue exceptionObject = (debugException != null) ? debugException.getExceptionObject() : null;
         if (exceptionObject != null) {
             RemoteObject ro = context.createAndRegister(exceptionObject);
             json.put("exception", ro.toJSON());
         } else {
             JSONObject ex = new JSONObject();
-            ex.put("description", debugException.getLocalizedMessage());
-            ex.put("value", debugException.getLocalizedMessage());
+            ex.put("description", errorMessage);
+            ex.put("value", errorMessage);
             ex.put("type", "string");
             json.put("exception", ex);
         }

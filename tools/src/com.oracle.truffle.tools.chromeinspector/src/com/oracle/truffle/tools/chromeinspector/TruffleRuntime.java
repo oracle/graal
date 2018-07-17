@@ -41,6 +41,7 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebugScope;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -131,6 +132,11 @@ public final class TruffleRuntime extends RuntimeDomain {
                 parsed = context.executeInSuspendThread(new SuspendThreadExecutable<Boolean>() {
                     @Override
                     public Boolean executeCommand() throws CommandProcessException {
+                        LanguageInfo languageInfo = context.getSuspendedInfo().getSuspendedEvent().getTopStackFrame().getLanguage();
+                        if (languageInfo == null || !languageInfo.isInteractive()) {
+                            exceptionText[0] = TruffleDebugger.getEvalNonInteractiveMessage();
+                            return false;
+                        }
                         try {
                             context.getEnv().parse(source);
                             return true;
@@ -160,9 +166,7 @@ public final class TruffleRuntime extends RuntimeDomain {
             ret.put("scriptId", Integer.toString(id));
         }
         if (exceptionText[0] != null) {
-            JSONObject exceptionDetails = new JSONObject();
-            exceptionDetails.put("text", exceptionText[0]);
-            ret.put("exceptionDetails", exceptionDetails);
+            fillExceptionDetails(ret, exceptionText[0]);
         }
         return new Params(ret);
     }
@@ -181,8 +185,19 @@ public final class TruffleRuntime extends RuntimeDomain {
                     @Override
                     public Void executeCommand() throws CommandProcessException {
                         suspendedInfo.lastEvaluatedValue.set(null);
+                        LanguageInfo languageInfo = context.getSuspendedInfo().getSuspendedEvent().getTopStackFrame().getLanguage();
+                        if (languageInfo == null || !languageInfo.isInteractive()) {
+                            fillExceptionDetails(json, TruffleDebugger.getEvalNonInteractiveMessage());
+                            return null;
+                        }
                         JSONObject result;
-                        DebugValue value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
+                        DebugValue value = null;
+                        if (suspendedInfo.getCallFrames().length > 0) {
+                            value = TruffleDebugger.getVarValue(expression, suspendedInfo.getCallFrames()[0]);
+                        }
+                        if (value == null) {
+                            value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
+                        }
                         if (returnByValue) {
                             result = RemoteObject.createJSONResultValue(value, context.getErr());
                         } else {
@@ -204,14 +219,10 @@ public final class TruffleRuntime extends RuntimeDomain {
                     }
                 });
             } catch (NoSuspendedThreadException ex) {
-                JSONObject exceptionDetails = new JSONObject();
-                exceptionDetails.put("text", ex.getLocalizedMessage());
-                json.put("exceptionDetails", exceptionDetails);
+                fillExceptionDetails(json, ex.getLocalizedMessage());
             }
         } else {
-            JSONObject exceptionDetails = new JSONObject();
-            exceptionDetails.put("text", "<Not suspended>");
-            json.put("exceptionDetails", exceptionDetails);
+            fillExceptionDetails(json, "<Not suspended>");
         }
         return new Params(json);
     }
@@ -444,6 +455,11 @@ public final class TruffleRuntime extends RuntimeDomain {
 
     static void fillExceptionDetails(JSONObject obj, DebugException ex, TruffleExecutionContext context) {
         ExceptionDetails exceptionDetails = new ExceptionDetails(ex);
+        obj.put("exceptionDetails", exceptionDetails.createJSON(context));
+    }
+
+    private void fillExceptionDetails(JSONObject obj, String errorMessage) {
+        ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
         obj.put("exceptionDetails", exceptionDetails.createJSON(context));
     }
 

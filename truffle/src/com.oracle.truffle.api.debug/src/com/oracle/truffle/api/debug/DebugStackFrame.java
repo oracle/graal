@@ -161,6 +161,22 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     }
 
     /**
+     * Returns public information about the language of this frame.
+     *
+     * @return the language info, or <code>null</code> when no language is associated with this
+     *         frame.
+     * @since 1.0
+     */
+    public LanguageInfo getLanguage() {
+        verifyValidState(true);
+        RootNode root = findCurrentRoot();
+        if (root == null) {
+            return null;
+        }
+        return root.getLanguageInfo();
+    }
+
+    /**
      * Get the current inner-most scope. The scope remain valid as long as the current stack frame
      * remains valid.
      * <p>
@@ -255,6 +271,9 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      * @param code the code to evaluate
      * @return the return value of the expression
      * @throws DebugException when guest language code throws an exception
+     * @throws IllegalStateException if called on another thread than this frame was created with,
+     *             or if {@link #getLanguage() language} of this frame is not
+     *             {@link LanguageInfo#isInteractive() interactive}.
      * @since 0.17
      */
     public DebugValue eval(String code) throws DebugException {
