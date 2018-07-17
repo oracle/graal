@@ -841,7 +841,6 @@ final class Target_java_lang_Thread {
 
 final class Util_java_lang_Thread {
 
-    @SuppressWarnings("unused")
     static void initialize(Target_java_lang_Thread tjlt, ThreadGroup groupArg, Runnable target, String name, long stackSize) {
         /*
          * This method is a copy of the implementation of
