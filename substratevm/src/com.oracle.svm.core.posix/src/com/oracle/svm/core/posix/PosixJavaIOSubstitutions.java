@@ -93,6 +93,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -111,10 +112,13 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Stat.stat;
+import com.oracle.svm.core.posix.headers.Statvfs.statvfs;
 import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -697,6 +701,7 @@ final class Target_java_io_Console {
     Charset cs;
 
     @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     static boolean echoOff;
 
     @Alias
@@ -721,8 +726,10 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        /* Initialize the echo shut down hook, once. */
-        Util_java_io_Console.addShutdownHook();
+        if (GraalServices.Java8OrEarlier) {
+            /* Initialize the echo shut down hook, once. */
+            Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
+        }
         // 052     struct termios tio;
         final Termios.termios tio = StackValue.get(Termios.termios.class);
         // 053     jboolean old;
@@ -759,16 +766,8 @@ final class Target_java_io_Console {
 }
 
 /** Utility methods for {@link Target_java_io_Console}. */
-class Util_java_io_Console {
-
-    @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
-    static Console fromTarget(Target_java_io_Console tjic) {
-        return Console.class.cast(tjic);
-    }
-
-    public static Console toConsole(Target_java_io_Console tjic) {
-        return fromTarget(tjic);
-    }
+/* onlyWith = JDK8OrEarlier.class. */
+class Util_java_io_Console_JDK8OrEarlier {
 
     /** An initialization flag. */
     static volatile boolean initialized = false;
