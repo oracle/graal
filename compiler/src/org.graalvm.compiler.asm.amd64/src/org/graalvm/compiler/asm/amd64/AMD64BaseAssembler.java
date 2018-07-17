@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.asm.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.amd64.AMD64.r12;
 import static jdk.vm.ci.amd64.AMD64.r13;
@@ -1054,11 +1055,23 @@ public abstract class AMD64BaseAssembler extends Assembler {
         return rxb;
     }
 
-    public final void evexPrefix(Register dst, Register nds, Register src, Register mask, AVXSize size, int pp, int mm, int w, int z, int b) {
+    /**
+     * Helper method for emitting EVEX prefix in the form of RRRR.
+     */
+    protected final void evexPrefix(Register dst, Register mask, Register nds, Register src, AVXSize size, int pp, int mm, int w, int z, int b) {
+        assert !mask.isValid() || mask.getRegisterCategory().equals(MASK);
         emitEVEX(getLFlag(size), pp, mm, w, getRXBForEVEX(dst, src), dst.encoding, nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0);
     }
 
-    public final void evexPrefix(Register dst, Register nds, AMD64Address src, Register mask, AVXSize size, int pp, int mm, int w, int z, int b) {
+    /**
+     * Helper method for emitting EVEX prefix in the form of RRRM. Because the memory addressing in
+     * EVEX-encoded instructions employ a compressed displacement scheme when using disp8 form, the
+     * user of this API should make sure to encode the operands using
+     * {@link #emitEVEXOperandHelper(Register, AMD64Address, int, int)}.
+     */
+    protected final void evexPrefix(Register dst, Register mask, Register nds, AMD64Address src, AVXSize size, int pp, int mm, int w, int z, int b) {
+        assert !mask.isValid() || mask.getRegisterCategory().equals(MASK);
         emitEVEX(getLFlag(size), pp, mm, w, getRXB(dst, src), dst.encoding, nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0);
     }
+
 }

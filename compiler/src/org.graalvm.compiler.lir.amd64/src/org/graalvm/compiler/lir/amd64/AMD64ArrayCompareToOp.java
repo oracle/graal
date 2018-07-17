@@ -321,7 +321,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
                 masm.bind(COMPARE_WIDE_VECTORS_LOOP_AVX3); // the hottest loop
                 // if (ae == StrIntrinsicNode::LL || ae == StrIntrinsicNode::UU) {
                 if (kind1 == kind2) {
-                    masm.evmovdquq(vec1, new AMD64Address(str1, result, scale));
+                    masm.evmovdqu64(vec1, new AMD64Address(str1, result, scale));
                     // k7 == 11..11, if operands equal, otherwise k7 has some 0
                     masm.evpcmpeqb(k7, vec1, new AMD64Address(str2, result, scale));
                 } else {
@@ -329,7 +329,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
                     // k7 == 11..11, if operands equal, otherwise k7 has some 0
                     masm.evpcmpeqb(k7, vec1, new AMD64Address(str2, result, scale2));
                 }
-                masm.kortestql(k7, k7);
+                masm.kortestq(k7, k7);
                 masm.jcc(ConditionFlag.AboveEqual, COMPARE_WIDE_VECTORS_LOOP_FAILED);     // miscompare
                 masm.addq(result, stride2x2);  // update since we already compared at this addr
                 masm.subl(cnt2, stride2x2);      // and sub the size too
@@ -527,7 +527,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         if (supportsAVX512VLBW(crb.target)) {
             masm.bind(COMPARE_WIDE_VECTORS_LOOP_FAILED);
 
-            masm.kmovql(cnt1, k7);
+            masm.kmovq(cnt1, k7);
             masm.notq(cnt1);
             masm.bsfq(cnt2, cnt1);
             // if (ae != StrIntrinsicNode::LL) {
