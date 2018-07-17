@@ -112,7 +112,7 @@ final class Target_java_nio_charset_CharsetEncoder {
     private WeakReference<CharsetDecoder> cachedDecoder;
 }
 
-@TargetClass(className = "java.nio.charset.CoderResult$Cache")
+@TargetClass(className = "java.nio.charset.CoderResult$Cache", onlyWith = JDK8OrEarlier.class)
 final class Target_java_nio_charset_CoderResult_Cache {
     @Alias @RecomputeFieldValue(kind = Reset) //
     private Map<Integer, WeakReference<CoderResult>> cache;
