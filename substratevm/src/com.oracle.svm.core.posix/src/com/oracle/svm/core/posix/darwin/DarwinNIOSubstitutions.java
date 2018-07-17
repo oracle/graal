@@ -133,6 +133,7 @@ public final class DarwinNIOSubstitutions {
         // static native int poll(int kqfd, long pollAddress, int nevents, long timeout) throws IOException;
         @Substitute
         @TargetElement(onlyWith = JDK9OrLater.class)
+        @SuppressWarnings({"unused"})
         static int poll(int kqfd, long pollAddress, int nevents, long timeout) throws IOException {
             return Util_sun_nio_ch_KQueue.poll(kqfd, pollAddress, nevents);
         }
