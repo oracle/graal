@@ -25,7 +25,6 @@ package org.graalvm.compiler.truffle.pelang.test;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
-import org.graalvm.compiler.truffle.pelang.util.PELangBuilder;
 import org.graalvm.compiler.truffle.pelang.util.PELangSample;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Test;
