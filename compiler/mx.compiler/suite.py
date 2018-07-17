@@ -54,13 +54,14 @@ suite = {
 
     "DACAPO" : {
       "urls" : [
-        "https://github.com/oracle/graal/releases/download/dacapo-9.12-bach-patched/dacapo-9.12-bach-patched.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar",
       ],
       "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
     },
 
     "DACAPO_SCALA" : {
       "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
         "http://repo.scalabench.org/snapshots/org/scalabench/benchmarks/scala-benchmark-suite/0.1.0-SNAPSHOT/scala-benchmark-suite-0.1.0-20120216.103539-3.jar",
       ],
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
@@ -68,7 +69,8 @@ suite = {
 
     "DACAPO_D3S" : {
       "urls" : [
-        "https://github.com/oracle/graal/releases/download/dacapo-9.12-d3s/dacapo-9.12-d3s.jar",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar",
+        "http://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
       ],
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
     },
@@ -84,17 +86,17 @@ suite = {
     },
 
     "HCFDIS" : {
-      "urls" : ["https://github.com/oracle/graal/releases/download/hcfdis-3/hcfdis-3.jar"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hcfdis/hcfdis-3.jar"],
       "sha1" : "a71247c6ddb90aad4abf7c77e501acc60674ef57",
     },
 
     "C1VISUALIZER_DIST" : {
-      "urls" : ["https://github.com/oracle/graal/releases/download/c1visualizer-1.7/c1visualizer-1.7.zip"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/c1visualizer/c1visualizer-1.7.zip"],
       "sha1" : "305a772ccbdc0e42dfa233b0ce6762d0dd1de6de",
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://github.com/oracle/graal/releases/download/idealgraphvisualizer-543/idealgraphvisualizer-543.zip"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-543.zip"],
       "sha1" : "39a1810b8443a64e5bcc431c78e56515109898b9",
     },
 
@@ -110,7 +112,7 @@ suite = {
 
     "BATIK" : {
       "sha1" : "122b87ca88e41a415cf8b523fd3d03b4325134a3",
-      "urls" : ["https://github.com/oracle/graal/releases/download/batik-all-1.7/batik-all-1.7.jar"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
     "ASM5" : {
@@ -133,7 +135,7 @@ suite = {
     },
 
     "UBENCH_AGENT_DIST" : {
-      "urls" : ["https://github.com/oracle/graal/releases/download/java-ubench-agent-2e5becaf97a/java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
       "sha1" : "19087a34b80be8845e9a3e7f927ceb592de83762",
     },
 
