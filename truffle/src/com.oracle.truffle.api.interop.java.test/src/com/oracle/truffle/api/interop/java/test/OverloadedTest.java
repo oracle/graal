@@ -225,4 +225,37 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         ForeignAccess.sendInvoke(n, numobj, "f", 42.5d);
         assertEquals("float", num.parameter);
     }
+
+    @Test
+    public void testPrimitive() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        TruffleObject sample = asTruffleObject(new Sample());
+        for (int i = 0; i < 2; i++) {
+            assertEquals("int,boolean", ForeignAccess.sendInvoke(n, sample, "m1", 42, true));
+            assertEquals("double,String", ForeignAccess.sendInvoke(n, sample, "m1", 42, "asdf"));
+        }
+        for (int i = 0; i < 2; i++) {
+            assertEquals("int,boolean", ForeignAccess.sendInvoke(n, sample, "m1", 42, true));
+            assertEquals("double,Object", ForeignAccess.sendInvoke(n, sample, "m1", 4.2, true));
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class Sample {
+        public Object m1(int a0, boolean a1) {
+            return "int,boolean";
+        }
+
+        public Object m1(int a0, Boolean a1) {
+            return "int,Boolean";
+        }
+
+        public Object m1(double a0, Object a1) {
+            return "double,Object";
+        }
+
+        public Object m1(double a0, String a1) {
+            return "double,String";
+        }
+    }
 }

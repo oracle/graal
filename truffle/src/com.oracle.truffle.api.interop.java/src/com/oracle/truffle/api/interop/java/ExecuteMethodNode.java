@@ -29,6 +29,7 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -228,7 +229,7 @@ abstract class ExecuteMethodNode extends Node {
             } else if (multiple && ToJavaNode.isAssignableFromTrufflePrimitiveType(targetType)) {
                 Class<?> currentTargetType = targetType;
 
-                ArrayList<Class<?>> otherPossibleTypes = new ArrayList<>();
+                Collection<Class<?>> otherPossibleTypes = new ArrayList<>();
                 for (SingleMethodDesc other : applicable) {
                     if (other == selected) {
                         continue;
@@ -239,8 +240,18 @@ abstract class ExecuteMethodNode extends Node {
                     Class<?> paramType = getParameterType(other.getParameterTypes(), i, varArgs);
                     if (paramType == targetType) {
                         continue;
+                    } else if (otherPossibleTypes.contains(paramType)) {
+                        continue;
                     }
-                    if ((ToJavaNode.isAssignableFromTrufflePrimitiveType(paramType) || ToJavaNode.isAssignableFromTrufflePrimitiveType(targetType)) && isAssignableFrom(targetType, paramType)) {
+                    /*
+                     * If the other param type is a subtype of this param type, and the argument is
+                     * not already a subtype of it, another value may change the outcome of overload
+                     * resolution, so we have to guard against it. If the argument is already a
+                     * subtype of the other param type, we must not guard against the other param
+                     * type, and we do not have to as this overload was better fit regardless.
+                     */
+                    if ((ToJavaNode.isAssignableFromTrufflePrimitiveType(paramType) || ToJavaNode.isAssignableFromTrufflePrimitiveType(targetType)) &&
+                                    isAssignableFrom(targetType, paramType) && !isSubtypeOf(arg, paramType)) {
                         otherPossibleTypes.add(paramType);
                     }
                 }
