@@ -20,32 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.lit;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangNull;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class PELangLiteralLongNode extends PELangExpressionNode {
-
-    private final long value;
-
-    public PELangLiteralLongNode(long value) {
-        this.value = value;
-    }
-
-    public long getValue() {
-        return value;
-    }
+public final class PELangLiteralNullNode extends PELangExpressionNode {
 
     @Override
-    public Long executeGeneric(VirtualFrame frame) {
-        return executeLong(frame);
-    }
-
-    @Override
-    public long executeLong(VirtualFrame frame) {
-        return value;
+    public PELangNull executeGeneric(VirtualFrame frame) {
+        return PELangNull.getInstance();
     }
 
 }

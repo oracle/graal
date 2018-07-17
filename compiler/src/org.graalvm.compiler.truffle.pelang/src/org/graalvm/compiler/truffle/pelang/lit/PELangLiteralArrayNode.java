@@ -20,18 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.lit;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 
-public final class PELangNewObjectNode extends PELangExpressionNode {
+public final class PELangLiteralArrayNode extends PELangExpressionNode {
+
+    private final Object array;
+
+    public PELangLiteralArrayNode(Object array) {
+        if (!array.getClass().isArray()) {
+            throw new IllegalArgumentException("argument is not an array");
+        }
+        this.array = array;
+    }
+
+    public Object getArray() {
+        return array;
+    }
 
     @Override
-    public DynamicObject executeGeneric(VirtualFrame frame) {
-        return getState().createObject();
+    public Object executeGeneric(VirtualFrame frame) {
+        return array;
     }
 
 }

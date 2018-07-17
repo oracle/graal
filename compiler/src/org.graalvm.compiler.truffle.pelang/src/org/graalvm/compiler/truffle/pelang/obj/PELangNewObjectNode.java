@@ -20,29 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.obj;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-import org.graalvm.compiler.truffle.pelang.PELangNull;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 
-public final class PELangReadArgumentNode extends PELangExpressionNode {
-
-    private final int index;
-
-    public PELangReadArgumentNode(int index) {
-        this.index = index;
-    }
-
-    public int getIndex() {
-        return index;
-    }
+public final class PELangNewObjectNode extends PELangExpressionNode {
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        Object[] args = frame.getArguments();
-        return (index < args.length) ? args[index] : PELangNull.getInstance();
+    public DynamicObject executeGeneric(VirtualFrame frame) {
+        return getState().createObject();
     }
 
 }

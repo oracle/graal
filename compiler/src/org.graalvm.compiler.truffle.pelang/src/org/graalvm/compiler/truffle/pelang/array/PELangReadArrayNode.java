@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.array;
 
 import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
@@ -31,14 +31,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 
-@NodeChildren({@NodeChild("arrayNode"), @NodeChild("indicesNode"), @NodeChild("valueNode")})
-public abstract class PELangWriteArrayNode extends PELangExpressionNode {
+@NodeChildren({@NodeChild("arrayNode"), @NodeChild("indicesNode")})
+public abstract class PELangReadArrayNode extends PELangExpressionNode {
 
     @Specialization(guards = "array.getClass().isArray()")
-    public Object writeSingleArray(Object array, long index, Object value) {
+    public Object readSingleArray(Object array, long index) {
         try {
-            ArrayUtil.writeValue(array, (int) index, value);
-            return value;
+            return ArrayUtil.readValue(array, (int) index);
         } catch (ArrayIndexOutOfBoundsException e) {
             CompilerDirectives.transferToInterpreter();
             throw new PELangException("index out of bounds", this);
@@ -46,20 +45,17 @@ public abstract class PELangWriteArrayNode extends PELangExpressionNode {
     }
 
     @Specialization(guards = "array.getClass().isArray()")
-    public Object writeMultiArray(Object array, long[] indices, Object value) {
+    public Object readMultiArray(Object array, long[] indices) {
         try {
-            Object unwrappedArray = ArrayUtil.unwrapArray(array, indices, indices.length - 1);
-            int lastIndex = (int) indices[indices.length - 1];
-            ArrayUtil.writeValue(unwrappedArray, lastIndex, value);
-            return value;
+            return ArrayUtil.unwrapArray(array, indices, indices.length);
         } catch (ArrayIndexOutOfBoundsException e) {
             CompilerDirectives.transferToInterpreter();
             throw new PELangException("index out of bounds", this);
         }
     }
 
-    public static PELangWriteArrayNode createNode(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
-        return PELangWriteArrayNodeGen.create(arrayNode, indicesNode, valueNode);
+    public static PELangReadArrayNode createNode(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
+        return PELangReadArrayNodeGen.create(arrayNode, indicesNode);
     }
 
 }

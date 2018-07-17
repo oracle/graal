@@ -20,30 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.lit;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class PELangLiteralArrayNode extends PELangExpressionNode {
+public final class PELangLiteralStringNode extends PELangExpressionNode {
 
-    private final Object array;
+    private final String value;
 
-    public PELangLiteralArrayNode(Object array) {
-        if (!array.getClass().isArray()) {
-            throw new IllegalArgumentException("argument is not an array");
-        }
-        this.array = array;
+    public PELangLiteralStringNode(String value) {
+        this.value = value;
     }
 
-    public Object getArray() {
-        return array;
+    public String getValue() {
+        return value;
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return array;
+    public String executeGeneric(VirtualFrame frame) {
+        return value;
     }
 
 }

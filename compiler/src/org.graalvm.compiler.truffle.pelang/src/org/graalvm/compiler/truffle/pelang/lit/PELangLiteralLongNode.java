@@ -20,27 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.lit;
 
-import org.graalvm.compiler.truffle.pelang.PELangFunction;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public enum PELangArrayType {
+public final class PELangLiteralLongNode extends PELangExpressionNode {
 
-    Long(Long.class),
-    String(String.class),
-    Function(PELangFunction.class),
-    Object(DynamicObject.class);
+    private final long value;
 
-    private final Class<?> javaClass;
-
-    private PELangArrayType(Class<?> javaClass) {
-        this.javaClass = javaClass;
+    public PELangLiteralLongNode(long value) {
+        this.value = value;
     }
 
-    public Class<?> getJavaClass() {
-        return javaClass;
+    public long getValue() {
+        return value;
+    }
+
+    @Override
+    public Long executeGeneric(VirtualFrame frame) {
+        return executeLong(frame);
+    }
+
+    @Override
+    public long executeLong(VirtualFrame frame) {
+        return value;
     }
 
 }

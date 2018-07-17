@@ -23,8 +23,8 @@
 package org.graalvm.compiler.truffle.pelang.util;
 
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.array.PELangArrayType;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangArrayType;
 
 public class PELangSample {
 
