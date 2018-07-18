@@ -1019,11 +1019,10 @@ public class SLDebugTest {
 
     @Test
     public void testExpressionStepInto() {
-        final String stepIntoPositions = "<1:10 - 9:1> <none>\n" +
-                        "<2:3 - 2:7> <none>\n" +
+        final String stepIntoPositions = "<2:3 - 2:7> <none>\n" +
                         "<2:7 - 2:7> <none>\n" +
                         "<2:7 - 2:7> () 2\n" +
-                        "<2:3 - 2:7> (2) <none>\n" +
+                        "<2:3 - 2:7> (2) 2\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:15> <none>\n" +
                         "<3:10 - 3:10> <none>\n" +
@@ -1045,18 +1044,15 @@ public class SLDebugTest {
                         "<4:13 - 4:13> <none>\n" +
                         "<4:13 - 4:13> () 2\n" +
                         "<4:9 - 4:13> (2,2) 4\n" +
-                        "<4:5 - 4:13> (4) <none>\n" +
+                        "<4:5 - 4:13> (4) 4\n" +
                         "<5:5 - 5:29> <none>\n" +
                         "<5:9 - 5:29> <none>\n" +
-                        "<5:9 - 5:15> <none>\n" +
                         "<5:10 - 5:14> <none>\n" +
                         "<5:10 - 5:10> <none>\n" +
                         "<5:10 - 5:10> () 4\n" +
                         "<5:14 - 5:14> <none>\n" +
                         "<5:14 - 5:14> () 4\n" +
                         "<5:10 - 5:14> (4,4) 16\n" +
-                        "<5:9 - 5:15> (16) 16\n" +
-                        "<5:19 - 5:29> <none>\n" +
                         "<5:20 - 5:28> <none>\n" +
                         "<5:20 - 5:24> <none>\n" +
                         "<5:20 - 5:20> <none>\n" +
@@ -1067,9 +1063,8 @@ public class SLDebugTest {
                         "<5:28 - 5:28> <none>\n" +
                         "<5:28 - 5:28> () 1\n" +
                         "<5:20 - 5:28> (4,1) 5\n" +
-                        "<5:19 - 5:29> (5) 5\n" +
-                        "<5:9 - 5:29> (16,5) 3\n" +
-                        "<5:5 - 5:29> (3) <none>\n" +
+                        "<5:9 - 5:29> () 3\n" +
+                        "<5:5 - 5:29> (3) 3\n" +
                         "<6:5 - 6:27> <none>\n" +
                         "<6:9 - 6:27> <none>\n" +
                         "<6:9 - 6:9> <none>\n" +
@@ -1081,29 +1076,23 @@ public class SLDebugTest {
                         "<6:23 - 6:23> () 4\n" +
                         "<6:26 - 6:26> <none>\n" +
                         "<6:26 - 6:26> () 3\n" +
-                        "<10:10 - 12:1> <none>\n" +
                         "<11:10 - 11:26> <none>\n" +
-                        "<11:10 - 11:16> <none>\n" +
                         "<11:11 - 11:15> <none>\n" +
                         "<11:11 - 11:11> <none>\n" +
                         "<11:11 - 11:11> () 1\n" +
                         "<11:15 - 11:15> <none>\n" +
                         "<11:15 - 11:15> () 1\n" +
                         "<11:11 - 11:15> (1,1) 2\n" +
-                        "<11:10 - 11:16> (2) 2\n" +
-                        "<11:20 - 11:26> <none>\n" +
                         "<11:21 - 11:25> <none>\n" +
                         "<11:21 - 11:21> <none>\n" +
                         "<11:21 - 11:21> () 4\n" +
                         "<11:25 - 11:25> <none>\n" +
                         "<11:25 - 11:25> () 3\n" +
                         "<11:21 - 11:25> (4,3) 7\n" +
-                        "<11:20 - 11:26> (7) 7\n" +
-                        "<11:10 - 11:26> (2,7) 14\n" +
-                        "<10:10 - 12:1> () 14\n" +
+                        "<11:10 - 11:26> () 14\n" +
                         "<6:13 - 6:27> 14\n" +
                         "<6:9 - 6:27> (2,14) -12\n" +
-                        "<6:5 - 6:27> (-12) <none>\n" +
+                        "<6:5 - 6:27> (-12) -12\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:15> <none>\n" +
                         "<3:10 - 3:10> <none>\n" +
@@ -1117,67 +1106,64 @@ public class SLDebugTest {
                         "<8:10 - 8:10> () -12\n" +
                         "<8:14 - 8:14> <none>\n" +
                         "<8:14 - 8:14> () 1\n" +
-                        "<8:10 - 8:14> (-12,1) -12\n" +
-                        "<1:10 - 9:1> () -12";
+                        "<8:10 - 8:14> (-12,1) -12";
         checkExpressionStepPositions(stepIntoPositions, false, StepDepth.INTO);
     }
 
     @Test
     public void testExpressionStepOver() {
-        final String stepOverPositions = "<1:10 - 9:1> <none>\n" +
-                        "<2:3 - 2:7> <none>\n" +
-                        "<2:3 - 2:7> (2) <none>\n" +
+        final String stepOverPositions = "<2:3 - 2:7> <none>\n" +
+                        "<2:7 - 2:7> <none>\n" +
+                        "<2:7 - 2:7> () 2\n" +
+                        "<2:3 - 2:7> (2) 2\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:25> (true,true) true\n" +
                         "<4:5 - 4:13> <none>\n" +
-                        "<4:5 - 4:13> (4) <none>\n" +
+                        "<4:5 - 4:13> (4) 4\n" +
                         "<5:5 - 5:29> <none>\n" +
-                        "<5:5 - 5:29> (3) <none>\n" +
+                        "<5:5 - 5:29> (3) 3\n" +
                         "<6:5 - 6:27> <none>\n" +
-                        "<6:5 - 6:27> (-12) <none>\n" +
+                        "<6:5 - 6:27> (-12) -12\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:25> (false,null) false\n" +
                         "<8:10 - 8:14> <none>\n" +
-                        "<8:10 - 8:14> (-12,1) -12\n" +
-                        "<1:10 - 9:1> () -12";
+                        "<8:10 - 8:14> (-12,1) -12";
         checkExpressionStepPositions(stepOverPositions, false, StepDepth.INTO, StepDepth.OVER);
     }
 
     @Test
     public void testExpressionStepOut() {
-        final String stepOutPositions = "<1:10 - 9:1> <none>\n" +
-                        "<2:3 - 2:7> <none>\n" +
-                        "<2:3 - 2:7> (2) <none>\n" +
+        final String stepOutPositions = "<2:3 - 2:7> <none>\n" +
+                        "<2:7 - 2:7> <none>\n" +
+                        "<2:7 - 2:7> () 2\n" +
+                        "<2:3 - 2:7> (2) 2\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:15> <none>\n" +
-                        "<3:10 - 3:10> <none>\n" + // Stepping out from here
-                        "<3:10 - 3:10> () 2\n" +
                         "<3:10 - 3:15> (2,0) true\n" +
-                        "<3:10 - 3:25> (true,true) true\n" +
-                        "<1:10 - 9:1> () -12";
+                        "<3:10 - 3:25> (true,true) true\n";
         checkExpressionStepPositions(stepOutPositions, false, StepDepth.INTO, StepDepth.OVER, StepDepth.OVER,
                         StepDepth.INTO, StepDepth.INTO, StepDepth.OUT);
     }
 
     @Test
     public void testStatementAndExpressionStepOver() {
-        final String stepOverPositions = "<1:10 - 9:1> <none>\n" +
-                        "<2:3 - 2:7> <none>\n" +
-                        "<2:3 - 2:7> (2) <none>\n" +
+        final String stepOverPositions = "<2:3 - 2:7> <none>\n" +
+                        "<2:7 - 2:7> <none>\n" +
+                        "<2:7 - 2:7> () 2\n" +
+                        "<2:3 - 2:7> (2) 2\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:25> (true,true) true\n" +
                         "<4:5 - 4:13> <none>\n" +
-                        "<4:5 - 4:13> (4) <none>\n" +
+                        "<4:5 - 4:13> (4) 4\n" +
                         "<5:5 - 5:29> <none>\n" +
-                        "<5:5 - 5:29> (3) <none>\n" +
+                        "<5:5 - 5:29> (3) 3\n" +
                         "<6:5 - 6:27> <none>\n" +
-                        "<6:5 - 6:27> (-12) <none>\n" +
+                        "<6:5 - 6:27> (-12) -12\n" +
                         "<3:10 - 3:25> <none>\n" +
                         "<3:10 - 3:25> (false,null) false\n" +
                         "<8:3 - 8:14> <none>\n" +
                         "<8:10 - 8:14> <none>\n" +
-                        "<8:10 - 8:14> (-12,1) -12\n" +
-                        "<1:10 - 9:1> () -12";
+                        "<8:10 - 8:14> (-12,1) -12\n";
         checkExpressionStepPositions(stepOverPositions, true, StepDepth.INTO, StepDepth.OVER);
     }
 

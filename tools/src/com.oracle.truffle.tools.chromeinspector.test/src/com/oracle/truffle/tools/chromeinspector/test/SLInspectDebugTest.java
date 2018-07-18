@@ -540,10 +540,10 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":18,\"scriptId\":\"1\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":245,\"executionContextId\":" + id + ",\"url\":\"" + slTestURI + "\",\"hash\":\"f8058ed0f3c2f0acf3e37e59f953127afdba90e5\"}}\n"));
         // Try to compile a script:
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.compileScript\",\"params\":{\"expression\":\"app\",\"sourceURL\":\"\",\"persistScript\":false,\"executionContextId\":" + id + "}}");
-        assertEquals("{\"result\":{\"exceptionDetails\":{\"text\":\"<Not suspended>\"}},\"id\":3}", tester.getMessages(true).trim());
+        assertEquals("{\"result\":{\"exceptionDetails\":{\"exception\":{\"description\":\"<Not suspended>\",\"type\":\"string\",\"value\":\"<Not suspended>\"},\"exceptionId\":1,\"executionContextId\":1,\"text\":\"Caught\"}},\"id\":3}", tester.getMessages(true).trim());
         // Try to evaluate:
         tester.sendMessage("{\"id\":4,\"method\":\"Runtime.evaluate\",\"params\":{\"expression\":\"app\",\"objectGroup\":\"watch-group\",\"includeCommandLineAPI\":false,\"silent\":true,\"contextId\":" + id + "}}");
-        assertEquals("{\"result\":{\"exceptionDetails\":{\"text\":\"<Not suspended>\"}},\"id\":4}", tester.getMessages(true).trim());
+        assertEquals("{\"result\":{\"exceptionDetails\":{\"exception\":{\"description\":\"<Not suspended>\",\"type\":\"string\",\"value\":\"<Not suspended>\"},\"exceptionId\":2,\"executionContextId\":1,\"text\":\"Caught\"}},\"id\":4}", tester.getMessages(true).trim());
         tester.finish();
     }
 

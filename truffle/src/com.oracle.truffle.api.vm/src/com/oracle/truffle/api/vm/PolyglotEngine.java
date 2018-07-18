@@ -1417,7 +1417,7 @@ public class PolyglotEngine {
 
         @Override
         public RuntimeException wrapHostException(Object languageContext, Throwable exception) {
-            return PolyglotImpl.wrapHostException(null, exception);
+            return PolyglotImpl.wrapHostException((PolyglotLanguageContext) languageContext, exception);
         }
 
         @Override
@@ -1523,6 +1523,11 @@ public class PolyglotEngine {
         @Override
         public Object getCurrentOuterContext() {
             return null;
+        }
+
+        @Override
+        public Map<String, Level> getLogLevels(Object context) {
+            return Collections.emptyMap();
         }
     }
 }

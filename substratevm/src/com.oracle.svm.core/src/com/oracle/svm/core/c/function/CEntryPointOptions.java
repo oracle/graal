@@ -139,13 +139,10 @@ public @interface CEntryPointOptions {
     Class<?> epilogue() default LeaveEpilogue.class;
 
     /**
-     * Special placeholder class for {@link #exceptionHandler()} to print the caught exception and
-     * terminate the execution of the process.
+     * @deprecated Moved to {@link CEntryPoint#exceptionHandler()}
      */
-    final class FatalExceptionHandler {
-    }
-
-    Class<?> exceptionHandler() default FatalExceptionHandler.class;
+    @Deprecated
+    Class<?> exceptionHandler() default CEntryPoint.FatalExceptionHandler.class;
 
     enum Publish {
         /**

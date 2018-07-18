@@ -48,6 +48,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -65,6 +66,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -545,6 +547,20 @@ final class Target_java_lang_Compiler {
     }
 }
 
+final class IsSingleThreaded implements Predicate<Class<?>> {
+    @Override
+    public boolean test(Class<?> t) {
+        return !SubstrateOptions.MultiThreaded.getValue();
+    }
+}
+
+final class IsMultiThreaded implements Predicate<Class<?>> {
+    @Override
+    public boolean test(Class<?> t) {
+        return SubstrateOptions.MultiThreaded.getValue();
+    }
+}
+
 @TargetClass(className = "java.lang.ApplicationShutdownHooks")
 final class Target_java_lang_ApplicationShutdownHooks {
 
@@ -559,9 +575,14 @@ final class Target_java_lang_ApplicationShutdownHooks {
     /**
      * Instead of starting all the threads in {@link #hooks}, just run the {@link Runnable}s one
      * after another.
+     *
+     * We need this substitution in single-threaded mode, where we cannot start new threads but
+     * still want to support shutdown hooks. In multi-threaded mode, this substitution is not
+     * present, i.e., the original JDK code runs the shutdown hooks in separate threads.
      */
     @Substitute
-    static void runHooks() {
+    @TargetElement(name = "runHooks", onlyWith = IsSingleThreaded.class)
+    static void runHooksSingleThreaded() {
         /* Claim all the hooks. */
         final Collection<Thread> threads;
         /* Checkstyle: allow synchronization. */
@@ -587,6 +608,10 @@ final class Target_java_lang_ApplicationShutdownHooks {
             }
         }
     }
+
+    @Alias
+    @TargetElement(name = "runHooks", onlyWith = IsMultiThreaded.class)
+    static native void runHooksMultiThreaded();
 
     /**
      * Interpose so that the first time someone adds an ApplicationShutdownHook, I set up a shutdown
@@ -636,7 +661,11 @@ class Util_java_lang_ApplicationShutdownHooks {
                                         new Runnable() {
                                             @Override
                                             public void run() {
-                                                Target_java_lang_ApplicationShutdownHooks.runHooks();
+                                                if (SubstrateOptions.MultiThreaded.getValue()) {
+                                                    Target_java_lang_ApplicationShutdownHooks.runHooksMultiThreaded();
+                                                } else {
+                                                    Target_java_lang_ApplicationShutdownHooks.runHooksSingleThreaded();
+                                                }
                                             }
                                         });
                     } catch (InternalError ie) {

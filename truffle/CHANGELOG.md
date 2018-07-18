@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 1.0.0 RC4
+## Version 1.0.0 RC5
 
 * Added `TruffleLanguage.Env.isHostFunction`.
 * Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
@@ -14,6 +14,13 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
 * Removed deprecated FindContextNode (deprecated since 0.25).
 * All languages now need to have a public zero argument constructor. Using a static singleton field is no longer supported.
 * Renamed and changed the return value of the method for TruffleLanguage.initializeMultiContext to TruffleLanguage.initializeMultipleContexts. The original method remains but is now deprecated.
+* Added [SourceSectionFilter#includes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.html#includes-com.oracle.truffle.api.nodes.Node-)
+* Deprecating `FrameSlot#getKind` and `FrameSlot#setKind` in favor of `FrameDescriptor#getFrameSlotKind` and `FrameDescriptor#setFrameSlotKind`.
+* The `FrameDescriptor` is now thread-safe from the moment it is first passed to a RootNode constructor.
+  * The list returned by [FrameDescriptor#getSlots](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getSlots--) no longer reflects future changes in the FrameDescriptor. This is an incompatible change.
+  * The set returned by [FrameDescriptor#getIdentifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getIdentifiers--) no longer reflects future changes in the FrameDescriptor. This is an incompatible change.
+* Added [LanguageInfo#isInteractive](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/LanguageInfo.html#isInteractive--)
+* Added [DebugStackFrame#getLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html#getLanguage--)
 
 ## Version 1.0.0 RC3
 

@@ -37,12 +37,15 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -55,6 +58,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.management.ExecutionEvent;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -447,6 +451,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public AbstractEngineImpl getImpl(Engine value) {
+            return value.impl;
+        }
+
+        @Override
         public AbstractValueImpl getImpl(Value value) {
             return value.impl;
         }
@@ -569,6 +578,64 @@ public final class Engine implements AutoCloseable {
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                         long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler) {
             throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractExecutionListenerImpl getExecutionListenerImpl() {
+            return new AbstractExecutionListenerImpl(this) {
+
+                @Override
+                public boolean isStatement(Object impl) {
+                    return false;
+                }
+
+                @Override
+                public boolean isRoot(Object impl) {
+                    return false;
+                }
+
+                @Override
+                public boolean isExpression(Object impl) {
+                    return false;
+                }
+
+                @Override
+                public String getRootName(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public PolyglotException getException(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public Value getReturnValue(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public SourceSection getLocation(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public List<Value> getInputValues(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public void closeExecutionListener(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public Object attachExecutionListener(Engine engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
+                                boolean roots,
+                                Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
+                    throw noPolyglotImplementationFound();
+                }
+            };
         }
 
         private static RuntimeException noPolyglotImplementationFound() {

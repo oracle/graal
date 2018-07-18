@@ -41,7 +41,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleConstantFieldProvider;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,9 +53,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class SubstratePartialEvaluator extends PartialEvaluator {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstratePartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
-                    InstrumentPhase.Instrumentation instrumentation) {
-        super(providers, configForRoot, snippetReflection, architecture, instrumentation, new KnownTruffleTypes(providers.getMetaAccess()));
+    public SubstratePartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
+        super(providers, configForRoot, snippetReflection, architecture, new KnownTruffleTypes(providers.getMetaAccess()));
     }
 
     @Override

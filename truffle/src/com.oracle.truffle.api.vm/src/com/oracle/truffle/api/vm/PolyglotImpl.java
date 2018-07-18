@@ -97,6 +97,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
     private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
+    private final PolyglotExecutionListener executionListenerImpl = new PolyglotExecutionListener(this);
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
     private static void ensureInitialized() {
@@ -132,6 +133,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public AbstractSourceSectionImpl getSourceSectionImpl() {
         return sourceSectionImpl;
+    }
+
+    /**
+     * Internal method do not use.
+     *
+     * @since 1.0
+     */
+    @Override
+    public AbstractExecutionListenerImpl getExecutionListenerImpl() {
+        return executionListenerImpl;
     }
 
     /**
@@ -235,19 +246,41 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return null;
     }
 
+    org.graalvm.polyglot.Source getPolyglotSource(Source source) {
+        org.graalvm.polyglot.Source polyglotSource = VMAccessor.SOURCE.getPolyglotSource(source);
+        if (polyglotSource == null) {
+            polyglotSource = getAPIAccess().newSource(source.getLanguage(), source);
+            VMAccessor.SOURCE.setPolyglotSource(source, polyglotSource);
+        }
+        return polyglotSource;
+    }
+
+    org.graalvm.polyglot.SourceSection getPolyglotSourceSection(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return null;
+        }
+        org.graalvm.polyglot.Source polyglotSource = getPolyglotSource(sourceSection.getSource());
+        return getAPIAccess().newSourceSection(polyglotSource, sourceSection);
+    }
+
     static RuntimeException engineError(RuntimeException e) {
         throw new EngineException(e);
     }
 
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(PolyglotLanguageContext context, T e) {
+    static <T extends Throwable> RuntimeException wrapHostException(PolyglotLanguageContext languageContext, T e) {
+        throw wrapHostException(languageContext.context, e);
+    }
+
+    @TruffleBoundary
+    static <T extends Throwable> RuntimeException wrapHostException(PolyglotContextImpl context, T e) {
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
         } else if (e instanceof PolyglotException) {
             PolyglotException polyglot = (PolyglotException) e;
             if (context != null) {
                 PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getImpl(polyglot));
-                if (exceptionImpl.context == context.context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
+                if (exceptionImpl.context == context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
                     // for values of the same context the TruffleException is allowed to be unboxed
                     // for host exceptions no guest values are bound therefore it can also be
                     // unboxed
@@ -272,7 +305,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @TruffleBoundary
     // Wrapping language exception
-    static <T extends Throwable> RuntimeException wrapGuestException(PolyglotLanguageContext context, T e) {
+    static <T extends Throwable> PolyglotException wrapGuestException(PolyglotLanguageContext context, T e) {
         if (e instanceof PolyglotException) {
             return (PolyglotException) e;
         } else {
@@ -286,7 +319,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @TruffleBoundary
     // Wrapping instrument exception
-    static <T extends Throwable> RuntimeException wrapGuestException(PolyglotEngineImpl engine, T e) {
+    static <T extends Throwable> PolyglotException wrapGuestException(PolyglotEngineImpl engine, T e) {
         if (e instanceof PolyglotException) {
             return (PolyglotException) e;
         } else {
@@ -874,6 +907,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
 
+        @SuppressWarnings("cast")
         @Override
         public PolyglotException wrapGuestException(String languageId, Throwable e) {
             PolyglotContextImpl pc = PolyglotContextImpl.current();
@@ -954,6 +988,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Object getCurrentOuterContext() {
             return PolyglotLogHandler.getCurrentOuterContext();
+        }
+
+        @Override
+        public Map<String, Level> getLogLevels(final Object context) {
+            if (!(context instanceof PolyglotContextImpl)) {
+                throw new AssertionError();
+            }
+            return ((PolyglotContextImpl) context).config.logLevels;
         }
     }
 }

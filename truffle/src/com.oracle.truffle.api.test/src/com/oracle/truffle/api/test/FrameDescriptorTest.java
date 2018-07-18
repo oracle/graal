@@ -88,14 +88,14 @@ public class FrameDescriptorTest {
 
         assertEquals(2, d.getSize());
         assertEquals(d.getSlots().get(1).getInfo(), "i2");
-        assertEquals(d.getSlots().get(1).getKind(), FrameSlotKind.Float);
+        assertEquals(d.getFrameSlotKind(d.getSlots().get(1)), FrameSlotKind.Float);
         assertEquals(d.getSlots().get(1).getIndex(), 1);
 
         FrameDescriptor copy = d.copy();
         assertEquals(2, copy.getSize());
         assertEquals(1, copy.getSlots().get(1).getIndex());
         assertEquals("Info is copied", "i2", copy.getSlots().get(1).getInfo());
-        assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getSlots().get(1).getKind());
+        assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getFrameSlotKind(copy.getSlots().get(1)));
     }
 
     @Test
@@ -108,7 +108,7 @@ public class FrameDescriptorTest {
         assertEquals(2, d.getSize());
         final FrameSlot first = d.getSlots().get(1);
         assertEquals(first.getInfo(), "i2");
-        assertEquals(first.getKind(), FrameSlotKind.Float);
+        assertEquals(d.getFrameSlotKind(first), FrameSlotKind.Float);
         assertEquals(first.getIndex(), 1);
 
         FrameDescriptor copy = getShallowCopy(d);
@@ -116,14 +116,14 @@ public class FrameDescriptorTest {
         assertEquals(2, copy.getSize());
         final FrameSlot firstCopy = copy.getSlots().get(1);
         assertEquals("Info is copied", firstCopy.getInfo(), "i2");
-        assertEquals("Kind is copied", firstCopy.getKind(), FrameSlotKind.Float);
+        assertEquals("Kind is copied", copy.getFrameSlotKind(firstCopy), FrameSlotKind.Float);
         assertEquals(firstCopy.getIndex(), 1);
 
         Assumption originalVersion = d.getVersion();
         Assumption copyVersion = copy.getVersion();
-        firstCopy.setKind(FrameSlotKind.Int);
-        assertEquals("Kind is changed", firstCopy.getKind(), FrameSlotKind.Int);
-        assertEquals("Kind is changed in original too!", first.getKind(), FrameSlotKind.Int);
+        copy.setFrameSlotKind(firstCopy, FrameSlotKind.Int);
+        assertEquals("Kind is changed", copy.getFrameSlotKind(firstCopy), FrameSlotKind.Int);
+        assertEquals("Kind is changed in original too!", d.getFrameSlotKind(first), FrameSlotKind.Int);
         assertNotEquals("Kind was changed, therefore original's version has to be updated", originalVersion, d.getVersion());
         assertNotEquals("Kind was changed, therefore copy's version has to be updated", copyVersion, copy.getVersion());
 
@@ -163,7 +163,7 @@ public class FrameDescriptorTest {
         assertSame("3rd slot", s3, d.getSlots().get(2));
 
         // change kind
-        s3.setKind(FrameSlotKind.Object);
+        d.setFrameSlotKind(s3, FrameSlotKind.Object);
         assertFalse(version.isValid());
         version = d.getVersion();
         assertTrue(version.isValid());

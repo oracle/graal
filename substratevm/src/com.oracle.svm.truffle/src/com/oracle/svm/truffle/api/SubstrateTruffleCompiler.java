@@ -65,11 +65,11 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return TruffleFeature.getSupport().createPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, getInstrumentation());
+        return TruffleFeature.getSupport().createPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
     }
 
     @Override
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         return null;
     }
 

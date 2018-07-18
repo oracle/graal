@@ -601,7 +601,7 @@ public final class DebuggerSession implements Closeable {
      */
     @Deprecated
     public void setBreakpointsActive(boolean active) {
-        for (Breakpoint.Kind kind : Breakpoint.Kind.values()) {
+        for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             setBreakpointsActive(kind, active);
         }
     }
@@ -642,7 +642,7 @@ public final class DebuggerSession implements Closeable {
      */
     @Deprecated
     public boolean isBreakpointsActive() {
-        for (Breakpoint.Kind kind : Breakpoint.Kind.values()) {
+        for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             if (isBreakpointsActive(kind)) {
                 return true;
             }
@@ -1060,6 +1060,9 @@ public final class DebuggerSession implements Closeable {
         LanguageInfo info = rootNode.getLanguageInfo();
         if (info == null) {
             throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
+        }
+        if (!info.isInteractive()) {
+            throw new IllegalStateException("Can not evaluate in a non-interactive language.");
         }
 
         final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();

@@ -71,7 +71,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     @Specialization(guards = "isLongOrIllegal(frame)")
     protected long writeLong(VirtualFrame frame, long value) {
         /* Initialize type on first write of the local variable. No-op if kind is already Long. */
-        getSlot().setKind(FrameSlotKind.Long);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
 
         frame.setLong(getSlot(), value);
         return value;
@@ -80,7 +80,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     @Specialization(guards = "isBooleanOrIllegal(frame)")
     protected boolean writeBoolean(VirtualFrame frame, boolean value) {
         /* Initialize type on first write of the local variable. No-op if kind is already Long. */
-        getSlot().setKind(FrameSlotKind.Boolean);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Boolean);
 
         frame.setBoolean(getSlot(), value);
         return value;
@@ -105,7 +105,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
          *
          * No-op if kind is already Object.
          */
-        getSlot().setKind(FrameSlotKind.Object);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
 
         frame.setObject(getSlot(), value);
         return value;
@@ -120,10 +120,12 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      *            slot kind which can change.
      */
     protected boolean isLongOrIllegal(VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Long || getSlot().getKind() == FrameSlotKind.Illegal;
+        final FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(getSlot());
+        return kind == FrameSlotKind.Long || kind == FrameSlotKind.Illegal;
     }
 
-    protected boolean isBooleanOrIllegal(@SuppressWarnings("unused") VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Boolean || getSlot().getKind() == FrameSlotKind.Illegal;
+    protected boolean isBooleanOrIllegal(VirtualFrame frame) {
+        final FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(getSlot());
+        return kind == FrameSlotKind.Boolean || kind == FrameSlotKind.Illegal;
     }
 }

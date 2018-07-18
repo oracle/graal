@@ -149,11 +149,11 @@ class VMThreadLocalCollector implements Function<Object, Object> {
             return 0;
         }
 
-        /* Ensure that all objects are contiguous. */
-        int result = -Boolean.compare(info1.isObject, info2.isObject);
+        /* Order by size to avoid padding. */
+        int result = -Integer.compare(info1.sizeInBytes, info2.sizeInBytes);
         if (result == 0) {
-            /* Order by size to avoid padding. */
-            result = -Integer.compare(info1.sizeInBytes, info2.sizeInBytes);
+            /* Ensure that all objects are contiguous. */
+            result = -Boolean.compare(info1.isObject, info2.isObject);
             if (result == 0) {
                 /*
                  * Make the order deterministic by sorting by name. This is arbitrary, we can come

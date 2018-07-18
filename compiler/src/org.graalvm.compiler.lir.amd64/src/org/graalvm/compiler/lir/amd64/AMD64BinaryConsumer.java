@@ -121,11 +121,15 @@ public class AMD64BinaryConsumer {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(x)) {
-                opcode.emit(masm, size, asRegister(x), y);
+                opcode.emit(masm, size, asRegister(x), y, shouldAnnotate());
             } else {
                 assert isStackSlot(x);
-                opcode.emit(masm, size, (AMD64Address) crb.asAddress(x), y);
+                opcode.emit(masm, size, (AMD64Address) crb.asAddress(x), y, shouldAnnotate());
             }
+        }
+
+        protected boolean shouldAnnotate() {
+            return false;
         }
     }
 
@@ -147,6 +151,11 @@ public class AMD64BinaryConsumer {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             crb.recordInlineDataInCode(c);
             super.emitCode(crb, masm);
+        }
+
+        @Override
+        protected boolean shouldAnnotate() {
+            return true;
         }
     }
 
@@ -313,7 +322,11 @@ public class AMD64BinaryConsumer {
             if (state != null) {
                 crb.recordImplicitException(masm.position(), state);
             }
-            opcode.emit(masm, size, x.toAddress(), y);
+            opcode.emit(masm, size, x.toAddress(), y, shouldAnnotate());
+        }
+
+        protected boolean shouldAnnotate() {
+            return false;
         }
 
         @Override
@@ -348,6 +361,11 @@ public class AMD64BinaryConsumer {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             crb.recordInlineDataInCode(c);
             super.emitCode(crb, masm);
+        }
+
+        @Override
+        protected boolean shouldAnnotate() {
+            return true;
         }
     }
 }

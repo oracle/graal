@@ -35,6 +35,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -437,6 +439,49 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testGcedContext() {
+        TestHandler handler = new TestHandler();
+        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
+        gcedContext.eval(LoggingLanguageFirst.ID, "");
+        List<Map.Entry<Level, String>> expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+        Assert.assertEquals(expected, handler.getLog());
+        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
+        gcedContext = null;
+        assertGc("Cannot free context.", gcedContextRef);
+        handler = new TestHandler();
+        Context newContext = Context.newBuilder().logHandler(handler).build();
+        newContext.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap()));
+        Assert.assertEquals(expected, handler.getLog());
+    }
+
+    @Test
+    public void testGcedContext2() {
+        TestHandler gcedContextHandler = new TestHandler();
+        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(gcedContextHandler).build();
+        TestHandler contextHandler = new TestHandler();
+        Context context = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build();
+        gcedContext.eval(LoggingLanguageFirst.ID, "");
+        List<Map.Entry<Level, String>> expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+        Assert.assertEquals(expected, gcedContextHandler.getLog());
+        context.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+        Assert.assertEquals(expected, contextHandler.getLog());
+        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
+        gcedContext = null;
+        assertGc("Cannot free context.", gcedContextRef);
+        contextHandler.clear();
+        context.eval(LoggingLanguageFirst.ID, "");
+        expected = new ArrayList<>();
+        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+        Assert.assertEquals(expected, contextHandler.getLog());
+    }
+
     private static void assertImmutable(final LogRecord r) {
         try {
             r.setLevel(Level.FINEST);
@@ -557,6 +602,38 @@ public class LoggingTest {
             node.level = loggerLevel;
         }
         return root;
+    }
+
+    private static void assertGc(final String message, final Reference<?> ref) {
+        int blockSize = 100_000;
+        final List<byte[]> blocks = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            if (ref.get() == null) {
+                return;
+            }
+            try {
+                System.gc();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                System.runFinalization();
+            } catch (OutOfMemoryError oom) {
+            }
+            try {
+                blocks.add(new byte[blockSize]);
+                blockSize = (int) (blockSize * 1.3);
+            } catch (OutOfMemoryError oom) {
+                blockSize >>>= 1;
+            }
+            if (i % 10 == 0) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
+        }
+        Assert.fail(message);
     }
 
     public static final class LoggingContext {

@@ -155,6 +155,29 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof PolyglotException) {
+            return impl.equals(((PolyglotException) obj).impl);
+        }
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public int hashCode() {
+        return impl.hashCode();
+    }
+
+    /**
      * Unsupported, {@link PolyglotException} instances are not writable therefore setting the stack
      * trace has no effect for them.
      *

@@ -702,7 +702,7 @@ public class AMD64Move {
                     }
                 } else if (crb.target.inlineObjects) {
                     crb.recordInlineDataInCode(input);
-                    masm.movq(result, 0xDEADDEADDEADDEADL);
+                    masm.movq(result, 0xDEADDEADDEADDEADL, true);
                 } else {
                     masm.movq(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
                 }

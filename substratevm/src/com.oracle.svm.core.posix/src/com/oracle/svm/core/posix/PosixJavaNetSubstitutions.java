@@ -394,6 +394,37 @@ final class Target_java_net_InetAddress_InetAddressHolder {
     native void init(String hostNameArg, int familyArg);
 }
 
+@TargetClass(className = "java.net.InetAddressContainer")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+final class Target_java_net_InetAddressContainer {
+    @Alias InetAddress addr;
+}
+
+class Util_java_net_InetAddressContainer {
+
+    /**
+     * If obj is an InetAddressContainer, set the addr field. Returns true on success, false on
+     * failure.
+     */
+    static boolean setAddr(Object obj, InetAddress addr) {
+        final Target_java_net_InetAddressContainer asIAC = narrow(obj);
+        if (asIAC != null) {
+            asIAC.addr = addr;
+            return true;
+        }
+        return false;
+    }
+
+    /** A type-checked narrow to a type I can not see, by using the target class. */
+    static Target_java_net_InetAddressContainer narrow(Object obj) {
+        final Class<Target_java_net_InetAddressContainer> clazz = Target_java_net_InetAddressContainer.class;
+        if (clazz.isInstance(obj)) {
+            return clazz.cast(obj);
+        }
+        return null;
+    }
+}
+
 @TargetClass(className = "java.net.Inet4Address")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet4Address {
@@ -3041,12 +3072,163 @@ final class Target_java_net_PlainSocketImpl {
     }
     /* @formatter:on */
 
+    /* Do not re-format commented-out code: @formatter:off */
     @Substitute
-    @SuppressWarnings({"static-method", "unused"})
-    int socketGetOption(int opt, Object iaContainerObj) throws SocketException {
-        VMError.unimplemented();
-        return -1;
+    /* Translated from src/solaris/native/java/net/PlainSocketImpl.c?v=Java_1.8.0_40_b10. */
+    // 982 /*
+    // 983  * Class:     java_net_PlainSocketImpl
+    // 984  * Method:    socketGetOption
+    // 985  * Signature: (I)I
+    // 986  */
+    // 987 JNIEXPORT jint JNICALL
+    // 988 Java_java_net_PlainSocketImpl_socketGetOption(JNIEnv *env, jobject this,
+    // 989                                               jint cmd, jobject iaContainerObj) {
+    int socketGetOption(int cmd, Object iaContainerObj) throws SocketException {
+        // 990
+        // 991     int fd;
+        int fd;
+        // 992     int level, optname, optlen;
+        CIntPointer level_Pointer = StackValue.get(CIntPointer.class);
+        CIntPointer optname_Pointer = StackValue.get(CIntPointer.class);
+        CIntPointer optlen_Pointer = StackValue.get(CIntPointer.class);
+        /* Translated as a WordPointer to the larger of the arms. */
+        // 993     union {
+        // 994         int i;
+        // 995         struct linger ling;
+        // 996     } optval;
+        /* Guess which arm of the union is larger. Trust, but verify. */
+        final int sizeof_optval = SizeOf.get(Socket.linger.class);
+        VMError.guarantee(SizeOf.get(CIntPointer.class) <= sizeof_optval, "sizeof(int) <= sizeof(union optval)");
+        VMError.guarantee(SizeOf.get(Socket.linger.class) <= sizeof_optval, "sizeof(struct linger) <= sizeof(union optval)");
+        WordPointer optval_Pointer = StackValue.get(sizeof_optval);
+        // 997
+        // 998     /*
+        // 999      * Check that socket hasn't been closed
+        // 1000      */
+        // 1001     fd = getFD(env, this);
+        fd = PosixUtils.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
+        // 1002     if (fd < 0) {
+        if (fd < 0) {
+            // 1003         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+            // 1004                         "Socket closed");
+            // 1005         return -1;
+            throw new SocketException("Socket closed");
+        }
+        // 1007
+        // 1008     /*
+        // 1009      * SO_BINDADDR isn't a socket option
+        // 1010      */
+        // 1011     if (cmd == java_net_SocketOptions_SO_BINDADDR) {
+        if (cmd == SocketOptions.SO_BINDADDR) {
+            // 1012         SOCKADDR him;
+            Socket.sockaddr him = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
+            // 1013         socklen_t len = 0;
+            CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
+            // 1014         int port;
+            CIntPointer port_Pointer = StackValue.get(CIntPointer.class);
+            // 1015         jobject iaObj;
+            InetAddress iaObj;
+            // 1016         jclass iaCntrClass;
+            // 1017         jfieldID iaFieldID;
+            // 1018
+            // 1019         len = SOCKADDR_LEN;
+            len_Pointer.write(JavaNetNetUtilMD.SOCKADDR_LEN());
+            // 1020
+            // 1021         if (getsockname(fd, (struct sockaddr *)&him, &len) < 0) {
+            if (Target_os.get_sock_name(fd, him, len_Pointer) < 0) {
+                // 1022             NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
+                // 1023                              "Error getting socket name");
+                // 1024             return -1;
+                throw new SocketException(PosixUtils.lastErrorString("Error getting socket name"));
+            }
+            // 1026         iaObj = NET_SockaddrToInetAddress(env, (struct sockaddr *)&him, &port);
+            iaObj = JavaNetNetUtil.NET_SockaddrToInetAddress(him, port_Pointer);
+            // 1027         CHECK_NULL_RETURN(iaObj, -1);
+            if (iaObj == null) {
+                return -1;
+            }
+            // 1028
+            // 1029         iaCntrClass = (*env)->GetObjectClass(env, iaContainerObj);
+            // 1030         iaFieldID = (*env)->GetFieldID(env, iaCntrClass, "addr", "Ljava/net/InetAddress;");
+            // 1031         CHECK_NULL_RETURN(iaFieldID, -1);
+            // 1032         (*env)->SetObjectField(env, iaContainerObj, iaFieldID, iaObj);
+            // 1033         return 0; /* notice change from before */
+            /*
+             * The code above works for any instance that has an `InetAddress addr` field.
+             * The code below assumes that `iaContainerObj` is an `InetAddressContainer`.
+             */
+            if (Util_java_net_InetAddressContainer.setAddr(iaContainerObj, iaObj)) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+        // 1035
+        // 1036     /*
+        // 1037      * Map the Java level socket option to the platform specific
+        // 1038      * level and option name.
+        // 1039      */
+        // 1040     if (NET_MapSocketOption(cmd, &level, &optname)) {
+        if (CTypeConversion.toBoolean(JavaNetNetUtilMD.NET_MapSocketOption(cmd, level_Pointer, optname_Pointer))) {
+            // 1041         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Invalid option");
+            // 1042         return -1;
+            throw new SocketException("Invalid option");
+        }
+        // 1044
+        // 1045     /*
+        // 1046      * Args are int except for SO_LINGER
+        // 1047      */
+        // 1048     if (cmd == java_net_SocketOptions_SO_LINGER) {
+        if (cmd == SocketOptions.SO_LINGER) {
+            // 1049         optlen = sizeof(optval.ling);
+            optlen_Pointer.write(SizeOf.get(Socket.linger.class));
+        } else {
+            // 1051         optlen = sizeof(optval.i);
+            optlen_Pointer.write(SizeOf.get(CIntPointer.class));
+        }
+        // 1053
+        // 1054     if (NET_GetSockOpt(fd, level, optname, (void *)&optval, &optlen) < 0) {
+        if (JavaNetNetUtilMD.NET_GetSockOpt(fd, level_Pointer.read(), optname_Pointer.read(), optval_Pointer, optlen_Pointer) < 0) {
+            // 1055         NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
+            // 1056                                       "Error getting socket option");
+            // 1057         return -1;
+            throw new SocketException(PosixUtils.lastErrorString("Error getting socket option"));
+        }
+        // 1059
+        // 1060     switch (cmd) {
+        switch (cmd) {
+            // 1061         case java_net_SocketOptions_SO_LINGER:
+            case SocketOptions.SO_LINGER: {
+                // 1062             return (optval.ling.l_onoff ? optval.ling.l_linger: -1);
+                if (CTypeConversion.toBoolean(((Socket.linger) optval_Pointer).l_onoff()))  {
+                    return ((Socket.linger) optval_Pointer).l_linger();
+                } else {
+                    return -1;
+                }
+            }
+                // 1063
+                // 1064         case java_net_SocketOptions_SO_SNDBUF:
+            case SocketOptions.SO_SNDBUF:
+                // 1065         case java_net_SocketOptions_SO_RCVBUF:
+            case SocketOptions.SO_RCVBUF:
+                // 1066         case java_net_SocketOptions_IP_TOS:
+            case SocketOptions.IP_TOS: {
+                // 1067             return optval.i;
+                return ((CIntPointer) optval_Pointer).read();
+            }
+            // 1068
+            // 1069         default :
+            default:  {
+                // 1070             return (optval.i == 0) ? -1 : 1;
+                if (((CIntPointer) optval_Pointer).read() == 0) {
+                    return -1;
+                } else {
+                    return 1;
+                }
+            }
+        }
     }
+    /* @formatter:on */
 
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
