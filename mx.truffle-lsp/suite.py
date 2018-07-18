@@ -95,26 +95,27 @@ suite = {
     },
     
     "projects" : {
-	"de.hpi.swa.trufflelsp.api": {
+        "de.hpi.swa.trufflelsp.api": {
             "subDir": "truffle-lsp",
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:GRAAL_SDK",
             ],
+            "checkstyle": "de.hpi.swa.trufflelsp",
             "javaCompliance": "1.8",
-	    "workingSets": "TruffleLSP"
+            "workingSets": "TruffleLSP"
         },
 
         "de.hpi.swa.trufflelsp": {
             "subDir": "truffle-lsp",
             "sourceDirs": ["src"],
             "dependencies": [
-		"de.hpi.swa.trufflelsp.api",
+                "de.hpi.swa.trufflelsp.api",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_DSL_PROCESSOR",
                 "truffle:TRUFFLE_NFI",
                 "sdk:GRAAL_SDK",
-		"sdk:LAUNCHER_COMMON",
+                "sdk:LAUNCHER_COMMON",
                 "LSP4J"
             ],
             "checkstyle": "de.hpi.swa.trufflelsp",
@@ -123,16 +124,32 @@ suite = {
             "workingSets": "TruffleLSP",
         },
 
-	"de.hpi.swa.trufflelsp.launcher": {
+        "de.hpi.swa.trufflelsp.launcher": {
             "subDir": "truffle-lsp",
             "sourceDirs": ["src"],
             "dependencies": [
-		"de.hpi.swa.trufflelsp.api",
+                "de.hpi.swa.trufflelsp.api",
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
+            "checkstyle": "de.hpi.swa.trufflelsp",
             "javaCompliance": "1.8",
-	    "workingSets": "TruffleLSP"
-        }
+            "workingSets": "TruffleLSP"
+        },
+
+        "de.hpi.swa.trufflelsp.test": {
+            "subDir": "truffle-lsp",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "de.hpi.swa.trufflelsp.api",
+                "de.hpi.swa.trufflelsp",
+                "de.hpi.swa.trufflelsp.launcher",
+                "mx:JUNIT"
+            ],
+            "checkstyle": "de.hpi.swa.trufflelsp",
+            "javaCompliance": "1.8",
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets": "TruffleLSP",
+        },
     },
 }
