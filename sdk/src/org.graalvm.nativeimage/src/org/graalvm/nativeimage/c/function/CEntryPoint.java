@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
@@ -77,6 +78,33 @@ public @interface CEntryPoint {
      * @since 1.0
      */
     String[] documentation() default "";
+
+    /**
+     * Provides an exception handler for all exceptions that are not handled explicitly by the entry
+     * point method. Java exceptions cannot be passed back to C code. If this property is not set,
+     * any uncaught exception is treated as a {@link LogHandler#fatalError() fatal error}.
+     * <p>
+     * The provided class must have exactly one declared method (the exception handler method). The
+     * method must be static, have one parameter of type {@link Throwable} or {@link Object}, and
+     * must have a return type that is assignable to the return type of the annotated entry point
+     * method. That exception handler method is invoked when an exception reaches the entry point,
+     * and the exception is passed as the argument. The return value of the exception handler method
+     * is then the return value of the entry point, i.e., passed back to the C code.
+     *
+     * @since 1.0
+     */
+    Class<?> exceptionHandler() default FatalExceptionHandler.class;
+
+    /**
+     * Special placeholder value for {@link #exceptionHandler()} to print the caught exception and
+     * treat it as a {@link LogHandler#fatalError() fatal error}.
+     *
+     * @since 1.0
+     */
+    final class FatalExceptionHandler {
+        private FatalExceptionHandler() {
+        }
+    }
 
     /**
      * Specifies that the annotated entry point method is an alias for a built-in function as
