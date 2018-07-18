@@ -285,16 +285,17 @@ public class OptimizedCompilationProfile {
         ensureProfiling(1, replaceBackoff);
     }
 
-    final void interpreterCall(OptimizedCallTarget callTarget) {
+    final boolean interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++interpreterCallCount;
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
         if (!callTarget.isCompiling() && !compilationFailed) {
             // check if call target is hot enough to get compiled, but took not too long to get hot
             if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
                             TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                callTarget.compile();
+                return callTarget.compile();
             }
         }
+        return false;
     }
 
     private boolean isDeferredCompile(OptimizedCallTarget target) {

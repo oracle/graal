@@ -230,10 +230,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     protected final Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {
             // We are called and we are still in Truffle interpreter mode.
-            getCompilationProfile().interpreterCall(this);
             if (isValid()) {
-                // Stubs were deoptimized => reinstall.
+                // Native entry stubs were deoptimized => reinstall.
                 runtime().bypassedInstalledCode();
+            }
+            if (getCompilationProfile().interpreterCall(this)) {
+                // synchronous compile -> call again to take us to the compiled code
                 return callBoundary(args);
             }
         } else {
@@ -304,22 +306,32 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return OptimizedCompilationProfile.create(PolyglotCompilerOptions.getPolyglotValues(rootNode));
     }
 
-    public final void compile() {
+    /**
+     * Returns <code>true</code> if the call target was already compiled or was compiles
+     * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
+     * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
+     */
+    public final boolean compile() {
+        if (isValid()) {
+            return true;
+        }
         if (!isCompiling()) {
-            if (compilationProfile == null) {
-                initialize();
-            }
-
             if (!runtime().acceptForCompilation(getRootNode())) {
-                return;
+                return false;
             }
 
             CancellableCompileTask task = null;
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (!isCompiling() && !isValid()) {
-                    compilationTask = task = runtime().submitForCompilation(this);
+                if (isValid()) {
+                    return true;
+                }
+                if (this.compilationProfile == null) {
+                    initialize();
+                }
+                if (!isCompiling()) {
+                    this.compilationTask = task = runtime().submitForCompilation(this);
                 }
             }
             if (task != null) {
@@ -329,9 +341,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                                     !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
                     boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && allowBackgroundCompilation;
                     runtime().finishCompilation(this, submitted, mayBeAsynchronous);
+                    return !mayBeAsynchronous;
                 }
             }
         }
+        return false;
     }
 
     public final boolean isCompiling() {
