@@ -404,6 +404,10 @@ public abstract class LLVMSourceLocation {
         return new TextModule(name, sourceSection);
     }
 
+    public static LLVMSourceLocation createLLInstruction(LLVMSourceLocation parent, SourceSection sourceSection) {
+        return new LineScope(parent, Kind.LINE, "<line>", sourceSection);
+    }
+
     public static LLVMSourceLocation create(LLVMSourceLocation parent, LLVMSourceLocation.Kind kind, String name, LazySourceSection lazySourceSection, LLVMSourceLocation compileUnit) {
         switch (kind) {
             case LINE:

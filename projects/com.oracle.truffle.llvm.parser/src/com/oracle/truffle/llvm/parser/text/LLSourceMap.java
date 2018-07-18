@@ -86,8 +86,6 @@ final class LLSourceMap {
         }
     }
 
-    private static final String LOCATION_SCOPE_TITLE = "<line>";
-
     static final class Instruction {
 
         private final String descriptor;
@@ -100,7 +98,7 @@ final class LLSourceMap {
 
         LLVMSourceLocation toSourceLocation(Source llSource, LLVMSourceLocation parent) {
             final SourceSection sourceSection = llSource.createSection(line);
-            return LLVMSourceLocation.create(parent, LLVMSourceLocation.Kind.LINE, LOCATION_SCOPE_TITLE, new LLSourceSection(sourceSection), null);
+            return LLVMSourceLocation.createLLInstruction(parent, sourceSection);
         }
 
         String getDescriptor() {
