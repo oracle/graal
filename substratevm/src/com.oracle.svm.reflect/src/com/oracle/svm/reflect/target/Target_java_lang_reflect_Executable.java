@@ -39,7 +39,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.ExecutableDeclaredAnnotationsComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -57,21 +56,21 @@ public final class Target_java_lang_reflect_Executable {
         }
     }
 
-    public static final class ParameterComputer implements CustomFieldValueComputer {
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Executable executable = (Executable) receiver;
-            return executable.getParameters();
-        }
-    }
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableDeclaredAnnotationsComputer.class) //
+    /**
+     * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
+     * the {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     */
+    @Alias //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class) //
     Annotation[][] parameterAnnotations;
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterComputer.class) //
+
+    /**
+     * The parameters field doesn't need a value recomputation. Its value is pre-loaded in the
+     * {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     */
+    @Alias //
     Parameter[] parameters;
 
     @Alias
@@ -105,7 +104,6 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     @Substitute
-    @SuppressWarnings("unused")
     private Parameter[] privateGetParameters() {
         Target_java_lang_reflect_Executable holder = getRoot();
         if (holder == null) {
