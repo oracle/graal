@@ -70,11 +70,6 @@ public interface LLVMPointer extends TruffleObject {
     LLVMPointer increment(long offset);
 
     /**
-     * Computes the unsigned remainder.
-     */
-    long urem(long value);
-
-    /**
      * Get the {@link LLVMInteropType} of this pointer. This type is used to determine access
      * semantics from other languages.
      */

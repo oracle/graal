@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -84,7 +84,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         throw new IllegalStateException("Not convertable");
     }
 
-    public abstract static class LLVMToDoubleNoZeroExtNode extends LLVMToDoubleNode {
+    public abstract static class LLVMSignedCastToDoubleNode extends LLVMToDoubleNode {
 
         @Specialization
         protected double doDouble(boolean from) {
@@ -127,7 +127,8 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMToDoubleZeroExtNode extends LLVMToDoubleNode {
+    public abstract static class LLVMUnsignedCastToDoubleNode extends LLVMToDoubleNode {
+        private static final double LEADING_BIT = 0x1.0p63;
 
         @Specialization
         protected double doDouble(boolean from) {
@@ -143,26 +144,6 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         protected double doDouble(short from) {
             return from & LLVMExpressionNode.I16_MASK;
         }
-
-        @Specialization
-        protected double doInt(int from) {
-            return from & LLVMExpressionNode.I32_MASK;
-        }
-
-        @Specialization
-        protected double doDouble(long from) {
-            return from;
-        }
-
-        @Specialization
-        protected double doDouble(double from) {
-            return from;
-        }
-    }
-
-    public abstract static class LLVMToDoubleUnsignedNode extends LLVMToDoubleNode {
-
-        private static final double LEADING_BIT = 0x1.0p63;
 
         @Specialization
         protected double doDouble(int from) {
@@ -184,7 +165,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMToDoubleBitNode extends LLVMToDoubleNode {
+    public abstract static class LLVMBitcastToDoubleNode extends LLVMToDoubleNode {
 
         @Specialization
         protected double doDouble(long from) {
@@ -198,31 +179,31 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
         @Specialization
         protected double doI1Vector(LLVMI1Vector from) {
-            long raw = LLVMToI64BitNode.castI1Vector(from, Long.SIZE);
+            long raw = LLVMBitcastToI64Node.castI1Vector(from, Long.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
         protected double doI8Vector(LLVMI8Vector from) {
-            long raw = LLVMToI64BitNode.castI8Vector(from, Long.SIZE / Byte.SIZE);
+            long raw = LLVMBitcastToI64Node.castI8Vector(from, Long.SIZE / Byte.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
         protected double doI16Vector(LLVMI16Vector from) {
-            long raw = LLVMToI64BitNode.castI16Vector(from, Long.SIZE / Short.SIZE);
+            long raw = LLVMBitcastToI64Node.castI16Vector(from, Long.SIZE / Short.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
         protected double doI32Vector(LLVMI32Vector from) {
-            long raw = LLVMToI64BitNode.castI32Vector(from, Long.SIZE / Integer.SIZE);
+            long raw = LLVMBitcastToI64Node.castI32Vector(from, Long.SIZE / Integer.SIZE);
             return Double.longBitsToDouble(raw);
         }
 
         @Specialization
         protected double doFloatVector(LLVMFloatVector from) {
-            long raw = LLVMToI64BitNode.castFloatVector(from, Long.SIZE / Float.SIZE);
+            long raw = LLVMBitcastToI64Node.castFloatVector(from, Long.SIZE / Float.SIZE);
             return Double.longBitsToDouble(raw);
         }
 

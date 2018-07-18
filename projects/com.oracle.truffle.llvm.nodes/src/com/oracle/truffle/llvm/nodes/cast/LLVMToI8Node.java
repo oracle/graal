@@ -33,7 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -69,11 +69,21 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         return (byte) convert.executeWithTarget(from.getValue());
     }
 
-    public abstract static class LLVMToI8NoZeroExtNode extends LLVMToI8Node {
+    @Specialization
+    protected byte doI8(LLVMNativePointer from) {
+        return (byte) from.asNative();
+    }
+
+    public abstract static class LLVMSignedCastToI8Node extends LLVMToI8Node {
 
         @Specialization
         protected byte doI8(boolean from) {
             return from ? (byte) -1 : 0;
+        }
+
+        @Specialization
+        protected byte doI8(byte from) {
+            return from;
         }
 
         @Specialization
@@ -110,22 +120,12 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         protected byte doI8(LLVM80BitFloat from) {
             return from.getByteValue();
         }
-
-        @Specialization
-        protected byte doI8(LLVMNativePointer from) {
-            return (byte) from.asNative();
-        }
-
-        @Specialization
-        protected byte doI8(byte from) {
-            return from;
-        }
     }
 
-    public abstract static class LLVMToI8ZeroExtNode extends LLVMToI8Node {
+    public abstract static class LLVMUnsignedCastToI8Node extends LLVMToI8Node {
 
         @Specialization
-        protected byte doI8(boolean from) {
+        protected byte doI1(boolean from) {
             return (byte) (from ? 1 : 0);
         }
 
@@ -135,12 +135,27 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte doI8(LLVMIVarBit from) {
+        protected byte doIVarBit(LLVMIVarBit from) {
             return from.getZeroExtendedByteValue();
+        }
+
+        @Specialization
+        protected byte doFloat(float from) {
+            return (byte) from;
+        }
+
+        @Specialization
+        protected byte doFloat(double from) {
+            return (byte) from;
+        }
+
+        @Specialization
+        protected byte doLLVM80BitFloat(LLVM80BitFloat from) {
+            return from.getByteValue();
         }
     }
 
-    public abstract static class LLVMToI8BitNode extends LLVMToI8Node {
+    public abstract static class LLVMBitcastToI8Node extends LLVMToI8Node {
 
         @Specialization
         protected byte doI8(byte from) {
@@ -149,7 +164,7 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
         @Specialization
         protected byte doI1Vector(LLVMI1Vector from) {
-            return (byte) LLVMToI64BitNode.castI1Vector(from, Byte.SIZE);
+            return (byte) LLVMBitcastToI64Node.castI1Vector(from, Byte.SIZE);
         }
 
         @Specialization

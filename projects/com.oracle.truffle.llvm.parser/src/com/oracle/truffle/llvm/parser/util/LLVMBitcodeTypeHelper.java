@@ -29,79 +29,77 @@
  */
 package com.oracle.truffle.llvm.parser.util;
 
-import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMBitcodeTypeHelper {
 
-    public static LLVMArithmeticInstructionType toArithmeticInstructionType(BinaryOperator operator) {
+    public static LLVMExpressionNode createArithmeticInstruction(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator) {
         switch (operator) {
             case INT_ADD:
             case FP_ADD:
-                return LLVMArithmeticInstructionType.ADDITION;
+                return nodeFactory.createAdd(lhs, rhs);
             case INT_SUBTRACT:
             case FP_SUBTRACT:
-                return LLVMArithmeticInstructionType.SUBTRACTION;
+                return nodeFactory.createSub(lhs, rhs);
             case INT_MULTIPLY:
             case FP_MULTIPLY:
-                return LLVMArithmeticInstructionType.MULTIPLICATION;
+                return nodeFactory.createMul(lhs, rhs);
             case INT_UNSIGNED_DIVIDE:
-                return LLVMArithmeticInstructionType.UNSIGNED_DIVISION;
+                return nodeFactory.createUDiv(lhs, rhs);
             case INT_SIGNED_DIVIDE:
             case FP_DIVIDE:
-                return LLVMArithmeticInstructionType.DIVISION;
+                return nodeFactory.createDiv(lhs, rhs);
             case INT_UNSIGNED_REMAINDER:
-                return LLVMArithmeticInstructionType.UNSIGNED_REMAINDER;
+                return nodeFactory.createURem(lhs, rhs);
             case INT_SIGNED_REMAINDER:
             case FP_REMAINDER:
-                return LLVMArithmeticInstructionType.REMAINDER;
+                return nodeFactory.createRem(lhs, rhs);
             default:
                 return null;
         }
     }
 
-    public static LLVMConversionType toConversionType(CastOperator operator) {
+    public static LLVMExpressionNode createLogicalInstructionType(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator) {
         switch (operator) {
-            case FP_TO_UNSIGNED_INT:
-                return LLVMConversionType.FLOAT_TO_UINT;
+            case INT_SHIFT_LEFT:
+                return nodeFactory.createShl(lhs, rhs);
+            case INT_LOGICAL_SHIFT_RIGHT:
+                return nodeFactory.createLShr(lhs, rhs);
+            case INT_ARITHMETIC_SHIFT_RIGHT:
+                return nodeFactory.createAShr(lhs, rhs);
+            case INT_AND:
+                return nodeFactory.createAnd(lhs, rhs);
+            case INT_OR:
+                return nodeFactory.createOr(lhs, rhs);
+            case INT_XOR:
+                return nodeFactory.createXor(lhs, rhs);
+            default:
+                return null;
+        }
+    }
+
+    public static LLVMExpressionNode createCast(NodeFactory nodeFactory, LLVMExpressionNode fromNode, Type targetType, Type fromType, CastOperator operator) {
+        switch (operator) {
             case ZERO_EXTEND:
             case UNSIGNED_INT_TO_FP:
             case INT_TO_PTR:
-                return LLVMConversionType.ZERO_EXTENSION;
+            case FP_TO_UNSIGNED_INT:
+                return nodeFactory.createUnsignedCast(fromNode, targetType);
             case SIGN_EXTEND:
-            case FP_TO_SIGNED_INT:
-            case SIGNED_INT_TO_FP:
-            case FP_EXTEND:
-                return LLVMConversionType.SIGN_EXTENSION;
             case TRUNCATE:
-            case PTR_TO_INT:
+            case FP_TO_SIGNED_INT:
+            case FP_EXTEND:
             case FP_TRUNCATE:
-                return LLVMConversionType.TRUNC;
+            case PTR_TO_INT:
+            case SIGNED_INT_TO_FP:
+                return nodeFactory.createSignedCast(fromNode, targetType);
             case BITCAST:
-                return LLVMConversionType.BITCAST;
+                return nodeFactory.createBitcast(fromNode, targetType, fromType);
             case ADDRESS_SPACE_CAST:
-            default:
-                return null;
-        }
-    }
-
-    public static LLVMLogicalInstructionKind toLogicalInstructionType(BinaryOperator operator) {
-        switch (operator) {
-            case INT_SHIFT_LEFT:
-                return LLVMLogicalInstructionKind.SHIFT_LEFT;
-            case INT_LOGICAL_SHIFT_RIGHT:
-                return LLVMLogicalInstructionKind.LOGICAL_SHIFT_RIGHT;
-            case INT_ARITHMETIC_SHIFT_RIGHT:
-                return LLVMLogicalInstructionKind.ARITHMETIC_SHIFT_RIGHT;
-            case INT_AND:
-                return LLVMLogicalInstructionKind.AND;
-            case INT_OR:
-                return LLVMLogicalInstructionKind.OR;
-            case INT_XOR:
-                return LLVMLogicalInstructionKind.XOR;
             default:
                 return null;
         }

@@ -40,7 +40,7 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMToIVarNoZeroExtNode extends LLVMToVarINode {
+    public abstract static class LLVMSignedCastToIVarNode extends LLVMToVarINode {
 
         public abstract int getBits();
 
@@ -60,12 +60,12 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMIVarBit doI32(long from) {
+        protected LLVMIVarBit doI64(long from) {
             return LLVMIVarBit.fromLong(getBits(), from);
         }
 
         @Specialization
-        protected LLVMIVarBit doVarI(LLVMIVarBit from) {
+        protected LLVMIVarBit doIVarBit(LLVMIVarBit from) {
             return LLVMIVarBit.create(getBits(), from.getSignExtendedBytes(), from.getBitSize(), true);
         }
 
@@ -77,7 +77,7 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
-    public abstract static class LLVMToIVarZeroExtNode extends LLVMToVarINode {
+    public abstract static class LLVMUnsignedCastToIVarNode extends LLVMToVarINode {
 
         public abstract int getBits();
 
@@ -102,17 +102,56 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMIVarBit doVarI(LLVMIVarBit from) {
+        protected LLVMIVarBit doIVarBit(LLVMIVarBit from) {
             return LLVMIVarBit.create(getBits(), from.getBytes(), from.getBitSize(), false);
         }
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVM80BitFloatToIVarBitwidthNode extends LLVMToVarINode {
+    @NodeField(type = int.class, name = "bits")
+    public abstract static class LLVMBitcastToIVarNode extends LLVMToVarINode {
+
+        public abstract int getBits();
+
+        @Specialization
+        protected LLVMIVarBit doI8(byte from) {
+            return LLVMIVarBit.fromByte(getBits(), from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doI16(short from) {
+            return LLVMIVarBit.fromShort(getBits(), from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doI32(int from) {
+            return LLVMIVarBit.fromInt(getBits(), from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doI64(long from) {
+            return LLVMIVarBit.fromLong(getBits(), from);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doIVarBit(LLVMIVarBit from) {
+            return from;
+        }
+
+        @Specialization
+        protected LLVMIVarBit doFloat(float from) {
+            return LLVMIVarBit.fromInt(getBits(), Float.floatToIntBits(from));
+        }
+
+        @Specialization
+        protected LLVMIVarBit doDouble(double from) {
+            return LLVMIVarBit.fromLong(getBits(), Double.doubleToLongBits(from));
+        }
 
         @Specialization
         protected LLVMIVarBit do80BitFloat(LLVM80BitFloat from) {
-            return LLVMIVarBit.create(LLVM80BitFloat.BIT_WIDTH, from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, false);
+            assert getBits() == LLVM80BitFloat.BIT_WIDTH;
+            return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, true);
         }
     }
 }

@@ -42,6 +42,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameNuller;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMBitcastToI64NodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMSignedCastToI64NodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMUnsignedCastToI64NodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
@@ -328,19 +331,12 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShu
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI64VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShufflePointerVectorNodeGen;
-import com.oracle.truffle.llvm.parser.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.parser.NodeFactory;
-import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.model.enums.Flag;
-import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.runtime.CompareOperator;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -349,6 +345,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
@@ -525,123 +522,128 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createReadModifyWrite(ReadModifyWriteOperator operator, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
-        if (type instanceof PrimitiveType) {
-            switch (operator) {
-                case XCHG:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWXchgNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWXchgNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWXchgNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWXchgNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWXchgNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case ADD:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWAddNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWAddNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWAddNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWAddNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWAddNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case SUB:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWSubNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWSubNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWSubNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWSubNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWSubNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case AND:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWAndNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWAndNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWAndNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWAndNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWAndNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case NAND:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWNandNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWNandNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWNandNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWNandNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWNandNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case OR:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWOrNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWOrNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWOrNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWOrNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWOrNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case XOR:
-                    switch (((PrimitiveType) type).getPrimitiveKind()) {
-                        case I1:
-                            return LLVMI1RMWNodeFactory.LLVMI1RMWXorNodeGen.create(pointerNode, valueNode);
-                        case I8:
-                            return LLVMI8RMWNodeFactory.LLVMI8RMWXorNodeGen.create(pointerNode, valueNode);
-                        case I16:
-                            return LLVMI16RMWNodeFactory.LLVMI16RMWXorNodeGen.create(pointerNode, valueNode);
-                        case I32:
-                            return LLVMI32RMWNodeFactory.LLVMI32RMWXorNodeGen.create(pointerNode, valueNode);
-                        case I64:
-                            return LLVMI64RMWNodeFactory.LLVMI64RMWXorNodeGen.create(pointerNode, valueNode);
-                        default:
-                            throw new AssertionError(type);
-                    }
-                case MAX:
-                case MIN:
-                case UMAX:
-                case UMIN:
-                default:
-                    throw new AssertionError(operator);
-            }
-        } else {
-            throw new AssertionError(type);
+    public LLVMExpressionNode createRMWXchg(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWXchgNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWXchgNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWXchgNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWXchgNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWXchgNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createRMWAdd(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWAddNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWAddNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWAddNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWAddNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWAddNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createRMWSub(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWSubNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWSubNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWSubNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWSubNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWSubNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createRMWAnd(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWAndNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWAndNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWAndNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWAndNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWAndNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createRMWNand(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWNandNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWNandNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWNandNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWNandNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWNandNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createRMWOr(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWOrNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWOrNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWOrNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWOrNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWOrNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    @Override
+    public LLVMExpressionNode createRMWXor(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        switch (((PrimitiveType) type).getPrimitiveKind()) {
+            case I1:
+                return LLVMI1RMWNodeFactory.LLVMI1RMWXorNodeGen.create(pointerNode, valueNode);
+            case I8:
+                return LLVMI8RMWNodeFactory.LLVMI8RMWXorNodeGen.create(pointerNode, valueNode);
+            case I16:
+                return LLVMI16RMWNodeFactory.LLVMI16RMWXorNodeGen.create(pointerNode, valueNode);
+            case I32:
+                return LLVMI32RMWNodeFactory.LLVMI32RMWXorNodeGen.create(pointerNode, valueNode);
+            case I64:
+                return LLVMI64RMWNodeFactory.LLVMI64RMWXorNodeGen.create(pointerNode, valueNode);
+            default:
+                throw new AssertionError(type);
         }
     }
 
@@ -651,23 +653,33 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionKind type, Type llvmType, Flag[] flags) {
-        switch (type) {
-            case AND:
-                return LLVMAndNodeGen.create(left, right);
-            case ARITHMETIC_SHIFT_RIGHT:
-                return LLVMAshrNodeGen.create(left, right);
-            case LOGICAL_SHIFT_RIGHT:
-                return LLVMLshrNodeGen.create(left, right);
-            case OR:
-                return LLVMOrNodeGen.create(left, right);
-            case SHIFT_LEFT:
-                return LLVMShlNodeGen.create(left, right);
-            case XOR:
-                return LLVMXorNodeGen.create(left, right);
-            default:
-                throw new AssertionError(llvmType);
-        }
+    public LLVMExpressionNode createShl(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMShlNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createLShr(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMLshrNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createAShr(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMAshrNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createAnd(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMAndNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createOr(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMOrNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createXor(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMXorNodeGen.create(left, right);
     }
 
     @Override
@@ -1012,30 +1024,53 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType type) {
-        return LLVMCastsFactory.cast(fromNode, targetType, fromType, type);
+    public LLVMExpressionNode createSignedCast(LLVMExpressionNode fromNode, Type targetType) {
+        return LLVMCastsFactory.signedCast(this, fromNode, targetType);
     }
 
     @Override
-    public LLVMExpressionNode createArithmeticOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, Type llvmType, Flag[] flags) {
-        switch (type) {
-            case ADDITION:
-                return LLVMAddNodeGen.create(left, right);
-            case SUBTRACTION:
-                return LLVMSubNodeGen.create(left, right);
-            case MULTIPLICATION:
-                return LLVMMulNodeGen.create(left, right);
-            case DIVISION:
-                return LLVMDivNodeGen.create(left, right);
-            case REMAINDER:
-                return LLVMRemNodeGen.create(left, right);
-            case UNSIGNED_REMAINDER:
-                return LLVMURemNodeGen.create(left, right);
-            case UNSIGNED_DIVISION:
-                return LLVMUDivNodeGen.create(left, right);
-            default:
-                throw new AssertionError(type);
-        }
+    public LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, Type targetType) {
+        return LLVMCastsFactory.unsignedCast(this, fromNode, targetType);
+    }
+
+    @Override
+    public LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType) {
+        return LLVMCastsFactory.bitCast(this, fromNode, targetType);
+    }
+
+    @Override
+    public LLVMExpressionNode createAdd(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMAddNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createSub(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMSubNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createMul(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMMulNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createDiv(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMDivNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createUDiv(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMUDivNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createRem(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMRemNodeGen.create(left, right);
+    }
+
+    @Override
+    public LLVMExpressionNode createURem(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return LLVMURemNodeGen.create(left, right);
     }
 
     @Override
@@ -1454,11 +1489,9 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, FrameDescriptor frame, FunctionDefinition functionHeader, Source bcSource,
-                    LLVMSourceLocation location) {
-        final String originalName = functionHeader.getSourceName();
-        return new LLVMFunctionStartNode(context.getLanguage(), functionBodyNode, frame, functionHeader.getName(), functionHeader.getParameters().size(), originalName, bcSource,
-                        location);
+    public RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, FrameDescriptor frame, String name, String originalName,
+                    int argumentCount, Source bcSource, LLVMSourceLocation location) {
+        return new LLVMFunctionStartNode(context.getLanguage(), functionBodyNode, frame, name, argumentCount, originalName, bcSource, location);
     }
 
     @Override
@@ -1473,7 +1506,8 @@ public class BasicNodeFactory implements NodeFactory {
             retOffsets = getStackSpace.getOffsets();
         }
 
-        LLVMInlineAssemblyRootNode assemblyRoot = InlineAssemblyParser.parseInlineAssembly(context.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
+        LLVMInlineAssemblyRootNode assemblyRoot = InlineAssemblyParser.parseInlineAssembly(this, context.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes,
+                        retOffsets);
         LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(context, "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
         asm.define(library, new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null));
         LLVMFunctionLiteralNode asmFunction = LLVMFunctionLiteralNodeGen.create(asm);
@@ -2143,5 +2177,20 @@ public class BasicNodeFactory implements NodeFactory {
         } else {
             throw new AssertionError(type);
         }
+    }
+
+    @Override
+    public LLVMExpressionNode createSignedCastToI64(LLVMExpressionNode fromNode) {
+        return LLVMSignedCastToI64NodeGen.create(fromNode);
+    }
+
+    @Override
+    public LLVMExpressionNode createUnsignedCastToI64(LLVMExpressionNode fromNode) {
+        return LLVMUnsignedCastToI64NodeGen.create(fromNode);
+    }
+
+    @Override
+    public LLVMExpressionNode createBitcastToI64(LLVMExpressionNode fromNode) {
+        return LLVMBitcastToI64NodeGen.create(fromNode);
     }
 }

@@ -34,8 +34,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -70,20 +70,33 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     }
 
     @Specialization
+    protected LLVMPointer doLLVMPointer(LLVMPointer from) {
+        return from;
+    }
+
+    @Specialization
     protected LLVMNativePointer doFunctionDescriptor(LLVMFunctionDescriptor from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(from);
     }
 
     @Specialization
-    protected LLVMPointer doLLVMPointer(LLVMPointer from) {
+    protected LLVMVirtualAllocationAddress doVirtualAllocationAddress(LLVMVirtualAllocationAddress from) {
         return from;
     }
 
-    @Child private ForeignToLLVM toLong = ForeignToLLVM.create(ForeignToLLVMType.I64);
+    @Specialization
+    protected LLVMInteropType doInteropType(LLVMInteropType from) {
+        return from;
+    }
 
     @Specialization
-    protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return LLVMNativePointer.create((long) toLong.executeWithTarget(from.getValue()));
+    protected String doString(String from) {
+        return from;
+    }
+
+    @Specialization
+    protected LLVMBoxedPrimitive doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return from;
     }
 }

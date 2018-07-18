@@ -29,11 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CompareOperator;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class CompareConstant extends AbstractConstant {
 
@@ -76,7 +77,7 @@ public final class CompareConstant extends AbstractConstant {
     }
 
     public static CompareConstant fromSymbols(SymbolTable symbols, Type type, int opcode, int lhs, int rhs) {
-        final CompareConstant constant = new CompareConstant(type, CompareOperator.decode(opcode));
+        final CompareConstant constant = new CompareConstant(type, CompareInstruction.decodeCompareOperator(opcode));
         constant.lhs = symbols.getForwardReferenced(lhs, constant);
         constant.rhs = symbols.getForwardReferenced(rhs, constant);
         return constant;

@@ -29,16 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -49,8 +44,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMLogicNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAndNode extends LLVMLogicNode {
-        private static final long ALIGNMENT_BITS = 8;
-        private static final long IS_ALIGNMENT = (-1L) >>> ALIGNMENT_BITS;
 
         @Specialization
         protected boolean and(boolean left, boolean right) {
@@ -75,21 +68,6 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         @Specialization
         protected long and(long left, long right) {
             return left & right;
-        }
-
-        @Specialization
-        protected LLVMNativePointer and(LLVMNativePointer left, long right) {
-            return left.and(right);
-        }
-
-        @Specialization(guards = "doesAlignment(right)")
-        protected LLVMPointer andAlign(LLVMManagedPointer left, long right) {
-            return left.andAlign(right);
-        }
-
-        @Specialization(guards = "!doesAlignment(right)")
-        protected long andRem(LLVMManagedPointer left, long right) {
-            return left.andRem(right);
         }
 
         @Specialization
@@ -120,12 +98,6 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         @Specialization
         protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.and(right);
-        }
-
-        protected static boolean doesAlignment(long right) {
-            // we assume that the AND operation is used for alignment if all upper bits of the right
-            // AND operand are 1
-            return (right >>> ALIGNMENT_BITS) == IS_ALIGNMENT;
         }
     }
 
@@ -309,33 +281,6 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         @Specialization
         protected long ashr(long left, long right) {
             return left >>> right;
-        }
-
-        @Specialization
-        protected long ashr(LLVMNativePointer left, long right) {
-            return ashr(left.asNative(), right);
-        }
-
-        @Specialization
-        protected long ashr(long left, LLVMNativePointer right) {
-            return ashr(left, right.asNative());
-        }
-
-        @Specialization
-        protected long ashr(LLVMNativePointer left, LLVMNativePointer right) {
-            return ashr(left.asNative(), right.asNative());
-        }
-
-        @Specialization
-        protected long ashr(LLVMManagedPointer left, long right,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            return ashr(toNative.executeWithTarget(left), right);
-        }
-
-        @Specialization
-        protected long ashr(LLVMManagedPointer left, LLVMNativePointer right,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            return ashr(toNative.executeWithTarget(left), right.asNative());
         }
 
         @Specialization

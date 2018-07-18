@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMSignedToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+    public abstract static class LLVMSignedCastToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         protected LLVM80BitFloat do80BitFloat(byte from) {
@@ -86,7 +86,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMUnsignedToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+    public abstract static class LLVMUnsignedCastToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
         protected LLVM80BitFloat do80BitFloat(byte from) {
@@ -125,7 +125,17 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     }
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    public abstract static class LLVMToLLVM80BitFloatBitNode extends LLVMTo80BitFloatingNode {
+    public abstract static class LLVMBitcastToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+
+        @Specialization
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVM80BitFloat from) {
+            return from;
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIVarBit(LLVMIVarBit from) {
+            return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
+        }
 
         @Specialization
         protected LLVM80BitFloat doI1Vector(LLVMI1Vector from) {

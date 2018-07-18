@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.runtime;
 
 import java.util.List;
 
@@ -35,14 +35,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
-import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.model.enums.Flag;
-import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -85,11 +77,33 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createStore(LLVMContext context, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, LLVMSourceLocation source);
 
-    LLVMExpressionNode createReadModifyWrite(ReadModifyWriteOperator operator, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+    LLVMExpressionNode createRMWXchg(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+
+    LLVMExpressionNode createRMWAdd(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+
+    LLVMExpressionNode createRMWSub(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+
+    LLVMExpressionNode createRMWAnd(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+
+    LLVMExpressionNode createRMWNand(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+
+    LLVMExpressionNode createRMWOr(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
+
+    LLVMExpressionNode createRMWXor(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
     LLVMStatementNode createFence();
 
-    LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionKind opCode, Type llvmType, Flag[] flags);
+    LLVMExpressionNode createShl(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createLShr(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createAShr(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createAnd(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createOr(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createXor(LLVMExpressionNode left, LLVMExpressionNode right);
 
     LLVMExpressionNode createLiteral(Object value, Type type);
 
@@ -119,9 +133,25 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs);
 
-    LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType type);
+    LLVMExpressionNode createSignedCast(LLVMExpressionNode fromNode, Type targetType);
 
-    LLVMExpressionNode createArithmeticOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType instr, Type llvmType, Flag[] flags);
+    LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, Type targetType);
+
+    LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType);
+
+    LLVMExpressionNode createAdd(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createSub(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createMul(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createDiv(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createUDiv(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createRem(LLVMExpressionNode left, LLVMExpressionNode right);
+
+    LLVMExpressionNode createURem(LLVMExpressionNode left, LLVMExpressionNode right);
 
     LLVMExpressionNode createExtractValue(Type type, LLVMExpressionNode targetAddress);
 
@@ -174,8 +204,8 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegionAllocator uniquesRegionAllocator,
                     FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame);
 
-    RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader, Source bcSource,
-                    LLVMSourceLocation location);
+    RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, FrameDescriptor frameDescriptor, String name, String originalName,
+                    int argumentCount, Source bcSource, LLVMSourceLocation location);
 
     LLVMExpressionNode createInlineAssemblerExpression(LLVMContext context, ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType,
                     LLVMSourceLocation sourceSection);
@@ -219,4 +249,10 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMExpressionNode createStackSave(LLVMContext context, LLVMSourceLocation sourceSection);
 
     LLVMExpressionNode createStackRestore(LLVMContext context, LLVMExpressionNode stackPointer, LLVMSourceLocation sourceSection);
+
+    LLVMExpressionNode createSignedCastToI64(LLVMExpressionNode fromNode);
+
+    LLVMExpressionNode createUnsignedCastToI64(LLVMExpressionNode fromNode);
+
+    LLVMExpressionNode createBitcastToI64(LLVMExpressionNode fromNode);
 }
