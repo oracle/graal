@@ -24,12 +24,8 @@
  */
 package com.oracle.svm.core.posix;
 
-import java.io.IOException;
 import java.util.zip.DataFormatException;
-import java.util.zip.ZipFile;
 
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.TargetElement;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -46,7 +42,6 @@ import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.ZLib;
 import com.oracle.svm.core.posix.headers.ZLib.z_stream;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(java.util.zip.Adler32.class)
