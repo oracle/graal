@@ -26,19 +26,10 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
  * Means for accessing object references, explicitly distinguishing between compressed and
@@ -73,75 +64,17 @@ public interface ReferenceAccess {
     void writeObjectBarrieredAt(Object object, UnsignedWord offsetInObject, Object value, boolean compressed);
 
     /**
+     * Return the compressed representation of an object reference.
+     */
+    UnsignedWord getCompressedRepresentation(Object obj);
+
+    /**
+     * Get an object reference from its compressed representation.
+     */
+    Object uncompressReference(UnsignedWord ref);
+
+    /**
      * Returns true iff compressed references are available.
      */
     boolean haveCompressedReferences();
-}
-
-final class ReferenceAccessImpl implements ReferenceAccess {
-    static void initialize() {
-        ImageSingletons.add(ReferenceAccess.class, new ReferenceAccessImpl());
-    }
-
-    private ReferenceAccessImpl() {
-    }
-
-    @Override
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
-    public Word readObjectAsUntrackedPointer(Pointer p, boolean compressed) {
-        assert !compressed || haveCompressedReferences();
-        Object obj = readObjectAt(p, compressed);
-        return Word.objectToUntrackedPointer(obj);
-    }
-
-    @Override
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
-    public Object readObjectAt(Pointer p, boolean compressed) {
-        assert !compressed || haveCompressedReferences();
-        Word w = (Word) p;
-        if (compressed) {
-            return ObjectAccess.readObject(WordFactory.nullPointer(), p);
-        } else {
-            return w.readObject(0);
-        }
-    }
-
-    @Override
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
-    public void writeObjectAt(Pointer p, Object value, boolean compressed) {
-        assert !compressed || haveCompressedReferences();
-        Word w = (Word) p;
-        if (compressed) {
-            ObjectAccess.writeObject(WordFactory.nullPointer(), p, value);
-        } else {
-            // this overload has no uncompression semantics
-            w.writeObject(0, value);
-        }
-    }
-
-    @Override
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
-    public void writeObjectBarrieredAt(Object object, UnsignedWord offsetInObject, Object value, boolean compressed) {
-        assert compressed || !haveCompressedReferences() : "Heap object must contain only compressed references";
-        BarrieredAccess.writeObject(object, offsetInObject, value);
-    }
-
-    @Override
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
-    public boolean haveCompressedReferences() {
-        return SubstrateOptions.UseHeapBaseRegister.getValue();
-    }
-}
-
-@AutomaticFeature
-class ReferenceAccessFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ReferenceAccessImpl.initialize();
-    }
 }

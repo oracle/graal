@@ -38,7 +38,6 @@ from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=
 from os.path import join, exists, basename, dirname, islink
 # { GR-8964
 from shutil import copy2
-# from time import strftime, gmtime
 import time
 # } GR-8964
 import collections
@@ -172,8 +171,28 @@ def remove_existing_symlink(target_path):
         os.remove(target_path)
     return target_path
 
-def relsymlink(target_path, dest_path):
-    os.symlink(os.path.relpath(target_path, dirname(dest_path)), dest_path)
+def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
+    # Follow symbolic links in case they go outside my suite directories.
+    real_target_path = os.path.realpath(target_path)
+    if debug_gr_8964:
+        mx.log('  [mx_substratevm.symlink_or_copy:')
+        mx.log('    suite.dir:' + suite.dir)
+        mx.log('    target_path: ' + target_path)
+        mx.log('    real_target_path: ' + real_target_path)
+        mx.log('    dest_path: ' + dest_path)
+    if any(real_target_path.startswith(s.dir) for s in mx.suites(includeBinary=False)):
+        # Symbolic link to files in my suites.
+        sym_target = os.path.relpath(real_target_path, dirname(dest_path))
+        if debug_gr_8964:
+            mx.log('      symlink target: ' + sym_target)
+        os.symlink(sym_target, dest_path)
+    else:
+        # Else copy the file to so it can not change out from under me.
+        if debug_gr_8964:
+            mx.log('      copy2: ')
+        copy2(real_target_path, dest_path)
+    if debug_gr_8964:
+        mx.log('  ]')
 
 def native_image_layout(dists, subdir, native_image_root, debug_gr_8964=False):
     if not dists:
@@ -186,22 +205,24 @@ def native_image_layout(dists, subdir, native_image_root, debug_gr_8964=False):
         remove_tree(dest_path)
     mkpath(dest_path)
     # Create symlinks to conform with native-image directory layout scheme
-    # GR-8964: Copy the jar instead of symlinking to it.
     def symlink_jar(jar_path):
         if debug_gr_8964:
+            def log_stat(prefix, file_name):
+                file_stat = os.stat(file_name)
+                mx.log('    ' + prefix + '.st_mode: ' + oct(file_stat.st_mode))
+                mx.log('    ' + prefix + '.st_mtime: ' + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(file_stat.st_mtime)))
+
             dest_jar = join(dest_path, basename(jar_path))
-            if debug_gr_8964:
-                mx.log('[mx_substratevm.native_image_layout.symlink_jar: copy2' + \
-                    '\n  src: ' + jar_path + \
-                    '\n  dst: ' + dest_jar)
-            copy2(jar_path, dest_jar)
-            dest_stat = os.stat(dest_jar)
-            if debug_gr_8964:
-                mx.log('      ' + \
-                    ' .st_mode: ' + oct(dest_stat.st_mode) + \
-                    ' .st_mtime: ' + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(dest_stat.st_mtime)) + ']')
+            mx.log('[mx_substratevm.native_image_layout.symlink_jar: symlink_or_copy')
+            mx.log('  src: ' + jar_path)
+            log_stat('src', jar_path)
+            mx.log('  dst: ' + dest_jar)
+            symlink_or_copy(jar_path, dest_jar, debug_gr_8964)
+            log_stat('dst', dest_jar)
+            mx.log(']')
         else:
-            relsymlink(jar_path, join(dest_path, basename(jar_path)))
+            symlink_or_copy(jar_path, join(dest_path, basename(jar_path)), debug_gr_8964)
+
     for dist in dists:
         mx.logv('Add ' + type(dist).__name__ + ' ' + str(dist) + ' to ' + dest_path)
         symlink_jar(dist.path)
@@ -233,7 +254,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
     if option_properties:
         mx.logv('Add symlink to ' + str(option_properties))
         mkpath(target_dir)
-        relsymlink(option_properties, target_path)
+        symlink_or_copy(option_properties, target_path)
 
 flag_suitename_map = collections.OrderedDict([
     ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
@@ -334,7 +355,7 @@ def layout_native_image_root(native_image_root):
     jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
     if os.path.isdir(jvmci_path):
         for symlink_name in os.listdir(jvmci_path):
-            relsymlink(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
+            symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
@@ -430,7 +451,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     if exists(option_properties):
         if not exists(target_path):
             mx.logv('Add symlink to ' + str(option_properties))
-            relsymlink(option_properties, target_path)
+            symlink_or_copy(option_properties, target_path, debug_gr_8964=debug_gr_8964)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
     return language_suite
@@ -458,7 +479,8 @@ GraalTags = Tags([
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964=False, native_image_cmd=''):
     common_args = [] if common_args is None else common_args
-    base_args = ['-H:Path=' + svmbuild_dir()]
+    base_args = ['-H:+EnforceMaxRuntimeCompileMethods']
+    base_args += ['-H:Path=' + svmbuild_dir()]
     if debug_gr_8964:
         base_args += ['-Ddebug_gr_8964=true']
     if mx.get_opts().verbose:
@@ -503,7 +525,14 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
         if exists(native_image_cmd):
             _native_image(['--server-shutdown'])
 
-native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
+#
+# It is essential to bootstrap JVMCI here ('-J-XX:+BootstrapJVMCI'). The `-esa` flag kills all parallelism in
+# multi-threaded execution when code is compiled with the C1 compiler with profiling enabled (Tier 3). Without
+# '-J-XX:+BootstrapJVMCI', `native-image` often ends up in the state where most of the code is in Tier 3,
+# hence N image-build threads and all CI threads effectively operate synchronously. Exiting this state usually takes
+# around 10 minutes as CI threads are crawling due to all un-parallelised work.
+#
+native_image_context.hosted_assertions = ['-J-ea', '-J-esa', '-J-XX:+BootstrapJVMCI', '-Dgraal.CompilationWatchDogStartDelay=30', '-Dgraal.CompilationWatchDogStackTraceInterval=30']
 
 def svm_gate_body(args, tasks):
     # Debug GR-8964 on Darwin gates

@@ -131,6 +131,7 @@ public abstract class Source {
 
     private volatile TextMap textMap;
     private volatile URI computedURI;
+    volatile org.graalvm.polyglot.Source polyglotSource;
 
     abstract Object getSourceId();
 

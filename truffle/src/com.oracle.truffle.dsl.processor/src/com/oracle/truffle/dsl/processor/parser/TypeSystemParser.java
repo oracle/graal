@@ -191,9 +191,11 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
         }
     }
 
+    private static final TypeKind[] TYPE_KIND_VALUES = TypeKind.values();
+
     private boolean isPrimitiveWrapper(TypeMirror type) {
         Types types = context.getEnvironment().getTypeUtils();
-        for (TypeKind kind : TypeKind.values()) {
+        for (TypeKind kind : TYPE_KIND_VALUES) {
             if (!kind.isPrimitive()) {
                 continue;
             }

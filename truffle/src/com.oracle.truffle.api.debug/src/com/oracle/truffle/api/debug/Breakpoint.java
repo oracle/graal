@@ -138,7 +138,9 @@ public class Breakpoint {
          *
          * @since 1.0
          */
-        EXCEPTION,
+        EXCEPTION;
+
+        static final Kind[] VALUES = values();
     }
 
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();

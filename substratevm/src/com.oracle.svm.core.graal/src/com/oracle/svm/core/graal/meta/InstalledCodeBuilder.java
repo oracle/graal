@@ -33,8 +33,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -42,7 +44,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -52,10 +53,10 @@ import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeMethodInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.code.amd64.AMD64InstructionPatcher;
+import com.oracle.svm.core.graal.code.amd64.AMD64InstructionPatcher.PatchData;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -75,6 +76,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
@@ -112,24 +114,12 @@ public class InstalledCodeBuilder {
     private RuntimeMethodInfo runtimeMethodInfo;
 
     /**
-     * The walker for the GC to visit object references in the constants area of the compiled
-     * method.
+     * The walker for the GC to visit object references in the installed code.
      */
     public static class ConstantsWalker extends ObjectReferenceWalker {
+        Pointer baseAddr;
+        int size;
 
-        /**
-         * The address of the constants area, which is located right after the compiled code.
-         */
-        Pointer constantsAddr;
-
-        /**
-         * The size of the constants area.
-         */
-        int constantsSize;
-
-        /**
-         * The pointer map for the constants.
-         */
         byte[] referenceMapEncoding;
         long referenceMapIndex;
 
@@ -142,7 +132,7 @@ public class InstalledCodeBuilder {
         @Override
         public boolean walk(final ObjectReferenceVisitor referenceVisitor) {
             if (pointerMapValid) {
-                return ReferenceMapDecoder.walkOffsetsFromPointer(constantsAddr, referenceMapEncoding, referenceMapIndex, referenceVisitor);
+                return ReferenceMapDecoder.walkOffsetsFromPointer(baseAddr, referenceMapEncoding, referenceMapIndex, referenceVisitor);
             }
             return false;
         }
@@ -150,15 +140,12 @@ public class InstalledCodeBuilder {
         /** For verification: Does the memory known to this walker contain this pointer? */
         @Override
         public boolean containsPointer(final Pointer p) {
-            final boolean atLeast = constantsAddr.belowOrEqual(p);
-            final boolean atMost = p.belowThan(constantsAddr.add(constantsSize));
-            final boolean result = (atLeast && atMost);
-            return result;
+            return baseAddr.belowOrEqual(p) && p.belowThan(baseAddr.add(size));
         }
     }
 
     /**
-     * The pointer map for the constants area (which is located right after the compiled code).
+     * The pointer map for constant references, which are in the code or the data area.
      */
     private ConstantsWalker constantsWalker;
 
@@ -197,7 +184,7 @@ public class InstalledCodeBuilder {
 
             int constantsSize = compilation.getDataSection().getSectionSize();
             codeSize = compilation.getTargetCodeSize();
-            int tmpConstantsOffset = ObjectLayout.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
+            int tmpConstantsOffset = NumUtil.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
             int tmpMemorySize = tmpConstantsOffset + constantsSize;
 
             // Allocate executable memory. It contains the compiled code and the constants
@@ -237,10 +224,10 @@ public class InstalledCodeBuilder {
                 freeOSMemory(code, WordFactory.unsigned(tmpMemorySize));
 
                 // Add space for the actual trampoline jump instructions: jmp [rip+offset]
-                tmpConstantsOffset = ObjectLayout.roundUp(codeSize + directTargets.size() * TRAMPOLINE_JUMP_SIZE, 8);
+                tmpConstantsOffset = NumUtil.roundUp(codeSize + directTargets.size() * TRAMPOLINE_JUMP_SIZE, 8);
                 // Add space for the target addresses
                 // (which are referenced from the jump instructions)
-                tmpConstantsOffset = ObjectLayout.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
+                tmpConstantsOffset = NumUtil.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
                 if (tmpConstantsOffset > compiledBytes.length) {
                     compiledBytes = Arrays.copyOf(compiledBytes, tmpConstantsOffset);
                 }
@@ -264,22 +251,17 @@ public class InstalledCodeBuilder {
         final Object[] values;
         int count;
 
-        final SubstrateReferenceMap referenceMap;
-
         ObjectConstantsHolder(CompilationResult compilation) {
             /* Conservative estimate on the maximum number of object constants we might have. */
-            offsets = new int[compilation.getDataSection().getSectionSize() / FrameAccess.wordSize()];
+            int maxReferences = compilation.getDataSection().getSectionSize() / ConfigurationValues.getObjectLayout().getReferenceSize();
+            offsets = new int[maxReferences];
             values = new Object[offsets.length];
-            referenceMap = new SubstrateReferenceMap();
         }
 
         void add(int offset, Object value) {
             offsets[count] = offset;
             values[count] = value;
             count++;
-
-            assert offset % FrameAccess.wordSize() == 0;
-            referenceMap.markReferenceAtIndex(offset / FrameAccess.wordSize());
         }
     }
 
@@ -289,8 +271,10 @@ public class InstalledCodeBuilder {
 
     @SuppressWarnings("try")
     private void installOperation() {
+        SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
+
         AMD64InstructionPatcher patcher = new AMD64InstructionPatcher(compilation);
-        patchData(patcher);
+        patchData(patcher, referenceMap);
 
         int updatedCodeSize = patchCalls(patcher);
         assert updatedCodeSize <= constantsOffset;
@@ -310,6 +294,9 @@ public class InstalledCodeBuilder {
 
         compilation.getDataSection().buildDataSection(constantsBuffer, (position, constant) -> {
             objectConstants.add(position, KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class));
+
+            int offset = constantsOffset + position;
+            referenceMap.markReferenceAtOffset(offset, true);
         });
 
         // Open the PinnedAllocator for the meta-information.
@@ -319,11 +306,11 @@ public class InstalledCodeBuilder {
             constantsWalker = metaInfoAllocator.newInstance(ConstantsWalker.class);
 
             ReferenceMapEncoder encoder = new ReferenceMapEncoder();
-            encoder.add(objectConstants.referenceMap);
+            encoder.add(referenceMap);
             constantsWalker.referenceMapEncoding = encoder.encodeAll(metaInfoAllocator);
-            constantsWalker.referenceMapIndex = encoder.lookupEncoding(objectConstants.referenceMap);
-            constantsWalker.constantsAddr = code.add(constantsOffset);
-            constantsWalker.constantsSize = compilation.getDataSection().getSectionSize();
+            constantsWalker.referenceMapIndex = encoder.lookupEncoding(referenceMap);
+            constantsWalker.baseAddr = code;
+            constantsWalker.size = codeSize;
             Heap.getHeap().getGC().registerObjectReferenceWalker(constantsWalker);
 
             /*
@@ -394,12 +381,25 @@ public class InstalledCodeBuilder {
         sourcePositionEncoder.install(runtimeMethodInfo);
     }
 
-    private void patchData(AMD64InstructionPatcher patcher) {
+    private void patchData(AMD64InstructionPatcher patcher, SubstrateReferenceMap referenceMap) {
         for (DataPatch dataPatch : compilation.getDataPatches()) {
-            DataSectionReference ref = (DataSectionReference) dataPatch.reference;
-            int pcDisplacement = constantsOffset + ref.getOffset() - dataPatch.pcOffset;
+            if (dataPatch.reference instanceof DataSectionReference) {
+                DataSectionReference ref = (DataSectionReference) dataPatch.reference;
+                int pcDisplacement = constantsOffset + ref.getOffset() - dataPatch.pcOffset;
+                patcher.findPatchData(dataPatch.pcOffset, pcDisplacement).apply(compiledBytes);
 
-            patcher.findPatchData(dataPatch.pcOffset, pcDisplacement).apply(compiledBytes);
+            } else if (dataPatch.reference instanceof ConstantReference) {
+                ConstantReference ref = (ConstantReference) dataPatch.reference;
+                SubstrateObjectConstant objConst = (SubstrateObjectConstant) ref.getConstant();
+                PatchData data = patcher.findPatchData(dataPatch.pcOffset, 0);
+
+                assert data.operandSize == ConfigurationValues.getObjectLayout().getReferenceSize();
+                long byteArrayBase = ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, 0);
+                int offsetInByteArray = NumUtil.safeToInt(byteArrayBase + data.operandPosition);
+                ObjectAccess.writeObject(compiledBytes, offsetInByteArray, objConst.getObject());
+
+                referenceMap.markReferenceAtOffset(data.operandPosition, true);
+            }
         }
     }
 
@@ -440,7 +440,7 @@ public class InstalledCodeBuilder {
              * Insert trampoline jumps. Note that this is only a fail-safe, because usually the code
              * should be within a 32-bit address range.
              */
-            currentPos = ObjectLayout.roundUp(currentPos, 8);
+            currentPos = NumUtil.roundUp(currentPos, 8);
             ByteBuffer codeBuffer = ByteBuffer.wrap(compiledBytes).order(ConfigurationValues.getTarget().arch.getByteOrder());
             for (Entry<Long, Integer> entry : directTargets.entrySet()) {
                 long targetAddress = entry.getKey();

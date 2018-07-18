@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.base;
-
-public class NumUtil {
-
-    public static int safeToInt(long v) {
-        assert v == (int) v;
-        return (int) v;
-    }
-}
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
+/**
+ * The management package provides tools that monitor and instrument the behavior of guest language
+ * programs.
+ * <p>
+ * See <link <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for
+ * more examples on how to use this API.
+ *
+ * @see org.graalvm.polyglot.management.ExecutionListener Execution listeners allow to instrument
+ *      the execution of guest languages.
+ * @since 1.0
+ */
+package org.graalvm.polyglot.management;

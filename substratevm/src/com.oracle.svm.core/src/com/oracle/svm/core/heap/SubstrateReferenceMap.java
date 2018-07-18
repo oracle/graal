@@ -28,11 +28,9 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.ReferenceMapEncoder.OffsetIterator;
 
 import jdk.vm.ci.code.ReferenceMap;
@@ -41,81 +39,61 @@ import jdk.vm.ci.meta.Value;
 
 public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapEncoder.Input {
 
-    public static int getSlotSizeInBytes() {
-        ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        return Math.min(layout.getReferenceSize(), layout.getCompressedReferenceSize());
-    }
-
-    private final BitSet input;
-    private final boolean defaultCompressed;
-    private BitSet nondefaultInput;
+    private final BitSet input = new BitSet();
 
     private Map<Integer, Object> debugAllUsedRegisters;
     private Map<Integer, Object> debugAllUsedStackSlots;
 
     public SubstrateReferenceMap() {
-        this(new BitSet());
+        assert ConfigurationValues.getObjectLayout().getReferenceSize() > 2 : "needs to be three bits or more for encoding and validation";
     }
 
-    public SubstrateReferenceMap(BitSet input) {
-        this.input = input;
-        this.defaultCompressed = SubstrateOptions.UseHeapBaseRegister.getValue();
+    public boolean isOffsetMarked(int offset) {
+        return input.get(offset);
     }
 
-    public boolean isIndexMarked(int index) {
-        return input.get(index);
+    public boolean isOffsetCompressed(int offset) {
+        assert isOffsetMarked(offset);
+        return input.get(offset + 1);
     }
 
-    public boolean isIndexCompressed(int index) {
-        boolean compressed = defaultCompressed;
-        if (nondefaultInput != null) {
-            compressed ^= nondefaultInput.get(index);
+    public void markReferenceAtOffset(int offset, boolean compressed) {
+        assert isValidToMark(offset, compressed) : "already marked or would overlap with predecessor or successor";
+        input.set(offset);
+        if (compressed) {
+            input.set(offset + 1);
         }
-        return compressed;
     }
 
-    public void markReferenceAtIndex(int index) {
-        markReferenceAtIndex(index, defaultCompressed);
-    }
+    private boolean isValidToMark(int offset, boolean isCompressed) {
+        int uncompressedSize = FrameAccess.uncompressedReferenceSize();
+        int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
 
-    public void markReferenceAtIndex(int index, boolean compressed) {
-        assert isValidToMark(index, compressed) : "already marked or would overlap with predecessor or successor";
-        input.set(index);
-        if (compressed != defaultCompressed) {
-            if (nondefaultInput == null) {
-                nondefaultInput = new BitSet(index + 1);
+        int previousOffset = input.previousSetBit(offset - 1);
+        if (previousOffset != -1) {
+            int minOffset = previousOffset + uncompressedSize;
+            if (previousOffset != 0 && input.get(previousOffset - 1)) {
+                previousOffset--; // found a compression bit, previous bit represents the reference
+                minOffset = previousOffset + compressedSize;
             }
-            nondefaultInput.set(index);
-        }
-    }
-
-    private boolean isValidToMark(int index, boolean isCompressed) {
-        int slotSizeInBytes = getSlotSizeInBytes();
-        int uncompressedSlots = ConfigurationValues.getObjectLayout().getReferenceSize() / slotSizeInBytes;
-        int compressedSlots = ConfigurationValues.getObjectLayout().getCompressedReferenceSize() / slotSizeInBytes;
-        assert compressedSlots <= uncompressedSlots;
-
-        int previousIndex = input.previousSetBit(index - 1);
-        if (previousIndex != -1) {
-            int previousSlots = isIndexCompressed(previousIndex) ? compressedSlots : uncompressedSlots;
-            if (previousIndex + previousSlots > index) {
+            if (offset < minOffset) {
                 return false;
             }
         }
-        int slots = isCompressed ? compressedSlots : uncompressedSlots;
-        int nextIndex = input.nextSetBit(index);
-        return (nextIndex == -1) || (index + slots <= nextIndex);
+        int size = isCompressed ? compressedSize : uncompressedSize;
+        int nextIndex = input.nextSetBit(offset);
+        return (nextIndex == -1) || (offset + size <= nextIndex);
     }
 
     public Map<Integer, Object> getDebugAllUsedRegisters() {
         return debugAllUsedRegisters;
     }
 
-    boolean debugMarkRegister(int idx, Value value) {
+    boolean debugMarkRegister(int offset, Value value) {
         if (debugAllUsedRegisters == null) {
             debugAllUsedRegisters = new HashMap<>();
         }
-        debugAllUsedRegisters.put(idx, value);
+        debugAllUsedRegisters.put(offset, value);
         return true;
     }
 
@@ -123,11 +101,11 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
         return debugAllUsedStackSlots;
     }
 
-    boolean debugMarkStackSlot(int idx, StackSlot value) {
+    boolean debugMarkStackSlot(int offset, StackSlot value) {
         if (debugAllUsedStackSlots == null) {
             debugAllUsedStackSlots = new HashMap<>();
         }
-        debugAllUsedStackSlots.put(idx, value);
+        debugAllUsedStackSlots.put(offset, value);
         return true;
     }
 
@@ -152,7 +130,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
                     throw new NoSuchElementException();
                 }
                 int index = nextIndex;
-                nextIndex = input.nextSetBit(index + 1);
+                nextIndex = input.nextSetBit(index + 2); // +1: skip compression bit
                 return index;
             }
 
@@ -161,14 +139,14 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
-                return isIndexCompressed(nextIndex);
+                return isOffsetCompressed(nextIndex);
             }
         };
     }
 
     @Override
     public int hashCode() {
-        return (input.hashCode() * 31 + Boolean.hashCode(defaultCompressed)) * 31 + Objects.hashCode(nondefaultInput);
+        return input.hashCode();
     }
 
     @Override
@@ -177,7 +155,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
             return true;
         } else if (obj instanceof SubstrateReferenceMap) {
             SubstrateReferenceMap other = (SubstrateReferenceMap) obj;
-            return Objects.equals(input, other.input) && defaultCompressed == other.defaultCompressed && Objects.equals(nondefaultInput, other.nondefaultInput);
+            return input.equals(other.input);
         } else {
             return false;
         }

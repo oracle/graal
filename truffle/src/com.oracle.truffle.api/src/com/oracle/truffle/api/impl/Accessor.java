@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
@@ -97,7 +98,7 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
 
-        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal);
+        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal, boolean interactive);
 
         public abstract Object getSourceVM(RootNode rootNode);
 
@@ -117,6 +118,10 @@ public abstract class Accessor {
         public abstract Object getSourceIdentifier(Source source);
 
         public abstract Source copySource(Source source);
+
+        public abstract void setPolyglotSource(Source source, org.graalvm.polyglot.Source polyglotSource);
+
+        public abstract org.graalvm.polyglot.Source getPolyglotSource(Source source);
 
     }
 
@@ -318,6 +323,8 @@ public abstract class Accessor {
 
         public abstract Handler getLogHandler();
 
+        public abstract Map<String, Level> getLogLevels(Object context);
+
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
         public abstract Object getCurrentOuterContext();
@@ -485,10 +492,12 @@ public abstract class Accessor {
 
     }
 
-    protected abstract static class Frames {
+    public abstract static class Frames {
         protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+
+        public abstract FrameDescriptor makeThreadSafe(FrameDescriptor frameDescriptor, ReentrantLock lock);
     }
 
     @CompilationFinal private static Accessor.LanguageSupport API;

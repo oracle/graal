@@ -461,11 +461,7 @@ public final class CardTable {
                 /* Carefully check out the object. */
                 final UnsignedWord header = ObjectHeader.readHeaderFromPointer(p);
                 /* It should *not* be a zapped value. */
-                if (header.equal(HeapPolicy.getProducedHeapChunkZapValue())) {
-                    final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
-                    paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to zapped header: ").hex(header).string("]").newline();
-                }
-                if (header.equal(HeapPolicy.getConsumedHeapChunkZapValue())) {
+                if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
                     final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
                     paranoidLog.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  points to zapped header: ").hex(header).string("]").newline();
                 }

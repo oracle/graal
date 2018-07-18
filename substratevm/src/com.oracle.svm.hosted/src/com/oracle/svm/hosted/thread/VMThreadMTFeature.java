@@ -259,7 +259,7 @@ public class VMThreadMTFeature implements GraalFeature {
             assert nextOffset % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextOffset;
 
             if (info.isObject) {
-                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes);
+                referenceMap.markReferenceAtOffset(nextOffset, true);
             }
             info.offset = nextOffset;
             nextOffset += info.sizeInBytes;

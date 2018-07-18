@@ -227,7 +227,7 @@ final class PolyglotLogHandler extends Handler {
 
         @SuppressWarnings("sync-override")
         @Override
-        public void close() throws SecurityException {
+        public void close() {
             if (closeStream) {
                 super.close();
             } else {

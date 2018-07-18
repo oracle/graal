@@ -1,7 +1,8 @@
 suite = {
-  "mxversion" : "5.175.2",
+  "mxversion" : "5.178.0",
   "name" : "truffle",
-  "version": "1.0.0-rc4-dev",
+  "version": "1.0.0-rc5",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -14,12 +15,6 @@ suite = {
     "url" : "https://github.com/oracle/graal/tree/master/truffle",
     "read" : "https://github.com/oracle/graal.git",
     "write" : "git@github.com:oracle/graal.git",
-  },
-  "repositories" : {
-    "lafo-snapshots" : {
-      "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
-    },
   },
   "defaultLicense" : "GPLv2-CPE",
   "imports" : {
