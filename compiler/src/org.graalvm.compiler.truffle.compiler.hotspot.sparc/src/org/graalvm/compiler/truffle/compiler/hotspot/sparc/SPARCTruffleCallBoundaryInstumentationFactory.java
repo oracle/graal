@@ -57,7 +57,7 @@ public class SPARCTruffleCallBoundaryInstumentationFactory extends TruffleCallBo
 
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    OptionValues options, DebugContext debug, CompilationResult compilationResult) {
+                    OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
         return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
             @Override
             protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {

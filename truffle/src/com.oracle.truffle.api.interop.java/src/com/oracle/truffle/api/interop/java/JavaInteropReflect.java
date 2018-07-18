@@ -60,7 +60,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-@SuppressWarnings("deprecation")
 final class JavaInteropReflect {
     static final Object[] EMPTY = {};
 
@@ -175,7 +174,7 @@ final class JavaInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
-        assert JavaInterop.isJavaFunctionInterface(functionalType);
+        assert isFunctionalInterface(functionalType);
         Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
         final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
@@ -190,16 +189,25 @@ final class JavaInteropReflect {
         return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
     }
 
+    @CompilerDirectives.TruffleBoundary
+    static boolean isFunctionalInterface(Class<?> type) {
+        if (!type.isInterface() || type == TruffleObject.class) {
+            return false;
+        }
+        if (type.getAnnotation(FunctionalInterface.class) != null) {
+            return true;
+        } else if (functionalInterfaceMethod(type) != null) {
+            return true;
+        }
+        return false;
+    }
+
     static Method functionalInterfaceMethod(Class<?> functionalInterface) {
         if (!functionalInterface.isInterface()) {
             return null;
         }
-        final Method[] methods = functionalInterface.getMethods();
-        if (methods.length == 1) {
-            return methods[0];
-        }
         Method found = null;
-        for (Method m : methods) {
+        for (Method m : functionalInterface.getMethods()) {
             if (Modifier.isAbstract(m.getModifiers()) && !JavaClassDesc.isObjectMethodOverride(m)) {
                 if (found != null) {
                     return null;

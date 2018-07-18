@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -48,11 +49,12 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.java.*;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("deprecation")
-public class TestMemberAccess {
+public class TestMemberAccess extends AbstractPolyglotTest {
 
     private final Node newNode = Message.createNew(0).createNode();
     private final Node executeNode = Message.createExecute(0).createNode();
@@ -63,6 +65,11 @@ public class TestMemberAccess {
     private final Node readNode = Message.READ.createNode();
     private final Node keysNode = Message.KEYS.createNode();
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
+
+    @Before
+    public void setup() {
+        setupEnv();
+    }
 
     @Test
     public void testFields() throws IllegalAccessException, InteropException {

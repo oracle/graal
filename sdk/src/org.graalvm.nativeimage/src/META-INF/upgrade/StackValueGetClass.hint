@@ -1,0 +1,19 @@
+'Request Stack Value for a Class':
+org.graalvm.nativeimage.StackValue.get(org.graalvm.nativeimage.c.struct.SizeOf.get($clazz.class)) :: notInNativeImage()
+=>
+'Replace sizeof by class':
+org.graalvm.nativeimage.StackValue.get($clazz.class)
+;;
+'Request Stack Value array for a Class':
+org.graalvm.nativeimage.StackValue.get($count, org.graalvm.nativeimage.c.struct.SizeOf.get($clazz.class)) :: notInNativeImage()
+=>
+'Replace sizeof by class':
+org.graalvm.nativeimage.StackValue.get($count, $clazz.class)
+;;
+
+<?
+private boolean notInNativeImage() {
+    String pkg = context.enclosingPackage();
+    return !pkg.equals("org.graalvm.nativeimage");
+}
+?>

@@ -37,9 +37,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -71,6 +73,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         final Map<String, Class<?>> classCache = new HashMap<>();
         private volatile Iterable<Scope> topScopes;
         private volatile HostClassLoader classloader;
+        @CompilationFinal Value nullValue;
 
         HostContext(Env env) {
             this.env = env;
@@ -94,7 +97,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         private void checkHostAccessAllowed() {
-            if (!internalContext.context.hostAccessAllowed) {
+            if (!internalContext.context.config.hostAccessAllowed) {
                 throw new HostLanguageException(String.format("Host class access is not allowed."));
             }
         }
@@ -131,7 +134,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         void validateClass(String className) {
-            Predicate<String> classFilter = internalContext.context.classFilter;
+            Predicate<String> classFilter = internalContext.context.config.classFilter;
             if (classFilter != null && !classFilter.test(className)) {
                 throw new HostLanguageException(String.format("Access to host class %s is not allowed.", className));
             }
@@ -166,7 +169,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (TruffleOptions.AOT) {
                 throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
             }
-            if (!internalContext.context.hostClassLoadingAllowed) {
+            if (!internalContext.context.config.hostClassLoadingAllowed) {
                 throw new HostLanguageException(String.format("Host class loading is not allowed."));
             }
             URL url;

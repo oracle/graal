@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 
 /** Each VMThread will have one of these on which to wait. */
 public abstract class ParkEvent {

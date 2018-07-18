@@ -93,7 +93,7 @@ final class NativeClosure {
         NativeClosure closure = new NativeClosure(callTarget, signature);
         NativeClosureHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createClosureHandle(closure);
 
-        WordPointer codePtr = StackValue.get(SizeOf.get(WordPointer.class));
+        WordPointer codePtr = StackValue.get(WordPointer.class);
         ClosureData data = ffi_closure_alloc(SizeOf.unsigned(ClosureData.class), codePtr);
         data.setNativeClosureHandle(handle);
         data.setIsolate(CEntryPointContext.getCurrentIsolate());

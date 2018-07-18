@@ -49,6 +49,7 @@ import mx_unittest
 from mx_unittest import unittest
 
 from mx_javamodules import as_java_module
+import mx_jaotc
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
@@ -468,13 +469,13 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
         args += ['-t', str(threads)]
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
-def _jdk_includes_corba(jdk):
+def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
     return jdk.javaCompliance < '11'
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    if name == 'actors' and jdk.javaCompliance >= '9' and _jdk_includes_corba(jdk):
+    if name == 'actors' and jdk.javaCompliance >= '9' and jdk_includes_corba(jdk):
         vmargs += ['--add-modules', 'java.corba']
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
@@ -583,7 +584,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     scala_dacapos_without_sa = {
         'actors':     1,
     }
-    if not _jdk_includes_corba(jdk):
+    if not jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
         del scala_dacapos_without_sa['actors']
 
@@ -647,6 +648,7 @@ graal_bootstrap_tests = [
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
+    mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -1176,12 +1178,20 @@ def updategraalinopenjdk(args):
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         GraalJDKModule('jdk.internal.vm.compiler.management',
             [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+        GraalJDKModule('jdk.aot',
+            [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
 
     package_renamings = {
         'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
         'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
     }
+
+    replacements = {
+        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
+    }
+
+    blacklist = ['"Classpath" exception']
 
     jdkrepo = args.jdkrepo
 
@@ -1266,6 +1276,7 @@ def updategraalinopenjdk(args):
                         dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
                         with open(src_file) as fp:
                             contents = fp.read()
+                        old_line_count = len(contents.split('\n'))
                         if filename.endswith('.java'):
                             for old_name, new_name in package_renamings.iteritems():
                                 old_name_as_dir = old_name.replace('.', os.sep)
@@ -1274,6 +1285,20 @@ def updategraalinopenjdk(args):
                                     dst = src_file.replace(old_name_as_dir, new_name_as_dir)
                                     dst_file = join(target_dir, os.path.relpath(dst, source_dir))
                                 contents = contents.replace(old_name, new_name)
+                            for old_line, new_line in replacements.iteritems():
+                                contents = contents.replace(old_line, new_line)
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count > old_line_count:
+                                mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
+                            else:
+                                if new_line_count < old_line_count:
+                                    contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
+                            new_line_count = len(contents.split('\n'))
+                            if new_line_count != old_line_count:
+                                mx.abort('Unable to correct line count for {}'.format(src_file))
+                            for forbidden in blacklist:
+                                if forbidden in contents:
+                                    mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
                         dst_dir = os.path.dirname(dst_file)
                         if not exists(dst_dir):
                             os.makedirs(dst_dir)
@@ -1319,6 +1344,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
+    jar_distributions=[  # Dev jars (annotation processors)
+        'compiler:GRAAL_PROCESSOR_COMMON',
+        'compiler:GRAAL_OPTIONS_PROCESSOR',
+        'compiler:GRAAL_SERVICEPROVIDER_PROCESSOR',
+        'compiler:GRAAL_NODEINFO_PROCESSOR',
+        'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
+        'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
+    ],
     jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))
@@ -1327,6 +1360,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
+    'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
+    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],

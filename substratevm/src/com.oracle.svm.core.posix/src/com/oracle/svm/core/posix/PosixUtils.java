@@ -43,7 +43,6 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -184,9 +183,15 @@ public class PosixUtils {
         KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
-    static String lastErrorString(String defaultMsg) {
-        String result = "";
+    /** Return the error string for the last error, or a default message. */
+    public static String lastErrorString(String defaultMsg) {
         int errno = Errno.errno();
+        return errorString(errno, defaultMsg);
+    }
+
+    /** Return the error string for the given error number, or a default message. */
+    public static String errorString(int errno, String defaultMsg) {
+        String result = "";
         if (errno != 0) {
             result = CTypeConversion.toJavaString(Errno.strerror(errno));
         }
@@ -242,7 +247,7 @@ public class PosixUtils {
     }
 
     static int readSingle(FileDescriptor fd) throws IOException {
-        CCharPointer retPtr = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer retPtr = StackValue.get(CCharPointer.class);
         int handle = PosixUtils.getFDHandle(fd);
         SignedWord nread = read(handle, retPtr, WordFactory.unsigned(1));
         if (nread.equal(0)) {
@@ -302,7 +307,7 @@ public class PosixUtils {
             throw new IOException("Stream Closed");
         }
 
-        CCharPointer bufPtr = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer bufPtr = StackValue.get(CCharPointer.class);
         bufPtr.write((byte) b);
         // the append parameter is disregarded
         n = write(handle, bufPtr, WordFactory.unsigned(1));

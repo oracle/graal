@@ -102,15 +102,17 @@ public final class ImageClassLoader {
         this.classLoader = classLoader;
     }
 
-    /** A public factory method that accepts a gr8964Tracing parameter. */
     public static ImageClassLoader create(Platform platform, String[] classpathAll, ClassLoader classLoader) {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
-        /* The Graal SDK is on the boot class path, and it contains annotated types. */
-        for (String s : System.getProperty("sun.boot.class.path").split(File.pathSeparator)) {
-            if (s.contains("graal-sdk")) {
-                classpathFiltered.add(s);
+        /* If the Graal SDK is on the boot class path, and it contains annotated types. */
+        final String sunBootClassPath = System.getProperty("sun.boot.class.path");
+        if (sunBootClassPath != null) {
+            for (String s : sunBootClassPath.split(File.pathSeparator)) {
+                if (s.contains("graal-sdk")) {
+                    classpathFiltered.add(s);
+                }
             }
         }
 

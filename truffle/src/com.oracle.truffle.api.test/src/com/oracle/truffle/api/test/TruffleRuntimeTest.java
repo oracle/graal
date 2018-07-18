@@ -98,7 +98,9 @@ public class TruffleRuntimeTest {
         RootNode rootNode = createTestRootNode(null);
         RootCallTarget target = runtime.createCallTarget(rootNode);
         assertNotNull(target);
-        assertEquals(target.call(), 42);
+        for (int i = 0; i < 10000; i++) {
+            assertEquals(target.call(), 42);
+        }
         assertSame(rootNode, target.getRootNode());
     }
 

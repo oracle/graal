@@ -161,4 +161,12 @@ public class IntegerBits extends JTTTest {
         runTest("test4", 0x00000001);
     }
 
+    public static int test5(int value) {
+        return Integer.reverseBytes((12345 | (value & 0xffff0000))) >>> 16;
+    }
+
+    @Test
+    public void run22() {
+        runTest("test5", 1);
+    }
 }

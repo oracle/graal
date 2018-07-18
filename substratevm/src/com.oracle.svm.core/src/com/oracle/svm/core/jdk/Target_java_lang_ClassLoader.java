@@ -35,6 +35,8 @@ import java.util.List;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 @TargetClass(ClassLoader.class)
 @Substitute
@@ -83,7 +85,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     private static URL getSystemResource(String name) {
         List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, new ByteArrayInputStream(arr.get(0)));
+        return arr == null ? null : Resources.createURL(name, arr.get(0));
     }
 
     @Substitute
@@ -99,19 +101,14 @@ public final class Target_java_lang_ClassLoader {
         }
         List<URL> res = new ArrayList<>(arr.size());
         for (byte[] data : arr) {
-            res.add(Resources.createURL(name, new ByteArrayInputStream(data)));
+            res.add(Resources.createURL(name, data));
         }
         return Collections.enumeration(res);
     }
 
     @Substitute
     public static ClassLoader getSystemClassLoader() {
-        /*
-         * ClassLoader.getSystemClassLoader() is used as a parameter for Class.forName(String,
-         * boolean, ClassLoader) which is implemented as ClassForNameSupport.forName(name) and
-         * ignores the class loader.
-         */
-        return null;
+        return KnownIntrinsics.unsafeCast(ClassLoaderSupport.getInstance().systemClassLoader, ClassLoader.class);
     }
 
     @Substitute

@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.net.SocketFlow;
 
-@TargetClass(sun.net.ExtendedOptionsImpl.class)
+@TargetClass(className = "sun.net.ExtendedOptionsImpl", onlyWith = JDK8OrEarlier.class)
 final class Target_sun_net_ExtendedOptionsImpl {
 
     /* private static native void init() */

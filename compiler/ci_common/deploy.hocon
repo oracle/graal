@@ -1,5 +1,0 @@
-builds += [
-  ${deploy-binaries} ${compilerCommon} ${linux-amd64} ${linux-deploy} {name: "postmerge-deploy-binaries-linux-amd64"}
-  ${deploy-binaries} ${compilerCommon} ${darwin-amd64} ${darwin-deploy} {name: "postmerge-deploy-binaries-darwin-amd64"}
-  ${deploy-binaries} ${compilerCommon} ${solaris-sparcv9} ${solaris-deploy} {name: "postmerge-deploy-binaries-solaris-sparcv9"}
-]

@@ -63,14 +63,10 @@ public class SubstrateReferenceMapBuilder extends ReferenceMapBuilder {
 
                 } else {
                     int bytes = bytesPerElement(kind);
-                    int mapSlotSize = SubstrateReferenceMap.getSlotSizeInBytes();
-                    assert bytes % mapSlotSize == 0;
-                    assert offset % mapSlotSize == 0;
-
                     for (int i = 0; i < kind.getPlatformKind().getVectorLength(); i++) {
                         if (kind.isReference(i)) {
                             boolean compressed = kind.isCompressedReference(i);
-                            referenceMap.markReferenceAtIndex((offset + i * bytes) / mapSlotSize, compressed);
+                            referenceMap.markReferenceAtOffset(offset + i * bytes, compressed);
                         }
                     }
                 }

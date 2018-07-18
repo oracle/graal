@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
@@ -54,15 +55,28 @@ public final class RangeListMatcher extends ProfiledCharMatcher {
         for (int i = 0; i < ranges.length; i += 2) {
             final char lo = ranges[i];
             final char hi = ranges[i + 1];
-            if (lo <= c) {
-                if (hi >= c) {
+            if (isSingleChar(lo, hi)) {
+                // do simple equality checks on ranges that contain a single character
+                if (lo == c) {
                     return true;
                 }
             } else {
-                return false;
+                if (lo <= c) {
+                    if (hi >= c) {
+                        return true;
+                    }
+                } else {
+                    return false;
+                }
             }
         }
         return false;
+    }
+
+    private static boolean isSingleChar(char lo, char hi) {
+        CompilerAsserts.partialEvaluationConstant(lo);
+        CompilerAsserts.partialEvaluationConstant(hi);
+        return lo == hi;
     }
 
     @Override

@@ -12,10 +12,10 @@ svm-common-darwin-gate: ${svm-common-darwin} {
 
 svm-cmd-gate: ["mx", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--tags"]
 
-gate-svm-js-sulong-python: ${svm-common-linux-gate} ${svm-common-sulong} {
+gate-svm-js-python: ${svm-common-linux-gate} ${svm-common-sulong} {
   run: [
     ${svm-common-clone-benchmarks}
-    ${svm-cmd-gate} ["build,js,sulong,python"]
+    ${svm-cmd-gate} ["build,js,python"]
   ]
   timelimit: "35:00"
   targets: [gate]
@@ -37,9 +37,9 @@ gate-svm-darwin-js: ${svm-common-darwin-gate} {
   targets: [gate]
 }
 
-gate-svm-style-fullbuild: ${svm-common-linux-gate} ${eclipse} ${jdt} {
+gate-svm-style-fullbuild: ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
   run: [
-    ${svm-cmd-gate} ["style,fullbuild,helloworld"]
+    ${svm-cmd-gate} ["style,fullbuild,helloworld,maven"]
   ]
   targets: [gate]
 }

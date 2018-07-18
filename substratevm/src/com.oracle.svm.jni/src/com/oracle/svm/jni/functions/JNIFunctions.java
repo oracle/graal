@@ -343,7 +343,7 @@ final class JNIFunctions {
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
             } else {
-                return JNIErrors.JNI_ERR();
+                throw new NoSuchMethodError(clazz.getName() + '.' + name + signature);
             }
 
             p = p.add(SizeOf.get(JNINativeMethod.class));

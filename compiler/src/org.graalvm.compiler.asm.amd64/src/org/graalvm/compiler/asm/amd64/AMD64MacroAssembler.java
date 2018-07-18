@@ -714,7 +714,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             // Fall through if matched whole substring.
         } else { // non constant
             assert intCnt2 == -1 : "should be != 0";
-
             addl(tmp, cnt2);
             // Found result if we matched whole substring.
             cmpl(tmp, 8);
@@ -772,5 +771,4 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         pop(rsp); // restore SP
 
     }
-
 }

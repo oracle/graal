@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
@@ -65,6 +66,7 @@ public class CSourceCodeWriter {
     private static final String CHARSET = "US-ASCII";
     private static final String INDENT4 = "    ";
     public static final String C_SOURCE_FILE_EXTENSION = ".c";
+    public static final String CXX_SOURCE_FILE_EXTENSION = ".cpp";
 
     private final List<String> lines;
     private final StringBuilder currentLine;
@@ -92,11 +94,18 @@ public class CSourceCodeWriter {
 
     public void includeFiles(List<String> headerFiles) {
         for (String headerFile : headerFiles) {
-            if (!((headerFile.startsWith("<") && headerFile.endsWith(">")) || (headerFile.startsWith("\"") && headerFile.endsWith("\"")))) {
+            String headerFileName = null;
+            if (headerFile.startsWith("<") && headerFile.endsWith(">")) {
+                headerFileName = headerFile.substring(1, headerFile.length() - 1);
+                Path headerFilePath = Paths.get(headerFileName);
+                appendln("#include " + "<" + headerFilePath.toString() + ">");
+            } else if (headerFile.startsWith("\"") && headerFile.endsWith("\"")) {
+                headerFileName = headerFile.substring(1, headerFile.length() - 1);
+                Path headerFilePath = Paths.get(headerFileName);
+                appendln("#include " + "\"" + headerFilePath.toString() + "\"");
+            } else {
                 throw UserError.abort("header file name must be surrounded by <...> or \"...\": " + headerFile);
             }
-            Path headerFilePath = Paths.get(headerFile);
-            appendln("#include " + headerFilePath.toString());
         }
     }
 
@@ -155,8 +164,9 @@ public class CSourceCodeWriter {
         assert currentLine.length() == 0 : "last line not finished";
 
         String fixedFileName = fileName;
-        if (!fileName.endsWith(C_SOURCE_FILE_EXTENSION) && ensureCorrectExtension) {
-            fixedFileName = fileName.concat(C_SOURCE_FILE_EXTENSION);
+        String srcFileExtension = Platform.includedIn(Platform.WINDOWS.class) ? CXX_SOURCE_FILE_EXTENSION : C_SOURCE_FILE_EXTENSION;
+        if (!fileName.endsWith(srcFileExtension) && ensureCorrectExtension) {
+            fixedFileName = fileName.concat(srcFileExtension);
         }
 
         Path outputFile = tempDirectory.resolve(fixedFileName);

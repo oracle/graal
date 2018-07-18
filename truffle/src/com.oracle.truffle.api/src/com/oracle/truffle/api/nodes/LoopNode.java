@@ -153,7 +153,7 @@ public abstract class LoopNode extends Node {
      *         }
      *         return sum;
      *     } finally {
-     *         LoopNode.reportLoopCount(data.length);
+     *         LoopNode.reportLoopCount(this, data.length);
      *     }
      * }
      *

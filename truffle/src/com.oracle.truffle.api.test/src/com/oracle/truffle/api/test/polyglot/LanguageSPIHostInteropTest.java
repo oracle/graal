@@ -573,6 +573,23 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testIsHostFunction() {
+        TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
+        Object exit = read(system, "exit");
+        assertTrue(exit instanceof TruffleObject);
+        assertFalse(languageEnv.isHostObject(exit));
+        assertTrue(languageEnv.isHostFunction(exit));
+
+        Object out = read(system, "out");
+        assertTrue(exit instanceof TruffleObject);
+        assertTrue(languageEnv.isHostObject(out));
+        assertFalse(languageEnv.isHostFunction(out));
+
+        assertFalse(languageEnv.isHostFunction(system));
+        assertFalse(languageEnv.isHostFunction(false));
+    }
+
     static final class NoKeysObject implements TruffleObject {
 
         @Override

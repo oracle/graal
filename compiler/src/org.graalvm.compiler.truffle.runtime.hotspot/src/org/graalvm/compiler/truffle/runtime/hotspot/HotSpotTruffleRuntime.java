@@ -41,11 +41,13 @@ import java.util.stream.Collectors;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler.Factory;
@@ -54,6 +56,7 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleInstalledCode;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
+import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntimeAccess.Options;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -98,6 +101,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
     }
 
     private volatile Lazy lazy;
+    private volatile String lazyConfigurationName;
 
     private Lazy lazy() {
         if (lazy == null) {
@@ -231,6 +235,45 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
     @Override
     protected BackgroundCompileQueue getCompileQueue() {
         return lazy();
+    }
+
+    @Override
+    protected String getCompilerConfigurationName() {
+        TruffleCompiler compiler = truffleCompiler;
+        String compilerConfig;
+        if (compiler != null) {
+            compilerConfig = compiler.getCompilerConfigurationName();
+            // disabled GR-10618
+            // assert verifyCompilerConfiguration(compilerConfig);
+        } else {
+            compilerConfig = getLazyCompilerConfigurationName();
+        }
+        return compilerConfig;
+    }
+
+    @SuppressWarnings("unused")
+    private boolean verifyCompilerConfiguration(String name) {
+        String lazyName = getLazyCompilerConfigurationName();
+        if (!name.equals(lazyName)) {
+            throw new AssertionError("Expected compiler configuration name " + name + " but was " + lazyName + ".");
+        }
+        return true;
+    }
+
+    private String getLazyCompilerConfigurationName() {
+        String compilerConfig;
+        compilerConfig = this.lazyConfigurationName;
+        if (compilerConfig == null) {
+            synchronized (this) {
+                compilerConfig = this.lazyConfigurationName;
+                if (compilerConfig == null) {
+                    OptionValues values = getInitialOptions();
+                    CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(values), values);
+                    this.lazyConfigurationName = compilerConfig = factory.getName();
+                }
+            }
+        }
+        return compilerConfig;
     }
 
     @Override

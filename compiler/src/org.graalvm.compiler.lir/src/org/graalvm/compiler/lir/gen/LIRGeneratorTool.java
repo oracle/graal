@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.lir.gen;
 
-import jdk.vm.ci.code.RegisterConfig;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.lir.Variable;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -268,6 +268,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 
+    @SuppressWarnings("unused")
+    default Variable emitArrayIndexOf(JavaKind kind, Value sourcePointer, Value sourceCount, Value charValue) {
+        throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);
@@ -280,4 +285,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull);
 
+    default void emitConvertNullToZero(AllocatableValue result, Value input) {
+        emitMove(result, input);
+    }
+
+    default void emitConvertZeroToNull(AllocatableValue result, Value input) {
+        emitMove(result, input);
+    }
 }

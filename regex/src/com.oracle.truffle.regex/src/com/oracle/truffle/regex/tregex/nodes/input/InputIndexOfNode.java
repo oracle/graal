@@ -28,7 +28,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.Boundaries;
 
 public abstract class InputIndexOfNode extends Node {
 
@@ -40,7 +39,7 @@ public abstract class InputIndexOfNode extends Node {
 
     @Specialization
     public int indexOf(String input, char c, int fromIndex, int maxIndex) {
-        int index = Boundaries.stringIndexOf(input, c, fromIndex);
+        int index = input.indexOf(c, fromIndex);
         if (index >= maxIndex) {
             return -1;
         }

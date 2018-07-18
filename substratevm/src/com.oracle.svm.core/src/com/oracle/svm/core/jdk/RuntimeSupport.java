@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,6 +48,9 @@ public final class RuntimeSupport {
     /** A list of shutdown hooks. */
     private CopyOnWriteArrayList<Runnable> shutdownHooks;
 
+    /** A list of tear down hooks. */
+    private CopyOnWriteArrayList<Runnable> tearDownHooks;
+
     /** A list of CompilerCommandPlugins. */
     private static final Comparator<CompilerCommandPlugin> PluginComparator = Comparator.comparing(CompilerCommandPlugin::name);
     private CopyOnWriteArrayList<CompilerCommandPlugin> commandPlugins;
@@ -58,6 +62,7 @@ public final class RuntimeSupport {
         super();
         startupHooks = new CopyOnWriteArrayList<>();
         shutdownHooks = new CopyOnWriteArrayList<>();
+        tearDownHooks = new CopyOnWriteArrayList<>();
         commandPlugins = new CopyOnWriteArrayList<>();
         commandPluginsSorted = false;
     }
@@ -69,6 +74,7 @@ public final class RuntimeSupport {
     }
 
     /** Get the singleton instance. */
+    @Fold
     public static RuntimeSupport getRuntimeSupport() {
         return ImageSingletons.lookup(RuntimeSupport.class);
     }
@@ -99,6 +105,25 @@ public final class RuntimeSupport {
      */
     static void executeShutdownHooks() {
         executeHooks(getRuntimeSupport().shutdownHooks);
+    }
+
+    /**
+     * Adds a tear down hook that is executed before the isolate torn down.
+     *
+     * @param tearDownHook hook to executed on isolate tear down.
+     */
+    public void addTearDownHook(Runnable tearDownHook) {
+        tearDownHooks.add(tearDownHook);
+    }
+
+    /**
+     * Called only internally as part of the isolate tear down process. These hooks clean up all
+     * running threads to allow proper isolate tear down.
+     *
+     * Although public, this method should not go to the public API.
+     */
+    public static void executeTearDownHooks() {
+        executeHooks(getRuntimeSupport().tearDownHooks);
     }
 
     private static void executeHooks(CopyOnWriteArrayList<Runnable> hooks) {

@@ -43,11 +43,13 @@ package com.oracle.truffle.sl.runtime;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
+import java.util.logging.Level;
 
 /**
  * Represents a SL function. On the Truffle level, a callable element is represented by a
@@ -67,6 +69,7 @@ import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
  * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 public final class SLFunction implements TruffleObject {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(SLLanguage.ID, SLFunction.class);
 
     /** The name of the function. */
     private final String name;
@@ -97,6 +100,7 @@ public final class SLFunction implements TruffleObject {
          * We have a new call target. Invalidate all code that speculated that the old call target
          * was stable.
          */
+        LOG.log(Level.FINE, "Installed call target for: {0}", name);
         callTargetStable.invalidate();
     }
 

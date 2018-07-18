@@ -123,6 +123,11 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     }
 
     @Override
+    public boolean isEnum() {
+        return original.isEnum();
+    }
+
+    @Override
     public int getModifiers() {
         return original.getModifiers();
     }

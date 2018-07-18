@@ -1,0 +1,10 @@
+One or several (comma-separated) paths to JSON files that specify lists of interfaces that define Java proxy classes.
+The structure is an array of arrays of fully qualified interface names.
+
+Example:
+
+    [
+        ["java.lang.AutoCloseable", "java.util.Comparator"],
+        ["java.util.Comparator"],
+        ["java.util.List"]
+    ]

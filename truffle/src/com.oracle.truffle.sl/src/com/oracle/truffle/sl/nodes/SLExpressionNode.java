@@ -59,6 +59,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 @GenerateWrapper
 public abstract class SLExpressionNode extends SLStatementNode {
 
+    private boolean hasExpressionTag;
+
     /**
      * The execute method when no specialization is possible. This is the most general case,
      * therefore it must be provided by all subclasses.
@@ -82,9 +84,16 @@ public abstract class SLExpressionNode extends SLStatementNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.ExpressionTag.class) {
-            return true;
+            return hasExpressionTag;
         }
         return super.hasTag(tag);
+    }
+
+    /**
+     * Marks this node as being a {@link StandardTags.ExpressionTag} for instrumentation purposes.
+     */
+    public final void addExpressionTag() {
+        hasExpressionTag = true;
     }
 
     /*

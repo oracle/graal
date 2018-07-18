@@ -208,6 +208,14 @@ class LibFFIFunctionMessageResolution {
         }
     }
 
+    @Resolve(message = "TO_NATIVE")
+    abstract static class ToNativeNode extends Node {
+
+        public NativePointer access(LibFFIFunction receiver) {
+            return receiver.getPointer();
+        }
+    }
+
     @Resolve(message = "KEYS")
     abstract static class LibFFIFunctionKeysNode extends Node {
 

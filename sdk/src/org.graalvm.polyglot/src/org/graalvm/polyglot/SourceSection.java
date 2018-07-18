@@ -215,7 +215,7 @@ public final class SourceSection {
         if (otherImpl instanceof SourceSection) {
             otherImpl = ((SourceSection) obj).impl;
         }
-        return IMPL.equals(impl, obj);
+        return IMPL.equals(impl, otherImpl);
     }
 
 }

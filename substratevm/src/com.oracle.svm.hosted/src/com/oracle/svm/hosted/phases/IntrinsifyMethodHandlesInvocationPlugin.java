@@ -84,6 +84,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
+import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -148,7 +149,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
          */
-        if (b.getInvokeKind().isDirect() && hasMethodHandleArgument(args)) {
+        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method))) {
             processInvokeWithMethodHandle(b, universeProviders.getReplacements().getDefaultReplacementBytecodeProvider(), method, args);
             return true;
         }
@@ -162,6 +163,28 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if the method is the intrinsification root for a VarHandle. In the current VarHandle
+     * implementation, all guards are in the automatically generated class VarHandleGuards. All
+     * methods do have a VarHandle argument, and we expect it to be a compile-time constant. But we
+     * do not need to check that explicitly: if it is not a compile-time constant, then we are not
+     * able to intrinsify the guard to a single call, and the intrinsification will fail later and
+     * report an error to the user.
+     *
+     * See the documentation in {@link VarHandleFeature} for more information on the overall
+     * VarHandle support.
+     */
+    private static boolean isVarHandleMethod(ResolvedJavaMethod method) {
+        /*
+         * We do the check by class name because then we 1) do not need an explicit Java version
+         * check (VarHandle was introduced with JDK 9), 2) VarHandleGuards is a non-public class
+         * that we cannot reference by class literal, and 3) we do not need to worry about analysis
+         * vs. hosted types. If the VarHandle implementation changes, we need to update our whole
+         * handling anyway.
+         */
+        return method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards");
     }
 
     class MethodHandlesParameterPlugin implements ParameterPlugin {
@@ -203,11 +226,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 return null;
             }
 
-            /*
-             * Inline all helper methods. We do not know exactly which ones they are, but they
-             * should all be from the same package.
-             */
-            if (method.getDeclaringClass().toJavaName(true).startsWith("java.lang.invoke")) {
+            String className = method.getDeclaringClass().toJavaName(true);
+            if (className.startsWith("java.lang.invoke.VarHandle")) {
+                /*
+                 * Do not inline implementation methods of various VarHandle implementation classes.
+                 * They are too complex and cannot be reduced to a single invoke or field access.
+                 * There is also no need to inline them, because they are not related to any
+                 * MethodHandle mechanism.
+                 */
+                return null;
+            } else if (className.startsWith("java.lang.invoke")) {
+                /*
+                 * Inline all helper methods used by method handles. We do not know exactly which
+                 * ones they are, but they are all be from the same package.
+                 */
                 return createStandardInlineInfo(method);
             }
             return null;

@@ -58,6 +58,9 @@ public final class RemoteObject {
         }
     }
 
+    private static final Double NEGATIVE_DOUBLE_0 = new Double("-0");
+    private static final Float NEGATIVE_FLOAT_0 = new Float("-0");
+
     private static final AtomicLong LAST_ID = new AtomicLong(0);
 
     private final DebugValue valueValue;
@@ -65,7 +68,10 @@ public final class RemoteObject {
     private final String type;
     private final String subtype;
     private final String className;
-    private final String value;
+    private final Object value;
+    private final boolean replicableValue;
+    private final boolean nullValue;
+    private final String unserializableValue;
     private final String objectId;
     private final String description;
     private final JSONObject jsonObject;
@@ -141,16 +147,43 @@ public final class RemoteObject {
             descriptionType = this.className;
         }
         String toString;
+        Object rawValue = null;
+        String unserializable = null;
+        boolean rawNullValue = false;
+        boolean replicableRawValue = true;
         try {
             toString = debugValue.as(String.class);
+            if (!isObject) {
+                if ("null".equals(vsubtype) && "object".equals(vtype)) {
+                    replicableRawValue = false;
+                    rawNullValue = true;
+                } else if ("undefined".equals(vtype)) {
+                    replicableRawValue = false;
+                } else {
+                    rawValue = debugValue.as(Boolean.class);
+                    if (rawValue == null) {
+                        rawValue = debugValue.as(Number.class);
+                        if (rawValue != null && !isFinite((Number) rawValue)) {
+                            unserializable = rawValue.toString();
+                            rawValue = null;
+                        } else if (rawValue == null) {
+                            replicableRawValue = false;
+                            rawValue = toString;
+                        }
+                    }
+                }
+            }
         } catch (Exception ex) {
             if (err != null) {
-                err.println(debugValue.getName() + " as(String.class) has caused: " + ex);
+                err.println(debugValue.getName() + " as(class) has caused: " + ex);
                 ex.printStackTrace(err);
             }
             toString = null;
         }
-        this.value = (!isObject) ? toString : null;
+        this.value = rawValue;
+        this.replicableValue = replicableRawValue;
+        this.nullValue = rawNullValue;
+        this.unserializableValue = unserializable;
         if (vdescription == null && descriptionType != null) {
             this.description = descriptionType + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
         } else if (vdescription != null && !vdescription.isEmpty()) {
@@ -169,6 +202,9 @@ public final class RemoteObject {
         this.subtype = null;
         this.className = null;
         this.value = null;
+        this.replicableValue = false;
+        this.nullValue = false;
+        this.unserializableValue = null;
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = scope.getName();
         this.jsonObject = createJSON();
@@ -179,7 +215,12 @@ public final class RemoteObject {
         json.put("type", type);
         json.putOpt("subtype", subtype);
         json.putOpt("className", className);
-        json.putOpt("value", value);
+        json.putOpt("unserializableValue", unserializableValue);
+        if (nullValue) {
+            json.put("value", JSONObject.NULL);
+        } else {
+            json.putOpt("value", value);
+        }
         json.putOpt("description", description);
         json.putOpt("objectId", objectId);
         return json;
@@ -274,11 +315,13 @@ public final class RemoteObject {
             }
         }
         json.put("type", vtype);
-        json.put("value", createJSONValue(debugValue, err));
+        String[] unserializablePtr = new String[1];
+        json.putOpt("value", createJSONValue(debugValue, unserializablePtr, err));
+        json.putOpt("unserializableValue", unserializablePtr[0]);
         return json;
     }
 
-    public static Object createJSONValue(DebugValue debugValue, PrintWriter err) {
+    private static Object createJSONValue(DebugValue debugValue, String[] unserializablePtr, PrintWriter err) {
         Collection<DebugValue> properties = null;
         try {
             properties = debugValue.getProperties();
@@ -291,16 +334,30 @@ public final class RemoteObject {
         if (debugValue.isArray()) {
             JSONArray array = new JSONArray();
             for (DebugValue element : debugValue.getArray()) {
-                array.put(createJSONValue(element, err));
+                array.put(createJSONValue(element, null, err));
             }
             return array;
         } else if (properties != null) {
             JSONObject props = new JSONObject();
             for (DebugValue property : properties) {
-                props.put(property.getName(), createJSONValue(property, err));
+                props.put(property.getName(), createJSONValue(property, null, err));
             }
             return props;
         } else {
+            if (unserializablePtr != null) {
+                Boolean bool = debugValue.as(Boolean.class);
+                if (bool != null) {
+                    return bool;
+                }
+                Number num = debugValue.as(Number.class);
+                if (num != null) {
+                    if (!isFinite(num)) {
+                        unserializablePtr[0] = num.toString();
+                        return null;
+                    }
+                    return num;
+                }
+            }
             return debugValue.as(String.class);
         }
     }
@@ -314,6 +371,14 @@ public final class RemoteObject {
     }
 
     /**
+     * Test whether the JSON value can be parsed back to the equal DebugValue (by
+     * {@link CallArgument}).
+     */
+    public boolean isReplicable() {
+        return replicableValue;
+    }
+
+    /**
      * Get the value, or <code>null</code> when there is a {@link #getScope() scope}.
      */
     public DebugValue getDebugValue() {
@@ -321,10 +386,28 @@ public final class RemoteObject {
     }
 
     /**
+     * Get the raw (primitive, String, or null) value.
+     */
+    public Object getRawValue() {
+        return value;
+    }
+
+    /**
      * Get the frame, or <code>null</code> when there is a {@link #getDebugValue() value}.
      */
     public DebugScope getScope() {
         return valueScope;
+    }
+
+    private static boolean isFinite(Number n) {
+        if (n instanceof Double) {
+            Double d = (Double) n;
+            return !d.isInfinite() && !d.isNaN() && !d.equals(NEGATIVE_DOUBLE_0);
+        } else if (n instanceof Float) {
+            Float f = (Float) n;
+            return !f.isInfinite() && !f.isNaN() && !f.equals(NEGATIVE_FLOAT_0);
+        }
+        return true;
     }
 
     /**

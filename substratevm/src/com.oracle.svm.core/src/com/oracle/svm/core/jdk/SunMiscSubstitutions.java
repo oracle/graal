@@ -52,8 +52,6 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.code.MemoryBarriers;
-import sun.misc.JavaAWTAccess;
-import sun.misc.JavaLangAccess;
 import sun.misc.Unsafe;
 
 @TargetClass(sun.misc.Unsafe.class)
@@ -160,7 +158,7 @@ final class Target_sun_misc_Unsafe {
     }
 }
 
-@TargetClass(sun.misc.MessageUtils.class)
+@TargetClass(className = "sun.misc.MessageUtils", onlyWith = JDK8OrEarlier.class)
 final class Target_sun_misc_MessageUtils {
 
     /*
@@ -216,9 +214,49 @@ final class Target_jdk_internal_ref_Cleaner {
     native void clean();
 }
 
+@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_CleanerImpl {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
+    Target_jdk_internal_ref_PhantomCleanable phantomCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$WeakCleanableRef")//
+    Target_jdk_internal_ref_WeakCleanable weakCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$SoftCleanableRef")//
+    Target_jdk_internal_ref_SoftCleanable softCleanableList;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
+    ReferenceQueue<Object> queue;
+}
+
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_PhantomCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_WeakCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_ref_SoftCleanable {
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_perf implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.perf." + annotation.className();
+        }
+    }
+}
+
 /** PerfCounter methods that access the lb field fail with SIGSEV. */
-@TargetClass(sun.misc.PerfCounter.class)
-final class Target_sun_misc_PerfCounter {
+@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "PerfCounter")
+final class Target_jdk_internal_perf_PerfCounter {
 
     @Substitute
     @SuppressWarnings("static-method")
@@ -235,18 +273,47 @@ final class Target_sun_misc_PerfCounter {
     }
 }
 
-@TargetClass(sun.misc.SharedSecrets.class)
-final class Target_sun_misc_SharedSecrets {
-    @Substitute
-    private static JavaAWTAccess getJavaAWTAccess() {
-        return null;
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_misc implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.misc." + annotation.className();
+        }
     }
-
-    @Alias
-    static native JavaLangAccess getJavaLangAccess();
 }
 
-@TargetClass(value = sun.misc.URLClassPath.class, innerClass = "JarLoader")
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "SharedSecrets")
+final class Target_jdk_internal_misc_SharedSecrets {
+    @Substitute
+    private static Target_jdk_internal_misc_JavaAWTAccess getJavaAWTAccess() {
+        return null;
+    }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "JavaAWTAccess")
+final class Target_jdk_internal_misc_JavaAWTAccess {
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "JavaLangAccess")
+final class Target_jdk_internal_misc_JavaLangAccess {
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_loader implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.loader." + annotation.className();
+        }
+    }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath", innerClass = "JarLoader")
 @Delete
 final class Target_sun_misc_URLClassPath_JarLoader {
 }

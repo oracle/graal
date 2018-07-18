@@ -1,0 +1,6 @@
+# Build targets
+
+builds += [
+  ${gateJAOTC}         ${oraclejdk11}    ${gateLinuxAMD64}   {name: "gate-compiler-jaotc-linux-amd64"}
+  ${gateJAOTC}                           ${gateLinuxAArch64} {name: "weekly-compiler-jaotc-linux-aarch64",                     timelimit: "1:30:00"}   ${graalWeekly}
+]

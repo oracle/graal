@@ -26,8 +26,6 @@ package com.oracle.truffle.api.nodes;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 /**
@@ -42,7 +40,6 @@ public final class LanguageInfo {
     private final String version;
     private final Set<String> mimeTypes;
     private final Object engineObject;
-    @CompilationFinal volatile TruffleLanguage<?> spi;
     private final boolean internal;
 
     LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes, boolean internal) {
@@ -96,14 +93,6 @@ public final class LanguageInfo {
 
     Object getEngineObject() {
         return engineObject;
-    }
-
-    void setSpi(TruffleLanguage<?> spi) {
-        this.spi = spi;
-    }
-
-    TruffleLanguage<?> getSpi() {
-        return spi;
     }
 
     /**

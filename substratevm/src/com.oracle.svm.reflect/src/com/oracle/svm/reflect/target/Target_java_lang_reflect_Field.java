@@ -42,7 +42,6 @@ import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.FieldDeclaredAn
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-import sun.reflect.FieldAccessor;
 import sun.reflect.generics.repository.FieldRepository;
 
 @TargetClass(value = Field.class, onlyWith = ReflectionFeature.IsEnabled.class)
@@ -50,8 +49,12 @@ public final class Target_java_lang_reflect_Field {
 
     @Alias FieldRepository genericInfo;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) FieldAccessor fieldAccessor;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) FieldAccessor overrideFieldAccessor;
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    Target_jdk_internal_reflect_FieldAccessor fieldAccessor;
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    Target_jdk_internal_reflect_FieldAccessor overrideFieldAccessor;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldDeclaredAnnotationsComputer.class) //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
@@ -66,7 +69,7 @@ public final class Target_java_lang_reflect_Field {
     native Target_java_lang_reflect_Field copy();
 
     @Substitute
-    FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {
+    Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {
         if (fieldAccessor == null) {
             throw VMError.unsupportedFeature("Runtime reflection is not supported.");
         }

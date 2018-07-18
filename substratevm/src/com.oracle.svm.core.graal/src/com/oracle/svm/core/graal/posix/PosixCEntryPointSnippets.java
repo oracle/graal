@@ -60,7 +60,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
@@ -86,6 +85,7 @@ import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
@@ -165,7 +165,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
-        WordPointer isolate = StackValue.get(SizeOf.get(WordPointer.class));
+        WordPointer isolate = StackValue.get(WordPointer.class);
         isolate.write(WordFactory.nullPointer());
         int error = Isolates.create(isolate, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {
@@ -277,6 +277,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
+        RuntimeSupport.executeTearDownHooks();
         boolean success = JavaThreads.singleton().tearDownVM();
         if (!success) {
             return CEntryPointErrors.UNSPECIFIED;

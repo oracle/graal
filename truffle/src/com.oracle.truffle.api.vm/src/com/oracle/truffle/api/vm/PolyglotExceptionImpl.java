@@ -107,9 +107,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 Objects.requireNonNull(languageContext, "Source location can not be accepted without language context.");
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
-                PolyglotLanguageContext sourceContext = languageContext.context.findLanguageContext(language, truffleSource.getMimeType(), false);
-                if (language == null && sourceContext != null) {
-                    language = sourceContext.language.getId();
+                if (language == null) {
+                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(language, truffleSource.getMimeType(), false);
+                    if (foundLanguage != null) {
+                        language = foundLanguage.getId();
+                    }
                 }
                 Source source = getAPIAccess().newSource(language, truffleSource);
                 this.sourceLocation = getAPIAccess().newSourceSection(source, section);
@@ -117,15 +119,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 this.sourceLocation = null;
             }
             Object exceptionObject = ((TruffleException) exception).getExceptionObject();
-            if (exceptionObject != null) {
-                Objects.requireNonNull(languageContext, "Exception object can not be accepted without language context.");
+            if (exceptionObject != null && languageContext != null) {
                 this.guestObject = languageContext.toHostValue(exceptionObject);
             } else {
-                if (languageContext != null) {
-                    this.guestObject = languageContext.context.getHostContext().nullValue;
-                } else {
-                    this.guestObject = null;
-                }
+                this.guestObject = null;
             }
         } else {
             this.cancelled = false;
@@ -135,11 +132,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             this.exit = false;
             this.exitStatus = 0;
             this.sourceLocation = null;
-            if (languageContext != null) {
-                this.guestObject = languageContext.context.getHostContext().nullValue;
-            } else {
-                this.guestObject = null;
-            }
+            this.guestObject = null;
         }
         if (isHostException()) {
             this.message = asHostException().getMessage();
@@ -154,6 +147,19 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         // late materialization of host frames. only needed if polyglot exceptions cross the
         // host boundary.
         VMAccessor.LANGUAGE.materializeHostFrames(original);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof PolyglotExceptionImpl) {
+            return exception == ((PolyglotExceptionImpl) obj).exception;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return exception.hashCode();
     }
 
     @Override

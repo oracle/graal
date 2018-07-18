@@ -41,7 +41,7 @@ public class ClassLoaderFeature implements Feature {
     }
 
     private void createClassLoaders(ClassLoader classLoader) {
-        Map<ClassLoader, Target_java_lang_ClassLoader> classLoaders = ImageSingletons.lookup(ClassLoaderSupport.class).classloaders;
+        Map<ClassLoader, Target_java_lang_ClassLoader> classLoaders = ClassLoaderSupport.getInstance().classLoaders;
         if (!classLoaders.containsKey(classLoader)) {
             ClassLoader parent = classLoader.getParent();
             if (parent != null) {
@@ -54,11 +54,17 @@ public class ClassLoaderFeature implements Feature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        createClassLoaders(ClassLoader.getSystemClassLoader());
+        ClassLoaderSupport.getInstance().systemClassLoader = ClassLoaderSupport.getInstance().classLoaders.get(ClassLoader.getSystemClassLoader());
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(object -> {
             if (object instanceof ClassLoader) {
                 createClassLoaders((ClassLoader) object);
-                return ImageSingletons.lookup(ClassLoaderSupport.class).classloaders.get(object);
+                return ClassLoaderSupport.getInstance().classLoaders.get(object);
             }
             return object;
         });

@@ -55,16 +55,23 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
@@ -100,6 +107,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
@@ -119,6 +127,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import sun.misc.Unsafe;
 
 /**
@@ -127,7 +136,7 @@ import sun.misc.Unsafe;
 public class StandardGraphBuilderPlugins {
 
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider,
-                    boolean allowDeoptimization) {
+                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
@@ -141,7 +150,7 @@ public class StandardGraphBuilderPlugins {
         registerDoublePlugins(plugins);
         registerArraysPlugins(plugins, bytecodeProvider);
         registerArrayPlugins(plugins, bytecodeProvider);
-        registerUnsafePlugins(plugins, bytecodeProvider);
+        registerUnsafePlugins(plugins, bytecodeProvider, explicitUnsafeNullChecks);
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
         registerBoxingPlugins(plugins);
@@ -177,9 +186,29 @@ public class StandardGraphBuilderPlugins {
 
         if (Java8OrEarlier) {
             r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+
             r.register7("indexOf", char[].class, int.class, int.class, char[].class, int.class, int.class, int.class, new StringIndexOfConstantPlugin());
 
             Registration sr = new Registration(plugins, StringSubstitutions.class);
+            sr.register1("getValue", String.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                    b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
+                                    b.getOptions(), b.getAssumptions(), value, field, false, false));
+                    return true;
+                }
+            });
+        } else {
+            r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
+
+            final Registration latin1r = new Registration(plugins, "java.lang.StringLatin1", bytecodeProvider);
+            latin1r.register5("indexOf", byte[].class, int.class, byte[].class, int.class, int.class, new StringLatin1IndexOfConstantPlugin());
+
+            final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
+            utf16r.register5("indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class, new StringUTF16IndexOfConstantPlugin());
+
+            Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -215,31 +244,30 @@ public class StandardGraphBuilderPlugins {
     }
 
     private abstract static class UnsafeCompareAndUpdatePluginsRegistrar {
-        public void register(Registration r, String casPrefix, JavaKind[] compareAndSwapTypes) {
+        public void register(Registration r, String casPrefix, boolean explicitUnsafeNullChecks, JavaKind[] compareAndSwapTypes) {
             for (JavaKind kind : compareAndSwapTypes) {
                 Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-                r.register5(casPrefix + kind.name(), Receiver.class, Object.class, long.class, javaClass, javaClass, new InvocationPlugin() {
+                r.register5(casPrefix + kind.name(), Receiver.class, Object.class, long.class, javaClass, javaClass, new UnsafeAccessPlugin(returnKind(kind), explicitUnsafeNullChecks) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode expected, ValueNode x) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
-                        b.addPush(returnKind(kind), createNode(object, offset, expected, x, kind, LocationIdentity.any()));
-                        b.getGraph().markUnsafeAccess();
+                        createUnsafeAccess(object, b, (obj, loc) -> UnsafeCompareAndUpdatePluginsRegistrar.this.createNode(obj, offset, expected, x, kind, loc));
                         return true;
                     }
                 });
             }
         }
 
-        public abstract ValueNode createNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind kind, LocationIdentity identity);
+        public abstract FixedWithNextNode createNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind kind, LocationIdentity identity);
 
         public abstract JavaKind returnKind(JavaKind accessKind);
     }
 
     private static class UnsafeCompareAndSwapPluginsRegistrar extends UnsafeCompareAndUpdatePluginsRegistrar {
         @Override
-        public ValueNode createNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind kind, LocationIdentity identity) {
-            return new UnsafeCompareAndSwapNode(object, offset, expected, newValue, kind, LocationIdentity.any());
+        public FixedWithNextNode createNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind kind, LocationIdentity identity) {
+            return new UnsafeCompareAndSwapNode(object, offset, expected, newValue, kind, identity);
         }
 
         @Override
@@ -252,8 +280,8 @@ public class StandardGraphBuilderPlugins {
 
     private static class UnsafeCompareAndExchangePluginsRegistrar extends UnsafeCompareAndUpdatePluginsRegistrar {
         @Override
-        public ValueNode createNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind kind, LocationIdentity identity) {
-            return new UnsafeCompareAndExchangeNode(object, offset, expected, newValue, kind, LocationIdentity.any());
+        public FixedWithNextNode createNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind kind, LocationIdentity identity) {
+            return new UnsafeCompareAndExchangeNode(object, offset, expected, newValue, kind, identity);
         }
 
         @Override
@@ -268,30 +296,31 @@ public class StandardGraphBuilderPlugins {
 
     private static UnsafeCompareAndExchangePluginsRegistrar unsafeCompareAndExchangePluginsRegistrar = new UnsafeCompareAndExchangePluginsRegistrar();
 
-    public static void registerPlatformSpecificUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, JavaKind[] supportedCasKinds) {
-        Registration r;
-        if (Java8OrEarlier) {
-            r = new Registration(plugins, Unsafe.class);
-        } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", bytecodeProvider);
+    public static void registerPlatformSpecificUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks, JavaKind[] supportedCasKinds) {
+        registerPlatformSpecificUnsafePlugins(supportedCasKinds, new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks);
+        if (!Java8OrEarlier) {
+            registerPlatformSpecificUnsafePlugins(supportedCasKinds, new Registration(plugins, "jdk.internal.misc.Unsafe", bytecodeProvider), false, explicitUnsafeNullChecks);
         }
 
-        if (Java8OrEarlier) {
-            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSwap", new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+    }
+
+    private static void registerPlatformSpecificUnsafePlugins(JavaKind[] supportedCasKinds, Registration r, boolean java8OrEarlier, boolean explicitUnsafeNullChecks) {
+        if (java8OrEarlier) {
+            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSwap", explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
         } else {
-            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSet", supportedCasKinds);
-            unsafeCompareAndExchangePluginsRegistrar.register(r, "compareAndExchange", supportedCasKinds);
+            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSet", explicitUnsafeNullChecks, supportedCasKinds);
+            unsafeCompareAndExchangePluginsRegistrar.register(r, "compareAndExchange", explicitUnsafeNullChecks, supportedCasKinds);
         }
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r;
-        if (Java8OrEarlier) {
-            r = new Registration(plugins, Unsafe.class);
-        } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", bytecodeProvider);
+    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks) {
+        registerUnsafePlugins(new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks);
+        if (!Java8OrEarlier) {
+            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", bytecodeProvider), false, explicitUnsafeNullChecks);
         }
+    }
 
+    private static void registerUnsafePlugins(Registration r, boolean java8OrEarlier, boolean explicitUnsafeNullChecks) {
         for (JavaKind kind : JavaKind.values()) {
             if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                 Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
@@ -299,30 +328,33 @@ public class StandardGraphBuilderPlugins {
                 String getName = "get" + kindName;
                 String putName = "put" + kindName;
                 // Object-based accesses
-                r.register3(getName, Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, false));
-                r.register4(putName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, false));
+                r.register3(getName, Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, explicitUnsafeNullChecks));
+                r.register4(putName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, explicitUnsafeNullChecks));
                 // Volatile object-based accesses
-                r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, true));
-                r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, true));
+                r.register3(getName + "Volatile", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, AccessKind.VOLATILE, explicitUnsafeNullChecks));
+                r.register4(putName + "Volatile", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, AccessKind.VOLATILE, explicitUnsafeNullChecks));
                 // Ordered object-based accesses
-                if (Java8OrEarlier) {
+                if (java8OrEarlier) {
                     if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {
-                        r.register4("putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass, UnsafePutPlugin.putOrdered(kind));
+                        r.register4("putOrdered" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, AccessKind.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
                     }
                 } else {
-                    r.register4("put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass, UnsafePutPlugin.putOrdered(kind));
+                    r.register4("put" + kindName + "Release", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, AccessKind.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
+                    r.register3("get" + kindName + "Acquire", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, AccessKind.RELEASE_ACQUIRE, explicitUnsafeNullChecks));
+                    r.register4("put" + kindName + "Opaque", Receiver.class, Object.class, long.class, javaClass, new UnsafePutPlugin(kind, AccessKind.OPAQUE, explicitUnsafeNullChecks));
+                    r.register3("get" + kindName + "Opaque", Receiver.class, Object.class, long.class, new UnsafeGetPlugin(kind, AccessKind.OPAQUE, explicitUnsafeNullChecks));
                 }
                 if (kind != JavaKind.Boolean && kind != JavaKind.Object) {
                     // Raw accesses to memory addresses
-                    r.register2(getName, Receiver.class, long.class, new UnsafeGetPlugin(kind, false));
-                    r.register3(putName, Receiver.class, long.class, kind.toJavaClass(), new UnsafePutPlugin(kind, false));
+                    r.register2(getName, Receiver.class, long.class, new UnsafeGetPlugin(kind, explicitUnsafeNullChecks));
+                    r.register3(putName, Receiver.class, long.class, kind.toJavaClass(), new UnsafePutPlugin(kind, explicitUnsafeNullChecks));
                 }
             }
         }
 
         // Accesses to native memory addresses.
-        r.register2("getAddress", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Long, false));
-        r.register3("putAddress", Receiver.class, long.class, long.class, new UnsafePutPlugin(JavaKind.Long, false));
+        r.register2("getAddress", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Long, explicitUnsafeNullChecks));
+        r.register3("putAddress", Receiver.class, long.class, long.class, new UnsafePutPlugin(JavaKind.Long, explicitUnsafeNullChecks));
 
         r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
 
@@ -543,6 +575,42 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    public static final class StringLatin1IndexOfConstantPlugin implements InvocationPlugin {
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
+                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
+            if (target.isConstant()) {
+                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
+                                source, sourceCount, target, targetCount, origFromIndex));
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class StringUTF16IndexOfConstantPlugin implements InvocationPlugin {
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
+                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
+            if (target.isConstant()) {
+                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
+                                source, sourceCount, target, targetCount, origFromIndex));
+                return true;
+            }
+            return false;
+        }
+    }
+
     public static class UnsignedMathPlugin implements InvocationPlugin {
         private final Condition condition;
 
@@ -728,21 +796,132 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    public static class UnsafeGetPlugin implements InvocationPlugin {
+    /**
+     * The new memory order modes (JDK9+) are defined with cumulative effect, from weakest to
+     * strongest: Plain, Opaque, Release/Acquire, and Volatile. The existing Plain and Volatile
+     * modes are defined compatibly with their pre-JDK 9 forms. Any guaranteed property of a weaker
+     * mode, plus more, holds for a stronger mode. (Conversely, implementations are allowed to use a
+     * stronger mode than requested for any access.) In JDK 9, these are provided without a full
+     * formal specification.
+     */
+    enum AccessKind {
+        PLAIN(0, 0, 0, 0, false),
+        /**
+         * Opaque accesses are wrapped by dummy membars to avoid floating/hoisting, this is stronger
+         * than required since Opaque mode does not directly impose any ordering constraints with
+         * respect to other variables beyond Plain mode.
+         */
+        OPAQUE(0, 0, 0, 0, true),
+        RELEASE_ACQUIRE(0, LOAD_LOAD | LOAD_STORE, LOAD_STORE | STORE_STORE, 0, true),
+        VOLATILE(JMM_PRE_VOLATILE_READ, JMM_POST_VOLATILE_READ, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE, true);
 
-        private final JavaKind returnKind;
-        private final boolean isVolatile;
+        public final boolean emitBarriers;
+        public final int preReadBarriers;
+        public final int postReadBarriers;
+        public final int preWriteBarriers;
+        public final int postWriteBarriers;
 
-        public UnsafeGetPlugin(JavaKind returnKind, boolean isVolatile) {
-            this.returnKind = returnKind;
-            this.isVolatile = isVolatile;
+        AccessKind(int preReadBarriers, int postReadBarriers, int preWriteBarriers, int postWriteBarriers, boolean emitBarriers) {
+            this.emitBarriers = emitBarriers;
+            this.preReadBarriers = preReadBarriers;
+            this.postReadBarriers = postReadBarriers;
+            this.preWriteBarriers = preWriteBarriers;
+            this.postWriteBarriers = postWriteBarriers;
+        }
+    }
+
+    /**
+     * Unsafe access relative to null object is an access to off-heap memory. As linear pointer
+     * compression uses non-zero null, here null object must be replaced with zero constant.
+     */
+    public abstract static class UnsafeAccessPlugin implements InvocationPlugin {
+        @FunctionalInterface
+        public interface UnsafeNodeConstructor {
+            FixedWithNextNode create(ValueNode value, LocationIdentity location);
+        }
+
+        protected final JavaKind unsafeAccessKind;
+        private final boolean explicitUnsafeNullChecks;
+
+        public UnsafeAccessPlugin(JavaKind kind, boolean explicitUnsafeNullChecks) {
+            unsafeAccessKind = kind;
+            this.explicitUnsafeNullChecks = explicitUnsafeNullChecks;
+        }
+
+        private static FixedWithNextNode createObjectAccessNode(ValueNode value, UnsafeNodeConstructor nodeConstructor) {
+            return nodeConstructor.create(value, LocationIdentity.ANY_LOCATION);
+        }
+
+        private static FixedWithNextNode createMemoryAccessNode(StructuredGraph graph, UnsafeNodeConstructor nodeConstructor) {
+            return nodeConstructor.create(ConstantNode.forLong(0L, graph), OFF_HEAP_LOCATION);
+        }
+
+        private static boolean isLoad(ValueNode node) {
+            return node.getStackKind() != JavaKind.Void;
+        }
+
+        private void setResult(ValueNode node, GraphBuilderContext b) {
+            if (isLoad(node)) {
+                b.addPush(unsafeAccessKind, node);
+            } else {
+                b.add(node);
+            }
+        }
+
+        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
+            StructuredGraph graph = b.getGraph();
+            graph.markUnsafeAccess();
+            /* For unsafe access object pointers can only be stored in the heap */
+            if (unsafeAccessKind == JavaKind.Object) {
+                setResult(createObjectAccessNode(value, nodeConstructor), b);
+            } else if (StampTool.isPointerAlwaysNull(value)) {
+                setResult(createMemoryAccessNode(graph, nodeConstructor), b);
+            } else if (!explicitUnsafeNullChecks || StampTool.isPointerNonNull(value)) {
+                setResult(createObjectAccessNode(value, nodeConstructor), b);
+            } else {
+                FixedWithNextNode objectAccess = graph.add(createObjectAccessNode(value, nodeConstructor));
+                FixedWithNextNode memoryAccess = graph.add(createMemoryAccessNode(graph, nodeConstructor));
+                FixedWithNextNode[] accessNodes = new FixedWithNextNode[]{objectAccess, memoryAccess};
+
+                LogicNode condition = graph.addOrUniqueWithInputs(IsNullNode.create(value));
+                b.add(new IfNode(condition, memoryAccess, objectAccess, 0.5));
+
+                MergeNode merge = b.append(new MergeNode());
+                for (FixedWithNextNode node : accessNodes) {
+                    EndNode endNode = graph.add(new EndNode());
+                    node.setNext(endNode);
+                    if (node instanceof StateSplit) {
+                        b.setStateAfter((StateSplit) node);
+                    }
+                    merge.addForwardEnd(endNode);
+                }
+
+                if (isLoad(objectAccess)) {
+                    ValuePhiNode phi = new ValuePhiNode(objectAccess.stamp(NodeView.DEFAULT), merge, accessNodes);
+                    b.push(unsafeAccessKind, graph.addOrUnique(phi));
+                }
+                b.setStateAfter(merge);
+            }
+        }
+    }
+
+    public static class UnsafeGetPlugin extends UnsafeAccessPlugin {
+        private final AccessKind accessKind;
+
+        public UnsafeGetPlugin(JavaKind returnKind, boolean explicitUnsafeNullChecks) {
+            this(returnKind, AccessKind.PLAIN, explicitUnsafeNullChecks);
+        }
+
+        public UnsafeGetPlugin(JavaKind kind, AccessKind accessKind, boolean explicitUnsafeNullChecks) {
+            super(kind, explicitUnsafeNullChecks);
+            this.accessKind = accessKind;
         }
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.addPush(returnKind, new UnsafeMemoryLoadNode(address, returnKind, OFF_HEAP_LOCATION));
+            b.addPush(unsafeAccessKind, new UnsafeMemoryLoadNode(address, unsafeAccessKind, OFF_HEAP_LOCATION));
             b.getGraph().markUnsafeAccess();
             return true;
         }
@@ -751,48 +930,35 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (isVolatile) {
-                b.add(new MembarNode(JMM_PRE_VOLATILE_READ));
+            if (accessKind.emitBarriers) {
+                b.add(new MembarNode(accessKind.preReadBarriers));
             }
-            LocationIdentity locationIdentity = object.isNullConstant() ? OFF_HEAP_LOCATION : LocationIdentity.any();
-            b.addPush(returnKind, new RawLoadNode(object, offset, returnKind, locationIdentity));
-            if (isVolatile) {
-                b.add(new MembarNode(JMM_POST_VOLATILE_READ));
+            createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
+            if (accessKind.emitBarriers) {
+                b.add(new MembarNode(accessKind.postReadBarriers));
             }
-            b.getGraph().markUnsafeAccess();
             return true;
         }
     }
 
-    public static class UnsafePutPlugin implements InvocationPlugin {
+    public static class UnsafePutPlugin extends UnsafeAccessPlugin {
+        private final AccessKind accessKind;
 
-        private final JavaKind kind;
-        private final boolean hasBarrier;
-        private final int preWrite;
-        private final int postWrite;
-
-        public UnsafePutPlugin(JavaKind kind, boolean isVolatile) {
-            this(kind, isVolatile, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE);
+        public UnsafePutPlugin(JavaKind kind, boolean explicitUnsafeNullChecks) {
+            this(kind, AccessKind.PLAIN, explicitUnsafeNullChecks);
         }
 
-        private UnsafePutPlugin(JavaKind kind, boolean hasBarrier, int preWrite, int postWrite) {
-            super();
-            this.kind = kind;
-            this.hasBarrier = hasBarrier;
-            this.preWrite = preWrite;
-            this.postWrite = postWrite;
-        }
-
-        public static UnsafePutPlugin putOrdered(JavaKind kind) {
-            return new UnsafePutPlugin(kind, true, LOAD_STORE | STORE_STORE, 0);
+        private UnsafePutPlugin(JavaKind kind, AccessKind accessKind, boolean explicitUnsafeNullChecks) {
+            super(kind, explicitUnsafeNullChecks);
+            this.accessKind = accessKind;
         }
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address, ValueNode value) {
-            assert !hasBarrier : "Barriers for address based Unsafe put is not supported.";
+            assert !accessKind.emitBarriers : "Barriers for address based Unsafe put is not supported.";
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.add(new UnsafeMemoryStoreNode(address, value, kind, OFF_HEAP_LOCATION));
+            b.add(new UnsafeMemoryStoreNode(address, value, unsafeAccessKind, OFF_HEAP_LOCATION));
             b.getGraph().markUnsafeAccess();
             return true;
         }
@@ -801,15 +967,14 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (hasBarrier) {
-                b.add(new MembarNode(preWrite));
+            if (accessKind.emitBarriers) {
+                b.add(new MembarNode(accessKind.preWriteBarriers));
             }
-            LocationIdentity locationIdentity = object.isNullConstant() ? OFF_HEAP_LOCATION : LocationIdentity.any();
-            b.add(new RawStoreNode(object, offset, value, kind, locationIdentity));
-            if (hasBarrier) {
-                b.add(new MembarNode(postWrite));
+            ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
+            if (accessKind.emitBarriers) {
+                b.add(new MembarNode(accessKind.postWriteBarriers));
             }
-            b.getGraph().markUnsafeAccess();
             return true;
         }
     }
@@ -873,11 +1038,11 @@ public class StandardGraphBuilderPlugins {
                 GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is need to use `deoptimizeAndInvalidateWithSpeculation`");
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
                 DirectiveSpeculationReason reason = new DirectiveSpeculationReason(pos);
-                JavaConstant speculation;
+                Speculation speculation;
                 if (b.getGraph().getSpeculationLog().maySpeculate(reason)) {
                     speculation = b.getGraph().getSpeculationLog().speculate(reason);
                 } else {
-                    speculation = JavaConstant.defaultForKind(JavaKind.Object);
+                    speculation = SpeculationLog.NO_SPECULATION;
                 }
                 b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter, speculation));
                 return true;

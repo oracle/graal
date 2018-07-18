@@ -113,8 +113,8 @@ public @interface RecomputeFieldValue {
         /**
          * Computes the new field value.
          *
-         * @param original The original field (if {@link RecomputeFieldValue} is used for an.
-         * @link{Alias field).
+         * @param original The original field (if {@link RecomputeFieldValue} is used for an
+         *            {@link Alias} field).
          * @param annotated The field annotated with {@link RecomputeFieldValue}.
          * @param receiver The original object for instance fields, or {@code null} for static
          *            fields.

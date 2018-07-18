@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
+//Checkstyle: allow reflection
+
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
+import java.lang.reflect.Field;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -37,11 +39,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 class ReferenceWrapper extends FeebleReference<Object> {
@@ -59,6 +63,18 @@ class ReferenceWrapper extends FeebleReference<Object> {
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class ComputeReferenceValue implements CustomFieldValueComputer {
+
+    private static final Field REFERENT_FIELD;
+
+    static {
+        try {
+            REFERENT_FIELD = Reference.class.getDeclaredField("referent");
+            REFERENT_FIELD.setAccessible(true);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         if (receiver instanceof PhantomReference) {
@@ -66,14 +82,18 @@ class ComputeReferenceValue implements CustomFieldValueComputer {
              * PhantomReference does not allow access to its object, so it is mostly useless to have
              * a PhantomReference on the image heap. But some JDK code uses it, e.g., for marker
              * values, so we cannot disallow PhantomReference for the image heap.
-             *
-             * Some subclasses of PhantomReference override the get() method to throw an error
-             * (instead of the default implementation that returns null), so we need to manually
-             * check that here.
              */
             return null;
         }
-        return ((Reference<?>) receiver).get();
+        try {
+            /*
+             * Some subclasses of Reference overwrite Reference.get() to throw an error. Therefore,
+             * we need to access the field directly using reflection.
+             */
+            return REFERENT_FIELD.get(receiver);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 }
 
@@ -120,6 +140,7 @@ final class Target_java_lang_ref_Reference {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
     private static boolean tryHandlePending(boolean waitForNotify) {
         throw VMError.unimplemented();

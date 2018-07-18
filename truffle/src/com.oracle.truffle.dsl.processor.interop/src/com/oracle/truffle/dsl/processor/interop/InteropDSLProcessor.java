@@ -296,6 +296,9 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         }
 
         Object currentMessage = Utils.getMessage(processingEnv, resolveAnnotation.message());
+        if (currentMessage == null) {
+            currentMessage = currentGenerator.getMessageName();
+        }
         factoryGenerator.addMessageHandler(currentMessage, currentGenerator);
         return true;
     }

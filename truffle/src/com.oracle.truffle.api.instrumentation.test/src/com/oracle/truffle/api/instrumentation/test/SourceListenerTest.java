@@ -124,9 +124,8 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.allNotInternalEvents, source1, source2);
 
         // Disable the instrument by closing the engine.
-        engine.close();
-        engine = null;
-        engine = getEngine();
+        teardown();
+        setup();
 
         Source source4 = lines("STATEMENT(EXPRESSION, EXPRESSION, EXPRESSION)");
         for (int i = 0; i < runTimes; i++) {
@@ -323,6 +322,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testLoadSourceNoRootSection() throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
         impl.attachLoad();
@@ -331,25 +331,26 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testExecuteSourceNoRootSection() throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
         impl.attachExecute();
         testNoRootSectionImpl(impl);
     }
 
-    private void testNoRootSectionImpl(TestLoadExecuteSource impl) throws Exception {
+    private static void testNoRootSectionImpl(TestLoadExecuteSource impl) throws Exception {
         com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("line1\nline2").mimeType("mime").name("NoName1").build();
         com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("line3\nline4").mimeType("mime").name("NoName2").build();
         com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("line5\nline6").mimeType("mime").name("NoName3").build();
         Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
-        RootNode rootA = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node1);
+        RootNode rootA = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node1);
         assertEvents(impl.allEvents);
         Truffle.getRuntime().createCallTarget(rootA).call();
         assertEvents(impl.allEvents, source1);
 
         Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(2));
         Node node3 = new SourceSectionFilterTest.SourceSectionNode(source3.createSection(2));
-        RootNode rootB = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2, node3);
+        RootNode rootB = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2, node3);
         assertEvents(impl.allEvents, source1);
         Truffle.getRuntime().createCallTarget(rootB).call();
         assertEvents(impl.allEvents, source1, source2, source3);
@@ -366,6 +367,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     private void testBindingDisposalImpl(boolean load) throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testBindingDisposal");
         TestBindingDisposal impl = instrument.lookup(TestBindingDisposal.class);
         impl.doAttach(load);
@@ -381,7 +383,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         com.oracle.truffle.api.source.Source source2b = com.oracle.truffle.api.source.Source.newBuilder("line2b").mimeType("mime").name("NoName2b").build();
         Node node2a = new SourceSectionFilterTest.SourceSectionNode(source2a.createSection(1));
         Node node2b = new SourceSectionFilterTest.SourceSectionNode(source2b.createSection(1));
-        RootNode root2 = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2a, node2b);
+        RootNode root2 = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2a, node2b);
         Truffle.getRuntime().createCallTarget(root2).call();
         assertEvents(impl.onlyNewEvents, source1);
         assertEvents(impl.allEvents, source1);
