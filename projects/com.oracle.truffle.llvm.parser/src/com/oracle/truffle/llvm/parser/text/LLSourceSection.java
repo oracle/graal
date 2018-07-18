@@ -27,40 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.functions;
+package com.oracle.truffle.llvm.parser.text;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.listeners.Function;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
-import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public final class LazyFunctionParser {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-    private final LLVMScanner.LazyScanner scanner;
-    private final Function parser;
-    private final LLSourceBuilder llSource;
+final class LLSourceSection extends LLVMSourceLocation.LazySourceSection {
 
-    private boolean isParsed;
+    private final SourceSection section;
 
-    public LazyFunctionParser(LLVMScanner.LazyScanner scanner, Function parser, LLSourceBuilder llSource) {
-        this.scanner = scanner;
-        this.parser = parser;
-        this.llSource = llSource;
-        this.isParsed = false;
+    LLSourceSection(SourceSection section) {
+        this.section = section;
     }
 
-    public void parse(DebugInfoFunctionProcessor diProcessor, Source bitcodeSource, LLVMParserRuntime runtime) {
-        if (!isParsed) {
-            parser.setupScope();
-            scanner.scanBlock(parser);
-            diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, runtime.getContext());
-            if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                llSource.applySourceLocations(parser.getFunction(), runtime);
-            }
-            isParsed = true;
-        }
+    @Override
+    public SourceSection get() {
+        return section;
     }
+
+    @Override
+    @TruffleBoundary
+    public Path getPath() {
+        return Paths.get(section.getSource().getPath());
+    }
+
+    @Override
+    public int getLine() {
+        return section.getStartLine();
+    }
+
+    @Override
+    public int getColumn() {
+        return section.getStartColumn();
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return section.getSource().getName() + ":" + getLine();
+    }
+
 }

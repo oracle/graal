@@ -95,10 +95,10 @@ public abstract class LLVMSourceLocation {
         this.kind = kind;
         this.name = name;
         this.lazySourceSection = lazySourceSection;
+        this.sourceSection = null;
     }
 
     private LLVMSourceLocation(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection) {
-        assert sourceSection != null;
         this.parent = parent;
         this.kind = kind;
         this.name = name;

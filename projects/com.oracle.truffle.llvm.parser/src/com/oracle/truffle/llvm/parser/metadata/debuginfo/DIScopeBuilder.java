@@ -517,7 +517,7 @@ final class DIScopeBuilder {
         return new LazySourceSectionImpl(sources, path, (int) startLine, (int) startCol, needsRange);
     }
 
-    private static Source asSource(Map<String, Source> sources, String path) {
+    private static Source asSource(Map<Path, Source> sources, Path path) {
         if (sources.containsKey(path)) {
             return sources.get(path);
         } else if (path == null) {
