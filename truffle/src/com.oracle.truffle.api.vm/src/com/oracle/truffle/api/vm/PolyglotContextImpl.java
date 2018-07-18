@@ -377,7 +377,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 threadInfo = createThreadInfo(current);
                 needsInitialization = !inContextPreInitialization;
             }
-
             boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
             if (transitionToMultiThreading) {
                 // recheck all thread accesses
@@ -426,7 +425,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 constantCurrentThreadInfo = info;
             } else {
                 constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
-                singleThreadedConstant.invalidate();
+                if (info != PolyglotThreadInfo.NULL) {
+                    singleThreadedConstant.invalidate();
+                }
             }
         }
         currentThreadInfo = info;
@@ -789,7 +790,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     synchronized boolean isActive() {
-        setCachedThreadInfo(PolyglotThreadInfo.NULL);
         for (PolyglotThreadInfo seenTinfo : threads.values()) {
             if (seenTinfo.isActive()) {
                 return true;
@@ -801,7 +801,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     PolyglotThreadInfo getFirstActiveOtherThread(boolean includePolyglotThread) {
         assert Thread.holdsLock(this);
         // send enters and leaves into a lock by setting the lastThread to null.
-        setCachedThreadInfo(getCurrentThreadInfo());
         for (PolyglotThreadInfo otherInfo : threads.values()) {
             if (!includePolyglotThread && otherInfo.isPolyglotThread(this)) {
                 continue;
@@ -835,9 +834,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             synchronized (this) {
                 if (!closed) {
-                    // triggers a thread changed event which requires synchronization on the next
                     PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
-                    setCachedThreadInfo(threadInfo);
+
+                    // triggers a thread changed event which requires slow path enter
+                    setCachedThreadInfo(PolyglotThreadInfo.NULL);
 
                     if (!threadInfo.explicitContextStack.isEmpty()) {
                         throw new IllegalStateException("The context is explicitely entered on the current thread. Call leave() before closing the context to resolve this.");
