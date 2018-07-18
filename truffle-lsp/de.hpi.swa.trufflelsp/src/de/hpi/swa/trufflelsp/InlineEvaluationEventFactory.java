@@ -32,7 +32,7 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
                     Object result;
                     try {
                         result = fragment.execute(frame);
-                    } catch (Throwable e) {
+                    } catch (Exception e) {
                         e.printStackTrace(); // TODO(ds)
                         CompilerDirectives.transferToInterpreter();
                         throw new EvaluationResultException(null, true);

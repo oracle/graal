@@ -77,7 +77,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
                 }
             });
 
-            public <T> Future<T> doWithDefaultContext(Supplier<T> taskWithResult) {
+            public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult) {
                 System.out.println("Submitting new task (default context)");
                 return executor.submit(new Callable<T>() {
 
@@ -87,22 +87,25 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
                 });
             }
 
-            public <T> Future<T> doWithNestedContext(Supplier<T> taskWithResult) {
+            public <T> Future<T> executeWithNestedContext(Supplier<T> taskWithResult) {
                 System.out.println("Submitting new task (new context)");
                 return executor.submit(new Callable<T>() {
 
                     public T call() throws Exception {
-                        try (Context newContext = contextBuilder.build()) {
-                            newContext.enter();
-                            try {
-                                return taskWithResult.get();
-                            } finally {
-                                newContext.leave();
-                            }
-                        }
-
+                        return doWithNestedContext(taskWithResult);
                     }
                 });
+            }
+
+            public <T> T doWithNestedContext(Supplier<T> taskWithResult) {
+                try (Context newContext = contextBuilder.build()) {
+                    newContext.enter();
+                    try {
+                        return taskWithResult.get();
+                    } finally {
+                        newContext.leave();
+                    }
+                }
             }
 
             public void shutdown() {
@@ -111,7 +114,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
         };
         registry.register(evaluator);
 
-        Future<Context> futureDefaultContext = evaluator.doWithDefaultContext(() -> {
+        Future<Context> futureDefaultContext = evaluator.executeWithDefaultContext(() -> {
             // Create and enter the default context from "LSP server Truffle worker"-thread
             System.out.println("Setup default context...");
             Context context = contextBuilder.build();
@@ -124,7 +127,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
             Future<?> futureStartServer = bootstrapper.startServer();
             futureStartServer.get();
 
-            evaluator.doWithDefaultContext(() -> defaultContext.leave()).get();
+            evaluator.executeWithDefaultContext(() -> defaultContext.leave()).get();
             evaluator.shutdown();
         } catch (InterruptedException | ExecutionException e) {
             throw abort(e, -1);

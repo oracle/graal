@@ -5,18 +5,27 @@ import java.util.function.Supplier;
 
 public interface NestedEvaluator {
 
-    public <T> Future<T> doWithDefaultContext(Supplier<T> taskWithResult);
+    public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult);
 
-    default public <T> Future<T> doWithDefaultContext(Runnable taskWithResult) {
-        return doWithDefaultContext(() -> {
+    default public <T> Future<T> executeWithDefaultContext(Runnable taskWithResult) {
+        return executeWithDefaultContext(() -> {
             taskWithResult.run();
             return null;
         });
     }
 
-    public <T> Future<T> doWithNestedContext(Supplier<T> taskWithResult);
+    public <T> Future<T> executeWithNestedContext(Supplier<T> taskWithResult);
 
-    default public <T> Future<T> doWithNestedContext(Runnable taskWithResult) {
+    default public Future<Void> executeWithNestedContext(Runnable taskWithResult) {
+        return executeWithNestedContext(() -> {
+            taskWithResult.run();
+            return null;
+        });
+    }
+
+    public <T> T doWithNestedContext(Supplier<T> taskWithResult);
+
+    default public Void doWithNestedContext(Runnable taskWithResult) {
         return doWithNestedContext(() -> {
             taskWithResult.run();
             return null;
