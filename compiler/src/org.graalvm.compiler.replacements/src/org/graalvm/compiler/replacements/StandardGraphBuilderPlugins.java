@@ -60,7 +60,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -795,6 +794,19 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+
+        r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.genCheckcastDynamic(object, receiver.get());
+                return true;
+            }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        });
     }
 
     /**
@@ -1272,13 +1284,7 @@ public class StandardGraphBuilderPlugins {
         r.registerOptional2("castReference", Class.class, Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode javaClass, ValueNode object) {
-                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), javaClass, object, true));
-                if (condition.isTautology()) {
-                    b.addPush(JavaKind.Object, object);
-                } else {
-                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, javaClass));
-                }
+                b.genCheckcastDynamic(object, javaClass);
                 return true;
             }
 

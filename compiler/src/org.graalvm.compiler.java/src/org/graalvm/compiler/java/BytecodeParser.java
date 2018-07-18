@@ -320,6 +320,7 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.EntryMarkerNode;
 import org.graalvm.compiler.nodes.EntryProxyNode;
@@ -4094,6 +4095,24 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         frameState.push(JavaKind.Object, castNode);
+    }
+
+    @Override
+    public void genCheckcastDynamic(ValueNode object, ValueNode javaClass) {
+        LogicNode condition = genUnique(InstanceOfDynamicNode.create(getAssumptions(), getConstantReflection(), javaClass, object, true));
+        if (condition.isTautology()) {
+            frameState.push(JavaKind.Object, object);
+        } else {
+            GuardingNode guard;
+            if (needsExplicitClassCastException(object)) {
+                // This really needs to convert a Class to a hub but there's no way to do that.
+                ValueNode hub = javaClass;
+                guard = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.CLASS_CAST, object, hub);
+            } else {
+                guard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
+            }
+            frameState.push(JavaKind.Object, append(DynamicPiNode.create(getAssumptions(), getConstantReflection(), object, guard, javaClass)));
+        }
     }
 
     private void genInstanceOf(int cpi) {
