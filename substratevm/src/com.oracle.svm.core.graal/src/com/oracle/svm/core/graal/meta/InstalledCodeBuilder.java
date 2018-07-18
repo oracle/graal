@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.meta;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +37,6 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -390,14 +390,28 @@ public class InstalledCodeBuilder {
 
             } else if (dataPatch.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) dataPatch.reference;
-                SubstrateObjectConstant objConst = (SubstrateObjectConstant) ref.getConstant();
+                SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
+                UnsignedWord refBits = ReferenceAccess.singleton().getCompressedRepresentation(refConst.getObject());
+
                 PatchData data = patcher.findPatchData(dataPatch.pcOffset, 0);
+                assert data.operandSize >= ConfigurationValues.getObjectLayout().getReferenceSize();
 
-                assert data.operandSize == ConfigurationValues.getObjectLayout().getReferenceSize();
-                long byteArrayBase = ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, 0);
-                int offsetInByteArray = NumUtil.safeToInt(byteArrayBase + data.operandPosition);
-                ObjectAccess.writeObject(compiledBytes, offsetInByteArray, objConst.getObject());
-
+                ByteOrder byteOrder = ConfigurationValues.getTarget().arch.getByteOrder();
+                assert byteOrder == ByteOrder.LITTLE_ENDIAN : "Code below assumes little-endian byte order";
+                ByteBuffer codeBuffer = ByteBuffer.wrap(compiledBytes).order(byteOrder);
+                codeBuffer.position(data.operandPosition);
+                if (data.operandSize == Long.BYTES) {
+                    /*
+                     * NOTE: some instructions use 8-byte immediates for constant object references
+                     * even when we use 4-byte narrow references, so we still support patching them.
+                     * Due to little-endian order, the reference map offset is still the same.
+                     */
+                    codeBuffer.putLong(refBits.rawValue());
+                } else if (data.operandSize == Integer.BYTES) {
+                    codeBuffer.putInt(NumUtil.safeToInt(refBits.rawValue()));
+                } else {
+                    throw VMError.shouldNotReachHere("Unsupported constant reference operand size: " + data.operandSize);
+                }
                 referenceMap.markReferenceAtOffset(data.operandPosition, true);
             }
         }
@@ -441,7 +455,9 @@ public class InstalledCodeBuilder {
              * should be within a 32-bit address range.
              */
             currentPos = NumUtil.roundUp(currentPos, 8);
-            ByteBuffer codeBuffer = ByteBuffer.wrap(compiledBytes).order(ConfigurationValues.getTarget().arch.getByteOrder());
+            ByteOrder byteOrder = ConfigurationValues.getTarget().arch.getByteOrder();
+            assert byteOrder == ByteOrder.LITTLE_ENDIAN : "Code below assumes little-endian byte order";
+            ByteBuffer codeBuffer = ByteBuffer.wrap(compiledBytes).order(byteOrder);
             for (Entry<Long, Integer> entry : directTargets.entrySet()) {
                 long targetAddress = entry.getKey();
                 int trampolineOffset = entry.getValue();
