@@ -157,10 +157,10 @@ abstract class ExecuteMethodNode extends Node {
                     @Cached("method") OverloadedMethodDesc cachedMethod,
                     @Cached("create()") ToJavaNode toJavaNode,
                     @Cached(value = "createArgTypesArray(args)", dimensions = 1) Type[] cachedArgTypes,
-                    @Cached("selectOverload(method, args, languageContext, toJavaNode, cachedArgTypes)") SingleMethodDesc overload,
+                    @Cached("selectOverload(method, args, languageContext, cachedArgTypes)") SingleMethodDesc overload,
                     @Cached("asVarArgs(args, overload)") boolean asVarArgs,
                     @Cached("createClassProfile()") ValueProfile receiverProfile) {
-        assert overload == selectOverload(method, args, languageContext, toJavaNode);
+        assert overload == selectOverload(method, args, languageContext);
         Class<?>[] types = overload.getParameterTypes();
         Type[] genericTypes = overload.getGenericParameterTypes();
         Object[] convertedArguments = new Object[cachedArgTypes.length];
@@ -185,7 +185,7 @@ abstract class ExecuteMethodNode extends Node {
     Object doOverloadedUncached(OverloadedMethodDesc method, Object obj, Object[] args, Object languageContext,
                     @Cached("create()") ToJavaNode toJavaNode,
                     @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) {
-        SingleMethodDesc overload = selectOverload(method, args, languageContext, toJavaNode);
+        SingleMethodDesc overload = selectOverload(method, args, languageContext);
         Object[] convertedArguments = prepareArgumentsUncached(overload, args, languageContext, toJavaNode, isVarArgsProfile);
         return doInvoke(overload, obj, convertedArguments, languageContext);
     }
@@ -367,12 +367,13 @@ abstract class ExecuteMethodNode extends Node {
     }
 
     @TruffleBoundary
-    static SingleMethodDesc selectOverload(OverloadedMethodDesc method, Object[] args, Object languageContext, ToJavaNode toJavaNode) {
-        return selectOverload(method, args, languageContext, toJavaNode, null);
+    static SingleMethodDesc selectOverload(OverloadedMethodDesc method, Object[] args, Object languageContext) {
+        return selectOverload(method, args, languageContext, null);
     }
 
     @TruffleBoundary
-    static SingleMethodDesc selectOverload(OverloadedMethodDesc method, Object[] args, Object languageContext, ToJavaNode toJavaNode, Type[] cachedArgTypes) {
+    static SingleMethodDesc selectOverload(OverloadedMethodDesc method, Object[] args, Object languageContext, Type[] cachedArgTypes) {
+        ToJavaNode toJavaNode = ToJavaNode.create();
         SingleMethodDesc[] overloads = method.getOverloads();
         List<SingleMethodDesc> applicableByArity = new ArrayList<>();
         int minOverallArity = Integer.MAX_VALUE;
@@ -489,7 +490,7 @@ abstract class ExecuteMethodNode extends Node {
 
                 return best;
             } else {
-                SingleMethodDesc best = findMostSpecificOverload(candidates, args, varArgs);
+                SingleMethodDesc best = findMostSpecificOverload(candidates, args, varArgs, priority);
                 if (best != null) {
                     if (cachedArgTypes != null) {
                         fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority);
@@ -503,10 +504,10 @@ abstract class ExecuteMethodNode extends Node {
         return null;
     }
 
-    private static SingleMethodDesc findMostSpecificOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs) {
+    private static SingleMethodDesc findMostSpecificOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs, int priority) {
         assert candidates.size() >= 2;
         if (candidates.size() == 2) {
-            int res = compareOverloads(candidates.get(0), candidates.get(1), args, varArgs);
+            int res = compareOverloads(candidates.get(0), candidates.get(1), args, varArgs, priority);
             return res == 0 ? null : (res < 0 ? candidates.get(0) : candidates.get(1));
         }
 
@@ -518,7 +519,7 @@ abstract class ExecuteMethodNode extends Node {
             SingleMethodDesc cand = candIt.next();
             boolean add = false;
             for (Iterator<SingleMethodDesc> bestIt = best.iterator(); bestIt.hasNext();) {
-                int res = compareOverloads(cand, bestIt.next(), args, varArgs);
+                int res = compareOverloads(cand, bestIt.next(), args, varArgs, priority);
                 if (res == 0) {
                     add = true;
                 } else if (res < 0) {
@@ -540,7 +541,7 @@ abstract class ExecuteMethodNode extends Node {
         return null; // ambiguous
     }
 
-    private static int compareOverloads(SingleMethodDesc m1, SingleMethodDesc m2, Object[] args, boolean varArgs) {
+    private static int compareOverloads(SingleMethodDesc m1, SingleMethodDesc m2, Object[] args, boolean varArgs, int priority) {
         int res = 0;
         int maxParamCount = Math.max(m1.getParameterCount(), m2.getParameterCount());
         assert !varArgs || m1.isVarArgs() && m2.isVarArgs();
@@ -552,9 +553,12 @@ abstract class ExecuteMethodNode extends Node {
             if (t1 == t2) {
                 continue;
             }
-            int r = compareAssignable(t1, t2);
+            int r = compareByPriority(t1, t2, args[i], priority);
             if (r == 0) {
-                continue;
+                r = compareAssignable(t1, t2);
+                if (r == 0) {
+                    continue;
+                }
             }
             if (res == 0) {
                 res = r;
@@ -569,6 +573,24 @@ abstract class ExecuteMethodNode extends Node {
 
     private static Class<?> getParameterType(Class<?>[] parameterTypes, int i, boolean varArgs) {
         return varArgs && i >= parameterTypes.length - 1 ? parameterTypes[parameterTypes.length - 1].getComponentType() : parameterTypes[i];
+    }
+
+    private static int compareByPriority(Class<?> t1, Class<?> t2, Object arg, int priority) {
+        if (priority <= ToJavaNode.STRICT) {
+            return 0;
+        }
+        ToJavaNode toJavaNode = ToJavaNode.create();
+        for (int p : ToJavaNode.PRIORITIES) {
+            if (p > priority) {
+                break;
+            }
+            boolean p1 = toJavaNode.canConvert(arg, t1, p);
+            boolean p2 = toJavaNode.canConvert(arg, t2, p);
+            if (p1 != p2) {
+                return p1 ? -1 : 1;
+            }
+        }
+        return 0;
     }
 
     private static int compareAssignable(Class<?> t1, Class<?> t2) {

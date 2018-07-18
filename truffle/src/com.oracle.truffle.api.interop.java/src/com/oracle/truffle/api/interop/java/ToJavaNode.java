@@ -153,15 +153,23 @@ abstract class ToJavaNode extends Node {
         return false;
     }
 
-    @SuppressWarnings({"unused"})
     boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext, int priority) {
+        return canConvert(value, targetType, genericType, languageContext != null, priority);
+    }
+
+    boolean canConvert(Object value, Class<?> targetType, int priority) {
+        return canConvert(value, targetType, null, true, priority);
+    }
+
+    @SuppressWarnings({"unused"})
+    private boolean canConvert(Object value, Class<?> targetType, Type genericType, boolean allowValue, int priority) {
         if (canConvertToPrimitive(value, targetType, priority)) {
             return true;
         }
         if (priority <= STRICT) {
             return false;
         }
-        if (targetType == Value.class && languageContext != null) {
+        if (targetType == Value.class && allowValue) {
             return true;
         } else if (value instanceof TruffleObject) {
             TruffleObject tValue = (TruffleObject) value;
