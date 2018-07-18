@@ -42,7 +42,6 @@ import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.ZLib;
 import com.oracle.svm.core.posix.headers.ZLib.z_stream;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(java.util.zip.Adler32.class)
@@ -354,17 +353,6 @@ final class Util_java_util_zip_Inflater {
         return len - strm.avail_out();
     }
 
-}
-
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@TargetClass(java.util.jar.JarFile.class)
-final class Target_java_util_jar_JarFile {
-    // ZipFile.c-Java_java_util_jar_JarFile_getMetaInfEntryNames(JNIEnv *env, jobject obj)
-    @SuppressWarnings("static-method")
-    @Substitute
-    private String[] getMetaInfEntryNames() {
-        throw VMError.unsupportedFeature("java.util.zip.JarFile");
-    }
 }
 
 /** Dummy class to have a class with the file's name. */
