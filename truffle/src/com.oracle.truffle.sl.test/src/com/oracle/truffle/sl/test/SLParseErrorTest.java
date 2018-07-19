@@ -74,4 +74,16 @@ public class SLParseErrorTest {
             Assert.assertNotNull("Should have source section.", e.getSourceLocation());
         }
     }
+
+    @Test
+    public void testParseErrorEOF() throws IOException {
+        try {
+            final Source src = Source.newBuilder("sl", "function", "testSyntaxErrorEOF.sl").build();
+            context.eval(src);
+            Assert.assertTrue("Should not reach here.", false);
+        } catch (PolyglotException e) {
+            Assert.assertTrue("Should be a syntax error.", e.isSyntaxError());
+            Assert.assertNotNull("Should have source section.", e.getSourceLocation());
+        }
+    }
 }
