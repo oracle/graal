@@ -77,6 +77,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_ftruncate = 77;
     public static final int SYS_getcwd = 79;
     public static final int SYS_rename = 82;
+    public static final int SYS_rmdir = 84;
     public static final int SYS_unlink = 87;
     public static final int SYS_chmod = 90;
     public static final int SYS_chown = 92;
