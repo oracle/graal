@@ -318,11 +318,6 @@ class Package_jdk_internal_loader implements Function<TargetClass, String> {
 final class Target_sun_misc_URLClassPath_JarLoader {
 }
 
-@TargetClass(java.net.JarURLConnection.class)
-@Delete
-final class Target_java_net_JarURLConnection {
-}
-
 /** Dummy class to have a class with the file's name. */
 public final class SunMiscSubstitutions {
 }
