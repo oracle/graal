@@ -98,6 +98,10 @@ public final class SLFunctionRegistry {
         register(SimpleLanguageParser.parseSL(language, newFunctions));
     }
 
+    public SLFunction getFunction(String name) {
+        return functionsObject.functions.get(name);
+    }
+
     /**
      * Returns the sorted list of all functions, for printing purposes only.
      */

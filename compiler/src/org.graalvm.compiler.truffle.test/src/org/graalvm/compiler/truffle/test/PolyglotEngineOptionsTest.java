@@ -24,23 +24,17 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.lang.reflect.Field;
-
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
-import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLFunction;
 
 public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
 
@@ -74,37 +68,31 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
             builder.option(COMPILATION_THRESHOLD_OPTION, compilationThresholdOption);
         }
         Context context = builder.build();
+        context.enter();
 
         context.eval("sl", "function test() {}");
+        SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
 
-        Value test = context.getBindings("sl").getMember("test");
         Assert.assertFalse(isExecuteCompiled(test));
         for (int i = 0; i < iterations - 1; i++) {
             Assert.assertFalse(isExecuteCompiled(test));
-            test.execute();
+            test.getCallTarget().call();
         }
         if (doWhile != null) {
             doWhile.run();
         }
         Assert.assertFalse(isExecuteCompiled(test));
-        test.execute();
+        test.getCallTarget().call();
         Assert.assertTrue(isExecuteCompiled(test));
-        test.execute();
+        test.getCallTarget().call();
         Assert.assertTrue(isExecuteCompiled(test));
+
+        context.leave();
         context.close();
     }
 
-    private static boolean isExecuteCompiled(Value value) {
-        try {
-            Field implField = value.getClass().getDeclaredField("impl");
-            implField.setAccessible(true);
-            Object impl = implField.get(value);
-            Field execute = impl.getClass().getDeclaredField("executeNoArgs");
-            execute.setAccessible(true);
-            return ((OptimizedCallTarget) execute.get(impl)).isValid();
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
+    private static boolean isExecuteCompiled(SLFunction value) {
+        return ((OptimizedCallTarget) value.getCallTarget()).isValid();
     }
 
 }
