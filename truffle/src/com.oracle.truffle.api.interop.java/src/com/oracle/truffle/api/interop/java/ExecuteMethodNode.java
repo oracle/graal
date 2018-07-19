@@ -490,7 +490,7 @@ abstract class ExecuteMethodNode extends Node {
 
                 return best;
             } else {
-                SingleMethodDesc best = findMostSpecificOverload(candidates, args, varArgs, priority);
+                SingleMethodDesc best = findMostSpecificOverload(candidates, args, varArgs, priority, toJavaNode);
                 if (best != null) {
                     if (cachedArgTypes != null) {
                         fillArgTypesArray(args, cachedArgTypes, best, varArgs, applicableByArity, priority);
@@ -504,10 +504,10 @@ abstract class ExecuteMethodNode extends Node {
         return null;
     }
 
-    private static SingleMethodDesc findMostSpecificOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs, int priority) {
+    private static SingleMethodDesc findMostSpecificOverload(List<SingleMethodDesc> candidates, Object[] args, boolean varArgs, int priority, ToJavaNode toJavaNode) {
         assert candidates.size() >= 2;
         if (candidates.size() == 2) {
-            int res = compareOverloads(candidates.get(0), candidates.get(1), args, varArgs, priority);
+            int res = compareOverloads(candidates.get(0), candidates.get(1), args, varArgs, priority, toJavaNode);
             return res == 0 ? null : (res < 0 ? candidates.get(0) : candidates.get(1));
         }
 
@@ -519,7 +519,7 @@ abstract class ExecuteMethodNode extends Node {
             SingleMethodDesc cand = candIt.next();
             boolean add = false;
             for (Iterator<SingleMethodDesc> bestIt = best.iterator(); bestIt.hasNext();) {
-                int res = compareOverloads(cand, bestIt.next(), args, varArgs, priority);
+                int res = compareOverloads(cand, bestIt.next(), args, varArgs, priority, toJavaNode);
                 if (res == 0) {
                     add = true;
                 } else if (res < 0) {
@@ -541,7 +541,7 @@ abstract class ExecuteMethodNode extends Node {
         return null; // ambiguous
     }
 
-    private static int compareOverloads(SingleMethodDesc m1, SingleMethodDesc m2, Object[] args, boolean varArgs, int priority) {
+    private static int compareOverloads(SingleMethodDesc m1, SingleMethodDesc m2, Object[] args, boolean varArgs, int priority, ToJavaNode toJavaNode) {
         int res = 0;
         int maxParamCount = Math.max(m1.getParameterCount(), m2.getParameterCount());
         assert !varArgs || m1.isVarArgs() && m2.isVarArgs();
@@ -553,7 +553,7 @@ abstract class ExecuteMethodNode extends Node {
             if (t1 == t2) {
                 continue;
             }
-            int r = compareByPriority(t1, t2, args[i], priority);
+            int r = compareByPriority(t1, t2, args[i], priority, toJavaNode);
             if (r == 0) {
                 r = compareAssignable(t1, t2);
                 if (r == 0) {
@@ -575,11 +575,10 @@ abstract class ExecuteMethodNode extends Node {
         return varArgs && i >= parameterTypes.length - 1 ? parameterTypes[parameterTypes.length - 1].getComponentType() : parameterTypes[i];
     }
 
-    private static int compareByPriority(Class<?> t1, Class<?> t2, Object arg, int priority) {
+    private static int compareByPriority(Class<?> t1, Class<?> t2, Object arg, int priority, ToJavaNode toJavaNode) {
         if (priority <= ToJavaNode.STRICT) {
             return 0;
         }
-        ToJavaNode toJavaNode = ToJavaNode.create();
         for (int p : ToJavaNode.PRIORITIES) {
             if (p > priority) {
                 break;
