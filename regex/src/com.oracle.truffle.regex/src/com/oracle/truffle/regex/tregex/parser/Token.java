@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.chardata.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;

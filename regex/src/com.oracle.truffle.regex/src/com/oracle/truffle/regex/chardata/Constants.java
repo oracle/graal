@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.chardata;
 
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+
 public class Constants {
 
     public static final int MIN_CODEPOINT = 0;
