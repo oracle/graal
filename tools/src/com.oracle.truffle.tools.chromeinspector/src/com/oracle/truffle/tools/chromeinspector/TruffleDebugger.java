@@ -91,6 +91,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     // private Scope globalScope;
     private volatile DebuggerSuspendedInfo suspendedInfo; // Set when suspended
     private boolean running = true;
+    private boolean runningUnwind = false;
     private boolean silentResume = false;
     private volatile CommandLazyResponse commandLazyResponse;
     private final AtomicBoolean delayUnlock = new AtomicBoolean();
@@ -538,6 +539,7 @@ public final class TruffleDebugger extends DebuggerDomain {
                     res.put("callFrames", getFramesParam(suspInfo.getCallFrames()));
                     return new Event(cmdId, new Result(new Params(res)));
                 };
+                runningUnwind = true;
                 doResume();
             });
         }
@@ -716,8 +718,12 @@ public final class TruffleDebugger extends DebuggerDomain {
                     // Debugger has been disabled while waiting on locks
                     return;
                 }
-                slh.assureLoaded(ss.getSource());
-                context.setLastLanguage(ss.getSource().getLanguage(), ss.getSource().getMimeType());
+                if (!runningUnwind) {
+                    slh.assureLoaded(ss.getSource());
+                    context.setLastLanguage(ss.getSource().getLanguage(), ss.getSource().getMimeType());
+                } else {
+                    runningUnwind = false;
+                }
                 JSONObject jsonParams = new JSONObject();
                 CallFrame[] callFrames = createCallFrames(se.getStackFrames());
                 suspendedInfo = new DebuggerSuspendedInfo(se, callFrames);
