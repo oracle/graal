@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
@@ -65,43 +68,43 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 
-    private static void testCompilationThreshold(int value, String optionValue, Runnable doWhile) {
+    private static void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
         Context.Builder builder = Context.newBuilder("sl");
-        if (optionValue != null) {
-            builder.option(COMPILATION_THRESHOLD_OPTION, optionValue);
+        if (compilationThresholdOption != null) {
+            builder.option(COMPILATION_THRESHOLD_OPTION, compilationThresholdOption);
         }
         Context context = builder.build();
-
-        // installs isOptimized
-        installSLBuiltin(context, SLIsOptimizedBuiltinFactory.getInstance());
 
         context.eval("sl", "function test() {}");
 
         Value test = context.getBindings("sl").getMember("test");
-        Value isOptimized = context.getBindings("sl").getMember("isOptimized");
-        Assert.assertFalse(isOptimized.execute(test).asBoolean());
-        for (int i = 0; i < value - 1; i++) {
-            Assert.assertFalse(isOptimized.execute(test).asBoolean());
+        Assert.assertFalse(isExecuteCompiled(test));
+        for (int i = 0; i < iterations - 1; i++) {
+            Assert.assertFalse(isExecuteCompiled(test));
             test.execute();
         }
         if (doWhile != null) {
             doWhile.run();
         }
-        Assert.assertFalse(isOptimized.execute(test).asBoolean());
+        Assert.assertFalse(isExecuteCompiled(test));
         test.execute();
-        Assert.assertTrue(isOptimized.execute(test).asBoolean());
+        Assert.assertTrue(isExecuteCompiled(test));
         test.execute();
-        Assert.assertTrue(isOptimized.execute(test).asBoolean());
+        Assert.assertTrue(isExecuteCompiled(test));
+        context.close();
     }
 
-    private static void installSLBuiltin(Context context, NodeFactory<? extends SLBuiltinNode> builtin) {
-        context.eval("sl", "function installBuiltin(e) { return e(); }");
-        context.getBindings("sl").getMember("installBuiltin").execute(new ProxyExecutable() {
-            @Override
-            public Object execute(Value... t) {
-                SLContext.getCurrent().installBuiltin(builtin);
-                return true;
-            }
-        });
+    private static boolean isExecuteCompiled(Value value) {
+        try {
+            Field implField = value.getClass().getDeclaredField("impl");
+            implField.setAccessible(true);
+            Object impl = implField.get(value);
+            Field execute = impl.getClass().getDeclaredField("executeNoArgs");
+            execute.setAccessible(true);
+            return ((OptimizedCallTarget) execute.get(impl)).isValid();
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
+
 }

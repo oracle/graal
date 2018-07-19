@@ -181,6 +181,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    public final void resetCompilationProfile() {
+        this.compilationProfile = createCompilationProfile();
+    }
+
     protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
         return getCompilationProfile().getProfiledTypesAssumptions();
     }
