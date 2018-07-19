@@ -28,6 +28,7 @@ package com.oracle.svm.reflect.target;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Parameter;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -38,7 +39,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.ExecutableDeclaredAnnotationsComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -56,11 +56,22 @@ public final class Target_java_lang_reflect_Executable {
         }
     }
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableDeclaredAnnotationsComputer.class) //
+    /**
+     * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
+     * the {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     */
+    @Alias //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ParameterAnnotationsComputer.class) //
     Annotation[][] parameterAnnotations;
+
+    /**
+     * The parameters field doesn't need a value recomputation. Its value is pre-loaded in the
+     * {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     */
+    @Alias //
+    Parameter[] parameters;
 
     @Alias
     native Target_java_lang_reflect_Executable getRoot();
@@ -90,5 +101,18 @@ public final class Target_java_lang_reflect_Executable {
             throw VMError.shouldNotReachHere("Parameter annotations must be computed during native image generation");
         }
         return holder.parameterAnnotations;
+    }
+
+    @Substitute
+    private Parameter[] privateGetParameters() {
+        Target_java_lang_reflect_Executable holder = getRoot();
+        if (holder == null) {
+            holder = this;
+        }
+
+        if (holder.parameters == null) {
+            throw VMError.shouldNotReachHere("Parameters must be computed during native image generation");
+        }
+        return holder.parameters;
     }
 }

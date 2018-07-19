@@ -38,7 +38,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
-import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.FieldDeclaredAnnotationsComputer;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
@@ -56,7 +55,11 @@ public final class Target_java_lang_reflect_Field {
     @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
     Target_jdk_internal_reflect_FieldAccessor overrideFieldAccessor;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldDeclaredAnnotationsComputer.class) //
+    /**
+     * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
+     * the {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     */
+    @Alias //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Alias //

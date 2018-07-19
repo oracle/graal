@@ -1614,7 +1614,7 @@ def _disable_installable(component):
 
 
 def _has_forced_launchers(component, forced=None):
-    for launcher_config in component.launcher_configs:
+    for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config, forced):
             return True
     return False
