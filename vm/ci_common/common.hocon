@@ -207,7 +207,7 @@ builds += [
   },
   ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
-      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/truffleruby.git"], "../../truffleruby"]
+      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
       [export, "SVM_SUITE="${svm_suite}]
       [export, "NATIVE_IMAGE_TESTING=True"]
       [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,truffleruby", gate, --no-warning-as-error, --tags, "build,ruby"]
