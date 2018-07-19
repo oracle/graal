@@ -79,8 +79,20 @@ private static final class BailoutErrorListener extends BaseErrorListener {
     }
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
-        String location = "-- line " + line + " col " + (charPositionInLine + 1) + ": ";
-        throw new SLParseError(source, line, charPositionInLine + 1, offendingSymbol == null ? 1 : ((Token) offendingSymbol).getText().length(), "Error(s) parsing script:\n" + location + msg);
+	        int length;
+	        int column;
+	        if (offendingSymbol == null) {
+	            length = 1;
+	            column = charPositionInLine + 1;
+	        } else if (((Token) offendingSymbol).getType() == Token.EOF) {
+	            length = 0;
+	            column = charPositionInLine;
+	        } else {
+	            length = ((Token) offendingSymbol).getText().length();
+	            column = charPositionInLine + 1;
+	        }
+	        String location = "-- line " + line + " col " + column + ": ";
+	        throw new SLParseError(source, line, column, length, "Error(s) parsing script:\n" + location + msg);
     }
 }
 
