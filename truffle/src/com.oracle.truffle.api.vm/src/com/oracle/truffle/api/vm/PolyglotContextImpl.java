@@ -55,6 +55,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 
 @SuppressWarnings("deprecation")
@@ -332,7 +333,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     Object enter() {
         Object context;
         PolyglotThreadInfo info = getCachedThreadInfo();
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == (TruffleOptions.AOT ? ContextThreadLocal.currentThread() : Thread.currentThread()))) {
             // fast-path -> same thread
             context = singleContextState.contextThreadLocal.setReturnParent(this);
             info.enter();
@@ -377,7 +378,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 threadInfo = createThreadInfo(current);
                 needsInitialization = !inContextPreInitialization;
             }
-
             boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
             if (transitionToMultiThreading) {
                 // recheck all thread accesses
@@ -426,10 +426,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 constantCurrentThreadInfo = info;
             } else {
                 constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
-                singleThreadedConstant.invalidate();
+                if (info != PolyglotThreadInfo.NULL) {
+                    singleThreadedConstant.invalidate();
+                }
             }
         }
-        constantCurrentThreadInfo = info;
         currentThreadInfo = info;
     }
 
@@ -790,7 +791,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     synchronized boolean isActive() {
-        setCachedThreadInfo(PolyglotThreadInfo.NULL);
         for (PolyglotThreadInfo seenTinfo : threads.values()) {
             if (seenTinfo.isActive()) {
                 return true;
@@ -802,7 +802,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     PolyglotThreadInfo getFirstActiveOtherThread(boolean includePolyglotThread) {
         assert Thread.holdsLock(this);
         // send enters and leaves into a lock by setting the lastThread to null.
-        setCachedThreadInfo(PolyglotThreadInfo.NULL);
         for (PolyglotThreadInfo otherInfo : threads.values()) {
             if (!includePolyglotThread && otherInfo.isPolyglotThread(this)) {
                 continue;
@@ -836,9 +835,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             synchronized (this) {
                 if (!closed) {
-                    // triggers a thread changed event which requires synchronization on the next
                     PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
 
+                    // triggers a thread changed event which requires slow path enter
                     setCachedThreadInfo(PolyglotThreadInfo.NULL);
 
                     if (!threadInfo.explicitContextStack.isEmpty()) {

@@ -71,7 +71,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final String TRUNCATION_SUFFIX = "...";
 
-    protected PolyglotLanguageContext languageContext;
+    protected final PolyglotLanguageContext languageContext;
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
