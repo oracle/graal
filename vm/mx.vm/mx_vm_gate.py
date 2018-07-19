@@ -124,7 +124,7 @@ def gate_ruby(tasks):
     with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
         if t:
             # Debug GR-9912 on Ruby gate runs. If debug_gr_9912 goes away the custom image building below is not required anymore and
-            # test_ruby can be called with the original graalvm ruby-rauncher
+            # test_ruby can be called with the original graalvm ruby-launcher
             debug_gr_9912 = 16
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
