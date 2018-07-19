@@ -55,8 +55,12 @@ public class JDK9StringSubstitutions {
         if (thisString.length() != thatString.length()) {
             return false;
         }
+
         if (thisString.length() == 0) {
             return true;
+        }
+        if (getCoder(thisString) != getCoder(thatString)) {
+            return false;
         }
 
         final byte[] array1 = getValue(thisString);
@@ -69,4 +73,6 @@ public class JDK9StringSubstitutions {
      * Will be intrinsified with an {@link InvocationPlugin} to a {@link LoadFieldNode}.
      */
     public static native byte[] getValue(String s);
+
+    public static native int getCoder(String s);
 }
