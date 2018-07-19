@@ -129,6 +129,6 @@ def gate_ruby(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 ruby_bindir = join(mx_vm.graalvm_output(), 'jre', 'languages', 'ruby', 'bin')
-                ruby_image = native_image(['--language:ruby', '-H:Name=truffleruby.tmp', '-H:Path=' + ruby_bindir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
+                ruby_image = native_image(['--language:ruby', '-H:Path=' + ruby_bindir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
                 truffleruby_suite = mx.suite('truffleruby')
                 truffleruby_suite.extensions.ruby_testdownstream_aot([ruby_image, 'spec', 'release'])
