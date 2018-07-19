@@ -73,7 +73,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
     @Override
     public String toString() {
         EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
-        if (engine != null) {
+        if (engine != null && languageContext != null) {
             try {
                 return engine.toHostValue(guestObject, languageContext).toString();
             } catch (UnsupportedOperationException e) {

@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
 public class AsCollectionsTest {
@@ -64,6 +65,28 @@ public class AsCollectionsTest {
     @Before
     public void enterContext() {
         context = Context.create();
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected boolean isObjectOfLanguage(Object object) {
+                if (object instanceof ListBasedTO) {
+                    return true;
+                } else if (object instanceof MapBasedTO) {
+                    return true;
+                }
+                return super.isObjectOfLanguage(object);
+            }
+
+            @Override
+            protected String toString(LanguageContext c, Object value) {
+                if (value instanceof ListBasedTO) {
+                    return ((ListBasedTO) value).list.toString();
+                } else if (value instanceof MapBasedTO) {
+                    return ((MapBasedTO) value).map.toString();
+                }
+                return super.toString(c, value);
+            }
+        });
+        context.initialize(ProxyLanguage.ID);
         context.enter();
     }
 
@@ -80,6 +103,7 @@ public class AsCollectionsTest {
         assertTrue(JavaInteropTest.isArray(to));
         List interopList = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(List.class, to);
         assertEquals(origList.size(), interopList.size());
+        assertEquals(origList.toString(), new ArrayList<>(interopList).toString());
         assertEquals(origList.toString(), interopList.toString());
         // Test get out of bounds
         try {
@@ -110,6 +134,7 @@ public class AsCollectionsTest {
         assertFalse(JavaInteropTest.isArray(to));
         Map interopMap = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(Map.class, to);
         assertEquals(origMap.size(), interopMap.size());
+        assertEquals(origMap.toString(), new LinkedHashMap<>(interopMap).toString());
         assertEquals(origMap.toString(), interopMap.toString());
         assertNull(interopMap.get("unknown"));
         Object old = interopMap.put("10", "101010");
@@ -223,7 +248,7 @@ public class AsCollectionsTest {
 
     static final class ListBasedTO implements TruffleObject {
 
-        private final List list;
+        final List list;
 
         ListBasedTO(List list) {
             this.list = list;
@@ -289,7 +314,7 @@ public class AsCollectionsTest {
 
     static final class MapBasedTO implements TruffleObject {
 
-        private final Map map;
+        final Map map;
 
         MapBasedTO(Map map) {
             this.map = map;
