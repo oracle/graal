@@ -1816,7 +1816,7 @@ class AsmFactory {
         // copy stack pointer
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
-        stackSlot.setKind(FrameSlotKind.Object);
+        frameDescriptor.setFrameSlotKind(stackSlot, FrameSlotKind.Object);
         arguments.add(LLVMWritePointerNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation));
 
         arguments.add(LLVMWritePointerNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));

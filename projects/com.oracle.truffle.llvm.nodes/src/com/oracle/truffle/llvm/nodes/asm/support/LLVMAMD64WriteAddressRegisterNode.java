@@ -54,31 +54,31 @@ public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMStatementNod
 
     @Specialization
     protected void doI8(VirtualFrame frame, byte value) {
-        getSlot().setKind(FrameSlotKind.Long);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doI16(VirtualFrame frame, short value) {
-        getSlot().setKind(FrameSlotKind.Long);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doI32(VirtualFrame frame, int value) {
-        getSlot().setKind(FrameSlotKind.Long);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doI64(VirtualFrame frame, long value) {
-        getSlot().setKind(FrameSlotKind.Long);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doAddress(VirtualFrame frame, LLVMPointer value) {
-        getSlot().setKind(FrameSlotKind.Object);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
         frame.setObject(getSlot(), value);
     }
 
