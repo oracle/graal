@@ -31,17 +31,12 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 
-@SuppressWarnings("deprecation")
-public class PrimitiveRawArrayInteropTest {
+public class PrimitiveRawArrayInteropTest extends ProxyLanguageEnvTest {
 
     private Object[] objArr;
     private byte[] byteArr;
@@ -97,19 +92,11 @@ public class PrimitiveRawArrayInteropTest {
     private TruffleObject obj;
     private RawInterop interop;
 
-    private Context context;
-
-    @Before
-    public void initObjects() {
-        context = Context.create();
-        context.enter();
-        obj = JavaInterop.asTruffleObject(this);
-        interop = JavaInterop.asJavaObject(RawInterop.class, obj);
-    }
-
-    @After
-    public void leave() {
-        context.leave();
+    @Override
+    public void before() {
+        super.before();
+        obj = asTruffleObject(this);
+        interop = asJavaObject(RawInterop.class, obj);
     }
 
     @Test

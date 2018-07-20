@@ -47,6 +47,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -57,15 +58,22 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-@SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class AsCollectionsTest {
 
     private Context context;
+    private Env env;
 
     @Before
     public void enterContext() {
         context = Context.create();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(Env contextEnv) {
+                env = contextEnv;
+                return super.createContext(contextEnv);
+            }
+
             @Override
             protected boolean isObjectOfLanguage(Object object) {
                 if (object instanceof ListBasedTO) {
@@ -96,12 +104,20 @@ public class AsCollectionsTest {
         context.close();
     }
 
+    protected <T> T asJavaObject(Class<T> type, TruffleObject truffleObject) {
+        return context.asValue(truffleObject).as(type);
+    }
+
+    protected TruffleObject asTruffleObject(Object javaObj) {
+        return (TruffleObject) env.asGuestValue(javaObj);
+    }
+
     @Test
     public void testAsList() {
         List origList = Arrays.asList(new String[]{"a", "b", "c"});
         TruffleObject to = new ListBasedTO(origList);
         assertTrue(JavaInteropTest.isArray(to));
-        List interopList = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(List.class, to);
+        List interopList = asJavaObject(List.class, to);
         assertEquals(origList.size(), interopList.size());
         assertEquals(origList.toString(), new ArrayList<>(interopList).toString());
         assertEquals(origList.toString(), interopList.toString());
@@ -132,7 +148,7 @@ public class AsCollectionsTest {
         }
         TruffleObject to = new MapBasedTO(origMap);
         assertFalse(JavaInteropTest.isArray(to));
-        Map interopMap = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(Map.class, to);
+        Map interopMap = asJavaObject(Map.class, to);
         assertEquals(origMap.size(), interopMap.size());
         assertEquals(origMap.toString(), new LinkedHashMap<>(interopMap).toString());
         assertEquals(origMap.toString(), interopMap.toString());
@@ -146,7 +162,7 @@ public class AsCollectionsTest {
 
         TruffleObject badMapObject = new JavaInteropTest.HasKeysObject(false);
         try {
-            interopMap = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(Map.class, badMapObject);
+            interopMap = asJavaObject(Map.class, badMapObject);
             fail();
         } catch (Exception ex) {
             assertThat(ex, instanceOf(ClassCastException.class));
@@ -157,7 +173,7 @@ public class AsCollectionsTest {
     public void testAsJavaObjectMapArray() {
         MapBasedTO to = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         MapBasedTO[] array = new MapBasedTO[]{to};
-        Map<?, ?>[] result = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(Map[].class, com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(array));
+        Map<?, ?>[] result = asJavaObject(Map[].class, asTruffleObject(array));
         assertEquals(1, result.length);
         assertEquals(1, result[0].size());
         assertEquals("bar", result[0].get("foo"));
@@ -167,7 +183,7 @@ public class AsCollectionsTest {
     public void testAsJavaObjectListArray() {
         ListBasedTO to = new ListBasedTO(Collections.singletonList("bar"));
         ListBasedTO[] array = new ListBasedTO[]{to};
-        List<?>[] result = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(List[].class, com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(array));
+        List<?>[] result = asJavaObject(List[].class, asTruffleObject(array));
         assertEquals(1, result.length);
         assertEquals(1, result[0].size());
         assertEquals("bar", result[0].get(0));
@@ -205,14 +221,14 @@ public class AsCollectionsTest {
 
     @Test
     public void testInvokeMap() throws InteropException {
-        TruffleObject validator = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(new Validator());
+        TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateMap", mapTO, mapTO));
     }
 
     @Test
     public void testInvokeArrayOfMap() throws InteropException {
-        TruffleObject validator = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(new Validator());
+        TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
         assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateArrayOfMap", listOfMapTO, listOfMapTO));
@@ -220,7 +236,7 @@ public class AsCollectionsTest {
 
     @Test
     public void testInvokeListOfMap() throws InteropException {
-        TruffleObject validator = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(new Validator());
+        TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
         assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateListOfMap", listOfMapTO, listOfMapTO));
@@ -232,7 +248,7 @@ public class AsCollectionsTest {
 
     @Test
     public void testInvokeListOfMapProxy() throws InteropException {
-        TruffleObject validator = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(
+        TruffleObject validator = asTruffleObject(
                         Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(), new Class<?>[]{ProxyValidator.class}, (p, method, args) -> {
                             List<Map> listOfMap = (List<Map>) args[0];
                             assertEquals(1, listOfMap.size());
