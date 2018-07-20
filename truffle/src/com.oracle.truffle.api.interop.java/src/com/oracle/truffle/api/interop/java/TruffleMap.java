@@ -122,6 +122,20 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         return (V) cache.remove.call(languageContext, guestObject, key);
     }
 
+    @Override
+    public String toString() {
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        if (engine != null && languageContext != null) {
+            try {
+                return engine.toHostValue(guestObject, languageContext).toString();
+            } catch (UnsupportedOperationException e) {
+                return super.toString();
+            }
+        } else {
+            return super.toString();
+        }
+    }
+
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
 
         private final List<?> props;
