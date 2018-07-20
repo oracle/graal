@@ -972,14 +972,24 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return null;
     }
 
-    public Hover getHover(URI uri, int line, int character) {
+    public Future<Hover> getHover(URI uri, int line, int column) {
+        return evaluator.executeWithDefaultContext(() -> {
+            try {
+                return getHoverWithEnteredContext(uri, line, column);
+            } finally {
+                diagnosticsPublisher.reportCollectedDiagnostics();
+            }
+        });
+    }
+
+    public Hover getHoverWithEnteredContext(URI uri, int line, int column) {
         List<Either<String, MarkedString>> contents = new ArrayList<>();
 
         String langId = this.uri2TextDocumentSurrogate.get(uri).getLangId();
         if (this.sourceProvider.getLoadedSource(langId, uri) != null) {
             SourceWrapper wrapper = this.sourceProvider.getLoadedSource(langId, uri);
             Source source = wrapper.getSource();
-            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), character);
+            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), column);
             SourceSection containsSection = nearestSections.getContainsSourceSection();
             if (containsSection != null) {
                 SourceSection definition = this.section2definition.get(containsSection);

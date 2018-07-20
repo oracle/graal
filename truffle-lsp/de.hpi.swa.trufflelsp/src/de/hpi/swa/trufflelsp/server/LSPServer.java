@@ -218,8 +218,15 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<Hover> hover(TextDocumentPositionParams position) {
-        Hover hover = truffleAdapter.getHover(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
-        return CompletableFuture.completedFuture(hover);
+        Future<Hover> futureHover = truffleAdapter.getHover(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return futureHover.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace(err);
+                return new Hover();
+            }
+        });
     }
 
     @Override
@@ -466,14 +473,15 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                     });
 
                     //@formatter:off
-                        Launcher<LanguageClient> launcher = new LSPLauncher.Builder<LanguageClient>()
-                            .setLocalService(LSPServer.this)
-                            .setRemoteInterface(LanguageClient.class)
-                            .setInput(clientSocket.getInputStream())
-                            .setOutput(clientSocket.getOutputStream())
-                            .setExecutorService(lspRequestExecutor)
-                            .create();
-                        //@formatter:on
+                    Launcher<LanguageClient> launcher = new LSPLauncher.Builder<LanguageClient>()
+                        .setLocalService(LSPServer.this)
+                        .setRemoteInterface(LanguageClient.class)
+                        .setInput(clientSocket.getInputStream())
+                        .setOutput(clientSocket.getOutputStream())
+                        .setExecutorService(lspRequestExecutor)
+                      //.traceMessages(new PrintWriter(System.err, true))
+                        .create();
+                    //@formatter:on
 
                     LSPServer.this.connect(launcher.getRemoteProxy());
                     Future<?> listenFuture = launcher.startListening();
