@@ -40,14 +40,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -169,18 +167,6 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
 
         @Fallback
         protected void writeObject(VirtualFrame frame, Object value) {
-            frame.setObject(getSlot(), value);
-        }
-    }
-
-    public abstract static class LLVMWriteFunctionNode extends LLVMWriteNode {
-        @Specialization
-        protected void writeAddress(VirtualFrame frame, LLVMPointer value) {
-            frame.setObject(getSlot(), value);
-        }
-
-        @Specialization
-        protected void writeFunction(VirtualFrame frame, LLVMFunctionDescriptor value) {
             frame.setObject(getSlot(), value);
         }
     }

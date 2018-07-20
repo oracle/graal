@@ -31,14 +31,11 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToFloat extends ForeignToLLVM {
 
@@ -90,12 +87,6 @@ abstract class ToFloat extends ForeignToLLVM {
     }
 
     @Specialization
-    protected float fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(fd).asNative();
-    }
-
-    @Specialization
     protected float fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
         return recursiveConvert(boxed.getValue());
     }
@@ -123,8 +114,6 @@ abstract class ToFloat extends ForeignToLLVM {
             return (char) value;
         } else if (value instanceof String) {
             return thiz.getSingleStringCharacter((String) value);
-        } else if (value instanceof LLVMFunctionDescriptor) {
-            return ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {

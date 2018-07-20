@@ -54,7 +54,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.NullFunction;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -71,7 +70,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
@@ -136,7 +134,7 @@ public final class LLVMContext {
     private final InteropNodeFactory interopNodeFactory;
 
     private final class LLVMFunctionPointerRegistry {
-        private int currentFunctionIndex = 0;
+        private int currentFunctionIndex = 1;
         private final HashMap<LLVMNativePointer, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
 
         synchronized LLVMFunctionDescriptor getDescriptor(LLVMNativePointer pointer) {
@@ -148,12 +146,7 @@ public final class LLVMContext {
         }
 
         synchronized LLVMFunctionDescriptor create(String name, FunctionType type) {
-            LLVMFunctionDescriptor fn = LLVMFunctionDescriptor.createDescriptor(LLVMContext.this, name, type, currentFunctionIndex++);
-            if (fn.isNullFunction()) {
-                assert !functionDescriptors.containsKey(LLVMNativePointer.createNull());
-                functionDescriptors.put(LLVMNativePointer.createNull(), fn);
-            }
-            return fn;
+            return LLVMFunctionDescriptor.createDescriptor(LLVMContext.this, name, type, currentFunctionIndex++);
         }
     }
 
@@ -178,7 +171,7 @@ public final class LLVMContext {
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.sourceContext = new LLVMSourceContext();
 
-        this.globalScope = createGlobalScope();
+        this.globalScope = new LLVMScope();
         this.dynamicLinkChain = new DynamicLinkChain();
 
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
@@ -191,15 +184,6 @@ public final class LLVMContext {
         if (languageHome != null) {
             addLibraryPath(languageHome);
         }
-    }
-
-    private LLVMScope createGlobalScope() {
-        LLVMFunctionDescriptor nullFunction = functionPointerRegistry.create("<nullFunction>", new FunctionType(MetaType.UNKNOWN, new Type[0], false));
-        nullFunction.define(new ExternalLibrary("Default", false), new NullFunction());
-
-        LLVMScope scope = new LLVMScope();
-        scope.register(nullFunction);
-        return scope;
     }
 
     public void initialize() {

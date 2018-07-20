@@ -89,6 +89,8 @@ public abstract class ToComparableValue extends LLVMNode {
 
         @Fallback
         protected long doOther(TruffleObject obj) {
+            // TODO (chaeubl): this code path is also used for pointers to global variables and
+            // functions
             return getHashCode(obj);
         }
     }

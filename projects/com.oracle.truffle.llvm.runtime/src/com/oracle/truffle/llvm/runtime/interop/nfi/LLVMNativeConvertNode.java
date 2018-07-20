@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -124,10 +124,9 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
             return LLVMNativePointer.create(pointer);
         }
 
-        @SuppressWarnings("unused")
         @Specialization(guards = "checkIsPointer(isPointer, address)")
         protected LLVMNativePointer doPointer(TruffleObject address,
-                        @Cached("createIsPointer()") Node isPointer,
+                        @Cached("createIsPointer()") @SuppressWarnings("unused") Node isPointer,
                         @Cached("createAsPointer()") Node asPointer) {
             try {
                 return LLVMNativePointer.create(ForeignAccess.sendAsPointer(asPointer, address));
@@ -137,10 +136,9 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
             }
         }
 
-        @SuppressWarnings("unused")
         @Specialization(guards = {"!checkIsPointer(isPointer, address)"})
         protected LLVMManagedPointer doFunction(TruffleObject address,
-                        @Cached("createIsPointer()") Node isPointer) {
+                        @Cached("createIsPointer()") @SuppressWarnings("unused") Node isPointer) {
             /*
              * If the NFI returns an object that's not a pointer, it's probably a callback function.
              * In that case, don't eagerly force TO_NATIVE. If we just call it immediately, we
@@ -151,98 +149,94 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
     }
 
-    @SuppressWarnings("unused")
     protected abstract static class FunctionToNative extends LLVMNativeConvertNode {
-
-        // null pointer
-
-        @Specialization(guards = {"descriptor.isNullFunction()"})
-        protected TruffleObject doNull(LLVMFunctionDescriptor descriptor,
-                        @Cached("nullPointer()") TruffleObject np) {
-            return np;
+        @Specialization(guards = {"pointer.asNative() == 0"})
+        protected TruffleObject doNull(@SuppressWarnings("unused") LLVMNativePointer pointer,
+                        @Cached("createNullPointerNode()") NullPointerNode np) {
+            return np.getNullPointer();
         }
 
-        @Specialization(guards = {"descriptor.isNull()"})
-        protected TruffleObject doNull(LLVMNativePointer descriptor,
-                        @Cached("nullPointer()") TruffleObject np) {
-            return np;
-        }
-
-        // not null pointer
-
-        @Specialization(limit = "10", guards = {"function == cachedFunction", "!cachedFunction.isNullFunction()", "cachedFunction.isNativeFunction()"})
-        protected static TruffleObject doDirectNative(LLVMFunctionDescriptor function,
-                        @Cached("function") LLVMFunctionDescriptor cachedFunction,
-                        @Cached("cachedFunction.getNativeFunction()") TruffleObject cachedNative) {
+        @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor != null", "cachedDescriptor.isNativeFunction()"})
+        protected static TruffleObject doHandleToNativeFunctionCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
+                        @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                        @Cached("doLookup(pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                        @Cached("cachedDescriptor.getNativeFunction()") TruffleObject cachedNative) {
             return cachedNative;
         }
 
-        @Specialization(replaces = "doDirectNative", guards = {"descriptor.isNativeFunction()", "!descriptor.isNullFunction()"})
-        protected TruffleObject doIndirectNative(LLVMFunctionDescriptor descriptor) {
-            return descriptor.getNativeFunction();
+        @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor != null", "!cachedDescriptor.isNativeFunction()"})
+        protected static TruffleObject doHandleToDirectFunctionCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
+                        @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                        @Cached("doLookup(pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                        @Cached("createNativeWrapper(cachedDescriptor)") TruffleObject cachedNative) {
+            return cachedNative;
         }
 
-        @Specialization(guards = {"function == cachedFunction", "!cachedFunction.isNullFunction()", "!cachedFunction.isNativeFunction()"})
-        protected static TruffleObject doCachedDescriptor(LLVMFunctionDescriptor function,
-                        @Cached("function") LLVMFunctionDescriptor cachedFunction,
-                        @Cached("doDescriptor(cachedFunction)") TruffleObject ret) {
-            return ret;
+        @Specialization(limit = "10", guards = {"pointer.asNative() == cachedAddress", "cachedAddress != 0", "cachedDescriptor == null"})
+        protected static TruffleObject doCachedPointer(LLVMNativePointer pointer,
+                        @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                        @Cached("doLookup(pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {
+            // we did not find a function when doing the reverse lookup, so we assume that this is a
+            // real native function pointer
+            return pointer;
         }
 
-        @Specialization(replaces = "doCachedDescriptor", guards = {"!function.isNullFunction()", "!function.isNativeFunction()"})
-        protected static TruffleObject doDescriptor(LLVMFunctionDescriptor function) {
-            return new LLVMNativeWrapper(function);
-        }
-
-        @Specialization(limit = "10", guards = {"descriptor != null", "descriptor.isNativeFunction()", "handle.asNative() == cachedHandle.asNative()", "!descriptor.isNullFunction()"})
-        protected static TruffleObject doCachedHandleNative(LLVMNativePointer handle,
-                        @Cached("handle") LLVMNativePointer cachedHandle,
-                        @Cached("doLookup(handle)") LLVMFunctionDescriptor descriptor) {
-            return descriptor.getNativeFunction();
-        }
-
-        @Specialization(limit = "10", guards = {"descriptor != null", "!descriptor.isNativeFunction()", "handle.asNative() == cachedHandle.asNative()", "!descriptor.isNullFunction()"})
-        protected static TruffleObject doCachedHandle(LLVMNativePointer handle,
-                        @Cached("handle") LLVMNativePointer cachedHandle,
-                        @Cached("doLookup(handle)") LLVMFunctionDescriptor descriptor,
-                        @Cached("doDescriptor(descriptor)") TruffleObject ret) {
-            return ret;
-        }
-
-        @Specialization(limit = "10", guards = {"descriptor == null", "handle.asNative() == cachedHandle.asNative()"})
-        protected static TruffleObject doCachedNative(LLVMNativePointer handle,
-                        @Cached("handle") LLVMNativePointer cachedHandle,
-                        @Cached("doLookup(cachedHandle)") LLVMFunctionDescriptor descriptor,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> c) {
-            return handle;
-        }
-
-        @Specialization(replaces = {"doCachedHandleNative", "doCachedHandle", "doCachedNative"}, guards = {"handle.asNative() != 0"})
-        protected TruffleObject doUncachedHandle(LLVMNativePointer handle) {
-            LLVMFunctionDescriptor descriptor = doLookup(handle);
+        @Specialization(guards = {"pointer.asNative() != 0"}, replaces = {"doHandleToNativeFunctionCached", "doHandleToDirectFunctionCached", "doCachedPointer"})
+        protected TruffleObject doUncachedHandle(LLVMNativePointer pointer) {
+            LLVMFunctionDescriptor descriptor = doLookup(pointer);
             if (descriptor == null) {
-                return handle;
+                return pointer;
             } else if (descriptor.isNativeFunction()) {
                 return descriptor.getNativeFunction();
             } else {
-                return doDescriptor(descriptor);
+                return createNativeWrapper(descriptor);
             }
         }
 
-        protected LLVMFunctionDescriptor doLookup(LLVMNativePointer handle) {
-            return getContextReference().get().getFunctionDescriptor(handle);
+        @Specialization(limit = "10", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null", "pointer.getOffset() == 0",
+                        "cachedDescriptor.isNativeFunction()"})
+        protected static TruffleObject doNativeFunctionCached(@SuppressWarnings("unused") LLVMManagedPointer pointer,
+                        @Cached("asFunctionDescriptor(pointer.getObject())") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                        @Cached("cachedDescriptor.getNativeFunction()") TruffleObject cachedNative) {
+            return cachedNative;
         }
 
-        @Child private NullPointerNode nullPointer;
+        @Specialization(limit = "10", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null", "pointer.getOffset() == 0",
+                        "!cachedDescriptor.isNativeFunction()"})
+        protected static TruffleObject doDirectFunctionCached(@SuppressWarnings("unused") LLVMManagedPointer pointer,
+                        @Cached("asFunctionDescriptor(pointer.getObject())") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+                        @Cached("createNativeWrapper(cachedDescriptor)") TruffleObject cachedNative) {
+            return cachedNative;
+        }
 
-        protected TruffleObject nullPointer() {
-            if (nullPointer == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = getContextReference().get();
-                NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
-                nullPointer = insert(nfiContextExtension.getNativeSulongFunctions().createNullPointerNode(context));
+        @Specialization(guards = {"isFunctionDescriptor(pointer.getObject())", "pointer.getOffset() == 0"}, replaces = {"doNativeFunctionCached", "doDirectFunctionCached"})
+        protected static TruffleObject doFunction(LLVMManagedPointer pointer) {
+            LLVMFunctionDescriptor descriptor = (LLVMFunctionDescriptor) pointer.getObject();
+            if (descriptor.isNativeFunction()) {
+                return descriptor.getNativeFunction();
+            } else {
+                return createNativeWrapper(descriptor);
             }
-            return nullPointer.getNullPointer();
+        }
+
+        @Specialization(guards = {"!isFunctionDescriptor(pointer.getObject()) || pointer.getOffset() != 0"})
+        protected static TruffleObject doOther(LLVMManagedPointer pointer,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            return toNative.executeWithTarget(pointer);
+        }
+
+        protected LLVMFunctionDescriptor doLookup(LLVMNativePointer pointer) {
+            return getContextReference().get().getFunctionDescriptor(pointer);
+        }
+
+        @TruffleBoundary
+        protected NullPointerNode createNullPointerNode() {
+            LLVMContext context = getContextReference().get();
+            return context.getContextExtension(NFIContextExtension.class).getNativeSulongFunctions().createNullPointerNode(context);
+        }
+
+        protected static TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+            return new LLVMNativeWrapper(descriptor);
         }
     }
 

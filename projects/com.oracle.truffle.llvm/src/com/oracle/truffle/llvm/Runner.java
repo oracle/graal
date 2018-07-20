@@ -155,7 +155,7 @@ public final class Runner {
             this.main = main;
         }
 
-        private LLVMFunctionDescriptor lookup(String symbolName) {
+        private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
             LLVMSymbol symbol = scope.get(symbolName);
             if (symbol != null && symbol.isFunction()) {
                 return symbol.asFunction();
@@ -185,13 +185,17 @@ public final class Runner {
             LLVMFunctionDescriptor doCached(SulongLibrary library, String name,
                             @Cached("library") SulongLibrary cachedLibrary,
                             @Cached("name") String cachedName,
-                            @Cached("doGeneric(cachedLibrary, cachedName)") LLVMFunctionDescriptor cachedResult) {
-                return cachedResult;
+                            @Cached("lookupFunctionDescriptor(cachedLibrary, cachedName)") LLVMFunctionDescriptor cachedDescriptor) {
+                return cachedDescriptor;
             }
 
             @Specialization(replaces = "doCached")
             @TruffleBoundary
             LLVMFunctionDescriptor doGeneric(SulongLibrary library, String name) {
+                return lookupFunctionDescriptor(library, name);
+            }
+
+            protected static LLVMFunctionDescriptor lookupFunctionDescriptor(SulongLibrary library, String name) {
                 if (name.startsWith("@")) {
                     // safeguard: external users are never supposed to see the "@"
                     // TODO remove after getting rid of the @
@@ -199,11 +203,11 @@ public final class Runner {
                 }
 
                 String atname = "@" + name;
-                LLVMFunctionDescriptor d = library.lookup(atname);
+                LLVMFunctionDescriptor d = library.lookupFunctionDescriptor(atname);
                 if (d != null) {
                     return d;
                 }
-                return library.lookup(name);
+                return library.lookupFunctionDescriptor(name);
             }
         }
 
@@ -234,6 +238,7 @@ public final class Runner {
                     CompilerDirectives.transferToInterpreter();
                     throw UnknownIdentifierException.raise(name);
                 }
+
                 return call.executeCall(fn, arguments);
             }
         }

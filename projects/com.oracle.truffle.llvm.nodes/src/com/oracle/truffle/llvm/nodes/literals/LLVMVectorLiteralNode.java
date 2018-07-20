@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -203,24 +202,4 @@ public class LLVMVectorLiteralNode {
             return LLVMPointerVector.create(vals);
         }
     }
-
-    public abstract static class LLVMVectorFunctionLiteralNode extends LLVMExpressionNode {
-
-        @Children private final LLVMExpressionNode[] values;
-
-        public LLVMVectorFunctionLiteralNode(LLVMExpressionNode[] values) {
-            this.values = values;
-        }
-
-        @ExplodeLoop
-        @Specialization
-        public LLVMFunctionVector op(VirtualFrame frame) {
-            Object[] vals = new Object[values.length];
-            for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeGeneric(frame);
-            }
-            return LLVMFunctionVector.create(vals);
-        }
-    }
-
 }

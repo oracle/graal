@@ -36,11 +36,9 @@ import java.util.function.LongBinaryOperator;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -165,8 +163,6 @@ public abstract class LLVMMemory {
 
     public abstract LLVMPointerVector getPointerVector(LLVMNativePointer address, int vectorLength);
 
-    public abstract LLVMFunctionVector getFunctionVector(LLVMNativePointer address, int vectorLength);
-
     public abstract void putVector(LLVMNativePointer address, LLVMDoubleVector vector, int vectorLength);
 
     public abstract void putVector(LLVMNativePointer address, LLVMFloatVector vector, int vectorLength);
@@ -182,8 +178,6 @@ public abstract class LLVMMemory {
     public abstract void putVector(LLVMNativePointer address, LLVMI8Vector vector, int vectorLength);
 
     public abstract void putVector(LLVMNativePointer address, LLVMPointerVector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMFunctionVector vector, int vectorLength, LLVMToNativeNode toNative);
 
     public abstract LLVMNativePointer allocateCString(String string);
 
@@ -226,6 +220,8 @@ public abstract class LLVMMemory {
     public abstract void fullFence();
 
     public abstract boolean isDerefMemory(LLVMNativePointer addr);
+
+    public abstract boolean isDerefMemory(long addr);
 
     @ValueType
     public static final class CMPXCHGI8 {

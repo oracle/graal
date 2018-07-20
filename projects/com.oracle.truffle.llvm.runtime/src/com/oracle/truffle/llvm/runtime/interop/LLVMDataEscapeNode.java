@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
@@ -114,11 +113,6 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     @Specialization
     protected Object escapingBoxed(LLVMBoxedPrimitive escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue.getValue();
-    }
-
-    @Specialization
-    protected TruffleObject escapingFunction(LLVMFunctionDescriptor escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return escapingValue;
     }
 
     @Specialization

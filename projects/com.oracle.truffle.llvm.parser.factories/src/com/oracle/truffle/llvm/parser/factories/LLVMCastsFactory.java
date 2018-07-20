@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeGen.LLVMUnsignedCastTo
 import com.oracle.truffle.llvm.nodes.cast.LLVMToFloatNodeGen.LLVMBitcastToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToFloatNodeGen.LLVMSignedCastToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToFloatNodeGen.LLVMUnsignedCastToFloatNodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToFunctionNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeGen.LLVMBitcastToI16NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeGen.LLVMSignedCastToI16NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeGen.LLVMUnsignedCastToI16NodeGen;
@@ -74,6 +73,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUns
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToI64VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -160,9 +160,7 @@ final class LLVMCastsFactory {
                 case X86_FP80:
                     return LLVMUnsignedCastToLLVM80BitFloatNodeGen.create(fromNode);
             }
-        } else if (Type.isFunctionOrFunctionPointer(targetType)) {
-            return LLVMToFunctionNodeGen.create(fromNode);
-        } else if (targetType instanceof PointerType) {
+        } else if (targetType instanceof PointerType || targetType instanceof FunctionType) {
             return LLVMToAddressNodeGen.create(fromNode);
         } else if (targetType instanceof VariableBitWidthType) {
             return LLVMUnsignedCastToIVarNodeGen.create(fromNode, getBits(targetType));
@@ -209,9 +207,7 @@ final class LLVMCastsFactory {
                 case X86_FP80:
                     return LLVMBitcastToLLVM80BitFloatNodeGen.create(fromNode);
             }
-        } else if (Type.isFunctionOrFunctionPointer(targetType)) {
-            return LLVMToFunctionNodeGen.create(fromNode);
-        } else if (targetType instanceof PointerType) {
+        } else if (targetType instanceof PointerType || targetType instanceof FunctionType) {
             return LLVMToAddressNodeGen.create(fromNode);
         } else if (targetType instanceof VariableBitWidthType) {
             return LLVMBitcastToIVarNodeGen.create(fromNode, targetType.getBitSize());

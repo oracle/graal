@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMForeignEqua
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMManagedEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMNativeEqualsNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -119,11 +118,6 @@ public abstract class LLVMAddressEqualsNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doVirtual(LLVMVirtualAllocationAddress v1, LLVMVirtualAllocationAddress v2) {
             return v1.getObject() == v2.getObject() && v1.getOffset() == v2.getOffset();
-        }
-
-        @Specialization
-        protected boolean doFunctionDescriptor(LLVMFunctionDescriptor f1, LLVMFunctionDescriptor f2) {
-            return f1 == f2;
         }
 
         protected boolean isNative(LLVMPointer p) {
