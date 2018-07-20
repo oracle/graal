@@ -26,6 +26,8 @@ package com.oracle.svm.core.posix;
 
 import java.util.zip.DataFormatException;
 
+import com.oracle.svm.core.jdk.JDK10OrEarlier;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,13 +41,10 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.ZLib;
 import com.oracle.svm.core.posix.headers.ZLib.z_stream;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.util.VMError;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(java.util.zip.Adler32.class)
@@ -108,28 +107,36 @@ final class Target_java_util_zip_CRC32 {
 }
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@TargetClass(java.util.zip.Deflater.class)
+@TargetClass(value = java.util.zip.Deflater.class)
 final class Target_java_util_zip_Deflater {
-
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @TargetElement(onlyWith = JDK10OrEarlier.class) //
     private byte[] buf;
 
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @TargetElement(onlyWith = JDK10OrEarlier.class) //
     int off;
 
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @TargetElement(onlyWith = JDK10OrEarlier.class) //
     int len;
 
-    @Alias private int level;
-    @Alias private int strategy;
-    @Alias private boolean setParams;
-    @Alias private boolean finish;
-    @Alias private boolean finished;
+    @Alias //
+    private int level;
 
-    // Deflater.c-Java_java_util_zip_Deflater_init(JNIEnv *env, jclass cls, jint level,
+    @Alias //
+    private int strategy;
+
+    @Alias //
+    private boolean setParams;
+
+    @Alias //
+    private boolean finish;
+
+    @Alias //
+    private boolean finished;
+
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_init(JNIEnv *env, jclass cls, jint level, jboolean nowrap)
     @Substitute
     private static long init(int level, int strategy, boolean nowrap) {
         z_stream strm = LibC.calloc(WordFactory.unsigned(1), SizeOf.unsigned(z_stream.class));
@@ -146,34 +153,36 @@ final class Target_java_util_zip_Deflater {
                 if (ret == ZLib.Z_MEM_ERROR()) {
                     throw new OutOfMemoryError();
                 } else if (ret == ZLib.Z_STREAM_ERROR()) {
-                    throw new IllegalArgumentException();
+                    throw new IllegalArgumentException(CTypeConversion.toJavaString(strm.msg()));
                 } else {
-                    throw new InternalError();
+                    throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
                 }
             }
         }
     }
 
-    // Deflater.c-Java_java_util_zip_Deflater_setDictionary(JNIEnv *env, jclass cls, jlong addr,
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_setDictionary(JNIEnv *env, jclass cls, jlong addr,
+    //                                                              jbyteArray b, jint off, jint len)
     @Substitute
     private static void setDictionary(long addr, byte[] b, int off, int len) {
         try (PinnedObject pinned = PinnedObject.create(b)) {
-            CCharPointer bufPlusOff = pinned.addressOfArrayElement(off);
-            int res = ZLib.deflateSetDictionary(WordFactory.pointer(addr), bufPlusOff, len);
-            if (res == ZLib.Z_OK()) {
-                return;
-            } else if (res == ZLib.Z_STREAM_ERROR()) {
-                throw new IllegalArgumentException();
-            } else {
-                throw new InternalError();
-            }
+            Util_java_util_zip_Deflater.doSetDictionary(addr, pinned.addressOfArrayElement(off), len);
         }
     }
 
-    // Deflater.c-Java_java_util_zip_Deflater_deflateBytes(JNIEnv *env, jobject this, jlong addr,
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_setDictionaryBuffer(JNIEnv *env, jclass cls, jlong addr,
+    //                                                                    jlong bufferAddr, jint len)
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static void setDictionaryBuffer(long addr, long bufAddress, int len) {
+        Util_java_util_zip_Deflater.doSetDictionary(addr, WordFactory.pointer(bufAddress), len);
+    }
+
+    // (JDK 8)jdk/src/share/native/java/util/zip/Deflater.c-Java_java_util_zip_Deflater_deflateBytes(JNIEnv *env, jobject this, jlong addr,
+    //                                         jarray b, jint off, jint len, jint flush)
     @SuppressWarnings("hiding")
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    @TargetElement(onlyWith = JDK10OrEarlier.class)
     private int deflateBytes(long addr, byte[] b, int off, int len, int flush) {
         z_stream strm = WordFactory.pointer(addr);
 
@@ -187,89 +196,114 @@ final class Target_java_util_zip_Deflater {
                 int res = ZLib.deflateParams(strm, level, strategy);
                 this.setParams = false;
                 if (res == ZLib.Z_OK()) {
-                    return Util_java_util_zip_Deflater_JDK8OrEarlier.update(this, len, strm);
+                    return Util_java_util_zip_Deflater_JDK10OrEarlier.update(this, len, strm);
                 } else if (res == ZLib.Z_BUF_ERROR()) {
                     return 0;
                 } else {
-                    throw new InternalError();
+                    throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
                 }
             } else {
                 int res = ZLib.deflate(strm, this.finish ? ZLib.Z_FINISH() : flush);
                 if (res == ZLib.Z_STREAM_END()) {
                     this.finished = true;
-                    return Util_java_util_zip_Deflater_JDK8OrEarlier.update(this, len, strm);
+                    return Util_java_util_zip_Deflater_JDK10OrEarlier.update(this, len, strm);
                 } else if (res == ZLib.Z_OK()) {
-                    return Util_java_util_zip_Deflater_JDK8OrEarlier.update(this, len, strm);
+                    return Util_java_util_zip_Deflater_JDK10OrEarlier.update(this, len, strm);
                 } else if (res == ZLib.Z_BUF_ERROR()) {
                     return 0;
                 } else {
-                    throw new InternalError();
+                    throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
                 }
             }
         }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_deflateBytesBytes(JNIEnv *env, jobject this, jlong addr,
+    //                                         jbyteArray inputArray, jint inputOff, jint inputLen,
+    //                                         jbyteArray outputArray, jint outputOff, jint outputLen,
+    //                                         jint flush, jint params)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long deflateBytesBytes(long addr,
-                    byte[] inputArray, int inputOff, int inputLen,
-                    byte[] outputArray, int outputOff, int outputLen,
-                    int flush, int params) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_util_zip_Deflater.deflateBytesBytes(long, byte[], int, int, byte[], int, int, int, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long deflateBytesBytes(long addr,
+            byte[] inputArray, int inputOff, int inputLen,
+            byte[] outputArray, int outputOff, int outputLen,
+            int flush, int params) {
+
+        try (PinnedObject inputPinned = PinnedObject.create(inputArray)) {
+            try (PinnedObject outputPinned = PinnedObject.create(outputArray)) {
+                return Util_java_util_zip_Deflater_JDK11OrLater.doDeflate(addr, inputPinned.addressOfArrayElement(inputOff), inputLen, outputPinned.addressOfArrayElement(outputOff), outputLen, flush, params);
+            }
+        }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_deflateBytesBuffer(JNIEnv *env, jobject this, jlong addr,
+    //                                         jbyteArray inputArray, jint inputOff, jint inputLen,
+    //                                         jlong outputBuffer, jint outputLen,
+    //                                         jint flush, jint params)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long deflateBytesBuffer(long addr,
-                    byte[] inputArray, int inputOff, int inputLen,
-                    long outputAddress, int outputLen,
-                    int flush, int params) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_util_zip_Deflater.deflateBytesBuffer(long, byte[], int, int, long, int, int, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long deflateBytesBuffer(long addr,
+            byte[] inputArray, int inputOff, int inputLen,
+            long outputBuffer, int outputLen,
+            int flush, int params) {
+
+        try (PinnedObject inputPinned = PinnedObject.create(inputArray)) {
+            return Util_java_util_zip_Deflater_JDK11OrLater.doDeflate(addr, inputPinned.addressOfArrayElement(inputOff), inputLen, WordFactory.pointer(outputBuffer), outputLen, flush, params);
+        }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_deflateBufferBytes(JNIEnv *env, jobject this, jlong addr,
+    //                                         jlong inputBuffer, jint inputLen,
+    //                                         jbyteArray outputArray, jint outputOff, jint outputLen,
+    //                                         jint flush, jint params)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long deflateBufferBytes(long addr,
-                    long inputAddress, int inputLen,
-                    byte[] outputArray, int outputOff, int outputLen,
-                    int flush, int params) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_util_zip_Deflater.deflateBufferBytes(long, long, int, byte[], int, int, int, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long deflateBufferBytes(long addr,
+            long inputBuffer, int inputLen,
+            byte[] outputArray, int outputOff, int outputLen,
+            int flush, int params) {
+
+        try (PinnedObject outputPinned = PinnedObject.create(outputArray)) {
+            return Util_java_util_zip_Deflater_JDK11OrLater.doDeflate(addr, WordFactory.pointer(inputBuffer), inputLen, outputPinned.addressOfArrayElement(outputOff), outputLen, flush, params);
+        }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_deflateBufferBuffer(JNIEnv *env, jobject this, jlong addr,
+    //                                         jlong inputBuffer, jint inputLen,
+    //                                         jlong outputBuffer, jint outputLen,
+    //                                         jint flush, jint params)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long deflateBufferBuffer(long addr,
-                    long inputAddress, int inputLen,
-                    long outputAddress, int outputLen,
-                    int flush, int params) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_util_zip_Deflater.deflateBufferBuffer(long, long, int, long, int, int, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long deflateBufferBuffer(long addr,
+            long inputBuffer, int inputLen,
+            long outputBuffer, int outputLen,
+            int flush, int params) {
+
+        return Util_java_util_zip_Deflater_JDK11OrLater.doDeflate(addr, WordFactory.pointer(inputBuffer), inputLen, WordFactory.pointer(outputBuffer), outputLen, flush, params);
     }
 
-    // Deflater.c-Java_java_util_zip_Deflater_getAdler(JNIEnv *env, jclass cls, jlong addr)
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_getAdler(JNIEnv *env, jclass cls, jlong addr)
     @Substitute
     private static int getAdler(long addr) {
         z_stream strm = WordFactory.pointer(addr);
         return (int) strm.adler().rawValue();
     }
 
-    // Deflater.c-Java_java_util_zip_Deflater_reset(JNIEnv *env, jclass cls, jlong addr)
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_reset(JNIEnv *env, jclass cls, jlong addr)
     @Substitute
     private static void reset(long addr) {
-        if (ZLib.deflateReset(WordFactory.pointer(addr)) != ZLib.Z_OK()) {
-            throw new InternalError();
+        z_stream strm = WordFactory.pointer(addr);
+        if (ZLib.deflateReset(strm) != ZLib.Z_OK()) {
+            throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
         }
     }
 
-    // Deflater.c-Java_java_util_zip_Deflater_end(JNIEnv *env, jclass cls, jlong addr)
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-Java_java_util_zip_Deflater_end(JNIEnv *env, jclass cls, jlong addr)
     @Substitute
     private static void end(long addr) {
         z_stream strm = WordFactory.pointer(addr);
         if (ZLib.deflateEnd(strm) == ZLib.Z_STREAM_ERROR()) {
-            throw new InternalError();
+            throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
         } else {
             LibC.free(strm);
         }
@@ -281,9 +315,69 @@ final class Util_java_util_zip_Deflater {
     // Checkstyle: stop
     static int DEF_MEM_LEVEL = 8;
     // Checkstyle: resume
+
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-static void doSetDictionary(JNIEnv *env, jlong addr, jbyte *buf, jint len)
+    static void doSetDictionary(long addr, CCharPointer buf, int len) {
+        z_stream strm = WordFactory.pointer(addr);
+        int res = ZLib.deflateSetDictionary(strm, buf, len);
+        if (res == ZLib.Z_OK()) {
+            return;
+        } else if (res == ZLib.Z_STREAM_ERROR()) {
+            throw new IllegalArgumentException(CTypeConversion.toJavaString(strm.msg()));
+        } else {
+            throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
+        }
+    }
 }
 
-final class Util_java_util_zip_Deflater_JDK8OrEarlier {
+final class Util_java_util_zip_Deflater_JDK11OrLater {
+
+    // (JDK 11)src/java.base/share/native/libzip/Deflater.c-static jlong doDeflate(JNIEnv *env, jobject this, jlong addr,
+    //                       jbyte *input, jint inputLen,
+    //                       jbyte *output, jint outputLen,
+    //                       jint flush, jint params)
+    static long doDeflate(long addr,
+        CCharPointer input, int inputLen,
+        CCharPointer output, int outputLen,
+        int flush, int params) {
+
+        z_stream strm = WordFactory.pointer(addr);
+        int inputUsed;
+        int outputUsed;
+        int finished = 0;
+        int setParams = params & 1;
+
+        strm.set_next_in(input);
+        strm.set_next_out(output);
+        strm.set_avail_in(inputLen);
+        strm.set_avail_out(outputLen);
+
+        if (setParams != 0) {
+            int strategy = (params >> 1) & 3;
+            int level = params >> 3;
+            int res = ZLib.deflateParams(strm, level, strategy);
+            if (res != ZLib.Z_OK() && res != ZLib.Z_BUF_ERROR()) {
+                throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
+            }
+            if (res == ZLib.Z_OK()) {
+                setParams = 0;
+            }
+        } else {
+            int res = ZLib.deflate(strm, flush);
+            if (res != ZLib.Z_OK() && res != ZLib.Z_STREAM_END() && res != ZLib.Z_BUF_ERROR()) {
+                throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
+            }
+            if (res == ZLib.Z_STREAM_END()) {
+                finished = 1;
+            }
+        }
+        inputUsed = inputLen - strm.avail_in();
+        outputUsed = outputLen - strm.avail_out();
+        return ((long) inputUsed) | (((long) outputUsed) << 31) | (((long) finished) << 62) | (((long) setParams) << 63);
+    }
+}
+
+final class Util_java_util_zip_Deflater_JDK10OrEarlier {
 
     static int update(Object obj, int len, z_stream strm) {
         Target_java_util_zip_Deflater instance = KnownIntrinsics.unsafeCast(obj, Target_java_util_zip_Deflater.class);
@@ -294,26 +388,40 @@ final class Util_java_util_zip_Deflater_JDK8OrEarlier {
 }
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@TargetClass(java.util.zip.Inflater.class)
+@TargetClass(value = java.util.zip.Inflater.class)
 final class Target_java_util_zip_Inflater {
 
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @TargetElement(onlyWith = JDK10OrEarlier.class) //
     private byte[] buf;
 
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @TargetElement(onlyWith = JDK10OrEarlier.class) //
     int off;
 
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @TargetElement(onlyWith = JDK10OrEarlier.class) //
     int len;
 
     @Alias private boolean finished;
 
     @Alias private boolean needDict;
 
-    // Inflater.c-Java_java_util_zip_Inflater_init(JNIEnv *env, jclass cls, jboolean nowrap)
+    @Alias //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    int inputConsumed;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    int outputConsumed;
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    private static void initIDs() {
+        // nothing
+    }
+
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_init(JNIEnv *env, jclass cls, jboolean nowrap)
     @Substitute
     private static long init(boolean nowrap) {
         z_stream strm = LibC.calloc(WordFactory.unsigned(1), SizeOf.unsigned(z_stream.class));
@@ -330,32 +438,35 @@ final class Target_java_util_zip_Inflater {
                 if (ret == ZLib.Z_MEM_ERROR()) {
                     throw new OutOfMemoryError();
                 } else {
-                    throw new InternalError();
+                    throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
                 }
             }
         }
     }
 
-    // Inflater.c-Java_java_util_zip_Inflater_setDictionary(JNIEnv *env, jclass cls, jlong addr,
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_setDictionary(JNIEnv *env, jclass cls, jlong addr,
+    //                                          jbyteArray b, jint off, jint len)
     @Substitute
     private static void setDictionary(long addr, byte[] b, int off, int len) {
         try (PinnedObject pinned = PinnedObject.create(b)) {
-            CCharPointer bufPlusOff = pinned.addressOfArrayElement(off);
-            int res = ZLib.inflateSetDictionary(WordFactory.pointer(addr), bufPlusOff, len);
-            if (res == ZLib.Z_OK()) {
-                return;
-            } else if (res == ZLib.Z_STREAM_ERROR() || res == ZLib.Z_DATA_ERROR()) {
-                throw new IllegalArgumentException();
-            } else {
-                throw new InternalError();
-            }
+            CCharPointer bytes = pinned.addressOfArrayElement(off);
+            Util_java_util_zip_Inflater.doSetDictionary(addr, bytes, len);
         }
     }
 
-    // Inflater.c-Java_java_util_zip_Inflater_inflateBytes(JNIEnv *env, jobject this, jlong addr,
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_setDictionaryBuffer(JNIEnv *env, jclass cls, jlong addr,
+    //                                          jlong bufferAddr, jint len)
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static void setDictionaryBuffer(long addr, long bufAddress, int len) {
+        Util_java_util_zip_Inflater.doSetDictionary(addr, WordFactory.pointer(bufAddress), len);
+    }
+
+    // (JDK 8)src/share/native/java/util/zip/Inflater.c-Java_java_util_zip_Inflater_inflateBytes(JNIEnv *env, jobject this, jlong addr,
+    //                                         jarray b, jint off, jint len)
     @SuppressWarnings("hiding")
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    @TargetElement(onlyWith = JDK10OrEarlier.class)
     private int inflateBytes(long addr, byte[] b, int off, int len) throws DataFormatException {
         z_stream strm = WordFactory.pointer(addr);
 
@@ -369,12 +480,12 @@ final class Target_java_util_zip_Inflater {
             int ret = ZLib.inflate(strm, ZLib.Z_PARTIAL_FLUSH());
             if (ret == ZLib.Z_STREAM_END()) {
                 this.finished = true;
-                return Util_java_util_zip_Inflater_JDK8OrEarlier.update(this, len, strm);
+                return Util_java_util_zip_Inflater_JDK10OrEarlier.update(this, len, strm);
             } else if (ret == ZLib.Z_OK()) {
-                return Util_java_util_zip_Inflater_JDK8OrEarlier.update(this, len, strm);
+                return Util_java_util_zip_Inflater_JDK10OrEarlier.update(this, len, strm);
             } else if (ret == ZLib.Z_NEED_DICT()) {
                 needDict = true;
-                Util_java_util_zip_Inflater_JDK8OrEarlier.update(this, len, strm);
+                Util_java_util_zip_Inflater_JDK10OrEarlier.update(this, len, strm);
                 return 0;
             } else if (ret == ZLib.Z_BUF_ERROR()) {
                 return 0;
@@ -383,67 +494,97 @@ final class Target_java_util_zip_Inflater {
             } else if (ret == ZLib.Z_MEM_ERROR()) {
                 throw new OutOfMemoryError();
             } else {
-                throw new InternalError();
+                throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
             }
         }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_inflateBytesBytes(JNIEnv *env, jobject this, jlong addr,
+    //                                         jbyteArray inputArray, jint inputOff, jint inputLen,
+    //                                         jbyteArray outputArray, jint outputOff, jint outputLen)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long inflateBytesBytes(long addr,
-                    byte[] inputArray, int inputOff, int inputLen,
-                    byte[] outputArray, int outputOff, int outputLen) throws DataFormatException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_util_zip_Inflater.inflateBytesBytes(long, byte[], int, int, byte[], int, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long inflateBytesBytes(long addr,
+            byte[] inputArray, int inputOff, int inputLen,
+            byte[] outputArray, int outputOff, int outputLen) throws DataFormatException {
+
+        try (PinnedObject inputPinned = PinnedObject.create(inputArray)) {
+            CCharPointer inputBytes = inputPinned.addressOfArrayElement(inputOff);
+            try (PinnedObject outputPinned = PinnedObject.create(outputArray)) {
+                CCharPointer outputBytes = outputPinned.addressOfArrayElement(outputOff);
+                return Util_java_util_zip_Inflater_JDK11OrLater.doInflate(this, addr, inputBytes, inputLen, outputBytes, outputLen);
+            }
+        }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_inflateBytesBuffer(JNIEnv *env, jobject this, jlong addr,
+    //                                         jbyteArray inputArray, jint inputOff, jint inputLen,
+    //                                         jlong outputBuffer, jint outputLen)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long inflateBytesBuffer(long addr,
-                    byte[] inputArray, int inputOff, int inputLen,
-                    long outputAddress, int outputLen) throws DataFormatException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_util_zip_Inflater.inflateBytesBuffer(long, byte[], int, int, long, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long inflateBytesBuffer(long addr,
+            byte[] inputArray, int inputOff, int inputLen,
+            long outputAddress, int outputLen) throws DataFormatException {
+
+        try (PinnedObject inputPinned = PinnedObject.create(inputArray)) {
+            CCharPointer inputBytes = inputPinned.addressOfArrayElement(inputOff);
+            CCharPointer outputBytes = WordFactory.pointer(outputAddress);
+            return Util_java_util_zip_Inflater_JDK11OrLater.doInflate(this, addr, inputBytes, inputLen, outputBytes, outputLen);
+        }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_inflateBufferBytes(JNIEnv *env, jobject this, jlong addr,
+    //                                         jlong inputBuffer, jint inputLen,
+    //                                         jbyteArray outputArray, jint outputOff, jint outputLen)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long inflateBufferBytes(long addr,
-                    long inputAddress, int inputLen,
-                    byte[] outputArray, int outputOff, int outputLen) throws DataFormatException {
-        throw VMError.unsupportedFeature("JDK9OrLater: com.oracle.svm.core.posix.Target_java_util_zip_Inflater.inflateBufferBytes(long, long, int, byte[], int, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long inflateBufferBytes(long addr,
+            long inputAddress, int inputLen,
+            byte[] outputArray, int outputOff, int outputLen) throws DataFormatException {
+
+        CCharPointer inputBytes = WordFactory.pointer(inputAddress);
+        try (PinnedObject outputPinned = PinnedObject.create(outputArray)) {
+            CCharPointer outputBytes = outputPinned.addressOfArrayElement(outputOff);
+            return Util_java_util_zip_Inflater_JDK11OrLater.doInflate(this, addr, inputBytes, inputLen, outputBytes, outputLen);
+        }
     }
 
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_inflateBufferBuffer(JNIEnv *env, jobject this, jlong addr,
+    //                                         jlong inputBuffer, jint inputLen,
+    //                                         jlong outputBuffer, jint outputLen)
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
-    @SuppressWarnings({"unused", "static-method"})
-    long inflateBufferBuffer(long addr,
-                    long inputAddress, int inputLen,
-                    long outputAddress, int outputLen) throws DataFormatException {
-        throw VMError.unsupportedFeature("JDK9OrLater: com.oracle.svm.core.posix.Target_java_util_zip_Inflater.inflateBufferBuffer(long, long, int, long, int)");
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private long inflateBufferBuffer(long addr,
+            long inputAddress, int inputLen,
+            long outputAddress, int outputLen) throws DataFormatException {
+
+        CCharPointer inputBytes = WordFactory.pointer(inputAddress);
+        CCharPointer outputBytes = WordFactory.pointer(outputAddress);
+        return Util_java_util_zip_Inflater_JDK11OrLater.doInflate(this, addr, inputBytes, inputLen, outputBytes, outputLen);
     }
 
-    // Inflater.c-Java_java_util_zip_Inflater_getAdler(JNIEnv *env, jclass cls, jlong addr)
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_getAdler(JNIEnv *env, jclass cls, jlong addr)
     @Substitute
     private static int getAdler(long addr) {
         z_stream strm = WordFactory.pointer(addr);
         return (int) strm.adler().rawValue();
     }
 
-    // Inflater.c-Java_java_util_zip_Inflater_reset(JNIEnv *env, jclass cls, jlong addr)
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_reset(JNIEnv *env, jclass cls, jlong addr)
     @Substitute
     private static void reset(long addr) {
         if (ZLib.inflateReset(WordFactory.pointer(addr)) != ZLib.Z_OK()) {
+            // zlib does not set a message on failure of inflateReset.
             throw new InternalError();
         }
     }
 
-    // Inflater.c-Java_java_util_zip_Inflater_end(JNIEnv *env, jclass cls, jlong addr)
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-Java_java_util_zip_Inflater_end(JNIEnv *env, jclass cls, jlong addr)
     @Substitute
     private static void end(long addr) {
         z_stream strm = WordFactory.pointer(addr);
         if (ZLib.inflateEnd(strm) == ZLib.Z_STREAM_ERROR()) {
+            // zlib does not set a message on failure of inflateEnd.
             throw new InternalError();
         } else {
             LibC.free(strm);
@@ -451,7 +592,52 @@ final class Target_java_util_zip_Inflater {
     }
 }
 
-final class Util_java_util_zip_Inflater_JDK8OrEarlier {
+final class Util_java_util_zip_Inflater_JDK11OrLater {
+
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-static jlong doInflate(JNIEnv *env, jobject this, jlong addr,
+    //                       jbyte *input, jint inputLen,
+    //                       jbyte *output, jint outputLen)
+    static long doInflate(final Object obj, long addr, CCharPointer input, int inputLen, CCharPointer output, int outputLen) throws DataFormatException {
+        Target_java_util_zip_Inflater instance = KnownIntrinsics.unsafeCast(obj, Target_java_util_zip_Inflater.class);
+        z_stream strm = WordFactory.pointer(addr);
+        int inputUsed = 0;
+        int outputUsed = 0;
+
+        strm.set_next_in(input);
+        strm.set_next_out(output);
+        strm.set_avail_in(inputLen);
+        strm.set_avail_out(outputLen);
+
+        int ret = ZLib.inflate(strm, ZLib.Z_PARTIAL_FLUSH());
+
+        int finished = 0;
+        int needDict = 0;
+
+        if (ret == ZLib.Z_STREAM_END() || ret == ZLib.Z_OK()) {
+            if (ret == ZLib.Z_STREAM_END()) {
+                finished = 1;
+                inputUsed = inputLen - strm.avail_in();
+                outputUsed = outputLen - strm.avail_out();
+            }
+        } else if (ret == ZLib.Z_NEED_DICT()) {
+            needDict = 1;
+            inputUsed = inputLen - strm.avail_in();
+            outputUsed = outputLen - strm.avail_out();
+        } else if (ret == ZLib.Z_DATA_ERROR()) {
+            // these fields act as "out" parameters
+            instance.inputConsumed = inputLen - strm.avail_in();
+            instance.outputConsumed = outputLen - strm.avail_out();
+            throw new DataFormatException(CTypeConversion.toJavaString(strm.msg()));
+        } else if (ret == ZLib.Z_MEM_ERROR()) {
+            throw new OutOfMemoryError();
+        } else if (ret != ZLib.Z_BUF_ERROR()) {
+            throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
+        }
+        return ((long) inputUsed) | (((long) outputUsed) << 31) | (((long) finished) << 62) | (((long) needDict) << 63);
+    }
+}
+
+final class Util_java_util_zip_Inflater_JDK10OrEarlier {
     static int update(Object obj, int len, z_stream strm) {
         Target_java_util_zip_Inflater instance = KnownIntrinsics.unsafeCast(obj, Target_java_util_zip_Inflater.class);
         instance.off += instance.len - strm.avail_in();
@@ -459,6 +645,22 @@ final class Util_java_util_zip_Inflater_JDK8OrEarlier {
         return len - strm.avail_out();
     }
 
+}
+
+final class Util_java_util_zip_Inflater {
+
+    // (JDK 11)src/java.base/share/native/libzip/Inflater.c-static void doSetDictionary(JNIEnv *env, jlong addr, jbyte *buf, jint len)
+    static void doSetDictionary(long addr, CCharPointer bytes, int len) {
+        z_stream strm = WordFactory.pointer(addr);
+        int res = ZLib.inflateSetDictionary(strm, bytes, len);
+        if (res == ZLib.Z_OK()) {
+            return;
+        }
+        if (res == ZLib.Z_STREAM_ERROR() || res == ZLib.Z_DATA_ERROR()) {
+            throw new IllegalArgumentException(CTypeConversion.toJavaString(strm.msg()));
+        }
+        throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
+    }
 }
 
 /** Dummy class to have a class with the file's name. */
