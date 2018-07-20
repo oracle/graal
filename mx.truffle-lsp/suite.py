@@ -17,6 +17,7 @@ suite = {
     "libraries": {
         "LSP4J" : {
             "sha1" : "90e34b7c7e0257e3993ca5a939ae94f889d31340",
+            "sourceSha1": "6dd33739fe6dc7f306b819d88a6f9a8f9279da51",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j",
@@ -26,6 +27,7 @@ suite = {
         },
         "LSP4J-JSONRPC" : {
             "sha1" : "f3f93f50bbeb7d58b50e6ffca615cbfc76491846",
+            "sourceSha1": "2cb08b2bcc262bb984822c274987a87664a75fed",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j.jsonrpc",
@@ -35,6 +37,7 @@ suite = {
         },
         "LSP4J-GENERATOR" : {
             "sha1" : "467f27e91fd694c05eb663532f2ede0404025afe",
+            "sourceSha1": "80fc1d3f970fd3e666ecd7f70781e22d4e7f70ee",
             "maven" : {
                 "groupId" : "org.eclipse.lsp4j",
                 "artifactId" : "org.eclipse.lsp4j.generator",
@@ -44,6 +47,7 @@ suite = {
         },
         "XTEXT-XBASE-LIB" : {
             "sha1" : "ea0734bda785af01c6f02298d25ed3189dd5a2ac",
+            "sourceSha1": "d2ed94bab5bae700d752a6f638edf08c19298464",
             "maven" : {
                 "groupId" : "org.eclipse.xtext",
                 "artifactId" : "org.eclipse.xtext.xbase.lib",
@@ -53,6 +57,7 @@ suite = {
         },
         "XTEND-LIB" : {
             "sha1" : "accfb60dda659a31dddb5823d4fbcc7c0c1aa4ae",
+            "sourceSha1": "c8841f7735714cc794a980094178a9fd31b50754",
             "maven" : {
                 "groupId" : "org.eclipse.xtend",
                 "artifactId" : "org.eclipse.xtend.lib",
@@ -62,6 +67,7 @@ suite = {
         },
         "XTEND-LIB-MACRO" : {
             "sha1" : "04897a782f69cee9326ea1ae7e10078b4d738463",
+            "sourceSha1": "67abbc9540e78a8aba1c6e4fad3ba1b2183f7be7",
             "maven" : {
                 "groupId" : "org.eclipse.xtend",
                 "artifactId" : "org.eclipse.xtend.lib.macro",
@@ -78,6 +84,7 @@ suite = {
         # },
         "GSON" : {
             "sha1" : "751f548c85fa49f330cecbb1875893f971b33c4e",
+            "sourceSha1": "bbb63ca253b483da8ee53a50374593923e3de2e2",
             "maven" : {
                 "groupId" : "com.google.code.gson",
                 "artifactId" : "gson",
@@ -85,11 +92,12 @@ suite = {
             }
         },
         "GUAVA" : {
-            "sha1" : "ffe5638f514e43ffb71163bbd453b1f9cc218426",
+            "sha1" : "6ce200f6b23222af3d8abb6b6459e6c44f4bb0e9",
+            "sourceSha1": "91a4d115400e904f22b03a78deb355e9ea803cd4",
             "maven" : {
                 "groupId" : "com.google.guava",
                 "artifactId" : "guava",
-                "version" : "19.0-rc3",
+                "version" : "19.0",
             }
         },
     },
