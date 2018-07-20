@@ -219,8 +219,8 @@ class CPUSamplerCLI extends ProfilerCLI {
             if (treeNode == null) {
                 continue;
             }
-            printAttributes(out, sampler, prefix, Arrays.asList(treeNode), maxRootLength);
-            printSamplingCallTreeRec(sampler, maxRootLength, prefix + " ", treeNode.getChildren(), out);
+            boolean printed = printAttributes(out, sampler, prefix, Arrays.asList(treeNode), maxRootLength);
+            printSamplingCallTreeRec(sampler, maxRootLength, printed ? prefix + " " : prefix, treeNode.getChildren(), out);
         }
     }
 
@@ -242,7 +242,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         return x2 >= y1 && y2 >= x1;
     }
 
-    private static void printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength) {
+    private static boolean printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength) {
         long samplePeriod = sampler.getPeriod();
         long samples = sampler.getSampleCount();
 
@@ -263,7 +263,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         long totalSamples = totalInterpreted + totalCompiled;
         if (totalSamples <= 0L) {
             // hide methods without any cost
-            return;
+            return false;
         }
         assert totalSamples < samples;
         ProfilerNode<CPUSampler.Payload> firstNode = nodes.get(0);
@@ -292,6 +292,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         out.println(String.format(" %-" + Math.max(maxRootLength, 10) + "s | %s || %s | %s ", //
                         prefix + rootName, totalTimes, selfTimes, location));
+        return true;
     }
 
     private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.Payload> firstNode) {
