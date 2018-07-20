@@ -51,11 +51,9 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -554,18 +552,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
         return LLVMPointerVector.create(vector);
     }
 
-    @Override
-    @ExplodeLoop
-    public LLVMFunctionVector getFunctionVector(LLVMNativePointer address, int vectorLength) {
-        long[] vector = new long[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getPointer(currentPtr).asNative();
-            currentPtr += ADDRESS_SIZE_IN_BYTES;
-        }
-        return LLVMFunctionVector.create(vector);
-    }
-
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
     // implemented
     @Override
@@ -652,17 +638,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
         long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putPointer(currentPtr, vector.getValue(i));
-            currentPtr += ADDRESS_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMFunctionVector vector, int vectorLength, LLVMToNativeNode toNative) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putPointer(currentPtr, toNative.executeWithTarget(vector.getValue(i)));
             currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
     }
@@ -896,7 +871,12 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
     @Override
     public boolean isDerefMemory(LLVMNativePointer addr) {
-        return !noDerefHandleAssumption.isValid() && addr.asNative() > DEREF_HANDLE_SPACE_END;
+        return isDerefMemory(addr.asNative());
+    }
+
+    @Override
+    public boolean isDerefMemory(long addr) {
+        return !noDerefHandleAssumption.isValid() && addr > DEREF_HANDLE_SPACE_END;
     }
 
     public static long getDerefHandleObjectMask() {

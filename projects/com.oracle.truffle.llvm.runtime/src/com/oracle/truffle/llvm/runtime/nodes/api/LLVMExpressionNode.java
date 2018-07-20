@@ -35,7 +35,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
@@ -158,10 +157,6 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMDoubleVector(executeGeneric(frame));
-    }
-
-    public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMFunctionDescriptor(executeGeneric(frame));
     }
 
     public String getSourceDescription() {

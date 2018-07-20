@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -57,11 +56,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     private static final double MAX_LONG_AS_DOUBLE = Long.MAX_VALUE;
 
     @Child private LLVMToNativeNode toNative;
-
-    @Specialization
-    protected Object doFunction(LLVMFunctionDescriptor from) {
-        return getToNative().executeWithTarget(from).asNative();
-    }
 
     @Specialization
     protected Object doManaged(LLVMManagedPointer from) {

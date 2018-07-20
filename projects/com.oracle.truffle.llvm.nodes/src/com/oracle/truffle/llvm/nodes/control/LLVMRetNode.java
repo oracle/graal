@@ -39,7 +39,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -230,24 +229,6 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode implements Instrum
 
         @Specialization
         protected Object doOp(Object retResult) {
-            return retResult;
-        }
-    }
-
-    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
-    public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
-
-        public LLVMFunctionRetNode(LLVMSourceLocation sourceSection) {
-            super(sourceSection);
-        }
-
-        @Specialization
-        protected Object doOp(LLVMPointer retResult) {
-            return retResult;
-        }
-
-        @Specialization
-        protected Object doOp(LLVMFunctionDescriptor retResult) {
             return retResult;
         }
     }

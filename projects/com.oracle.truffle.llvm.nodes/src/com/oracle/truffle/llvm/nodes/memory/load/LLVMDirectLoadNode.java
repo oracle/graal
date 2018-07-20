@@ -111,29 +111,6 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    public abstract static class LLVMFunctionDirectLoadNode extends LLVMAbstractLoadNode {
-
-        @Specialization(guards = "!isAutoDerefHandle(addr)")
-        protected LLVMNativePointer doNativePointer(LLVMNativePointer addr) {
-            return LLVMNativePointer.create(getLLVMMemoryCached().getFunctionPointer(addr));
-        }
-
-        @Specialization(guards = "isAutoDerefHandle(addr)")
-        protected Object doDerefHandle(LLVMNativePointer addr) {
-            return doForeign(getDerefHandleGetReceiverNode().execute(addr));
-        }
-
-        @Override
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.POINTER);
-        }
-
-        @Specialization
-        protected Object doForeign(LLVMManagedPointer addr) {
-            return getForeignReadNode().execute(addr);
-        }
-    }
-
     public abstract static class LLVMPointerDirectLoadNode extends LLVMAbstractLoadNode {
 
         @Specialization(guards = "!isAutoDerefHandle(addr)")

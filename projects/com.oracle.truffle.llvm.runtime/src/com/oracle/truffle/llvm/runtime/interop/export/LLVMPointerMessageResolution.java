@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -333,8 +335,8 @@ public class LLVMPointerMessageResolution {
         }
 
         @Specialization
-        boolean doManaged(@SuppressWarnings("unused") LLVMManagedPointer receiver) {
-            return false;
+        boolean doDirect(LLVMManagedPointer receiver) {
+            return receiver.getObject() instanceof LLVMFunctionDescriptor && receiver.getOffset() == 0;
         }
     }
 
@@ -354,29 +356,42 @@ public class LLVMPointerMessageResolution {
 
         protected abstract Object execute(LLVMPointer receiver, Object[] args);
 
-        @Specialization(guards = {"value.asNative() == cachedValue.asNative()", "handle != null"})
+        @Specialization(guards = {"value.asNative() == cachedAddress", "cachedDescriptor != null"})
         Object doNativeCached(@SuppressWarnings("unused") LLVMNativePointer value, Object[] args,
-                        @Cached("value") @SuppressWarnings("unused") LLVMNativePointer cachedValue,
-                        @Cached("getDescriptor(cachedValue)") LLVMFunctionDescriptor handle,
+                        @Cached("value.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                        @Cached("getDescriptor(value)") LLVMFunctionDescriptor cachedDescriptor,
                         @Cached("create()") LLVMForeignCallNode foreignCall) {
-            return foreignCall.executeCall(handle, args);
+            return foreignCall.executeCall(cachedDescriptor, args);
         }
 
         @Specialization(replaces = "doNativeCached")
         Object doNative(LLVMNativePointer value, Object[] args,
                         @Cached("create()") LLVMForeignCallNode foreignCall) {
-            LLVMFunctionDescriptor handle = getDescriptor(value);
-            if (handle != null) {
-                return foreignCall.executeCall(handle, args);
+            LLVMFunctionDescriptor descriptor = getDescriptor(value);
+            if (descriptor != null) {
+                return foreignCall.executeCall(descriptor, args);
             } else {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedMessageException.raise(Message.createExecute(args.length));
+                return doFallback(value, args);
             }
         }
 
-        @Specialization
-        Object doManaged(@SuppressWarnings("unused") LLVMManagedPointer value, Object[] args) {
-            CompilerDirectives.transferToInterpreter();
+        @Specialization(guards = {"isSameObject(value.getObject(), cachedDescriptor)", "cachedDescriptor != null", "value.getOffset() == 0"})
+        Object doManagedCached(@SuppressWarnings("unused") LLVMManagedPointer value, Object[] args,
+                        @Cached("asFunctionDescriptor(value.getObject())") LLVMFunctionDescriptor cachedDescriptor,
+                        @Cached("create()") LLVMForeignCallNode foreignCall) {
+            return foreignCall.executeCall(cachedDescriptor, args);
+        }
+
+        @Specialization(guards = {"isFunctionDescriptor(value.getObject())", "value.getOffset() == 0"}, replaces = "doManagedCached")
+        Object doManaged(LLVMManagedPointer value, Object[] args,
+                        @Cached("create()") LLVMForeignCallNode foreignCall) {
+            return foreignCall.executeCall((LLVMFunctionDescriptor) value.getObject(), args);
+        }
+
+        @Fallback
+        @TruffleBoundary
+        Object doFallback(@SuppressWarnings("unused") LLVMPointer value, Object[] args) {
             throw UnsupportedMessageException.raise(Message.createExecute(args.length));
         }
 

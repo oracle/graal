@@ -46,16 +46,16 @@ public class LLVMFunctionMessageResolution {
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNullNode extends Node {
 
-        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return object.isNullFunction();
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") LLVMFunctionDescriptor object) {
+            return false;
         }
     }
 
     @Resolve(message = "IS_EXECUTABLE")
     public abstract static class ForeignIsExecutableNode extends Node {
 
-        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return !object.isNullFunction();
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") LLVMFunctionDescriptor object) {
+            return true;
         }
     }
 

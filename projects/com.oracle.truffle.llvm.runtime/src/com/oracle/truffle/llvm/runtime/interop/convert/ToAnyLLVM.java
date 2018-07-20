@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -93,11 +92,6 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMFunctionDescriptor fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
-        return fd;
-    }
-
-    @Specialization
     protected LLVMPointer fromPointer(LLVMPointer pointer) {
         return pointer;
     }
@@ -123,8 +117,6 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
         } else if (value instanceof String) {
             return value;
         } else if (value instanceof LLVMBoxedPrimitive) {
-            return value;
-        } else if (value instanceof LLVMFunctionDescriptor) {
             return value;
         } else if (LLVMPointer.isInstance(value)) {
             return value;

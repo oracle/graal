@@ -51,11 +51,11 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMThread;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
@@ -64,13 +64,13 @@ import sun.misc.SignalHandler;
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
-    protected LLVMNativePointer doSignal(int signal, Object handler,
+    protected LLVMPointer doSignal(int signal, Object handler,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return setSignalHandler(context.get(), signal, toNative.executeWithTarget(handler));
     }
 
-    private static LLVMNativePointer setSignalHandler(LLVMContext context, int signalId, LLVMNativePointer function) {
+    private static LLVMPointer setSignalHandler(LLVMContext context, int signalId, LLVMNativePointer function) {
         try {
             Signals decodedSignal = Signals.decode(signalId);
             return setSignalHandler(context, decodedSignal.signal(), function);
@@ -91,9 +91,9 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
     }
 
     @TruffleBoundary
-    private static LLVMNativePointer setSignalHandler(LLVMContext context, Signal signal, LLVMNativePointer function) {
+    private static LLVMPointer setSignalHandler(LLVMContext context, Signal signal, LLVMNativePointer function) {
         int signalId = signal.getNumber();
-        LLVMNativePointer returnFunction = context.getSigDfl();
+        LLVMPointer returnFunction = context.getSigDfl();
 
         try {
             LLVMSignalHandler newSignalHandler = new LLVMSignalHandler(context, signal, function);
@@ -141,22 +141,22 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
 
         private final Signal signal;
         private final LLVMContext context;
-        private final LLVMNativePointer handler;
+        private final LLVMPointer handler;
 
         private final Lock lock = new ReentrantLock();
         private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
         @TruffleBoundary
-        private LLVMSignalHandler(LLVMContext context, Signal signal, LLVMNativePointer function) throws IllegalArgumentException {
+        private LLVMSignalHandler(LLVMContext context, Signal signal, LLVMPointer function) throws IllegalArgumentException {
             this.signal = signal;
             this.context = context;
 
             lock.lock();
             try {
-                if (function.asNative() == context.getSigDfl().asNative()) {
+                if (function.equals(context.getSigDfl())) {
                     this.handler = function;
                     Signal.handle(signal, SignalHandler.SIG_DFL);
-                } else if (function.asNative() == context.getSigIgn().asNative()) {
+                } else if (function.equals(context.getSigIgn())) {
                     this.handler = function;
                     Signal.handle(signal, SignalHandler.SIG_IGN);
                 } else {
@@ -173,7 +173,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             }
         }
 
-        public LLVMNativePointer getFunction() {
+        public LLVMPointer getFunction() {
             return handler;
         }
 
@@ -210,8 +210,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                         TruffleContext truffleContext = context.getEnv().getContext();
                         Object p = truffleContext.enter();
                         try {
-                            LLVMFunctionDescriptor func = context.getFunctionDescriptor(handler);
-                            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), func, signal.getNumber());
+                            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), handler, signal.getNumber());
                         } finally {
                             truffleContext.leave(p);
                         }

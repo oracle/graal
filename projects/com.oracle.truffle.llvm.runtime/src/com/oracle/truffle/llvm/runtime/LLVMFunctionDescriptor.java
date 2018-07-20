@@ -213,7 +213,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             LLVMContext context = descriptor.getContext();
             NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
             LLVMIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
-            assert !descriptor.isNullFunction() && (intrinsicProvider == null || !intrinsicProvider.isIntrinsified(descriptor.getName()));
+            assert intrinsicProvider == null || !intrinsicProvider.isIntrinsified(descriptor.getName());
             if (nfiContextExtension != null) {
                 NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
                 if (nativeFunction != null) {
@@ -388,10 +388,6 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return type;
     }
 
-    public boolean isNullFunction() {
-        return functionId == 0;
-    }
-
     @Override
     public String toString() {
         if (name != null) {
@@ -450,13 +446,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         }
     }
 
-    /*
-     * TODO: make this function private
-     */
-    public long asPointer() {
-        if (isNullFunction()) {
-            return 0;
-        }
+    private long asPointer() {
         if (isPointer()) {
             return nativePointer;
         }
@@ -464,23 +454,14 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         throw UnsupportedMessageException.raise(Message.AS_POINTER);
     }
 
-    /*
-     * TODO: make this function private
-     */
-    public boolean isPointer() {
-        if (isNullFunction()) {
-            return true;
-        }
+    private boolean isPointer() {
         return nativeWrapper != null;
     }
 
-    /*
-     * TODO: make this function private
-     */
     /**
      * Gets a pointer to this function that can be stored in native memory.
      */
-    public LLVMFunctionDescriptor toNative() {
+    private LLVMFunctionDescriptor toNative() {
         if (nativeWrapper == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeWrapper = getFunction().createNativeWrapper(this);

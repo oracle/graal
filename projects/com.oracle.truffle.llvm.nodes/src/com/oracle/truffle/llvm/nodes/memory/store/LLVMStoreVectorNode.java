@@ -29,24 +29,21 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
 
@@ -142,17 +139,6 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected void writeVector(LLVMNativePointer address, LLVMFunctionVector value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        getLLVMMemoryCached().putVector(address, value, vectorLength, globalAccess);
-    }
-
-    @Specialization(guards = "isAutoDerefHandle(address)")
-    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMFunctionVector value) {
-        writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-    }
-
     @Specialization
     @ExplodeLoop
     protected void writeVector(LLVMManagedPointer address, LLVMI1Vector value) {
@@ -238,17 +224,6 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode(ForeignToLLVMType.POINTER).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
-        }
-    }
-
-    @Specialization
-    @ExplodeLoop
-    protected void writeVector(LLVMManagedPointer address, LLVMFunctionVector value) {
-        assert value.getLength() == vectorLength;
-        LLVMManagedPointer currentPtr = address;
-        for (int i = 0; i < vectorLength; i++) {
-            getForeignWriteNode(ForeignToLLVMType.POINTER).execute(currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
     }
 }
