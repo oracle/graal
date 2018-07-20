@@ -320,25 +320,22 @@ final class AOTCompiledClass {
      * Add a klass data.
      */
     static synchronized AOTKlassData addAOTKlassData(BinaryContainer binaryContainer, HotSpotResolvedObjectType type) {
-        String name = type.getName();
-        AOTKlassData data = klassData.get(name);
-        if (data != null) {
-            assert data.getType() == type : "duplicate classes for name " + name;
-        } else {
+        AOTKlassData data = getAOTKlassData(type);
+        if (data == null) {
             data = new AOTKlassData(binaryContainer, type, classesCount++);
-            klassData.put(name, data);
+            klassData.put(type.getName(), data);
         }
         return data;
     }
 
-    private static synchronized AOTKlassData getAOTKlassData(String name) {
-        return klassData.get(name);
-    }
-
     static synchronized AOTKlassData getAOTKlassData(HotSpotResolvedObjectType type) {
         String name = type.getName();
-        AOTKlassData data = getAOTKlassData(name);
-        assert data == null || data.getType() == type : "duplicate classes for name " + name;
+        AOTKlassData data = klassData.get(name);
+        if (data != null) {
+            HotSpotResolvedObjectType oldType = data.getType();
+            assert oldType == type : "duplicate classes for name " + type.getName() + ", fingerprints old: " + oldType.getFingerprint() + ", new: " + type.getFingerprint() +
+                            ", klass pointers old: " + oldType.klass() + ", new: " + type.klass();
+        }
         return data;
     }
 
