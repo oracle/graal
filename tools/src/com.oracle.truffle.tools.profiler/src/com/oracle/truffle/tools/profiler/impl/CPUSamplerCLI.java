@@ -185,7 +185,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println(title);
         out.println(sep);
         for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
-            printAttributes(out, sampler, "", line, maxLength);
+            printAttributes(out, sampler, "", line, maxLength, false);
         }
         out.println(sep);
     }
@@ -219,8 +219,9 @@ class CPUSamplerCLI extends ProfilerCLI {
             if (treeNode == null) {
                 continue;
             }
-            boolean printed = printAttributes(out, sampler, prefix, Arrays.asList(treeNode), maxRootLength);
+            boolean printed = printAttributes(out, sampler, prefix, Arrays.asList(treeNode), maxRootLength, true);
             printSamplingCallTreeRec(sampler, maxRootLength, printed ? prefix + " " : prefix, treeNode.getChildren(), out);
+
         }
     }
 
@@ -242,7 +243,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         return x2 >= y1 && y2 >= x1;
     }
 
-    private static boolean printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength) {
+    private static boolean printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength, boolean callTree) {
         long samplePeriod = sampler.getPeriod();
         long samples = sampler.getSampleCount();
 
@@ -257,6 +258,13 @@ class CPUSamplerCLI extends ProfilerCLI {
             if (!tree.isRecursive()) {
                 totalInterpreted += payload.getInterpretedHitCount();
                 totalCompiled += payload.getCompiledHitCount();
+            }
+            if (callTree) {
+                assert nodes.size() == 1;
+                SourceSection sourceSection = tree.getSourceSection();
+                String rootName = tree.getRootName();
+                selfCompiled = getSelfHitCountForRecursiveChildren(sourceSection, rootName, selfCompiled, tree.getChildren(), true);
+                selfInterpreted = getSelfHitCountForRecursiveChildren(sourceSection, rootName, selfInterpreted, tree.getChildren(), false);
             }
         }
 
@@ -293,6 +301,21 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println(String.format(" %-" + Math.max(maxRootLength, 10) + "s | %s || %s | %s ", //
                         prefix + rootName, totalTimes, selfTimes, location));
         return true;
+    }
+
+    private static long getSelfHitCountForRecursiveChildren(SourceSection sourceSection, String rootName, long selfCompiled, Collection<ProfilerNode<CPUSampler.Payload>> children, boolean compiled) {
+        long hitCount = 0;
+        for (ProfilerNode<CPUSampler.Payload> child : children) {
+            if (child.getSourceSection().equals(sourceSection) && child.getRootName().equals(rootName)) {
+                if (compiled) {
+                    hitCount += child.getPayload().getSelfCompiledHitCount();
+                } else {
+                    hitCount += child.getPayload().getSelfInterpretedHitCount();
+                }
+                hitCount += getSelfHitCountForRecursiveChildren(sourceSection, rootName, hitCount, child.getChildren(), compiled);
+            }
+        }
+        return selfCompiled + hitCount;
     }
 
     private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.Payload> firstNode) {
