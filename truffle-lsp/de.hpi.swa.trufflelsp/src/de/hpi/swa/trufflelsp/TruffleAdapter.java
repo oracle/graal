@@ -365,10 +365,20 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return map;
     }
 
-    public Future<CompletionList> getCompletions(final URI uri, int line, int originalCharacter) {
+    /**
+     * Provides completions for a specific position in the document. If line or column are out of
+     * range, items of global scope (top scope) are provided.
+     *
+     * @param uri
+     * @param line 0-based line number
+     * @param column 0-based column number (character offset)
+     * @return a {@link Future} of {@link CompletionList} containing all completions for the cursor
+     *         position
+     */
+    public Future<CompletionList> getCompletions(final URI uri, int line, int column) {
         return evaluator.executeWithDefaultContext(() -> {
             try {
-                return getCompletionsWithEnteredContext(uri, line, originalCharacter);
+                return getCompletionsWithEnteredContext(uri, line, column);
             } finally {
                 diagnosticsPublisher.reportCollectedDiagnostics();
             }
