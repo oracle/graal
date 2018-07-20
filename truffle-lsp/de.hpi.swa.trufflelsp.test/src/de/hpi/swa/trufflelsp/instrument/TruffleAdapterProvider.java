@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp.test;
+package de.hpi.swa.trufflelsp.instrument;
 
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 

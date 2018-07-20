@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp.test;
+package de.hpi.swa.trufflelsp.instrument;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -10,6 +10,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import de.hpi.swa.trufflelsp.NestedEvaluatorRegistry;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
+import de.hpi.swa.trufflelsp.instrument.TestInstrumentOptionDescriptors;
 
 @Registration(id = "lspTestInstrument", name = "LspTestInstrument", version = "0.1", services = {VirtualLSPFileProvider.class, NestedEvaluatorRegistry.class, TruffleAdapterProvider.class})
 public class TestInstrument extends TruffleInstrument implements TruffleAdapterProvider {

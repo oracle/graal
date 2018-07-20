@@ -144,6 +144,7 @@ suite = {
                 "de.hpi.swa.trufflelsp.api",
                 "de.hpi.swa.trufflelsp",
                 "de.hpi.swa.trufflelsp.launcher",
+                "truffle:TRUFFLE_SL",
                 "mx:JUNIT"
             ],
             "checkstyle": "de.hpi.swa.trufflelsp",

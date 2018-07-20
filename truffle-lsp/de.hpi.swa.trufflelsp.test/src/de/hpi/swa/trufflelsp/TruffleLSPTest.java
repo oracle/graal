@@ -1,16 +1,15 @@
-package de.hpi.swa.trufflelsp.test;
+package de.hpi.swa.trufflelsp;
 
 import java.net.URI;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.eclipse.lsp4j.Diagnostic;
@@ -18,28 +17,43 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.BeforeClass;
 
-import de.hpi.swa.trufflelsp.NestedEvaluator;
-import de.hpi.swa.trufflelsp.NestedEvaluatorRegistry;
-import de.hpi.swa.trufflelsp.TruffleAdapter;
-import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
+import de.hpi.swa.trufflelsp.instrument.TruffleAdapterProvider;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
-public class TruffleLSPTests implements DiagnosticsPublisher {
+public abstract class TruffleLSPTest implements DiagnosticsPublisher {
 
-    private Map<URI, Diagnostic[]> diagnostics = new LinkedHashMap<>();
+    private static AtomicInteger globalCounter;
+    protected Map<URI, List<Diagnostic>> diagnostics = new LinkedHashMap<>();
+    protected Engine engine;
+    protected TruffleAdapter truffleAdapter;
+    protected Context context;
+
+    public void addDiagnostics(URI uri, Diagnostic... diagnosticsParam) {
+        if (!diagnostics.containsKey(uri)) {
+            diagnostics.put(uri, new ArrayList<>());
+        }
+        diagnostics.get(uri).addAll(Arrays.asList(diagnosticsParam));
+    }
+
+    public void reportCollectedDiagnostics(String documentUri) {
+    }
+
+    public void reportCollectedDiagnostics() {
+    }
+
+    @BeforeClass
+    public static void classSetup() {
+        globalCounter = new AtomicInteger();
+    }
 
     @Before
     public void setup() {
-
-    }
-
-    @Test
-    public void openFile() throws InterruptedException, ExecutionException {
-        Engine engine = Engine.newBuilder().option("lspTestInstrument", "true").build();
+        engine = Engine.newBuilder().option("lspTestInstrument", "true").build();
         Instrument instrument = engine.getInstruments().get("lspTestInstrument");
         VirtualLSPFileProvider lspFileProvider = instrument.lookup(VirtualLSPFileProvider.class);
 
@@ -47,7 +61,7 @@ public class TruffleLSPTests implements DiagnosticsPublisher {
         contextBuilder.allowAllAccess(true);
         contextBuilder.fileSystem(LSPFileSystem.newFullIOFileSystem(Paths.get("."), lspFileProvider));
         contextBuilder.engine(engine);
-        Context context = contextBuilder.build();
+        context = contextBuilder.build();
         context.enter();
 
         NestedEvaluatorRegistry registry = instrument.lookup(NestedEvaluatorRegistry.class);
@@ -77,22 +91,17 @@ public class TruffleLSPTests implements DiagnosticsPublisher {
         };
         registry.register(evaluator);
 
-        TruffleAdapter truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).geTruffleAdapter();
+        truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).geTruffleAdapter();
         truffleAdapter.setDiagnosticsPublisher(this);
-        truffleAdapter.parse("3+3", "python", URI.create("file:///openFile")).get();
+    }
+
+    @After
+    public void tearDown() {
         context.leave();
         context.close();
     }
 
-    public void addDiagnostics(URI uri, @SuppressWarnings("hiding") Diagnostic... diagnostics) {
-        this.diagnostics.put(uri, diagnostics);
-    }
-
-    public void reportCollectedDiagnostics(String documentUri) {
-
-    }
-
-    public void reportCollectedDiagnostics() {
-
+    public URI createDummyFileUri() {
+        return URI.create("file:///tmp/truffle-lsp-test-file-" + globalCounter.incrementAndGet());
     }
 }
