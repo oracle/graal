@@ -21,14 +21,6 @@ gate-svm-js-python: ${svm-common-linux-gate} ${svm-common-sulong} {
   targets: [gate]
 }
 
-gate-svm-ruby: ${svm-common-linux-gate} {
-  run: [
-    ${svm-cmd-gate} ["build,ruby"]
-  ]
-  timelimit: "30:00"
-  targets: [gate]
-}
-
 gate-svm-darwin-js: ${svm-common-darwin-gate} {
   run: [
     ${svm-common-clone-benchmarks}
