@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -195,7 +196,7 @@ public class AMD64Call {
         }
         int before = masm.position();
         int callPCOffset;
-        if (scratch != null) {
+        if (scratch != null && !GeneratePIC.getValue(crb.getOptions())) {
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
             masm.movq(scratch, 0L);
@@ -229,7 +230,7 @@ public class AMD64Call {
     public static int directJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target, Register scratch) {
         int before = masm.position();
         int callPCOffset;
-        if (scratch != null) {
+        if (scratch != null && !GeneratePIC.getValue(crb.getOptions())) {
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
             masm.movq(scratch, 0L);
@@ -254,16 +255,6 @@ public class AMD64Call {
     }
 
     public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
-        int before = masm.position();
-        masm.call(dst);
-        int after = masm.position();
-        crb.recordIndirectCall(before, after, callTarget, info);
-        crb.recordExceptionHandlers(after, info);
-        masm.ensureUniquePC();
-        return before;
-    }
-
-    public static int indirectJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.position();
         masm.call(dst);
         int after = masm.position();
