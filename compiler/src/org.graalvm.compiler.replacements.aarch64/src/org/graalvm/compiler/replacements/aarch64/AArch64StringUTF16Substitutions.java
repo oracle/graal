@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.aarch64;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -60,6 +61,21 @@ public class AArch64StringUTF16Substitutions {
          * arguments stay in original order.
          */
         return ArrayCompareToNode.compareTo(other, value, other.length, value.length, JavaKind.Char, JavaKind.Byte);
+    }
+
+    /**
+     * @param value is char[]
+     * @param other is char[]
+     */
+    @MethodSubstitution
+    public static boolean equals(byte[] value, byte[] other) {
+        if (value == other) {
+            return true;
+        }
+        if (value == null || other == null || value.length != other.length) {
+            return false;
+        }
+        return ArrayEqualsNode.equals(value, other, value.length, JavaKind.Char);
     }
 
 }

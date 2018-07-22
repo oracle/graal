@@ -24,23 +24,23 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.junit.Test;
 
 /**
  * Tests compareTo method intrinsic.
  */
-public class StringCompareToTest extends StringSubstitutionTestBase {
+public class StringEqualsTest extends StringSubstitutionTestBase {
 
-    public StringCompareToTest() {
+    public StringEqualsTest() {
         initSubstitution(
-                        getResolvedJavaMethod(String.class, "compareTo", String.class),
-                        getResolvedJavaMethod("stringCompareTo"),
-                        ArrayCompareToNode.class);
+                        getResolvedJavaMethod(String.class, "equals"),
+                        getResolvedJavaMethod("stringEquals"),
+                        ArrayEqualsNode.class);
     }
 
-    public static int stringCompareTo(String a, String b) {
-        return a.compareTo(b);
+    public static boolean stringEquals(String a, String b) {
+        return a.equals(b);
     }
 
     @Test

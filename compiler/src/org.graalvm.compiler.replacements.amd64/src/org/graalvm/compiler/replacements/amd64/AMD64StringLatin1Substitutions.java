@@ -31,6 +31,7 @@ import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
@@ -90,5 +91,20 @@ public class AMD64StringLatin1Substitutions {
             return result + fromIndex;
         }
         return result;
+    }
+
+    /**
+     * @param value is byte[]
+     * @param other is byte[]
+     */
+    @MethodSubstitution
+    public static boolean equals(byte[] value, byte[] other) {
+        if (value == other) {
+            return true;
+        }
+        if (value == null || other == null || value.length != other.length) {
+            return false;
+        }
+        return ArrayEqualsNode.equals(value, other, value.length, JavaKind.Byte);
     }
 }

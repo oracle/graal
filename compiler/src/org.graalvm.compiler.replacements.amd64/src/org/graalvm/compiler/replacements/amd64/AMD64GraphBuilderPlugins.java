@@ -214,6 +214,7 @@ public class AMD64GraphBuilderPlugins {
             if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
             }
+            r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "equals", byte[].class, byte[].class);
         }
     }
 
@@ -226,6 +227,7 @@ public class AMD64GraphBuilderPlugins {
             if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
             }
+            r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "equals", byte[].class, byte[].class);
         }
     }
 
