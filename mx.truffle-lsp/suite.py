@@ -101,7 +101,7 @@ suite = {
             }
         },
     },
-    
+
     "projects" : {
         "de.hpi.swa.trufflelsp.api": {
             "subDir": "truffle-lsp",
@@ -120,10 +120,8 @@ suite = {
             "dependencies": [
                 "de.hpi.swa.trufflelsp.api",
                 "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_DSL_PROCESSOR",
                 "truffle:TRUFFLE_NFI",
                 "sdk:GRAAL_SDK",
-                "sdk:LAUNCHER_COMMON",
                 "LSP4J"
             ],
             "checkstyle": "de.hpi.swa.trufflelsp",
@@ -159,6 +157,33 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "TruffleLSP",
+        },
+    },
+
+    "distributions" : {
+        "TRUFFLELSP-API": {
+            "dependencies": ["de.hpi.swa.trufflelsp.api"],
+            "distDependencies" : [
+                "sdk:GRAAL_SDK",
+            ],
+        },
+        "TRUFFLELSP": {
+            "dependencies": ["de.hpi.swa.trufflelsp"],
+            "distDependencies" : [
+                "de.hpi.swa.trufflelsp.api",
+                "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_NFI",
+                "sdk:GRAAL_SDK",
+                "LSP4J"
+            ],
+        },
+        "TRUFFLELSP-LAUNCHER": {
+            "dependencies": ["de.hpi.swa.trufflelsp.launcher"],
+            "distDependencies" : [
+                "de.hpi.swa.trufflelsp.api",
+                "sdk:GRAAL_SDK",
+                "sdk:LAUNCHER_COMMON",
+            ],
         },
     },
 }
