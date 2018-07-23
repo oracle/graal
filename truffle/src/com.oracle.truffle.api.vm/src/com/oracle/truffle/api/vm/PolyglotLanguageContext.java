@@ -73,7 +73,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Lazy(PolyglotLanguageInstance languageInstance) {
             this.valueCache = new ConcurrentHashMap<>();
             this.languageInstance = languageInstance;
-            this.sourceCache = languageInstance.getSourceCache(context.config);
+            this.sourceCache = languageInstance.getSourceCache();
             this.activePolyglotThreads = new HashSet<>();
             this.defaultValueCache = new PolyglotValue.Default(PolyglotLanguageContext.this);
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this, context.polyglotBindings);
@@ -262,28 +262,31 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
         if (lazy == null) {
             checkAccess(accessingLanguage);
-            PolyglotLanguageInstance lang = language.allocateInstance();
+
+            Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
+            PolyglotContextConfig envConfig = context.config;
+
+            Env localEnv = LANGUAGE.createEnv(PolyglotLanguageContext.this, envConfig.out,
+                            envConfig.err,
+                            envConfig.in,
+                            creatorConfig,
+                            envConfig.getOptionValues(language),
+                            envConfig.getApplicationArguments(language),
+                            envConfig.fileSystem);
+            PolyglotLanguageInstance lang = language.allocateInstance(localEnv);
             try {
                 synchronized (context) {
                     if (lazy == null) {
+                        LANGUAGE.persistEnvSPI(localEnv, lang.spi);
                         Lazy localLazy = new Lazy(lang);
                         PolyglotValue.createDefaultValueCaches(PolyglotLanguageContext.this, localLazy.valueCache);
-                        Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
-                        PolyglotContextConfig envConfig = context.config;
-                        Env localEnv = LANGUAGE.createEnv(PolyglotLanguageContext.this, lang.spi,
-                                        envConfig.out,
-                                        envConfig.err,
-                                        envConfig.in,
-                                        creatorConfig,
-                                        envConfig.getOptionValues(language),
-                                        envConfig.getApplicationArguments(language),
-                                        envConfig.fileSystem);
                         checkThreadAccess(localEnv);
 
                         // no more errors after this line
                         creating = true;
                         PolyglotLanguageContext.this.env = localEnv;
                         PolyglotLanguageContext.this.lazy = localLazy;
+                        assert VMAccessor.LANGUAGE.getLanguage(env) != null;
 
                         try {
                             LANGUAGE.createEnvContext(localEnv);
@@ -302,7 +305,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     }
                 }
             } finally {
-                // free uncommited language instance
+                // free not commited language instance
                 if (lang != null) {
                     language.freeInstance(lang);
                 }
@@ -318,7 +321,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 if (!initialized) {
                     initialized = true; // Allow language use during initialization
                     try {
-
                         if (!context.inContextPreInitialization) {
                             LANGUAGE.initializeThread(env, Thread.currentThread());
                         }

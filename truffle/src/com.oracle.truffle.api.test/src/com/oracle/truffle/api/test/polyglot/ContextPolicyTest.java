@@ -474,6 +474,20 @@ public class ContextPolicyTest {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
+        volatile Integer dummy;
+
+        @Override
+        protected boolean isCompatible(Env env) {
+            return env.getOptions().get(Dummy).equals(dummy);
+        }
+
+        @Override
+        protected Env createContext(Env env) {
+            assert dummy == null || env.getOptions().get(Dummy).equals(dummy);
+            this.dummy = env.getOptions().get(Dummy);
+            return super.createContext(env);
+        }
+
         @Override
         protected OptionDescriptors getOptionDescriptors() {
             return new SingleReusePolicyLanguageOptionDescriptors();
@@ -484,6 +498,20 @@ public class ContextPolicyTest {
     public static class MultipleContextPolicyLanguage extends SingleContextPolicyLanguage {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
+
+        volatile Integer dummy;
+
+        @Override
+        protected boolean isCompatible(Env env) {
+            return env.getOptions().get(Dummy).equals(dummy);
+        }
+
+        @Override
+        protected Env createContext(Env env) {
+            assert dummy == null || env.getOptions().get(Dummy).equals(dummy);
+            this.dummy = env.getOptions().get(Dummy);
+            return super.createContext(env);
+        }
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {

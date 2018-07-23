@@ -955,8 +955,9 @@ public class PolyglotEngine {
                 synchronized (this) {
                     localEnv = env;
                     if (localEnv == null && create) {
-                        localEnv = VMAccessor.LANGUAGE.createEnv(this, shared.getLanguageEnsureInitialized(), engine().out, engine().err, engine().in,
-                                        getArgumentsForLanguage(), new OptionValuesImpl(null, shared.options), new String[0], FileSystems.newNoIOFileSystem(null));
+                        localEnv = VMAccessor.LANGUAGE.createEnv(this, engine().out, engine().err, engine().in, getArgumentsForLanguage(),
+                                        new OptionValuesImpl(null, shared.options), new String[0], FileSystems.newNoIOFileSystem(null));
+                        VMAccessor.LANGUAGE.persistEnvSPI(localEnv, shared.getLanguageEnsureInitialized());
                         this.env = localEnv;
                         context = VMAccessor.LANGUAGE.createEnvContext(localEnv);
                         VMAccessor.LANGUAGE.postInitEnv(localEnv);

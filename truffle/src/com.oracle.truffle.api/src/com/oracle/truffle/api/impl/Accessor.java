@@ -337,8 +337,12 @@ public abstract class Accessor {
 
         public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object vmObject);
 
-        public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem);
+        public abstract Env createEnv(Object vmObject, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
+                        FileSystem fileSystem);
+
+        public abstract boolean isCompatible(Env env, TruffleLanguage<?> language);
+
+        public abstract void persistEnvSPI(Env env, TruffleLanguage<?> language);
 
         public abstract Object createEnvContext(Env localEnv);
 
@@ -420,6 +424,7 @@ public abstract class Accessor {
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
+
     }
 
     public abstract static class InstrumentSupport {

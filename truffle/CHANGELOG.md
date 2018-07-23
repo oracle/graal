@@ -8,6 +8,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
 * Added `TruffleLogger.getLogger(String)` to obtain the root loger of a language or instrument.
 * Introduced per language [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html). Languages are encouraged to configure the most permissive policy that they can support. 
+* Added `TruffleLanguage.isCompatible` to allow customizations to the context policy.
 * Changed default context policy from SHARED to EXCLUSIVE, i.e. there is one exclusive language instance per polyglot or inner context by default. This can be configured by the language 
 using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html).
 * TruffleInstrument.Env.lookup(LanguagInfo, Class) now requires to be entered in a context for the current thread.
