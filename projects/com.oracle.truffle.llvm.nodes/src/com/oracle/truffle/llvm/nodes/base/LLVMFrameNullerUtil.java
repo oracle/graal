@@ -130,30 +130,29 @@ public final class LLVMFrameNullerUtil {
         CompilerAsserts.partialEvaluationConstant(elementType);
         switch (elementType) {
             case DOUBLE:
-                frame.setObject(frameSlot, LLVMDoubleVector.create(null));
+                frame.setObject(frameSlot, LLVMDoubleVector.create(new double[0]));
                 break;
             case FLOAT:
-                frame.setObject(frameSlot, LLVMFloatVector.create(null));
+                frame.setObject(frameSlot, LLVMFloatVector.create(new float[0]));
                 break;
             case I1:
-                frame.setObject(frameSlot, LLVMI1Vector.create(null));
-                break;
-            case I16:
-                frame.setObject(frameSlot, LLVMI16Vector.create(null));
-                break;
-            case I32:
-                frame.setObject(frameSlot, LLVMI32Vector.create(null));
-                break;
-            case I64:
-                frame.setObject(frameSlot, LLVMI64Vector.create(null));
+                frame.setObject(frameSlot, LLVMI1Vector.create(new boolean[0]));
                 break;
             case I8:
-                frame.setObject(frameSlot, LLVMI8Vector.create(null));
+                frame.setObject(frameSlot, LLVMI8Vector.create(new byte[0]));
+                break;
+            case I16:
+                frame.setObject(frameSlot, LLVMI16Vector.create(new short[0]));
+                break;
+            case I32:
+                frame.setObject(frameSlot, LLVMI32Vector.create(new int[0]));
+                break;
+            case I64:
+                frame.setObject(frameSlot, LLVMI64Vector.create(new long[0]));
                 break;
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError();
-
         }
     }
 }
