@@ -31,54 +31,52 @@ package com.oracle.truffle.llvm.parser.util;
 
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
+import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMBitcodeTypeHelper {
 
-    public static LLVMExpressionNode createArithmeticInstruction(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator) {
+    public static LLVMExpressionNode createArithmeticInstruction(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type) {
+        return nodeFactory.createArithmetic(getArithmeticOperation(operator), type, lhs, rhs);
+    }
+
+    private static ArithmeticOperation getArithmeticOperation(BinaryOperator operator) {
         switch (operator) {
             case INT_ADD:
             case FP_ADD:
-                return nodeFactory.createAdd(lhs, rhs);
+                return ArithmeticOperation.ADD;
             case INT_SUBTRACT:
             case FP_SUBTRACT:
-                return nodeFactory.createSub(lhs, rhs);
+                return ArithmeticOperation.SUB;
             case INT_MULTIPLY:
             case FP_MULTIPLY:
-                return nodeFactory.createMul(lhs, rhs);
+                return ArithmeticOperation.MUL;
             case INT_UNSIGNED_DIVIDE:
-                return nodeFactory.createUDiv(lhs, rhs);
+                return ArithmeticOperation.UDIV;
             case INT_SIGNED_DIVIDE:
             case FP_DIVIDE:
-                return nodeFactory.createDiv(lhs, rhs);
+                return ArithmeticOperation.DIV;
             case INT_UNSIGNED_REMAINDER:
-                return nodeFactory.createURem(lhs, rhs);
+                return ArithmeticOperation.UREM;
             case INT_SIGNED_REMAINDER:
             case FP_REMAINDER:
-                return nodeFactory.createRem(lhs, rhs);
-            default:
-                return null;
-        }
-    }
-
-    public static LLVMExpressionNode createLogicalInstructionType(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator) {
-        switch (operator) {
+                return ArithmeticOperation.REM;
             case INT_SHIFT_LEFT:
-                return nodeFactory.createShl(lhs, rhs);
+                return ArithmeticOperation.SHL;
             case INT_LOGICAL_SHIFT_RIGHT:
-                return nodeFactory.createLShr(lhs, rhs);
+                return ArithmeticOperation.LSHR;
             case INT_ARITHMETIC_SHIFT_RIGHT:
-                return nodeFactory.createAShr(lhs, rhs);
+                return ArithmeticOperation.ASHR;
             case INT_AND:
-                return nodeFactory.createAnd(lhs, rhs);
+                return ArithmeticOperation.AND;
             case INT_OR:
-                return nodeFactory.createOr(lhs, rhs);
+                return ArithmeticOperation.OR;
             case INT_XOR:
-                return nodeFactory.createXor(lhs, rhs);
+                return ArithmeticOperation.XOR;
             default:
-                return null;
+                throw new RuntimeException("Unknown binary operator: " + operator);
         }
     }
 

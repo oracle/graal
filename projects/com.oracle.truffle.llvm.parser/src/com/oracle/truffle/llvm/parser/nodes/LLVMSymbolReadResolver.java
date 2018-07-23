@@ -253,17 +253,7 @@ public final class LLVMSymbolReadResolver {
             final LLVMExpressionNode lhs = resolve(operation.getLHS());
             final LLVMExpressionNode rhs = resolve(operation.getRHS());
 
-            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator());
-            if (resolvedNode != null) {
-                return;
-            }
-
-            resolvedNode = LLVMBitcodeTypeHelper.createLogicalInstructionType(nodeFactory, lhs, rhs, operation.getOperator());
-            if (resolvedNode != null) {
-                return;
-            }
-
-            throw new UnsupportedOperationException("Unsupported Binary Operator: " + operation.getOperator());
+            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator(), operation.getType());
         }
 
         @Override
@@ -283,6 +273,7 @@ public final class LLVMSymbolReadResolver {
         public void visit(CompareConstant compare) {
             final LLVMExpressionNode lhs = resolve(compare.getLHS());
             final LLVMExpressionNode rhs = resolve(compare.getRHS());
+
             resolvedNode = nodeFactory.createComparison(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
         }
 

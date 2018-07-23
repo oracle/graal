@@ -558,6 +558,22 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         }
     }
 
+    public abstract static class LLVMTrueCmpNode extends LLVMCompareNode {
+        @Specialization
+        @SuppressWarnings("unused")
+        protected boolean op(Object val1, Object val2) {
+            return true;
+        }
+    }
+
+    public abstract static class LLVMFalseCmpNode extends LLVMCompareNode {
+        @Specialization
+        @SuppressWarnings("unused")
+        protected boolean op(Object val1, Object val2) {
+            return false;
+        }
+    }
+
     private static boolean areOrdered(double v1, double v2) {
         return !Double.isNaN(v1) && !Double.isNaN(v2);
     }

@@ -37,6 +37,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
@@ -51,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public final class LLVMFrameNullerUtil {
     private LLVMFrameNullerUtil() {
@@ -106,11 +109,8 @@ public final class LLVMFrameNullerUtil {
             CompilerAsserts.partialEvaluationConstant(type instanceof VectorType);
             CompilerAsserts.partialEvaluationConstant(type instanceof VariableBitWidthType);
             CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
-            if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
-                nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
-                return;
-            } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
-                frame.setObject(frameSlot, LLVMPointerVector.createNullVector());
+            if (type instanceof VectorType) {
+                nullVector(frame, frameSlot, (VectorType) type);
                 return;
             } else if (type instanceof VariableBitWidthType) {
                 nullIVarBit(frame, frameSlot);
@@ -126,33 +126,38 @@ public final class LLVMFrameNullerUtil {
         nullAddress(frame, frameSlot);
     }
 
-    private static void nullVector(VirtualFrame frame, FrameSlot frameSlot, PrimitiveKind elementType) {
-        CompilerAsserts.partialEvaluationConstant(elementType);
-        switch (elementType) {
-            case DOUBLE:
-                frame.setObject(frameSlot, LLVMDoubleVector.create(new double[0]));
-                break;
-            case FLOAT:
-                frame.setObject(frameSlot, LLVMFloatVector.create(new float[0]));
-                break;
-            case I1:
-                frame.setObject(frameSlot, LLVMI1Vector.create(new boolean[0]));
-                break;
-            case I8:
-                frame.setObject(frameSlot, LLVMI8Vector.create(new byte[0]));
-                break;
-            case I16:
-                frame.setObject(frameSlot, LLVMI16Vector.create(new short[0]));
-                break;
-            case I32:
-                frame.setObject(frameSlot, LLVMI32Vector.create(new int[0]));
-                break;
-            case I64:
-                frame.setObject(frameSlot, LLVMI64Vector.create(new long[0]));
-                break;
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError();
+    private static void nullVector(VirtualFrame frame, FrameSlot frameSlot, VectorType vectorType) {
+        frame.setObject(frameSlot, getNullVector(vectorType));
+    }
+
+    private static LLVMVector getNullVector(VectorType vectorType) {
+        CompilerAsserts.partialEvaluationConstant(vectorType);
+        Type elementType = vectorType.getElementType();
+        if (elementType instanceof PrimitiveType) {
+            switch (((PrimitiveType) elementType).getPrimitiveKind()) {
+                case I1:
+                    return LLVMI1Vector.create(new boolean[0]);
+                case I8:
+                    return LLVMI8Vector.create(new byte[0]);
+                case I16:
+                    return LLVMI16Vector.create(new short[0]);
+                case I32:
+                    return LLVMI32Vector.create(new int[0]);
+                case I64:
+                    return LLVMI64Vector.create(new long[0]);
+                case DOUBLE:
+                    return LLVMDoubleVector.create(new double[0]);
+                case FLOAT:
+                    return LLVMFloatVector.create(new float[0]);
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw new AssertionError();
+            }
+        } else if (elementType instanceof PointerType || elementType instanceof FunctionType) {
+            return LLVMPointerVector.create(new LLVMPointer[0]);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Unknown vector element type: " + elementType);
         }
     }
 }

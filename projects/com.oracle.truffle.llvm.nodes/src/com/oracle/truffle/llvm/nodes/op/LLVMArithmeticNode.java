@@ -40,16 +40,10 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
+    public abstract Object executeWithTarget(Object left, Object right);
 
     public abstract static class LLVMAddNode extends LLVMArithmeticNode {
         @Specialization
@@ -105,41 +99,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
             }
-        }
-
-        @Specialization
-        protected LLVMDoubleVector add(LLVMDoubleVector left, LLVMDoubleVector right) {
-            return left.add(right);
-        }
-
-        @Specialization
-        protected LLVMFloatVector add(LLVMFloatVector left, LLVMFloatVector right) {
-            return left.add(right);
-        }
-
-        @Specialization
-        protected LLVMI16Vector add(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.add(right);
-        }
-
-        @Specialization
-        protected LLVMI1Vector add(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.add(right);
-        }
-
-        @Specialization
-        protected LLVMI32Vector add(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.add(right);
-        }
-
-        @Specialization
-        protected LLVMI64Vector add(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.add(right);
-        }
-
-        @Specialization
-        protected LLVMI8Vector add(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.add(right);
         }
     }
 
@@ -198,41 +157,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                 throw e.raise();
             }
         }
-
-        @Specialization
-        protected LLVMDoubleVector mul(LLVMDoubleVector left, LLVMDoubleVector right) {
-            return left.mul(right);
-        }
-
-        @Specialization
-        protected LLVMFloatVector mul(LLVMFloatVector left, LLVMFloatVector right) {
-            return left.mul(right);
-        }
-
-        @Specialization
-        protected LLVMI16Vector mul(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.mul(right);
-        }
-
-        @Specialization
-        protected LLVMI1Vector mul(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.mul(right);
-        }
-
-        @Specialization
-        protected LLVMI32Vector mul(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.mul(right);
-        }
-
-        @Specialization
-        protected LLVMI64Vector mul(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.mul(right);
-        }
-
-        @Specialization
-        protected LLVMI8Vector mul(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.mul(right);
-        }
     }
 
     public abstract static class LLVMSubNode extends LLVMArithmeticNode {
@@ -289,41 +213,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
             }
-        }
-
-        @Specialization
-        protected LLVMDoubleVector sub(LLVMDoubleVector left, LLVMDoubleVector right) {
-            return left.sub(right);
-        }
-
-        @Specialization
-        protected LLVMFloatVector sub(LLVMFloatVector left, LLVMFloatVector right) {
-            return left.sub(right);
-        }
-
-        @Specialization
-        protected LLVMI16Vector sub(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.sub(right);
-        }
-
-        @Specialization
-        protected LLVMI1Vector sub(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.sub(right);
-        }
-
-        @Specialization
-        protected LLVMI32Vector sub(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.sub(right);
-        }
-
-        @Specialization
-        protected LLVMI64Vector sub(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.sub(right);
-        }
-
-        @Specialization
-        protected LLVMI8Vector sub(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.sub(right);
         }
     }
 
@@ -386,41 +275,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                 throw e.raise();
             }
         }
-
-        @Specialization
-        protected LLVMDoubleVector div(LLVMDoubleVector left, LLVMDoubleVector right) {
-            return left.div(right);
-        }
-
-        @Specialization
-        protected LLVMFloatVector div(LLVMFloatVector left, LLVMFloatVector right) {
-            return left.div(right);
-        }
-
-        @Specialization
-        protected LLVMI16Vector div(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.div(right);
-        }
-
-        @Specialization
-        protected LLVMI1Vector div(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.div(right);
-        }
-
-        @Specialization
-        protected LLVMI32Vector div(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.div(right);
-        }
-
-        @Specialization
-        protected LLVMI64Vector div(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.div(right);
-        }
-
-        @Specialization
-        protected LLVMI8Vector div(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.div(right);
-        }
     }
 
     public abstract static class LLVMUDivNode extends LLVMArithmeticNode {
@@ -457,33 +311,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected LLVMIVarBit udiv(LLVMIVarBit left, LLVMIVarBit right) {
             return left.unsignedDiv(right);
-        }
-
-        @Specialization
-        protected LLVMI16Vector udiv(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.divUnsigned(right);
-        }
-
-        @Specialization
-        protected LLVMI1Vector udiv(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.divUnsigned(right);
-        }
-
-        @Specialization
-        protected LLVMI32Vector udiv(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.divUnsigned(right);
-
-        }
-
-        @Specialization
-        protected LLVMI64Vector udiv(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.divUnsigned(right);
-
-        }
-
-        @Specialization
-        protected LLVMI8Vector udiv(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.divUnsigned(right);
         }
     }
 
@@ -546,41 +373,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                 throw e.raise();
             }
         }
-
-        @Specialization
-        protected LLVMDoubleVector rem(LLVMDoubleVector left, LLVMDoubleVector right) {
-            return left.rem(right);
-        }
-
-        @Specialization
-        protected LLVMFloatVector rem(LLVMFloatVector left, LLVMFloatVector right) {
-            return left.rem(right);
-        }
-
-        @Specialization
-        protected LLVMI16Vector rem(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.rem(right);
-        }
-
-        @Specialization
-        protected LLVMI1Vector rem(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.rem(right);
-        }
-
-        @Specialization
-        protected LLVMI32Vector rem(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.rem(right);
-        }
-
-        @Specialization
-        protected LLVMI64Vector rem(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.rem(right);
-        }
-
-        @Specialization
-        protected LLVMI8Vector rem(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.rem(right);
-        }
     }
 
     public abstract static class LLVMURemNode extends LLVMArithmeticNode {
@@ -618,30 +410,183 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         protected LLVMIVarBit urem(LLVMIVarBit left, LLVMIVarBit right) {
             return left.unsignedRem(right);
         }
+    }
+
+    public abstract static class LLVMAndNode extends LLVMArithmeticNode {
 
         @Specialization
-        protected LLVMI16Vector urem(LLVMI16Vector left, LLVMI16Vector right) {
-            return left.remUnsigned(right);
+        protected boolean and(boolean left, boolean right) {
+            return left & right;
         }
 
         @Specialization
-        protected LLVMI1Vector urem(LLVMI1Vector left, LLVMI1Vector right) {
-            return left.remUnsigned(right);
+        protected byte and(byte left, byte right) {
+            return (byte) (left & right);
         }
 
         @Specialization
-        protected LLVMI32Vector urem(LLVMI32Vector left, LLVMI32Vector right) {
-            return left.remUnsigned(right);
+        protected short and(short left, short right) {
+            return (short) (left & right);
         }
 
         @Specialization
-        protected LLVMI64Vector urem(LLVMI64Vector left, LLVMI64Vector right) {
-            return left.remUnsigned(right);
+        protected int and(int left, int right) {
+            return left & right;
         }
 
         @Specialization
-        protected LLVMI8Vector urem(LLVMI8Vector left, LLVMI8Vector right) {
-            return left.remUnsigned(right);
+        protected long and(long left, long right) {
+            return left & right;
+        }
+
+        @Specialization
+        protected LLVMIVarBit and(LLVMIVarBit left, LLVMIVarBit right) {
+            return left.and(right);
+        }
+    }
+
+    public abstract static class LLVMOrNode extends LLVMArithmeticNode {
+        @Specialization
+        protected short or(short left, short right) {
+            return (short) (left | right);
+        }
+
+        @Specialization
+        protected boolean or(boolean left, boolean right) {
+            return left | right;
+        }
+
+        @Specialization
+        protected int or(int left, int right) {
+            return left | right;
+        }
+
+        @Specialization
+        protected long or(long left, long right) {
+            return left | right;
+        }
+
+        @Specialization
+        protected byte or(byte left, byte right) {
+            return (byte) (left | right);
+        }
+
+        @Specialization
+        protected LLVMIVarBit or(LLVMIVarBit left, LLVMIVarBit right) {
+            return left.or(right);
+        }
+    }
+
+    public abstract static class LLVMXorNode extends LLVMArithmeticNode {
+        @Specialization
+        protected short xor(short left, short right) {
+            return (short) (left ^ right);
+        }
+
+        @Specialization
+        protected boolean xor(boolean left, boolean right) {
+            return left ^ right;
+        }
+
+        @Specialization
+        protected int xor(int left, int right) {
+            return left ^ right;
+        }
+
+        @Specialization
+        protected long xor(long left, long right) {
+            return left ^ right;
+        }
+
+        @Specialization
+        protected byte xor(byte left, byte right) {
+            return (byte) (left ^ right);
+        }
+
+        @Specialization
+        protected LLVMIVarBit xor(LLVMIVarBit left, LLVMIVarBit right) {
+            return left.xor(right);
+        }
+    }
+
+    public abstract static class LLVMShlNode extends LLVMArithmeticNode {
+        @Specialization
+        protected short shl(short left, short right) {
+            return (short) (left << right);
+        }
+
+        @Specialization
+        protected int shl(int left, int right) {
+            return left << right;
+        }
+
+        @Specialization
+        protected long shl(long left, long right) {
+            return left << right;
+        }
+
+        @Specialization
+        protected byte shl(byte left, byte right) {
+            return (byte) (left << right);
+        }
+
+        @Specialization
+        protected LLVMIVarBit shl(LLVMIVarBit left, LLVMIVarBit right) {
+            return left.leftShift(right);
+        }
+    }
+
+    public abstract static class LLVMLshrNode extends LLVMArithmeticNode {
+        @Specialization
+        protected short ashr(short left, short right) {
+            return (short) ((left & LLVMExpressionNode.I16_MASK) >>> right);
+        }
+
+        @Specialization
+        protected int ashr(int left, int right) {
+            return left >>> right;
+        }
+
+        @Specialization
+        protected long ashr(long left, long right) {
+            return left >>> right;
+        }
+
+        @Specialization
+        protected byte ashr(byte left, byte right) {
+            return (byte) ((left & LLVMExpressionNode.I8_MASK) >>> right);
+        }
+
+        @Specialization
+        protected LLVMIVarBit ashr(LLVMIVarBit left, LLVMIVarBit right) {
+            return left.logicalRightShift(right);
+        }
+    }
+
+    public abstract static class LLVMAshrNode extends LLVMArithmeticNode {
+        @Specialization
+        protected short ashr(short left, short right) {
+            return (short) (left >> right);
+        }
+
+        @Specialization
+        protected int ashr(int left, int right) {
+            return left >> right;
+        }
+
+        @Specialization
+        protected long ashr(long left, long right) {
+            return left >> right;
+        }
+
+        @Specialization
+        protected byte ashr(byte left, byte right) {
+            return (byte) (left >> right);
+        }
+
+        @Specialization
+        protected LLVMIVarBit ashr(LLVMIVarBit left, LLVMIVarBit right) {
+            return left.arithmeticRightShift(right);
         }
     }
 }

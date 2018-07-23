@@ -176,7 +176,11 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected LLVMDoubleVector doVector(LLVMDoubleVector value) {
-            return value.apply(f -> Math.abs(f));
+            double[] result = new double[value.getLength()];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = Math.abs(value.getValue(i));
+            }
+            return LLVMDoubleVector.create(result);
         }
 
     }

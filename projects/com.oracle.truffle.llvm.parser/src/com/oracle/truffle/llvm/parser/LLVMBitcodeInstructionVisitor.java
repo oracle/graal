@@ -202,19 +202,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode lhs = symbols.resolve(operation.getLHS());
         LLVMExpressionNode rhs = symbols.resolve(operation.getRHS());
 
-        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator());
-        if (result != null) {
-            createFrameWrite(result, operation);
-            return;
-        }
-
-        result = LLVMBitcodeTypeHelper.createLogicalInstructionType(nodeFactory, lhs, rhs, operation.getOperator());
-        if (result != null) {
-            createFrameWrite(result, operation);
-            return;
-        }
-
-        throw new RuntimeException("Missed a binary operator");
+        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator(), operation.getType());
+        createFrameWrite(result, operation);
     }
 
     @Override

@@ -32,38 +32,18 @@ package com.oracle.truffle.llvm.runtime.vector;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ValueType
 public final class LLVMPointerVector extends LLVMVector {
     private final LLVMPointer[] vector;
 
-    public static LLVMPointerVector create(LLVMNativePointer[] vector) {
-        return new LLVMPointerVector(vector);
-    }
-
     public static LLVMPointerVector create(LLVMPointer[] vector) {
         return new LLVMPointerVector(vector);
     }
 
-    public static LLVMPointerVector createNullVector() {
-        return new LLVMPointerVector();
-    }
-
-    private LLVMPointerVector(LLVMNativePointer[] vector) {
-        this.vector = new LLVMPointer[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = vector[i];
-        }
-    }
-
     private LLVMPointerVector(LLVMPointer[] vector) {
         this.vector = vector;
-    }
-
-    private LLVMPointerVector() {
-        this.vector = null;
     }
 
     public LLVMPointer[] getValues() {
