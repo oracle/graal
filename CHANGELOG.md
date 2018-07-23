@@ -1,4 +1,4 @@
-# Version 1.0.0 RC4
+# Version 1.0.0 RC5
 
 New features:
 
@@ -9,6 +9,10 @@ Improvements:
 
 * Support "zero-length array at end of struct" pattern when accessing polyglot
   values as structs.
+
+# Version 1.0.0 RC4
+
+No changes.
 
 # Version 1.0.0 RC3
 
