@@ -255,11 +255,18 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         }
     }
 
-    private static String applyTextDocumentChanges(List<? extends TextDocumentContentChangeEvent> list, String text, TextDocumentSurrogate surrogate) {
-        TextMap textMap = TextMap.fromCharSequence(text);
+    protected static String applyTextDocumentChanges(List<? extends TextDocumentContentChangeEvent> list, String text, TextDocumentSurrogate surrogate) {
         StringBuilder sb = new StringBuilder(text);
         for (TextDocumentContentChangeEvent event : list) {
             Range range = event.getRange();
+            if (range == null) {
+                // The whole file has changed
+                sb.setLength(0); // Clear StringBuilder
+                sb.append(event.getText());
+                continue;
+            }
+
+            TextMap textMap = TextMap.fromCharSequence(sb);
             Position start = range.getStart();
             Position end = range.getEnd();
             int startLine = start.getLine() + 1;
