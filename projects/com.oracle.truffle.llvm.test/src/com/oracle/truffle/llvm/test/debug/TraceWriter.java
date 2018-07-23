@@ -58,6 +58,11 @@ final class TraceWriter {
     }
 
     private void emitTrace(Trace trace) throws IOException {
+        for (String line : trace.getHeader()) {
+            writer.write(line);
+            writer.newLine();
+        }
+
         if (trace.suspendOnEntry()) {
             newLine(Trace.KEYWORD_SUSPEND);
             newLine();
@@ -72,9 +77,9 @@ final class TraceWriter {
 
     private void emitStop(StopRequest stop) throws IOException {
         newLine(stop.needsBreakPoint() ? Trace.KEYWORD_BREAK : Trace.KEYWORD_STOP);
-        appendWord(String.valueOf(stop.getLine()));
-        appendWord(String.valueOf(stop.getNextAction()));
-        appendWord(stop.getFunctionName());
+        appendUnescaped(String.valueOf(stop.getLine()));
+        appendUnescaped(String.valueOf(stop.getNextAction()));
+        appendEscaped(stop.getFunctionName());
 
         addIndentation();
         for (StopRequest.Scope scope : stop) {
@@ -88,10 +93,10 @@ final class TraceWriter {
     private void emitScope(StopRequest.Scope scope) throws IOException {
         newLine(Trace.KEYWORD_OPEN_SCOPE);
         if (scope.getName() != null && !scope.getName().isEmpty()) {
-            appendWord(scope.getName());
+            appendEscaped(scope.getName());
         }
         if (scope.isPartial()) {
-            appendWord(Trace.KEYWORD_PARTIAL_SCOPE);
+            appendUnescaped(Trace.KEYWORD_PARTIAL_SCOPE);
         }
 
         addIndentation();
@@ -103,13 +108,13 @@ final class TraceWriter {
 
     private void emitMember(String name, LLVMDebugValue value) throws IOException {
         newLine(Trace.KEYWORD_MEMBER);
-        appendWord(value.getKind());
-        appendWord(value.getExpectedType());
-        appendWord(name);
+        appendUnescaped(value.getKind());
+        appendEscaped(value.getExpectedType());
+        appendEscaped(name);
 
         if (value instanceof LLVMDebugValue.Structured) {
             if (value.isBuggy()) {
-                appendWord(Trace.KEYWORD_BUGGY);
+                appendUnescaped(Trace.KEYWORD_BUGGY);
             }
 
             LLVMDebugValue.Structured structured = (LLVMDebugValue.Structured) value;
@@ -124,10 +129,10 @@ final class TraceWriter {
 
         } else {
             if (value.getExpectedDisplayValue() != null) {
-                appendWord(value.getExpectedDisplayValue());
+                appendEscaped(value.getExpectedDisplayValue());
             }
             if (value.isBuggy()) {
-                appendWord(Trace.KEYWORD_BUGGY);
+                appendUnescaped(Trace.KEYWORD_BUGGY);
             }
         }
     }
@@ -140,18 +145,27 @@ final class TraceWriter {
         indentLevel--;
     }
 
-    private void appendWord(Object word) throws IOException {
+    private void appendEscaped(Object word) throws IOException {
         writer.write(" \"");
         writer.write(String.valueOf(word));
         writer.write("\"");
     }
 
+    private void appendUnescaped(String word) throws IOException {
+        writer.write(" ");
+        writer.write(word);
+    }
+
     private void newLine(String cmd) throws IOException {
-        writer.newLine();
+        writeIndentation();
+        writer.write(cmd);
+    }
+
+    private void writeIndentation() throws IOException {
+        newLine();
         for (int i = 0; i < indentLevel; i++) {
             writer.write(INDENT);
         }
-        writer.write(cmd);
     }
 
     private void newLine() throws IOException {

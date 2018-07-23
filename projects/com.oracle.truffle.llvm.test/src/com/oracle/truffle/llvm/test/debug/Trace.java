@@ -59,11 +59,13 @@ final class Trace implements Iterable<StopRequest> {
     static final String KEYWORD_KIND_INT = "int";
     static final String KEYWORD_KIND_STRUCTURED = "structured";
 
+    private static final String KEYWORD_HEADER = "#";
+
     static Trace parse(Path path) {
         final Trace trace = new Trace();
         try {
             final Parser parser = trace.newParser();
-            Files.lines(path).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEachOrdered(parser);
+            Files.lines(path).filter(s -> !s.isEmpty()).forEachOrdered(parser);
         } catch (Throwable t) {
             throw new AssertionError("Could not read trace file: " + path, t);
         }
@@ -71,14 +73,16 @@ final class Trace implements Iterable<StopRequest> {
     }
 
     private final List<StopRequest> stops;
+    private final List<String> header;
     private boolean suspendOnEntry;
 
     private Trace() {
         this.stops = new ArrayList<>();
+        this.header = new ArrayList<>();
         this.suspendOnEntry = false;
     }
 
-    public boolean suspendOnEntry() {
+    boolean suspendOnEntry() {
         return suspendOnEntry;
     }
 
@@ -94,6 +98,10 @@ final class Trace implements Iterable<StopRequest> {
                 trace.stops.set(i, currentStop);
             }
         }
+    }
+
+    List<String> getHeader() {
+        return header;
     }
 
     @Override
@@ -171,6 +179,11 @@ final class Trace implements Iterable<StopRequest> {
                         structured = parents.pollLast();
                     }
                     break;
+
+                case KEYWORD_HEADER:
+                    header.add(line);
+                    buffer.clear();
+                    return;
 
                 default:
                     error();
