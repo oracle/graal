@@ -632,17 +632,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMPointerVector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putPointer(currentPtr, vector.getValue(i));
-            currentPtr += ADDRESS_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
     public LLVMNativePointer allocateCString(String string) {
         LLVMNativePointer basePointer = allocateMemory(string.length() + 1);
         long currentPointer = basePointer.asNative();

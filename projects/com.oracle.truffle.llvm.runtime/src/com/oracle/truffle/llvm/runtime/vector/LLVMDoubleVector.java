@@ -30,13 +30,12 @@
 package com.oracle.truffle.llvm.runtime.vector;
 
 import java.util.Arrays;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
-public final class LLVMDoubleVector {
+public final class LLVMDoubleVector extends LLVMVector {
 
     private final double[] vector;
 
@@ -67,15 +66,6 @@ public final class LLVMDoubleVector {
             result[i] = op.eval(left[i], right[i]);
         }
         return create(result);
-    }
-
-    public static LLVMI1Vector compare(LLVMDoubleVector a, LLVMDoubleVector b, BiFunction<Double, Double, Boolean> function) {
-        boolean[] result = new boolean[a.vector.length];
-
-        for (int i = 0; i < a.vector.length; i++) {
-            result[i] = function.apply(a.vector[i], b.vector[i]);
-        }
-        return LLVMI1Vector.create(result);
     }
 
     public LLVMDoubleVector apply(Function<Double, Double> function) {
@@ -146,6 +136,7 @@ public final class LLVMDoubleVector {
         return create(copyOf);
     }
 
+    @Override
     public int getLength() {
         return vector.length;
     }

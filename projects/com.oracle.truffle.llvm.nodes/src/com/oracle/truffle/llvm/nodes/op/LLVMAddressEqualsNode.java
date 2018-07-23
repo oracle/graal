@@ -52,9 +52,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMAddressEqualsNode extends LLVMExpressionNode {
-
-    public abstract boolean executeWithTarget(Object val1, Object val2);
+public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
     @Specialization(guards = {"lib1.guard(val1)", "lib2.guard(val2)"})
     protected boolean doCached(Object val1, Object val2,

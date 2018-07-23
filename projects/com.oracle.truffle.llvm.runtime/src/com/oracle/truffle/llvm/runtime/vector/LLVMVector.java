@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,59 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ValueType
-public final class LLVMPointerVector extends LLVMVector {
-    private final LLVMPointer[] vector;
-
-    public static LLVMPointerVector create(LLVMNativePointer[] vector) {
-        return new LLVMPointerVector(vector);
-    }
-
-    public static LLVMPointerVector create(LLVMPointer[] vector) {
-        return new LLVMPointerVector(vector);
-    }
-
-    public static LLVMPointerVector createNullVector() {
-        return new LLVMPointerVector();
-    }
-
-    private LLVMPointerVector(LLVMNativePointer[] vector) {
-        this.vector = new LLVMPointer[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = vector[i];
-        }
-    }
-
-    private LLVMPointerVector(LLVMPointer[] vector) {
-        this.vector = vector;
-    }
-
-    private LLVMPointerVector() {
-        this.vector = null;
-    }
-
-    public LLVMPointer[] getValues() {
-        return vector;
-    }
-
-    public LLVMPointer getValue(int index) {
-        return vector[index];
-    }
-
-    public LLVMPointerVector insert(LLVMPointer element, int index) {
-        LLVMPointer[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element;
-        return create(copyOf);
-    }
-
-    @Override
-    public int getLength() {
-        return vector.length;
-    }
+public abstract class LLVMVector {
+    public abstract int getLength();
 }

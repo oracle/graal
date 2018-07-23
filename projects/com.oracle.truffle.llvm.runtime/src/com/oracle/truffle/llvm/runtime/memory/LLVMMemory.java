@@ -177,8 +177,6 @@ public abstract class LLVMMemory {
 
     public abstract void putVector(LLVMNativePointer address, LLVMI8Vector vector, int vectorLength);
 
-    public abstract void putVector(LLVMNativePointer address, LLVMPointerVector vector, int vectorLength);
-
     public abstract LLVMNativePointer allocateCString(String string);
 
     public abstract void putFunctionPointer(LLVMNativePointer address, long functionIndex);

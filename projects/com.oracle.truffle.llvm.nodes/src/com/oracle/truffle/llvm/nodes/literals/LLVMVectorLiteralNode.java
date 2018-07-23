@@ -29,14 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -183,23 +186,25 @@ public class LLVMVectorLiteralNode {
 
     public abstract static class LLVMVectorAddressLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMToNativeNode[] toNatives;
+        @Children private final LLVMExpressionNode[] values;
 
         public LLVMVectorAddressLiteralNode(LLVMExpressionNode[] values) {
-            this.toNatives = new LLVMToNativeNode[values.length];
-            for (int i = 0; i < values.length; i++) {
-                this.toNatives[i] = LLVMToNativeNodeGen.create(values[i]);
-            }
+            this.values = values;
         }
 
         @ExplodeLoop
         @Specialization
         protected LLVMPointerVector doAddressVector(VirtualFrame frame) {
-            LLVMNativePointer[] vals = new LLVMNativePointer[toNatives.length];
-            for (int i = 0; i < toNatives.length; i++) {
-                vals[i] = toNatives[i].execute(frame);
+            try {
+                LLVMPointer[] vals = new LLVMPointer[values.length];
+                for (int i = 0; i < values.length; i++) {
+                    vals[i] = values[i].executeLLVMPointer(frame);
+                }
+                return LLVMPointerVector.create(vals);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
             }
-            return LLVMPointerVector.create(vals);
         }
     }
 }

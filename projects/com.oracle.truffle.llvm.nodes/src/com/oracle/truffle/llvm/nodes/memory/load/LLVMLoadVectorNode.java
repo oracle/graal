@@ -29,14 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -44,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 @NodeField(name = "size", type = int.class)
 public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
@@ -193,23 +197,42 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return getLLVMMemoryCached().getI64Vector(addr, getSize());
         }
 
-        @Specialization(guards = "isAutoDerefHandle(addr)")
+        @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
         protected LLVMI64Vector doI64VectorDerefHandle(LLVMNativePointer addr,
-                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
-            return doForeign(getDerefHandleGetReceiverNode().execute(addr), foreignReads);
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws UnexpectedResultException {
+            return doI64Vector(getDerefHandleGetReceiverNode().execute(addr), foreignReads);
         }
 
-        @Specialization
+        @Specialization(rewriteOn = UnexpectedResultException.class)
         @ExplodeLoop
-        protected LLVMI64Vector doForeign(LLVMManagedPointer addr,
-                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+        protected LLVMI64Vector doI64Vector(LLVMManagedPointer addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws UnexpectedResultException {
             long[] vector = new long[getSize()];
             LLVMManagedPointer currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
-                vector[i] = (Long) foreignReads[i].execute(currentPtr);
+                vector[i] = LLVMTypesGen.expectLong(foreignReads[i].execute(currentPtr));
                 currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
             }
             return LLVMI64Vector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMPointerVector doPointerVector(LLVMManagedPointer addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            try {
+                LLVMPointer[] vector = new LLVMPointer[getSize()];
+                LLVMManagedPointer currentPtr = addr;
+                for (int i = 0; i < vector.length; i++) {
+                    // TEMP (chaeubl): this is not really correct yet - the read can return pretty
+                    // much any object (long, pointer,...)
+                    vector[i] = LLVMTypesGen.expectLLVMPointer(foreignReads[i].execute(currentPtr));
+                    currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
+                }
+                return LLVMPointerVector.create(vector);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
         protected LLVMForeignReadNode[] createForeignReads() {

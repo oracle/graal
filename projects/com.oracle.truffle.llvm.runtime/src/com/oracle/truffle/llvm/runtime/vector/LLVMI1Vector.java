@@ -30,13 +30,12 @@
 package com.oracle.truffle.llvm.runtime.vector;
 
 import java.util.Arrays;
-import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
-public final class LLVMI1Vector {
+public final class LLVMI1Vector extends LLVMVector {
 
     private final boolean[] vector;
 
@@ -216,18 +215,8 @@ public final class LLVMI1Vector {
         return create(copyOf);
     }
 
+    @Override
     public int getLength() {
         return vector.length;
-    }
-
-    public LLVMI1Vector doCompare(LLVMI1Vector other, BiFunction<Boolean, Boolean, Boolean> comparison) {
-        int length = getLength();
-        boolean[] values = new boolean[length];
-
-        for (int i = 0; i < length; i++) {
-            values[i] = comparison.apply(getValue(i), other.getValue(i));
-        }
-
-        return LLVMI1Vector.create(values);
     }
 }

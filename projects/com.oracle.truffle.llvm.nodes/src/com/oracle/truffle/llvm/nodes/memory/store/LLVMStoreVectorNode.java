@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -130,8 +131,15 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected void writeVector(LLVMNativePointer address, LLVMPointerVector value) {
-        getLLVMMemoryCached().putVector(address, value, vectorLength);
+    @ExplodeLoop
+    protected void writeVector(LLVMNativePointer address, LLVMPointerVector value,
+                    @Cached("createPointerStore()") LLVMPointerStoreNode write) {
+        assert value.getLength() == vectorLength;
+        long currentPtr = address.asNative();
+        for (int i = 0; i < vectorLength; i++) {
+            write.executeWithTarget(currentPtr, value.getValue(i));
+            currentPtr += ADDRESS_SIZE_IN_BYTES;
+        }
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
@@ -225,5 +233,9 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
             getForeignWriteNode(ForeignToLLVMType.POINTER).execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
         }
+    }
+
+    protected static LLVMPointerStoreNode createPointerStore() {
+        return LLVMPointerStoreNodeGen.create(null, null);
     }
 }

@@ -29,29 +29,26 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
+public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     private final NativePointerCompare op;
 
-    @Child private ToComparableValue convertVal1 = ToComparableValueNodeGen.create();
-    @Child private ToComparableValue convertVal2 = ToComparableValueNodeGen.create();
+    @Child private ToComparableValue convertA = ToComparableValueNodeGen.create();
+    @Child private ToComparableValue convertB = ToComparableValueNodeGen.create();
 
     public LLVMPointerCompareNode(NativePointerCompare op) {
         this.op = op;
     }
 
     @Specialization
-    protected boolean doGenericCompare(Object val1, Object val2) {
-        return op.compare(convertVal1.executeWithTarget(val1), convertVal2.executeWithTarget(val2));
+    protected boolean doGenericCompare(Object a, Object b) {
+        return op.compare(convertA.executeWithTarget(a), convertB.executeWithTarget(b));
     }
 
     public enum Kind {
@@ -67,7 +64,7 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         abstract boolean compare(long val1, long val2);
     }
 
-    public static LLVMExpressionNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
+    public static LLVMAbstractCompareNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
         switch (kind) {
             case SLT:
                 return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
@@ -104,28 +101,24 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
             case EQ:
                 return LLVMAddressEqualsNodeGen.create(l, r);
             case NEQ:
-                return LLVMNegateNodeGen.create(LLVMAddressEqualsNodeGen.create(l, r));
+                return LLVMNegateNodeGen.create(LLVMAddressEqualsNodeGen.create(null, null), l, r);
             default:
                 throw new AssertionError();
 
         }
     }
 
-    public abstract static class LLVMNegateNode extends LLVMExpressionNode {
-        @Child private LLVMExpressionNode booleanExpression;
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMNegateNode extends LLVMAbstractCompareNode {
+        @Child private LLVMAbstractCompareNode booleanExpression;
 
-        LLVMNegateNode(LLVMExpressionNode booleanExpression) {
+        LLVMNegateNode(LLVMAbstractCompareNode booleanExpression) {
             this.booleanExpression = booleanExpression;
         }
 
         @Specialization
-        protected boolean doCompare(VirtualFrame frame) {
-            try {
-                return !booleanExpression.executeI1(frame);
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+        protected boolean doCompare(Object a, Object b) {
+            return !booleanExpression.executeWithTarget(a, b);
         }
     }
 }
