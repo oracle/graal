@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySourceSection;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -90,28 +91,58 @@ final class DIScopeBuilder {
         }
     }
 
+    private static final String RELPATH_PREFIX = "truffle-relpath://";
+    private static final String RELPATH_PROPERTY_SEPARATOR = "//";
+
     private Path getPath(MDFile file) {
-        if (paths.containsKey(file)) {
+        if (file == null) {
+            return null;
+        } else if (paths.containsKey(file)) {
             return paths.get(file);
         }
-        Path path;
-        if (file == null) {
-            path = null;
-        } else {
-            String name = MDString.getIfInstance(file.getFile());
-            if (name == null) {
-                path = null;
-            } else {
-                path = Paths.get(name);
-                if (!path.isAbsolute()) {
-                    String directory = MDString.getIfInstance(file.getDirectory());
-                    if (directory != null) {
-                        path = Paths.get(directory, name);
-                    }
+
+        final String name = MDString.getIfInstance(file.getFile());
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+
+        Path path = null;
+        if (name.startsWith(RELPATH_PREFIX)) {
+            final int propertyEndIndex = name.indexOf(RELPATH_PROPERTY_SEPARATOR, RELPATH_PREFIX.length());
+            if (propertyEndIndex == -1) {
+                throw new LLVMParserException(String.format("Invalid Source Path: \"%s\"", name));
+            }
+
+            final String property = name.substring(RELPATH_PREFIX.length(), propertyEndIndex);
+            if (property.isEmpty()) {
+                throw new LLVMParserException(String.format("Invalid Property: \"%s\" from \"%s\"", property, name));
+            }
+
+            final String pathPrefix = System.getProperty(property);
+            if (pathPrefix == null) {
+                throw new LLVMParserException(String.format("Property not found: \"%s\" from \"%s\"", property, name));
+            }
+
+            final int pathStartIndex = propertyEndIndex + RELPATH_PROPERTY_SEPARATOR.length();
+            if (pathStartIndex >= name.length()) {
+                throw new LLVMParserException(String.format("Invalid Source Path: \"%s\"", name));
+            }
+
+            final String relativePath = name.substring(pathStartIndex);
+            path = Paths.get(pathPrefix, relativePath);
+        }
+
+        if (path == null) {
+            path = Paths.get(name);
+            if (!path.isAbsolute()) {
+                String directory = MDString.getIfInstance(file.getDirectory());
+                if (directory != null) {
+                    path = Paths.get(directory, name);
                 }
-                path = path.normalize();
             }
         }
+
+        path = path.normalize();
         paths.put(file, path);
         return path;
     }
@@ -346,7 +377,6 @@ final class DIScopeBuilder {
         @Override
         public void visit(MDCompileUnit md) {
             kind = LLVMSourceLocation.Kind.COMPILEUNIT;
-            file = fileExtractor.extractFile(md);
         }
 
         @Override
