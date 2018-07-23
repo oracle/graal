@@ -40,21 +40,21 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class LLVMAMD64RegisterToLongNode extends LLVMNode {
     public abstract long execute(VirtualFrame frame, FrameSlot slot);
 
-    @Specialization(guards = "isLong(slot)")
+    @Specialization(guards = "isLong(frame, slot)")
     protected long readLong(VirtualFrame frame, FrameSlot slot) {
         return FrameUtil.getLongSafe(frame, slot);
     }
 
-    @Specialization(guards = "isAddress(slot)")
+    @Specialization(guards = "isAddress(frame, slot)")
     protected long readAddress(VirtualFrame frame, FrameSlot slot) {
         return LLVMNativePointer.cast(FrameUtil.getObjectSafe(frame, slot)).asNative();
     }
 
-    protected boolean isLong(FrameSlot slot) {
-        return slot.getKind() == FrameSlotKind.Long;
+    protected boolean isLong(VirtualFrame frame, FrameSlot slot) {
+        return frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Long;
     }
 
-    protected boolean isAddress(FrameSlot slot) {
-        return slot.getKind() == FrameSlotKind.Object;
+    protected boolean isAddress(VirtualFrame frame, FrameSlot slot) {
+        return frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Object;
     }
 }

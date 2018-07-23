@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ public abstract class LLVMAMD64ReadRegisterNode extends LLVMExpressionNode {
 
     @Specialization(replaces = {"readI64"}, rewriteOn = FrameSlotTypeException.class)
     protected Object readAddress(VirtualFrame frame) throws FrameSlotTypeException {
-        if (getSlot().getKind() == FrameSlotKind.Object) {
+        if (frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Object) {
             return frame.getObject(getSlot());
         } else {
             CompilerDirectives.transferToInterpreter();

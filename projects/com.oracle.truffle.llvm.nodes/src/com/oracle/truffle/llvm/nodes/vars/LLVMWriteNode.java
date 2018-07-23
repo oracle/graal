@@ -114,7 +114,7 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     public abstract static class LLVMWriteI64Node extends LLVMWriteNode {
         @Specialization
         protected void writeI64(VirtualFrame frame, long value) {
-            if (getSlot().getKind() == FrameSlotKind.Long) {
+            if (frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long) {
                 frame.setLong(getSlot(), value);
             } else {
                 frame.setObject(getSlot(), value);
@@ -123,9 +123,9 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
 
         @Specialization(replaces = "writeI64")
         protected void writePointer(VirtualFrame frame, Object value) {
-            if (getSlot().getKind() == FrameSlotKind.Long) {
+            if (frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getSlot().setKind(FrameSlotKind.Object);
+                frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
             }
             frame.setObject(getSlot(), value);
         }

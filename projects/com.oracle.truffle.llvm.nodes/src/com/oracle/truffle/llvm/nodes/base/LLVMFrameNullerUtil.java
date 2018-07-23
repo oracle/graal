@@ -57,7 +57,7 @@ public final class LLVMFrameNullerUtil {
     }
 
     public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot, boolean forceNulling) {
-        FrameSlotKind kind = frameSlot.getKind();
+        FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(frameSlot);
         CompilerAsserts.partialEvaluationConstant(kind);
         if (kind == FrameSlotKind.Object) {
             // object frame slots always need to be nulled (otherwise we would impact GC)
