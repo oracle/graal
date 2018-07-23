@@ -1027,19 +1027,37 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         final TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
         if (surrogate.getParsedSourceWrapper() != null) {
             // @formatter:off
-            //TODO(ds) do not use getNodes() use env.attachLoadSourceSection...
-            Diagnostic[] coverageDiagnostics = surrogate.getParsedSourceWrapper().getNodes().stream()
-                            .filter(node -> node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StatementTag.class))
-                            .filter(node -> !surrogate.isLocationCovered(SourceLocation.from(node.getSourceSection())))
-                            .map(node -> new Diagnostic(sourceSectionToRange(node.getSourceSection()),
-                                                        "Not covered",
-                                                        DiagnosticSeverity.Warning,
-                                                        "Coverage Analysis"))
-                            .toArray(Diagnostic[]::new);
+            SourceSectionFilter filter = SourceSectionFilter.newBuilder()
+                            .sourceIs(surrogate.getParsedSourceWrapper().getSource())
+                            .tagIs(StatementTag.class)
+                            .build();
+            Set<SourceSection> duplicateFilter = new HashSet<>();
+            env.getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
+
+                public void onLoad(LoadSourceSectionEvent event) {
+                    SourceSection section = event.getSourceSection();
+                    if (!surrogate.isLocationCovered(SourceLocation.from(section)) && !duplicateFilter.contains(section)) {
+                        duplicateFilter.add(section);
+                        Diagnostic diag = new Diagnostic(sourceSectionToRange(section),
+                                                         "Not covered",
+                                                         DiagnosticSeverity.Warning,
+                                                         "Coverage Analysis");
+                        diagnosticsPublisher.addDiagnostics(uri, diag);
+                    }
+                }
+            }, true).dispose();
+//            Diagnostic[] coverageDiagnostics = surrogate.getParsedSourceWrapper().getNodes().stream()
+//                            .filter(node -> node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StatementTag.class))
+//                            .filter(node -> !surrogate.isLocationCovered(SourceLocation.from(node.getSourceSection())))
+//                            .map(node -> new Diagnostic(sourceSectionToRange(node.getSourceSection()),
+//                                                        "Not covered",
+//                                                        DiagnosticSeverity.Warning,
+//                                                        "Coverage Analysis"))
+//                            .toArray(Diagnostic[]::new);
             // @formatter:on
-            this.diagnosticsPublisher.addDiagnostics(uri, coverageDiagnostics);
+// diagnosticsPublisher.addDiagnostics(uri, coverageDiagnostics);
         } else {
-            this.diagnosticsPublisher.addDiagnostics(uri,
+            diagnosticsPublisher.addDiagnostics(uri,
                             new Diagnostic(new Range(new Position(), new Position()), "No coverage information available", DiagnosticSeverity.Error, "Coverage Analysis"));
         }
     }
