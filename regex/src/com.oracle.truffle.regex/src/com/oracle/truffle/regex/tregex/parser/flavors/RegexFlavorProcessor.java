@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 
-public class RegexSyntaxException extends RuntimeException {
+import java.util.Map;
 
-    private static final String template = "Invalid regular expression: /%s/%s: %s";
-    private static final String templateNoFlags = "Invalid regular expression: %s: %s";
+public interface RegexFlavorProcessor {
 
-    public RegexSyntaxException(String msg) {
-        super(msg);
-    }
+    void validate() throws RegexSyntaxException;
 
-    @CompilerDirectives.TruffleBoundary
-    public RegexSyntaxException(String pattern, String msg) {
-        super(String.format(templateNoFlags, pattern, msg));
-    }
+    RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException;
 
-    @CompilerDirectives.TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg) {
-        super(String.format(template, pattern, flags, msg));
-    }
+    Map<String, Integer> getNamedCaptureGroups();
 
-    @CompilerDirectives.TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
-        super(String.format(template, pattern, flags, msg), ex);
-    }
+    TruffleObject getFlags();
 
-    private static final long serialVersionUID = 1L;
-
+    boolean isUnicodePattern();
 }

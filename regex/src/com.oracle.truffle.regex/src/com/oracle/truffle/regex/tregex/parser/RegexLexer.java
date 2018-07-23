@@ -59,10 +59,10 @@ public final class RegexLexer {
     private boolean identifiedAllGroups = false;
     private Map<String, Integer> namedCaptureGroups = null;
 
-    public RegexLexer(RegexSource source, RegexOptions options) {
+    public RegexLexer(RegexSource source, RegexFlags flags, RegexOptions options) {
         this.source = source;
         this.pattern = source.getPattern();
-        this.flags = source.getFlags();
+        this.flags = flags;
         this.options = options;
     }
 
@@ -804,6 +804,6 @@ public final class RegexLexer {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(pattern, flags, msg);
+        return new RegexSyntaxException(pattern, source.getGeneralFlags(), msg);
     }
 }

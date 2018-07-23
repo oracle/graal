@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.RegexSource;
 
-public class RegexSyntaxException extends RuntimeException {
+public interface RegexFlavor {
 
-    private static final String template = "Invalid regular expression: /%s/%s: %s";
-    private static final String templateNoFlags = "Invalid regular expression: %s: %s";
-
-    public RegexSyntaxException(String msg) {
-        super(msg);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public RegexSyntaxException(String pattern, String msg) {
-        super(String.format(templateNoFlags, pattern, msg));
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg) {
-        super(String.format(template, pattern, flags, msg));
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
-        super(String.format(template, pattern, flags, msg), ex);
-    }
-
-    private static final long serialVersionUID = 1L;
-
+    RegexFlavorProcessor forRegex(RegexSource source);
 }

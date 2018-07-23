@@ -25,6 +25,8 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
 import java.util.Arrays;
 
@@ -33,17 +35,24 @@ public final class RegexOptions {
     private static final int U180E_WHITESPACE = 1;
     private static final int REGRESSION_TEST_MODE = 1 << 1;
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0);
+    public static final RegexOptions DEFAULT = new RegexOptions(0, null);
 
     private final int options;
+    private final RegexFlavor flavor;
 
-    private RegexOptions(int options) {
+    private RegexOptions(int options, RegexFlavor flavor) {
         this.options = options;
+        this.flavor = flavor;
+    }
+
+    public RegexOptions(boolean u180eWhitespace, boolean regressionTestMode) {
+        this((u180eWhitespace ? U180E_WHITESPACE : 0) | (regressionTestMode ? REGRESSION_TEST_MODE : 0), null);
     }
 
     @CompilerDirectives.TruffleBoundary
     public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
         int options = 0;
+        RegexFlavor flavor = null;
         for (String propValue : optionsString.split(",")) {
             if (propValue.isEmpty()) {
                 continue;
@@ -61,11 +70,14 @@ public final class RegexOptions {
                 case "RegressionTestMode":
                     options = parseBooleanOption(optionsString, options, key, value, REGRESSION_TEST_MODE);
                     break;
+                case "Flavor":
+                    flavor = parseFlavor(optionsString, value);
+                    break;
                 default:
                     throw optionsSyntaxError(optionsString, "unexpected option " + key);
             }
         }
-        return new RegexOptions(options);
+        return new RegexOptions(options, flavor);
     }
 
     private static int parseBooleanOption(String optionsString, int options, String key, String value, int flag) throws RegexSyntaxException {
@@ -75,6 +87,17 @@ public final class RegexOptions {
             throw optionsSyntaxErrorUnexpectedValue(optionsString, key, value, "true", "false");
         }
         return options;
+    }
+
+    private static RegexFlavor parseFlavor(String optionsString, String value) throws RegexSyntaxException {
+        switch (value) {
+            case "Python":
+                return PythonFlavor.INSTANCE;
+            case "ECMAScript":
+                return null;
+            default:
+                throw optionsSyntaxErrorUnexpectedValue(optionsString, "Flavor", value, "Python", "ECMAScript");
+        }
     }
 
     private static RegexSyntaxException optionsSyntaxErrorUnexpectedValue(String optionsString, String key, String value, String... expectedValues) {
@@ -95,6 +118,10 @@ public final class RegexOptions {
 
     public boolean isRegressionTestMode() {
         return isBitSet(REGRESSION_TEST_MODE);
+    }
+
+    public RegexFlavor getFlavor() {
+        return flavor;
     }
 
     @Override

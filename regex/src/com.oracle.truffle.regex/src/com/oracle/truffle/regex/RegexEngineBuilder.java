@@ -105,9 +105,9 @@ public class RegexEngineBuilder implements RegexLanguageObject {
             private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
                 if (fallbackCompiler != null) {
                     return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler),
-                                    options.isRegressionTestMode());
+                                    options);
                 } else {
-                    return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options.isRegressionTestMode());
+                    return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
                 }
             }
         }

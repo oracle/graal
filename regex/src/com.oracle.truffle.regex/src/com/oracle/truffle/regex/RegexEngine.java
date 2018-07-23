@@ -29,9 +29,10 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 
 /**
  * {@link RegexEngine} is an executable {@link TruffleObject} that compiles regular expressions and
@@ -53,19 +54,34 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 public class RegexEngine implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
-    private final boolean eagerCompilation;
+    private final RegexOptions options;
 
+    @Deprecated
     public RegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
         this.compiler = compiler;
-        this.eagerCompilation = eagerCompilation;
+        this.options = eagerCompilation ? RegexOptions.parse("RegressionTestMode=true") : RegexOptions.DEFAULT;
+    }
+
+    public RegexEngine(RegexCompiler compiler, RegexOptions options) {
+        this.compiler = compiler;
+        this.options = options;
     }
 
     public RegexObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
         // Detect SyntaxErrors in regular expressions early.
-        RegexParser regexParser = new RegexParser(regexSource, RegexOptions.DEFAULT);
-        regexParser.validate();
-        RegexObject regexObject = new RegexObject(compiler, regexSource, regexParser.getNamedCaptureGroups());
-        if (eagerCompilation) {
+        RegexFlavor flavor = options.getFlavor();
+        RegexObject regexObject;
+        if (flavor != null) {
+            RegexFlavorProcessor flavorProcessor = flavor.forRegex(regexSource);
+            flavorProcessor.validate();
+            regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.isUnicodePattern(), flavorProcessor.getNamedCaptureGroups());
+        } else {
+            RegexFlags flags = RegexFlags.parseFlags(regexSource.getGeneralFlags());
+            RegexParser regexParser = new RegexParser(regexSource, options);
+            regexParser.validate();
+            regexObject = new RegexObject(compiler, regexSource, flags, regexParser.getFlags().isUnicode(), regexParser.getNamedCaptureGroups());
+        }
+        if (options.isRegressionTestMode()) {
             // Force the compilation of the RegExp.
             regexObject.getCompiledRegexObject();
         }
@@ -102,7 +118,7 @@ public class RegexEngine implements RegexLanguageObject {
                     }
                     flags = (String) args[1];
                 }
-                RegexSource regexSource = new RegexSource(pattern, RegexFlags.parseFlags(flags));
+                RegexSource regexSource = new RegexSource(pattern, flags);
                 return receiver.compile(regexSource);
             }
         }
