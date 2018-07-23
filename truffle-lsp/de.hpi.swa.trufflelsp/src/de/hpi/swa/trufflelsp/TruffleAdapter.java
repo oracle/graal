@@ -443,8 +443,19 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                         if (isObjectPropertyCompletion) {
                             if (locationType == NodeLocationType.CONTAINS_END) {
                                 EvaluationResult evalResult = tryDifferentEvalStrategies(textDocumentSurrogate, langId, sourceWrapper, nearestNode);
-                                if (evalResult.isEvaluationDone() && !evalResult.isError()) {
-                                    fillCompletionsFromTruffleObject(completions, langId, evalResult.getResult());
+                                if (evalResult.isEvaluationDone()) {
+                                    if (!evalResult.isError()) {
+                                        fillCompletionsFromTruffleObject(completions, langId, evalResult.getResult());
+                                    } else {
+                                        if (evalResult.getResult() instanceof TruffleException) {
+                                            TruffleException te = (TruffleException) evalResult.getResult();
+                                            this.diagnosticsPublisher.addDiagnostics(uri,
+                                                            new Diagnostic(sourceSectionToRange(te.getSourceLocation()), "An error occurred during execution: " + te.toString(),
+                                                                            DiagnosticSeverity.Warning, "Truffle"));
+                                        } else {
+                                            ((Exception) evalResult.getResult()).printStackTrace(err);
+                                        }
+                                    }
                                 } else {
                                     this.diagnosticsPublisher.addDiagnostics(uri,
                                                     new Diagnostic(sourceSectionToRange(nearestNode.getSourceSection()), "No coverage information available for this source section.",
@@ -486,7 +497,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         System.out.println("Trying run-to-section eval...");
         EvaluationResult runToSectionEvalResult = runToSectionAndEval(nearestNode, sourceWrapper);
-        if (runToSectionEvalResult.isEvaluationDone() && !runToSectionEvalResult.isError()) {
+        if (runToSectionEvalResult.isEvaluationDone()) {
             return runToSectionEvalResult;
         }
 
@@ -549,7 +560,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             Object result = callTarget.call();
             return EvaluationResult.createResult(result);
         } catch (Exception e) {
-            return EvaluationResult.createError();
+            return EvaluationResult.createError(e);
         }
     }
 
@@ -592,13 +603,13 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             try {
                 callTarget.call();
             } catch (EvaluationResultException e) {
-                return e.isError() ? EvaluationResult.createError() : EvaluationResult.createResult(e.getResult());
+                return e.isError() ? EvaluationResult.createError((Exception) e.getResult()) : EvaluationResult.createResult(e.getResult());
             } catch (RuntimeException e) {
                 if (e instanceof TruffleException) {
                     if (((TruffleException) e).isExit()) {
                         return EvaluationResult.createEvaluationSectionNotReached();
                     } else {
-                        return EvaluationResult.createError();
+                        return EvaluationResult.createError(e);
                     }
                 }
             } finally {
