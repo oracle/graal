@@ -262,6 +262,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROU
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
 import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -4342,7 +4343,8 @@ public class BytecodeParser implements GraphBuilderContext {
     /**
      * Returns true if an explicit exception check should be emitted.
      */
-    protected boolean needsExplicitException() {
+    @Override
+    public boolean needsExplicitException() {
         BytecodeExceptionMode exceptionMode = graphBuilderConfig.getBytecodeExceptionMode();
         if (exceptionMode == BytecodeExceptionMode.CheckAll || StressExplicitExceptionCode.getValue(options)) {
             return true;
@@ -4350,6 +4352,35 @@ public class BytecodeParser implements GraphBuilderContext {
             return profilingInfo.getExceptionSeen(bci()) == TriState.TRUE;
         }
         return false;
+    }
+
+    @Override
+    public AbstractBeginNode genExplicitExceptionEdge(Class<? extends Exception> exceptionClass) {
+        // Backup original context
+        FixedWithNextNode originalLastInstr = lastInstr;
+        Constructor<? extends Exception> constructor;
+        try {
+            constructor = exceptionClass.getConstructor();
+        } catch (NoSuchMethodException e) {
+            // Failed exception edge
+            return null;
+        }
+
+        BeginNode exceptionEdge = new BeginNode();
+        lastInstr = graph.add(exceptionEdge);
+
+        // Instantiate an exception
+        genNewInstance(metaAccess.lookupJavaType(exceptionClass));
+        frameState.stackOp(DUP);
+        genInvokeSpecial(metaAccess.lookupJavaMethod(constructor));
+
+        // Generate exception dispatch
+        AbstractBeginNode exceptionDispatch = handleException(frameState.pop(JavaKind.Object), bci(), false);
+        lastInstr.setNext(exceptionDispatch);
+
+        // Restore original context
+        lastInstr = originalLastInstr;
+        return exceptionEdge;
     }
 
     protected void genPutField(int cpi, int opcode) {
