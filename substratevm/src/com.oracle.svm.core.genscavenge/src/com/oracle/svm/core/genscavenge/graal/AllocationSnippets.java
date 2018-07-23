@@ -449,12 +449,15 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
          */
         Pointer thisMemory = Word.objectToUntrackedPointer(thisObject);
         UnsignedWord offset = firstFieldOffset;
+        if (!isWordAligned(offset) && offset.belowThan(size)) { // narrow references
+            thatMemory.writeInt(offset, thisMemory.readInt(offset));
+            offset = offset.add(Integer.BYTES);
+        }
         while (offset.belowThan(size)) {
             thatMemory.writeWord(offset, thisMemory.readWord(offset));
             offset = offset.add(ConfigurationValues.getTarget().wordSize);
         }
-        final Object result = thatMemory.toObjectNonNull();
-        return result;
+        return thatMemory.toObjectNonNull();
     }
 
     private static Object formatObjectImpl(Pointer memory, DynamicHub hub, UnsignedWord size, @ConstantParameter boolean constantSize, @ConstantParameter boolean fillContents, boolean rememberedSet) {

@@ -28,9 +28,12 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-import com.oracle.truffle.regex.util.Constants;
 
 import java.math.BigInteger;
 import java.util.EnumSet;

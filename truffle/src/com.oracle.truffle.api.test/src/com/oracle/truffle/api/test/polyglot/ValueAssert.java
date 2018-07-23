@@ -187,6 +187,7 @@ public class ValueAssert {
                         }
                     }
                     assertEquals(expectedValues, value.as(Map.class));
+                    assertEquals(value.toString(), value.as(Map.class).toString());
 
                     break;
                 case NATIVE:

@@ -454,12 +454,11 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
     }
 
-    @SuppressWarnings({"rawtypes"})
     private void checkInternalKeys(Object map, String nonInternalKeys) throws ClassCastException, IllegalStateException, PolyglotException, UnsupportedMessageException {
-        List mapWithInternalKeys = context.asValue(keys(map, true)).as(List.class);
-        List mapWithoutInternalKeys = context.asValue(keys(map, false)).as(List.class);
-        assertEquals(nonInternalKeys, mapWithoutInternalKeys.toString());
-        assertEquals("[p1, p2, p3, p4, p5, p6]", mapWithInternalKeys.toString());
+        List<?> mapWithInternalKeys = context.asValue(keys(map, true)).as(List.class);
+        List<?> mapWithoutInternalKeys = context.asValue(keys(map, false)).as(List.class);
+        assertEquals(nonInternalKeys, new ArrayList<>(mapWithoutInternalKeys).toString());
+        assertEquals("[p1, p2, p3, p4, p5, p6]", new ArrayList<>(mapWithInternalKeys).toString());
     }
 
     private static TruffleObject keys(Object value, boolean includeInternal) throws UnsupportedMessageException {

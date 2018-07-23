@@ -95,6 +95,20 @@ class TruffleList<T> extends AbstractList<T> {
         return (Integer) cache.size.call(languageContext, guestObject);
     }
 
+    @Override
+    public String toString() {
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        if (engine != null && languageContext != null) {
+            try {
+                return engine.toHostValue(guestObject, languageContext).toString();
+            } catch (UnsupportedOperationException e) {
+                return super.toString();
+            }
+        } else {
+            return super.toString();
+        }
+    }
+
     private static class FunctionTruffleList<T> extends TruffleList<T> implements Function<Object, Object> {
 
         FunctionTruffleList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {

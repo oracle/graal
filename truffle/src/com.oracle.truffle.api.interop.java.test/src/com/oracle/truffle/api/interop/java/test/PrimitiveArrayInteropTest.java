@@ -29,16 +29,11 @@ import static org.junit.Assert.assertNull;
 
 import java.util.List;
 
-import org.graalvm.polyglot.Context;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 
-@SuppressWarnings("deprecation")
-public class PrimitiveArrayInteropTest {
+public class PrimitiveArrayInteropTest extends ProxyLanguageEnvTest {
     public Object[] stringArr;
     public byte[] byteArr;
     public short[] shortArr;
@@ -72,24 +67,11 @@ public class PrimitiveArrayInteropTest {
     private TruffleObject obj;
     private ExactMatchInterop interop;
 
-    private Context context;
-
-    @Before
-    public void enterContext() {
-        context = Context.create();
-        context.enter();
-    }
-
-    @After
-    public void leaveContext() {
-        context.leave();
-        context.close();
-    }
-
-    @Before
-    public void initObjects() {
-        obj = JavaInterop.asTruffleObject(this);
-        interop = JavaInterop.asJavaObject(ExactMatchInterop.class, obj);
+    @Override
+    public void before() {
+        super.before();
+        obj = asTruffleObject(this);
+        interop = asJavaObject(ExactMatchInterop.class, obj);
     }
 
     @Test

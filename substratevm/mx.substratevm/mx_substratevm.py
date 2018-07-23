@@ -38,7 +38,6 @@ from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=
 from os.path import join, exists, basename, dirname, islink
 # { GR-8964
 from shutil import copy2
-# from time import strftime, gmtime
 import time
 # } GR-8964
 import collections
@@ -172,8 +171,28 @@ def remove_existing_symlink(target_path):
         os.remove(target_path)
     return target_path
 
-def relsymlink(target_path, dest_path):
-    os.symlink(os.path.relpath(target_path, dirname(dest_path)), dest_path)
+def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
+    # Follow symbolic links in case they go outside my suite directories.
+    real_target_path = os.path.realpath(target_path)
+    if debug_gr_8964:
+        mx.log('  [mx_substratevm.symlink_or_copy:')
+        mx.log('    suite.dir:' + suite.dir)
+        mx.log('    target_path: ' + target_path)
+        mx.log('    real_target_path: ' + real_target_path)
+        mx.log('    dest_path: ' + dest_path)
+    if any(real_target_path.startswith(s.dir) for s in mx.suites(includeBinary=False)):
+        # Symbolic link to files in my suites.
+        sym_target = os.path.relpath(real_target_path, dirname(dest_path))
+        if debug_gr_8964:
+            mx.log('      symlink target: ' + sym_target)
+        os.symlink(sym_target, dest_path)
+    else:
+        # Else copy the file to so it can not change out from under me.
+        if debug_gr_8964:
+            mx.log('      copy2: ')
+        copy2(real_target_path, dest_path)
+    if debug_gr_8964:
+        mx.log('  ]')
 
 def native_image_layout(dists, subdir, native_image_root, debug_gr_8964=False):
     if not dists:
@@ -186,22 +205,24 @@ def native_image_layout(dists, subdir, native_image_root, debug_gr_8964=False):
         remove_tree(dest_path)
     mkpath(dest_path)
     # Create symlinks to conform with native-image directory layout scheme
-    # GR-8964: Copy the jar instead of symlinking to it.
     def symlink_jar(jar_path):
         if debug_gr_8964:
+            def log_stat(prefix, file_name):
+                file_stat = os.stat(file_name)
+                mx.log('    ' + prefix + '.st_mode: ' + oct(file_stat.st_mode))
+                mx.log('    ' + prefix + '.st_mtime: ' + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(file_stat.st_mtime)))
+
             dest_jar = join(dest_path, basename(jar_path))
-            if debug_gr_8964:
-                mx.log('[mx_substratevm.native_image_layout.symlink_jar: copy2' + \
-                    '\n  src: ' + jar_path + \
-                    '\n  dst: ' + dest_jar)
-            copy2(jar_path, dest_jar)
-            dest_stat = os.stat(dest_jar)
-            if debug_gr_8964:
-                mx.log('      ' + \
-                    ' .st_mode: ' + oct(dest_stat.st_mode) + \
-                    ' .st_mtime: ' + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(dest_stat.st_mtime)) + ']')
+            mx.log('[mx_substratevm.native_image_layout.symlink_jar: symlink_or_copy')
+            mx.log('  src: ' + jar_path)
+            log_stat('src', jar_path)
+            mx.log('  dst: ' + dest_jar)
+            symlink_or_copy(jar_path, dest_jar, debug_gr_8964)
+            log_stat('dst', dest_jar)
+            mx.log(']')
         else:
-            relsymlink(jar_path, join(dest_path, basename(jar_path)))
+            symlink_or_copy(jar_path, join(dest_path, basename(jar_path)), debug_gr_8964)
+
     for dist in dists:
         mx.logv('Add ' + type(dist).__name__ + ' ' + str(dist) + ' to ' + dest_path)
         symlink_jar(dist.path)
@@ -233,12 +254,11 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
     if option_properties:
         mx.logv('Add symlink to ' + str(option_properties))
         mkpath(target_dir)
-        relsymlink(option_properties, target_path)
+        symlink_or_copy(option_properties, target_path)
 
 flag_suitename_map = collections.OrderedDict([
     ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
     ('js', ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
-    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER', 'TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'], ['TRUFFLERUBY-ZIP'])),
     ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON_GRAALVM_SUPPORT', 'GRAALPYTHON-ZIP'])),
     ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))  # JLINE?
 ])
@@ -334,7 +354,7 @@ def layout_native_image_root(native_image_root):
     jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
     if os.path.isdir(jvmci_path):
         for symlink_name in os.listdir(jvmci_path):
-            relsymlink(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
+            symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
@@ -430,7 +450,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     if exists(option_properties):
         if not exists(target_path):
             mx.logv('Add symlink to ' + str(option_properties))
-            relsymlink(option_properties, target_path)
+            symlink_or_copy(option_properties, target_path, debug_gr_8964=debug_gr_8964)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
     return language_suite
@@ -451,14 +471,14 @@ GraalTags = Tags([
     'helloworld',
     'maven',
     'js',
-    'ruby',
     'python',
 ])
 
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964=False, native_image_cmd=''):
     common_args = [] if common_args is None else common_args
-    base_args = ['-H:Path=' + svmbuild_dir()]
+    base_args = ['-H:+EnforceMaxRuntimeCompileMethods']
+    base_args += ['-H:Path=' + svmbuild_dir()]
     if debug_gr_8964:
         base_args += ['-Ddebug_gr_8964=true']
     if mx.get_opts().verbose:
@@ -526,13 +546,6 @@ def svm_gate_body(args, tasks):
                 js = build_js(native_image, debug_gr_8964=debug_gr_8964)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
-
-        with Task('Ruby', tasks, tags=[GraalTags.ruby]) as t:
-            if t:
-                # Debug GR-9912 on Ruby gate runs.
-                debug_gr_9912 = 16
-                ruby = build_ruby(native_image, debug_gr_8964=debug_gr_8964, debug_gr_9912=debug_gr_9912)
-                test_ruby([ruby, 'release'])
 
         with Task('Python', tasks, tags=[GraalTags.python]) as t:
             if t:
@@ -643,37 +656,6 @@ def test_python_smoke(args):
         if out.data != expected_output + "\n":
             mx.abort("Python smoke test failed")
         mx.log("Python binary says: " + out.data)
-
-def build_ruby(native_image, debug_gr_8964=False, debug_gr_9912=0):
-    truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # ruby depends on sulong
-    suite.import_suite('tools', in_subdir=True) # ruby depends on tools
-    truffle_language_ensure('ruby', debug_gr_8964=debug_gr_8964)
-
-    # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
-    ruby_bin_dir = join(suite_native_image_root(), 'languages', 'ruby', 'bin')
-    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
-
-def test_ruby(args):
-    if len(args) < 1 or len(args) > 2:
-        mx.abort('mx svm_test_ruby <ruby_svm_image_path> [<debug_build>=release]')
-
-    aot_bin = args[0]
-    debug_build = args[1] if len(args) >= 2 else 'release'
-
-    truffleruby_suite = truffle_language_ensure('ruby', extract=False)
-
-    suite_dir = truffleruby_suite.dir
-    distsToExtract = ['TRUFFLERUBY-ZIP', 'TRUFFLERUBY-SPECS']
-    lib = join(suite_dir, 'lib')
-    if not exists(lib):
-        # Binary suite, extract the distributions
-        for dist_name in distsToExtract:
-            mx.log('Extract distribution {} to {}'.format(dist_name, suite_dir))
-            dist = mx.distribution(dist_name)
-            with tarfile.open(dist.path, 'r:') as archive:
-                archive.extractall(suite_dir)
-
-    mx.command_function('ruby_testdownstream_aot')([aot_bin, 'spec', debug_build])
 
 mx_gate.add_gate_runner(suite, svm_gate_body)
 

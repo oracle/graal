@@ -93,13 +93,13 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. (default: randomly generated)", category = OptionCategory.EXPERT) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
-    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT) //
+    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT, deprecated = true) //
     static final OptionKey<Boolean> Remote = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.EXPERT) //
+    @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.DEBUG) //
     static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Inspect language initialization. (default:false)", category = OptionCategory.EXPERT) //
+    @com.oracle.truffle.api.Option(help = "Inspect language initialization. (default:false)", category = OptionCategory.DEBUG) //
     static final OptionKey<Boolean> Initialization = new OptionKey<>(false);
 
     @com.oracle.truffle.api.Option(help = "Use TLS/SSL. (default:false)", category = OptionCategory.EXPERT) //

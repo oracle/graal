@@ -41,6 +41,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -619,10 +620,9 @@ public class Space {
         final Pointer copyMemory = allocateMemory(copySize);
         trace.string("  copyMemory: ").hex(copyMemory);
         if (copyMemory.isNull()) {
-            /* TODO: Promotion failure! */
             final Log failureLog = Log.log().string("[!SpaceImpl.copyAlignedObject:");
             failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").string("!]").newline();
-            return null;
+            throw VMError.shouldNotReachHere("Promotion failure");
         }
         /* - Copy the Object. */
         final Pointer originalMemory = Word.objectToUntrackedPointer(originalObj);
