@@ -143,8 +143,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMMallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDiv;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexMul;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDoubleDiv;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDoubleMul;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexFloatDiv;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexFloatMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
@@ -1697,16 +1699,31 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     }
 
     public void registerComplexNumberIntrinsics() {
+        // float functions return a vector of <2x float>
+        factories.put("@__divsc3", new LLVMNativeIntrinsicFactory(true, false) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return new LLVMComplexFloatDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
+            }
+        });
+        factories.put("@__mulsc3", new LLVMNativeIntrinsicFactory(true, false) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return new LLVMComplexFloatMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
+            }
+        });
+
+        // double functions store their double results in the structure pass as arg1
         factories.put("@__divdc3", new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplexDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
+                return new LLVMComplexDoubleDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
             }
         });
         factories.put("@__muldc3", new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplexMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
+                return new LLVMComplexDoubleMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
             }
         });
     }

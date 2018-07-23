@@ -112,15 +112,11 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         @Specialization
         protected LLVMNativePointer doVoid(LLVMNativePointer addr, int size,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            try {
-                return memory.reallocateMemory(addr, size);
-            } catch (OutOfMemoryError e) {
-                CompilerDirectives.transferToInterpreter();
-                return LLVMNativePointer.createNull();
-            }
+            return doVoid(addr, (long) size, memory);
         }
 
         @Specialization
+        @SuppressWarnings("deprecation")
         protected LLVMNativePointer doVoid(LLVMNativePointer addr, long size,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             try {

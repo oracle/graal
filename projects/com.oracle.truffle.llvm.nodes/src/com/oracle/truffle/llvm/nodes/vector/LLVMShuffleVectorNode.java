@@ -60,6 +60,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI8Vector doI8Vector(LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             byte[] newValues = new byte[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {
@@ -78,6 +79,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI16Vector doI8Vector(LLVMI16Vector leftVector, LLVMI16Vector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             short[] newValues = new short[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {
@@ -96,6 +98,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI32Vector doI32Vector(LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             int[] newValues = new int[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {
@@ -114,6 +117,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI64Vector doI64Vector(LLVMI64Vector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             long[] newValues = new long[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {
@@ -126,6 +130,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             LLVMPointer[] newValues = new LLVMPointer[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {
@@ -144,6 +149,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMFloatVector doOp(LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             float[] newValues = new float[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {
@@ -162,6 +168,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMDoubleVector doOp(LLVMDoubleVector leftVector, LLVMDoubleVector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == resultLength;
             double[] newValues = new double[resultLength];
             int leftVectorLength = leftVector.getLength();
             for (int i = 0; i < resultLength; i++) {

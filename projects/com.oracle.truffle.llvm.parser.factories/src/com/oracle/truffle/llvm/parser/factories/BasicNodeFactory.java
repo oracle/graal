@@ -106,7 +106,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmetic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDivSC;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
@@ -1569,9 +1568,6 @@ public class BasicNodeFactory implements NodeFactory {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgCountNodeGen.create(sourceSection);
-            } else if (declaration.getName().equals("@__divsc3")) {
-                // this function allocates the result on the stack
-                return new LLVMComplexDivSC(args[1], args[2], args[3], args[4]);
             }
         }
         return null;
