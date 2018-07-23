@@ -356,16 +356,15 @@ public abstract class TruffleLanguage<C> {
      * first language context {@link #createContext(Env) created} with a {@link TruffleLanguage}
      * instance is always compatible, therefore {@link #isCompatible(Env)} will not be invoked for
      * it. The default implementation returns <code>true</code>. The passed environment must not be
-     * stored in the language.
+     * escape the scope of this method.
      * <p>
-     * If the context policy of a language is set {@link ContextPolicy#EXCLUSIVE exclusive} (default
-     * behavior) then {@link #isCompatible(Env)} will never be invoked as {@link TruffleLanguage}
-     * instances will not be shared for multiple contexts. For the other context policies
-     * {@link ContextPolicy#REUSE reuse} or {@link ContextPolicy#SHARED shared} language this method
-     * can be used to further restrict compatibility. Compatibility influences
+     * If the context policy of a language is set to {@link ContextPolicy#EXCLUSIVE exclusive}
+     * (default behavior) then {@link #isCompatible(Env)} will never be invoked as
+     * {@link TruffleLanguage} instances will not be shared for multiple contexts. For the other
+     * context policies {@link ContextPolicy#REUSE reuse} and {@link ContextPolicy#SHARED shared}
+     * this method can be used to further restrict compatibility. Compatibility influences
      * {@link #parse(ParsingRequest) parse caching} because it uses the {@link TruffleLanguage
-     * language} instance as a key. {@link #initializeMultipleContexts() is guaranteed to be invoked
-     * prior to this method.
+     * language} instance as a key.
      * <p>
      * Example usage of isCompatible if sharing of the language instances and parse caching should
      * be restricted by an environment option:
@@ -523,11 +522,10 @@ public abstract class TruffleLanguage<C> {
      * it.
      * <p>
      * The result of the parsing request is cached per language instance,
-     * {@link ParsingRequest#getSource() source}, {@link ParsingRequest#getArgumentNames() argument
-     * names}. It is safe to assume that the {@link TruffleLanguage language},
-     * {@link ParsingRequest#getArgumentNames() argument names} will remain unchanged for a parsed
-     * {@link CallTarget}. Therefore, the parsed {@link CallTarget} must not be able to react to
-     * changed language options. The scope of the caching is influenced by the
+     * {@link ParsingRequest#getSource() source} and {@link ParsingRequest#getArgumentNames()
+     * argument names}. It is safe to assume that current {@link TruffleLanguage language} instance
+     * and {@link ParsingRequest#getArgumentNames() argument names} will remain unchanged for a
+     * parsed {@link CallTarget}. The scope of the caching is influenced by the
      * {@link Registration#contextPolicy() context policy} and
      * {@link TruffleLanguage#isCompatible(Env) compatibility}. Caching may be
      * {@link Source#isCached() disabled} for sources. It is enabled for new sources by default.
@@ -2564,15 +2562,17 @@ class TruffleLanguageSnippets {
     // BEGIN: TruffleLanguageSnippets.CompatibleLanguage#isCompatible
     class CompatibleLanguage extends TruffleLanguage<Env> {
 
-        @Option(help = "", category = OptionCategory.USER) //
-        static final OptionKey<String> ScriptVersion = new OptionKey<>("ECMA2017");
+        @Option(help = "", category = OptionCategory.USER)
+        static final OptionKey<String> ScriptVersion
+                    = new OptionKey<>("ECMA2017");
 
         private volatile String version;
 
         @Override
         protected boolean isCompatible(Env env) {
             assert version != null;
-            return env.getOptions().get(ScriptVersion).equals(version);
+            return env.getOptions().get(ScriptVersion).
+                            equals(version);
         }
 
         @Override
