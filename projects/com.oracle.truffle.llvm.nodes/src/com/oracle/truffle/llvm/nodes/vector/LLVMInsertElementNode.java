@@ -94,7 +94,7 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMPointerVector doPointer(LLVMPointerVector vector, long element, int index) {
-            return vector.insert(LLVMNativePointer.create(element), index);
+            return doPointer(vector, LLVMNativePointer.create(element), index);
         }
     }
 

@@ -403,7 +403,7 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError("vector type " + resultType1 + "  not supported!");
             }
-        } else if (resultType1.getElementType() instanceof PointerType) {
+        } else if (resultType1.getElementType() instanceof PointerType || resultType1.getElementType() instanceof FunctionType) {
             return LLVMI64InsertElementNodeGen.create(vector, element, index);
         }
         throw new AssertionError(resultType1);
@@ -431,7 +431,7 @@ public class BasicNodeFactory implements NodeFactory {
                 default:
                     throw new AssertionError(resultType1 + " not supported!");
             }
-        } else if (resultType instanceof PointerType) {
+        } else if (resultType instanceof PointerType || resultType instanceof FunctionType) {
             return LLVMI64ExtractElementNodeGen.create(vector, index);
         } else {
             throw new AssertionError(resultType + " not supported!");
@@ -442,25 +442,26 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createShuffleVector(Type llvmType, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
                     LLVMExpressionNode mask) {
         VectorType resultType = (VectorType) llvmType;
+        int resultLength = resultType.getNumberOfElements();
         if (resultType.getElementType() instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
                 case I8:
-                    return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleI8VectorNodeGen.create(resultLength, vector1, vector2, mask);
                 case I16:
-                    return LLVMShuffleI16VectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleI16VectorNodeGen.create(resultLength, vector1, vector2, mask);
                 case I32:
-                    return LLVMShuffleI32VectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleI32VectorNodeGen.create(resultLength, vector1, vector2, mask);
                 case I64:
-                    return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleI64VectorNodeGen.create(resultLength, vector1, vector2, mask);
                 case FLOAT:
-                    return LLVMShuffleFloatVectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleFloatVectorNodeGen.create(resultLength, vector1, vector2, mask);
                 case DOUBLE:
-                    return LLVMShuffleDoubleVectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleDoubleVectorNodeGen.create(resultLength, vector1, vector2, mask);
                 default:
                     throw new AssertionError(resultType);
             }
-        } else if (resultType.getElementType() instanceof PointerType) {
-            return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask);
+        } else if (resultType.getElementType() instanceof PointerType || resultType.getElementType() instanceof FunctionType) {
+            return LLVMShuffleI64VectorNodeGen.create(resultLength, vector1, vector2, mask);
         }
         throw new AssertionError(resultType);
     }
