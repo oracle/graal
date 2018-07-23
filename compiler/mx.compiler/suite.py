@@ -1793,7 +1793,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JMH_1_18",
-        "org.graalvm.compiler.microbenchmarks",
         "org.graalvm.compiler.truffle.compiler",
         "org.graalvm.compiler.truffle.pelang",
         "org.graalvm.compiler.truffle.runtime",
@@ -2302,7 +2301,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.virtual.bench",
         "org.graalvm.compiler.microbenchmarks",
-        "org.graalvm.compiler.truffle.pelang.benchmark",
       ],
       "distDependencies" : [
         "GRAAL_TEST",
@@ -2314,6 +2312,18 @@ suite = {
     "GRAAL_COMPILER_MICRO_BENCHMARKS" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.micro.benchmarks"],
+      "testDistribution" : True,
+      "maven": False,
+    },
+
+    "PELANG_BENCHMARKS" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.pelang.benchmark",
+      ],
+      "distDependencies" : [
+        "GRAAL",
+      ],
       "testDistribution" : True,
       "maven": False,
     }
