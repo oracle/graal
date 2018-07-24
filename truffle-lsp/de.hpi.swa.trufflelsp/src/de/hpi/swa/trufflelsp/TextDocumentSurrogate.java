@@ -33,6 +33,9 @@ public final class TextDocumentSurrogate {
             try {
                 actualLangId = Source.findLanguage(new File(uri));
             } catch (IOException e) {
+            }
+
+            if (actualLangId == null) {
                 actualLangId = langId;
             }
         }
