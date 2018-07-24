@@ -43,8 +43,6 @@ public abstract class LLVMVector {
 
     public abstract Type getElementType();
 
-    public abstract int getLength();
-
     public abstract Object getElement(int index);
 
     @TruffleBoundary

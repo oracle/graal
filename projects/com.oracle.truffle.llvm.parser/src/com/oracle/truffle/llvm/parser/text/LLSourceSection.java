@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.text;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -51,8 +50,8 @@ final class LLSourceSection extends LLVMSourceLocation.LazySourceSection {
 
     @Override
     @TruffleBoundary
-    public Path getPath() {
-        return Paths.get(section.getSource().getPath());
+    public String getPath() {
+        return Paths.get(section.getSource().getPath()).toString();
     }
 
     @Override

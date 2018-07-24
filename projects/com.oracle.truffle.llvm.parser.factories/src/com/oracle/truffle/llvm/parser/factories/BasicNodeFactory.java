@@ -455,7 +455,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (resultType.getElementType() instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
                 case I1:
-                    return LLVMShuffleI1VectorNodeGen.create(vector1, vector2, mask);
+                    return LLVMShuffleI1VectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case I8:
                     return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case I16:
