@@ -63,6 +63,7 @@
 int cSunMiscSignal_open();
 int cSunMiscSignal_close();
 int cSunMiscSignal_await();
+int cSunMiscSignal_post();
 int cSunMiscSignal_signalRangeCheck(int const index);
 long cSunMiscSignal_getCount(int const signal);
 long cSunMiscSignal_decrementCount(int const signal);
@@ -71,7 +72,6 @@ sig_t cSunMiscSignal_countingHandlerFunctionPointer();
 /* Private functions. */
 static void cSunMiscSignal_countingHandler(int const signal);
 static int haveSemaphore();
-static int cSunMiscSignal_post();
 static long cSunMiscSignal_atomicIncrement(volatile long* const address);
 static long cSunMiscSignal_atomicDecrementToZero(volatile long* const address);
 static int cSunMiscSignal_atomicCompareAndSwap_int(volatile int* const ptr, int const oldval, int const newval);
@@ -136,6 +136,14 @@ int cSunMiscSignal_close() {
 		}
 		cSunMiscSignal_semaphore = NULL;
 	}
+
+	/* Reset all signal counts */
+	int i = 0;
+	while (i < NSIG) {
+		cSunMiscSignal_table[i] = 0;
+		i += 1;
+	}
+
 	cSunMiscSignal_state = cSunMiscSignal_CLOSED;
 	return 0;
 }
@@ -149,6 +157,16 @@ int cSunMiscSignal_await() {
 			return 0;
 		}
 		return semWaitResult;
+	}
+	errno = EINVAL;
+	return -1;
+}
+
+/* Notify a thread waiting on the semaphore. */
+int cSunMiscSignal_post() {
+	if (haveSemaphore()) {
+		int const semPostResult = sem_post(cSunMiscSignal_semaphore);
+		return semPostResult;
 	}
 	errno = EINVAL;
 	return -1;
@@ -210,16 +228,6 @@ static long cSunMiscSignal_atomicIncrement(volatile long* const address) {
 /* Do I have a valid semaphore? */
 static int haveSemaphore() {
 	return ((cSunMiscSignal_semaphore != NULL) && (cSunMiscSignal_semaphore != SEM_FAILED));
-}
-
-/* Notify a thread waiting on the semaphore. */
-static int cSunMiscSignal_post() {
-	if (haveSemaphore()) {
-		int const semPostResult = sem_post(cSunMiscSignal_semaphore);
-		return semPostResult;
-	}
-	errno = EINVAL;
-	return -1;
 }
 
 /* Atomic subtract down to zero.  Returns the previous value. */

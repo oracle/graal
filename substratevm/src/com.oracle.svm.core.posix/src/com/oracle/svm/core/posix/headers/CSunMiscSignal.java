@@ -47,6 +47,10 @@ public class CSunMiscSignal {
     @CFunction("cSunMiscSignal_await")
     public static native int await();
 
+    /* Wait for a notification on the semaphore. */
+    @CFunction("cSunMiscSignal_post")
+    public static native int post();
+
     /* Returns 1 if the signal is in the range of the counters, 0 otherwise. */
     @CFunction("cSunMiscSignal_signalRangeCheck")
     public static native int signalRangeCheck(int signal);

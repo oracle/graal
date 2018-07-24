@@ -163,7 +163,7 @@ final class Util_jdk_internal_misc_Signal {
                         /* Report other failure. */
                         Log.log().string("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.create() failed.")
                                         .string("  errno: ").signed(openErrno).string("  ").string(Errno.strerror(openErrno)).newline();
-                        VMError.guarantee(false, "Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
+                        throw VMError.unsupportedFeature("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
                     }
 
                     /* Initialize the table of signal states. */
@@ -173,6 +173,7 @@ final class Util_jdk_internal_misc_Signal {
                     dispatchThread = new Thread(new DispatchThread());
                     dispatchThread.setDaemon(true);
                     dispatchThread.start();
+                    RuntimeSupport.getRuntimeSupport().addTearDownHook(() -> DispatchThread.interruptAndWakeUp(dispatchThread));
 
                     /* Initialization is complete. */
                     initialized = true;
@@ -274,6 +275,12 @@ final class Util_jdk_internal_misc_Signal {
             /* Nothing to do. */
         }
 
+        static void interruptAndWakeUp(Thread thread) {
+            thread.interrupt();
+            SignalState.wakeUp();
+
+        }
+
         /**
          * Wait to be notified that a signal has been raised in the C signal handler, then find any
          * that were raised and dispatch to the Java signal handler. The C signal handler increments
@@ -286,7 +293,9 @@ final class Util_jdk_internal_misc_Signal {
                 if (Thread.interrupted()) {
                     break;
                 }
-                /* Block waiting for one or more signals to be raised. Or a random wake up. */
+                /*
+                 * Block waiting for one or more signals to be raised. Or a wake up for termination.
+                 */
                 SignalState.await();
                 /* Find any counters that are non-zero. */
                 for (int index = 0; index < signalState.length; index += 1) {
@@ -350,6 +359,11 @@ final class Util_jdk_internal_misc_Signal {
         protected static void await() {
             final int awaitResult = CSunMiscSignal.await();
             PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.await(): CSunMiscSignal.await() failed.");
+        }
+
+        protected static void wakeUp() {
+            final int awaitResult = CSunMiscSignal.post();
+            PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.await(): CSunMiscSignal.post() failed.");
         }
 
         /*
