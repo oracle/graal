@@ -26,6 +26,7 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
@@ -77,4 +78,9 @@ public interface ReferenceAccess {
      * Returns true iff compressed references are available.
      */
     boolean haveCompressedReferences();
+
+    /**
+     * Returns the default compression encoding.
+     */
+    CompressEncoding getCompressEncoding();
 }

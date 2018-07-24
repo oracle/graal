@@ -471,10 +471,8 @@ public class NativeImageGenerator {
                     Platform platform = defaultPlatform(loader.getClassLoader());
 
                     TargetDescription target = createTarget(platform);
-                    CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.UseHeapBaseRegister.getValue() ? 1 : 0, 0);
                     ImageSingletons.add(Platform.class, platform);
                     ImageSingletons.add(TargetDescription.class, target);
-                    ImageSingletons.add(CompressEncoding.class, compressEncoding);
                     if (javaMainSupport != null) {
                         ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
                     }

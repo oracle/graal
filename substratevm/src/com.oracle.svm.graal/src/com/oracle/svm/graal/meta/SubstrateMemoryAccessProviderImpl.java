@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.meta;
 
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -64,29 +65,34 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
 
     @Override
     public JavaConstant readObjectConstant(Constant baseConstant, long displacement) {
-        return readObjectConstant(baseConstant, displacement, false);
+        return readObjectConstant(baseConstant, displacement, null);
     }
 
     @Override
-    public JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement) {
-        return readObjectConstant(baseConstant, displacement, true);
+    public JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement, CompressEncoding encoding) {
+        return readObjectConstant(baseConstant, displacement, encoding);
     }
 
-    private static JavaConstant readObjectConstant(Constant baseConstant, long displacement, boolean requireCompressed) {
+    private static JavaConstant readObjectConstant(Constant baseConstant, long displacement, CompressEncoding compressedEncoding) {
         SignedWord offset = WordFactory.signed(displacement);
 
         if (baseConstant instanceof SubstrateObjectConstant) { // always compressed (if enabled)
-            assert !requireCompressed || ReferenceAccess.singleton().haveCompressedReferences();
+            if (compressedEncoding != null) {
+                assert ReferenceAccess.singleton().haveCompressedReferences();
+                if (!compressedEncoding.equals(ReferenceAccess.singleton().getCompressEncoding())) {
+                    return null; // read with non-default compression not implemented
+                }
+            }
             Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
             assert baseObject != null : "SubstrateObjectConstant does not wrap null value";
             SubstrateMetaAccess metaAccess = SubstrateMetaAccess.singleton();
             ResolvedJavaType baseObjectType = metaAccess.lookupJavaType(baseObject.getClass());
             checkRead(JavaKind.Object, displacement, baseObjectType, baseObject);
             Object rawValue = BarrieredAccess.readObject(baseObject, offset);
-            return SubstrateObjectConstant.forObject(rawValue, requireCompressed);
+            return SubstrateObjectConstant.forObject(rawValue, (compressedEncoding != null));
         }
         if (baseConstant instanceof PrimitiveConstant) { // never compressed
-            assert !requireCompressed;
+            assert compressedEncoding == null;
 
             PrimitiveConstant prim = (PrimitiveConstant) baseConstant;
             if (!prim.getJavaKind().isNumericInteger()) {

@@ -294,7 +294,7 @@ public class HeapChunk {
 
             if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeaderCarefully(header)) {
                 /* Use the forwarded object to get the size. */
-                o = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(header);
+                o = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p);
             } else {
                 /* Use the object to get the size. */
                 o = p.toObject();
