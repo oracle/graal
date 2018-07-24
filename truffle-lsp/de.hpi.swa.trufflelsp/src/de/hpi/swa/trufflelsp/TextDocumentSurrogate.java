@@ -1,5 +1,7 @@
 package de.hpi.swa.trufflelsp;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,6 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -25,7 +28,15 @@ public final class TextDocumentSurrogate {
 
     public TextDocumentSurrogate(final URI uri, final String langId) {
         this.uri = uri;
-        this.langId = langId;
+        String actualLangId = Source.findLanguage(langId);
+        if (actualLangId == null) {
+            try {
+                actualLangId = Source.findLanguage(new File(uri));
+            } catch (IOException e) {
+                actualLangId = langId;
+            }
+        }
+        this.langId = actualLangId;
     }
 
     public TextDocumentSurrogate(final URI uri, final String langId, final String editorText) {

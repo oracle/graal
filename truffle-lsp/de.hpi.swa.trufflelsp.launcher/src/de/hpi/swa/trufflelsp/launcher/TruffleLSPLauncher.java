@@ -28,6 +28,7 @@ import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
 
 public class TruffleLSPLauncher extends AbstractLanguageLauncher {
+    private final ArrayList<String> lspargs = new ArrayList<>();
 
     public static void main(String[] args) {
         new TruffleLSPLauncher().launch(args);
@@ -39,9 +40,10 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
 
         for (int i = 0; i < arguments.size(); i++) {
             String arg = arguments.get(i);
-            switch (arg) {
-                default:
-                    unrecognized.add(arg);
+            if (arg.startsWith("--lsp")) {
+                lspargs.add(arg.split("--")[1]);
+            } else {
+                unrecognized.add(arg);
             }
         }
 
@@ -57,7 +59,16 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
             userDir = Paths.get(userDirString);
         }
 
-        Engine engine = Engine.newBuilder().option("lsp", "").option("lsp.Languagespecific.hacks", "true").build();
+        org.graalvm.polyglot.Engine.Builder newBuilder = Engine.newBuilder();
+        newBuilder.option("lsp", "").option("lsp.Languagespecific.hacks", "true");
+        for (String arg : lspargs) {
+            if (arg.indexOf('=') != -1) {
+                newBuilder.option(arg.split("=")[0], arg.split("=")[1]);
+            } else {
+                newBuilder.option(arg, "true");
+            }
+        }
+        Engine engine = newBuilder.build();
         Instrument instrument = engine.getInstruments().get("lsp");
         VirtualLSPFileProvider lspFileProvider = instrument.lookup(VirtualLSPFileProvider.class);
 

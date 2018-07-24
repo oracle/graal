@@ -98,8 +98,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private static final class SourceUriFilter implements SourcePredicate {
 
         public boolean test(Source source) {
-            return source.getName().startsWith("file://"); // TODO(ds) how to filter? tag is
-                                                           // STATEMENT && source.isAvailable()?
+            return source.getLanguage() != null && !source.isInternal();
         }
     }
 
