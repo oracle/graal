@@ -61,6 +61,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -75,6 +76,7 @@ import de.hpi.swa.trufflelsp.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
+import de.hpi.swa.trufflelsp.message.GetSignature;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
 public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRegistry {
@@ -85,6 +87,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private static final Node KEYS = Message.KEYS.createNode();
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
+    private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
 
     protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
     protected final Map<SourceSection, SourceSection> section2definition = new HashMap<>();
@@ -669,13 +672,12 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 }
                 CompletionItem completion = new CompletionItem(key);
                 // Inner scopes should be displayed first, so sort by priority and scopeCounter
-                // (the innermost scope
-                // has the lowest counter)
+                // (the innermost scope has the lowest counter)
                 completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
-                completion.setDetail(createCompletionDetail(object, langId, completion.getKind() == null));
-                completion.setDocumentation("in " + scopeEntry.getKey());
+                completion.setDetail(createCompletionDetail(entry.getKey(), object, langId));
+                completion.setDocumentation("in " + scopeEntry.getKey() + "\n" + LanguageSpecificHacks.getDocumentation(getMetaObject(langId, object), langId));
                 completions.getItems().add(completion);
             }
         }
@@ -729,38 +731,56 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             CompletionItem completion = new CompletionItem(entry.getKey().toString());
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
-            completion.setDetail(createCompletionDetail(value, langId, true));
+            completion.setDetail(createCompletionDetail(entry.getKey(), value, langId));
             completions.getItems().add(completion);
-            String documentation = "";
 
-            documentation = LanguageSpecificHacks.getSignatureForCallable(langId, entry, completion, documentation);
+            String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
 
-            documentation += "of meta object: " + metaObject.toString();
+            if (documentation == null) {
+                documentation = "of meta object: " + metaObject.toString();
+            }
             completion.setDocumentation(documentation);
         }
 
         return !map.isEmpty();
     }
 
-    private String createCompletionDetail(Object obj, String langId, boolean includeClass) {
-        Object metaObject = getMetaObject(langId, obj);
-        String metaInfo = metaObject != null ? metaObject.toString() : null;
-
-// if (obj instanceof TruffleObject) {
-// TruffleObject truffleObj = (TruffleObject) obj;
-// boolean isNull = ForeignAccess.sendIsExecutable(IS_NULL, truffleObj);
-// }
-
+    private String createCompletionDetail(Object key, Object obj, String langId) {
         String detailText = "";
-        if (metaInfo == null) {
-            detailText = includeClass ? obj.getClass().getName() : "";
+
+        TruffleObject truffleObj = null;
+        if (obj instanceof TruffleObject) {
+            truffleObj = (TruffleObject) obj;
         } else {
-            detailText = metaInfo;
+            truffleObj = (TruffleObject) LanguageSpecificHacks.getBoxedObject(obj, langId);
         }
+
+        if (truffleObj != null) {
+            try {
+                Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj, key);
+                List<Object> nameAndParams = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
+
+                detailText += nameAndParams.stream().reduce("", (a, b) -> a.toString() + b.toString());
+            } catch (InteropException e) {
+                if (!(e instanceof UnsupportedMessageException)) {
+                    e.printStackTrace(err);
+                }
+            }
+        }
+
         if (!detailText.isEmpty()) {
-            detailText += " -> ";
+            detailText += " ";
         }
-        return detailText + obj;
+
+        Object metaObject = getMetaObject(langId, obj);
+        String metaObjectString = LanguageSpecificHacks.formatMetaObject(metaObject, langId);
+        System.out.println(metaObjectString);
+        if (metaObjectString == null) {
+            metaObjectString = metaObject != null ? metaObject.toString() : "";
+        }
+        detailText += metaObjectString;
+
+        return detailText;
     }
 
     protected Object getMetaObject(String langId, Object object) {

@@ -2,16 +2,14 @@ package de.hpi.swa.trufflelsp;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Map.Entry;
+import java.util.Map;
 
-import org.eclipse.lsp4j.CompletionItem;
-import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
@@ -74,32 +72,6 @@ public class LanguageSpecificHacks {
         return false;
     }
 
-    public static String getSignatureForCallable(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
-        if (enableLanguageSpecificHacks) {
-            if (langId.equals("python")) {
-                try {
-                    Class<?> clazzPythonCallable = LanguageSpecificHacks.class.getClassLoader().loadClass("com.oracle.graal.python.builtins.objects.function.PythonCallable");
-                    if (clazzPythonCallable.isInstance(entry.getValue())) {
-                        Method methodGetArity = clazzPythonCallable.getMethod("getArity");
-                        Object arity = methodGetArity.invoke(entry.getValue());
-                        completion.setKind(CompletionItemKind.Method);
-                        Class<?> clazzArity = LanguageSpecificHacks.class.getClassLoader().loadClass("com.oracle.graal.python.builtins.objects.function.Arity");
-                        Method methodGetParameterIds = clazzArity.getMethod("getParameterIds");
-                        String[] parameterIds = (String[]) methodGetParameterIds.invoke(arity);
-                        if (parameterIds.length > 0) {
-                            String paramsString = Arrays.toString(parameterIds);
-                            return clazzArity.getMethod("getFunctionName").invoke(arity).toString() + "(" + paramsString.substring(1, paramsString.length() - 1) + ")\n";
-                        }
-                        return clazzArity.getMethod("getFunctionName").invoke(arity).toString() + "(" + clazzArity.getMethod("getMaxNumOfArgs").invoke(arity).toString() + " argument" +
-                                        (((Integer) clazzArity.getMethod("getMaxNumOfArgs").invoke(arity)) == 1 ? "" : "s") + ")\n";
-                    }
-                } catch (ClassNotFoundException | ClassCastException | NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                }
-            }
-        }
-        return documentation;
-    }
-
     public static boolean isObjectPropertyCompletionCharacter(String text, String langId) {
         if (enableLanguageSpecificHacks) {
             switch (langId) {
@@ -159,6 +131,31 @@ public class LanguageSpecificHacks {
                         }
                     }
                 } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                }
+            }
+        }
+        return null;
+    }
+
+    public static String formatMetaObject(Object metaObject, String langId) {
+        if (enableLanguageSpecificHacks) {
+            if (langId.equals("js")) {
+                if (metaObject instanceof TruffleObject) {
+                    // JSMetaObject has no nice toString() impl
+                    Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) metaObject);
+                    return "" + map.get("type");
+                }
+            }
+        }
+        return null;
+    }
+
+    public static String getDocumentation(Object metaObject, String langId) {
+        if (enableLanguageSpecificHacks) {
+            if (metaObject != null) {
+                if (langId.equals("js")) {
+                    Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) metaObject);
+                    return "" + (map.containsKey("description") ? map.get("description") : "");
                 }
             }
         }
