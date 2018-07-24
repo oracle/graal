@@ -103,7 +103,7 @@ public abstract class LLVMSourceLocation {
         this.sourceSection = sourceSection;
     }
 
-    public SourceSection getSourceSection() {
+    public synchronized SourceSection getSourceSection() {
         CompilerAsserts.neverPartOfCompilation();
         if (sourceSection == null && lazySourceSection != null) {
             sourceSection = lazySourceSection.get();
