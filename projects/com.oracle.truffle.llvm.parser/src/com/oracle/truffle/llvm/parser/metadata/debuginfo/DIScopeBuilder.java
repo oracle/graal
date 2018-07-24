@@ -56,6 +56,8 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySource
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -255,7 +257,7 @@ final class DIScopeBuilder {
                     section = source.createSection(section.getCharIndex(), length);
                 }
 
-            } catch (Throwable ignored) {
+            } catch (IllegalArgumentException ignored) {
                 // if the source file has changed since it was last compiled the line and column
                 // information in the metadata might not be accurate anymore
                 section = null;
@@ -486,14 +488,11 @@ final class DIScopeBuilder {
             if (file.exists() && file.canRead()) {
                 source = Source.newBuilder(file).mimeType(mimeType).name(file.getName()).build();
             }
-        } catch (Throwable ignored) {
+        } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
         }
 
         if (source == null) {
-            try {
-                source = Source.newBuilder(path).mimeType(MIMETYPE_UNAVAILABLE).name(path).build();
-            } catch (Throwable ignored) {
-            }
+            source = Source.newBuilder(path).mimeType(MIMETYPE_UNAVAILABLE).name(path).build();
         }
 
         sources.put(path, source);
