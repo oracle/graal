@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
@@ -51,12 +49,6 @@ public final class LLVMI8Vector extends LLVMVector {
 
     public byte getValue(int index) {
         return vector[index];
-    }
-
-    public LLVMI8Vector insert(byte element, int index) {
-        byte[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element;
-        return create(copyOf);
     }
 
     @Override

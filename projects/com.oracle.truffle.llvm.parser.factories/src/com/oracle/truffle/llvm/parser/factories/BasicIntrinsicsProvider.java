@@ -1713,7 +1713,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             }
         });
 
-        // double functions store their double results in the structure pass as arg1
+        // double functions store their double results in the structure that is passed as arg1
         factories.put("@__divdc3", new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {

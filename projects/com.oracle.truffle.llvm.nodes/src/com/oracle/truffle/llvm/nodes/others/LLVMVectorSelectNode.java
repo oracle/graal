@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.others;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -55,6 +56,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI1Vector doOp(LLVMI1Vector condition, LLVMI1Vector trueValue, LLVMI1Vector elseValue) {
             assert condition.getLength() == getVectorLength();
             boolean[] values = new boolean[getVectorLength()];
@@ -67,6 +69,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI8VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI8Vector doOp(LLVMI1Vector condition, LLVMI8Vector trueValue, LLVMI8Vector elseValue) {
             assert condition.getLength() == getVectorLength();
             byte[] values = new byte[getVectorLength()];
@@ -79,6 +82,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doOp(LLVMI1Vector condition, LLVMI16Vector trueValue, LLVMI16Vector elseValue) {
             assert condition.getLength() == getVectorLength();
             short[] values = new short[getVectorLength()];
@@ -91,6 +95,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI32VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doOp(LLVMI1Vector condition, LLVMI32Vector trueValue, LLVMI32Vector elseValue) {
             assert condition.getLength() == getVectorLength();
             int[] values = new int[getVectorLength()];
@@ -103,6 +108,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue) {
             assert condition.getLength() == getVectorLength();
             long[] values = new long[getVectorLength()];
@@ -115,6 +121,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMFloatVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMFloatVector doOp(LLVMI1Vector condition, LLVMFloatVector trueValue, LLVMFloatVector elseValue) {
             assert condition.getLength() == getVectorLength();
             float[] values = new float[getVectorLength()];
@@ -127,6 +134,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMDoubleVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMDoubleVector doOp(LLVMI1Vector condition, LLVMDoubleVector trueValue, LLVMDoubleVector elseValue) {
             assert condition.getLength() == getVectorLength();
             double[] values = new double[getVectorLength()];
@@ -139,6 +147,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAddressVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMPointerVector elseValue) {
             assert condition.getLength() == getVectorLength();
             LLVMPointer[] values = new LLVMPointer[getVectorLength()];

@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class LLVMBitcodeTypeHelper {
 
     public static LLVMExpressionNode createArithmeticInstruction(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type) {
-        return nodeFactory.createArithmetic(getArithmeticOperation(operator), type, lhs, rhs);
+        return nodeFactory.createArithmeticOp(getArithmeticOperation(operator), type, lhs, rhs);
     }
 
     private static ArithmeticOperation getArithmeticOperation(BinaryOperator operator) {

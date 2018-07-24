@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.nodes.vector;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -45,84 +47,67 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 @NodeChild(value = "left")
 @NodeChild(value = "right")
 @NodeChild(value = "mask", type = LLVMExpressionNode.class)
+@NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
-    protected final int resultLength;
+    protected abstract int getVectorLength();
 
-    public LLVMShuffleVectorNode(int resultLength) {
-        this.resultLength = resultLength;
-    }
+    protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
 
     public abstract static class LLVMShuffleI8VectorNode extends LLVMShuffleVectorNode {
-        public LLVMShuffleI8VectorNode(int resultLength) {
-            super(resultLength);
-        }
-
         @Specialization
         @ExplodeLoop
         protected LLVMI8Vector doI8Vector(LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            byte[] newValues = new byte[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            byte[] newValues = new byte[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMI8Vector.create(newValues);
         }
     }
 
     public abstract static class LLVMShuffleI16VectorNode extends LLVMShuffleVectorNode {
-        public LLVMShuffleI16VectorNode(int resultLength) {
-            super(resultLength);
-        }
-
         @Specialization
         @ExplodeLoop
         protected LLVMI16Vector doI8Vector(LLVMI16Vector leftVector, LLVMI16Vector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            short[] newValues = new short[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            short[] newValues = new short[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMI16Vector.create(newValues);
         }
     }
 
     public abstract static class LLVMShuffleI32VectorNode extends LLVMShuffleVectorNode {
-        public LLVMShuffleI32VectorNode(int resultLength) {
-            super(resultLength);
-        }
-
         @Specialization
         @ExplodeLoop
         protected LLVMI32Vector doI32Vector(LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            int[] newValues = new int[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            int[] newValues = new int[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMI32Vector.create(newValues);
         }
     }
 
     public abstract static class LLVMShuffleI64VectorNode extends LLVMShuffleVectorNode {
-        public LLVMShuffleI64VectorNode(int resultLength) {
-            super(resultLength);
-        }
-
         @Specialization
         @ExplodeLoop
         protected LLVMI64Vector doI64Vector(LLVMI64Vector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            long[] newValues = new long[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            long[] newValues = new long[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMI64Vector.create(newValues);
         }
@@ -130,50 +115,42 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            LLVMPointer[] newValues = new LLVMPointer[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMPointerVector.create(newValues);
         }
     }
 
     public abstract static class LLVMShuffleFloatVectorNode extends LLVMShuffleVectorNode {
-        public LLVMShuffleFloatVectorNode(int resultLength) {
-            super(resultLength);
-        }
-
         @Specialization
         @ExplodeLoop
         protected LLVMFloatVector doOp(LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            float[] newValues = new float[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            float[] newValues = new float[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMFloatVector.create(newValues);
         }
     }
 
     public abstract static class LLVMShuffleDoubleVectorNode extends LLVMShuffleVectorNode {
-        public LLVMShuffleDoubleVectorNode(int resultLength) {
-            super(resultLength);
-        }
-
         @Specialization
         @ExplodeLoop
         protected LLVMDoubleVector doOp(LLVMDoubleVector leftVector, LLVMDoubleVector rightVector, LLVMI32Vector maskVector) {
-            assert maskVector.getLength() == resultLength;
-            double[] newValues = new double[resultLength];
+            assert maskVector.getLength() == getVectorLength();
+            double[] newValues = new double[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
-            for (int i = 0; i < resultLength; i++) {
+            for (int i = 0; i < getVectorLength(); i++) {
                 int element = maskVector.getValue(i);
-                newValues[i] = element < leftVectorLength ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMDoubleVector.create(newValues);
         }

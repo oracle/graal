@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -52,12 +50,6 @@ public final class LLVMPointerVector extends LLVMVector {
 
     public LLVMPointer getValue(int index) {
         return vector[index];
-    }
-
-    public LLVMPointerVector insert(LLVMPointer element, int index) {
-        LLVMPointer[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element;
-        return create(copyOf);
     }
 
     @Override

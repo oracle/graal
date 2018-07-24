@@ -385,32 +385,32 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 public class BasicNodeFactory implements NodeFactory {
 
     @Override
-    public LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element,
-                    LLVMExpressionNode index) {
-        VectorType resultType1 = (VectorType) resultType;
-        if (resultType1.getElementType() instanceof PrimitiveType) {
-            switch (((PrimitiveType) resultType1.getElementType()).getPrimitiveKind()) {
+    public LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index) {
+        VectorType vectorType = (VectorType) resultType;
+        int vectorLength = vectorType.getNumberOfElements();
+        if (vectorType.getElementType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) vectorType.getElementType()).getPrimitiveKind()) {
                 case I1:
-                    return LLVMI1InsertElementNodeGen.create(vector, element, index);
+                    return LLVMI1InsertElementNodeGen.create(vector, element, index, vectorLength);
                 case I8:
-                    return LLVMI8InsertElementNodeGen.create(vector, element, index);
+                    return LLVMI8InsertElementNodeGen.create(vector, element, index, vectorLength);
                 case I16:
-                    return LLVMI16InsertElementNodeGen.create(vector, element, index);
+                    return LLVMI16InsertElementNodeGen.create(vector, element, index, vectorLength);
                 case I32:
-                    return LLVMI32InsertElementNodeGen.create(vector, element, index);
+                    return LLVMI32InsertElementNodeGen.create(vector, element, index, vectorLength);
                 case I64:
-                    return LLVMI64InsertElementNodeGen.create(vector, element, index);
+                    return LLVMI64InsertElementNodeGen.create(vector, element, index, vectorLength);
                 case FLOAT:
-                    return LLVMFloatInsertElementNodeGen.create(vector, element, index);
+                    return LLVMFloatInsertElementNodeGen.create(vector, element, index, vectorLength);
                 case DOUBLE:
-                    return LLVMDoubleInsertElementNodeGen.create(vector, element, index);
+                    return LLVMDoubleInsertElementNodeGen.create(vector, element, index, vectorLength);
                 default:
-                    throw new AssertionError("vector type " + resultType1 + "  not supported!");
+                    throw new AssertionError("vector type " + vectorType + "  not supported!");
             }
-        } else if (resultType1.getElementType() instanceof PointerType || resultType1.getElementType() instanceof FunctionType) {
-            return LLVMI64InsertElementNodeGen.create(vector, element, index);
+        } else if (vectorType.getElementType() instanceof PointerType || vectorType.getElementType() instanceof FunctionType) {
+            return LLVMI64InsertElementNodeGen.create(vector, element, index, vectorLength);
         }
-        throw new AssertionError(resultType1);
+        throw new AssertionError(vectorType);
     }
 
     @Override
@@ -450,22 +450,22 @@ public class BasicNodeFactory implements NodeFactory {
         if (resultType.getElementType() instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
                 case I8:
-                    return LLVMShuffleI8VectorNodeGen.create(resultLength, vector1, vector2, mask);
+                    return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case I16:
-                    return LLVMShuffleI16VectorNodeGen.create(resultLength, vector1, vector2, mask);
+                    return LLVMShuffleI16VectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case I32:
-                    return LLVMShuffleI32VectorNodeGen.create(resultLength, vector1, vector2, mask);
+                    return LLVMShuffleI32VectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case I64:
-                    return LLVMShuffleI64VectorNodeGen.create(resultLength, vector1, vector2, mask);
+                    return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case FLOAT:
-                    return LLVMShuffleFloatVectorNodeGen.create(resultLength, vector1, vector2, mask);
+                    return LLVMShuffleFloatVectorNodeGen.create(vector1, vector2, mask, resultLength);
                 case DOUBLE:
-                    return LLVMShuffleDoubleVectorNodeGen.create(resultLength, vector1, vector2, mask);
+                    return LLVMShuffleDoubleVectorNodeGen.create(vector1, vector2, mask, resultLength);
                 default:
                     throw new AssertionError(resultType);
             }
         } else if (resultType.getElementType() instanceof PointerType || resultType.getElementType() instanceof FunctionType) {
-            return LLVMShuffleI64VectorNodeGen.create(resultLength, vector1, vector2, mask);
+            return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask, resultLength);
         }
         throw new AssertionError(resultType);
     }
@@ -475,9 +475,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (resolvedResultType instanceof VectorType) {
             return createLoadVector((VectorType) resolvedResultType, loadTarget, ((VectorType) resolvedResultType).getNumberOfElements());
         } else {
-            int bits = resolvedResultType instanceof VariableBitWidthType
-                            ? resolvedResultType.getBitSize()
-                            : 0;
+            int bits = resolvedResultType instanceof VariableBitWidthType ? resolvedResultType.getBitSize() : 0;
             return createLoad(resolvedResultType, loadTarget, bits);
         }
     }
@@ -485,7 +483,6 @@ public class BasicNodeFactory implements NodeFactory {
     private static LLVMLoadNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
         Type elemType = resultType.getElementType();
         if (elemType instanceof PrimitiveType) {
-
             switch (((PrimitiveType) elemType).getPrimitiveKind()) {
                 case I1:
                     return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
@@ -900,7 +897,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (usePointerComparison(type)) {
             return createPointerComparison(operator, lhs, rhs);
         } else {
-            return createSimpleComparison(operator, lhs, rhs);
+            return createPrimitiveComparison(operator, lhs, rhs);
         }
     }
 
@@ -931,7 +928,7 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    private static LLVMAbstractCompareNode createSimpleComparison(CompareOperator operator, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
+    private static LLVMAbstractCompareNode createPrimitiveComparison(CompareOperator operator, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
         switch (operator) {
             case FP_FALSE:
                 return LLVMFalseCmpNodeGen.create(null, null);
@@ -1010,7 +1007,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createArithmetic(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right) {
+    public LLVMExpressionNode createArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right) {
         if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
             LLVMArithmeticNode arithmeticNode = createScalarArithmeticOp(op, vectorType.getElementType(), null, null);
@@ -1020,7 +1017,7 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    protected LLVMArithmeticNode createScalarArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right) throws AssertionError {
+    protected LLVMArithmeticNode createScalarArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right) {
         assert !(type instanceof VectorType);
         switch (op) {
             case ADD:
@@ -1079,27 +1076,28 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } else if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
+            int vectorLength = vectorType.getNumberOfElements();
             if (vectorType.getElementType() instanceof PrimitiveType) {
                 switch (((PrimitiveType) vectorType.getElementType()).getPrimitiveKind()) {
                     case I1:
-                        return LLVMLoadI1VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadI1VectorNodeGen.create(targetAddress, vectorLength);
                     case I8:
-                        return LLVMLoadI8VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadI8VectorNodeGen.create(targetAddress, vectorLength);
                     case I16:
-                        return LLVMLoadI16VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadI16VectorNodeGen.create(targetAddress, vectorLength);
                     case I32:
-                        return LLVMLoadI32VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadI32VectorNodeGen.create(targetAddress, vectorLength);
                     case I64:
-                        return LLVMLoadI64VectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadI64VectorNodeGen.create(targetAddress, vectorLength);
                     case FLOAT:
-                        return LLVMLoadFloatVectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadFloatVectorNodeGen.create(targetAddress, vectorLength);
                     case DOUBLE:
-                        return LLVMLoadDoubleVectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                        return LLVMLoadDoubleVectorNodeGen.create(targetAddress, vectorLength);
                     default:
                         throw new AssertionError(type);
                 }
             } else if (vectorType.getElementType() instanceof PointerType) {
-                return LLVMLoadPointerVectorNodeGen.create(targetAddress, vectorType.getNumberOfElements());
+                return LLVMLoadPointerVectorNodeGen.create(targetAddress, vectorLength);
             } else {
                 throw new AssertionError(type);
             }
@@ -1120,22 +1118,23 @@ public class BasicNodeFactory implements NodeFactory {
         if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;
             final Type elementType = vectorType.getElementType();
+            int vectorLength = vectorType.getNumberOfElements();
             if (elementType == PrimitiveType.I1) {
-                return LLVMI1VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMI1VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.I8) {
-                return LLVMI8VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMI8VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.I16) {
-                return LLVMI16VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMI16VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.I32) {
-                return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.I64) {
-                return LLVMI64VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMI64VectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.FLOAT) {
-                return LLVMFloatVectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMFloatVectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType == PrimitiveType.DOUBLE) {
-                return LLVMDoubleVectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMDoubleVectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else if (elementType instanceof PointerType) {
-                return LLVMAddressVectorSelectNodeGen.create(condition, trueValue, falseValue, vectorType.getNumberOfElements());
+                return LLVMAddressVectorSelectNodeGen.create(condition, trueValue, falseValue, vectorLength);
             } else {
                 throw new AssertionError("Cannot create vector select for type: " + type);
             }
