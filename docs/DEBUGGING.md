@@ -161,3 +161,22 @@ and attach the Netbeans debugger to this process.
 
 In Netbeans it is currently not possible to set breakpoints in non-Java source files.
 This is a limitation of the Netbeans IDE and will likely never be fixed.
+
+## FAQ
+
+### I am compiling my bitcode files on another system. Can the source-level debugger find the sources on my system?
+
+In general, debug information in LLVM bitcode files uses absolute paths to identify the
+location of source code. Usually this requires you to imitate the compiling system's
+directory structure in which your sources reside so that the debugger can find them.
+To work around this limitation, in C/C++ code you can use the `#line` preprocessor
+directive to manually define a path for the source file.
+
+    #line <current line number> <filename/path you want to be used by the debugger for the current file>
+
+You can also use a Sulong-specific format as filename to make the paths pseudo-relative.
+
+    "truffle-relpath://<property>//<relative path/filename>"
+
+Sulong will use the system property `property`, which you can set dynamically, to resolve
+`relative path/filename` against.

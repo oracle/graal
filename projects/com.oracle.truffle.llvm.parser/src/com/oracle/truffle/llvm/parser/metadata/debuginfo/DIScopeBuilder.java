@@ -53,8 +53,11 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySourceSection;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -63,6 +66,10 @@ import java.util.Map;
 final class DIScopeBuilder {
 
     private static final String MIMETYPE_PLAINTEXT = "text/plain";
+    private static final String MIMETYPE_UNAVAILABLE = "sulong/unavailable";
+
+    private static final String STDIN_FILENAME = "-";
+    private static final String STDIN_SOURCE_TEXT = "STDIN";
 
     static String getMimeType(String path) {
         if (path == null) {
@@ -90,36 +97,107 @@ final class DIScopeBuilder {
         }
     }
 
-    private Path getPath(MDFile file) {
-        if (paths.containsKey(file)) {
+    private static Path joinPaths(String prefix, String suffix) {
+        try {
+            return Paths.get(prefix, suffix);
+        } catch (InvalidPathException ipe) {
+            return null;
+        }
+    }
+
+    private static String asNormalizedPath(Path path) {
+        return path != null ? path.normalize().toString() : null;
+    }
+
+    private static final String RELPATH_PREFIX = "truffle-relpath://";
+    private static final String RELPATH_PROPERTY_SEPARATOR = "//";
+
+    private static String resolveAsRelativePath(String name) {
+        if (!name.startsWith(RELPATH_PREFIX)) {
+            return null;
+        }
+
+        final int propertyEndIndex = name.indexOf(RELPATH_PROPERTY_SEPARATOR, RELPATH_PREFIX.length());
+        if (propertyEndIndex == -1) {
+            throw new LLVMParserException(String.format("Invalid Source Path: \"%s\"", name));
+        }
+
+        final String property = name.substring(RELPATH_PREFIX.length(), propertyEndIndex);
+        if (property.isEmpty()) {
+            throw new LLVMParserException(String.format("Invalid Property: \"%s\" from \"%s\"", property, name));
+        }
+
+        final String pathPrefix = System.getProperty(property);
+        if (pathPrefix == null) {
+            throw new LLVMParserException(String.format("Property not found: \"%s\" from \"%s\"", property, name));
+        }
+
+        final int pathStartIndex = propertyEndIndex + RELPATH_PROPERTY_SEPARATOR.length();
+        if (pathStartIndex >= name.length()) {
+            throw new LLVMParserException(String.format("Invalid Source Path: \"%s\"", name));
+        }
+
+        final String relativePath = name.substring(pathStartIndex);
+        final Path path = joinPaths(pathPrefix, relativePath);
+        return asNormalizedPath(path);
+    }
+
+    private static String resolveAsAbsolutePath(String name, MDBaseNode directoryNode) {
+        if (STDIN_FILENAME.equals(name)) {
+            // stdin must not be resolved against the provided directory
+            return name;
+        }
+
+        Path path;
+        try {
+            path = Paths.get(name);
+        } catch (InvalidPathException ipe) {
+            return null;
+        }
+
+        if (path.isAbsolute()) {
+            return asNormalizedPath(path);
+        }
+
+        final String directory = MDString.getIfInstance(directoryNode);
+        if (directory != null) {
+            path = joinPaths(directory, name);
+        }
+
+        return asNormalizedPath(path);
+    }
+
+    private String getPath(MDFile file) {
+        if (file == null) {
+            return null;
+        } else if (paths.containsKey(file)) {
             return paths.get(file);
         }
-        Path path;
-        if (file == null) {
-            path = null;
-        } else {
-            String name = MDString.getIfInstance(file.getFile());
-            if (name == null) {
-                path = null;
-            } else {
-                path = Paths.get(name);
-                if (!path.isAbsolute()) {
-                    String directory = MDString.getIfInstance(file.getDirectory());
-                    if (directory != null) {
-                        path = Paths.get(directory, name);
-                    }
-                }
-                path = path.normalize();
-            }
+
+        final String name = MDString.getIfInstance(file.getFile());
+        if (name == null || name.isEmpty()) {
+            return null;
         }
+
+        String path = resolveAsRelativePath(name);
+
+        if (path == null) {
+            path = resolveAsAbsolutePath(name, file.getDirectory());
+        }
+
+        if (path == null) {
+            // create a fallback source for invalid names like "-"
+            path = name;
+        }
+
         paths.put(file, path);
         return path;
     }
 
     private final HashMap<MDBaseNode, LLVMSourceLocation> globalCache;
     private final HashMap<MDBaseNode, LLVMSourceLocation> localCache;
-    private final HashMap<MDFile, Path> paths;
-    private final HashMap<Path, Source> sources;
+    private final HashMap<MDFile, String> paths;
+    private final HashMap<String, Source> sources;
     private final MetadataValueList metadata;
     private final FileExtractor fileExtractor;
 
@@ -172,22 +250,22 @@ final class DIScopeBuilder {
 
     private static final class LazySourceSectionImpl extends LazySourceSection {
 
-        private final Path path;
+        private final String path;
         private final int line;
         private final int column;
-        private final HashMap<Path, Source> sources;
-        private final boolean extended;
+        private final HashMap<String, Source> sources;
+        private final boolean needsRange;
 
-        LazySourceSectionImpl(HashMap<Path, Source> sources, Path path, int line, int column, boolean extended) {
+        LazySourceSectionImpl(HashMap<String, Source> sources, String path, int line, int column, boolean needsRange) {
             this.sources = sources;
             this.path = path;
             this.line = line;
             this.column = column;
-            this.extended = extended;
+            this.needsRange = needsRange;
         }
 
-        public LazySourceSectionImpl extend() {
-            return extended ? this : new LazySourceSectionImpl(sources, path, line, column, true);
+        LazySourceSectionImpl extend() {
+            return needsRange ? this : new LazySourceSectionImpl(sources, path, line, column, true);
         }
 
         @Override
@@ -199,8 +277,12 @@ final class DIScopeBuilder {
 
             SourceSection section;
             try {
-                if (line < 0) {
+                if (MIMETYPE_UNAVAILABLE.equals(source.getMimeType())) {
+                    section = source.createUnavailableSection();
+
+                } else if (line < 0) {
                     section = source.createSection(0, source.getLength());
+
                 } else if (line == 0) {
                     // this happens e.g. for functions implicitly generated by llvm in section
                     // '.text.startup'
@@ -214,12 +296,12 @@ final class DIScopeBuilder {
                     section = source.createSection(line, column, 0);
                 }
 
-                if (extended) {
+                if (needsRange && section.isAvailable()) {
                     int length = source.getLength() - section.getCharIndex();
                     section = source.createSection(section.getCharIndex(), length);
                 }
 
-            } catch (Throwable ignored) {
+            } catch (IllegalArgumentException ignored) {
                 // if the source file has changed since it was last compiled the line and column
                 // information in the metadata might not be accurate anymore
                 section = null;
@@ -229,7 +311,7 @@ final class DIScopeBuilder {
         }
 
         @Override
-        public Path getPath() {
+        public String getPath() {
             return path;
         }
 
@@ -252,7 +334,6 @@ final class DIScopeBuilder {
         private LLVMSourceLocation.Kind kind;
         private String name;
         private LazySourceSectionImpl sourceSection;
-        private LLVMSourceLocation compileUnit;
 
         private MDFile file;
         private long line;
@@ -263,7 +344,6 @@ final class DIScopeBuilder {
             kind = LLVMSourceLocation.Kind.UNKNOWN;
             name = null;
             sourceSection = null;
-            compileUnit = null;
             file = null;
             line = -1;
             col = -1;
@@ -271,8 +351,8 @@ final class DIScopeBuilder {
 
         public LLVMSourceLocation build() {
             if (loc == null) {
-                sourceSection = buildSection(file, line, col);
-                loc = LLVMSourceLocation.create(parent, kind, name, sourceSection, compileUnit);
+                sourceSection = buildSection(file, line, col, false);
+                loc = LLVMSourceLocation.create(parent, kind, name, sourceSection, null);
             }
 
             return loc;
@@ -329,9 +409,9 @@ final class DIScopeBuilder {
             file = fileExtractor.extractFile(md);
             line = md.getLine();
             name = MDNameExtractor.getName(md.getName());
-            compileUnit = buildLocation(md.getCompileUnit());
+            final LLVMSourceLocation compileUnit = buildLocation(md.getCompileUnit());
 
-            sourceSection = buildSection(file, line, col);
+            sourceSection = buildSection(file, line, col, true);
             sourceSection = extend(sourceSection);
             loc = LLVMSourceLocation.create(parent, kind, name, sourceSection, compileUnit);
         }
@@ -346,7 +426,6 @@ final class DIScopeBuilder {
         @Override
         public void visit(MDCompileUnit md) {
             kind = LLVMSourceLocation.Kind.COMPILEUNIT;
-            file = fileExtractor.extractFile(md);
         }
 
         @Override
@@ -427,33 +506,37 @@ final class DIScopeBuilder {
     }
 
     private static LazySourceSectionImpl extend(LazySourceSectionImpl base) {
-        return base.extend();
+        return base == null ? null : base.extend();
     }
 
-    private LazySourceSectionImpl buildSection(MDFile file, long startLine, long startCol) {
-        if (file == null) {
-            return null;
-        }
-        Path path = getPath(file);
+    private LazySourceSectionImpl buildSection(MDFile file, long startLine, long startCol, boolean needsRange) {
+        String path = getPath(file);
         if (path == null) {
             return null;
         }
-        return new LazySourceSectionImpl(sources, path, (int) startLine, (int) startCol, false);
+        return new LazySourceSectionImpl(sources, path, (int) startLine, (int) startCol, needsRange);
     }
 
-    private static Source asSource(Map<Path, Source> sources, Path path) {
+    private static Source asSource(Map<String, Source> sources, String path) {
         if (sources.containsKey(path)) {
             return sources.get(path);
+        } else if (path == null) {
+            return null;
         }
 
-        String mimeType = getMimeType(path.toString());
+        String mimeType = getMimeType(path);
         Source source = null;
         try {
-            File file = path.toFile();
+            File file = Paths.get(path).toFile();
             if (file.exists() && file.canRead()) {
                 source = Source.newBuilder(file).mimeType(mimeType).name(file.getName()).build();
             }
-        } catch (Throwable ignored) {
+        } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
+        }
+
+        if (source == null) {
+            final String sourceText = STDIN_FILENAME.equals(path) ? STDIN_SOURCE_TEXT : path;
+            source = Source.newBuilder(sourceText).mimeType(MIMETYPE_UNAVAILABLE).name(sourceText).build();
         }
 
         sources.put(path, source);
