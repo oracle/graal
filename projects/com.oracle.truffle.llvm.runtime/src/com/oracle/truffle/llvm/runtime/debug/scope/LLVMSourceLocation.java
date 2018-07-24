@@ -35,7 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,7 +46,7 @@ public abstract class LLVMSourceLocation {
     public abstract static class LazySourceSection {
         public abstract SourceSection get();
 
-        public abstract Path getPath();
+        public abstract String getPath();
 
         public abstract int getLine();
 
@@ -75,14 +75,14 @@ public abstract class LLVMSourceLocation {
         FILE,
         GLOBAL,
         LOCAL,
-        UNKNOWN;
+        UNKNOWN
     }
 
     private final LLVMSourceLocation parent;
     private final Kind kind;
     private final String name;
 
-    private final LazySourceSection lazySourceSection;
+    private LazySourceSection lazySourceSection;
     private SourceSection sourceSection;
 
     private LLVMSourceLocation(LLVMSourceLocation parent, Kind kind, String name, LazySourceSection lazySourceSection) {
@@ -103,37 +103,68 @@ public abstract class LLVMSourceLocation {
 
     public SourceSection getSourceSection() {
         CompilerAsserts.neverPartOfCompilation();
-        if (sourceSection == null) {
-            sourceSection = lazySourceSection == null ? UNAVAILABLE_SECTION : lazySourceSection.get();
+        if (sourceSection == null && lazySourceSection != null) {
+            sourceSection = lazySourceSection.get();
+            if (sourceSection != null && sourceSection.isAvailable()) {
+                lazySourceSection = null;
+            }
         }
-        return sourceSection;
+        return sourceSection != null ? sourceSection : UNAVAILABLE_SECTION;
     }
 
-    public String describeFile() {
+    private static String asFileName(String path) {
         CompilerAsserts.neverPartOfCompilation();
-        return lazySourceSection != null ? lazySourceSection.getPath().getFileName().toString() : sourceSection.getSource().getName();
+        String filename = path;
+        try {
+            filename = Paths.get(path).getFileName().toString();
+        } catch (Throwable ignored) {
+        }
+        return filename;
+    }
+
+    private String describeFile() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (lazySourceSection != null) {
+            return asFileName(lazySourceSection.getPath());
+        } else if (sourceSection != null) {
+            return sourceSection.getSource().getName();
+        } else {
+            return UNAVAILABLE_SECTION.getSource().getName();
+        }
     }
 
     private int getLine() {
-        return lazySourceSection != null ? lazySourceSection.getLine() : sourceSection.getStartLine();
+        CompilerAsserts.neverPartOfCompilation();
+        if (lazySourceSection != null) {
+            return lazySourceSection.getLine();
+        } else if (sourceSection != null) {
+            return sourceSection.getStartLine();
+        } else {
+            return UNAVAILABLE_SECTION.getStartLine();
+        }
     }
 
     private int getColumn() {
-        return lazySourceSection != null ? lazySourceSection.getColumn() : sourceSection.getStartColumn();
+        CompilerAsserts.neverPartOfCompilation();
+        if (lazySourceSection != null) {
+            return lazySourceSection.getColumn();
+        } else if (sourceSection != null) {
+            return sourceSection.getStartColumn();
+        } else {
+            return UNAVAILABLE_SECTION.getStartColumn();
+        }
     }
 
     public String describeLocation() {
         CompilerAsserts.neverPartOfCompilation();
-        String sourceName = getSourceSection().getSource().getName();
-        StringBuilder sb = new StringBuilder(sourceName);
-        if (getSourceSection().isAvailable()) {
-            int line = getSourceSection().getStartLine();
-            int col = getSourceSection().getStartColumn();
-            if (line >= 0) {
-                sb.append(':').append(line);
-                if (col >= 0) {
-                    sb.append(':').append(col);
-                }
+        final String sourceName = describeFile();
+        final StringBuilder sb = new StringBuilder(sourceName);
+        final int line = getLine();
+        if (line >= 0) {
+            sb.append(':').append(line);
+            final int col = getColumn();
+            if (col >= 0) {
+                sb.append(':').append(col);
             }
         }
         return sb.toString();
