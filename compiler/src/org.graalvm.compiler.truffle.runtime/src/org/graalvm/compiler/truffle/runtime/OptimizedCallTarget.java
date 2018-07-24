@@ -694,19 +694,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         final int numberOfKnownCallNodes;
         final OptimizedDirectCallNode onlyCaller;
         synchronized (this) {
-            knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
-                @Override
-                public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
-                    OptimizedDirectCallNode callNode = nodeWeakReference.get();
-                    if (callNode == null) {
-                        return true;
-                    }
-                    if (callNode.getRootNode().getCallTarget() == OptimizedCallTarget.this) {
-                        return true;
-                    }
-                    return false;
-                }
-            });
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
