@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @see NativeAllocation.Queue#registerNativeAllocation
  */
-final class NativeAllocation extends PhantomReference<Object> {
+public final class NativeAllocation extends PhantomReference<Object> {
 
     private static final Queue globalQueue = new Queue();
 
@@ -143,14 +143,14 @@ final class NativeAllocation extends PhantomReference<Object> {
 
                 @Override
                 public void run() {
-                    for (;;) {
-                        try {
+                    try {
+                        for (;;) {
                             NativeAllocation alloc = (NativeAllocation) refQueue.remove();
                             alloc.queue.remove(alloc);
                             alloc.destructor.destroy();
-                        } catch (InterruptedException ex) {
-                            // ignore
                         }
+                    } catch (InterruptedException ex) {
+                        // ignore
                     }
                 }
             }, "nfi-gc");
@@ -162,6 +162,14 @@ final class NativeAllocation extends PhantomReference<Object> {
                 // nothing to do, another thread already started the GC thread
                 assert other != null && other != thread;
             }
+        }
+    }
+
+    public static void tearDown() {
+        Thread thread = gcThread.get();
+        if (thread != null) {
+            thread.interrupt();
+            gcThread.set(null);
         }
     }
 
