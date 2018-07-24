@@ -39,14 +39,14 @@ public abstract class PELangLocalWriteNode extends PELangExpressionNode {
 
     @Specialization(guards = "isLongOrIllegal(frame)")
     protected long writeLong(VirtualFrame frame, long value) {
-        getSlot().setKind(FrameSlotKind.Long);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
         return value;
     }
 
     @Specialization(replaces = {"writeLong"})
     protected Object write(VirtualFrame frame, Object value) {
-        getSlot().setKind(FrameSlotKind.Object);
+        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
         frame.setObject(getSlot(), value);
         return value;
     }
@@ -60,7 +60,8 @@ public abstract class PELangLocalWriteNode extends PELangExpressionNode {
      *            slot kind which can change.
      */
     protected boolean isLongOrIllegal(VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Long || getSlot().getKind() == FrameSlotKind.Illegal;
+        FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(getSlot());
+        return kind == FrameSlotKind.Long || kind == FrameSlotKind.Illegal;
     }
 
     public static PELangLocalWriteNode createNode(FrameSlot slot, PELangExpressionNode valueNode) {

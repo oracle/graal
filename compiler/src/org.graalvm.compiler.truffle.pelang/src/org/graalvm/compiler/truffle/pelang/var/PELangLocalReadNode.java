@@ -69,7 +69,7 @@ public abstract class PELangLocalReadNode extends PELangExpressionNode {
      *            slot kind which can change.
      */
     protected boolean isLong(VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Long;
+        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long;
     }
 
     public static PELangLocalReadNode createNode(FrameSlot slot) {
