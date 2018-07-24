@@ -340,6 +340,8 @@ public abstract class Accessor {
         public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
                         String[] applicationArguments, FileSystem fileSystem);
 
+        public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
+
         public abstract Object createEnvContext(Env localEnv);
 
         public abstract TruffleContext createTruffleContext(Object impl);
@@ -420,6 +422,7 @@ public abstract class Accessor {
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
+
     }
 
     public abstract static class InstrumentSupport {

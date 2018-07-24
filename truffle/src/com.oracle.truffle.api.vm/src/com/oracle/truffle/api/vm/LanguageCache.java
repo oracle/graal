@@ -69,7 +69,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final ClassLoader loader;
     private final TruffleLanguage<?> globalInstance;
     private String languageHome;
-    private volatile ContextPolicy cardinality;
+    private volatile ContextPolicy policy;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
 
     static {
@@ -93,7 +93,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         if (TruffleOptions.AOT) {
             initializeLanguageClass();
             assert languageClass != null;
-            assert cardinality != null;
+            assert policy != null;
         }
         this.globalInstance = null;
     }
@@ -125,7 +125,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.loader = instance.getClass().getClassLoader();
         this.languageClass = (Class<? extends TruffleLanguage<?>>) instance.getClass();
         this.languageHome = null;
-        this.cardinality = ContextPolicy.SHARED;
+        this.policy = ContextPolicy.SHARED;
         this.globalInstance = instance;
     }
 
@@ -294,9 +294,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return this.languageClass;
     }
 
-    ContextPolicy getCardinality() {
+    ContextPolicy getPolicy() {
         initializeLanguageClass();
-        return cardinality;
+        return policy;
     }
 
     @SuppressWarnings("unchecked")
@@ -308,9 +308,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         Class<?> loadedClass = Class.forName(className, true, loader);
                         Registration reg = loadedClass.getAnnotation(Registration.class);
                         if (reg == null) {
-                            cardinality = ContextPolicy.EXCLUSIVE;
+                            policy = ContextPolicy.EXCLUSIVE;
                         } else {
-                            cardinality = loadedClass.getAnnotation(Registration.class).contextPolicy();
+                            policy = loadedClass.getAnnotation(Registration.class).contextPolicy();
                         }
                         languageClass = (Class<? extends TruffleLanguage<?>>) loadedClass;
                     } catch (Exception e) {
