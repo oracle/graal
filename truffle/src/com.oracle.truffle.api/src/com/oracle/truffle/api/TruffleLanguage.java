@@ -40,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -68,7 +69,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.logging.Level;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1443,7 +1443,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Looks up a Java class in the top-most scope the host environmen. Throws an error if no
+         * Looks up a Java class in the top-most scope the host environment. Throws an error if no
          * symbol was found or the symbol was not accessible. Symbols might not be accessible if a
          * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
          * class filter} prevents access. The returned object is always a <code>TruffleObject</code>
@@ -1588,6 +1588,18 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             return AccessAPI.engineAccess().asHostException(exception);
+        }
+
+        /**
+         * Returns {@code true} if the argument is a host symbol, representing the constructor and
+         * static members of a Java class, as obtained by e.g. {@link #lookupHostSymbol}.
+         *
+         * @see #lookupHostSymbol(String)
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public boolean isHostSymbol(Object guestObject) {
+            return AccessAPI.javaAccess().isHostSymbol(guestObject);
         }
 
         /**

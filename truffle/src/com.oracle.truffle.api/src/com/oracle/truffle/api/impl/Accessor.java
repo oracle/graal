@@ -162,6 +162,8 @@ public abstract class Accessor {
         public abstract boolean isHostFunction(Object guestObject);
 
         public abstract String javaGuestFunctionToString(Object object);
+
+        public abstract boolean isHostSymbol(Object guestObject);
     }
 
     public abstract static class EngineSupport {
