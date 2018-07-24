@@ -52,10 +52,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import org.graalvm.polyglot.Context;
 import org.hamcrest.CoreMatchers;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -77,14 +74,15 @@ import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.LanguageSPIHostInteropTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
 
 /**
  * Important: This test was migrated to {@link ValueHostInteropTest} and
  * {@link LanguageSPIHostInteropTest}. Please maintain new tests there.
  */
-@SuppressWarnings("deprecation")
-public class JavaInteropTest {
+public class JavaInteropTest extends ProxyLanguageEnvTest {
 
     public class Data {
         public int x;
@@ -110,57 +108,52 @@ public class JavaInteropTest {
     private Data data;
     private XYPlus xyp;
     private boolean assertThisCalled;
-    private Context context;
 
-    @Before
-    public void initObjects() {
-        context = Context.create();
-        context.enter();
+    @Override
+    public void before() {
+        super.before();
         data = new Data();
-        obj = JavaInterop.asTruffleObject(data);
-        xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
-    }
-
-    @After
-    public void cleanup() {
-        context.leave();
-        context.close();
+        obj = asTruffleObject(data);
+        xyp = asJavaObject(XYPlus.class, obj);
     }
 
     @Test
     public void testRecursiveListMarshalling() throws UnknownIdentifierException, UnsupportedMessageException {
         List<GregorianCalendar> testList = Arrays.asList(new GregorianCalendar());
-        TruffleObject list = JavaInterop.asTruffleObject(testList);
+        TruffleObject list = asTruffleObject(testList);
         Object firstElement = ForeignAccess.sendRead(Message.READ.createNode(), list, 0);
-        assertTrue(JavaInterop.isJavaObject(firstElement));
+        assertTrue(env.isHostObject(firstElement));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void conversionToClassYieldsTheClass() {
-        TruffleObject expected = JavaInterop.asTruffleObject(Data.class);
+        TruffleObject expected = asTruffleObject(Data.class);
         TruffleObject computed = JavaInterop.toJavaClass(obj);
         assertEquals("Both class objects are the same", expected, computed);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void conversionToClass2() {
-        TruffleObject expected = JavaInterop.asTruffleObject(Class.class);
-        TruffleObject computed = JavaInterop.toJavaClass(JavaInterop.asTruffleObject(Data.class));
+        TruffleObject expected = asTruffleObject(Class.class);
+        TruffleObject computed = JavaInterop.toJavaClass(asTruffleHostSymbol(Data.class));
         assertEquals("Both class objects are the same", expected, computed);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void conversionToClassNull() {
-        TruffleObject expected = JavaInterop.asTruffleObject(null);
+        TruffleObject expected = asTruffleObject(null);
         TruffleObject computed = JavaInterop.toJavaClass(expected);
         assertEquals(expected, computed);
     }
 
     @Test
     public void nullAsJavaObject() {
-        TruffleObject nullObject = JavaInterop.asTruffleObject(null);
-        assertTrue(JavaInterop.isJavaObject(nullObject));
-        assertNull(JavaInterop.asJavaObject(nullObject));
+        TruffleObject nullObject = asTruffleObject(null);
+        assertTrue(env.isHostObject(nullObject));
+        assertNull(env.asHostObject(nullObject));
     }
 
     @Test
@@ -192,7 +185,7 @@ public class JavaInteropTest {
     @Test
     public void assertKeysAndProperties() {
         TruffleObject keys = sendKeys(obj);
-        List<Object> list = JavaInterop.asJavaObject(List.class, keys);
+        List<Object> list = asJavaObject(List.class, keys);
         assertThat(list, CoreMatchers.hasItems("x", "y", "arr", "value", "map", "dataMap", "data", "plus"));
 
         Method[] objectMethods = Object.class.getMethods();
@@ -201,7 +194,7 @@ public class JavaInteropTest {
         }
 
         keys = sendKeys(obj, true);
-        list = JavaInterop.asJavaObject(List.class, keys);
+        list = asJavaObject(List.class, keys);
         for (Method objectMethod : objectMethods) {
             assertThat("java.lang.Object methods", list, CoreMatchers.hasItem(objectMethod.getName()));
         }
@@ -215,9 +208,9 @@ public class JavaInteropTest {
         map.put("null", null);
         map.put("three", 3);
 
-        TruffleObject truffleMap = JavaInterop.asTruffleObject(map);
+        TruffleObject truffleMap = asTruffleObject(map);
         TruffleObject ret = sendKeys(truffleMap);
-        List<Object> list = JavaInterop.asJavaObject(List.class, ret);
+        List<Object> list = asJavaObject(List.class, ret);
         assertThat(list, CoreMatchers.not(CoreMatchers.anyOf(CoreMatchers.hasItem("one"), CoreMatchers.hasItem("null"), CoreMatchers.hasItem("three"))));
     }
 
@@ -272,7 +265,7 @@ public class JavaInteropTest {
         Object string = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
         Object clazz = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "getClass");
-        assertTrue(clazz instanceof TruffleObject && JavaInterop.asJavaObject((TruffleObject) clazz) == Data.class);
+        assertTrue(clazz instanceof TruffleObject && env.asHostObject(clazz) == Data.class);
         assertEquals(true, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "equals", obj));
         assertTrue(ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "hashCode") instanceof Integer);
 
@@ -300,8 +293,8 @@ public class JavaInteropTest {
 
     @Test
     public void accessAllProperties() {
-        TruffleObject pojo = JavaInterop.asTruffleObject(new PrivatePOJO());
-        Map<?, ?> map = JavaInterop.asJavaObject(Map.class, pojo);
+        TruffleObject pojo = asTruffleObject(new PrivatePOJO());
+        Map<?, ?> map = asJavaObject(Map.class, pojo);
         int cnt = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
@@ -317,9 +310,9 @@ public class JavaInteropTest {
 
     @Test
     public void accessAllPropertiesDirectly() {
-        TruffleObject pojo = JavaInterop.asTruffleObject(new PrivatePOJO());
+        TruffleObject pojo = asTruffleObject(new PrivatePOJO());
         TruffleObject result = sendKeys(pojo);
-        List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        List<?> propertyNames = asJavaObject(List.class, result);
         assertEquals("No props, class isn't public", 0, propertyNames.size());
     }
 
@@ -350,9 +343,9 @@ public class JavaInteropTest {
     @Test
     public void accessAllPublicPropertiesDirectly() {
         final PublicPOJO orig = new PublicPOJO();
-        final TruffleObject pojo = JavaInterop.asTruffleObject(orig);
+        final TruffleObject pojo = asTruffleObject(orig);
         TruffleObject result = sendKeys(pojo);
-        List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        List<?> propertyNames = asJavaObject(List.class, result);
         assertEquals("One instance field and one method", 2, propertyNames.size());
         assertEquals("One field x", "x", propertyNames.get(0));
         assertEquals("One method to access x", "readX", propertyNames.get(1));
@@ -369,9 +362,9 @@ public class JavaInteropTest {
     @SuppressWarnings("unchecked")
     @Test
     public void noNonStaticPropertiesForAClass() {
-        TruffleObject pojo = JavaInterop.asTruffleObject(PublicPOJO.class);
+        TruffleObject pojo = asTruffleHostSymbol(PublicPOJO.class);
         TruffleObject result = sendKeys(pojo);
-        List<Object> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        List<Object> propertyNames = asJavaObject(List.class, result);
         assertEquals("3 members: static field 'y', static method 'readY', plus 'class'", 3, propertyNames.size());
         assertThat(propertyNames, CoreMatchers.hasItems("y", "readY", "class"));
     }
@@ -465,7 +458,7 @@ public class JavaInteropTest {
     @Test
     public void indexJavaArrayWithNumberTypes() throws Exception {
         int[] a = new int[]{1, 2, 3};
-        TruffleObject truffleObject = JavaInterop.asTruffleObject(a);
+        TruffleObject truffleObject = asTruffleObject(a);
 
         assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
         assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
@@ -481,6 +474,7 @@ public class JavaInteropTest {
 
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void isPrimitive() {
         assertFalse(JavaInterop.isPrimitive(null));
@@ -498,57 +492,60 @@ public class JavaInteropTest {
         assertTrue(JavaInterop.isPrimitive(false));
     }
 
+    private boolean isJavaObject(Class<?> type, TruffleObject object) {
+        return env.isHostObject(object) && type.isInstance(env.asHostObject(object));
+    }
+
     @Test
     public void isJavaObject() {
-        // obj == JavaInterop.asJavaObject(new Data())
-        assertFalse(JavaInterop.isJavaObject(XYPlus.class, obj));
-        assertTrue(JavaInterop.isJavaObject(Data.class, obj));
-        assertTrue(JavaInterop.isJavaObject(Object.class, obj));
+        // obj == asJavaObject(new Data())
+        assertFalse(isJavaObject(XYPlus.class, obj));
+        assertTrue(isJavaObject(Data.class, obj));
+        assertTrue(isJavaObject(Object.class, obj));
         // assert that asJavaObject unwraps the object if isJavaObject returns true
-        assertTrue(JavaInterop.asJavaObject(Data.class, obj) == data);
-        assertTrue(JavaInterop.asJavaObject(Object.class, obj) == data);
+        assertTrue(asJavaObject(Data.class, obj) == data);
+        assertTrue(asJavaObject(Object.class, obj) == data);
     }
 
     @Test
     public void truffleValue() {
         Object object = new Object();
-        // Test that asTruffleValue() returns the same as asTruffleObject() for non-primitive types:
-        assertEquals(JavaInterop.asTruffleObject(object), JavaInterop.asTruffleValue(object));
-        assertEquals(this.obj, JavaInterop.asTruffleValue(this.data));
+        assertEquals(env.asGuestValue(object), env.asGuestValue(object));
+        assertEquals(this.obj, env.asGuestValue(this.data));
         // Test that asTruffleValue() returns non-wraped primitives:
         object = 42;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = (byte) 42;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = (short) 42;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = 424242424242L;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = 42.42;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = true;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = "42";
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = '4';
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
         object = true;
-        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        assertTrue(env.asGuestValue(object) == object);
     }
 
     @Test
     public void isNull() {
         assertTrue(isNull(null));
-        assertFalse(isNull(JavaInterop.asTruffleObject(new Object())));
-        assertTrue(isNull(JavaInterop.asTruffleObject(null)));
+        assertFalse(isNull(asTruffleObject(new Object())));
+        assertTrue(isNull(asTruffleObject(null)));
     }
 
     @Test
     public void isArray() {
         assertFalse(isArray(null));
-        assertFalse(isNull(JavaInterop.asTruffleObject(new Object())));
+        assertFalse(isNull(asTruffleObject(new Object())));
         int[] a = new int[]{1, 2, 3};
-        TruffleObject truffleArray = JavaInterop.asTruffleObject(a);
+        TruffleObject truffleArray = asTruffleObject(a);
         assertTrue(isArray(truffleArray));
     }
 
@@ -558,6 +555,7 @@ public class JavaInteropTest {
         assertFalse("TruffleObject isn't functional interface", is);
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
         Method isFunctionaInterface = Class.forName(JavaInterop.class.getName().concat("Reflect")).getDeclaredMethod("isFunctionalInterface", Class.class);
         ReflectionUtils.setAccessible(isFunctionaInterface, true);
@@ -581,9 +579,9 @@ public class JavaInteropTest {
     @Test
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
         assertTrue("yes, it is", isJavaFunctionalInterface(FunctionalWithObjectMethodOverrides.class));
-        TruffleObject object = JavaInterop.asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
+        TruffleObject object = asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
         TruffleObject keysObject = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
-        List<?> keyList = JavaInterop.asJavaObject(List.class, keysObject);
+        List<?> keyList = asJavaObject(List.class, keysObject);
         assertArrayEquals(new Object[]{"call"}, keyList.toArray());
         assertEquals(42, ForeignAccess.sendExecute(Message.createExecute(1).createNode(), object, 42));
     }
@@ -605,7 +603,7 @@ public class JavaInteropTest {
     @Test
     public void executableAsFunctionalInterface1() throws Exception {
         TruffleObject executable = new FunctionObject();
-        FunctionalWithDefaults f = JavaInterop.asJavaFunction(FunctionalWithDefaults.class, executable);
+        FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(50, f.call((Object) 13, (Object) 37));
         f.hashCode();
         f.equals(null);
@@ -615,7 +613,7 @@ public class JavaInteropTest {
     @Test
     public void executableAsFunctionalInterface2() throws Exception {
         TruffleObject executable = new FunctionObject();
-        FunctionalWithObjectMethodOverrides f = JavaInterop.asJavaFunction(FunctionalWithObjectMethodOverrides.class, executable);
+        FunctionalWithObjectMethodOverrides f = context.asValue(executable).as(FunctionalWithObjectMethodOverrides.class);
         assertEquals(50, f.call(13, 37));
         f.hashCode();
         f.equals(null);
@@ -627,7 +625,7 @@ public class JavaInteropTest {
     public void executableAsFunctionalInterface3() throws Exception {
         assumeTrue("JDK 9 or later", System.getProperty("java.specification.version").compareTo("1.9") >= 0);
         TruffleObject executable = new FunctionObject();
-        FunctionalWithDefaults f = JavaInterop.asJavaFunction(FunctionalWithDefaults.class, executable);
+        FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(42, f.call((Object) 13, (Object) 29));
         assertEquals(50, f.call(13, 37));
         f.hashCode();
@@ -678,41 +676,41 @@ public class JavaInteropTest {
     @Test
     public void isBoxed() {
         assertFalse(isBoxed(null));
-        assertFalse(isBoxed(JavaInterop.asTruffleObject(new Object())));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject(42)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject((byte) 0x42)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject((short) 42)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject(4242424242424242L)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject(42.42f)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject(42.42)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject("42")));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject('4')));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject(true)));
-        assertTrue(isBoxed(JavaInterop.asTruffleObject(false)));
+        assertFalse(isBoxed(asTruffleObject(new Object())));
+        assertTrue(isBoxed(asTruffleObject(42)));
+        assertTrue(isBoxed(asTruffleObject((byte) 0x42)));
+        assertTrue(isBoxed(asTruffleObject((short) 42)));
+        assertTrue(isBoxed(asTruffleObject(4242424242424242L)));
+        assertTrue(isBoxed(asTruffleObject(42.42f)));
+        assertTrue(isBoxed(asTruffleObject(42.42)));
+        assertTrue(isBoxed(asTruffleObject("42")));
+        assertTrue(isBoxed(asTruffleObject('4')));
+        assertTrue(isBoxed(asTruffleObject(true)));
+        assertTrue(isBoxed(asTruffleObject(false)));
     }
 
     @Test
     public void unbox() {
         assertNull(unbox(null));
-        assertNull(unbox(JavaInterop.asTruffleObject(new Object())));
-        assertEquals(42, unbox(JavaInterop.asTruffleObject(42)));
-        assertEquals((byte) 42, unbox(JavaInterop.asTruffleObject((byte) 42)));
-        assertEquals((short) 42, unbox(JavaInterop.asTruffleObject((short) 42)));
-        assertEquals(4242424242424242L, unbox(JavaInterop.asTruffleObject(4242424242424242L)));
-        assertEquals(42.42f, unbox(JavaInterop.asTruffleObject(42.42f)));
-        assertEquals(42.42, unbox(JavaInterop.asTruffleObject(42.42)));
-        assertEquals("42", unbox(JavaInterop.asTruffleObject("42")));
-        assertEquals('4', unbox(JavaInterop.asTruffleObject('4')));
-        assertEquals(true, unbox(JavaInterop.asTruffleObject(true)));
-        assertEquals(false, unbox(JavaInterop.asTruffleObject(false)));
+        assertNull(unbox(asTruffleObject(new Object())));
+        assertEquals(42, unbox(asTruffleObject(42)));
+        assertEquals((byte) 42, unbox(asTruffleObject((byte) 42)));
+        assertEquals((short) 42, unbox(asTruffleObject((short) 42)));
+        assertEquals(4242424242424242L, unbox(asTruffleObject(4242424242424242L)));
+        assertEquals(42.42f, unbox(asTruffleObject(42.42f)));
+        assertEquals(42.42, unbox(asTruffleObject(42.42)));
+        assertEquals("42", unbox(asTruffleObject("42")));
+        assertEquals('4', unbox(asTruffleObject('4')));
+        assertEquals(true, unbox(asTruffleObject(true)));
+        assertEquals(false, unbox(asTruffleObject(false)));
     }
 
     @Test
     public void notUnboxable() {
         Node unboxNode = Message.UNBOX.createNode();
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(null)), UnsupportedMessageException.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(new Object())), UnsupportedMessageException.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, JavaInterop.asTruffleObject(Object.class)), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, asTruffleObject(null)), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, asTruffleObject(new Object())), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, asTruffleObject(Object.class)), UnsupportedMessageException.class);
     }
 
     @Test
@@ -776,7 +774,7 @@ public class JavaInteropTest {
 
         TruffleObject aobj = new ArrayTruffleObject(100);
         testArrayObject(aobj, 100);
-        aobj = JavaInterop.asTruffleObject(new String[]{"A", "B", "C", "D"});
+        aobj = asTruffleObject(new String[]{"A", "B", "C", "D"});
         testArrayObject(aobj, 4);
     }
 
@@ -823,19 +821,19 @@ public class JavaInteropTest {
     public void internalKeys() {
         // All non-internal
         InternalPropertiesObject ipobj = new InternalPropertiesObject(0);
-        Map map = JavaInterop.asJavaObject(Map.class, ipobj);
+        Map map = asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p1, p2, p3, p4, p5, p6]");
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         // All internal
         ipobj = new InternalPropertiesObject(-1);
-        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        map = asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[]");
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         // Combinations:
         ipobj = new InternalPropertiesObject(0b1101000);
-        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        map = asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p1, p2, p4]");
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p2")));
@@ -844,7 +842,7 @@ public class JavaInteropTest {
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         ipobj = new InternalPropertiesObject(0b1001110);
-        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        map = asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p4, p5]");
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
@@ -852,7 +850,7 @@ public class JavaInteropTest {
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
         ipobj = new InternalPropertiesObject(0b0101010);
-        map = JavaInterop.asJavaObject(Map.class, ipobj);
+        map = asJavaObject(Map.class, ipobj);
         checkInternalKeys(map, "[p2, p4, p6]");
         assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p2")));
@@ -864,7 +862,7 @@ public class JavaInteropTest {
 
     @Test
     public void keyInfoJavaObject() {
-        TruffleObject d = JavaInterop.asTruffleObject(new TestJavaObject());
+        TruffleObject d = asTruffleObject(new TestJavaObject());
         int keyInfo = getKeyInfo(d, "nnoonnee");
         assertFalse(KeyInfo.isExisting(keyInfo));
         keyInfo = getKeyInfo(d, "aField");
@@ -883,7 +881,7 @@ public class JavaInteropTest {
 
     @Test
     public void testSystemMethod() throws InteropException {
-        TruffleObject system = JavaInterop.asTruffleObject(System.class);
+        TruffleObject system = asTruffleHostSymbol(System.class);
         Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
@@ -898,61 +896,61 @@ public class JavaInteropTest {
 
     @Test
     public void testExecuteClass() {
-        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
         assertThrowsExceptionWithCause(() -> ForeignAccess.sendExecute(Message.createExecute(0).createNode(), hashMapClass), UnsupportedMessageException.class);
         assertFalse("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), hashMapClass));
     }
 
     @Test
     public void testNewClass() throws InteropException {
-        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
         Object hashMap = ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass);
         assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
-        assertTrue(JavaInterop.isJavaObject(HashMap.class, (TruffleObject) hashMap));
+        assertTrue(isJavaObject(HashMap.class, (TruffleObject) hashMap));
     }
 
     @Test
     public void testNewObject() throws InteropException {
-        TruffleObject objectClass = JavaInterop.asTruffleObject(Object.class);
+        TruffleObject objectClass = asTruffleHostSymbol(Object.class);
         Object object = ForeignAccess.sendNew(Message.createNew(0).createNode(), objectClass);
         assertThat(object, CoreMatchers.instanceOf(TruffleObject.class));
-        assertTrue(JavaInterop.isJavaObject(Object.class, (TruffleObject) object));
+        assertTrue(isJavaObject(Object.class, (TruffleObject) object));
     }
 
     @Test
     public void testNewArray() throws InteropException {
-        TruffleObject longArrayClass = JavaInterop.asTruffleObject(long[].class);
+        TruffleObject longArrayClass = asTruffleHostSymbol(long[].class);
         Object longArray = ForeignAccess.sendNew(Message.createNew(1).createNode(), longArrayClass, 4);
         assertThat(longArray, CoreMatchers.instanceOf(TruffleObject.class));
-        assertTrue(JavaInterop.isJavaObject(long[].class, (TruffleObject) longArray));
+        assertTrue(isJavaObject(long[].class, (TruffleObject) longArray));
         assertEquals(4, message(Message.GET_SIZE, (TruffleObject) longArray));
     }
 
     @Test
     public void testException() throws InteropException {
-        TruffleObject iterator = JavaInterop.asTruffleObject(Collections.emptyList().iterator());
+        TruffleObject iterator = asTruffleObject(Collections.emptyList().iterator());
         try {
             ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), iterator, "next");
             fail("expected an exception but none was thrown");
         } catch (InteropException ex) {
             throw ex;
         } catch (Exception ex) {
-            assertTrue("expected HostException but was: " + ex.getClass(), JavaInterop.isHostException(ex));
-            assertThat(JavaInterop.asHostException(ex), CoreMatchers.instanceOf(NoSuchElementException.class));
+            assertTrue("expected HostException but was: " + ex.getClass(), env.isHostException(ex));
+            assertThat(env.asHostException(ex), CoreMatchers.instanceOf(NoSuchElementException.class));
         }
     }
 
     @Test
     public void testException2() throws InteropException {
-        TruffleObject hashMapClass = JavaInterop.asTruffleObject(HashMap.class);
+        TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
         try {
             ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass, -1);
             fail("expected an exception but none was thrown");
         } catch (InteropException ex) {
             throw ex;
         } catch (Exception ex) {
-            assertTrue("expected HostException but was: " + ex.getClass(), JavaInterop.isHostException(ex));
-            assertThat(JavaInterop.asHostException(ex), CoreMatchers.instanceOf(IllegalArgumentException.class));
+            assertTrue("expected HostException but was: " + ex.getClass(), env.isHostException(ex));
+            assertThat(env.asHostException(ex), CoreMatchers.instanceOf(IllegalArgumentException.class));
         }
 
         try {
@@ -965,7 +963,7 @@ public class JavaInteropTest {
     @Test
     public void testRemoveMessage() {
         data.arr = new String[]{"Hello", "World", "!"};
-        TruffleObject truffleList = JavaInterop.asTruffleObject(new ArrayList<>(Arrays.asList(data.arr)));
+        TruffleObject truffleList = asTruffleObject(new ArrayList<>(Arrays.asList(data.arr)));
         assertEquals(3, message(Message.GET_SIZE, truffleList));
         assertEquals(true, message(Message.REMOVE, truffleList, 1));
         assertEquals(2, message(Message.GET_SIZE, truffleList));
@@ -990,7 +988,7 @@ public class JavaInteropTest {
         Map<String, String> map = new HashMap<>();
         map.put("a", "aa");
         map.put("b", "bb");
-        TruffleObject truffleMap = JavaInterop.asTruffleObject(map);
+        TruffleObject truffleMap = asTruffleObject(map);
         assertEquals(true, message(Message.REMOVE, truffleMap, "a"));
         assertEquals(1, map.size());
         try {
@@ -1005,7 +1003,7 @@ public class JavaInteropTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testRemoveList() {
-        List<Integer> list = JavaInterop.asJavaObject(List.class, new ArrayTruffleObject(100));
+        List<Integer> list = asJavaObject(List.class, new ArrayTruffleObject(100));
         assertEquals(100, list.size());
         Integer value = list.remove(10);
         assertEquals(Integer.valueOf(90), value);
@@ -1054,7 +1052,7 @@ public class JavaInteropTest {
             char c = (char) ('a' + i);
             map.put(new String(new char[]{c}), new String(new char[]{c, c}));
         }
-        Map<String, String> jmap = JavaInterop.asJavaObject(Map.class, new RemoveKeysObject(map));
+        Map<String, String> jmap = asJavaObject(Map.class, new RemoveKeysObject(map));
         assertEquals(size, jmap.size());
         String value = jmap.remove("a");
         assertEquals("aa", value);
@@ -1156,7 +1154,7 @@ public class JavaInteropTest {
         public int aField = 10;
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
     private static void checkInternalKeys(Map map, String nonInternalKeys) {
         Map mapWithInternalKeys = JavaInterop.getMapView(map, true);
         Map mapWithoutInternalKeys = JavaInterop.getMapView(map, false);
@@ -1174,6 +1172,7 @@ public class JavaInteropTest {
 
         int x();
 
+        @SuppressWarnings("deprecation")
         @MethodMessage(message = "WRITE")
         void x(int v);
 
@@ -1290,7 +1289,7 @@ public class JavaInteropTest {
 
                 public Object access(NoKeyInfoObject receiver) {
                     assert receiver != null;
-                    return JavaInterop.asTruffleObject(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
+                    return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
                 }
             }
         }
@@ -1403,7 +1402,7 @@ public class JavaInteropTest {
                             return removed;
                         }
                     };
-                    return JavaInterop.asTruffleObject(list);
+                    return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(list);
                 }
             }
 
@@ -1544,7 +1543,7 @@ public class JavaInteropTest {
                 public Object access(InternalPropertiesObject receiver, boolean includeInternal) {
                     assert receiver != null;
                     if (includeInternal) {
-                        return JavaInterop.asTruffleObject(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
+                        return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
                     } else {
                         List<String> propertyNames = new ArrayList<>();
                         for (int i = 1; i <= 6; i++) {
@@ -1552,7 +1551,7 @@ public class JavaInteropTest {
                                 propertyNames.add("p" + i);
                             }
                         }
-                        return JavaInterop.asTruffleObject(propertyNames.toArray());
+                        return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(propertyNames.toArray());
                     }
                 }
             }

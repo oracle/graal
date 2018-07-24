@@ -259,7 +259,6 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 flag_suitename_map = collections.OrderedDict([
     ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
     ('js', ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
-    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER', 'TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'], ['TRUFFLERUBY-ZIP'])),
     ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON_GRAALVM_SUPPORT', 'GRAALPYTHON-ZIP'])),
     ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))  # JLINE?
 ])
@@ -472,7 +471,6 @@ GraalTags = Tags([
     'helloworld',
     'maven',
     'js',
-    'ruby',
     'python',
 ])
 
@@ -548,13 +546,6 @@ def svm_gate_body(args, tasks):
                 js = build_js(native_image, debug_gr_8964=debug_gr_8964)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
-
-        with Task('Ruby', tasks, tags=[GraalTags.ruby]) as t:
-            if t:
-                # Debug GR-9912 on Ruby gate runs.
-                debug_gr_9912 = 16
-                ruby = build_ruby(native_image, debug_gr_8964=debug_gr_8964, debug_gr_9912=debug_gr_9912)
-                test_ruby([ruby, 'release'])
 
         with Task('Python', tasks, tags=[GraalTags.python]) as t:
             if t:
@@ -665,37 +656,6 @@ def test_python_smoke(args):
         if out.data != expected_output + "\n":
             mx.abort("Python smoke test failed")
         mx.log("Python binary says: " + out.data)
-
-def build_ruby(native_image, debug_gr_8964=False, debug_gr_9912=0):
-    truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # ruby depends on sulong
-    suite.import_suite('tools', in_subdir=True) # ruby depends on tools
-    truffle_language_ensure('ruby', debug_gr_8964=debug_gr_8964)
-
-    # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
-    ruby_bin_dir = join(suite_native_image_root(), 'languages', 'ruby', 'bin')
-    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
-
-def test_ruby(args):
-    if len(args) < 1 or len(args) > 2:
-        mx.abort('mx svm_test_ruby <ruby_svm_image_path> [<debug_build>=release]')
-
-    aot_bin = args[0]
-    debug_build = args[1] if len(args) >= 2 else 'release'
-
-    truffleruby_suite = truffle_language_ensure('ruby', extract=False)
-
-    suite_dir = truffleruby_suite.dir
-    distsToExtract = ['TRUFFLERUBY-ZIP', 'TRUFFLERUBY-SPECS']
-    lib = join(suite_dir, 'lib')
-    if not exists(lib):
-        # Binary suite, extract the distributions
-        for dist_name in distsToExtract:
-            mx.log('Extract distribution {} to {}'.format(dist_name, suite_dir))
-            dist = mx.distribution(dist_name)
-            with tarfile.open(dist.path, 'r:') as archive:
-                archive.extractall(suite_dir)
-
-    mx.command_function('ruby_testdownstream_aot')([aot_bin, 'spec', debug_build])
 
 mx_gate.add_gate_runner(suite, svm_gate_body)
 

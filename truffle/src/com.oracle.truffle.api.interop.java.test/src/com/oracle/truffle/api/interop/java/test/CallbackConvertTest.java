@@ -24,14 +24,14 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+
 import org.junit.Test;
 
-@SuppressWarnings("deprecation")
-public final class CallbackConvertTest {
+import com.oracle.truffle.api.interop.TruffleObject;
+
+public final class CallbackConvertTest extends ProxyLanguageEnvTest {
     private char ch;
 
     public void callback(char v) {
@@ -48,40 +48,40 @@ public final class CallbackConvertTest {
 
     @Test
     public void callWithIntTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
+        TruffleObject truffle = asTruffleObject(this);
+        CallWithInt callback = asJavaObject(CallWithInt.class, truffle);
         callback.callback(32);
         assertEquals(' ', ch);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void callWithHugeIntTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
+        TruffleObject truffle = asTruffleObject(this);
+        CallWithInt callback = asJavaObject(CallWithInt.class, truffle);
         callback.callback(Integer.MAX_VALUE / 2);
         fail("Should thrown an exception as the int value is too big for char: " + ch);
     }
 
     @Test
     public void callWithCharTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithChar callback = JavaInterop.asJavaObject(CallWithChar.class, truffle);
+        TruffleObject truffle = asTruffleObject(this);
+        CallWithChar callback = asJavaObject(CallWithChar.class, truffle);
         callback.callback('A');
         assertEquals('A', ch);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void callWithNegativeNumberTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
+        TruffleObject truffle = asTruffleObject(this);
+        CallWithInt callback = asJavaObject(CallWithInt.class, truffle);
         callback.callback(-32);
         assertEquals("The call will not get here", 0, ch);
     }
 
     @Test
     public void callWithPositiveNumberTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
+        TruffleObject truffle = asTruffleObject(this);
+        CallWithInt callback = asJavaObject(CallWithInt.class, truffle);
         callback.callback(65504);
         assertEquals(65504, ch);
     }
