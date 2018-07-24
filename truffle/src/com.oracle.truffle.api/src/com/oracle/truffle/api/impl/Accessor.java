@@ -337,12 +337,10 @@ public abstract class Accessor {
 
         public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object vmObject);
 
-        public abstract Env createEnv(Object vmObject, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem);
+        public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
+                        String[] applicationArguments, FileSystem fileSystem);
 
-        public abstract boolean isCompatible(Env env, TruffleLanguage<?> language);
-
-        public abstract void persistEnvSPI(Env env, TruffleLanguage<?> language);
+        public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
         public abstract Object createEnvContext(Env localEnv);
 

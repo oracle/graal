@@ -265,19 +265,17 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
             Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
             PolyglotContextConfig envConfig = context.config;
-
-            Env localEnv = LANGUAGE.createEnv(PolyglotLanguageContext.this, envConfig.out,
-                            envConfig.err,
-                            envConfig.in,
-                            creatorConfig,
-                            envConfig.getOptionValues(language),
-                            envConfig.getApplicationArguments(language),
-                            envConfig.fileSystem);
-            PolyglotLanguageInstance lang = language.allocateInstance(localEnv);
+            PolyglotLanguageInstance lang = language.allocateInstance(envConfig.getOptionValues(language));
             try {
                 synchronized (context) {
                     if (lazy == null) {
-                        LANGUAGE.persistEnvSPI(localEnv, lang.spi);
+                        Env localEnv = LANGUAGE.createEnv(PolyglotLanguageContext.this, lang.spi, envConfig.out,
+                                        envConfig.err,
+                                        envConfig.in,
+                                        creatorConfig,
+                                        envConfig.getOptionValues(language),
+                                        envConfig.getApplicationArguments(language),
+                                        envConfig.fileSystem);
                         Lazy localLazy = new Lazy(lang);
                         PolyglotValue.createDefaultValueCaches(PolyglotLanguageContext.this, localLazy.valueCache);
                         checkThreadAccess(localEnv);

@@ -57,6 +57,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -632,17 +633,13 @@ public class LanguageSPITest {
             return new MultiContextLanguageOptionDescriptors();
         }
 
-        private volatile Integer dummyOption;
-
         @Override
-        protected boolean isCompatible(Env env) {
-            return env.getOptions().get(DummyOption).equals(dummyOption);
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(DummyOption).equals(newOptions.get(DummyOption));
         }
 
         @Override
         protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-            assert dummyOption == null || env.getOptions().get(DummyOption).equals(dummyOption);
-            dummyOption = env.getOptions().get(DummyOption);
             wrapper = false;
             executionIndex++;
             createContextCalled.add(env);

@@ -39,7 +39,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
@@ -161,19 +160,18 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return instance;
     }
 
-    PolyglotLanguageInstance allocateInstance(TruffleLanguage.Env env) {
+    PolyglotLanguageInstance allocateInstance(OptionValuesImpl newOptions) {
         PolyglotLanguageInstance instance;
         synchronized (engine) {
-            assert VMAccessor.LANGUAGE.getLanguage(env) == null;
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     instance = createInstance();
                     break;
                 case REUSE:
-                    instance = fetchFromPool(env, false);
+                    instance = fetchFromPool(newOptions, false);
                     break;
                 case SHARED:
-                    instance = fetchFromPool(env, true);
+                    instance = fetchFromPool(newOptions, true);
                     break;
                 default:
                     throw new AssertionError("Unknown context cardinality.");
@@ -182,12 +180,12 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return instance;
     }
 
-    private PolyglotLanguageInstance fetchFromPool(Env env, boolean shared) {
+    private PolyglotLanguageInstance fetchFromPool(OptionValuesImpl newOptions, boolean shared) {
         synchronized (engine) {
             PolyglotLanguageInstance foundInstance = null;
             for (Iterator<PolyglotLanguageInstance> iterator = instancePool.iterator(); iterator.hasNext();) {
                 PolyglotLanguageInstance instance = iterator.next();
-                if (VMAccessor.LANGUAGE.isCompatible(env, instance.spi)) {
+                if (instance.areOptionsCompatible(newOptions)) {
                     if (!shared) {
                         iterator.remove();
                     }
@@ -197,6 +195,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             }
             if (foundInstance == null) {
                 foundInstance = createInstance();
+                foundInstance.claim(newOptions);
                 if (shared) {
                     instancePool.addFirst(foundInstance);
                 }

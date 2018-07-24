@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
@@ -474,18 +475,9 @@ public class ContextPolicyTest {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
-        volatile Integer dummy;
-
         @Override
-        protected boolean isCompatible(Env env) {
-            return env.getOptions().get(Dummy).equals(dummy);
-        }
-
-        @Override
-        protected Env createContext(Env env) {
-            assert dummy == null || env.getOptions().get(Dummy).equals(dummy);
-            this.dummy = env.getOptions().get(Dummy);
-            return super.createContext(env);
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(Dummy).equals(newOptions.get(Dummy));
         }
 
         @Override
@@ -499,18 +491,9 @@ public class ContextPolicyTest {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
-        volatile Integer dummy;
-
         @Override
-        protected boolean isCompatible(Env env) {
-            return env.getOptions().get(Dummy).equals(dummy);
-        }
-
-        @Override
-        protected Env createContext(Env env) {
-            assert dummy == null || env.getOptions().get(Dummy).equals(dummy);
-            this.dummy = env.getOptions().get(Dummy);
-            return super.createContext(env);
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(Dummy).equals(newOptions.get(Dummy));
         }
 
         @Override

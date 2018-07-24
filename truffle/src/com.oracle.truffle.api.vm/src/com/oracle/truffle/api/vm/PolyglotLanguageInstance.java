@@ -36,6 +36,8 @@ final class PolyglotLanguageInstance {
 
     private final PolyglotSourceCache sourceCache;
 
+    private volatile OptionValuesImpl firstOptionValues;
+
     PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
         try {
@@ -48,6 +50,22 @@ final class PolyglotLanguageInstance {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
         this.sourceCache = new PolyglotSourceCache();
+    }
+
+    boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {
+        OptionValuesImpl firstOptions = this.firstOptionValues;
+        if (firstOptionValues == null) {
+            return true;
+        } else {
+            return VMAccessor.LANGUAGE.areOptionsCompatible(spi, firstOptions, newOptionValues);
+        }
+    }
+
+    void claim(OptionValuesImpl optionValues) {
+        assert Thread.holdsLock(language.engine);
+        if (this.firstOptionValues == null) {
+            this.firstOptionValues = optionValues;
+        }
     }
 
     void initializeMultiContext() {
