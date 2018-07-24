@@ -26,11 +26,13 @@ package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -39,6 +41,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 
 @Platforms({Platform.DARWIN.class})
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
@@ -58,6 +61,60 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
              */
             return "/var/tmp";
         }
+    }
+
+    private static CoreFoundation.CFStringRef toCFStringRef(String str) {
+        CoreFoundation.CFMutableStringRef stringRef = CoreFoundation.CFStringCreateMutable(WordFactory.nullPointer(), WordFactory.zero());
+        if (stringRef.isNull()) {
+            throw new OutOfMemoryError("native heap");
+        }
+        char[] charArray = str.toCharArray();
+        try (PinnedObject pathPin = PinnedObject.create(charArray)) {
+            PointerBase addressOfCharArray = pathPin.addressOfArrayElement(0);
+            CoreFoundation.CFStringAppendCharacters(stringRef, addressOfCharArray, WordFactory.signed(charArray.length));
+        }
+        return stringRef;
+    }
+
+    private static String fromCFStringRef(CoreFoundation.CFStringRef cfstr) {
+        int length = (int) CoreFoundation.CFStringGetLength(cfstr);
+        char[] chars = new char[length];
+        for (int i = 0; i < length; ++i) {
+            chars[i] = CoreFoundation.CFStringGetCharacterAtIndex(cfstr, i);
+        }
+        return String.valueOf(chars);
+    }
+
+    private static volatile String osVersionValue = null;
+
+    @Override
+    protected String osVersionValue() {
+        if (osVersionValue != null) {
+            return osVersionValue;
+        }
+
+        /* On OSX Java returns the ProductVersion instead of kernel release info. */
+        CoreFoundation.CFDictionaryRef dict = CoreFoundation._CFCopyServerVersionDictionary();
+        if (dict.isNull()) {
+            dict = CoreFoundation._CFCopySystemVersionDictionary();
+        }
+        if (dict.isNull()) {
+            return osVersionValue = "Unknown";
+        }
+        CoreFoundation.CFStringRef dictKeyRef = toCFStringRef("MacOSXProductVersion");
+        CoreFoundation.CFStringRef dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
+        CoreFoundation.CFRelease(dictKeyRef);
+        if (dictValue.isNull()) {
+            dictKeyRef = toCFStringRef("ProductVersion");
+            dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
+            CoreFoundation.CFRelease(dictKeyRef);
+        }
+        if (dictValue.isNull()) {
+            return osVersionValue = "Unknown";
+        }
+        osVersionValue = fromCFStringRef(dictValue);
+        CoreFoundation.CFRelease(dictValue);
+        return osVersionValue;
     }
 }
 

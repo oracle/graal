@@ -74,7 +74,7 @@ public class CoreFoundation {
 
     /** Number of 16-bit Unicode characters in the string. */
     @CFunction
-    public static native SignedWord CFStringGetLength(CFStringRef theString);
+    public static native long CFStringGetLength(CFStringRef theString);
 
     /**
      * Extracting the contents of the string. For obtaining multiple characters, calling
@@ -88,4 +88,19 @@ public class CoreFoundation {
 
     @CFunction
     public static native void CFRelease(PointerBase cf);
+
+    public interface CFDictionaryRef extends PointerBase {
+    }
+
+    @CFunction
+    public static native CFDictionaryRef _CFCopyServerVersionDictionary();
+
+    @CFunction
+    public static native CFDictionaryRef _CFCopySystemVersionDictionary();
+
+    @CFunction
+    public static native CFStringRef CFDictionaryGetValue(CFDictionaryRef theDict, CFStringRef key);
+
+    @CFunction
+    public static native char CFStringGetCharacterAtIndex(CFStringRef theString, long idx);
 }

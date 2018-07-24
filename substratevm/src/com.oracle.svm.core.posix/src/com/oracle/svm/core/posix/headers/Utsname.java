@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
+// Checkstyle: stop
+
 /** Declarations of method from <sys/utsname.h>. */
 @CContext(PosixDirectives.class)
 public class Utsname {
