@@ -37,6 +37,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.Utsname;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
@@ -67,5 +68,14 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
         } else {
             throw new java.lang.Error("Properties init: Could not determine current working directory.");
         }
+    }
+
+    @Override
+    protected String osVersionValue() {
+        Utsname.utsname name = StackValue.get(Utsname.utsname.class);
+        if (Utsname.uname(name) >= 0) {
+            return CTypeConversion.toJavaString(name.release());
+        }
+        return "Unknown";
     }
 }

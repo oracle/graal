@@ -22,50 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+/** Declarations of method from <sys/utsname.h>. */
+@CContext(PosixDirectives.class)
+public class Utsname {
+    @CStruct(addStructKeyword = true)
+    public interface utsname extends PointerBase {
+        @CFieldAddress
+        CCharPointer sysname();
 
-@Platforms(Platform.WINDOWS.class)
-public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
+        @CFieldAddress
+        CCharPointer nodename();
 
-    @Override
-    protected String userNameValue() {
-        return "somebody";
+        @CFieldAddress
+        CCharPointer release();
+
+        @CFieldAddress
+        CCharPointer version();
+
+        @CFieldAddress
+        CCharPointer machine();
     }
 
-    @Override
-    protected String userHomeValue() {
-        return "C:\\Users\\somebody";
-    }
-
-    @Override
-    protected String userDirValue() {
-        return "C:\\Users\\somebody";
-    }
-
-    @Override
-    protected String tmpdirValue() {
-        return "C:\\Temp";
-    }
-
-    @Override
-    protected String osVersionValue() {
-        return "Unknown";
-    }
-}
-
-@Platforms(Platform.WINDOWS.class)
-@AutomaticFeature
-class WindowsSystemPropertiesFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
-    }
+    /**
+     * int uname(struct utsname *name);
+     */
+    @CFunction
+    public static native int uname(utsname name);
 }

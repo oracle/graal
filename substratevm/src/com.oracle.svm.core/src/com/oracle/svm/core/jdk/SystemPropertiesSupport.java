@@ -79,6 +79,7 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.home", this::userHomeValue);
         lazyRuntimeValues.put("user.dir", this::userDirValue);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
+        lazyRuntimeValues.put("os.version", this::osVersionValue);
 
         lazyRuntimeValues.put(ImageInfo.PROPERTY_IMAGE_CODE_KEY, () -> ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
     }
@@ -136,4 +137,6 @@ public abstract class SystemPropertiesSupport {
     protected abstract String userDirValue();
 
     protected abstract String tmpdirValue();
+
+    protected abstract String osVersionValue();
 }
