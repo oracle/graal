@@ -151,17 +151,26 @@ def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
     root_dir = join(svmbuild_dir(suite), 'native-image-root')
-    if not exists(root_dir):
-        layout_native_image_root(root_dir)
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
-    if exists(rev_file_name):
-        with open(rev_file_name, 'r') as rev_file:
-            if rev_file.readline() != rev_value:
-                mx.abort('Outdated {}.\nRemove directory and try again.'.format(root_dir))
-    else:
+    def write_rev_file():
+        mkpath(root_dir)
         with open(rev_file_name, 'w') as rev_file:
             rev_file.write(rev_value)
+    if exists(root_dir):
+        try:
+            with open(rev_file_name, 'r') as rev_file:
+                rev_mismatch = rev_file.readline() != rev_value
+        except:
+            rev_mismatch = True
+        if rev_mismatch:
+            mx.warn('Rebuilding native-image-root')
+            remove_tree(root_dir)
+            layout_native_image_root(root_dir)
+            write_rev_file()
+    else:
+        layout_native_image_root(root_dir)
+        write_rev_file()
     return root_dir
 
 def native_image_distributions():
