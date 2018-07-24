@@ -209,19 +209,13 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
         @Specialization
         protected double doI64Vector(LLVMI64Vector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size";
             return Double.longBitsToDouble(from.getValue(0));
         }
 
         @Specialization
         protected double doDoubleVector(LLVMDoubleVector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size";
             return from.getValue(0);
         }
     }

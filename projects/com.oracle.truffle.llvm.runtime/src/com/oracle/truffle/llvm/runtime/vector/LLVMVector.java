@@ -31,6 +31,9 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
+/**
+ * Vectors are immutable value types.
+ */
 @ValueType
 public abstract class LLVMVector {
     public abstract int getLength();

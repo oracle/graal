@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -209,19 +208,13 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
 
         @Specialization
         protected int doI32Vector(LLVMI32Vector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size";
             return from.getValue(0);
         }
 
         @Specialization
         protected int doFloatVector(LLVMFloatVector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size!";
             return Float.floatToIntBits(from.getValue(0));
         }
     }

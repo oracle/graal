@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
@@ -43,6 +44,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI1Vector doI1Vector(LLVMI1Vector from) {
+            assert from.getLength() == getVectorLength();
             return from;
         }
     }
@@ -50,9 +52,11 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
     public abstract static class LLVMUnsignedCastToI8VectorNode extends LLVMToVectorNode {
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI8Vector doI1Vector(LLVMI1Vector from) {
-            final byte[] vector = new byte[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final byte[] vector = new byte[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = (byte) (from.getValue(i) ? 1 : 0);
             }
             return LLVMI8Vector.create(vector);
@@ -60,6 +64,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI8Vector doI8Vector(LLVMI8Vector from) {
+            assert from.getLength() == getVectorLength();
             return from;
         }
     }
@@ -67,18 +72,22 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
     public abstract static class LLVMUnsignedCastToI16VectorNode extends LLVMToVectorNode {
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doI1Vector(LLVMI1Vector from) {
-            final short[] vector = new short[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final short[] vector = new short[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = (short) (from.getValue(i) ? 1 : 0);
             }
             return LLVMI16Vector.create(vector);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doI8Vector(LLVMI8Vector from) {
-            final short[] vector = new short[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final short[] vector = new short[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = (short) (from.getValue(i) & LLVMExpressionNode.I8_MASK);
             }
             return LLVMI16Vector.create(vector);
@@ -86,6 +95,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI16Vector doI16Vector(LLVMI16Vector from) {
+            assert from.getLength() == getVectorLength();
             return from;
         }
     }
@@ -93,27 +103,33 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
     public abstract static class LLVMUnsignedCastToI32VectorNode extends LLVMToVectorNode {
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doI1Vector(LLVMI1Vector from) {
-            final int[] vector = new int[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final int[] vector = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) ? 1 : 0;
             }
             return LLVMI32Vector.create(vector);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doI8Vector(LLVMI8Vector from) {
-            final int[] vector = new int[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final int[] vector = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I8_MASK;
             }
             return LLVMI32Vector.create(vector);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doI16Vector(LLVMI16Vector from) {
-            final int[] vector = new int[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final int[] vector = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I16_MASK;
             }
             return LLVMI32Vector.create(vector);
@@ -121,6 +137,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI32Vector doI32Vector(LLVMI32Vector from) {
+            assert from.getLength() == getVectorLength();
             return from;
         }
     }
@@ -128,36 +145,44 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
     public abstract static class LLVMUnsignedCastToI64VectorNode extends LLVMToVectorNode {
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doI1Vector(LLVMI1Vector from) {
-            final long[] vector = new long[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) ? 1 : 0;
             }
             return LLVMI64Vector.create(vector);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doI8Vector(LLVMI8Vector from) {
-            final long[] vector = new long[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I8_MASK;
             }
             return LLVMI64Vector.create(vector);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doI16Vector(LLVMI16Vector from) {
-            final long[] vector = new long[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I16_MASK;
             }
             return LLVMI64Vector.create(vector);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doI32Vector(LLVMI32Vector from) {
-            final long[] vector = new long[from.getLength()];
-            for (int i = 0; i < from.getLength(); i++) {
+            assert from.getLength() == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I32_MASK;
             }
             return LLVMI64Vector.create(vector);
@@ -165,6 +190,7 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
 
         @Specialization
         protected LLVMI64Vector doI64Vector(LLVMI64Vector from) {
+            assert from.getLength() == getVectorLength();
             return from;
         }
     }

@@ -44,10 +44,6 @@ public final class LLVMPointerVector extends LLVMVector {
         this.vector = vector;
     }
 
-    public LLVMPointer[] getValues() {
-        return vector;
-    }
-
     public LLVMPointer getValue(int index) {
         return vector[index];
     }

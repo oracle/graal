@@ -43,10 +43,6 @@ public final class LLVMI8Vector extends LLVMVector {
         this.vector = vector;
     }
 
-    public byte[] getValues() {
-        return vector;
-    }
-
     public byte getValue(int index) {
         return vector[index];
     }

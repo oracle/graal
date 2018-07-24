@@ -43,10 +43,6 @@ public final class LLVMI1Vector extends LLVMVector {
         this.vector = vector;
     }
 
-    public boolean[] getValues() {
-        return vector;
-    }
-
     public boolean getValue(int index) {
         return vector[index];
     }

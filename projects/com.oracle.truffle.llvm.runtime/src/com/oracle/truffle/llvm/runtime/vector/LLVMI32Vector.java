@@ -43,10 +43,6 @@ public final class LLVMI32Vector extends LLVMVector {
         this.vector = vector;
     }
 
-    public int[] getValues() {
-        return vector;
-    }
-
     public int getValue(int index) {
         return vector[index];
     }

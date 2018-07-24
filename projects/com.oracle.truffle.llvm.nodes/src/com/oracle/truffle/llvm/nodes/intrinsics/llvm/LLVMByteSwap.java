@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -66,15 +67,15 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapVI16 extends LLVMBuiltin {
-
+    public abstract static class LLVMByteSwapI16Vector extends LLVMBuiltin {
         private final int vectorLen;
 
-        protected LLVMByteSwapVI16(int vectorLen) {
+        protected LLVMByteSwapI16Vector(int vectorLen) {
             this.vectorLen = vectorLen;
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doI16Vector(LLVMI16Vector vector) {
             short[] result = new short[vectorLen];
             for (int i = 0; i < vectorLen; i++) {
@@ -85,15 +86,15 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapVI32 extends LLVMBuiltin {
-
+    public abstract static class LLVMByteSwapI32Vector extends LLVMBuiltin {
         private final int vectorLen;
 
-        protected LLVMByteSwapVI32(int vectorLen) {
+        protected LLVMByteSwapI32Vector(int vectorLen) {
             this.vectorLen = vectorLen;
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doI32Vector(LLVMI32Vector vector) {
             int[] result = new int[vectorLen];
             for (int i = 0; i < vectorLen; i++) {
@@ -104,15 +105,15 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapVI64 extends LLVMBuiltin {
-
+    public abstract static class LLVMByteSwapI64Vector extends LLVMBuiltin {
         private final int vectorLen;
 
-        protected LLVMByteSwapVI64(int vectorLen) {
+        protected LLVMByteSwapI64Vector(int vectorLen) {
             this.vectorLen = vectorLen;
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI64Vector doI32Vector(LLVMI64Vector vector) {
             long[] result = new long[vectorLen];
             for (int i = 0; i < vectorLen; i++) {

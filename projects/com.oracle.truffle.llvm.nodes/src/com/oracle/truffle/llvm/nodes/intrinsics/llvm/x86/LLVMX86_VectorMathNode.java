@@ -42,16 +42,14 @@ public abstract class LLVMX86_VectorMathNode {
     public abstract static class LLVMX86_VectorSquareRootNode extends LLVMBuiltin { // mm_sqrt_pd
         @Specialization(guards = "vector.getLength() == 2")
         protected LLVMDoubleVector doM128(LLVMDoubleVector vector) {
-            double[] input = vector.getValues();
-            return LLVMDoubleVector.create(new double[]{Math.sqrt(input[0]), Math.sqrt(input[1])});
+            return LLVMDoubleVector.create(new double[]{Math.sqrt(vector.getValue(0)), Math.sqrt(vector.getValue(1))});
         }
 
         @Specialization(guards = "vector.getLength() == 4")
         protected LLVMDoubleVector doM256(LLVMDoubleVector vector) {
-            double[] input = vector.getValues();
             return LLVMDoubleVector.create(new double[]{
-                            Math.sqrt(input[0]), Math.sqrt(input[1]),
-                            Math.sqrt(input[2]), Math.sqrt(input[3])
+                            Math.sqrt(vector.getValue(0)), Math.sqrt(vector.getValue(1)),
+                            Math.sqrt(vector.getValue(2)), Math.sqrt(vector.getValue(3))
             });
         }
     }
