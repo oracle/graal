@@ -107,9 +107,6 @@ public abstract class LLVMSourceLocation {
         CompilerAsserts.neverPartOfCompilation();
         if (sourceSection == null && lazySourceSection != null) {
             sourceSection = lazySourceSection.get();
-            if (sourceSection != null && sourceSection.isAvailable()) {
-                lazySourceSection = null;
-            }
         }
         return sourceSection != null ? sourceSection : UNAVAILABLE_SECTION;
     }
