@@ -606,12 +606,14 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     if isJDK8:
+        # temporarily isolate those test (GR-10990)
+        cms = ['cms']
         # ensure CMS still works
-        with Task('DaCapo_pmd:CMS', tasks, tags=GraalTags.test) as t:
+        with Task('DaCapo_pmd:CMS', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
         # ensure CMSIncrementalMode still works
-        with Task('DaCapo_pmd:CMSIncrementalMode', tasks, tags=GraalTags.test) as t:
+        with Task('DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
