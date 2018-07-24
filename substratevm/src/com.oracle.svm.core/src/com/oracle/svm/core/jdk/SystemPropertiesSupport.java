@@ -46,6 +46,7 @@ public abstract class SystemPropertiesSupport {
 
     /** System properties that are taken from the VM hosting the image generator. */
     private static final String[] HOSTED_PROPERTIES = {
+                    "java.version", "java.vendor", "java.vendor.url",
                     /*
                      * We do not support cross-compilation for now. Separator might also be cached
                      * in other classes, so changing them would be tricky.
