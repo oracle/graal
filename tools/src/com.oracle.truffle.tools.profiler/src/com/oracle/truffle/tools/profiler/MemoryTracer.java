@@ -110,7 +110,7 @@ public final class MemoryTracer implements Closeable {
         if (f == null) {
             f = DEFAULT_FILTER;
         }
-        this.shadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter());
+        this.shadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter(), env);
         this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), f, false);
 
         this.activeBinding = env.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new Listener());

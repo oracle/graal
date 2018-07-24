@@ -38,9 +38,11 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,11 +60,13 @@ final class ShadowStack {
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
     private final Instrumenter initInstrumenter;
+    private final TruffleInstrument.Env env;
 
-    ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter) {
+    ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter, TruffleInstrument.Env env) {
         this.stackLimit = stackLimit;
         this.sourceSectionFilter = sourceSectionFilter;
         this.initInstrumenter = instrumenter;
+        this.env = env;
     }
 
     ThreadLocalStack getStack(Thread thread) {
@@ -76,7 +80,12 @@ final class ShadowStack {
     EventBinding<?> install(Instrumenter instrumenter, SourceSectionFilter filter, boolean compiledOnly) {
         return instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(EventContext context) {
-                boolean isRoot = instrumenter.queryTags(context.getInstrumentedNode()).contains(StandardTags.RootTag.class);
+                Node instrumentedNode = context.getInstrumentedNode();
+                if (instrumentedNode.getSourceSection() == null) {
+                    new PrintStream(env.err()).println("WARNING: Instrumented node " + instrumentedNode + " has null SourceSection.");
+                    return null;
+                }
+                boolean isRoot = instrumenter.queryTags(instrumentedNode).contains(StandardTags.RootTag.class);
                 return new StackPushPopNode(ShadowStack.this, new SourceLocation(instrumenter, context), compiledOnly, isRoot);
             }
         });
@@ -296,7 +305,7 @@ final class ShadowStack {
             // We exclude the node itself as it will be pushed on the stack by the StackPushPopNode
             Node current = node.getParent();
             while (current != null) {
-                if (sourceSectionFilter.includes(current)) {
+                if (sourceSectionFilter.includes(current) && current.getSourceSection() != null) {
                     sourceLocations.add(new SourceLocation(instrumenter, current));
                 }
                 current = current.getParent();
