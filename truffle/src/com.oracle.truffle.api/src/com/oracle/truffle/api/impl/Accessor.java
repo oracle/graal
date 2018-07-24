@@ -245,6 +245,8 @@ public abstract class Accessor {
 
         public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
 
+        public abstract Object asHostSymbol(Object vmObject, Class<?> symbolClass);
+
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 
         public abstract boolean isNativeAccessAllowed(Object vmObject, Env env);

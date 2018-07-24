@@ -1603,6 +1603,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Converts a Java class to a host symbol as if by
+         * {@code lookupHostSymbol(symbolClass.getName())} but without an actual lookup. Must not be
+         * used with Truffle or guest language classes.
+         *
+         * @see #lookupHostSymbol(String)
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public Object asHostSymbol(Class<?> symbolClass) {
+            return AccessAPI.engineAccess().asHostSymbol(vmObject, symbolClass);
+        }
+
+        /**
          * Returns <code>true</code> if access to native code is generally allowed. If this method
          * returns <code>false</code> then loading native libraries with the Truffle NFI will fail.
          *
