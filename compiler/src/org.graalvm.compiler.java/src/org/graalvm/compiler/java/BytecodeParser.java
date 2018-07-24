@@ -262,7 +262,6 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROU
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
 import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -4355,32 +4354,13 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public AbstractBeginNode genExplicitExceptionEdge(Class<? extends Exception> exceptionClass) {
-        // Backup original context
-        FixedWithNextNode originalLastInstr = lastInstr;
-        Constructor<? extends Exception> constructor;
-        try {
-            constructor = exceptionClass.getConstructor();
-        } catch (NoSuchMethodException e) {
-            // Failed exception edge
-            return null;
-        }
-
-        BeginNode exceptionEdge = new BeginNode();
-        lastInstr = graph.add(exceptionEdge);
-
-        // Instantiate an exception
-        genNewInstance(metaAccess.lookupJavaType(exceptionClass));
-        frameState.stackOp(DUP);
-        genInvokeSpecial(metaAccess.lookupJavaMethod(constructor));
-
-        // Generate exception dispatch
-        AbstractBeginNode exceptionDispatch = handleException(frameState.pop(JavaKind.Object), bci(), false);
-        lastInstr.setNext(exceptionDispatch);
-
-        // Restore original context
-        lastInstr = originalLastInstr;
-        return exceptionEdge;
+    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, String message) {
+        ConstantNode exceptionMessage = ConstantNode.forConstant(constantReflection.forString(message.intern()), metaAccess, graph);
+        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(metaAccess, BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage));
+        exceptionNode.setStateAfter(createFrameState(bci(), exceptionNode));
+        AbstractBeginNode exceptionDispatch = handleException(exceptionNode, bci(), false);
+        exceptionNode.setNext(exceptionDispatch);
+        return BeginNode.begin(exceptionNode);
     }
 
     protected void genPutField(int cpi, int opcode) {

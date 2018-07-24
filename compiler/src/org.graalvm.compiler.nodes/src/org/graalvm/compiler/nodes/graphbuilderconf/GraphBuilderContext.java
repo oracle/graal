@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.code.BailoutException;
@@ -336,7 +337,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         return false;
     }
 
-    default AbstractBeginNode genExplicitExceptionEdge(Class<? extends Exception> exceptionClass) {
+    @SuppressWarnings("ununsed")
+    default AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, String message) {
         return null;
     }
 }

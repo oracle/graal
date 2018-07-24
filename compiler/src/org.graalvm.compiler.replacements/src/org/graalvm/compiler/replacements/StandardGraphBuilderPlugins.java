@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -511,13 +512,14 @@ public class StandardGraphBuilderPlugins {
         if (allowDeoptimization) {
             for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
                 Class<?> type = kind.toJavaClass();
+                String exceptionMessage = kind == JavaKind.Int ? "integer overflow" : "long overflow";
 
                 r.register1("decrementExact", type, new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
                         ConstantNode y = ConstantNode.forIntegerKind(kind, 1);
                         if (b.needsExplicitException()) {
-                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(ArithmeticException.class);
+                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage);
                             if (exceptionEdge != null) {
                                 IntegerSubExactSplitNode split = b.addPush(kind,
                                                 new IntegerSubExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
@@ -535,7 +537,7 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x) {
                         ConstantNode y = ConstantNode.forIntegerKind(kind, 1);
                         if (b.needsExplicitException()) {
-                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(ArithmeticException.class);
+                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage);
                             if (exceptionEdge != null) {
                                 IntegerAddExactSplitNode split = b.addPush(kind, new IntegerAddExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
                                 split.setNext(b.add(new BeginNode()));
@@ -551,7 +553,7 @@ public class StandardGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                         if (b.needsExplicitException()) {
-                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(ArithmeticException.class);
+                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage);
                             if (exceptionEdge != null) {
                                 IntegerAddExactSplitNode split = b.addPush(kind, new IntegerAddExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
                                 split.setNext(b.add(new BeginNode()));
@@ -567,7 +569,7 @@ public class StandardGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                         if (b.needsExplicitException()) {
-                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(ArithmeticException.class);
+                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage);
                             if (exceptionEdge != null) {
                                 IntegerSubExactSplitNode split = b.addPush(kind, new IntegerSubExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
                                 split.setNext(b.add(new BeginNode()));
@@ -583,7 +585,7 @@ public class StandardGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                         if (b.needsExplicitException()) {
-                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(ArithmeticException.class);
+                            AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage);
                             if (exceptionEdge != null) {
                                 IntegerMulExactSplitNode split = b.addPush(kind, new IntegerMulExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
                                 split.setNext(b.add(new BeginNode()));

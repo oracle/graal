@@ -63,7 +63,8 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         OUT_OF_BOUNDS(2, ArrayIndexOutOfBoundsException.class),
         CLASS_CAST(2, ClassCastException.class),
         ARRAY_STORE(1, ArrayStoreException.class),
-        DIVISION_BY_ZERO(0, ArithmeticException.class);
+        DIVISION_BY_ZERO(0, ArithmeticException.class),
+        EXACT_OVERFLOW(1, ArithmeticException.class);
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;
