@@ -63,6 +63,7 @@ import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
 import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.domains.ProfilerDomain;
 import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
+import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 
 /**
  * Server of the
@@ -70,11 +71,6 @@ import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
  * inspector protocol</a>.
  */
 public final class WebSocketServer extends NanoWSD {
-
-    private static final String KEY_STORE_FILE_PATH = "javax.net.ssl.keyStore";
-    private static final String KEY_STORE_TYPE = "javax.net.ssl.keyStoreType";
-    private static final String KEY_STORE_FILE_PASSWORD = "javax.net.ssl.keyStorePassword";
-    private static final String KEY_STORE_KEY_RECOVER_PASSWORD = "javax.net.ssl.keyPassword";
 
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 
@@ -91,7 +87,7 @@ public final class WebSocketServer extends NanoWSD {
     }
 
     public static WebSocketServer get(InetSocketAddress isa, String path, TruffleExecutionContext context, boolean debugBrk,
-                    boolean secure, ConnectionWatcher connectionWatcher) throws IOException {
+                    boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher) throws IOException {
         WebSocketServer wss;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
@@ -114,7 +110,7 @@ public final class WebSocketServer extends NanoWSD {
                     if (TruffleOptions.AOT) {
                         throw new IOException("Secure connection is not available in the native-image yet.");
                     } else {
-                        wss.makeSecure(createSSLFactory(), null);
+                        wss.makeSecure(createSSLFactory(keyStoreOptions), null);
                     }
                 }
                 wss.start(Integer.MAX_VALUE);
@@ -127,21 +123,21 @@ public final class WebSocketServer extends NanoWSD {
         return wss;
     }
 
-    private static SSLServerSocketFactory createSSLFactory() throws IOException {
-        String keyStoreFile = System.getProperty(KEY_STORE_FILE_PATH);
+    private static SSLServerSocketFactory createSSLFactory(KeyStoreOptions keyStoreOptions) throws IOException {
+        String keyStoreFile = keyStoreOptions.getKeyStore();
         if (keyStoreFile != null) {
             try {
-                String filePasswordProperty = System.getProperty(KEY_STORE_FILE_PASSWORD);
+                String filePasswordProperty = keyStoreOptions.getKeyStorePassword();
                 // obtaining password for unlock keystore
                 char[] filePassword = filePasswordProperty == null ? "".toCharArray() : filePasswordProperty.toCharArray();
-                String keystoreType = System.getProperty(KEY_STORE_TYPE);
+                String keystoreType = keyStoreOptions.getKeyStoreType();
                 if (keystoreType == null) {
                     keystoreType = KeyStore.getDefaultType();
                 }
                 KeyStore keystore = KeyStore.getInstance(keystoreType);
                 File keyFile = new File(keyStoreFile);
                 keystore.load(new FileInputStream(keyFile), filePassword);
-                String keyRecoverPasswordProperty = System.getProperty(KEY_STORE_KEY_RECOVER_PASSWORD);
+                String keyRecoverPasswordProperty = keyStoreOptions.getKeyPassword();
                 char[] keyRecoverPassword = keyRecoverPasswordProperty == null ? filePassword : keyRecoverPasswordProperty.toCharArray();
                 final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
                 kmf.init(keystore, keyRecoverPassword);
@@ -150,10 +146,7 @@ public final class WebSocketServer extends NanoWSD {
                 throw new IOException(ex);
             }
         } else {
-            throw new IOException("Use Java system properties to specify the keystore: " + KEY_STORE_FILE_PATH + " to specify the keystore file path, " +
-                            KEY_STORE_TYPE + " to specify the keystore type (defaults to JKS), " +
-                            KEY_STORE_FILE_PASSWORD + " to specify the keystore password and " +
-                            KEY_STORE_KEY_RECOVER_PASSWORD + " to specify the password for recovering keys, if it's different from the keystore password.");
+            throw new IOException("Use options to specify the keystore");
         }
     }
 

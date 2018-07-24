@@ -105,6 +105,18 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Use TLS/SSL. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> Secure = new OptionKey<>(false);
 
+    @com.oracle.truffle.api.Option(help = "File path to keystore used for secure connection. (default:javax.net.ssl.keyStore system property)", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyStore = new OptionKey<>("");
+
+    @com.oracle.truffle.api.Option(help = "The keystore type. (default:javax.net.ssl.keyStoreType system property, or \\\"JKS\\\")", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyStoreType = new OptionKey<>("");
+
+    @com.oracle.truffle.api.Option(help = "The keystore password. (default:javax.net.ssl.keyStorePassword system property)", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyStorePassword = new OptionKey<>("");
+
+    @com.oracle.truffle.api.Option(help = "Password for recovering keys from a keystore. (default:javax.net.ssl.keyPassword system property, or keystore password)", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyPassword = new OptionKey<>("");
+
     public static final String INSTRUMENT_ID = "inspect";
     static final String VERSION = "0.1";
 
@@ -117,7 +129,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             try {
                 InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
                 server = new Server(env, "Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal), options.get(Initialization),
-                                options.get(Path), options.get(Secure), connectionWatcher);
+                                options.get(Path), options.get(Secure), new KeyStoreOptions(options), connectionWatcher);
             } catch (IOException e) {
                 throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
@@ -214,8 +226,8 @@ public final class InspectorInstrument extends TruffleInstrument {
         private final String wsspath;
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
-                        final boolean inspectInternal, final boolean inspectInitialization, final String path, final boolean secure, final ConnectionWatcher connectionWatcher)
-                        throws IOException {
+                        final boolean inspectInternal, final boolean inspectInitialization, final String path, final boolean secure, final KeyStoreOptions keyStoreOptions,
+                        final ConnectionWatcher connectionWatcher) throws IOException {
             PrintWriter info = new PrintWriter(env.err());
             if (path == null || path.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
@@ -226,7 +238,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, err);
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, connectionWatcher);
+            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher);
             String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
             info.println("Debugger listening on port " + wss.getListeningPort() + ".");
             info.println("To start debugging, open the following URL in Chrome:");
