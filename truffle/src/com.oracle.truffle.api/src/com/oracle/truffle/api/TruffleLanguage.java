@@ -352,11 +352,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns <code>true</code> if the combination of two sets allow to {@link ContextPolicy#SHARED
-     * share} or {@link ContextPolicy#REUSE reuse} the same language instance, else
-     * <code>false</code>. If options are incompatible then a new language will be created for a new
-     * context. The first language context {@link #createContext(Env) created} for a
-     * {@link TruffleLanguage} instance is always compatible, therefore
+     * Returns <code>true</code> if the combination of two sets of options allow to
+     * {@link ContextPolicy#SHARED share} or {@link ContextPolicy#REUSE reuse} the same language
+     * instance, else <code>false</code>. If options are incompatible then a new language instance
+     * will be created for a new context. The first language context {@link #createContext(Env)
+     * created} for a {@link TruffleLanguage} instance always has compatible options, therefore
      * {@link #areOptionsCompatible(OptionValues, OptionValues)} will not be invoked for it. The
      * default implementation returns <code>true</code>.
      * <p>
@@ -364,9 +364,9 @@ public abstract class TruffleLanguage<C> {
      * (default behavior) then {@link #areOptionsCompatible(OptionValues, OptionValues)} will never
      * be invoked as {@link TruffleLanguage} instances will not be shared for multiple contexts. For
      * the other context policies {@link ContextPolicy#REUSE reuse} and {@link ContextPolicy#SHARED
-     * shared} this method can be used to further restrict compatibility. Compatibility influences
-     * {@link #parse(ParsingRequest) parse caching} because it uses the {@link TruffleLanguage
-     * language} instance as a key.
+     * shared} this method can be used to further restrict the reuse of language instances.
+     * Compatibility influences {@link #parse(ParsingRequest) parse caching} because it uses the
+     * {@link TruffleLanguage language} instance as a key.
      * <p>
      * Example usage of areOptionsCompatible if sharing of the language instances and parse caching
      * should be restricted by the script version option:
