@@ -347,6 +347,13 @@ def native_image_on_jvm(args, **kwargs):
     run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
+def build_native_image_image():
+    image_path = native_image_path(suite_native_image_root())
+    mx.log('Building native-image executable ' + image_path)
+    image_dir = dirname(image_path)
+    mkpath(image_dir)
+    native_image_on_jvm(['--tool:native-image', '-H:Path=' + image_dir])
+
 svmDistribution = ['substratevm:SVM']
 graalDistribution = ['compiler:GRAAL']
 librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
@@ -512,10 +519,10 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
         native_image_cmd = native_image_path(suite_native_image_root())
 
     if exists(native_image_cmd):
+        mx.log('Use ' + native_image_cmd + ' for remaining image builds')
         def _native_image(args, **kwargs):
             mx.run([native_image_cmd] + args, **kwargs)
     else:
-        mx.warn('native-image executable not found. Fallback to `mx native-image`')
         _native_image = native_image_on_jvm
 
     def query_native_image(all_args, option):
@@ -553,6 +560,7 @@ native_image_context.hosted_assertions = ['-J-ea', '-J-esa', '-J-XX:+BootstrapJV
 def svm_gate_body(args, tasks):
     # Debug GR-8964 on Darwin gates
     debug_gr_8964 = (mx.get_os() == 'darwin')
+    build_native_image_image()
     with native_image_context(IMAGE_ASSERTION_FLAGS, debug_gr_8964=debug_gr_8964) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
