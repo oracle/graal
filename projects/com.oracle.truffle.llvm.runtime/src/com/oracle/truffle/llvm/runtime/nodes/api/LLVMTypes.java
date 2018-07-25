@@ -45,14 +45,13 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
-@TypeSystem({boolean.class, byte.class, short.class, int.class, char.class, long.class, double.class, float.class, byte[].class, LLVMI8Vector.class, LLVMI64Vector.class, LLVMI32Vector.class,
-                LLVMI1Vector.class, LLVMI16Vector.class, LLVMFloatVector.class, LLVMDoubleVector.class, LLVMIVarBit.class,
-                LLVMNativePointer.class,
-                LLVMManagedPointer.class,
-                LLVMPointer.class,
-                LLVM80BitFloat.class,
-                TruffleObject.class})
+@TypeSystem({boolean.class, byte.class, short.class, int.class, char.class, long.class, double.class, float.class, byte[].class,
+                LLVMI1Vector.class, LLVMI8Vector.class, LLVMI16Vector.class, LLVMI32Vector.class, LLVMI64Vector.class,
+                LLVMPointerVector.class, LLVMFloatVector.class, LLVMDoubleVector.class,
+                LLVMNativePointer.class, LLVMManagedPointer.class, LLVMPointer.class,
+                LLVMIVarBit.class, LLVM80BitFloat.class, TruffleObject.class})
 public class LLVMTypes {
 
     @TypeCheck(LLVMPointer.class)

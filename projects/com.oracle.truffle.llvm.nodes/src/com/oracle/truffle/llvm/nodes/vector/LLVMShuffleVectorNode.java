@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -111,6 +112,32 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
                 newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
             }
             return LLVMI64Vector.create(newValues);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == getVectorLength();
+            LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
+            int leftVectorLength = leftVector.getLength();
+            for (int i = 0; i < getVectorLength(); i++) {
+                int element = maskVector.getValue(i);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : LLVMNativePointer.create(rightVector.getValue(element - leftVectorLength));
+            }
+            return LLVMPointerVector.create(newValues);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doPointerVector(LLVMI64Vector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == getVectorLength();
+            LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
+            int leftVectorLength = leftVector.getLength();
+            for (int i = 0; i < getVectorLength(); i++) {
+                int element = maskVector.getValue(i);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? LLVMNativePointer.create(leftVector.getValue(element)) : rightVector.getValue(element - leftVectorLength);
+            }
+            return LLVMPointerVector.create(newValues);
         }
 
         @Specialization

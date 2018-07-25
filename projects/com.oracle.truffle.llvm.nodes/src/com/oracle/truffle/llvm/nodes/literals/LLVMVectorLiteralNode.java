@@ -29,12 +29,16 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -48,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public class LLVMVectorLiteralNode {
 
+    // TEMP (chaeubl): rename the nodes so that they match the usual pattern
     public abstract static class LLVMVectorI1LiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
@@ -56,8 +61,8 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @ExplodeLoop
         @Specialization
+        @ExplodeLoop
         protected LLVMI1Vector doI1Vector(VirtualFrame frame) {
             boolean[] vals = new boolean[values.length];
             for (int i = 0; i < values.length; i++) {
@@ -75,8 +80,8 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @ExplodeLoop
         @Specialization
+        @ExplodeLoop
         protected LLVMI8Vector doI8Vector(VirtualFrame frame) {
             byte[] vals = new byte[values.length];
             for (int i = 0; i < values.length; i++) {
@@ -94,8 +99,8 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @ExplodeLoop
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doI16Vector(VirtualFrame frame) {
             short[] vals = new short[values.length];
             for (int i = 0; i < values.length; i++) {
@@ -113,8 +118,8 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @ExplodeLoop
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doI32Vector(VirtualFrame frame) {
             int[] vals = new int[values.length];
             for (int i = 0; i < values.length; i++) {
@@ -132,14 +137,66 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
+        @Specialization(rewriteOn = UnexpectedResultException.class)
         @ExplodeLoop
-        @Specialization
-        protected LLVMI64Vector doI64Vector(VirtualFrame frame) {
+        protected LLVMI64Vector doI64Vector(VirtualFrame frame) throws UnexpectedResultException {
             long[] vals = new long[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = LLVMTypesGen.asLong(values[i].executeGeneric(frame));
+                vals[i] = values[i].executeI64(frame);
             }
             return LLVMI64Vector.create(vals);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doPointerVector(VirtualFrame frame,
+                        @Cached("createPointerLiteral()") LLVMPointerVectorLiteralNode pointerLiteral) {
+            return LLVMTypesGen.asLLVMPointerVector(pointerLiteral.executeGeneric(frame));
+        }
+
+        @TruffleBoundary
+        protected LLVMPointerVectorLiteralNode createPointerLiteral() {
+            return LLVMPointerVectorLiteralNodeGen.create(values);
+        }
+    }
+
+    public abstract static class LLVMPointerVectorLiteralNode extends LLVMExpressionNode {
+
+        @Children private final LLVMExpressionNode[] values;
+
+        public LLVMPointerVectorLiteralNode(LLVMExpressionNode[] values) {
+            this.values = values;
+        }
+
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        @ExplodeLoop
+        protected LLVMPointerVector doPointerVector(VirtualFrame frame) throws UnexpectedResultException {
+            LLVMPointer[] vals = new LLVMPointer[values.length];
+            for (int i = 0; i < values.length; i++) {
+                vals[i] = values[i].executeLLVMPointer(frame);
+            }
+            return LLVMPointerVector.create(vals);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doMixedVector(VirtualFrame frame,
+                        @Cached("createToPointerNodes()") LLVMToPointerNode[] toPointer) {
+            LLVMPointer[] vals = new LLVMPointer[values.length];
+            for (int i = 0; i < values.length; i++) {
+                Object value = values[i].executeGeneric(frame);
+                vals[i] = toPointer[i].executeWithTarget(value);
+            }
+            return LLVMPointerVector.create(vals);
+        }
+
+        @TruffleBoundary
+        protected LLVMToPointerNode[] createToPointerNodes() {
+            LLVMToPointerNode[] result = new LLVMToPointerNode[values.length];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = LLVMToPointerNodeGen.create();
+            }
+            return result;
         }
     }
 
@@ -151,8 +208,8 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @ExplodeLoop
         @Specialization
+        @ExplodeLoop
         protected LLVMFloatVector doFloatVector(VirtualFrame frame) {
             float[] vals = new float[values.length];
             for (int i = 0; i < values.length; i++) {
@@ -170,38 +227,14 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @ExplodeLoop
         @Specialization
+        @ExplodeLoop
         protected LLVMDoubleVector doDoubleVector(VirtualFrame frame) {
             double[] vals = new double[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = LLVMTypesGen.asDouble(values[i].executeGeneric(frame));
             }
             return LLVMDoubleVector.create(vals);
-        }
-    }
-
-    public abstract static class LLVMVectorAddressLiteralNode extends LLVMExpressionNode {
-
-        @Children private final LLVMExpressionNode[] values;
-
-        public LLVMVectorAddressLiteralNode(LLVMExpressionNode[] values) {
-            this.values = values;
-        }
-
-        @ExplodeLoop
-        @Specialization
-        protected LLVMPointerVector doAddressVector(VirtualFrame frame) {
-            try {
-                LLVMPointer[] vals = new LLVMPointer[values.length];
-                for (int i = 0; i < values.length; i++) {
-                    vals[i] = values[i].executeLLVMPointer(frame);
-                }
-                return LLVMPointerVector.create(vals);
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
         }
     }
 }

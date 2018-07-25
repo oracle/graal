@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 /**
  * An expression node is a node that returns a result, e.g., a local variable read, or an addition
@@ -157,6 +158,10 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMDoubleVector(executeGeneric(frame));
+    }
+
+    public LLVMPointerVector executeLLVMPointerVector(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMPointerVector(executeGeneric(frame));
     }
 
     public String getSourceDescription() {

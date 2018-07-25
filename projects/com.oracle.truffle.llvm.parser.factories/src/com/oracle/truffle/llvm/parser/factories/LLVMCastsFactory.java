@@ -219,7 +219,6 @@ final class LLVMCastsFactory {
             VectorType vectorType = (VectorType) targetType;
             Type elemType = vectorType.getElementType();
             int vectorLength = vectorType.getNumberOfElements();
-            // TEMP (chaeubl): type casts between i64 and pointer are also an issue...
             if (elemType instanceof PrimitiveType) {
                 switch (((PrimitiveType) elemType).getPrimitiveKind()) {
                     case I1:
