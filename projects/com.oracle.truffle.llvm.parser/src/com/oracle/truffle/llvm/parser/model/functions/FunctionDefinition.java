@@ -269,6 +269,11 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     }
 
     @Override
+    public boolean isOverridable() {
+        return Linkage.isOverridable(linkage, visibility);
+    }
+
+    @Override
     public boolean isExternal() {
         return Linkage.isExternal(linkage);
     }

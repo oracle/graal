@@ -150,6 +150,10 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         return Linkage.isExported(linkage, visibility);
     }
 
+    public boolean isOverridable() {
+        return Linkage.isOverridable(linkage, visibility);
+    }
+
     public boolean isExternal() {
         return getInitialiser() == 0 && isExported();
     }

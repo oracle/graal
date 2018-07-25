@@ -70,24 +70,24 @@ public final class LLVMParserRuntime {
         return context.getGlobalScope();
     }
 
-    public LLVMFunctionDescriptor lookupFunction(String name, boolean isExported) {
-        return getScope(isExported).getFunction(name);
+    public LLVMFunctionDescriptor lookupFunction(String name, boolean useGlobalScope) {
+        return getScope(useGlobalScope).getFunction(name);
     }
 
-    public LLVMGlobal lookupGlobal(String name, boolean isExported) {
-        return getScope(isExported).getGlobalVariable(name);
+    public LLVMGlobal lookupGlobal(String name, boolean useGlobalScope) {
+        return getScope(useGlobalScope).getGlobalVariable(name);
     }
 
-    public LLVMSymbol lookupSymbol(String name, boolean isExported) {
-        LLVMSymbol symbol = getScope(isExported).get(name);
+    public LLVMSymbol lookupSymbol(String name, boolean useGlobalScope) {
+        LLVMSymbol symbol = getScope(useGlobalScope).get(name);
         if (symbol != null) {
             return symbol;
         }
         throw new IllegalStateException("Unknown symbol: " + name);
     }
 
-    private LLVMScope getScope(boolean isExported) {
-        if (isExported) {
+    private LLVMScope getScope(boolean useGlobalScope) {
+        if (useGlobalScope) {
             return getGlobalScope();
         } else {
             return fileScope;

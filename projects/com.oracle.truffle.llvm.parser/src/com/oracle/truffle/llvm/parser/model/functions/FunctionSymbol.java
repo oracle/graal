@@ -38,5 +38,7 @@ public interface FunctionSymbol extends ValueSymbol {
 
     boolean isExported();
 
+    boolean isOverridable();
+
     boolean isExternal();
 }

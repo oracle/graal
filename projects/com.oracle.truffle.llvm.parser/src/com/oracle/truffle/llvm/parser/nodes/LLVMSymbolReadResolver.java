@@ -371,19 +371,19 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(FunctionDeclaration toResolve) {
-            LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isExported()));
+            LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable()));
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(FunctionDefinition toResolve) {
-            LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isExported()));
+            LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable()));
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(GlobalAlias alias) {
-            LLVMSymbol symbol = runtime.lookupSymbol(alias.getName(), alias.isExported());
+            LLVMSymbol symbol = runtime.lookupSymbol(alias.getName(), alias.isOverridable());
             if (symbol.isFunction()) {
                 LLVMManagedPointer value = LLVMManagedPointer.create(symbol.asFunction());
                 resolvedNode = nodeFactory.createLiteral(value, alias.getType());
@@ -397,7 +397,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(GlobalVariable global) {
-            LLVMGlobal value = runtime.lookupGlobal(global.getName(), global.isExported());
+            LLVMGlobal value = runtime.lookupGlobal(global.getName(), global.isOverridable());
             resolvedNode = nodeFactory.createLiteral(value, new PointerType(global.getType()));
         }
 

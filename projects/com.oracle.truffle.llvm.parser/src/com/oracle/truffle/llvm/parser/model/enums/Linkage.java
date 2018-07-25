@@ -92,6 +92,32 @@ public enum Linkage {
             case COMMON:
             case WEAK_ODR:
             case LINK_ONCE_ODR:
+                return visibility == Visibility.DEFAULT || visibility == Visibility.PROTECTED;
+            case INTERNAL:
+            case PRIVATE:
+            case LINKER_PRIVATE:
+            case LINKER_PRIVATE_WEAK:
+            case LINK_ONCE_ODR_AUTO_HIDE:
+                return false;
+            default:
+                throw new IllegalStateException("Unknown linkage: " + linkage);
+        }
+    }
+
+    public static boolean isOverridable(Linkage linkage, Visibility visibility) {
+        switch (linkage) {
+            case AVAILABLE_EXTERNALLY:
+            case DLL_IMPORT:
+                return true;
+            case EXTERNAL:
+            case DLL_EXPORT:
+            case WEAK:
+            case APPENDING:
+            case LINKONCE:
+            case EXTERN_WEAK:
+            case COMMON:
+            case WEAK_ODR:
+            case LINK_ONCE_ODR:
                 return visibility == Visibility.DEFAULT;
             case INTERNAL:
             case PRIVATE:
