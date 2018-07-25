@@ -160,11 +160,11 @@ def suite_native_image_root(suite=None):
     if exists(root_dir):
         try:
             with open(rev_file_name, 'r') as rev_file:
-                rev_mismatch = rev_file.readline() != rev_value
+                prev_rev_value = rev_file.readline()
         except:
-            rev_mismatch = True
-        if rev_mismatch:
-            mx.warn('Rebuilding native-image-root')
+            prev_rev_value = 'nothing'
+        if prev_rev_value != rev_value:
+            mx.warn('Rebuilding native-image-root as working directory revision changed from ' + prev_rev_value + ' to ' + rev_value)
             remove_tree(root_dir)
             layout_native_image_root(root_dir)
             write_rev_file()
