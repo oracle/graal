@@ -38,6 +38,7 @@ import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
+import org.graalvm.component.installer.SystemUtils;
 
 public class RebuildImageCommand implements InstallerCommand {
     private static final Map<String, String> OPTIONS = new HashMap<>();
@@ -95,7 +96,7 @@ public class RebuildImageCommand implements InstallerCommand {
     public int execute() throws IOException {
         ProcessBuilder pb = new ProcessBuilder();
         List<String> commandLine = new ArrayList<>();
-        Path toolPath = input.getGraalHomePath().resolve(feedback.l10n("REBUILD_ToolRelativePath"));
+        Path toolPath = input.getGraalHomePath().resolve(SystemUtils.fromCommonString(feedback.l10n("REBUILD_ToolRelativePath")));
         String procName = toolPath.toAbsolutePath().toString();
         commandLine.add(procName);
         while (input.hasParameter()) {
