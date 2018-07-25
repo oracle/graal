@@ -25,18 +25,24 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 @TargetClass(ClassLoader.class)
 @Substitute
@@ -127,4 +133,73 @@ public final class Target_java_lang_ClassLoader {
     static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
     }
 
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public static ClassLoader getPlatformClassLoader() {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.loadClass(Target_java_lang_Module, String)");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    final Class<?> loadClass(Target_java_lang_Module module, String name) {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.loadClass(Target_java_lang_Module, String)");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.createOrGetClassLoaderValueMap()");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    private boolean trySetObjectField(String name, Object obj) {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.trySetObjectField(String name, Object obj)");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    protected URL findResource(String moduleName, String name) throws IOException {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.findResource(String, String)");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static ClassLoader getBuiltinPlatformClassLoader() {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getBuiltinPlatformClassLoader()");
+    }
+
+    @Substitute //
+    @SuppressWarnings({"unused"})
+    Object getClassLoadingLock(String className) {
+        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.getClassLoadingLock(String)");
+    }
+
+    @Substitute //
+    @SuppressWarnings({"unused"}) //
+    private final Class<?> findLoadedClass0(String name) {
+        /* See open/src/hotspot/share/prims/jvm.cpp#958. */
+        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.findLoadedClass0(String)");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    protected Class<?> findClass(String moduleName, String name) {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.findClass(String moduleName, String name)");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    public final Package getDefinedPackage(String name) {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
+    }
+}
+
+@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK9OrLater.class) //
+final class Target_java_lang_NamedPackage {
 }
