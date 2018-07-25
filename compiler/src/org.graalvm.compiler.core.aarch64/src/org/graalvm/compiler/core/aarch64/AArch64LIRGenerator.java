@@ -513,4 +513,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args);
+
+    @Override
+    public void emitSpeculationFence() {
+        throw GraalError.unimplemented();
+    }
 }

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.phases;
 
+import static org.graalvm.compiler.core.SpeculativeExecutionAttacksMitigations.AccessGuardTargets;
+import static org.graalvm.compiler.core.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
@@ -47,6 +49,7 @@ import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
@@ -77,6 +80,10 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         appendPhase(new LoopSafepointInsertionPhase());
 
         appendPhase(new GuardLoweringPhase());
+
+        if (MitigateSpeculativeExecutionAttacks.getValue(options) == AccessGuardTargets) {
+            appendPhase(new InsertGuardFencesPhase());
+        }
 
         if (VerifyHeapAtReturn.getValue(options)) {
             appendPhase(new VerifyHeapAtReturnPhase());

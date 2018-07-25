@@ -27,6 +27,8 @@ package org.graalvm.compiler.core.gen;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.core.SpeculativeExecutionAttacksMitigations.AllTargets;
+import static org.graalvm.compiler.core.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 import static org.graalvm.compiler.lir.LIR.verifyBlock;
@@ -312,6 +314,19 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     public void doBlockPrologue(@SuppressWarnings("unused") Block block, @SuppressWarnings("unused") OptionValues options) {
 
+        if (MitigateSpeculativeExecutionAttacks.getValue(options) == AllTargets) {
+            boolean hasControlSplitPredecessor = false;
+            for (Block b : block.getPredecessors()) {
+                if (b.getSuccessorCount() > 1) {
+                    hasControlSplitPredecessor = true;
+                    break;
+                }
+            }
+            boolean isStartBlock = block.getPredecessorCount() == 0;
+            if (hasControlSplitPredecessor || isStartBlock) {
+                getLIRGeneratorTool().emitSpeculationFence();
+            }
+        }
     }
 
     @Override

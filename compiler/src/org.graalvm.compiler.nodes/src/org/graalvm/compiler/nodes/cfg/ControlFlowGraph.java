@@ -424,7 +424,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void identifyBlock(Block block) {
         FixedWithNextNode cur = block.getBeginNode();
         while (true) {
-            assert !cur.isDeleted();
+            assert cur.isAlive() : cur;
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
             FixedNode next = cur.next();
