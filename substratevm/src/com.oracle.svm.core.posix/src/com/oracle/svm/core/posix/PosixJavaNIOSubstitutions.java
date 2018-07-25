@@ -543,10 +543,10 @@ public final class PosixJavaNIOSubstitutions {
             // 134 int res;
             int res;
             // 135 char buf[1];
-            CCharPointer buf_Pointer = StackValue.get(1, CCharPointer.class);
+            CCharPointer bufPointer = StackValue.get(1, CCharPointer.class);
             // 136
             // 137 res = read(fd, buf, 1);
-            res = (int) Unistd.read(fd, buf_Pointer, WordFactory.unsigned(1)).rawValue();
+            res = (int) Unistd.read(fd, bufPointer, WordFactory.unsigned(1)).rawValue();
             // 138 if (res < 0) {
             if (res < 0) {
                 // 139 if (errno == EAGAIN || errno == EWOULDBLOCK) {
