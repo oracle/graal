@@ -162,6 +162,8 @@ public abstract class Accessor {
         public abstract boolean isHostFunction(Object guestObject);
 
         public abstract String javaGuestFunctionToString(Object object);
+
+        public abstract boolean isHostSymbol(Object guestObject);
     }
 
     public abstract static class EngineSupport {
@@ -242,6 +244,8 @@ public abstract class Accessor {
         public abstract OptionValues getCompilerOptionValues(RootNode rootNode);
 
         public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
+
+        public abstract Object asHostSymbol(Object vmObject, Class<?> symbolClass);
 
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 

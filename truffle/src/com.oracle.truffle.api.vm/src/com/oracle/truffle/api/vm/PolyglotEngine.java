@@ -1041,6 +1041,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Object asHostSymbol(Object vmObject, Class<?> symbolClass) {
+            return null;
+        }
+
+        @Override
         public Object findMetaObjectForLanguage(Object vmObject, Object value) {
             return null;
         }

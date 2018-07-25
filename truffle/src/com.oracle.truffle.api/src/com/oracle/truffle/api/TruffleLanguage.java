@@ -1483,7 +1483,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Looks up a Java class in the top-most scope the host environmen. Throws an error if no
+         * Looks up a Java class in the top-most scope the host environment. Throws an error if no
          * symbol was found or the symbol was not accessible. Symbols might not be accessible if a
          * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
          * class filter} prevents access. The returned object is always a <code>TruffleObject</code>
@@ -1628,6 +1628,31 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             return AccessAPI.engineAccess().asHostException(exception);
+        }
+
+        /**
+         * Returns {@code true} if the argument is a host symbol, representing the constructor and
+         * static members of a Java class, as obtained by e.g. {@link #lookupHostSymbol}.
+         *
+         * @see #lookupHostSymbol(String)
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public boolean isHostSymbol(Object guestObject) {
+            return AccessAPI.javaAccess().isHostSymbol(guestObject);
+        }
+
+        /**
+         * Converts a Java class to a host symbol as if by
+         * {@code lookupHostSymbol(symbolClass.getName())} but without an actual lookup. Must not be
+         * used with Truffle or guest language classes.
+         *
+         * @see #lookupHostSymbol(String)
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public Object asHostSymbol(Class<?> symbolClass) {
+            return AccessAPI.engineAccess().asHostSymbol(vmObject, symbolClass);
         }
 
         /**
