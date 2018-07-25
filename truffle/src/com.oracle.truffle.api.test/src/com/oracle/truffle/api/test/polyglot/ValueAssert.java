@@ -187,6 +187,7 @@ public class ValueAssert {
                         }
                     }
                     assertEquals(expectedValues, value.as(Map.class));
+                    assertEquals(value.toString(), value.as(Map.class).toString());
 
                     break;
                 case NATIVE:
@@ -553,8 +554,8 @@ public class ValueAssert {
     }
 
     public interface NonFunctionalInterface {
-        void foobarbaz();
-
+        default void foobarbaz() {
+        }
     }
 
     @FunctionalInterface

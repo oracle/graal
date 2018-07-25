@@ -48,4 +48,9 @@ public class BundleConstants {
     public static final String META_INF_SYMLINKS_PATH = "META-INF/symlinks"; // NOI18N
 
     public static final String GRAAL_COMPONENT_ID = GRAALVM_CAPABILITY; // NOI18N
+
+    /**
+     * Post-install message. In the future more x-GraalVM-Message might appear
+     */
+    public static final String BUNDLE_MESSAGE_POSTINST = "x-GraalVM-Message-PostInst"; // NOI18N
 }

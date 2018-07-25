@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.vm.ci.code.Architecture;
 
 public class AArch64LIRFlagsVersioned {
     @SuppressWarnings("unused")
-    public static boolean useLSE(AArch64MacroAssembler masm) {
+    public static boolean useLSE(Architecture masm) {
         return false;
     }
 }

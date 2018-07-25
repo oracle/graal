@@ -37,7 +37,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-import sun.reflect.ConstructorAccessor;
 import sun.reflect.generics.repository.ConstructorRepository;
 
 @TargetClass(value = Constructor.class, onlyWith = ReflectionFeature.IsEnabled.class)
@@ -45,13 +44,15 @@ public final class Target_java_lang_reflect_Constructor {
 
     @Alias ConstructorRepository genericInfo;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) ConstructorAccessor constructorAccessor;
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    Target_jdk_internal_reflect_ConstructorAccessor constructorAccessor;
 
     @Alias
     native Target_java_lang_reflect_Constructor copy();
 
     @Substitute
-    ConstructorAccessor acquireConstructorAccessor() {
+    Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
         if (constructorAccessor == null) {
             throw VMError.unsupportedFeature("Runtime reflection is not supported.");
         }

@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.TreeSet;

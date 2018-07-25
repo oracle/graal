@@ -57,6 +57,8 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
+import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -65,6 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -173,6 +176,10 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+        if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
+            return buildBuiltinGraph(debug, method, providers);
+        }
+
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
@@ -186,7 +193,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(new ValueNode[0]);
 
-        InvokeNode prologueInvoke = generatePrologue(providers, kit, parameterLoadTypes, args);
+        InvokeNode prologueInvoke = generatePrologue(providers, kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
 
         adaptArgumentValues(providers, kit, parameterTypes, parameterEnumInfos, args);
 
@@ -222,6 +229,83 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         assert graph.verify();
         return graph;
+    }
+
+    private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {
+        UserError.guarantee(entryPointData.getPrologue() == CEntryPointData.DEFAULT_PROLOGUE,
+                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom prologue: " + targetMethod.format("%H.%n(%p)"));
+        UserError.guarantee(entryPointData.getEpilogue() == CEntryPointData.DEFAULT_EPILOGUE,
+                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom epilogue: " + targetMethod.format("%H.%n(%p)"));
+        UserError.guarantee(entryPointData.getExceptionHandler() == CEntryPointData.DEFAULT_EXCEPTION_HANDLER,
+                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom exception handler: " + targetMethod.format("%H.%n(%p)"));
+
+        UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+
+        ExecutionContextParameters executionContext = findExecutionContextParameters(providers, targetMethod.toParameterTypes(), targetMethod.getParameterAnnotations());
+
+        String builtinName = entryPointData.getBuiltin().name().toLowerCase();
+        ResolvedJavaMethod builtinCallee = null;
+        for (ResolvedJavaMethod candidate : metaAccess.lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods()) {
+            if (candidate.getName().toLowerCase().equals(builtinName)) {
+                VMError.guarantee(builtinCallee == null, "More than one candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin());
+                builtinCallee = candidate;
+            }
+        }
+        VMError.guarantee(builtinCallee != null, "No candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin());
+
+        ResolvedJavaType isolateType = providers.getMetaAccess().lookupJavaType(Isolate.class);
+        ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
+        int builtinIsolateIndex = -1;
+        int builtinThreadIndex = -1;
+        Parameter[] builtinParameters = builtinCallee.getParameters();
+        for (int i = 0; i < builtinParameters.length; i++) {
+            ResolvedJavaType type = (ResolvedJavaType) builtinParameters[i].getType();
+            if (isolateType.isAssignableFrom(type)) {
+                VMError.guarantee(builtinIsolateIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
+                                Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                builtinIsolateIndex = i;
+            } else if (threadType.isAssignableFrom(type)) {
+                VMError.guarantee(builtinThreadIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
+                                IsolateThread.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                builtinThreadIndex = i;
+            } else {
+                VMError.shouldNotReachHere("@" + CEntryPoint.class.getSimpleName() + " built-in currently may have only " + Isolate.class.getSimpleName() +
+                                " or " + IsolateThread.class.getSimpleName() + " parameters: " + builtinCallee.format("%H.%n(%p)"));
+            }
+        }
+
+        ValueNode[] args = kit.loadArguments(method.toParameterTypes()).toArray(new ValueNode[0]);
+
+        ValueNode[] builtinArgs = new ValueNode[builtinParameters.length];
+        if (builtinIsolateIndex != -1) {
+            VMError.guarantee(executionContext.designatedIsolateIndex != -1 || executionContext.isolateCount == 1,
+                            "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
+                                            Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+            int index = (executionContext.designatedIsolateIndex != -1) ? executionContext.designatedIsolateIndex : executionContext.lastIsolateIndex;
+            builtinArgs[builtinIsolateIndex] = args[index];
+        }
+        if (builtinThreadIndex != -1) {
+            VMError.guarantee(executionContext.designatedThreadIndex != -1 || executionContext.threadCount == 1,
+                            "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
+                                            IsolateThread.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+            int index = (executionContext.designatedThreadIndex != -1) ? executionContext.designatedThreadIndex : executionContext.lastThreadIndex;
+            builtinArgs[builtinThreadIndex] = args[index];
+        }
+
+        int invokeBci = kit.bci();
+        int exceptionEdgeBci = kit.bci();
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(builtinCallee, InvokeKind.Static, kit.getFrameState(), invokeBci, exceptionEdgeBci, builtinArgs);
+        kit.exceptionPart();
+        ExceptionObjectNode exception = kit.exceptionObject();
+
+        generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
+        kit.endInvokeWithException();
+
+        kit.createReturn(invoke, targetMethod.getSignature().getReturnKind());
+
+        assert kit.getGraph().verify();
+        return kit.getGraph();
     }
 
     private EnumInfo[] adaptParameterTypes(HostedProviders providers, NativeLibraries nativeLibraries, HostedGraphKit kit,
@@ -271,42 +355,116 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         }
     }
 
-    private InvokeNode generatePrologue(HostedProviders providers, SubstrateGraphKit kit, JavaType[] parameterTypes, ValueNode[] args) {
+    private InvokeNode generatePrologue(HostedProviders providers, SubstrateGraphKit kit, JavaType[] parameterTypes, Annotation[][] parameterAnnotations, ValueNode[] args) {
         Class<?> prologueClass = entryPointData.getPrologue();
         if (prologueClass == NoPrologue.class) {
             UserError.guarantee(targetMethod.getAnnotation(Uninterruptible.class) != null, CEntryPointOptions.class.getSimpleName() + "." + NoPrologue.class.getSimpleName() +
                             " is allowed only for methods annotated with @" + Uninterruptible.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
             return null;
         }
-        if (prologueClass == CEntryPointOptions.AutomaticPrologue.class) {
-            ResolvedJavaType isolateType = providers.getMetaAccess().lookupJavaType(Isolate.class);
-            ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
-            ResolvedJavaType matchType = null;
-            int matchesCount = 0;
-            for (JavaType parameterType : parameterTypes) {
-                ResolvedJavaType type = (ResolvedJavaType) parameterType;
-                if (threadType.isAssignableFrom(type) || isolateType.isAssignableFrom(type)) {
-                    matchType = type;
-                    matchesCount++;
+        if (prologueClass != CEntryPointOptions.AutomaticPrologue.class) {
+            ResolvedJavaType prologue = providers.getMetaAccess().lookupJavaType(prologueClass);
+            ResolvedJavaMethod[] prologueMethods = prologue.getDeclaredMethods();
+            UserError.guarantee(prologueMethods.length == 1 && prologueMethods[0].isStatic(),
+                            "Prologue class must declare exactly one static method: " + targetMethod.format("%H.%n(%p)") + " -> " + prologue.toJavaName());
+            ValueNode[] prologueArgs = matchPrologueParameters(providers, parameterTypes, args, prologueMethods[0]);
+            return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), prologueArgs);
+        }
+
+        // Automatically choose prologue from signature and annotations and call
+        ExecutionContextParameters executionContext = findExecutionContextParameters(providers, parameterTypes, parameterAnnotations);
+        int contextIndex = -1;
+        ResolvedJavaType contextType = null;
+        if (executionContext.designatedIsolateIndex != -1 && executionContext.designatedThreadIndex != -1) {
+            UserError.abort("@" + CEntryPoint.class.getSimpleName() + " has more than one designated execution context parameter: " + targetMethod.format("%H.%n(%p)"));
+        } else if (executionContext.designatedIsolateIndex != -1) {
+            contextIndex = executionContext.designatedIsolateIndex;
+            contextType = executionContext.designatedIsolateType;
+        } else if (executionContext.designatedThreadIndex != -1) {
+            contextIndex = executionContext.designatedThreadIndex;
+            contextType = executionContext.designatedThreadType;
+        } else if (executionContext.isolateCount + executionContext.threadCount == 1) {
+            contextIndex = (executionContext.isolateCount == 1) ? executionContext.lastIsolateIndex : executionContext.lastThreadIndex;
+            contextType = (ResolvedJavaType) parameterTypes[contextIndex];
+        } else {
+            UserError.abort("@" + CEntryPoint.class.getSimpleName() + " requires exactly one execution context parameter of type " +
+                            IsolateThread.class.getSimpleName() + " or " + Isolate.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
+        }
+        ValueNode contextValue = args[contextIndex];
+        if (providers.getMetaAccess().lookupJavaType(IsolateThread.class).isAssignableFrom(contextType)) {
+            prologueClass = CEntryPointSetup.EnterPrologue.class;
+        } else {
+            prologueClass = CEntryPointSetup.EnterIsolatePrologue.class;
+        }
+        ResolvedJavaMethod[] prologueMethods = providers.getMetaAccess().lookupJavaType(prologueClass).getDeclaredMethods();
+        assert prologueMethods.length == 1 && prologueMethods[0].isStatic() : "Prologue class must declare exactly one static method";
+        return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), contextValue);
+    }
+
+    private static class ExecutionContextParameters {
+        int isolateCount = 0;
+        int lastIsolateIndex = -1;
+        int designatedIsolateIndex = -1;
+        ResolvedJavaType designatedIsolateType = null;
+
+        int threadCount = 0;
+        int lastThreadIndex = -1;
+        int designatedThreadIndex = -1;
+        ResolvedJavaType designatedThreadType = null;
+    }
+
+    private ExecutionContextParameters findExecutionContextParameters(HostedProviders providers, JavaType[] parameterTypes, Annotation[][] parameterAnnotations) {
+        ResolvedJavaType isolateType = providers.getMetaAccess().lookupJavaType(Isolate.class);
+        ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
+
+        ExecutionContextParameters result = new ExecutionContextParameters();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            ResolvedJavaType declaredType = (ResolvedJavaType) parameterTypes[i];
+            boolean isIsolate = isolateType.isAssignableFrom(declaredType);
+            boolean isThread = threadType.isAssignableFrom(declaredType);
+            boolean isLong = declaredType.getJavaKind() == JavaKind.Long;
+            boolean designated = false;
+            ResolvedJavaType actualType = declaredType;
+            for (Annotation ann : parameterAnnotations[i]) {
+                if (ann.annotationType() == IsolateContext.class) {
+                    UserError.guarantee(isIsolate || isLong, "@" + CEntryPoint.class.getSimpleName() + " parameter " + i + " is annotated with @" +
+                                    CEntryPoint.IsolateContext.class.getSimpleName() + ", but does not have type " +
+                                    Isolate.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
+                    designated = true;
+                    isIsolate = true;
+                    actualType = isLong ? isolateType : declaredType;
+                } else if (ann.annotationType() == IsolateThreadContext.class) {
+                    UserError.guarantee(isThread || isLong, "@" + CEntryPoint.class.getSimpleName() + " parameter " + i + " is annotated with @" +
+                                    CEntryPoint.IsolateThreadContext.class.getSimpleName() + ", but does not have type " +
+                                    IsolateThread.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
+                    designated = true;
+                    isThread = true;
+                    actualType = isLong ? threadType : declaredType;
                 }
             }
-            if (matchesCount == 1) {
-                if (threadType.isAssignableFrom(matchType)) {
-                    prologueClass = CEntryPointSetup.EnterPrologue.class;
-                } else {
-                    prologueClass = CEntryPointSetup.EnterIsolatePrologue.class;
+            UserError.guarantee(!(isIsolate && isThread), "@" + CEntryPoint.class.getSimpleName() + " parameter" + i + " has a type as both an " +
+                            Isolate.class.getSimpleName() + " and a " + IsolateThread.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
+            if (isIsolate) {
+                result.lastIsolateIndex = i;
+                result.isolateCount++;
+                if (designated) {
+                    UserError.guarantee(result.designatedIsolateIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " has more than one designated " +
+                                    Isolate.class.getSimpleName() + " parameter: " + targetMethod.format("%H.%n(%p)"));
+                    result.designatedIsolateIndex = i;
+                    result.designatedIsolateType = actualType;
                 }
-            } else {
-                throw UserError.abort("@" + CEntryPoint.class.getSimpleName() + " requires exactly one parameter of type " + IsolateThread.class.getSimpleName() +
-                                " or " + Isolate.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
+            } else if (isThread) {
+                result.lastThreadIndex = i;
+                result.threadCount++;
+                if (designated) {
+                    UserError.guarantee(result.designatedThreadIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " has more than one designated " +
+                                    IsolateThread.class.getSimpleName() + " parameter: " + targetMethod.format("%H.%n(%p)"));
+                    result.designatedThreadIndex = i;
+                    result.designatedThreadType = actualType;
+                }
             }
         }
-        ResolvedJavaType prologue = providers.getMetaAccess().lookupJavaType(prologueClass);
-        ResolvedJavaMethod[] prologueMethods = prologue.getDeclaredMethods();
-        UserError.guarantee(prologueMethods.length == 1 && prologueMethods[0].isStatic(),
-                        "Prologue class must declare exactly one static method: " + targetMethod.format("%H.%n(%p)") + " -> " + prologue.toJavaName());
-        ValueNode[] prologueArgs = matchPrologueParameters(providers, parameterTypes, args, prologueMethods[0]);
-        return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), prologueArgs);
+        return result;
     }
 
     private ValueNode[] matchPrologueParameters(HostedProviders providers, JavaType[] types, ValueNode[] values, ResolvedJavaMethod prologueMethod) {
@@ -332,7 +490,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     private void generateExceptionHandler(HostedProviders providers, SubstrateGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
-        if (entryPointData.getExceptionHandler() == CEntryPointOptions.FatalExceptionHandler.class) {
+        if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception));
             kit.append(new DeadEndNode());
         } else {

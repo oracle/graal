@@ -24,6 +24,7 @@
  */
 package org.graalvm.polyglot.impl;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,11 +35,14 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Handler;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -52,6 +56,8 @@ import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -60,6 +66,16 @@ public abstract class AbstractPolyglotImpl {
         if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
             throw new AssertionError("Only one implementation Engine.Impl allowed.");
         }
+    }
+
+    public abstract static class MonitoringAccess {
+        protected MonitoringAccess() {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.management.ExecutionListener.MonitoringAccessImpl")) {
+                throw new AssertionError("Only one implementation of MonitoringAccessImpl allowed. " + getClass().getCanonicalName());
+            }
+        }
+
+        public abstract ExecutionEvent newExecutionEvent(Object event);
     }
 
     public abstract static class APIAccess {
@@ -88,7 +104,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getReceiver(Value value);
 
-        public abstract AbstractValueImpl getImpl(Value value);
+        public abstract AbstractValueImpl getImpl(Value engine);
+
+        public abstract AbstractEngineImpl getImpl(Engine engine);
 
         public abstract AbstractExceptionImpl getImpl(PolyglotException value);
 
@@ -105,6 +123,11 @@ public abstract class AbstractPolyglotImpl {
     // shared SPI
 
     APIAccess api;
+    MonitoringAccess monitoring;
+
+    public final void setMonitoring(MonitoringAccess monitoring) {
+        this.monitoring = monitoring;
+    }
 
     public final void setConstructors(APIAccess constructors) {
         this.api = constructors;
@@ -114,8 +137,12 @@ public abstract class AbstractPolyglotImpl {
         return api;
     }
 
+    public MonitoringAccess getMonitoring() {
+        return monitoring;
+    }
+
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler);
 
     public abstract void preInitializeEngine();
 
@@ -124,6 +151,41 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractSourceImpl getSourceImpl();
 
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();
+
+    public abstract AbstractExecutionListenerImpl getExecutionListenerImpl();
+
+    public abstract static class AbstractExecutionListenerImpl {
+
+        protected AbstractExecutionListenerImpl(AbstractPolyglotImpl engineImpl) {
+            Objects.requireNonNull(engineImpl);
+        }
+
+        public abstract List<Value> getInputValues(Object impl);
+
+        public abstract SourceSection getLocation(Object impl);
+
+        public abstract String getRootName(Object impl);
+
+        public abstract Value getReturnValue(Object impl);
+
+        public abstract boolean isExpression(Object impl);
+
+        public abstract boolean isStatement(Object impl);
+
+        public abstract boolean isRoot(Object impl);
+
+        public abstract void closeExecutionListener(Object impl);
+
+        public abstract Object attachExecutionListener(Engine engine, Consumer<ExecutionEvent> onEnter,
+                        Consumer<ExecutionEvent> onReturn,
+                        boolean expressions,
+                        boolean statements,
+                        boolean roots,
+                        Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
+
+        public abstract PolyglotException getException(Object impl);
+
+    }
 
     public abstract static class AbstractSourceImpl {
 
@@ -262,7 +324,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
                         boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
-                        String[] onlyLanguages, FileSystem fileSystem);
+                        String[] onlyLanguages, FileSystem fileSystem, Handler logHandler);
 
         public abstract String getImplementationName();
 

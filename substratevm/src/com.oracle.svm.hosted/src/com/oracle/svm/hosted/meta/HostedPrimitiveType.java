@@ -59,6 +59,12 @@ public class HostedPrimitiveType extends HostedType {
     }
 
     @Override
+    public boolean isEnum() {
+        assert !wrapped.isEnum();
+        return false;
+    }
+
+    @Override
     public final HostedType getComponentType() {
         return null;
     }

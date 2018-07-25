@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -31,7 +33,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import java.util.Arrays;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
@@ -48,9 +49,11 @@ final class DefaultVirtualFrame implements VirtualFrame {
     DefaultVirtualFrame(FrameDescriptor descriptor, Object[] arguments) {
         this.descriptor = descriptor;
         this.arguments = arguments;
-        this.locals = new Object[descriptor.getSize()];
+        // read size only once
+        final int size = descriptor.getSize();
+        this.locals = new Object[size];
         Arrays.fill(locals, descriptor.getDefaultValue());
-        this.tags = new byte[descriptor.getSize()];
+        this.tags = new byte[size];
     }
 
     @Override

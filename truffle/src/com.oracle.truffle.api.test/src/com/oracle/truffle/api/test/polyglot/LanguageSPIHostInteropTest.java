@@ -454,12 +454,11 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
     }
 
-    @SuppressWarnings({"rawtypes"})
     private void checkInternalKeys(Object map, String nonInternalKeys) throws ClassCastException, IllegalStateException, PolyglotException, UnsupportedMessageException {
-        List mapWithInternalKeys = context.asValue(keys(map, true)).as(List.class);
-        List mapWithoutInternalKeys = context.asValue(keys(map, false)).as(List.class);
-        assertEquals(nonInternalKeys, mapWithoutInternalKeys.toString());
-        assertEquals("[p1, p2, p3, p4, p5, p6]", mapWithInternalKeys.toString());
+        List<?> mapWithInternalKeys = context.asValue(keys(map, true)).as(List.class);
+        List<?> mapWithoutInternalKeys = context.asValue(keys(map, false)).as(List.class);
+        assertEquals(nonInternalKeys, new ArrayList<>(mapWithoutInternalKeys).toString());
+        assertEquals("[p1, p2, p3, p4, p5, p6]", new ArrayList<>(mapWithInternalKeys).toString());
     }
 
     private static TruffleObject keys(Object value, boolean includeInternal) throws UnsupportedMessageException {
@@ -571,6 +570,23 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Test
+    public void testIsHostFunction() {
+        TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
+        Object exit = read(system, "exit");
+        assertTrue(exit instanceof TruffleObject);
+        assertFalse(languageEnv.isHostObject(exit));
+        assertTrue(languageEnv.isHostFunction(exit));
+
+        Object out = read(system, "out");
+        assertTrue(exit instanceof TruffleObject);
+        assertTrue(languageEnv.isHostObject(out));
+        assertFalse(languageEnv.isHostFunction(out));
+
+        assertFalse(languageEnv.isHostFunction(system));
+        assertFalse(languageEnv.isHostFunction(false));
     }
 
     static final class NoKeysObject implements TruffleObject {

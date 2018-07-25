@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
@@ -76,8 +75,8 @@ final class Target_com_sun_security_auth_module_UnixSystem {
         }
         CCharPointer pwbuf = LibC.malloc(pwsize);
         try {
-            passwd pwent = StackValue.get(SizeOf.get(passwd.class));
-            passwdPointer p = StackValue.get(SizeOf.get(passwdPointer.class));
+            passwd pwent = StackValue.get(passwd.class);
+            passwdPointer p = StackValue.get(passwdPointer.class);
             int result;
             do {
                 if (pwbuf.isNull()) {

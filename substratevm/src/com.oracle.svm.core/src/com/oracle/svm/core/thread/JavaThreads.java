@@ -43,7 +43,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -67,6 +66,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.StackTraceBuilder;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.XOptions;
@@ -566,7 +566,7 @@ final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = AtomicReference.class)//
     AtomicReference<ParkEvent> sleepParkEvent;
 
-    @Delete //
+    @Alias//
     private ClassLoader contextClassLoader;
 
     @Alias//
@@ -614,15 +614,13 @@ final class Target_java_lang_Thread {
     native void setPriority(int newPriority);
 
     @Substitute
-    @SuppressWarnings("static-method")
     public ClassLoader getContextClassLoader() {
-        /* null indicates the system class loader */
-        return null;
+        return contextClassLoader;
     }
 
     @Substitute
     public void setContextClassLoader(ClassLoader cl) {
-        // noop
+        contextClassLoader = cl;
     }
 
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
@@ -692,6 +690,7 @@ final class Target_java_lang_Thread {
 
         this.group = g;
         this.daemon = parent.isDaemon();
+        contextClassLoader = parent.getContextClassLoader();
         this.priority = parent.getPriority();
         this.target = target;
         setPriority(priority);

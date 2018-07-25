@@ -123,7 +123,8 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
             flags |= MAP_FIXED();
         }
         int fd = (int) fileHandle.rawValue();
-        return mmap(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
+        Pointer result = mmap(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
+        return result.notEqual(MAP_FAILED()) ? result : WordFactory.nullPointer();
     }
 
     @Override

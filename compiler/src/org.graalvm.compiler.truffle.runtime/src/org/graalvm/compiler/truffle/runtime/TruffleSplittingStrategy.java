@@ -156,7 +156,7 @@ final class TruffleSplittingStrategy {
         }
 
         OptimizedCallTarget callTarget = call.getCallTarget();
-        int nodeCount = callTarget.getNonTrivialNodeCount();
+        int nodeCount = callTarget.getUninitializedNodeCount();
         if (nodeCount > TruffleCompilerOptions.getValue(TruffleSplittingMaxCalleeSize)) {
             return false;
         }

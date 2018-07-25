@@ -29,14 +29,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase.Instrumentation;
 
 import jdk.vm.ci.code.Architecture;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
-    public HotSpotPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
-                    Instrumentation instrumentation) {
-        super(providers, configForRoot, snippetReflection, architecture, instrumentation, new HotSpotKnownTruffleTypes(providers.getMetaAccess()));
+    public HotSpotPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
+        super(providers, configForRoot, snippetReflection, architecture, new HotSpotKnownTruffleTypes(providers.getMetaAccess()));
     }
 
     @Override

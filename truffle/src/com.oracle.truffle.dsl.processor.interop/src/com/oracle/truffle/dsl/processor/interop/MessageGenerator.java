@@ -41,6 +41,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.Arrays;
+import javax.tools.Diagnostic;
 
 abstract class MessageGenerator extends InteropNodeGenerator {
     protected static final String ACCESS_METHOD_NAME = "access";
@@ -160,30 +162,33 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         String messageName = resolveAnnotation.message();
 
         Object currentMessage = Utils.getMessage(processingEnv, messageName);
-        if (currentMessage != null) {
-            if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
-                            Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
-                return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
-                return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
-                            Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
-                            Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
-                            Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) || Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
-                            Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
-                            Message.AS_POINTER.toString().equalsIgnoreCase(messageName) || Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
-                return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.KEYS.toString().equalsIgnoreCase(messageName)) {
-                return new KeysGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
-                            Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
-                return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else {
-                assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
-                return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        if (currentMessage == null) {
+            SuppressWarnings suppress = element.getAnnotation(SuppressWarnings.class);
+            if (suppress == null || !Arrays.asList(suppress.value()).contains("unknown-message")) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, "Unknown message " + messageName + " (add @SuppressWarnings(\"unknown-message\") to ignore this warning)", element);
             }
         }
-        return null;
+        if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
+                        Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
+            return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
+            return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
+                        Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
+                        Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                        Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) || Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
+                        Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
+                        Message.AS_POINTER.toString().equalsIgnoreCase(messageName) || Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
+            return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.KEYS.toString().equalsIgnoreCase(messageName)) {
+            return new KeysGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
+                        Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
+            return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else {
+            assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
+            return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        }
     }
 
     protected void appendHandleUnsupportedTypeException(Writer w) throws IOException {
@@ -192,6 +197,10 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         w.append(indent).append("                } else {\n");
         w.append(indent).append("                  throw e;\n");
         w.append(indent).append("                }\n");
+    }
+
+    public String getMessageName() {
+        return messageName;
     }
 
 }

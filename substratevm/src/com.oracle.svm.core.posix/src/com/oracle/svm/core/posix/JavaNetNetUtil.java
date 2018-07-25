@@ -54,7 +54,6 @@ import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Poll.pollfd;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Sysctl;
-import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
@@ -518,12 +517,8 @@ class JavaNetNetUtilMD {
         } else {
             // 290 errno = errorNumber;
             Errno.set_errno(errorNumber);
-            /*
-             * FIXME: Not implementing JNU_ThrowByNameWithLastError which might be like
-             * PosixOSInterface.lastErrorString.
-             */
             // 291 JNU_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", msg);
-            throw new SocketException(msg);
+            throw new SocketException(PosixUtils.lastErrorString(msg));
         }
     }
 
@@ -548,7 +543,7 @@ class JavaNetNetUtilMD {
             // 792 struct sockaddr_in6 *him6 = (struct sockaddr_in6 *)him;
             NetinetIn.sockaddr_in6 him6 = (NetinetIn.sockaddr_in6) him;
             // 793 jbyte caddr[16];
-            CCharPointer caddr = StackValue.get(16, SizeOf.get(CCharPointer.class));
+            CCharPointer caddr = StackValue.get(16, CCharPointer.class);
             // 794 jint address;
             int address;
             // 797 if (family == IPv4) { /* will convert to IPv4-mapped address */
@@ -1472,7 +1467,7 @@ class JavaNetNetUtilMD {
         //     1228 #else
         } else {
             //     1230         socklen_t socklen = *len;
-            CIntPointer socklen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer socklen_Pointer = StackValue.get(CIntPointer.class);
             socklen_Pointer.write(len_Pointer.read());
             //     1231         rv = getsockopt(fd, level, opt, result, &socklen);
             rv = Socket.getsockopt(fd, level, opt, result_Pointer, socklen_Pointer);
@@ -1562,20 +1557,20 @@ class JavaNetNetUtilMD {
         CIntPointer bufsize = null;
         /* maxsockbuf should be static. */
         /* Declaring maxsockbuf to be a CIntPointer because it is only used inside _ALLBSD_SOURCE. */
-        CIntPointer maxsockbuf_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer maxsockbuf_Pointer = StackValue.get(CIntPointer.class);
         int maxsockbuf_size = SizeOf.get(CIntPointer.class);
         if (IsDefined._ALLBSD_SOURCE()) {
             //     1292 #if defined(KIPC_MAXSOCKBUF)
             if (IsDefined.sysctl_KIPC_MAXSOCKBUF()) {
                 //     1293     int mib[3];
-                mib = StackValue.get(3, SizeOf.get(CIntPointer.class));
+                mib = StackValue.get(3, CIntPointer.class);
                 //     1294     size_t rlen;
-                rlen_Pointer = StackValue.get(SizeOf.get(CLongPointer.class));
+                rlen_Pointer = StackValue.get(CLongPointer.class);
             }
             //     1295 #endif
             //     1296
             //     1297     int *bufsize;
-            bufsize = StackValue.get(SizeOf.get(CIntPointer.class));
+            bufsize = StackValue.get(CIntPointer.class);
             //     1298
             //     1299 #ifdef __APPLE__
             if (IsDefined.__APPLE__()) {
@@ -1605,7 +1600,7 @@ class JavaNetNetUtilMD {
         //     1317     if (level == IPPROTO_IP && opt == IP_TOS) {
         if (level == NetinetIn.IPPROTO_IP() && opt == NetinetIn.IP_TOS()) {
             //     1318         int *iptos;
-            CIntPointer iptos = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer iptos = StackValue.get(CIntPointer.class);
             //     1319
             //     1320 #if defined(AF_INET6) && (defined(__solaris__) || defined(MACOSX))
             if (IsDefined.socket_AF_INET6() && (IsDefined.__solaris__() || IsDefined.MACOSX())) {
@@ -1993,7 +1988,7 @@ class VmPrimsJVM {
         // 3782   JVMWrapper2("JVM_Accept (0x%x)", fd);
         // 3783   //%note jvm_r6
         // 3784   socklen_t socklen = (socklen_t)(*len);
-        CIntPointer socklen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer socklen_Pointer = StackValue.get(CIntPointer.class);
         socklen_Pointer.write(len_Pointer.read());
         // 3785   jint result = os::accept(fd, him, &socklen);
         int result = Socket.accept(fd, him, socklen_Pointer);
@@ -2010,7 +2005,7 @@ class VmPrimsJVM {
         // 3827   //%note jvm_r6
         /* typedef u_int socklen_t; */
         // 3828   socklen_t socklen = (socklen_t)(*optlen);
-        CIntPointer socklen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer socklen_Pointer = StackValue.get(CIntPointer.class);
         socklen_Pointer.write(optlen.read());
          // 3829   jint result = os::get_sock_opt(fd, level, optname, optval, &socklen);
         int result = Socket.getsockopt(fd, level, optname, optval, optlen);
@@ -2026,7 +2021,7 @@ class VmPrimsJVM {
         // 3802 JVMWrapper2("JVM_GetSockName (0x%x)", fd);
         // 3803 //%note jvm_r6
         // 3804 socklen_t socklen = (socklen_t)(*len);
-        CIntPointer socklen_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer socklen_Pointer = StackValue.get(CIntPointer.class);
         socklen_Pointer.write(len_Pointer.read());
         // 3805 jint result = os::get_sock_name(fd, him, &socklen);
         int result = Target_os.get_sock_name(fd, him, socklen_Pointer);
@@ -2205,7 +2200,7 @@ class Target_os {
         // 204
         // 205   for(;;) {
         // 206     struct pollfd pfd;
-        Poll.pollfd pfd = StackValue.get(2, SizeOf.get(Time.timeval.class));
+        Poll.pollfd pfd = StackValue.get(Poll.pollfd.class);
         for (;;) {
             // 207
             // 208     pfd.fd = fd;

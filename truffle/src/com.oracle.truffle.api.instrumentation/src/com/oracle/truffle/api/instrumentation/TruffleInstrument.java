@@ -261,7 +261,8 @@ public abstract class TruffleInstrument {
         /**
          * Queries a {@link TruffleLanguage language implementation} for a special service. The
          * services can be provided by the language by directly implementing them when subclassing
-         * {@link TruffleLanguage}.
+         * {@link TruffleLanguage}. The truffle language needs to be entered on the current Thread
+         * otherwise an {@link AssertionError} is thrown.
          *
          * @param <S> the requested type
          * @param language identification of the language to query
@@ -408,14 +409,14 @@ public abstract class TruffleInstrument {
                     throw new IllegalStateException("Needs to be inserted into the AST before execution.");
                 }
             }
+        }
 
-            private boolean checkNullOrInterop(Object obj) {
-                if (obj == null) {
-                    return true;
-                }
-                AccessorInstrumentHandler.interopAccess().checkInteropType(obj);
+        private static boolean checkNullOrInterop(Object obj) {
+            if (obj == null) {
                 return true;
             }
+            AccessorInstrumentHandler.interopAccess().checkInteropType(obj);
+            return true;
         }
 
         /**
@@ -510,7 +511,9 @@ public abstract class TruffleInstrument {
         public Object findMetaObject(LanguageInfo language, Object value) {
             AccessorInstrumentHandler.interopAccess().checkInteropType(value);
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
-            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
+            Object metaObject = AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
+            assert checkNullOrInterop(metaObject);
+            return metaObject;
         }
 
         /**
@@ -662,7 +665,7 @@ public abstract class TruffleInstrument {
      *
      * @since 0.12
      */
-    @Retention(RetentionPolicy.SOURCE)
+    @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface Registration {
 

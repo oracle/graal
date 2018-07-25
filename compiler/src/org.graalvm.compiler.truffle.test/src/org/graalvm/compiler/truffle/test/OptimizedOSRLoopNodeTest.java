@@ -276,8 +276,9 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     public void testInternalInvalidations(OSRLoopFactory factory) {
         TestRepeatingNode repeating = new TestRepeatingNode();
         TestRootNode rootNode = new TestRootNode(factory, repeating);
-        CallTarget target = runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(OSR_THRESHOLD + 1);
+        target.resetCompilationProfile();
         assertCompiled(rootNode.getOSRTarget());
 
         repeating.invalidationCounter = 5;
@@ -319,18 +320,17 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertSame(rootNode.getOSRTarget(), osrTarget);
 
         // after invalidating the outer method the osr target should still be valid and used
+        target.resetCompilationProfile();
         target.call(15);
-        // even though target is compiled it is invoked in interpreter
-        target.invalidate(this, "test");
+
         assertCompiled(rootNode.getOSRTarget());
         assertSame(rootNode.getOSRTarget(), osrTarget);
-        // assertNotCompiled(target);
+        assertNotCompiled(target);
 
-        // now externally invalidate the osr target and see if we compile again
+        // now externally invalidate the osr target and see if we compile the osr target again
         rootNode.getOSRTarget().invalidate(this, "test");
         target.call(OSR_THRESHOLD + 1);
         assertCompiled(rootNode.getOSRTarget());
-
     }
 
     /*

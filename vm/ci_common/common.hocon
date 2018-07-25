@@ -69,13 +69,13 @@ fastr_linux: ${fastr} {
   packages: {
     readline: "==6.3"
     pcre: ">=8.38"
-    zlib: ">=1.2.8"
+    zlib: ">=1.2.11"
     curl: ">=7.50.1"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
-    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/zlib/1.2.8/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/curl/7.50.1/include"""
-    PKG_LDFLAGS_OVERRIDE : """-L/cm/shared/apps/zlib/1.2.8/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64"""
+    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/curl/7.50.1/include"""
+    PKG_LDFLAGS_OVERRIDE : """-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64"""
   }
 }
 
@@ -102,6 +102,8 @@ graalpython_linux: {
   }
 }
 
+graalpython_darwin: {}
+
 vm_linux: ${common_vm_linux} {
   capabilities: [linux, amd64, manycores, ram16gb, fast]
 }
@@ -126,6 +128,18 @@ post-merge_vm_darwin: ${vm_darwin} {
   targets: [post-merge]
 }
 
+daily_vm_darwin: ${vm_darwin} {
+  targets: [daily]
+}
+
+mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
+mx_vm_installables: ${mx_vm_common} [--disable-libpolyglot, --disable-polyglot, "--force-bash-launchers=lli,native-image"]
+maven_deploy_vm: [--suite, vm, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
+maven_deploy_dry_run_vm: [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
+
+full_vm_build_linux: ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
+full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
+
 builds += [
   ${eclipse} ${jdt} ${gate_vm_linux} {
     run: [
@@ -133,16 +147,82 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${gate_vm_linux} ${linux-deploy} {
+  ${full_vm_build_linux} ${linux-deploy} ${gate_vm_linux} {
     run: [
-      [export, "SUITES="${vm_all_suites}]
-      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
-      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
-      [export, "SUITES="${vm_base_suites}]
-      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
-      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
+      ${mx_vm_common} [build]
+      ${mx_vm_common}  ${maven_deploy_dry_run_vm}
     ]
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
+  },
+  ${full_vm_build_linux} ${linux-deploy} ${post-merge_vm_linux} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_vm}
+    ]
+    timelimit: "45:00"
+    name: deploy-vm-linux-amd64
+  },
+  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-installable-darwin-amd64
+  },
+  ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
+    run: [
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_vm}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-base-darwin-amd64
+  },
+  ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
+    run: [
+      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/sulong.git"], "../../sulong"]
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,sulong", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,sulong"]
+    ]
+    timelimit: "35:00"
+    name: gate-vm-native-sulong-tip
+  },
+  ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${vm_linux} {
+    targets: [daily]
+    run: [
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,sulong", --disable-polyglot, --disable-libpolyglot, gate, --tags, "build,sulong"]
+    ]
+    timelimit: "35:00"
+    name: daily-vm-native-sulong
+  },
+  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
+    run: [
+      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,truffleruby", gate, --no-warning-as-error, --tags, "build,ruby"]
+    ]
+    timelimit: "35:00"
+    name: gate-vm-native-truffleruby-tip
+  },
+  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${vm_linux} {
+    targets: [daily]
+    run: [
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,truffleruby", gate, --no-warning-as-error, --tags, "build,ruby"]
+    ]
+    timelimit: "35:00"
+    name: daily-vm-native-truffleruby
   },
 ]

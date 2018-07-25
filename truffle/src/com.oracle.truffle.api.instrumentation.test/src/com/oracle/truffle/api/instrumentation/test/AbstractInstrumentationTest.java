@@ -39,35 +39,33 @@ import org.junit.Before;
 
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 /**
  * Base class for instrumentation tests.
  */
-public abstract class AbstractInstrumentationTest {
+public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
 
     protected Engine engine;
-    protected Context context;
 
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
     protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
 
     Context newContext() {
-        Context.Builder builder = Context.newBuilder();
-        builder.engine(engine);
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true);
+        builder.engine(getEngine());
         return builder.build();
     }
 
     @Before
     public void setup() {
-        InstrumentationTestLanguage.envConfig = new HashMap<>();
-        engine = getEngine();
+        setupEnv(newContext());
     }
 
     protected final Engine getEngine() {
         if (engine == null) {
             engine = Engine.newBuilder().out(out).err(err).build();
         }
-        context = newContext();
         return engine;
     }
 
@@ -178,10 +176,12 @@ public abstract class AbstractInstrumentationTest {
 
     @After
     public void teardown() {
+        cleanup();
         if (engine != null) {
             engine.close();
+            engine = null;
         }
-        InstrumentationTestLanguage.envConfig = null;
+        InstrumentationTestLanguage.envConfig = new HashMap<>();
     }
 
     private static final class TestAccessor extends Accessor {

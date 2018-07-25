@@ -1,7 +1,7 @@
 include "common.hocon"
 builds = []
 
-binaries-repository = "lafo-snapshots"
+binaries-repository = "lafo"
 
 #SDK
 include "sdk/ci.hocon"
@@ -29,7 +29,7 @@ include "compiler/ci_common/common.hocon"
 include "compiler/ci_common/gate.hocon"
 include "compiler/ci_common/gate_tasks.hocon"
 include "compiler/ci_common/gate_tasks_bootstrap.hocon"
-include "compiler/ci_common/deploy.hocon"
+include "compiler/ci_includes/deploy.hocon"
 
 include "compiler/ci_common/bench.hocon"
 include "compiler/ci_common/bench-hwloc.hocon"
@@ -45,6 +45,9 @@ include "compiler/ci_includes/x52-c1.hocon"
 include "compiler/ci_includes/x52-c2.hocon"
 include "compiler/ci_includes/m7_eighth-c1.hocon"
 include "compiler/ci_includes/m7_eighth-c2.hocon"
+
+# ------------------- JAOTC -------------------
+include "compiler/ci_includes/gate_tasks.hocon"
 
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/svm-gate.hocon"

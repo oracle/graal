@@ -88,7 +88,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires a " + File.pathSeparator + " separated list of directories");
                 }
                 for (String configDir : configPath.split(File.pathSeparator)) {
-                    nativeImage.addMacroOptionRoot(Paths.get(configDir));
+                    nativeImage.addMacroOptionRoot(nativeImage.canonicalize(Paths.get(configDir)));
                 }
                 return true;
             case "-jar":

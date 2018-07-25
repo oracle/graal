@@ -7,6 +7,7 @@ Substrate VM does not support all features of Java to keep the implementation sm
 | ---------- | ----------|
 | [Dynamic Class Loading / Unloading](#dynamic-class-loading--unloading) | Not supported|
 | [Reflection](#reflection) | Mostly supported|
+| [Dynamic Proxy](#dynamic-proxy) | Mostly supported|
 | [Java Native Interface (JNI)](#java-native-interface--jni) | Mostly supported|
 | [Unsafe Memory Access](#unsafe-memory-access) | Mostly supported |
 | [Static Initializers](#static-initializers) | Partially supported|
@@ -42,6 +43,14 @@ Individual classes, methods, and fields that should be accessible via reflection
 
 During native image generation, reflection can be used without restrictions during native image generation, for example in static initializers.
 
+Dynamic Proxy
+----------
+
+**Support Status: Mostly supported**
+
+What: Generating dynamic proxy classes and allocating instances of dynamic proxy classes using the `java.lang.reflect.Proxy` API.
+
+Dynamic class proxies are supported as long as the bytecodes are generated ahead-of-time. This means that the list of interfaces that define dynamic proxies needs to be known at image build time. SubstrateVM employs a simple static analysis that intercepts calls to `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])` and tries to determine the list of interfaces automatically. Where the analysis fails the lists of interfaces can be specified via configuration files. For more details, read our [documentation on dynamic proxies](DYNAMIC_PROXY.md).
 
 Java Native Interface (JNI)
 ---------------------------

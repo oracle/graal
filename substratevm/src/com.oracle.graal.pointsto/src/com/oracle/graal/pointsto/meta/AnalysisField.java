@@ -328,7 +328,7 @@ public class AnalysisField implements ResolvedJavaField {
     }
 
     public int getPosition() {
-        assert position != -1;
+        assert position != -1 : this;
         return position;
     }
 
@@ -340,6 +340,11 @@ public class AnalysisField implements ResolvedJavaField {
     @Override
     public int getModifiers() {
         return wrapped.getModifiers();
+    }
+
+    @Override
+    public int getOffset() {
+        return wrapped.getOffset();
     }
 
     @Override

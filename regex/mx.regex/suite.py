@@ -15,13 +15,6 @@ suite = {
     ]
   },
 
-  "repositories" : {
-    "lafo-snapshots" : {
-      "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
-    },
-  },
-
   "defaultLicense" : "GPLv2-CPE",
 
   "javac.lint.overrides" : "none",
@@ -34,6 +27,11 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "exports" : [
+        "com.oracle.truffle.regex",
+        "com.oracle.truffle.regex.chardata",
+        "com.oracle.truffle.regex.result",
+      ],
       "checkstyleVersion" : "8.8",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Regex",
@@ -54,6 +52,7 @@ suite = {
 
   "distributions" : {
     "TREGEX" : {
+      "moduleName" : "com.oracle.truffle.regex",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [

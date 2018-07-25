@@ -108,7 +108,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static int epollCtl(int epfd, int opcode, int fd, int events) {
             // 074     struct epoll_event event;
-            LinuxEPoll.epoll_event event = StackValue.get(SizeOf.get(LinuxEPoll.epoll_event.class));
+            LinuxEPoll.epoll_event event = StackValue.get(LinuxEPoll.epoll_event.class);
             // 075     int res;
             int res;
             // 076
@@ -236,7 +236,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         void epollCtl(int epfd, int opcode, int fd, int events) throws IOException {
             // 109     struct epoll_event event;
-            LinuxEPoll.epoll_event event = StackValue.get(SizeOf.get(LinuxEPoll.epoll_event.class));
+            LinuxEPoll.epoll_event event = StackValue.get(LinuxEPoll.epoll_event.class);
             // 110     int res;
             int res;
             // 111
@@ -308,7 +308,7 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static void interrupt(int fd) throws IOException {
             // 155     int fakebuf[1];
-            CIntPointer fakebuf = StackValue.get(1, SizeOf.get(CIntPointer.class));
+            CIntPointer fakebuf = StackValue.get(1, CIntPointer.class);
             // 156     fakebuf[0] = 1;
             fakebuf.write(0, 1);
             // 157     if (write(fd, fakebuf, 1) < 0) {
@@ -334,7 +334,7 @@ public final class LinuxNIOSubstitutions {
             // 048 int remaining = timeout;
             long remaining = timeout;
             // 049 struct timeval t;
-            Time.timeval t = StackValue.get(SizeOf.get(Time.timeval.class));
+            Time.timeval t = StackValue.get(Time.timeval.class);
             // 050 int diff;
             long diff;
             // 051
@@ -386,14 +386,14 @@ public final class LinuxNIOSubstitutions {
         @Substitute
         static void socketpair(int[] sv) throws IOException {
             // 040     int sp[2];
-            CIntPointer sp = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer sp = StackValue.get(2, CIntPointer.class);
             // 041     if (socketpair(PF_UNIX, SOCK_STREAM, 0, sp) == -1) {
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == -1) {
                 // 042         JNU_ThrowIOExceptionWithLastError(env, "socketpair failed");
                 throw new IOException("socketpair failed");
             } else {
                 // 044         jint res[2];
-                CIntPointer res = StackValue.get(2, SizeOf.get(CIntPointer.class));
+                CIntPointer res = StackValue.get(2, CIntPointer.class);
                 // 045         res[0] = (jint)sp[0];
                 res.write(0, sp.read(0));
                 // 046         res[1] = (jint)sp[1];
@@ -411,7 +411,7 @@ public final class LinuxNIOSubstitutions {
             // 053     int res;
             int res;
             // 054     int buf[1];
-            CIntPointer buf = StackValue.get(SizeOf.get(CIntPointer.class));
+            CIntPointer buf = StackValue.get(CIntPointer.class);
             // 055     buf[0] = 1;
             buf.write(0, 1);
             // 056     RESTARTABLE(write(fd, buf, 1), res);
@@ -434,7 +434,7 @@ public final class LinuxNIOSubstitutions {
             // 064     int res;
             int res;
             // 065     char buf[1];
-            CCharPointer buf = StackValue.get(SizeOf.get(CCharPointer.class));
+            CCharPointer buf = StackValue.get(CCharPointer.class);
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
                 do {

@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.128.5",
+    "mxversion": "5.175.2",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -25,6 +25,10 @@ suite = {
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.chromeinspector.instrument to com.oracle.truffle.truffle_api"
             ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.api",
@@ -52,6 +56,10 @@ suite = {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : ["truffle:TRUFFLE_API"],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.profiler.impl to com.oracle.truffle.truffle_api",
+            ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.api",
             "javaCompliance" : "1.8",
@@ -107,13 +115,12 @@ suite = {
 
     "distributions": {
         "CHROMEINSPECTOR": {
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.chromeinspector",
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
-            ],
-            "exclude": [
-                "TruffleJSON",
             ],
         },
         "CHROMEINSPECTOR_TEST": {
@@ -138,6 +145,8 @@ suite = {
             },
         },
         "TRUFFLE_PROFILER": {
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.profiler",
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
             ],

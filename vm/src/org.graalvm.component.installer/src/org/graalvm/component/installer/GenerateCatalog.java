@@ -374,7 +374,9 @@ public final class GenerateCatalog {
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
-
+                    if (key.startsWith("x-GraalVM-Message-")) { // NOI18N
+                        continue;
+                    }
                     catalogContents.append(MessageFormat.format(
                                     "Component.{0}.{1}-{2}={3}\n", prefix, bid, key, val));
                 }

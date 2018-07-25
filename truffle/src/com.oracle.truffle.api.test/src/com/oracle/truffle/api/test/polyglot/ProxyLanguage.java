@@ -32,6 +32,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -40,7 +44,8 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 /**
  * Reusable language for testing that allows wrap all methods.
  */
-@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID)
+@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+@ProvidedTags({ExpressionTag.class, StatementTag.class, RootTag.class})
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static final String ID = "proxyLanguage";
@@ -51,13 +56,17 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         LanguageContext(Env env) {
             this.env = env;
         }
+
+        public Env getEnv() {
+            return env;
+        }
     }
 
     private static volatile ProxyLanguage delegate = new ProxyLanguage();
     static {
         delegate.wrapper = false;
     }
-    private boolean wrapper = true;
+    protected boolean wrapper = true;
     protected ProxyLanguage languageInstance;
 
     private Consumer<LanguageContext> onCreate;
@@ -74,6 +83,14 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static LanguageContext getCurrentContext() {
         return getCurrentContext(ProxyLanguage.class);
+    }
+
+    public static LanguageContext getCurrentLanguageContext(Class<? extends ProxyLanguage> languageClass) {
+        return getCurrentContext(languageClass);
+    }
+
+    public static ProxyLanguage getCurrentLanguage() {
+        return getCurrentLanguage(ProxyLanguage.class);
     }
 
     public static ContextReference<LanguageContext> getCurrentContextReference() {
@@ -176,6 +193,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected boolean initializeMultiContext() {
         if (wrapper) {
@@ -183,6 +201,16 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             return delegate.initializeMultiContext();
         } else {
             return super.initializeMultiContext();
+        }
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            delegate.initializeMultipleContexts();
+        } else {
+            super.initializeMultipleContexts();
         }
     }
 

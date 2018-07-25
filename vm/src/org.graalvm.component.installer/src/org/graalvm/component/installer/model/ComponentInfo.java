@@ -78,6 +78,8 @@ public final class ComponentInfo {
 
     private byte[] shaDigest;
 
+    private String postinstMessage;
+
     public ComponentInfo(String id, String name, String versionString) {
         this.id = id;
         this.versionString = versionString;
@@ -171,5 +173,13 @@ public final class ComponentInfo {
 
     public void addWorkingDirectories(Collection<String> dirs) {
         workingDirectories.addAll(dirs);
+    }
+
+    public String getPostinstMessage() {
+        return postinstMessage;
+    }
+
+    public void setPostinstMessage(String postinstMessage) {
+        this.postinstMessage = postinstMessage;
     }
 }

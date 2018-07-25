@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,6 +77,11 @@ final class Target_java_security_AccessController {
 
     @Substitute
     private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) {
+        return action.run();
+    }
+
+    @Substitute
+    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) {
         return action.run();
     }
 
@@ -295,6 +300,7 @@ final class Target_java_security_MessageDigest {
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_security_provider_NativePRNG {
 
     /*
@@ -309,6 +315,7 @@ final class Target_sun_security_provider_NativePRNG {
     static native Target_sun_security_provider_NativePRNG_RandomIO initIO(Target_sun_security_provider_NativePRNG_Variant v);
 }
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class NativePRNGInstanceAccessors {
     static volatile Target_sun_security_provider_NativePRNG_RandomIO INSTANCE;
 
@@ -338,11 +345,13 @@ class NativePRNGInstanceAccessors {
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG", innerClass = "Variant")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_security_provider_NativePRNG_Variant {
     @Alias static Target_sun_security_provider_NativePRNG_Variant MIXED;
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG", innerClass = "RandomIO")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_security_provider_NativePRNG_RandomIO {
 }
 
@@ -361,7 +370,7 @@ final class Target_javax_crypto_CryptoAllPermission {
     static Target_javax_crypto_CryptoAllPermission INSTANCE;
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity")
+@TargetClass(className = "javax.crypto.JceSecurity", onlyWith = JDK8OrEarlier.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
 

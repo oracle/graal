@@ -14,9 +14,8 @@ sdkGate : ${sdkCommon} {
 
 builds += [
   ${linux-amd64}     ${labsjdk8}    ${sdkGate} ${eclipse} ${jdt} { name: "gate-sdk-linux-8"   },
-  ${linux-amd64}     ${oraclejdk9}  ${sdkGate} ${eclipse}        { name: "gate-sdk-linux-9"   },
   ${linux-amd64}     ${oraclejdk11} ${sdkGate} ${eclipse}        { name: "gate-sdk-linux-11"  },
   ${solaris-sparcv9} ${labsjdk8}    ${sdkGate}                   { name: "gate-sdk-solaris-8" },
   ${darwin-amd64}    ${labsjdk8}    ${sdkGate}                   { name: "gate-sdk-darwin-8"  },
-  ${linux-amd64} ${linux-deploy} ${maven-deploy-dry-run} ${sdkCommon} {name: "gate-sdk-maven-dry-run"}
+  ${linux-amd64} ${linux-deploy} ${labsjdk8} ${maven-deploy-dry-run} ${sdkCommon} {name: "gate-sdk-maven-dry-run"}
 ]

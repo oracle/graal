@@ -523,11 +523,27 @@ public final class DFAGenerator implements JsonConvertible {
                     cgPrecedingTransitions[i] = transitionBuilder.toLazyTransition(compilationBuffer).getId();
                 }
             }
+            boolean findSingleChar = false;
             short loopToSelf = -1;
             for (int i = 0; i < successors.length - (s.hasBackwardPrefixState() ? 1 : 0); i++) {
                 successors[i] = s.getTransitions()[i].getTarget().getId();
                 if (successors[i] == s.getId()) {
                     loopToSelf = (short) i;
+                    MatcherBuilder loopMB = s.getTransitions()[i].getMatcherBuilder();
+                    if (acc.matchesEverything() && loopMB.inverseMatchesSingleChar()) {
+                        assert loopMB.inverseMatchesSingleChar() == loopMB.createInverse(compilationBuffer).matchesSingleChar();
+                        findSingleChar = true;
+                        assert successors.length == 2;
+                        if (i == 0) {
+                            // Usually, the transition matching the inverse of the character is last
+                            // and therefore replaced with the AnyMatcher, which is fine.
+                            // If, however, the transition matching the single character is last, we
+                            // have to keep it, because DFAStateNode reads the character from it's
+                            // SingleCharMatcher.
+                            assert matchers[1] instanceof AnyMatcher;
+                            matchers[1] = s.getTransitions()[1].getMatcherBuilder().createMatcher(compilationBuffer);
+                        }
+                    }
                 }
                 assert successors[i] >= 0 && successors[i] < ret.length;
                 if (trackCaptureGroups) {
@@ -539,21 +555,19 @@ public final class DFAGenerator implements JsonConvertible {
             if (s.hasBackwardPrefixState()) {
                 successors[successors.length - 1] = s.getBackwardPrefixState();
             }
+            byte flags = DFAStateNode.flags(s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState(), findSingleChar);
             DFAStateNode stateNode;
             if (trackCaptureGroups) {
-                stateNode = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState(),
-                                loopToSelf, successors, matchers, cgTransitions, cgPrecedingTransitions,
+                stateNode = new CGTrackingDFAStateNode(s.getId(), flags, loopToSelf, successors, matchers, cgTransitions, cgPrecedingTransitions,
                                 createCGFinalTransition(s.getAnchoredFinalStateTransition()),
                                 createCGFinalTransition(s.getUnAnchoredFinalStateTransition()));
             } else if (nfa.isTraceFinderNFA()) {
-                stateNode = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState(),
-                                loopToSelf, successors, matchers, s.getPreCalculatedUnAnchoredResult(), s.getPreCalculatedAnchoredResult());
+                stateNode = new TraceFinderDFAStateNode(s.getId(), flags, loopToSelf, successors, matchers,
+                                s.getPreCalculatedUnAnchoredResult(), s.getPreCalculatedAnchoredResult());
             } else if (forward) {
-                stateNode = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState(),
-                                loopToSelf, successors, matchers);
+                stateNode = new DFAStateNode(s.getId(), flags, loopToSelf, successors, matchers);
             } else {
-                stateNode = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState(),
-                                loopToSelf, successors, matchers);
+                stateNode = new BackwardDFAStateNode(s.getId(), flags, loopToSelf, successors, matchers);
             }
             ret[s.getId()] = stateNode;
         }

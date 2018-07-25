@@ -137,7 +137,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant frameDescriptor = frameDescriptorNode.asJavaConstant();
 
         /*
-         * We access the FrameDescriptor only here and copy out all relevant data. So later
+         * We access the FrameDescriptor only here and copy out all relevant data (being extra
+         * paranoid when copying data out since they may be concurrently modified). So later
          * modifications to the FrameDescriptor by the running Truffle thread do not interfere. The
          * frame version assumption is registered first, so that we get invalidated in case the
          * FrameDescriptor changes.
@@ -167,19 +168,21 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant slotArrayList = constantReflection.readFieldValue(types.fieldFrameDescriptorSlots, frameDescriptor);
         JavaConstant slotArray = constantReflection.readFieldValue(types.fieldArrayListElementData, slotArrayList);
         int slotsArrayLength = constantReflection.readArrayLength(slotArray);
+
         frameSlotKinds = new JavaKind[slotsArrayLength];
         int limit = -1;
         for (int i = 0; i < slotsArrayLength; i++) {
-            JavaKind kind = null;
             JavaConstant slot = constantReflection.readArrayElement(slotArray, i);
             if (slot.isNonNull()) {
                 JavaConstant slotKind = constantReflection.readFieldValue(types.fieldFrameSlotKind, slot);
-                if (slotKind.isNonNull()) {
-                    kind = asJavaKind(constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind));
-                    limit = i;
+                JavaConstant slotIndex = constantReflection.readFieldValue(types.fieldFrameSlotIndex, slot);
+                if (slotKind.isNonNull() && slotIndex.isNonNull()) {
+                    final JavaKind kind = asJavaKind(constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind));
+                    final int index = slotIndex.asInt();
+                    limit = index > limit ? index : limit;
+                    frameSlotKinds[index] = kind;
                 }
             }
-            frameSlotKinds[i] = kind;
         }
         this.frameSize = limit + 1;
 

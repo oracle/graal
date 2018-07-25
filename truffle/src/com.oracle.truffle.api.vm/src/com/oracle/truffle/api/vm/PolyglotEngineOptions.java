@@ -32,6 +32,7 @@ import org.graalvm.options.OptionType;
 @SuppressWarnings("deprecation")
 @Option.Group(PolyglotImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
+    static final String OPTION_GROUP_LOG = "log";
     static final String PREINITIALIZE_CONTEXT_NAME = "PreinitializeContexts";
     private static final String INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME = "InstrumentExceptionsAreThrown";
     @Option(name = PREINITIALIZE_CONTEXT_NAME, category = OptionCategory.EXPERT, help = "Preinitialize language contexts for given languages.") static final OptionKey<String> PreinitializeContexts = new OptionKey<>(

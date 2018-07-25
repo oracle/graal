@@ -121,14 +121,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     protected final SnippetReflectionProvider snippetReflection;
     protected final TrufflePostCodeInstallationTaskFactory codeInstallationTaskFactory;
 
-    /**
-     * The instrumentation object is used by the Truffle instrumentation to count executions. The
-     * value is lazily initialized the first time it is requested because it depends on the Truffle
-     * options, and tests that need the instrumentation table need to override these options after
-     * the TruffleRuntime object is created.
-     */
-    private volatile InstrumentPhase.Instrumentation instrumentation;
-
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
                     RemoveNeverExecutedCode,
@@ -174,23 +166,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         System.arraycopy(head, 0, skippedExceptionTypes, 0, head.length);
         System.arraycopy(tail, 0, skippedExceptionTypes, head.length, tail.length);
         return skippedExceptionTypes;
-    }
-
-    /**
-     * Gets the instrumentation manager associated with this compiler, creating it first if
-     * necessary. Each compiler instance has its own instrumentation manager.
-     */
-    public final InstrumentPhase.Instrumentation getInstrumentation() {
-        if (instrumentation == null) {
-            synchronized (this) {
-                if (instrumentation == null) {
-                    OptionValues options = TruffleCompilerOptions.getOptions();
-                    long[] accessTable = new long[TruffleCompilerOptions.TruffleInstrumentationTableSize.getValue(options)];
-                    instrumentation = new InstrumentPhase.Instrumentation(accessTable);
-                }
-            }
-        }
-        return instrumentation;
     }
 
     /**
@@ -259,7 +234,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
     @Override
     public void shutdown() {
-        InstrumentPhase.Instrumentation ins = this.instrumentation;
+        InstrumentPhase.Instrumentation ins = this.partialEvaluator.instrumentation;
         if (ins != null) {
             OptionValues options = TruffleCompilerOptions.getOptions();
             if (getValue(TruffleInstrumentBranches) || getValue(TruffleInstrumentBoundaries)) {
@@ -480,7 +455,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         return new CompilationResult(compilationIdentifier, name);
     }
 
-    protected abstract PhaseSuite<HighTierContext> createGraphBuilderSuite();
+    public abstract PhaseSuite<HighTierContext> createGraphBuilderSuite();
 
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;

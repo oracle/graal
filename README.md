@@ -24,7 +24,7 @@ implemented with the instrumentation framework.
 compilation of Java applications under closed-world assumption into executable
 images or shared objects.
 
-* [TRegex](/regex/) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
+* [TRegex](regex/README.md) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
 
 ## Related Repositories
 GralVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:

@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
@@ -61,6 +62,22 @@ public class JavaStringCoercionTest {
                 env = contextEnv;
                 return super.createContext(contextEnv);
             }
+
+            @Override
+            protected boolean isObjectOfLanguage(Object object) {
+                if (object instanceof UnboxableArrayObject) {
+                    return true;
+                }
+                return super.isObjectOfLanguage(object);
+            }
+
+            @Override
+            protected String toString(LanguageContext c, Object value) {
+                if (value instanceof UnboxableArrayObject) {
+                    return "UnboxableArray";
+                }
+                return super.toString(c, value);
+            }
         });
         context.initialize(ProxyLanguage.ID);
         context.enter();
@@ -81,7 +98,7 @@ public class JavaStringCoercionTest {
 
     public static class StringConsumer2 {
         public Object call(List<?> arg) {
-            return arg.toString();
+            return arg.toString() + "(" + arg.size() + "):" + new ArrayList<>(arg).toString();
         }
 
         public Object call(String arg) {
@@ -105,7 +122,7 @@ public class JavaStringCoercionTest {
     public void testPreferWrappingToStringCoercion() throws InteropException {
         TruffleObject api = (TruffleObject) env.asGuestValue(new StringConsumer2());
         Object list = call(api, new UnboxableArrayObject(4));
-        assertEquals("[0, 1, 2, 3]", list);
+        assertEquals("UnboxableArray(4):[0, 1, 2, 3]", list);
     }
 
     private static void testStringCoercion(TruffleObject api) throws InteropException {
@@ -153,7 +170,7 @@ public class JavaStringCoercionTest {
 
     @MessageResolution(receiverType = UnboxableArrayObject.class)
     static final class UnboxableArrayObject implements TruffleObject {
-        private int size;
+        final int size;
 
         UnboxableArrayObject(int size) {
             this.size = size;

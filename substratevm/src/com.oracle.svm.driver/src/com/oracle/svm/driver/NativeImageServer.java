@@ -84,8 +84,8 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
-    NativeImageServer(PathsProvider pathsProvider) {
-        super(pathsProvider);
+    NativeImageServer(BuildConfiguration buildConfiguration) {
+        super(buildConfiguration);
         registerOptionHandler(new ServerOptionHandler(this));
     }
 
@@ -538,7 +538,7 @@ final class NativeImageServer extends NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         pb.directory(serverDir.toFile());
         List<String> command = pb.command();
-        command.add(getJavaHome().resolve("bin/java").toString());
+        command.add(canonicalize(config.getJavaExecutable()).toString());
         if (!bootClasspath.isEmpty()) {
             command.add(bootClasspath.stream().map(Path::toString).collect(Collectors.joining(":", "-Xbootclasspath/a:", "")));
         }
@@ -561,13 +561,17 @@ final class NativeImageServer extends NativeImage {
                 int selectedPort = serverPort;
                 if (selectedPort == 0) {
                     try (BufferedReader serverStdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                        String line = serverStdout.readLine();
-                        if (line != null && line.startsWith(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX)) {
-                            String portStr = line.substring(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX.length());
-                            try {
-                                selectedPort = Integer.parseInt(portStr);
-                            } catch (NumberFormatException ex) {
-                                /* Fall through */
+                        String line;
+                        int readLineTries = 12;
+                        while ((line = serverStdout.readLine()) != null && --readLineTries > 0) {
+                            if (line.startsWith(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX)) {
+                                String portStr = line.substring(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX.length());
+                                try {
+                                    selectedPort = Integer.parseInt(portStr);
+                                    break;
+                                } catch (NumberFormatException ex) {
+                                    /* Fall through */
+                                }
                             }
                         }
                         if (selectedPort == 0) {

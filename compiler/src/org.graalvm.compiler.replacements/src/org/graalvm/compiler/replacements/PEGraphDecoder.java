@@ -779,6 +779,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected LoopScope doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
+        if (!invokeData.invoke.useForInlining()) {
+            return null;
+        }
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
         EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.getOriginalMethod(), inlineInfo.getIntrinsicBytecodeProvider(), graph.trackNodeSourcePosition());
         if (graphToInline == null) {
@@ -848,7 +851,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         // Copy inlined methods from inlinee to caller
         List<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
         if (inlinedMethods != null) {
-            graph.getMethods().addAll(inlinedMethods);
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
         }
 
         if (graphToInline.getFields() != null) {

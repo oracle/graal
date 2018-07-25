@@ -31,11 +31,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.hosted.base.NumUtil;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
 

@@ -30,11 +30,12 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.c.function.CEntryPointOptions.DefaultNameTransformation;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeBootImage;
 
@@ -44,9 +45,10 @@ public final class CEntryPointData {
 
     public static final String DEFAULT_NAME = "";
     public static final Class<? extends Function<String, String>> DEFAULT_NAME_TRANSFORMATION = DefaultNameTransformation.class;
+    public static final CEntryPoint.Builtin DEFAULT_BUILTIN = CEntryPoint.Builtin.NoBuiltin;
     public static final Class<?> DEFAULT_PROLOGUE = CEntryPointOptions.AutomaticPrologue.class;
     public static final Class<?> DEFAULT_EPILOGUE = CEntryPointSetup.LeaveEpilogue.class;
-    public static final Class<?> DEFAULT_EXCEPTION_HANDLER = CEntryPointOptions.FatalExceptionHandler.class;
+    public static final Class<?> DEFAULT_EXCEPTION_HANDLER = CEntryPoint.FatalExceptionHandler.class;
 
     public static CEntryPointData create(ResolvedJavaMethod method) {
         return create(method.getAnnotation(CEntryPoint.class), method.getAnnotation(CEntryPointOptions.class),
@@ -56,7 +58,7 @@ public final class CEntryPointData {
     public static CEntryPointData create(ResolvedJavaMethod method, String name, Class<? extends Function<String, String>> nameTransformation,
                     String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
 
-        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, prologue, epilogue, exceptionHandler, publishAs);
+        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NoBuiltin, prologue, epilogue, exceptionHandler, publishAs);
     }
 
     public static CEntryPointData create(Method method) {
@@ -67,29 +69,38 @@ public final class CEntryPointData {
     public static CEntryPointData create(Method method, String name, Class<? extends Function<String, String>> nameTransformation,
                     String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
 
-        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, prologue, epilogue, exceptionHandler, publishAs);
+        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NoBuiltin, prologue, epilogue, exceptionHandler, publishAs);
     }
 
+    @SuppressWarnings("deprecation")
     private static CEntryPointData create(CEntryPoint annotation, CEntryPointOptions options, Supplier<String> alternativeNameSupplier) {
         String annotatedName = annotation.name();
         Class<? extends Function<String, String>> nameTransformation = DEFAULT_NAME_TRANSFORMATION;
         String documentation = String.join(System.lineSeparator(), annotation.documentation());
+        CEntryPoint.Builtin builtin = annotation.builtin();
         Class<?> prologue = DEFAULT_PROLOGUE;
         Class<?> epilogue = DEFAULT_EPILOGUE;
-        Class<?> exceptionHandler = DEFAULT_EXCEPTION_HANDLER;
+        Class<?> exceptionHandler = annotation.exceptionHandler();
         Publish publishAs = Publish.SymbolAndHeader;
         if (options != null) {
             nameTransformation = options.nameTransformation();
             prologue = options.prologue();
             epilogue = options.epilogue();
-            exceptionHandler = options.exceptionHandler();
+
+            /*
+             * Look at the deprecated specification for exceptionHandler too, until that code gets
+             * removed.
+             */
+            if (options.exceptionHandler() != CEntryPointData.DEFAULT_EXCEPTION_HANDLER) {
+                exceptionHandler = options.exceptionHandler();
+            }
             publishAs = options.publishAs();
         }
-        return create(annotatedName, alternativeNameSupplier, nameTransformation, documentation, prologue, epilogue, exceptionHandler, publishAs);
+        return create(annotatedName, alternativeNameSupplier, nameTransformation, documentation, builtin, prologue, epilogue, exceptionHandler, publishAs);
     }
 
     private static CEntryPointData create(String providedName, Supplier<String> alternativeNameSupplier, Class<? extends Function<String, String>> nameTransformation,
-                    String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
+                    String documentation, Builtin builtin, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
 
         // Delay generating the final symbol name because this method may be called early at a time
         // where some of the environment (such as ImageSingletons) is incomplete
@@ -105,22 +116,26 @@ public final class CEntryPointData {
             }
             return symbolName;
         };
-        return new CEntryPointData(symbolNameSupplier, providedName, documentation, prologue, epilogue, exceptionHandler, publishAs);
+        return new CEntryPointData(symbolNameSupplier, providedName, documentation, builtin, prologue, epilogue, exceptionHandler, publishAs);
     }
 
     private String symbolName;
     private final Supplier<String> symbolNameSupplier;
     private final String providedName;
     private final String documentation;
+    private final Builtin builtin;
     private final Class<?> prologue;
     private final Class<?> epilogue;
     private final Class<?> exceptionHandler;
     private final Publish publishAs;
 
-    private CEntryPointData(Supplier<String> symbolNameSupplier, String providedName, String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
+    private CEntryPointData(Supplier<String> symbolNameSupplier, String providedName, String documentation, Builtin builtin,
+                    Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
+
         this.symbolNameSupplier = symbolNameSupplier;
         this.providedName = providedName;
         this.documentation = documentation;
+        this.builtin = builtin;
         this.prologue = prologue;
         this.epilogue = epilogue;
         this.exceptionHandler = exceptionHandler;
@@ -141,6 +156,10 @@ public final class CEntryPointData {
 
     public String getDocumentation() {
         return documentation;
+    }
+
+    public Builtin getBuiltin() {
+        return builtin;
     }
 
     public Class<?> getPrologue() {
@@ -168,6 +187,8 @@ public final class CEntryPointData {
             CEntryPointData other = (CEntryPointData) obj;
             return Objects.equals(getSymbolName(), other.getSymbolName()) &&
                             Objects.equals(providedName, other.providedName) &&
+                            Objects.equals(documentation, other.documentation) &&
+                            Objects.equals(builtin, other.builtin) &&
                             Objects.equals(prologue, other.prologue) &&
                             Objects.equals(epilogue, other.epilogue) &&
                             Objects.equals(exceptionHandler, other.exceptionHandler) &&
@@ -180,6 +201,8 @@ public final class CEntryPointData {
     public int hashCode() {
         int h = Objects.hashCode(getSymbolName());
         h = h * 31 + Objects.hashCode(providedName);
+        h = h * 31 + Objects.hashCode(documentation);
+        h = h * 31 + Objects.hashCode(builtin);
         h = h * 31 + Objects.hashCode(prologue);
         h = h * 31 + Objects.hashCode(epilogue);
         h = h * 31 + Objects.hashCode(exceptionHandler);

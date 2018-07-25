@@ -150,7 +150,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
     public void updateLazyState(HostedMetaAccess hMetaAccess) {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
         int vtableBaseOffset = hubLayout.getArrayBaseOffset();
-        int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementKind());
+        int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
         int instanceOfBitsOffset = hubLayout.getBitFieldOffset();
 
         int componentHubOffset;

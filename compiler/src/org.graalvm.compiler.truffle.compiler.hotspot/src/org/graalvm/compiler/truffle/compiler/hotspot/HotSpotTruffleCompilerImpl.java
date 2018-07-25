@@ -147,11 +147,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected HotSpotPartialEvaluator createPartialEvaluator() {
-        return new HotSpotPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, getInstrumentation());
+        return new HotSpotPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
     }
 
     @Override
-    protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
+    public PhaseSuite<HighTierContext> createGraphBuilderSuite() {
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
     }
 

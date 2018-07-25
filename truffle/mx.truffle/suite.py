@@ -1,7 +1,8 @@
 suite = {
-  "mxversion" : "5.167.0",
+  "mxversion" : "5.178.0",
   "name" : "truffle",
-  "version": "1.0.0-rc2-dev",
+  "version": "1.0.0-rc5",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -14,12 +15,6 @@ suite = {
     "url" : "https://github.com/oracle/graal/tree/master/truffle",
     "read" : "https://github.com/oracle/graal.git",
     "write" : "git@github.com:oracle/graal.git",
-  },
-  "repositories" : {
-    "lafo-snapshots" : {
-      "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
-    },
   },
   "defaultLicense" : "GPLv2-CPE",
   "imports" : {
@@ -84,7 +79,7 @@ suite = {
       ],
       "uses" : [
         "com.oracle.truffle.api.TruffleRuntimeAccess",
-         "java.nio.file.spi.FileTypeDetector"
+        "java.nio.file.spi.FileTypeDetector",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
@@ -597,6 +592,9 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.nfi.types",
       ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
@@ -747,6 +745,8 @@ suite = {
     },
 
     "TRUFFLE_NFI" : {
+      # This distribution defines a module.
+      "moduleName" : "com.oracle.truffle.truffle_nfi",
       "subDir" : "src",
       "javaCompliance" : "1.8",
       "dependencies" : [
@@ -768,6 +768,10 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
+      "platforms" : [
+          "linux-amd64",
+          "darwin-amd64",
+      ],
       "output" : "<mxbuild>/truffle-nfi-native",
       "dependencies" : [
         "com.oracle.truffle.nfi.native",

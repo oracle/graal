@@ -24,6 +24,11 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,11 +40,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,12 +55,13 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.test.UnwindReenterReturnTest.TestControlFlow.CodeAction;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 
 /**
  * Test of {@link EventBinding#throwUnwind()}, followed by reenter or return.
@@ -475,8 +478,9 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
 
     @Test
     public void testParallelUnwindOneForAll() throws Exception {
+        cleanup();
+        context = newContext();
         // Throw a single UnwindException in multiple threads and test that it fails.
-        context = org.graalvm.polyglot.Context.newBuilder().engine(engine).allowCreateThread(true).out(out).err(out).build();
         UnwindParallel unwindParallel = engine.getInstruments().get("testUnwindParallel").lookup(UnwindParallel.class);
         int n = 5;
         StringBuilder codeBuilder = new StringBuilder("ROOT(");
@@ -496,6 +500,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         } catch (Exception ex) {
         }
         context.close(true);
+        context = null;
         String message = failure.get().getMessage();
         assertTrue(message, message.contains("A single instance of UnwindException thrown in two threads"));
     }
@@ -510,8 +515,23 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         doParallelUnwind(false);
     }
 
+    @Test
+    public void testUnexpectedTypeAndUnwind() throws Exception {
+        UnexpectedTypeAndUnwind unwindThrows = engine.getInstruments().get("testUnexpectedTypeAndUnwind").lookup(UnexpectedTypeAndUnwind.class);
+        int expectedResult = 43;
+        unwindThrows.submit(expectedResult);
+        Value value = context.eval(lines("EXPRESSION(UNEXPECTED_RESULT(42))"));
+
+        assertTrue(value.isNumber());
+        assertEquals(expectedResult, value.asInt());
+        assertEquals("[UNEXPECTED_RESULT(42), UnexpectedResultException(42)]", testControlFlow.nodesEntered.toString());
+        assertEquals("[UnexpectedResultException(42), UNEXPECTED_RESULT(42)]", testControlFlow.nodesReturned.toString());
+        assertEquals("[42, 42]", testControlFlow.returnValuesExceptions.toString());
+    }
+
     private void doParallelUnwind(boolean concurrent) throws Exception {
-        context = org.graalvm.polyglot.Context.newBuilder().engine(engine).allowCreateThread(true).out(out).err(out).build();
+        cleanup();
+        context = newContext();
         UnwindParallel unwindParallel = engine.getInstruments().get("testUnwindParallel").lookup(UnwindParallel.class);
         int n = 5;
         StringBuilder codeBuilder = new StringBuilder("ROOT(");
@@ -548,6 +568,8 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         }
         assertEquals(3, numUnwinds);
         assertEquals(5 * 3, numOnes);
+        context.close();
+        context = null;
     }
 
     @Registration(id = "testControlFlow", services = TestControlFlow.class)
@@ -1035,6 +1057,56 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
                                 @Override
                                 public Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
                                     return 1;
+                                }
+                            });
+        }
+    }
+
+    @Registration(id = "testUnexpectedTypeAndUnwind", services = UnexpectedTypeAndUnwind.class)
+    public static class UnexpectedTypeAndUnwind extends TruffleInstrument {
+
+        private Env env;
+        private EventBinding<? extends ExecutionEventListener> bindingExec;
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onCreate(Env env) {
+            this.env = env;
+            env.registerService(this);
+        }
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onDispose(Env env) {
+            if (bindingExec != null) {
+                bindingExec.dispose();
+                bindingExec = null;
+            }
+            super.onDispose(env);
+        }
+
+        void submit(final Object unwindValue) {
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
+                            SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(),
+                            new ExecutionEventListener() {
+
+                                @Override
+                                public void onEnter(EventContext context, VirtualFrame frame) {
+                                }
+
+                                @Override
+                                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                                    throw context.createUnwind(unwindValue);
+                                }
+
+                                @Override
+                                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                                    throw new AssertionError("No exception expected. Got: " + exception);
+                                }
+
+                                @Override
+                                public Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
+                                    return info;
                                 }
                             });
         }

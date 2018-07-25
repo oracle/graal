@@ -51,10 +51,14 @@ public final class InspectorTester {
     }
 
     public static InspectorTester start(boolean suspend) throws InterruptedException {
+        return start(suspend, false, false);
+    }
+
+    public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) throws InterruptedException {
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
         TruffleExecutionContext.resetIDs();
-        InspectExecThread exec = new InspectExecThread(suspend);
+        InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization);
         exec.start();
         exec.initialized.acquire();
         return new InspectorTester(exec);
@@ -192,6 +196,8 @@ public final class InspectorTester {
     private static class InspectExecThread extends Thread implements InspectServerSession.MessageListener {
 
         private final boolean suspend;
+        private boolean inspectInternal = false;
+        private boolean inspectInitialization = false;
         private Context context;
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
@@ -204,20 +210,23 @@ public final class InspectorTester {
         private boolean catchError;
         private Throwable error;
 
-        InspectExecThread(boolean suspend) {
+        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) {
             super("Inspector Executor");
             this.suspend = suspend;
+            this.inspectInternal = inspectInternal;
+            this.inspectInitialization = inspectInitialization;
         }
 
         @Override
         public void run() {
             Engine engine = Engine.create();
-            InspectorTestInstrument.suspend = suspend;
             Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
-            inspect = testInstrument.lookup(InspectServerSession.class);
+            InspectSessionInfoProvider sessionInfoProvider = testInstrument.lookup(InspectSessionInfoProvider.class);
+            InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization);
+            inspect = sessionInfo.getInspectServerSession();
             try {
-                connectionWatcher = testInstrument.lookup(ConnectionWatcher.class);
-                contextId = testInstrument.lookup(Long.class);
+                connectionWatcher = sessionInfo.getConnectionWatcher();
+                contextId = sessionInfo.getId();
                 inspect.setMessageListener(this);
                 context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();

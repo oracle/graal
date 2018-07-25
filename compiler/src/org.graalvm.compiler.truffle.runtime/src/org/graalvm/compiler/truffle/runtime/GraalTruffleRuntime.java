@@ -128,6 +128,7 @@ import static java.util.Collections.singletonList;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
 import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
@@ -153,7 +154,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected static class BackgroundCompileQueue {
-        private final ExecutorService compileQueue;
+        private final ExecutorService compilationExecutor;
 
         public BackgroundCompileQueue() {
             CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread");
@@ -167,7 +168,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
             }
             selectedProcessors = Math.max(1, selectedProcessors);
-            compileQueue = Executors.newFixedThreadPool(selectedProcessors, factory);
+            compilationExecutor = Executors.newFixedThreadPool(selectedProcessors, factory);
+        }
+
+        public ExecutorService getCompilationExecutor() {
+            return compilationExecutor;
         }
     }
 
@@ -202,10 +207,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public String getName() {
-        String compilerConfigurationName = getTruffleCompiler().getCompilerConfigurationName();
+        String compilerConfigurationName = getCompilerConfigurationName();
         assert compilerConfigurationName != null;
         String suffix;
-        if (compilerConfigurationName.equals("community")) {
+        if (compilerConfigurationName == null) {
+            suffix = "Unknown";
+        } else if (compilerConfigurationName.equals("community")) {
             suffix = "CE";
         } else if (compilerConfigurationName.equals("enterprise")) {
             suffix = "EE";
@@ -215,6 +222,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
         return "GraalVM " + suffix;
     }
+
+    /**
+     * This method allows retrieval of the compiler configuration without requiring to initialize
+     * the {@link TruffleCompiler} with {@link #getTruffleCompiler()}. The result of this method
+     * should always match {@link TruffleCompiler#getCompilerConfigurationName()}.
+     */
+    protected abstract String getCompilerConfigurationName();
 
     protected GraalTVMCI getTvmci() {
         return tvmci;
@@ -601,6 +615,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
+        if (!getValue(TruffleCompilation)) {
+            return false;
+        }
         String includesExcludes = getValue(TruffleCompileOnly);
         if (includesExcludes != null) {
             if (cachedIncludesExcludes != includesExcludes) {
@@ -753,7 +770,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask();
-        cancellable.setFuture(l.compileQueue.submit(new Runnable() {
+        cancellable.setFuture(l.compilationExecutor.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
@@ -857,7 +874,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public int getCompilationQueueSize() {
-        ExecutorService executor = getCompileQueue().compileQueue;
+        ExecutorService executor = getCompileQueue().compilationExecutor;
         if (executor instanceof ThreadPoolExecutor) {
             return ((ThreadPoolExecutor) executor).getQueue().size();
         } else {

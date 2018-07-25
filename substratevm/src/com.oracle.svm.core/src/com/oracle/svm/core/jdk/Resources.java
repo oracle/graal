@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -110,7 +111,7 @@ public final class Resources {
         return ImageSingletons.lookup(ResourcesSupport.class).resources.get(name);
     }
 
-    public static URL createURL(String name, InputStream is) {
+    public static URL createURL(String name, byte[] resourceBytes) {
         class Conn extends URLConnection {
             Conn(URL url) {
                 super(url);
@@ -122,7 +123,7 @@ public final class Resources {
 
             @Override
             public InputStream getInputStream() throws IOException {
-                return is;
+                return new ByteArrayInputStream(resourceBytes);
             }
         }
 

@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static org.graalvm.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
@@ -769,7 +768,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     public int fieldOffset(ResolvedJavaField f) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
-        return field.offset();
+        return field.getOffset();
     }
 
     @Override
@@ -783,7 +782,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     public int arrayBaseOffset(JavaKind kind) {
-        return getArrayBaseOffset(kind);
+        return metaAccess.getArrayBaseOffset(kind);
     }
 
     @Override

@@ -143,6 +143,11 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
     }
 
     @Override
+    public int getOffset() {
+        return original.getOffset();
+    }
+
+    @Override
     public boolean isInternal() {
         return original.isInternal();
     }

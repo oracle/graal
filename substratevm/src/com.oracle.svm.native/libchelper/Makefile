@@ -54,13 +54,13 @@ all : $(TARGET_LIB) $(TARGET_HEADERS)
 $(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR) $(OBJ_DIR):
 	mkdir -p $@
 
+$(TARGET_DIR)/$(INCLUDE_DIR)/%.h : $(INCLUDE_DIR)/%.h | $(TARGET_DIR)/$(INCLUDE_DIR)
+	cp $< $@
+
 ifneq (${OS},windows)
 
 $(TARGET_LIB) : $(LIBC_HELPER_OBJS) | $(TARGET_DIR)
 	$(AR) -cr $@ $(LIBC_HELPER_OBJS)
-
-$(TARGET_DIR)/$(INCLUDE_DIR)/%.h : $(INCLUDE_DIR)/%.h | $(TARGET_DIR)/$(INCLUDE_DIR)
-	cp $< $@
 
 $(OBJ_DIR)/%.o : %.c | $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $@
@@ -68,9 +68,9 @@ $(OBJ_DIR)/%.o : %.c | $(OBJ_DIR)
 else
 
 # For now just create empty files for Windows
-$(TARGET_LIB) $(TARGET_HEADERS):  $(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR)
+$(TARGET_LIB):  $(TARGET_DIR)
 	echo "libchelpers not imlemented on Windows"
-	$(shell touch $(TARGET_LIB) $(TARGET_HEADERS))
+	$(shell touch $(TARGET_LIB))
 
 endif
 

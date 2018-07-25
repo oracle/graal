@@ -71,7 +71,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final String TRUNCATION_SUFFIX = "...";
 
-    protected PolyglotLanguageContext languageContext;
+    protected final PolyglotLanguageContext languageContext;
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
@@ -90,7 +90,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 PolyglotLanguageContext displayLanguageContext = languageContext;
                 final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, value);
                 if (resolvedLanguage != null) {
-                    displayLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+                    displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
                 }
                 s = LANGUAGE.toStringIfVisible(displayLanguageContext.env, value, false);
             }
@@ -101,7 +101,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value getMetaObject(Object receiver) {
-        Object prev = languageContext.enter();
+        Object prev = languageContext.context.enterIfNeeded();
         try {
             Object metaObject = findMetaObject(receiver);
             if (metaObject != null) {
@@ -112,7 +112,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.leave(prev);
+            languageContext.context.leaveIfNeeded(prev);
         }
     }
 
@@ -126,14 +126,15 @@ abstract class PolyglotValue extends AbstractValueImpl {
             if (resolvedLanguage == null) {
                 return null;
             }
-            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
+            assert resolvedLanguageContext != null;
             return LANGUAGE.findMetaObject(resolvedLanguageContext.env, target);
         }
     }
 
     @Override
     protected RuntimeException unsupported(Object receiver, String message, String useToCheck) {
-        Object prev = languageContext.enter();
+        Object prev = languageContext.context.enterIfNeeded();
         try {
             String polyglotMessage;
             if (useToCheck != null) {
@@ -147,7 +148,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.leave(prev);
+            languageContext.context.leaveIfNeeded(prev);
         }
     }
 
@@ -169,7 +170,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 if (resolvedDisplayLanguage != null) {
                     displayLanguage = resolvedDisplayLanguage;
                 }
-                displayContext = languageContext.context.contexts[displayLanguage.index];
+                displayContext = languageContext.context.getContext(displayLanguage);
             } catch (Throwable e) {
                 // don't fail without assertions for stability.
                 assert rethrow(e);
@@ -230,7 +231,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     protected RuntimeException nullCoercion(Object receiver, Class<?> targetType, String message, String useToCheck) {
-        Object prev = languageContext.enter();
+        Object prev = languageContext.context.enterIfNeeded();
         try {
             String valueInfo = getValueInfo(languageContext, receiver);
             throw new PolyglotNullPointerException(String.format("Cannot convert null value %s to Java type '%s' using %s.%s. " +
@@ -239,13 +240,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.leave(prev);
+            languageContext.context.leaveIfNeeded(prev);
         }
     }
 
     @Override
     protected RuntimeException cannotConvert(Object receiver, Class<?> targetType, String message, String useToCheck, String reason) {
-        Object prev = languageContext.enter();
+        Object prev = languageContext.context.enterIfNeeded();
         try {
             String valueInfo = getValueInfo(languageContext, receiver);
             String targetTypeString = "";
@@ -258,7 +259,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.leave(prev);
+            languageContext.context.leaveIfNeeded(prev);
         }
     }
 
@@ -324,7 +325,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public String toString(Object receiver) {
-        Object prev = languageContext.enter();
+        Object prev = languageContext.context.enterIfNeeded();
         try {
             if (receiver instanceof PolyglotLanguageBindings) {
                 return languageContext.language.getName() + " Bindings";
@@ -334,32 +335,32 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 PolyglotLanguageContext displayLanguageContext = languageContext;
                 final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
                 if (resolvedLanguage != null) {
-                    displayLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+                    displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
                 }
                 return LANGUAGE.toStringIfVisible(displayLanguageContext.env, receiver, false);
             }
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.leave(prev);
+            languageContext.context.leaveIfNeeded(prev);
         }
     }
 
     @Override
     public SourceSection getSourceLocation(Object receiver) {
-        Object prev = languageContext.enter();
+        Object prev = languageContext.context.enterIfNeeded();
         try {
             final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
             if (resolvedLanguage == null) {
                 return null;
             }
-            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
             com.oracle.truffle.api.source.SourceSection result = LANGUAGE.findSourceLocation(resolvedLanguageContext.env, receiver);
             return result != null ? VMAccessor.engine().createSourceSection(resolvedLanguageContext, null, result) : null;
         } catch (final Throwable t) {
             throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
-            languageContext.leave(prev);
+            languageContext.context.leaveIfNeeded(prev);
         }
     }
 
@@ -388,8 +389,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return new Interop(languageContext, receiver, receiverType);
     }
 
-    static void createDefaultValueCaches(PolyglotLanguageContext context) {
-        Map<Class<?>, PolyglotValue> valueCache = context.valueCache;
+    static void createDefaultValueCaches(PolyglotLanguageContext context, Map<Class<?>, PolyglotValue> valueCache) {
         valueCache.put(Boolean.class, new BooleanValueCache(context));
         valueCache.put(Byte.class, new ByteValueCache(context));
         valueCache.put(Short.class, new ShortValueCache(context));
@@ -1334,7 +1334,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Set<String> getMemberKeys(Object receiver) {
-            Object prev = languageContext.enter();
+            Object prev = languageContext.context.enterIfNeeded();
             try {
                 try {
                     final Object keys = ForeignAccess.sendKeys(keysNode, (TruffleObject) receiver, false);
@@ -1348,7 +1348,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             } catch (Throwable e) {
                 throw PolyglotImpl.wrapGuestException(languageContext, e);
             } finally {
-                languageContext.leave(prev);
+                languageContext.context.leaveIfNeeded(prev);
             }
         }
 
@@ -1431,11 +1431,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private PolyglotValue getPrimitiveCache(Object primitive) {
             assert primitive != null;
-            PolyglotValue cache = languageContext.valueCache.get(primitive.getClass());
+            PolyglotValue cache = languageContext.getValueCache().get(primitive.getClass());
             if (cache == null) {
                 // TODO maybe this should be an assertion here because it likely means
                 // that unbox returned an invalid value.
-                cache = languageContext.defaultValueCache;
+                cache = languageContext.getDefaultValueCache();
             }
             return cache;
         }
@@ -2341,14 +2341,14 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 if (!(o instanceof String)) {
                     return false;
                 }
-                Object prev = languageContext.enter();
+                Object prev = languageContext.context.enterIfNeeded();
                 try {
                     int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, receiver, o);
                     return KeyInfo.isExisting(keyInfo);
                 } catch (Throwable e) {
                     throw PolyglotImpl.wrapGuestException(languageContext, e);
                 } finally {
-                    languageContext.leave(prev);
+                    languageContext.context.leaveIfNeeded(prev);
                 }
             }
 
@@ -2366,7 +2366,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                         if (index >= size()) {
                             throw new NoSuchElementException();
                         }
-                        Object prev = languageContext.enter();
+                        Object prev = languageContext.context.enterIfNeeded();
                         try {
                             try {
                                 Object result = ForeignAccess.sendRead(keysReadNode, keys, index);
@@ -2381,7 +2381,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                         } catch (Throwable e) {
                             throw PolyglotImpl.wrapGuestException(languageContext, e);
                         } finally {
-                            languageContext.leave(prev);
+                            languageContext.context.leaveIfNeeded(prev);
                         }
                     }
                 };
@@ -2392,7 +2392,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 if (cachedSize != -1) {
                     return cachedSize;
                 }
-                Object prev = languageContext.enter();
+                Object prev = languageContext.context.enterIfNeeded();
                 try {
                     try {
                         cachedSize = ((Number) ForeignAccess.sendGetSize(keysSizeNode, keys)).intValue();
@@ -2403,7 +2403,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 } catch (Throwable e) {
                     throw PolyglotImpl.wrapGuestException(languageContext, e);
                 } finally {
-                    languageContext.leave(prev);
+                    languageContext.context.leaveIfNeeded(prev);
                 }
             }
 

@@ -155,6 +155,29 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof PolyglotException) {
+            return impl.equals(((PolyglotException) obj).impl);
+        }
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public int hashCode() {
+        return impl.hashCode();
+    }
+
+    /**
      * Unsupported, {@link PolyglotException} instances are not writable therefore setting the stack
      * trace has no effect for them.
      *
@@ -287,8 +310,8 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
-     * Returns an additional guest language object. The value is never <code>null</code> and returns
-     * a Value object where {@link Value#isNull()} returns as true if it is not available.
+     * Returns an additional guest language object. Returns <code>null</code> if no exception object
+     * is available.
      *
      * @since 1.0
      */

@@ -40,6 +40,8 @@ CFLAGS+=-m64
 LDFLAGS+=-m64
 endif
 
+ifneq (${OS},windows)
+
 DEPFLAGS = -MT $@ -MMD -MP -MF bin/$*.Td
 POSTCOMPILE = @mv -f bin/$*.Td bin/$*.d && touch $@
 $(shell mkdir -p bin/ >/dev/null)
@@ -62,3 +64,11 @@ bin/%.d: ;
 .PRECIOUS: bin/%.d
 
 -include ${OBJECTS:%.o=%.d}
+
+else
+
+${TARGET}:
+	$(shell mkdir -p bin/ >/dev/null)
+	touch ${TARGET}
+
+endif
