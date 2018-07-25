@@ -36,6 +36,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.util.AbstractList;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -1147,6 +1148,23 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
             fail("Remove of object fields is not supported.");
         } catch (UnsupportedOperationException e) {
             // O.K.
+        }
+    }
+
+    @Test
+    public void testHostSymbol() {
+        TruffleObject bigIntegerClass = (TruffleObject) env.asGuestValue(BigInteger.class);
+        assertFalse(env.isHostSymbol(bigIntegerClass));
+        TruffleObject bigIntegerStatic1 = (TruffleObject) env.asHostSymbol(BigInteger.class);
+        assertTrue(env.isHostSymbol(bigIntegerStatic1));
+        TruffleObject bigIntegerStatic2 = (TruffleObject) env.lookupHostSymbol(BigInteger.class.getName());
+        assertTrue(env.isHostSymbol(bigIntegerStatic2));
+
+        assertFalse(KeyInfo.isExisting(getKeyInfo(bigIntegerClass, "ZERO")));
+        assertTrue(KeyInfo.isExisting(getKeyInfo(bigIntegerClass, "getName")));
+        for (TruffleObject bigIntegerStatic : Arrays.asList(bigIntegerStatic1, bigIntegerStatic2)) {
+            assertTrue(KeyInfo.isExisting(getKeyInfo(bigIntegerStatic, "ZERO")));
+            assertFalse(KeyInfo.isExisting(getKeyInfo(bigIntegerStatic, "getName")));
         }
     }
 

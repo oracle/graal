@@ -38,6 +38,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
@@ -238,7 +239,7 @@ public class InstallTest extends CommandTestBase {
 
     @Test
     public void testFailInstallCleanup() throws IOException {
-        Path offending = targetPath.resolve("bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         Files.createDirectories(offending.getParent());
         Files.createFile(offending);
 
@@ -248,11 +249,12 @@ public class InstallTest extends CommandTestBase {
         try {
             inst.execute();
             fail("Exception expected");
-        } catch (IOException ex) {
+        } catch (IOException | FailedOperationException ex) {
             // OK
         }
         Files.delete(offending);
-        Files.delete(offending.getParent());
+        Files.delete(offending.getParent()); // jre/bin
+        Files.delete(offending.getParent().getParent()); // jre
         assertFalse(Files.list(targetPath).findFirst().isPresent());
     }
 

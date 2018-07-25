@@ -162,6 +162,8 @@ public abstract class Accessor {
         public abstract boolean isHostFunction(Object guestObject);
 
         public abstract String javaGuestFunctionToString(Object object);
+
+        public abstract boolean isHostSymbol(Object guestObject);
     }
 
     public abstract static class EngineSupport {
@@ -242,6 +244,8 @@ public abstract class Accessor {
         public abstract OptionValues getCompilerOptionValues(RootNode rootNode);
 
         public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
+
+        public abstract Object asHostSymbol(Object vmObject, Class<?> symbolClass);
 
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
 
@@ -340,6 +344,8 @@ public abstract class Accessor {
         public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
                         String[] applicationArguments, FileSystem fileSystem);
 
+        public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
+
         public abstract Object createEnvContext(Env localEnv);
 
         public abstract TruffleContext createTruffleContext(Object impl);
@@ -420,6 +426,7 @@ public abstract class Accessor {
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
+
     }
 
     public abstract static class InstrumentSupport {

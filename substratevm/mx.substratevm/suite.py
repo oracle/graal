@@ -42,7 +42,7 @@ suite = {
             ],
             "dependencies": [
                 "sdk:GRAAL_SDK",
-                "compiler:GRAAL_RUNTIME",
+                "compiler:GRAAL",
             ],
             "javaCompliance": "1.8",
             "checkstyleVersion" : "8.8",
@@ -124,7 +124,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "compiler:GRAAL_RUNTIME",
+                "compiler:GRAAL",
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "1.8",
@@ -487,7 +487,6 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",
-                "compiler:GRAAL_RUNTIME",
                 "compiler:GRAAL",
             ],
             "exclude": [
@@ -563,7 +562,7 @@ suite = {
                 "com.oracle.graal.pointsto",
             ],
             "distDependencies": [
-                "compiler:GRAAL_RUNTIME",
+                "compiler:GRAAL",
             ],
             "exclude": [
             ]

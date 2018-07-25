@@ -116,6 +116,11 @@ final class JavaInteropAccessor extends Accessor {
             public Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext) {
                 return JavaObject.forStaticClass(clazz, hostLanguageContext);
             }
+
+            @Override
+            public boolean isHostSymbol(Object object) {
+                return object instanceof JavaObject && ((JavaObject) object).isStaticClass();
+            }
         };
     }
 

@@ -19,7 +19,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "3eb1a3ed302200a08c7e8f0b7627d1dc5fd74d06",
+                "version": "02d960f14128ac92ab543b90e6ca6b5f8cb3c839",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -29,7 +29,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "3eb1a3ed302200a08c7e8f0b7627d1dc5fd74d06",
+                "version": "02d960f14128ac92ab543b90e6ca6b5f8cb3c839",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -37,7 +37,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "59f144fadacb423e02e0ef067da29b2019f3ba36",
+                "version": "b6751221c242a3fd6b99a77dfdef567cb25c0810",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -61,7 +61,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "0261a5314d39060d6de6ddcb79289519ff5a681c",
+                "version": "3b572a0c5522a9fbb473e489d9c9d0bf37fa8843",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -70,7 +70,7 @@ suite = {
             },
             {
                 "name": "sulong",
-                "version": "5ed2c311529d08f7c825366802f12334f5df1dd4",
+                "version": "d4a688b50a2d52d596216132f653b090431e5f5b",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/sulong.git", "kind": "git"},

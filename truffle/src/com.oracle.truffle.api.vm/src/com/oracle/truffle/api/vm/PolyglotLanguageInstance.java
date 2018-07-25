@@ -26,10 +26,6 @@ package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 
@@ -37,51 +33,50 @@ final class PolyglotLanguageInstance {
 
     final PolyglotLanguage language;
     final TruffleLanguage<?> spi;
-    final boolean singleContext;
 
     private final PolyglotSourceCache sourceCache;
-    private final Map<Object, PolyglotSourceCache> sourceCaches;
-    private static final Function<Object, PolyglotSourceCache> sourceCacheCompute = new Function<Object, PolyglotSourceCache>() {
-        public PolyglotSourceCache apply(Object t) {
-            return new PolyglotSourceCache();
-        }
-    };
 
-    PolyglotLanguageInstance(PolyglotLanguage language, boolean singleContext) {
-        this.singleContext = singleContext;
+    private volatile OptionValuesImpl firstOptionValues;
+
+    PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
         try {
             this.spi = language.cache.loadLanguage();
             LANGUAGE.initializeLanguage(spi, language.info, language);
-
             if (!language.engine.singleContext.isValid()) {
                 initializeMultiContext();
             }
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
-        if (singleContext) {
-            this.sourceCache = new PolyglotSourceCache();
-            this.sourceCaches = null;
+        this.sourceCache = new PolyglotSourceCache();
+    }
+
+    boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {
+        OptionValuesImpl firstOptions = this.firstOptionValues;
+        if (firstOptionValues == null) {
+            return true;
         } else {
-            this.sourceCache = null;
-            this.sourceCaches = new ConcurrentHashMap<>();
+            return VMAccessor.LANGUAGE.areOptionsCompatible(spi, firstOptions, newOptionValues);
+        }
+    }
+
+    void claim(OptionValuesImpl optionValues) {
+        assert Thread.holdsLock(language.engine);
+        if (this.firstOptionValues == null) {
+            this.firstOptionValues = optionValues;
         }
     }
 
     void initializeMultiContext() {
         assert !language.engine.singleContext.isValid();
-        if (language.cache.getCardinality() != ContextPolicy.EXCLUSIVE) {
+        if (language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
             LANGUAGE.initializeMultiContext(spi);
         }
     }
 
-    PolyglotSourceCache getSourceCache(PolyglotContextConfig config) {
-        if (singleContext) {
-            return sourceCache;
-        } else {
-            return sourceCaches.computeIfAbsent(config.getSourceCacheKey(language), sourceCacheCompute);
-        }
+    PolyglotSourceCache getSourceCache() {
+        return sourceCache;
     }
 
 }

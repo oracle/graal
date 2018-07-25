@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +47,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -85,7 +85,7 @@ public class InstallerTest extends TestBase {
         installer = new Installer(fb(), componentInfo, registry);
         installer.setJarFile(componentJarFile);
         installer.setInstallPath(targetPath);
-        installer.setLicenseRelativePath(Paths.get(loader.getLicensePath()));
+        installer.setLicenseRelativePath(SystemUtils.fromCommonString(loader.getLicensePath()));
     }
 
     private Feedback fb() {
@@ -165,7 +165,7 @@ public class InstallerTest extends TestBase {
 
         ComponentInfo savedInfo = installer.getComponentInfo();
 
-        // now uninstall, create a new installer.
+        // now uninstall, fileName a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
         uninstaller.uninstallContent();
@@ -187,15 +187,15 @@ public class InstallerTest extends TestBase {
 
         ComponentInfo savedInfo = installer.getComponentInfo();
 
-        Path langPath = targetPath.resolve("jre/languages/ruby");
-        Path roPath = langPath.resolve("doc/user");
+        Path langPath = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby"));
+        Path roPath = langPath.resolve(SystemUtils.fromCommonString("doc/user"));
         // and add a new file to that dir:
-        Path uf = roPath.resolve("userFile.txt");
+        Path uf = roPath.resolve(SystemUtils.fileName("userFile.txt"));
         Files.write(uf, Arrays.asList("This file", "Should vanish"));
 
         exception.expect(DirectoryNotEmptyException.class);
-        exception.expectMessage("jre/languages/ruby/doc/user");
-        // now uninstall, create a new installer.
+        exception.expectMessage("jre/languages/ruby/doc/user".replace(SystemUtils.DELIMITER, File.separator));
+        // now uninstall, fileName a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
         uninstaller.uninstallContent();
@@ -213,7 +213,7 @@ public class InstallerTest extends TestBase {
         installer.install();
         ComponentInfo savedInfo = installer.getComponentInfo();
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
-        Path langPath = targetPath.resolve("jre/languages/ruby");
+        Path langPath = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby"));
         uninstaller.deleteContentsRecursively(langPath);
 
         // the root dir still exists
@@ -238,9 +238,9 @@ public class InstallerTest extends TestBase {
         installer.install();
         ComponentInfo savedInfo = installer.getComponentInfo();
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
-        Path langPath = targetPath.resolve("jre/languages/ruby");
+        Path langPath = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby"));
 
-        Path roPath = langPath.resolve("doc/legal");
+        Path roPath = langPath.resolve(SystemUtils.fromCommonString("doc/legal"));
         Files.setPosixFilePermissions(roPath, PosixFilePermissions.fromString("r-xr-xr-x"));
 
         uninstaller.deleteContentsRecursively(langPath);
@@ -265,7 +265,7 @@ public class InstallerTest extends TestBase {
 
         ComponentInfo savedInfo = installer.getComponentInfo();
 
-        // now uninstall, create a new installer.
+        // now uninstall, fileName a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
         uninstaller.uninstallContent();
@@ -287,16 +287,16 @@ public class InstallerTest extends TestBase {
 
         ComponentInfo savedInfo = installer.getComponentInfo();
 
-        Path langPath = targetPath.resolve("jre/languages/ruby");
-        Path roPath = langPath.resolve("doc/user");
+        Path langPath = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby"));
+        Path roPath = langPath.resolve(SystemUtils.fromCommonString("doc/user"));
 
         // and add a new file to that dir:
-        Path uf = roPath.resolve("userFile.txt");
+        Path uf = roPath.resolve(SystemUtils.fileName("userFile.txt"));
         Files.write(uf, Arrays.asList("This file", "Should vanish"));
         Files.setPosixFilePermissions(uf, PosixFilePermissions.fromString("r--r-----"));
         Files.setPosixFilePermissions(roPath, PosixFilePermissions.fromString("r-xr-xr-x"));
 
-        // now uninstall, create a new installer.
+        // now uninstall, fileName a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
         uninstaller.uninstallContent();
@@ -322,10 +322,10 @@ public class InstallerTest extends TestBase {
         ComponentInfo savedInfo = installer.getComponentInfo();
 
         // make some directory readonly
-        Path p = targetPath.resolve("jre/languages/ruby/doc/legal");
+        Path p = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby/doc/legal"));
         Files.setPosixFilePermissions(p, PosixFilePermissions.fromString("r--r--r--"));
 
-        // now uninstall, create a new installer.
+        // now uninstall, fileName a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
         uninstaller.setIgnoreFailedDeletions(true);
@@ -349,10 +349,10 @@ public class InstallerTest extends TestBase {
         ComponentInfo savedInfo = installer.getComponentInfo();
 
         // make some directory readonly
-        Path p = targetPath.resolve("jre/languages/ruby/doc/legal");
+        Path p = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby/doc/legal"));
         Files.setPosixFilePermissions(p, PosixFilePermissions.fromString("r--r--r--"));
 
-        // now uninstall, create a new installer.
+        // now uninstall, fileName a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
 
@@ -415,11 +415,15 @@ public class InstallerTest extends TestBase {
         installer.setPermissions(loader.loadPermissions());
         installer.install();
 
-        Path jreRuby = targetPath.resolve("jre/bin/ruby");
-        Path binRuby = targetPath.resolve("bin/ruby");
+        Path jreRuby = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
+        Path binRuby = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
 
         assertTrue(Files.exists(jreRuby));
-        assertTrue(Files.exists(binRuby));
+
+        // symlink is skipped on Windows OS
+        if (!isWindows()) {
+            assertTrue(Files.exists(binRuby));
+        }
 
         if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
             assertTrue(Files.isExecutable(jreRuby));
@@ -445,9 +449,9 @@ public class InstallerTest extends TestBase {
         JarEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry), entry);
         Path relative = targetPath.relativize(resultPath);
-        assertEquals(entry.getName(), relative.toString());
+        assertEquals(entry.getName(), SystemUtils.toCommonPath(relative));
 
-        Path check = targetPath.resolve(Paths.get("jre/bin/ruby"));
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         // assume directories are also created
         assertTrue(Files.exists(check));
         assertEquals(entry.getSize(), Files.size(check));
@@ -470,16 +474,16 @@ public class InstallerTest extends TestBase {
         /*
          * inst.setPermissions(ldr.loadPermissions()); inst.setSymlinks(ldr.loadSymlinks());
          */
-        Path existing = targetPath.resolve("jre/bin/ruby");
+        Path existing = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         Files.createDirectories(existing.getParent());
         Files.copy(dataFile("ruby"), existing);
 
         JarEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry), entry);
         Path relative = targetPath.relativize(resultPath);
-        assertEquals(entry.getName(), relative.toString());
+        assertEquals(entry.getName(), SystemUtils.toCommonPath(relative));
 
-        Path check = targetPath.resolve(Paths.get("jre/bin/ruby"));
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         // assume directories are also created
         assertTrue(Files.exists(check));
         assertEquals(entry.getSize(), Files.size(check));
@@ -487,7 +491,7 @@ public class InstallerTest extends TestBase {
         // check that the installation is reverted
         installer.revertInstall();
 
-        // MUST still exist, the installe did not create it
+        // MUST still exist, the installe did not fileName it
         assertTrue(Files.exists(check));
     }
 
@@ -502,16 +506,16 @@ public class InstallerTest extends TestBase {
         /*
          * inst.setPermissions(ldr.loadPermissions()); inst.setSymlinks(ldr.loadSymlinks());
          */
-        Path existing = targetPath.resolve("jre/bin/ruby");
+        Path existing = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         Files.createDirectories(existing.getParent());
         Files.copy(dataFile("ruby2"), existing);
 
         JarEntry entry = componentJarFile.getJarEntry("jre/bin/ruby");
         Path resultPath = installer.installOneFile(installer.translateTargetPath(entry), entry);
         Path relative = targetPath.relativize(resultPath);
-        assertEquals(entry.getName(), relative.toString());
+        assertEquals(entry.getName(), SystemUtils.toCommonPath(relative));
 
-        Path check = targetPath.resolve(Paths.get("jre/bin/ruby"));
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         // assume directories are also created
         assertTrue(Files.exists(check));
         assertEquals(entry.getSize(), Files.size(check));
@@ -519,7 +523,7 @@ public class InstallerTest extends TestBase {
         // check that the installation is reverted
         installer.revertInstall();
 
-        // MUST still exist, the installe did not create it
+        // MUST still exist, the installe did not fileName it
         assertTrue(Files.exists(check));
     }
 
@@ -548,7 +552,7 @@ public class InstallerTest extends TestBase {
         JarEntry entry = componentJarFile.getJarEntry("jre/bin/");
         installer.installOneEntry(entry);
 
-        Path check = targetPath.resolve(Paths.get("jre/bin"));
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin"));
         // assume directories are also created
         assertTrue(Files.exists(check));
         assertTrue(Files.isDirectory(check));
@@ -566,13 +570,13 @@ public class InstallerTest extends TestBase {
     public void testInstallExistingDirectoryWillNotRevert() throws Exception {
         setupComponentInstall("truffleruby2.jar");
 
-        Path existing = targetPath.resolve("jre/bin");
+        Path existing = targetPath.resolve(SystemUtils.fromCommonString("jre/bin"));
         Files.createDirectories(existing);
 
         JarEntry entry = componentJarFile.getJarEntry("jre/bin/");
         installer.installOneEntry(entry);
 
-        Path check = targetPath.resolve(Paths.get("jre/bin"));
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin"));
         // assume directories are also created
         assertTrue(Files.exists(check));
         assertTrue(Files.isDirectory(check));
@@ -595,7 +599,7 @@ public class InstallerTest extends TestBase {
         setupComponentInstall("truffleruby3.jar");
         installer.unpackFiles();
         // check the executable file has no permissions
-        Path check = targetPath.resolve("jre/bin/ruby");
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         assertFalse(Files.isExecutable(check));
         installer.processPermissions();
         // still nothing, no permissions were set
@@ -604,7 +608,7 @@ public class InstallerTest extends TestBase {
         installer.processPermissions();
         assertTrue(Files.isExecutable(check));
         assertTrue(Files.isExecutable(targetPath.resolve(
-                        Paths.get("jre/languages/ruby/bin/ri"))));
+                        SystemUtils.fromCommonString("jre/languages/ruby/bin/ri"))));
     }
 
     /**
@@ -619,7 +623,7 @@ public class InstallerTest extends TestBase {
         installer.unpackFiles();
 
         // check the executable file has no permissions
-        Path check = targetPath.resolve("bin/ruby");
+        Path check = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
         assertFalse(Files.exists(check));
 
         installer.setSymlinks(loader.loadSymlinks());
@@ -713,7 +717,7 @@ public class InstallerTest extends TestBase {
     @Test
     public void testValidateOverwriteDirectoryWithFile() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        Path offending = targetPath.resolve("jre/bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
         Files.createDirectories(offending);
         ZipEntry entry = componentJarFile.getEntry("jre/bin/ruby");
 
@@ -726,7 +730,7 @@ public class InstallerTest extends TestBase {
     @Test
     public void testValidateOverwriteFileWithDirectory() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        Path offending = targetPath.resolve("jre/languages/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby"));
         Files.createDirectories(offending.getParent());
         Files.createFile(offending);
         ZipEntry entry = componentJarFile.getEntry("jre/languages/ruby/");
@@ -739,10 +743,13 @@ public class InstallerTest extends TestBase {
 
     @Test
     public void testRevertInstallFailureFile() throws Exception {
+        if (isWindows()) {
+            return;
+        }
         setupComponentInstall("truffleruby2.jar");
         installer.install();
 
-        Path jreRuby = targetPath.resolve("jre/bin/ruby");
+        Path jreRuby = targetPath.resolve(SystemUtils.fromCommonString("jre/bin/ruby"));
 
         assertTrue(Files.exists(jreRuby));
 
@@ -773,10 +780,13 @@ public class InstallerTest extends TestBase {
 
     @Test
     public void testRevertInstallFailureDir() throws Exception {
+        if (isWindows()) {
+            return;
+        }
         setupComponentInstall("truffleruby2.jar");
         installer.install();
 
-        Path jreLang = targetPath.resolve("jre/languages");
+        Path jreLang = targetPath.resolve(SystemUtils.fromCommonString("jre/languages"));
 
         assertTrue(Files.exists(jreLang));
 
@@ -811,13 +821,13 @@ public class InstallerTest extends TestBase {
             return;
         }
         setupComponentInstall("truffleruby2.jar");
-        Path offending = targetPath.resolve("bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
         Files.createDirectories(offending.getParent());
-        Files.createSymbolicLink(offending, Paths.get("../jre/bin/ruby"));
+        Files.createSymbolicLink(offending, SystemUtils.fromCommonString("../jre/bin/ruby"));
 
-        Path offending2 = targetPath.resolve("jre/languages/ruby/bin/ruby");
+        Path offending2 = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby/bin/ruby"));
         Files.createDirectories(offending2.getParent());
-        Files.createSymbolicLink(offending2, Paths.get("xxx"));
+        Files.createSymbolicLink(offending2, SystemUtils.fileName("xxx"));
 
         installer.setReplaceDiferentFiles(true);
         installer.setSymlinks(loader.loadSymlinks());
@@ -827,7 +837,7 @@ public class InstallerTest extends TestBase {
         assertTrue(paths.contains("bin/ruby"));
         assertTrue(paths.contains("jre/languages/ruby/bin/ruby"));
 
-        assertEquals(Paths.get("truffleruby"), Files.readSymbolicLink(offending2));
+        assertEquals(SystemUtils.fileName("truffleruby"), Files.readSymbolicLink(offending2));
     }
 
     @Test
@@ -835,7 +845,7 @@ public class InstallerTest extends TestBase {
         setupComponentInstall("truffleruby2.jar");
         // prepare offending symlink going elsewhere
 
-        Path offending = targetPath.resolve("bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
         Files.createDirectories(offending.getParent());
         Files.createFile(offending);
 
@@ -847,12 +857,16 @@ public class InstallerTest extends TestBase {
 
     @Test
     public void testOverwriteFileWithSymlink() throws Exception {
+        if (isWindows()) {
+            return;
+        }
+
         setupComponentInstall("truffleruby2.jar");
         // prepare offending symlink going elsewhere
 
-        Path offending = targetPath.resolve("bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
         Files.createDirectories(offending.getParent());
-        Files.createSymbolicLink(offending, targetPath.resolve("../jre/bin/ruby"));
+        Files.createSymbolicLink(offending, targetPath.resolve(SystemUtils.fromCommonString("../jre/bin/ruby")));
 
         installer.setReplaceDiferentFiles(true);
         installer.setSymlinks(loader.loadSymlinks());
@@ -861,12 +875,16 @@ public class InstallerTest extends TestBase {
 
     @Test
     public void testFailOverwriteOtherSymlink() throws Exception {
+        if (isWindows()) {
+            return;
+        }
+
         setupComponentInstall("truffleruby2.jar");
         // prepare offending symlink going elsewhere
 
-        Path offending = targetPath.resolve("bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
         Files.createDirectories(offending.getParent());
-        Files.createSymbolicLink(offending, targetPath.resolve("../x"));
+        Files.createSymbolicLink(offending, targetPath.resolve(SystemUtils.fromCommonString("../x")));
 
         exception.expect(FailedOperationException.class);
         exception.expectMessage("INSTALL_ReplacedFileDiffers");
@@ -876,12 +894,15 @@ public class InstallerTest extends TestBase {
 
     @Test
     public void testOverwriteOtherSymlink() throws Exception {
+        if (isWindows()) {
+            return;
+        }
         setupComponentInstall("truffleruby2.jar");
         // prepare offending symlink going elsewhere
 
-        Path offending = targetPath.resolve("bin/ruby");
+        Path offending = targetPath.resolve(SystemUtils.fromCommonString("bin/ruby"));
         Files.createDirectories(offending.getParent());
-        Files.createSymbolicLink(offending, targetPath.resolve("../x"));
+        Files.createSymbolicLink(offending, targetPath.resolve(SystemUtils.fromCommonString("../x")));
 
         installer.setSymlinks(loader.loadSymlinks());
         installer.setReplaceDiferentFiles(true);

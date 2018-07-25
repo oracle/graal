@@ -8,6 +8,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added Java interop support for converting executable values to legacy functional interfaces without a `@FunctionalInterface` annotation.
 * Added `TruffleLogger.getLogger(String)` to obtain the root loger of a language or instrument.
 * Introduced per language [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html). Languages are encouraged to configure the most permissive policy that they can support. 
+* Added `TruffleLanguage.areOptionsCompatible` to allow customization of the context policy based on options.
 * Changed default context policy from SHARED to EXCLUSIVE, i.e. there is one exclusive language instance per polyglot or inner context by default. This can be configured by the language 
 using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html).
 * TruffleInstrument.Env.lookup(LanguagInfo, Class) now requires to be entered in a context for the current thread.
@@ -21,6 +22,7 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
   * The set returned by [FrameDescriptor#getIdentifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getIdentifiers--) no longer reflects future changes in the FrameDescriptor. This is an incompatible change.
 * Added [LanguageInfo#isInteractive](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/LanguageInfo.html#isInteractive--)
 * Added [DebugStackFrame#getLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html#getLanguage--)
+* Added [isHostSymbol](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isHostSymbol-java.lang.Object-) and [asHostSymbol](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asHostSymbol-java.lang.Class-) to allow lookup of the host symbol from an existing class and not just class names.
 
 ## Version 1.0.0 RC3
 

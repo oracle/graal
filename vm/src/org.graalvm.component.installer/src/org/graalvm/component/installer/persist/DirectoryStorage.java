@@ -32,7 +32,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,6 +49,7 @@ import java.util.stream.Collectors;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
@@ -59,7 +59,7 @@ public class DirectoryStorage implements ComponentStorage {
     public static final String META_LICENSE_FILE = "LICENSE_PATH"; // NOI18N
 
     /**
-     * Relative path for the "release" Graalvm metadata.
+     * Relative fileName for the "release" Graalvm metadata.
      */
     private static final String PATH_RELEASE_FILE = "release";
 
@@ -74,7 +74,7 @@ public class DirectoryStorage implements ComponentStorage {
     private static final String LIST_FILE_SUFFIX = ".filelist"; // NOI18N
 
     /**
-     * The "replaced files" metadata path relative to the registry.
+     * The "replaced files" metadata fileName relative to the registry.
      */
     private static final String PATH_REPLACED_FILES = "replaced-files.properties"; // NOI18N
 
@@ -84,7 +84,7 @@ public class DirectoryStorage implements ComponentStorage {
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
 
     /**
-     * Root of the storage path.
+     * Root of the storage fileName.
      */
     private final Path registryPath;
 
@@ -118,7 +118,7 @@ public class DirectoryStorage implements ComponentStorage {
 
     @Override
     public Map<String, String> loadGraalVersionInfo() {
-        Path graalVersionFile = graalHomePath.resolve(Paths.get(PATH_RELEASE_FILE));
+        Path graalVersionFile = graalHomePath.resolve(SystemUtils.fromCommonString(PATH_RELEASE_FILE));
         try (InputStream istm = Files.newInputStream(graalVersionFile)) { // NOI18N
             return load(istm);
         } catch (IOException ex) {
@@ -223,7 +223,7 @@ public class DirectoryStorage implements ComponentStorage {
 
     @Override
     public ComponentInfo loadComponentMetadata(String tag) throws IOException {
-        Path cmpFile = registryPath.resolve(Paths.get(tag + COMPONENT_FILE_SUFFIX));
+        Path cmpFile = registryPath.resolve(SystemUtils.fileName(tag + COMPONENT_FILE_SUFFIX));
         if (!Files.exists(cmpFile)) {
             return null;
         }
@@ -244,7 +244,7 @@ public class DirectoryStorage implements ComponentStorage {
     @Override
     public ComponentInfo loadComponentFiles(ComponentInfo ci) throws IOException {
         String tag = ci.getId();
-        Path listFile = registryPath.resolve(Paths.get(tag + LIST_FILE_SUFFIX));
+        Path listFile = registryPath.resolve(SystemUtils.fileName(tag + LIST_FILE_SUFFIX));
         if (!Files.exists(listFile)) {
             return ci;
         }
@@ -274,7 +274,7 @@ public class DirectoryStorage implements ComponentStorage {
     @Override
     @SuppressWarnings("unchecked")
     public Map<String, Collection<String>> readReplacedFiles() throws IOException {
-        Path replacedPath = registryPath.resolve(PATH_REPLACED_FILES);
+        Path replacedPath = registryPath.resolve(SystemUtils.fromCommonString(PATH_REPLACED_FILES));
         Map<String, Collection<String>> result = new HashMap<>();
         Properties props = new Properties();
         if (!Files.exists(replacedPath)) {
@@ -307,7 +307,7 @@ public class DirectoryStorage implements ComponentStorage {
             Collections.sort(ids);
             props.setProperty(k, String.join(",", ids));
         }
-        Path replacedPath = registryPath.resolve(PATH_REPLACED_FILES);
+        Path replacedPath = registryPath.resolve(SystemUtils.fromCommonString(PATH_REPLACED_FILES));
         if (props.isEmpty()) {
             Files.deleteIfExists(replacedPath);
         } else {
@@ -326,8 +326,8 @@ public class DirectoryStorage implements ComponentStorage {
      */
     @Override
     public void deleteComponent(String id) throws IOException {
-        Path compFile = registryPath.resolve(Paths.get(id + COMPONENT_FILE_SUFFIX));
-        Path listFile = registryPath.resolve(Paths.get(id + LIST_FILE_SUFFIX));
+        Path compFile = registryPath.resolve(SystemUtils.fileName(id + COMPONENT_FILE_SUFFIX));
+        Path listFile = registryPath.resolve(SystemUtils.fileName(id + LIST_FILE_SUFFIX));
         Files.deleteIfExists(compFile);
         Files.deleteIfExists(listFile);
     }
@@ -341,7 +341,7 @@ public class DirectoryStorage implements ComponentStorage {
     @Override
     public void saveComponent(ComponentInfo info) throws IOException {
         assert info != null;
-        Path cmpFile = registryPath.resolve(Paths.get(info.getId() + COMPONENT_FILE_SUFFIX));
+        Path cmpFile = registryPath.resolve(SystemUtils.fileName(info.getId() + COMPONENT_FILE_SUFFIX));
         try (OutputStream compFile = Files.newOutputStream(cmpFile, StandardOpenOption.CREATE,
                         StandardOpenOption.TRUNCATE_EXISTING)) {
             metaToProperties(info).store(compFile, null);
@@ -374,7 +374,7 @@ public class DirectoryStorage implements ComponentStorage {
     }
 
     void saveComponentFileList(ComponentInfo info) throws IOException {
-        Path listFile = registryPath.resolve(info.getId() + LIST_FILE_SUFFIX);
+        Path listFile = registryPath.resolve(SystemUtils.fileName(info.getId() + LIST_FILE_SUFFIX));
         List<String> entries = new ArrayList<>(new HashSet<>(info.getPaths()));
         Collections.sort(entries);
 

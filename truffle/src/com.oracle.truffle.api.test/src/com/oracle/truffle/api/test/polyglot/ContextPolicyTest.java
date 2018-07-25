@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
@@ -475,6 +476,11 @@ public class ContextPolicyTest {
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(Dummy).equals(newOptions.get(Dummy));
+        }
+
+        @Override
         protected OptionDescriptors getOptionDescriptors() {
             return new SingleReusePolicyLanguageOptionDescriptors();
         }
@@ -484,6 +490,11 @@ public class ContextPolicyTest {
     public static class MultipleContextPolicyLanguage extends SingleContextPolicyLanguage {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
+
+        @Override
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.get(Dummy).equals(newOptions.get(Dummy));
+        }
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {

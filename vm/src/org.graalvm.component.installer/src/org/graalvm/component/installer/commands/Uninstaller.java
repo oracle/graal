@@ -29,7 +29,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -43,6 +42,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 
@@ -150,10 +150,10 @@ public class Uninstaller {
                 feedback.verboseOutput("INSTALL_SkippingSharedFile", p);
                 continue;
             }
-            Path toDelete = installPath.resolve(p);
+            Path toDelete = installPath.resolve(SystemUtils.fromCommonString(p));
             if (Files.isDirectory(toDelete)) {
                 for (String s : preservePaths) {
-                    Path x = Paths.get(s);
+                    Path x = SystemUtils.fromCommonString(s);
                     if (x.startsWith(p)) {
                         // will not delete directory with something shared or system.
                         continue O;
@@ -178,7 +178,7 @@ public class Uninstaller {
         }
         List<String> dirNames = new ArrayList<>(directoriesToDelete);
         for (String s : componentInfo.getWorkingDirectories()) {
-            Path p = installPath.resolve(s);
+            Path p = installPath.resolve(SystemUtils.fromCommonString(s));
             feedback.verboseOutput("UNINSTALL_DeletingDirectoryRecursively", p);
             if (componentInfo.getWorkingDirectories().contains(s)) {
                 deleteContentsRecursively(p);
@@ -187,7 +187,7 @@ public class Uninstaller {
         Collections.sort(dirNames);
         Collections.reverse(dirNames);
         for (String s : dirNames) {
-            Path p = installPath.resolve(s);
+            Path p = installPath.resolve(SystemUtils.fromCommonString(s));
             feedback.verboseOutput("UNINSTALL_DeletingDirectory", p);
             if (!dryRun) {
                 try {

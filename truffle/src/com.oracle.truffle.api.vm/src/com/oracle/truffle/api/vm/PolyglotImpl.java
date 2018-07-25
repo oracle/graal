@@ -627,6 +627,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public Object asHostSymbol(Object vmObject, Class<?> symbolClass) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
+            return VMAccessor.JAVAINTEROP.asStaticClassObject(symbolClass, context);
+        }
+
+        @Override
         public boolean isHostAccessAllowed(Object vmObject, Env env) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             return context.context.config.hostAccessAllowed;
