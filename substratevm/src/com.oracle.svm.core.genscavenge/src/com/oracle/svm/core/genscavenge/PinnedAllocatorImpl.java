@@ -25,19 +25,20 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMOperation.CallerEffect;
+import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
@@ -70,7 +71,7 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
     private static final PinnedAllocationLifecycleError NOT_OPEN_ERROR = new PinnedAllocationLifecycleError("PinnedAllocator not open in this thread");
 
     /** The current PinnedAllocator open in this thread, or null if no allocator is open. */
-    private static final FastThreadLocalObject<PinnedAllocatorImpl> openPinnedAllocator = FastThreadLocalFactory.createObject(PinnedAllocatorImpl.class);
+    static final FastThreadLocalObject<PinnedAllocatorImpl> openPinnedAllocator = FastThreadLocalFactory.createObject(PinnedAllocatorImpl.class);
 
     /** A {@link LocationIdentity} that is accessed when doing pinned allocations. */
     public static final LocationIdentity OPEN_PINNED_ALLOCATOR_IDENTITY = openPinnedAllocator.getLocationIdentity();
@@ -83,6 +84,12 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
     private LifeCyclePhase phase;
     /** Head for the list of all aligned chunks pinned by this allocator. */
     private ListNode<AlignedHeapChunk.AlignedHeader> pinnedAlignedChunks;
+    /**
+     * The aligned chunk re-used as the first aligned chunk. Technically part of the
+     * {@link #pinnedAlignedChunks} list, but we cannot allocate a list node when the pinned
+     * allocator is opened. Note that we can never reuse a unaligned chunk.
+     */
+    private AlignedHeapChunk.AlignedHeader reusedAlignedChunk;
     /** Head for the list of all unaligned chunks pinned by this allocator. */
     private ListNode<UnalignedHeapChunk.UnalignedHeader> pinnedUnalignedChunks;
 
@@ -108,18 +115,22 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
          * Push this pinnedAllocatorImpl to the list of pinned allocators and try to find a pinned
          * chunk to reuse.
          */
-        /* Capture "this", the tlab, and the current VMThread for the VMOperation. */
-        final PinnedAllocatorImpl pinnedAllocatorImpl = this;
-        final ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.pinnedTLAB.getAddress();
-        final IsolateThread requestingVMThread = CEntryPointContext.getCurrentIsolateThread();
-        VMOperation.enqueueBlockingSafepoint("PinnedAllocatorImpl.open", () -> {
-            openPinnedAllocator.set(requestingVMThread, this);
-            pinnedAllocatorImpl.phase = LifeCyclePhase.OPENED;
-            pinnedAllocatorImpl.pushPinnedAllocatorImpl();
-            pinnedAllocatorImpl.tryReuseExistingChunk(tlab);
-        });
-        assert phase == LifeCyclePhase.OPENED : "PinnedAllocatorImpl.open: VMOperation failed to open.";
+        new VMOperation("PinnedAllocatorImpl.open", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT) {
+            @Override
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while opening a PinnedAllocator. A GC can corrupt the TLAB.")
+            protected void operate() {
+                UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch();
 
+                openPinnedAllocator.set(getQueuingVMThread(), PinnedAllocatorImpl.this);
+                phase = LifeCyclePhase.OPENED;
+                pushPinnedAllocatorImpl();
+                tryReuseExistingChunk(ThreadLocalAllocation.pinnedTLAB.getAddress(getQueuingVMThread()));
+
+                VMError.guarantee(gcEpoch.equal(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch()), "GC occured while opening a PinnedAllocator. This can corrupt the TLAB.");
+            }
+        }.enqueue();
+
+        assert phase == LifeCyclePhase.OPENED : "PinnedAllocatorImpl.open: VMOperation failed to open.";
         return this;
     }
 
@@ -164,8 +175,6 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
             /* We found an existing pinned chunk to re-use. */
             pSpace.extractAlignedHeapChunk(largestChunk);
             reuseExistingChunkUninterruptibly(largestChunk, tlab);
-            /* Register the existing chunk as pinned. */
-            pushPinnedChunks(tlab);
 
         } else {
             log().string("[PinnedAllocatorImpl.tryReuseExistingChunk:").string("  tlab: ").hex(tlab).string(" available bytes: ").unsigned(largestAvailable).string(
@@ -174,9 +183,11 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
     }
 
     @Uninterruptible(reason = "Holds uninterruptible memory and modifies TLAB.")
-    private static void reuseExistingChunkUninterruptibly(AlignedHeapChunk.AlignedHeader largestChunk, ThreadLocalAllocation.Descriptor tlab) {
+    private void reuseExistingChunkUninterruptibly(AlignedHeapChunk.AlignedHeader largestChunk, ThreadLocalAllocation.Descriptor tlab) {
         tlab.setAlignedChunk(largestChunk);
         ThreadLocalAllocation.resumeAllocationChunk(tlab);
+        /* Register the existing chunk as pinned. */
+        reusedAlignedChunk = largestChunk;
     }
 
     public void ensureOpen() {
@@ -233,19 +244,25 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
 
         ensureOpen();
 
-        /* Capture "this", the tlab and the VMThread for the VMOperation. */
-        final PinnedAllocatorImpl pinnedAllocatorImpl = this;
-        final ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.pinnedTLAB.getAddress();
-        final IsolateThread requestingVMThread = CEntryPointContext.getCurrentIsolateThread();
-        VMOperation.enqueueBlockingSafepoint("PinnedAllocatorImpl.close", () -> {
-            ThreadLocalAllocation.retireToSpace(tlab, HeapImpl.getHeapImpl().getOldGeneration().getPinnedFromSpace());
-            assert ThreadLocalAllocation.verifyUninitialized(tlab);
-            /* Now our TLAB is clean, so we can change the phase. */
-            openPinnedAllocator.set(requestingVMThread, null);
-            pinnedAllocatorImpl.phase = LifeCyclePhase.CLOSED;
-        });
-        assert phase == LifeCyclePhase.CLOSED : "PinnedAllocatorImpl.close: VMOperation failed to close.";
+        new VMOperation("PinnedAllocatorImpl.open", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT) {
+            @Override
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while closing a PinnedAllocator. A GC can corrupt the TLAB.")
+            protected void operate() {
+                UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch();
 
+                final ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.pinnedTLAB.getAddress(getQueuingVMThread());
+                ThreadLocalAllocation.retireToSpace(tlab, HeapImpl.getHeapImpl().getOldGeneration().getPinnedFromSpace());
+                assert ThreadLocalAllocation.verifyUninitialized(tlab);
+
+                /* Now our TLAB is clean, so we can change the phase. */
+                openPinnedAllocator.set(getQueuingVMThread(), null);
+                phase = LifeCyclePhase.CLOSED;
+
+                VMError.guarantee(gcEpoch.equal(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch()), "GC occured while closing a PinnedAllocator. This can corrupt the TLAB.");
+            }
+        }.enqueue();
+
+        assert phase == LifeCyclePhase.CLOSED : "PinnedAllocatorImpl.close: VMOperation failed to close.";
         log().string("  ]").newline();
     }
 
@@ -265,7 +282,7 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
 
     private void pushPinnedChunks(ThreadLocalAllocation.Descriptor tlab) {
         AlignedHeapChunk.AlignedHeader aChunk = tlab.getAlignedChunk();
-        if (aChunk.isNonNull() && (pinnedAlignedChunks == null || pinnedAlignedChunks.value.notEqual(aChunk))) {
+        if (aChunk.isNonNull() && reusedAlignedChunk.notEqual(aChunk) && (pinnedAlignedChunks == null || pinnedAlignedChunks.value.notEqual(aChunk))) {
             log().string("  pinning aligned chunk ").hex(aChunk).newline();
             pinnedAlignedChunks = new ListNode<>(aChunk, pinnedAlignedChunks);
         }
@@ -294,6 +311,9 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
                 case CLOSED:
                     log().string("  [marking chunks of allocator: ").object(cur).newline();
                     log().string("    aligned chunks: ");
+                    if (cur.reusedAlignedChunk.isNonNull()) {
+                        markPinnedChunk(cur.reusedAlignedChunk);
+                    }
                     markPinnedChunks(cur.pinnedAlignedChunks);
 
                     log().string("    unaligned chunks: ");
@@ -322,11 +342,13 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
 
     private static void markPinnedChunks(ListNode<? extends HeapChunk.Header<?>> head) {
         for (ListNode<? extends HeapChunk.Header<?>> node = head; node != null; node = node.next) {
-            HeapChunk.Header<?> chunk = node.value;
-            log().hex(chunk).string("  ");
-
-            chunk.setPinned(true);
+            markPinnedChunk(node.value);
         }
         log().newline();
+    }
+
+    private static void markPinnedChunk(HeapChunk.Header<?> chunk) {
+        log().hex(chunk).string("  ");
+        chunk.setPinned(true);
     }
 }

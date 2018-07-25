@@ -188,7 +188,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
         return systemEffect == SystemEffect.CAUSES_SAFEPOINT;
     }
 
-    final IsolateThread getQueuingVMThread() {
+    protected final IsolateThread getQueuingVMThread() {
         return queuingVMThread;
     }
 
