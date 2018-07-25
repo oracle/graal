@@ -147,6 +147,11 @@ public final class FunctionDeclaration implements Constant, FunctionSymbol {
     }
 
     @Override
+    public boolean isOverridable() {
+        return true;
+    }
+
+    @Override
     public boolean isExternal() {
         return true;
     }
