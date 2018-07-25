@@ -1283,12 +1283,13 @@ public class NativeImageGenerator {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
-         * The same holds for "hotspot" elements, which come from the hosting HotSpot VM.
+         * The same holds for "hotspot" elements, which come from the hosting HotSpot VM, unless
+         * they are JDK internal types.
          */
         String lname = name.toLowerCase();
         if (lname.contains("hosted")) {
             bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
-        } else if (lname.contains("hotspot")) {
+        } else if ((!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
             bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
         }
     }
