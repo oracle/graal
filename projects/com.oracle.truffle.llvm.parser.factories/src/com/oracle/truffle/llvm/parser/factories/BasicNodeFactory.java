@@ -142,13 +142,13 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMIVarBitL
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMManagedPointerLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMNativePointerLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorDoubleLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFloatLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI16LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI1LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI32LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI64LiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI8LiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMDoubleVectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMFloatVectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI16VectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI1VectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI32VectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI64VectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI8VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen;
@@ -696,19 +696,19 @@ public class BasicNodeFactory implements NodeFactory {
         if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case I1:
-                    return LLVMVectorI1LiteralNodeGen.create(vals);
+                    return LLVMI1VectorLiteralNodeGen.create(vals);
                 case I8:
-                    return LLVMVectorI8LiteralNodeGen.create(vals);
+                    return LLVMI8VectorLiteralNodeGen.create(vals);
                 case I16:
-                    return LLVMVectorI16LiteralNodeGen.create(vals);
+                    return LLVMI16VectorLiteralNodeGen.create(vals);
                 case I32:
-                    return LLVMVectorI32LiteralNodeGen.create(vals);
+                    return LLVMI32VectorLiteralNodeGen.create(vals);
                 case I64:
-                    return LLVMVectorI64LiteralNodeGen.create(vals);
+                    return LLVMI64VectorLiteralNodeGen.create(vals);
                 case FLOAT:
-                    return LLVMVectorFloatLiteralNodeGen.create(vals);
+                    return LLVMFloatVectorLiteralNodeGen.create(vals);
                 case DOUBLE:
-                    return LLVMVectorDoubleLiteralNodeGen.create(vals);
+                    return LLVMDoubleVectorLiteralNodeGen.create(vals);
                 default:
                     throw new AssertionError();
             }
@@ -1165,25 +1165,25 @@ public class BasicNodeFactory implements NodeFactory {
             switch (((PrimitiveType) llvmType1).getPrimitiveKind()) {
                 case I1:
                     LLVMExpressionNode[] i1Vals = createI1LiteralNodes(nrElements, false);
-                    return LLVMVectorI1LiteralNodeGen.create(i1Vals);
+                    return LLVMI1VectorLiteralNodeGen.create(i1Vals);
                 case I8:
                     LLVMExpressionNode[] i8Vals = createI8LiteralNodes(nrElements, (byte) 0);
-                    return LLVMVectorI8LiteralNodeGen.create(i8Vals);
+                    return LLVMI8VectorLiteralNodeGen.create(i8Vals);
                 case I16:
                     LLVMExpressionNode[] i16Vals = createI16LiteralNodes(nrElements, (short) 0);
-                    return LLVMVectorI16LiteralNodeGen.create(i16Vals);
+                    return LLVMI16VectorLiteralNodeGen.create(i16Vals);
                 case I32:
                     LLVMExpressionNode[] i32Vals = createI32LiteralNodes(nrElements, 0);
-                    return LLVMVectorI32LiteralNodeGen.create(i32Vals);
+                    return LLVMI32VectorLiteralNodeGen.create(i32Vals);
                 case I64:
                     LLVMExpressionNode[] i64Vals = createI64LiteralNodes(nrElements, 0);
-                    return LLVMVectorI64LiteralNodeGen.create(i64Vals);
+                    return LLVMI64VectorLiteralNodeGen.create(i64Vals);
                 case FLOAT:
                     LLVMExpressionNode[] floatVals = createFloatLiteralNodes(nrElements, 0.0f);
-                    return LLVMVectorFloatLiteralNodeGen.create(floatVals);
+                    return LLVMFloatVectorLiteralNodeGen.create(floatVals);
                 case DOUBLE:
                     LLVMExpressionNode[] doubleVals = createDoubleLiteralNodes(nrElements, 0.0f);
-                    return LLVMVectorDoubleLiteralNodeGen.create(doubleVals);
+                    return LLVMDoubleVectorLiteralNodeGen.create(doubleVals);
                 default:
                     throw new AssertionError(llvmType1);
             }

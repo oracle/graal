@@ -52,12 +52,11 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public class LLVMVectorLiteralNode {
 
-    // TEMP (chaeubl): rename the nodes so that they match the usual pattern
-    public abstract static class LLVMVectorI1LiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMI1VectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI1LiteralNode(LLVMExpressionNode[] values) {
+        public LLVMI1VectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -72,11 +71,11 @@ public class LLVMVectorLiteralNode {
         }
     }
 
-    public abstract static class LLVMVectorI8LiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMI8VectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI8LiteralNode(LLVMExpressionNode[] values) {
+        public LLVMI8VectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -91,11 +90,11 @@ public class LLVMVectorLiteralNode {
         }
     }
 
-    public abstract static class LLVMVectorI16LiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMI16VectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI16LiteralNode(LLVMExpressionNode[] values) {
+        public LLVMI16VectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -110,11 +109,11 @@ public class LLVMVectorLiteralNode {
         }
     }
 
-    public abstract static class LLVMVectorI32LiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMI32VectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI32LiteralNode(LLVMExpressionNode[] values) {
+        public LLVMI32VectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -129,11 +128,11 @@ public class LLVMVectorLiteralNode {
         }
     }
 
-    public abstract static class LLVMVectorI64LiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMI64VectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI64LiteralNode(LLVMExpressionNode[] values) {
+        public LLVMI64VectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -200,11 +199,11 @@ public class LLVMVectorLiteralNode {
         }
     }
 
-    public abstract static class LLVMVectorFloatLiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMFloatVectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorFloatLiteralNode(LLVMExpressionNode[] values) {
+        public LLVMFloatVectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -219,11 +218,11 @@ public class LLVMVectorLiteralNode {
         }
     }
 
-    public abstract static class LLVMVectorDoubleLiteralNode extends LLVMExpressionNode {
+    public abstract static class LLVMDoubleVectorLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorDoubleLiteralNode(LLVMExpressionNode[] values) {
+        public LLVMDoubleVectorLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
