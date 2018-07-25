@@ -102,9 +102,9 @@ public class IdentityFunctionTest {
                 Value parameter = snippetRun.getParameters().get(0);
                 TypeDescriptor parameterType = TypeDescriptor.forValue(parameter);
                 TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
-                if (!resultType.isAssignable(parameterType) || !resultType.isAssignable(resultType)) {
+                if (!parameterType.isAssignable(resultType) || !resultType.isAssignable(resultType)) {
                     throw new AssertionError(String.format(
-                                    "Identity function must return the same types as it was passed. Expected %s got %s.",
+                                    "Identity function result type must contain the parameter type. Parameter type: %s Result type: %s.",
                                     parameterType,
                                     resultType));
                 }
