@@ -749,7 +749,7 @@ orig_command_benchmark = mx.command_function('benchmark')
 def benchmark(args):
     if '--jsvm=substratevm' in args:
         truffle_language_ensure('js')
-    orig_command_benchmark(args)
+    return orig_command_benchmark(args)
 
 def mx_post_parse_cmd_line(opts):
     for dist in suite.dists:
