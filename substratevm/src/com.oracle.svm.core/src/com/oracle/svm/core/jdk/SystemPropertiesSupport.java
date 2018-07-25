@@ -52,7 +52,7 @@ public abstract class SystemPropertiesSupport {
                      */
                     "line.separator", "path.separator", "file.separator",
                     /* We do not support cross-compilation for now. */
-                    "os.arch", "os.name",
+                    "os.arch", "os.name", "os.version",
                     /* For our convenience for now. */
                     "file.encoding", "sun.jnu.encoding",
     };
