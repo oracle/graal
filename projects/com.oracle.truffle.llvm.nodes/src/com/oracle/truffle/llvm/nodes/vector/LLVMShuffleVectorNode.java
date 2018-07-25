@@ -49,9 +49,10 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 @NodeChild(value = "mask", type = LLVMExpressionNode.class)
 @NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
-    protected abstract int getVectorLength();
 
     protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
+
+    protected abstract int getVectorLength();
 
     public abstract static class LLVMShuffleI8VectorNode extends LLVMShuffleVectorNode {
         @Specialization

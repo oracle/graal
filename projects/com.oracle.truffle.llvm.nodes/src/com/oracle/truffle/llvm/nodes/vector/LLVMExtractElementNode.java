@@ -108,7 +108,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMDoubleExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        protected Double doDouble(LLVMDoubleVector vector, int index) {
+        protected double doDouble(LLVMDoubleVector vector, int index) {
             return vector.getValue(index);
         }
     }
