@@ -37,11 +37,14 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.profiler.impl.HeapHistogramInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 import java.io.Closeable;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import org.graalvm.polyglot.Engine;
 
 /**
@@ -64,11 +67,22 @@ public class HeapHistogram implements Closeable {
 
     private EventBinding<?> activeBinding;
 
-    private final Map<String, MetaObjInfo> heapInfo;
+    private Map<String, MetaObjInfo> heapInfo;
+
+    private ReferenceQueue<Object> rq;
+
+    private Map<Object,ObjLivenessWeakRef> objSet;
+
+    private ReferenceManagerThread refThread;
 
     HeapHistogram(TruffleInstrument.Env env) {
         this.env = env;
         heapInfo = new HashMap<>();
+        rq = new ReferenceQueue<>();
+        objSet = new WeakHashMap<>();
+        refThread = new ReferenceManagerThread();
+
+
         env.getInstrumenter().attachContextsListener(new ContextsListener() {
             @Override
             public void onContextCreated(TruffleContext context) {
@@ -118,9 +132,8 @@ public class HeapHistogram implements Closeable {
         if (!collecting || closed) {
             return;
         }
-        synchronized (heapInfo) {
-            heapInfo.clear();
-        }
+        clearData();
+        refThread.start();
         this.activeBinding = env.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new Listener());
     }
 
@@ -178,8 +191,10 @@ public class HeapHistogram implements Closeable {
             Map<String, Object> metaObjMap = new HashMap<>();
             metaObjMap.put("language", mi.getLanguage());
             metaObjMap.put("name", mi.getName());
-            metaObjMap.put("instancesCount", mi.getInstancesCount());
+            metaObjMap.put("allocatedInstancesCount", mi.getAllocatedInstancesCount());
             metaObjMap.put("bytes", mi.getBytes());
+            metaObjMap.put("liveInstancesCount", mi.getLiveInstancesCount());
+            metaObjMap.put("liveBytes", mi.getLiveBytes());
             heapHisto.add(metaObjMap);
         }
         return heapHisto.toArray(new Map[0]);
@@ -192,7 +207,9 @@ public class HeapHistogram implements Closeable {
      */
     public void clearData() {
         synchronized (heapInfo) {
-            heapInfo.clear();
+            heapInfo = new HashMap<>();
+            rq = new ReferenceQueue<>();
+            objSet = new WeakHashMap<>();
         }
     }
 
@@ -220,6 +237,7 @@ public class HeapHistogram implements Closeable {
             activeBinding.dispose();
             activeBinding = null;
         }
+        refThread.terminate();
         clearData();
     }
 
@@ -229,6 +247,16 @@ public class HeapHistogram implements Closeable {
             throw new IllegalStateException("Heap Histogram is already closed.");
         } else if (collecting) {
             throw new IllegalStateException("Cannot change histogram configuration while collecting. Call setCollecting(false) to disable collection first.");
+        }
+    }
+
+    void signalObjGC(ObjLivenessWeakRef ref) {
+        if (!ref.removed) {
+            MetaObjInfo info = ref.info;
+            String key = info.language.concat(info.name);
+            if (heapInfo.get(key) == info) {
+                info.gcInstanceWithSize(ref.size);
+            }
         }
     }
 
@@ -250,6 +278,8 @@ public class HeapHistogram implements Closeable {
                                 size = 0;
                             }
                             info.removeInstanceWithSize(event.getOldSize());
+                            ObjLivenessWeakRef ref = objSet.remove(event.getValue());
+                            ref.removed = true;
                         }
                     }
                 }
@@ -268,7 +298,10 @@ public class HeapHistogram implements Closeable {
                 if (nonInternalLanguageContextInitialized) {
                     MetaObjInfo info = getMetaObjInfo(event);
                     if (info != null) {
-                        info.addInstanceWithSize(getAddedSize(event));
+                        long size = getAddedSize(event);
+                        info.addInstanceWithSize(size);
+                        ObjLivenessWeakRef ref = new ObjLivenessWeakRef(event.getValue(), rq, info, size);
+                        objSet.put(event.getValue(), ref);
                     }
                 }
             } finally {
@@ -334,8 +367,10 @@ public class HeapHistogram implements Closeable {
 
     static class MetaObjInfo {
 
-        private long instances;
+        private long allocatedInstances;
+        private long liveInstances;
         private long bytes;
+        private long liveBytes;
         final private String name;
         final private String language;
 
@@ -352,12 +387,20 @@ public class HeapHistogram implements Closeable {
             return language;
         }
 
-        long getInstancesCount() {
-            return instances;
+        long getAllocatedInstancesCount() {
+            return allocatedInstances;
+        }
+
+        public long getLiveInstancesCount() {
+            return liveInstances;
         }
 
         long getBytes() {
             return bytes;
+        }
+
+        long getLiveBytes() {
+            return liveBytes;
         }
 
         @Override
@@ -375,13 +418,55 @@ public class HeapHistogram implements Closeable {
         }
 
         private void addInstanceWithSize(long addedSize) {
-            instances++;
+            allocatedInstances++;
+            liveInstances++;
             bytes += addedSize;
+            liveBytes += addedSize;
         }
 
         private void removeInstanceWithSize(long oldSize) {
-            instances--;
+            allocatedInstances--;
+            liveInstances--;
             bytes -= oldSize;
+            liveBytes -= oldSize;
+        }
+
+        private void gcInstanceWithSize(long size) {
+            liveInstances--;
+            liveBytes -=size;
+        }
+    }
+
+    private static class ObjLivenessWeakRef extends PhantomReference<Object> {
+        private MetaObjInfo info;
+        private long size;
+        private boolean removed;
+
+        private ObjLivenessWeakRef(Object obj, ReferenceQueue<Object> rq, MetaObjInfo info, long size) {
+            super(obj, rq);
+            this.info = info;
+            this.size = size;
+        }
+    }
+
+    private class ReferenceManagerThread extends Thread {
+        private volatile boolean terminated;
+
+        public void run() {
+            while (!terminated) {
+                try {
+                    ObjLivenessWeakRef wr = (ObjLivenessWeakRef)rq.remove(200);
+
+                    if (wr != null && !terminated) {
+                        signalObjGC(wr);
+                    }
+                } catch (InterruptedException ex) { /* Should not happen */
+                }
+            }
+        }
+
+        public void terminate() {
+            terminated = true;
         }
     }
 
