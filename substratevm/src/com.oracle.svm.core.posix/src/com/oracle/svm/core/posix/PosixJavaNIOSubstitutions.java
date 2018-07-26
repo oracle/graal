@@ -101,11 +101,6 @@ import static com.oracle.svm.core.posix.headers.Unistd.sysconf;
 import static com.oracle.svm.core.posix.headers.Unistd.unlink;
 import static com.oracle.svm.core.posix.headers.Unistd.write;
 import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFRelease;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringAppendCharacters;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringCreateMutable;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringGetCharacters;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringGetLength;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringNormalize;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinSendfile.sendfile;
 import static com.oracle.svm.core.posix.headers.linux.LinuxSendfile.sendfile;
 import static com.oracle.svm.core.posix.headers.linux.Mntent.getmntent_r;
@@ -122,7 +117,6 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -164,6 +158,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.posix.darwin.DarwinCoreFoundationUtils;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -194,7 +189,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Uio.iovec;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFMutableStringRef;
+import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -2758,28 +2753,11 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static char[] normalizepath(char[] path, int form) {
-            char[] result;
-            CFMutableStringRef csref = CFStringCreateMutable(WordFactory.nullPointer(), WordFactory.zero());
-            if (csref.isNull()) {
-                throw throwOutOfMemoryError("native heap");
-            }
-
-            try (PinnedObject pathPin = PinnedObject.create(path)) {
-                PointerBase chars = pathPin.addressOfArrayElement(0);
-                int len = path.length;
-                CFStringAppendCharacters(csref, chars, WordFactory.signed(len));
-            }
-            CFStringNormalize(csref, WordFactory.signed(form));
-            SignedWord len = CFStringGetLength(csref);
-
-            result = new char[(int) len.rawValue()];
-            try (PinnedObject resultPin = PinnedObject.create(result)) {
-                PointerBase resultChars = resultPin.addressOfArrayElement(0);
-                CFStringGetCharacters(csref, len, resultChars);
-            }
-
+            CoreFoundation.CFMutableStringRef csref = DarwinCoreFoundationUtils.toCFStringRef(String.valueOf(path));
+            CoreFoundation.CFStringNormalize(csref, WordFactory.signed(form));
+            String res = DarwinCoreFoundationUtils.fromCFStringRef(csref);
             CFRelease(csref);
-            return result;
+            return res.toCharArray();
         }
     }
 
