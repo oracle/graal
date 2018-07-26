@@ -120,16 +120,12 @@ gate_vm_darwin: ${vm_darwin} {
   targets: [gate]
 }
 
-post-merge_vm_linux: ${vm_linux} {
-  targets: [post-merge]
-}
-
-post-merge_vm_darwin: ${vm_darwin} {
-  targets: [post-merge]
+deploy_vm_linux: ${vm_linux} {
+  targets: [deploy, post-merge]
 }
 
 daily_vm_darwin: ${vm_darwin} {
-  targets: [daily]
+  targets: [deploy, daily]
 }
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
@@ -159,7 +155,7 @@ builds += [
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
   },
-  ${full_vm_build_linux} ${linux-deploy} ${post-merge_vm_linux} {
+  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
