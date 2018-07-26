@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticFeature
 public class CEntryPointSupport implements GraalFeature {
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
         registerEntryPointActionsPlugins(invocationPlugins);
         registerEntryPointContextPlugins(invocationPlugins);
     }

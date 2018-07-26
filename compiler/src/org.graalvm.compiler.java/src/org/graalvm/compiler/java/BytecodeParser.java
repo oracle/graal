@@ -1929,9 +1929,15 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         boolean check(boolean pluginResult) {
-            if (pluginResult == true) {
+            if (pluginResult) {
+                /*
+                 * If lastInstr is null, even if this method has a non-void return type, the method
+                 * doesn't return a value, it probably throws an exception.
+                 */
                 int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                assert expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize, frameState.stackSize());
+                assert lastInstr == null || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize,
+                                frameState.stackSize());
+
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
                 assert !needsNullCheck || isPointerNonNull(args[0].stamp(NodeView.DEFAULT)) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"),
                                 args[0]);

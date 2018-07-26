@@ -39,7 +39,7 @@ Reflection
 
 What: Calling `Class.forName()`; listing methods and fields of a class; invoking methods and accessing fields reflectively; most classes in the package `java.lang.reflect`.
 
-Individual classes, methods, and fields that should be accessible via reflection must be specified during native image generation in a configuration file via the option `-H:ReflectionConfigurationFiles=`, or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/Feature.html). Elements (classes, methods, and fields) that are not included in a configuration cannot be accessed reflectively. For more details, read our [documentation on reflection](REFLECTION.md).
+Individual classes, methods, and fields that should be accessible via reflection need to be known ahead-of-time. SubstrateVM tries to resolve these elements through a static analysis that detects calls to the reflection API. Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a configuration file via the option `-H:ReflectionConfigurationFiles=`, or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/Feature.html). For more details, read our [documentation on reflection](REFLECTION.md).
 
 During native image generation, reflection can be used without restrictions during native image generation, for example in static initializers.
 

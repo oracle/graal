@@ -256,9 +256,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         /* sun.nio.fs.GnomeFileTypeDetector is currently not supported (GR-4863) */
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) a;
-        access.findSubclasses(FileTypeDetector.class).stream()
-                        .filter(detector -> !detector.getClass().getName().equals("sun.nio.fs.GnomeFileTypeDetector"))
-                        .filter(detector -> !Modifier.isAbstract(detector.getModifiers())).forEach(this::safeLoadFileDetector);
+        access.findSubclasses(FileTypeDetector.class).stream().filter(detector -> !detector.getClass().getName().equals("sun.nio.fs.GnomeFileTypeDetector")).filter(
+                        detector -> !Modifier.isAbstract(detector.getModifiers())).forEach(this::safeLoadFileDetector);
 
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
     }
@@ -294,7 +293,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
          * that we get exact types for fields that store profiles.
