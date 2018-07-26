@@ -1423,15 +1423,15 @@ public final class ZipFile implements ZipConstants, Closeable {
     @TargetClass(className = "sun.net.www.protocol.jar.JarFileFactory")
     static final class Target_sun_net_www_protocol_jar_JarFileFactory {
         @Alias//
-        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class)//
-        private static final HashMap<String, JarFile> fileCache = new HashMap<>();
+        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//
+        private static HashMap<String, JarFile> fileCache;
 
         @Alias//
-        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class)//
-        private static final HashMap<JarFile, URL> urlCache = new HashMap<>();
+        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//
+        private static HashMap<JarFile, URL> urlCache;
 
         @Alias//
-        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "sun.net.www.protocol.jar.JarFileFactory")//
-        private static final Target_sun_net_www_protocol_jar_JarFileFactory instance = new Target_sun_net_www_protocol_jar_JarFileFactory();
+        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "sun.net.www.protocol.jar.JarFileFactory", isFinal = true)//
+        private static Target_sun_net_www_protocol_jar_JarFileFactory instance;
     }
 }
