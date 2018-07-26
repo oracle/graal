@@ -24,12 +24,19 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -38,16 +45,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Custom more efficient stack representations for profilers.
@@ -60,13 +59,13 @@ final class ShadowStack {
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
     private final Instrumenter initInstrumenter;
-    private final TruffleInstrument.Env env;
+    private final TruffleLogger logger;
 
-    ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter, TruffleInstrument.Env env) {
+    ShadowStack(int stackLimit, SourceSectionFilter sourceSectionFilter, Instrumenter instrumenter, TruffleLogger logger) {
         this.stackLimit = stackLimit;
         this.sourceSectionFilter = sourceSectionFilter;
         this.initInstrumenter = instrumenter;
-        this.env = env;
+        this.logger = logger;
     }
 
     ThreadLocalStack getStack(Thread thread) {
@@ -82,7 +81,7 @@ final class ShadowStack {
             public ExecutionEventNode create(EventContext context) {
                 Node instrumentedNode = context.getInstrumentedNode();
                 if (instrumentedNode.getSourceSection() == null) {
-                    new PrintStream(env.err()).println("WARNING: Instrumented node " + instrumentedNode + " has null SourceSection.");
+                    logger.warning("Instrumented node " + instrumentedNode + " has null SourceSection.");
                     return null;
                 }
                 boolean isRoot = instrumenter.queryTags(instrumentedNode).contains(StandardTags.RootTag.class);
