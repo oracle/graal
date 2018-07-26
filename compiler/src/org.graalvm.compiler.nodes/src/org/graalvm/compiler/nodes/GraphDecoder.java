@@ -1330,7 +1330,7 @@ public class GraphDecoder {
      */
     protected void cleanupGraph(MethodScope methodScope) {
         for (MergeNode merge : graph.getNodes(MergeNode.TYPE)) {
-            for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()){
+            for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()) {
                 placeholder.replaceAndDelete(placeholder.value);
             }
         }

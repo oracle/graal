@@ -41,7 +41,6 @@ import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.EntryMarkerNode;
 import org.graalvm.compiler.nodes.EntryProxyNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
