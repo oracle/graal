@@ -25,6 +25,7 @@
 package com.oracle.truffle.dsl.processor.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -579,7 +580,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
             }
         }
 
-        return ElementUtils.uniqueSortedTypes(types, false);
+        return Arrays.asList(ElementUtils.getCommonSuperType(ProcessorContext.getInstance(), types));
     }
 
     public void setReportPolymorphism(boolean report) {
