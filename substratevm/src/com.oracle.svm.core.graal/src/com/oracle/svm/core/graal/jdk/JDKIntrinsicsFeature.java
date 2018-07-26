@@ -66,7 +66,7 @@ final class JDKIntrinsicsFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis, boolean hosted) {
         registerSystemPlugins(plugins);
     }
 

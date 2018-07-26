@@ -76,7 +76,7 @@ public class CGlobalDataFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
         Registration r = new Registration(invocationPlugins, CGlobalData.class);
         r.register1("get", Receiver.class, new InvocationPlugin() {
             @Override

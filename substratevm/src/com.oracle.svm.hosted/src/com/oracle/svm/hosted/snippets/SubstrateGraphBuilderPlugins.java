@@ -31,9 +31,11 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -73,8 +75,8 @@ import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.compiler.word.WordCastNode;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.RuntimeReflection;
@@ -114,9 +116,9 @@ import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.heap.PinnedAllocator;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -234,44 +236,7 @@ public class SubstrateGraphBuilderPlugins {
      * in the {@link DynamicProxyRegistry}.
      */
     private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection, ValueNode interfacesNode) {
-        Class<?>[] interfaces = null;
-        if (interfacesNode.isConstant()) {
-            /*
-             * The array is a constant, however that doesn't make the array immutable, i.e., its
-             * elements can still be changed. We assume that will not happen.
-             */
-            interfaces = snippetReflection.asObject(Class[].class, interfacesNode.asJavaConstant());
-
-        } else if (interfacesNode instanceof NewArrayNode) {
-            /*
-             * Find the elements written to the array. If all are constants they will be used as the
-             * proxy interfaces.
-             */
-            List<Class<?>> interfacesList = new ArrayList<>();
-            NewArrayNode newArray = (NewArrayNode) interfacesNode;
-
-            /*
-             * Walk down the control flow successor as long as we find StoreIndexedNode. Those are
-             * values written in the array.
-             */
-            assert newArray.successors().count() <= 1 : "Detected node with multiple successors: " + newArray;
-            Node successor = newArray.successors().first();
-            while (successor instanceof StoreIndexedNode) {
-                StoreIndexedNode store = (StoreIndexedNode) successor;
-                assert store.array().equals(newArray);
-                ValueNode valueNode = store.value();
-                if (valueNode.isConstant() && !valueNode.isNullConstant()) {
-                    interfacesList.add(snippetReflection.asObject(Class.class, valueNode.asJavaConstant()));
-                } else {
-                    /* If not all interfaces are non-null constants we bail out. */
-                    interfacesList = null;
-                    break;
-                }
-                assert store.successors().count() <= 1 : "Detected node with multiple successors: " + store;
-                successor = store.successors().first();
-            }
-            interfaces = interfacesList != null ? interfacesList.toArray(new Class<?>[0]) : null;
-        }
+        Class<?>[] interfaces = extractClassArray(snippetReflection, interfacesNode);
         if (interfaces != null) {
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
             ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(interfaces);
@@ -285,6 +250,89 @@ public class SubstrateGraphBuilderPlugins {
                                 " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
             }
         }
+    }
+
+    /**
+     * Try to extract a Class array from a ValueNode. It does not guarantee that the array content
+     * will not change.
+     */
+    static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, ValueNode arrayNode) {
+        return extractClassArray(snippetReflection, arrayNode, false);
+    }
+
+    /**
+     * Try to extract a Class array from a ValueNode. There are two situations:
+     *
+     * 1. The node is a ConstantNode. Then we get its initial value. However, since Java doesn't
+     * have immutable arrays this method cannot guarantee that the array content will not change.
+     * Therefore, if <code>exact</code> is set to true we return null.
+     *
+     * 2. The node is a NewArrayNode. Then we track the stores in the array as long as all are
+     * constants and there is no control flow split. If the content of the array cannot be determine
+     * a null value is returned.
+     */
+    static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, ValueNode arrayNode, boolean exact) {
+        if (arrayNode.isConstant() && !exact) {
+            /*
+             * The array is a constant, however that doesn't make the array immutable, i.e., its
+             * elements can still be changed. We assume that will not happen.
+             */
+            Class<?>[] classes = snippetReflection.asObject(Class[].class, arrayNode.asJavaConstant());
+
+            /*
+             * If any of the element is null just bailout, this is probably a situation where the
+             * array will be filled in later and we don't track that.
+             */
+            return classes == null ? null : Stream.of(classes).allMatch(Objects::nonNull) ? classes : null;
+
+        } else if (arrayNode instanceof NewArrayNode) {
+            /*
+             * Find the elements written to the array. If the array length is a constant, all
+             * written elements are constants and all array elements are filled then return the
+             * array elements.
+             */
+            NewArrayNode newArray = (NewArrayNode) arrayNode;
+            ValueNode newArrayLengthNode = newArray.length();
+            if (!newArrayLengthNode.isJavaConstant()) {
+                /*
+                 * If the array size is not a constant we bail out early since we cannot check that
+                 * all array elements are filled.
+                 */
+                return null;
+            }
+            assert newArrayLengthNode.asJavaConstant().getJavaKind() == JavaKind.Int;
+
+            /*
+             * Walk down the control flow successor as long as we find StoreIndexedNode. Those are
+             * values written in the array.
+             */
+            List<Class<?>> classList = new ArrayList<>();
+            assert newArray.successors().count() <= 1 : "Detected node with multiple successors: " + newArray;
+            Node successor = newArray.successors().first();
+            while (successor instanceof StoreIndexedNode) {
+                StoreIndexedNode store = (StoreIndexedNode) successor;
+                assert store.array().equals(newArray);
+                ValueNode valueNode = store.value();
+                if (valueNode.isConstant() && !valueNode.isNullConstant()) {
+                    classList.add(snippetReflection.asObject(Class.class, valueNode.asJavaConstant()));
+                } else {
+                    /* If not all classes are non-null constants we bail out. */
+                    classList = null;
+                    break;
+                }
+                assert store.successors().count() <= 1 : "Detected node with multiple successors: " + store;
+                successor = store.successors().first();
+            }
+
+            /*
+             * Check that all array elements are filled, i.e., the number of writes matches the size
+             * of the array.
+             */
+            int newArrayLength = newArrayLengthNode.asJavaConstant().asInt();
+
+            return classList != null && classList.size() == newArrayLength ? classList.toArray(new Class<?>[0]) : null;
+        }
+        return null;
     }
 
     private static void registerAtomicUpdaterPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis) {
