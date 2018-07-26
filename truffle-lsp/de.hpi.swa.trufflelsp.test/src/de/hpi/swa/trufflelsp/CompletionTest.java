@@ -6,12 +6,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.eclipse.lsp4j.CompletionItem;
+import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -184,6 +189,78 @@ public class CompletionTest extends TruffleLSPTest {
             assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
             assertTrue("p1 should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("p1")));
             assertEquals(numberOfGlobalsItems, items.size());
+        }
+    }
+
+    @Test
+    public void objectPropertyCompletionLocalFile() throws InterruptedException, ExecutionException {
+        URI uri = createDummyFileUri();
+        //@formatter:off
+        /**
+         *  0 function main() {
+         *  1     obj = abc();
+         *  2     obj;
+         *  3 }
+         *  4
+         *  5 function abc() {
+         *  6   obj = new();
+         *  7   obj.p = 1;
+         *  8   return obj;
+         *  9 }
+         * 10
+         * 11 function never_called(obj) {
+         * 12     obj;
+         * 13 }
+         * 14
+         */
+        //@formatter:on
+        String text = "function main() {\n    obj = abc();\n    obj;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction never_called(obj) {\n    obj;\n}\n";
+        truffleAdapter.didOpen(uri, text, "sl");
+        Future<Void> future = truffleAdapter.parse(text, "sl", uri);
+        future.get();
+
+        assertTrue(diagnostics.isEmpty());
+
+        {
+            String replacement = ".";
+            Range range = new Range(new Position(2, 7), new Position(2, 7));
+            TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
+            Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+            future2.get();
+
+            assertTrue(!diagnostics.isEmpty());
+            diagnostics.clear();
+
+            Future<CompletionList> future3 = truffleAdapter.getCompletions(uri, 2, 8);
+            CompletionList completionList = future3.get();
+            assertEquals(1, completionList.getItems().size());
+            CompletionItem item = completionList.getItems().get(0);
+            assertEquals("p", item.getLabel());
+            assertEquals("Number", item.getDetail());
+            assertEquals(CompletionItemKind.Property, item.getKind());
+        }
+
+        {
+            String replacement1 = "";
+            Range range1 = new Range(new Position(2, 7), new Position(2, 8));
+            TextDocumentContentChangeEvent event1 = new TextDocumentContentChangeEvent(range1, replacement1.length(), replacement1);
+            Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event1), uri);
+            future2.get();
+
+            assertTrue(diagnostics.isEmpty());
+
+            String replacement2 = ".";
+            Range range2 = new Range(new Position(12, 7), new Position(12, 7));
+            TextDocumentContentChangeEvent event2 = new TextDocumentContentChangeEvent(range2, replacement2.length(), replacement2);
+            Future<Void> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
+            future3.get();
+
+            assertTrue(!diagnostics.isEmpty());
+            diagnostics.clear();
+
+            Future<CompletionList> future4 = truffleAdapter.getCompletions(uri, 12, 8);
+            CompletionList completionList = future4.get();
+            assertEquals(0, completionList.getItems().size());
         }
     }
 }

@@ -22,7 +22,7 @@ public class SourceProvider implements LoadSourceListener, LoadSourceSectionList
         // This method is only called for every "new" Source, i.e. if I add a character via the
         // editor, this is called, but when I remove the character, it is not called again, because
         // the text of the Source is then identical again to the previous Source
-        // TODO(ds) disable Source caching?
+        // Disabling Source caching does not help...
         Source source = event.getSource();
         initLang(source.getLanguage());
         Map<URI, SourceWrapper> uri2SourceWrapper = this.langId2loadedSources.get(source.getLanguage());

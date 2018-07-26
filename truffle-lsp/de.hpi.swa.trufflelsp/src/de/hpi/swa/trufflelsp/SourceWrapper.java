@@ -6,8 +6,10 @@ import com.oracle.truffle.api.source.Source;
 public class SourceWrapper {
     private Source source;
     private boolean parsingSuccessful = false;
-    private String text;
-    private CallTarget callTarget;
+    @SuppressWarnings("unused") private CallTarget callTarget; // Needed to have a strong reference
+                                                               // to the RootNode so that it and its
+                                                               // children will not be garbage
+                                                               // collected
 
     public SourceWrapper(Source source) {
         this.setSource(source);
@@ -27,18 +29,6 @@ public class SourceWrapper {
 
     public void setParsingSuccessful(boolean parsingSuccessful) {
         this.parsingSuccessful = parsingSuccessful;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public CallTarget getCallTarget() {
-        return callTarget;
     }
 
     public void setCallTarget(CallTarget callTarget) {

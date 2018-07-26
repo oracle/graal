@@ -13,10 +13,37 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
+import de.hpi.swa.trufflelsp.TruffleAdapter.CompletionKind;
 import de.hpi.swa.trufflelsp.TruffleAdapter.SourceFix;
 
 public class LanguageSpecificHacks {
     public static boolean enableLanguageSpecificHacks = true;
+
+    public static CompletionKind getCompletionKind(Source source, int oneBasedLineNumber, int character, String langId) {
+        if (enableLanguageSpecificHacks) {
+            if (langId.equals("python") || langId.equals("js") || langId.equals("sl")) {
+                int lineStartOffset;
+                try {
+                    lineStartOffset = source.getLineStartOffset(oneBasedLineNumber);
+                } catch (IllegalArgumentException e) {
+                    return CompletionKind.GLOBALS_AND_LOCALS;
+                }
+
+                String text = source.getCharacters().toString();
+                try {
+                    char charAtOffset = text.charAt(lineStartOffset + character - 1);
+                    if (LanguageSpecificHacks.isObjectPropertyCompletionCharacter(String.valueOf(charAtOffset), langId)) {
+                        return CompletionKind.OBJECT_PROPERTY;
+                    } else {
+                        return CompletionKind.GLOBALS_AND_LOCALS;
+                    }
+                } catch (StringIndexOutOfBoundsException e) {
+                    return CompletionKind.GLOBALS_AND_LOCALS;
+                }
+            }
+        }
+        return CompletionKind.UNKOWN;
+    }
 
     public static SourceFix fixSourceAtPosition(String text, String langId, int character, Source originalSource, int oneBasedLineNumber, String textAtCaretLine) {
         if (enableLanguageSpecificHacks) {
@@ -26,7 +53,7 @@ public class LanguageSpecificHacks {
                     StringBuilder sb = new StringBuilder(text.length());
                     sb.append(text.substring(0, lineStartOffset + character - 1));
                     sb.append(text.substring(lineStartOffset + character));
-                    return new SourceFix(sb.toString(), character - 1, true);
+                    return new SourceFix(sb.toString(), character - 1, CompletionKind.OBJECT_PROPERTY);
                 }
             } else if (langId.equals("sl")) {
                 if (character > 0 && textAtCaretLine.charAt(character - 1) == '.') {
@@ -37,14 +64,14 @@ public class LanguageSpecificHacks {
                         sb.append(';');
                     }
                     sb.append(text.substring(lineStartOffset + character));
-                    return new SourceFix(sb.toString(), character - 1, true);
+                    return new SourceFix(sb.toString(), character - 1, CompletionKind.OBJECT_PROPERTY);
                 } else if (!textAtCaretLine.endsWith(";")) {
                     StringBuilder sb = new StringBuilder(text.length() + 1);
                     int lineStartOffset = originalSource.getLineStartOffset(oneBasedLineNumber);
                     sb.append(text.substring(0, lineStartOffset + character));
                     sb.append(';');
                     sb.append(text.substring(lineStartOffset + character));
-                    return new SourceFix(sb.toString(), character, false);
+                    return new SourceFix(sb.toString(), character, CompletionKind.OBJECT_PROPERTY);
                 }
             }
         }

@@ -11,27 +11,36 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
-import org.graalvm.polyglot.Source;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class TextDocumentSurrogate {
 
     private final URI uri;
     private final String langId;
-    private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
-    private final Map<SourceLocation, List<CoverageData>> location2coverageData = new HashMap<>();
+    private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing;
+    private final Map<SourceLocation, List<CoverageData>> location2coverageData;
     private String editorText;
-    private String fixedText;
     private Boolean coverageAnalysisDone = Boolean.FALSE;
-    private SourceWrapper parsedSourceWrapper;
+    private SourceWrapper sourceWrapper;
+
+    private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
+        this.uri = blueprint.uri;
+        this.langId = blueprint.langId;
+        this.location2coverageData = blueprint.location2coverageData;
+        this.changeEventsSinceLastSuccessfulParsing = blueprint.changeEventsSinceLastSuccessfulParsing;
+        this.editorText = blueprint.editorText;
+        this.sourceWrapper = blueprint.sourceWrapper;
+    }
 
     public TextDocumentSurrogate(final URI uri, final String langId) {
         this.uri = uri;
-        String actualLangId = Source.findLanguage(langId);
+        String actualLangId = org.graalvm.polyglot.Source.findLanguage(langId);
         if (actualLangId == null) {
             try {
-                actualLangId = Source.findLanguage(new File(uri));
+                actualLangId = org.graalvm.polyglot.Source.findLanguage(new File(uri));
             } catch (IOException e) {
             }
 
@@ -40,6 +49,8 @@ public final class TextDocumentSurrogate {
             }
         }
         this.langId = actualLangId;
+        this.location2coverageData = new HashMap<>();
+        this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
     }
 
     public TextDocumentSurrogate(final URI uri, final String langId, final String editorText) {
@@ -55,24 +66,12 @@ public final class TextDocumentSurrogate {
         return langId;
     }
 
-    public String getCurrentText() {
-        return fixedText != null ? fixedText : editorText;
-    }
-
     public String getEditorText() {
         return editorText;
     }
 
     public void setEditorText(String editorText) {
         this.editorText = editorText;
-    }
-
-    public String getFixedText() {
-        return fixedText;
-    }
-
-    public void setFixedText(String currentFixedText) {
-        this.fixedText = currentFixedText;
     }
 
     public Boolean getTypeHarvestingDone() {
@@ -83,12 +82,12 @@ public final class TextDocumentSurrogate {
         this.coverageAnalysisDone = coverageAnalysisDone;
     }
 
-    public SourceWrapper getParsedSourceWrapper() {
-        return parsedSourceWrapper;
+    public SourceWrapper getSourceWrapper() {
+        return sourceWrapper;
     }
 
-    public void setParsedSourceWrapper(SourceWrapper parsedSourceWrapper) {
-        this.parsedSourceWrapper = parsedSourceWrapper;
+    public void setSourceWrapper(SourceWrapper sourceWrapper) {
+        this.sourceWrapper = sourceWrapper;
     }
 
     @Override
@@ -148,5 +147,32 @@ public final class TextDocumentSurrogate {
         List<CoverageData> removedCoverageData = location2coverageData.remove(oldLocation);
         assert removedCoverageData != null;
         location2coverageData.put(newLocation, removedCoverageData);
+    }
+
+    public Source buildSource() {
+        return Source.newBuilder(new File(uri)).name(uri.toString()).language(langId).cached(false).content(getEditorText()).build();
+    }
+
+    public SourceWrapper prepareParsing() {
+        sourceWrapper = new SourceWrapper(buildSource());
+        return sourceWrapper;
+    }
+
+    public void notifyParsingSuccessful(CallTarget callTarget) {
+        sourceWrapper.setParsingSuccessful(true);
+        sourceWrapper.setCallTarget(callTarget);
+        changeEventsSinceLastSuccessfulParsing.clear();
+    }
+
+    public boolean isSourceCodeReadyForCodeCompletion() {
+        return sourceWrapper.isParsingSuccessful();
+    }
+
+    public Source getSource() {
+        return sourceWrapper.getSource();
+    }
+
+    public TextDocumentSurrogate copy() {
+        return new TextDocumentSurrogate(this);
     }
 }

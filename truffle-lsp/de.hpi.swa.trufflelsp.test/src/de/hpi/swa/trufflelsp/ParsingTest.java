@@ -79,7 +79,7 @@ public class ParsingTest extends TruffleLSPTest {
                 assertTrue(diagnostics.isEmpty());
                 surrogate = truffleAdapter.uri2TextDocumentSurrogate.get(uri);
                 assertEquals("function main() {return 3+3+4;}", surrogate.getEditorText());
-                assertEquals(surrogate.getCurrentText(), surrogate.getEditorText());
+                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
             {
@@ -90,7 +90,7 @@ public class ParsingTest extends TruffleLSPTest {
 
                 assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {return 3+4;}", surrogate.getEditorText());
-                assertEquals(surrogate.getCurrentText(), surrogate.getEditorText());
+                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
             {
@@ -102,7 +102,7 @@ public class ParsingTest extends TruffleLSPTest {
 
                 assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {\n  return 42;\n}", surrogate.getEditorText());
-                assertEquals(surrogate.getCurrentText(), surrogate.getEditorText());
+                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
             {
@@ -113,7 +113,7 @@ public class ParsingTest extends TruffleLSPTest {
 
                 assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {\n  return 42;\n}\n", surrogate.getEditorText());
-                assertEquals(surrogate.getCurrentText(), surrogate.getEditorText());
+                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
             {
@@ -125,7 +125,7 @@ public class ParsingTest extends TruffleLSPTest {
 
                 assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {\n  return 42;\n}\n ", surrogate.getEditorText());
-                assertEquals(surrogate.getCurrentText(), surrogate.getEditorText());
+                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
             {
@@ -137,7 +137,7 @@ public class ParsingTest extends TruffleLSPTest {
 
                 assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {return 1;}", surrogate.getEditorText());
-                assertEquals(surrogate.getCurrentText(), surrogate.getEditorText());
+                assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
 
             // TODO(ds) failing, see https://github.com/oracle/graal/pull/555
@@ -149,7 +149,7 @@ public class ParsingTest extends TruffleLSPTest {
              * future.get();
              *
              * assertTrue(diagnostics.isEmpty()); assertEquals("", surrogate.getEditorText());
-             * assertEquals(surrogate.getCurrentText(), surrogate.getEditorText()); }
+             * assertEquals(surrogate.getEditorText(), surrogate.getEditorText()); }
              */
         }
     }
