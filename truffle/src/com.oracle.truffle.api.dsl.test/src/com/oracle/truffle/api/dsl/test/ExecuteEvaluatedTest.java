@@ -345,7 +345,7 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast0TypeSystem.class)
     @SuppressWarnings("unused")
-    static abstract class TestEvaluatedImplicitCast0Node extends Node {
+    abstract static class TestEvaluatedImplicitCast0Node extends Node {
 
         public abstract Object execute(Object receiver, int intValue);
 
@@ -393,7 +393,7 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast1TypeSystem.class)
     @SuppressWarnings("unused")
-    static abstract class TestEvaluatedImplicitCast1Node extends Node {
+    abstract static class TestEvaluatedImplicitCast1Node extends Node {
 
         public abstract Object execute(Object receiver, Object intValue);
 
@@ -441,7 +441,7 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast2TypeSystem.class)
     @SuppressWarnings("unused")
-    static abstract class TestEvaluatedImplicitCast2Node extends Node {
+    abstract static class TestEvaluatedImplicitCast2Node extends Node {
 
         public abstract Object execute(Object receiver, short intValue);
 
