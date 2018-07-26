@@ -32,8 +32,10 @@ import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
+import org.graalvm.compiler.core.common.util.TypeWriter;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
+import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.ByteArrayReader;
@@ -83,7 +85,7 @@ public class ReferenceMapEncoder {
          * iterate the empty reference map, making a check for the empty map optional.
          */
         assert CodeInfoQueryResult.EMPTY_REFERENCE_MAP == writeBuffer.getBytesWritten();
-        writeBuffer.putU1(ReferenceMapDecoder.GAP_END_OF_TABLE);
+        encodeEndOfTable();
 
         /*
          * Sort reference map by usage count, so that frequently used maps get smaller indices
@@ -118,50 +120,15 @@ public class ReferenceMapEncoder {
     }
 
     /**
-     * Build a byte array that encodes list of offsets. The encoding is a run-length-encoding of the
-     * gaps and elements.
-     *
-     * @param offsets A strictly increasing supply (with -1 as the marker end value) of positive
-     *            0-origin offsets. For example, if a stack frame is laid out
-     *
-     *            <pre>
-     * Word offset | Type
-     * ------------+----------
-     *           0 | primitive
-     *           1 | primitive
-     *           2 | Pointer
-     *           3 | Pointer
-     *           4 | Pointer
-     *           5 | primitive
-     *            </pre>
-     *
-     *            to record the Pointers within that frame I want to encode the offsets 2, 3, and 4.
-     *            There is an initial run of 2 adjacent primitives followed by 3 adjacent pointers,
-     *            so the encoding is
-     *
-     *            <pre>
-     * Byte offset | Value | Meaning
-     * ------------+-------+--------
-     *           0 | 2     | A run of 2 primitives
-     *           1 | 3     | A run of 3 Pointers
-     *            </pre>
-     *
-     *            (The trailing primitive is not encoded, because this is an encoding of the given
-     *            offsets.)
-     *            <p>
-     *            A trick of the encoding is that if a number, N, greater than or equal to 127 has
-     *            to be represented, it is encoded by a triple of bytes <code>127 0 (N-127)</code>
-     *            so that the decoder doesn't have to know about that trick, because it just
-     *            processes, for example, a run of 127 primitives, 0 Pointers, and then (N-127)
-     *            primitives. If (N-127) is greater than or equal to 127, the encoding trick is
-     *            repeated as necessary.
+     * Build a byte array that encodes the passed list of offsets. The encoding is a run-length
+     * encoding of runs of compressed or of uncompressed references, with
+     * {@linkplain TypeWriter#putUV(long) variable-length encoding for the lengths}.
      *
      * @return The index into the final bytes.
      */
     private long encode(OffsetIterator offsets) {
-        int refMapSlotSize = SubstrateReferenceMap.getSlotSizeInBytes();
-        int compressedSlots = ConfigurationValues.getObjectLayout().getCompressedReferenceSize() / refMapSlotSize;
-        int uncompressedSlots = ConfigurationValues.getObjectLayout().getReferenceSize() / refMapSlotSize;
+        int compressedSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int uncompressedSize = FrameAccess.uncompressedReferenceSize();
 
         long startIndex = writeBuffer.getBytesWritten();
         int run = 0;
@@ -179,70 +146,30 @@ public class ReferenceMapEncoder {
                 assert offset >= expectedOffset : "values must be strictly increasing";
                 if (run > 0) {
                     // The end of a run. Encode the *previous* gap and this run of offsets.
-                    encodeGap(gap);
-                    encodePointers(run, expectedCompressed);
+                    encodeRun(gap, run, expectedCompressed);
                 }
                 // Beginning of the next gap+run pair.
                 gap = offset - expectedOffset;
                 run = 1;
             }
-            int slots = (compressed ? compressedSlots : uncompressedSlots);
-            expectedOffset = offset + slots;
+            int size = (compressed ? compressedSize : uncompressedSize);
+            expectedOffset = offset + size;
             expectedCompressed = compressed;
         }
         if (run > 0) {
-            encodeGap(gap);
-            encodePointers(run, expectedCompressed);
+            encodeRun(gap, run, expectedCompressed);
         }
-
-        /* End marker so that iterator later knows where to stop. */
-        writeBuffer.putU1(ReferenceMapDecoder.GAP_END_OF_TABLE);
-
+        encodeEndOfTable();
         return startIndex;
     }
 
-    /**
-     * Encode a gap size. If the value fits in one byte, then it is encoded as one byte. If the
-     * value is larger than what will fit in one byte, then the value is encoded as the triple:
-     * <code>MAX 0 encode(value-MAX)</code>. This works because the decoder will process this as a
-     * gap of size MAX followed by zero pointers and then another gap of size (value-MAX).
-     */
-    private void encodeGap(int size) {
-        final int maxValue = ReferenceMapDecoder.GAP_END_OF_TABLE - 1;
-
-        int residue = size;
-        // Peel off instances of the maximum value.
-        while (residue > maxValue) {
-            writeBuffer.putU1(maxValue);
-            writeBuffer.putS1(0); // pointers
-            residue -= maxValue;
-        }
-        writeBuffer.putU1(residue);
+    private void encodeRun(int gap, int refsCount, boolean compressed) {
+        assert gap >= 0 && refsCount >= 0;
+        writeBuffer.putUV(gap);
+        writeBuffer.putSV(compressed ? -refsCount : refsCount);
     }
 
-    /**
-     * Encode a number of pointers. Compressed pointers are encoded as a negative value. If the
-     * count fits in one signed byte, then it is encoded as one byte. If the value is larger than
-     * what will fit in one byte, then the value is encoded as the triple:
-     * <code>MAX 0 encode(value-MAX)</code>. This works because the decoder will process this as MAX
-     * number of pointers, then a gap of zero, and then another number of (value-MAX) pointers.
-     */
-    private void encodePointers(int count, boolean compressed) {
-        int residual = compressed ? -count : count;
-        if (residual < 0) {
-            while (residual < Byte.MIN_VALUE) {
-                writeBuffer.putS1(Byte.MIN_VALUE);
-                writeBuffer.putU1(0); // gap
-                residual -= Byte.MIN_VALUE;
-            }
-        } else {
-            while (residual > Byte.MAX_VALUE) {
-                writeBuffer.putS1(Byte.MAX_VALUE);
-                writeBuffer.putU1(0); // gap
-                residual -= Byte.MAX_VALUE;
-            }
-        }
-        assert residual >= Byte.MIN_VALUE && residual <= Byte.MAX_VALUE;
-        writeBuffer.putS1(residual);
+    private void encodeEndOfTable() {
+        encodeRun(0, 0, false);
     }
 }

@@ -28,6 +28,7 @@ package com.oracle.svm.core.hub;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
@@ -49,6 +50,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
@@ -65,6 +67,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -77,8 +81,9 @@ import sun.security.util.SecurityConstants;
 @Hybrid
 @Substitute
 @TargetClass(java.lang.Class.class)
-@SuppressWarnings({"static-method"})
-public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, HostedIdentityHashCodeProvider, java.lang.reflect.Type, java.lang.reflect.GenericDeclaration {
+@SuppressWarnings({"static-method", "serial"})
+@SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
+public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, HostedIdentityHashCodeProvider, java.lang.reflect.Type, GenericDeclaration, Serializable {
 
     /* Value copied from java.lang.Class. */
     private static final int SYNTHETIC = 0x00001000;
@@ -501,7 +506,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private URL getResource(String resourceName) {
         final String path = resolveName(getName(), resourceName);
         List<byte[]> arr = Resources.get(path);
-        return arr == null ? null : Resources.createURL(path, new ByteArrayInputStream(arr.get(0)));
+        return arr == null ? null : Resources.createURL(path, arr.get(0));
     }
 
     private String resolveName(String baseName, String resourceName) {
@@ -535,6 +540,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public native String getTypeName();
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static native boolean isAsciiDigit(char c);
 
     @KeepOriginal
@@ -731,7 +737,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         }
     }
 
-    @TargetClass(value = java.lang.Class.class, innerClass = "MethodArray")
+    @TargetClass(value = java.lang.Class.class, innerClass = "MethodArray", onlyWith = JDK8OrEarlier.class)
     static final class Target_java_lang_Class_MethodArray {
     }
 
@@ -803,7 +809,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private Field[] privateGetPublicFields(@SuppressWarnings("unused") Set<Class<?>> traversedInterfaces) {
+    @TargetElement(name = "privateGetPublicFields", onlyWith = JDK8OrEarlier.class)
+    private Field[] privateGetPublicFieldsJDK8OrEarlier(@SuppressWarnings("unused") Set<Class<?>> traversedInterfaces) {
+        return rd.publicFields;
+    }
+
+    @Substitute
+    @TargetElement(name = "privateGetPublicFields", onlyWith = JDK9OrLater.class)
+    private Field[] privateGetPublicFieldsJDK9Orlater() {
         return rd.publicFields;
     }
 
@@ -813,8 +826,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
+    @TargetElement(name = "checkMemberAccess", onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
-    private void checkMemberAccess(int which, Class<?> caller, boolean checkProxyInterfaces) {
+    private void checkMemberAccessJDK8OrEarlier(int which, Class<?> caller, boolean checkProxyInterfaces) {
+        /* No runtime access checks. */
+    }
+
+    @Substitute
+    @TargetElement(name = "checkMemberAccess", onlyWith = JDK9OrLater.class)
+    @SuppressWarnings("unused")
+    private void checkMemberAccessJDK9OrLater(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
         /* No runtime access checks. */
     }
 
@@ -835,9 +856,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static native Method searchMethods(Method[] methods, String name, Class<?>[] parameterTypes);
 
     @KeepOriginal
-    private native Method getMethod0(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStaticMethods);
+    @TargetElement(name = "getMethod0", onlyWith = JDK8OrEarlier.class)
+    private native Method getMethod0JDK8OrEarlier(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStaticMethods);
 
     @KeepOriginal
+    @TargetElement(name = "getMethod0", onlyWith = JDK9OrLater.class)
+    private native Method getMethod0JDK9OrLater(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private native Method privateGetMethodRecursive(@SuppressWarnings("hiding") String name, Class<?>[] parameterTypes, boolean includeStaticMethods,
                     Target_java_lang_Class_MethodArray allInterfaceCandidates);
 
@@ -857,6 +884,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static native <U> Constructor<U>[] copyConstructors(Constructor<U>[] arg);
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static native String argumentTypesToString(Class<?>[] argTypes);
 
     @Substitute

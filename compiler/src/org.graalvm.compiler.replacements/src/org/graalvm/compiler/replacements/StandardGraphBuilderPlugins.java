@@ -127,6 +127,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import sun.misc.Unsafe;
 
 /**
@@ -185,9 +186,29 @@ public class StandardGraphBuilderPlugins {
 
         if (Java8OrEarlier) {
             r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+
             r.register7("indexOf", char[].class, int.class, int.class, char[].class, int.class, int.class, int.class, new StringIndexOfConstantPlugin());
 
             Registration sr = new Registration(plugins, StringSubstitutions.class);
+            sr.register1("getValue", String.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                    b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
+                                    b.getOptions(), b.getAssumptions(), value, field, false, false));
+                    return true;
+                }
+            });
+        } else {
+            r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
+
+            final Registration latin1r = new Registration(plugins, "java.lang.StringLatin1", bytecodeProvider);
+            latin1r.register5("indexOf", byte[].class, int.class, byte[].class, int.class, int.class, new StringLatin1IndexOfConstantPlugin());
+
+            final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
+            utf16r.register5("indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class, new StringUTF16IndexOfConstantPlugin());
+
+            Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -548,6 +569,42 @@ public class StandardGraphBuilderPlugins {
             if (target.isConstant()) {
                 b.addPush(JavaKind.Int, new StringIndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), source, sourceOffset, sourceCount,
                                 target, targetOffset, targetCount, origFromIndex));
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class StringLatin1IndexOfConstantPlugin implements InvocationPlugin {
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
+                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
+            if (target.isConstant()) {
+                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
+                                source, sourceCount, target, targetCount, origFromIndex));
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static final class StringUTF16IndexOfConstantPlugin implements InvocationPlugin {
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
+                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
+            if (target.isConstant()) {
+                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
+                                source, sourceCount, target, targetCount, origFromIndex));
                 return true;
             }
             return false;
@@ -981,11 +1038,11 @@ public class StandardGraphBuilderPlugins {
                 GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is need to use `deoptimizeAndInvalidateWithSpeculation`");
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
                 DirectiveSpeculationReason reason = new DirectiveSpeculationReason(pos);
-                JavaConstant speculation;
+                Speculation speculation;
                 if (b.getGraph().getSpeculationLog().maySpeculate(reason)) {
                     speculation = b.getGraph().getSpeculationLog().speculate(reason);
                 } else {
-                    speculation = JavaConstant.defaultForKind(JavaKind.Object);
+                    speculation = SpeculationLog.NO_SPECULATION;
                 }
                 b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TransferToInterpreter, speculation));
                 return true;

@@ -88,10 +88,26 @@ libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
 
 else
-all:
+
+all: ${TARGET} ${HEADERFILES}
+
+${TARGET}:
 	echo "Building libffi on Windows is not currently supported"
 	$(shell mkdir -p ${TARGET})
 	$(shell touch ${TARGET}/libffi.a)
-	$(shell mkdir -p `dirname ${HEADERFILES}`)
-	$(shell touch ${HEADERFILES})
+
+${TARGET}/include/trufflenfi.h: ${TRUFFLE_NFI}/include/trufflenfi.h
+	$(QUIETLY) mkdir -p ${TARGET}/include
+	$(QUIETLY) cp $< $@
+	$(QUIETLY) touch $@
+
+${TARGET}/include/svm_libffi.h: include/svm_libffi.h
+	$(QUIETLY) mkdir -p ${TARGET}/include
+	$(QUIETLY) cp $< $@
+	$(QUIETLY) touch $@
+
+${TARGET}/include/ffi.h ${TARGET}/include/ffitarget.h: 
+	$(QUIETLY) mkdir -p ${TARGET}/include
+	$(QUIETLY) touch $@
+
 endif

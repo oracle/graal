@@ -155,6 +155,9 @@ def _unittest_config_participant(config):
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
+        # Needed for om.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
+        vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.api.nodes=ALL-UNNAMED']
+
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
         vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.api.vm=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']

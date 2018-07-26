@@ -1664,6 +1664,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
         if (initialInvokeKind == InvokeKind.Special && !targetMethod.isConstructor()) {
             emitCheckForInvokeSuperSpecial(args);
+        } else if (initialInvokeKind == InvokeKind.Interface && targetMethod.isPrivate()) {
+            emitCheckForDeclaringClassChange(targetMethod.getDeclaringClass(), args);
         }
 
         InlineInfo inlineInfo = null;
@@ -1748,6 +1750,25 @@ public class BytecodeParser implements GraphBuilderContext {
             invoke.setUseForInlining(false);
         }
         return invoke;
+    }
+
+    /**
+     * Checks that the class of the receiver of an {@link Bytecodes#INVOKEINTERFACE} invocation of a
+     * private method is assignable to the interface that declared the method. If not, then
+     * deoptimize so that the interpreter can throw an {@link IllegalAccessError}.
+     *
+     * This is a check not performed by the verifier and so must be performed at runtime.
+     *
+     * @param declaringClass interface declaring the callee
+     * @param args arguments to an {@link Bytecodes#INVOKEINTERFACE} call to a private method
+     *            declared in a interface
+     */
+    private void emitCheckForDeclaringClassChange(ResolvedJavaType declaringClass, ValueNode[] args) {
+        ValueNode receiver = args[0];
+        TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), declaringClass);
+        LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
+        FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
+        args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
     }
 
     /**
@@ -3523,6 +3544,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
+    public ValueNode pop(JavaKind slotKind) {
+        return frameState.pop(slotKind);
+    }
+
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
     }
@@ -4256,13 +4282,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         JavaKind fieldKind = resolvedField.getJavaKind();
 
-        if (resolvedField.isVolatile() && fieldRead instanceof LoadFieldNode) {
-            StateSplitProxyNode readProxy = append(genVolatileFieldReadProxy(fieldRead));
-            frameState.push(fieldKind, readProxy);
-            readProxy.setStateAfter(frameState.create(stream.nextBCI(), readProxy));
-        } else {
-            frameState.push(fieldKind, fieldRead);
-        }
+        pushLoadField(resolvedField, fieldRead, fieldKind);
     }
 
     /**
@@ -4396,7 +4416,25 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(field.getJavaKind(), append(genLoadField(null, resolvedField)));
+        ValueNode fieldRead = append(genLoadField(null, resolvedField));
+        JavaKind fieldKind = resolvedField.getJavaKind();
+
+        pushLoadField(resolvedField, fieldRead, fieldKind);
+    }
+
+    /**
+     * Pushes a loaded field onto the stack. If the loaded field is volatile, a
+     * {@link StateSplitProxyNode} is appended so that deoptimization does not deoptimize to a point
+     * before the field load.
+     */
+    private void pushLoadField(ResolvedJavaField resolvedField, ValueNode fieldRead, JavaKind fieldKind) {
+        if (resolvedField.isVolatile() && fieldRead instanceof LoadFieldNode) {
+            StateSplitProxyNode readProxy = append(genVolatileFieldReadProxy(fieldRead));
+            frameState.push(fieldKind, readProxy);
+            readProxy.setStateAfter(frameState.create(stream.nextBCI(), readProxy));
+        } else {
+            frameState.push(fieldKind, fieldRead);
+        }
     }
 
     private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {

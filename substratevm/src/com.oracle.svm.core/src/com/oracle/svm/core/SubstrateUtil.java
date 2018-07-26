@@ -67,6 +67,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -379,7 +380,8 @@ public class SubstrateUtil {
         log.string("VMThreads info:").newline();
         log.indent(true);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
-            log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread)).newline();
+            log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
+                            .spaces(2).object(JavaThreads.singleton().fromVMThread(vmThread)).newline();
         }
         log.indent(false);
     }

@@ -127,7 +127,6 @@ public abstract class PartialEvaluator {
 
     protected final Providers providers;
     protected final Architecture architecture;
-    protected final InstrumentPhase.Instrumentation instrumentation;
     private final CanonicalizerPhase canonicalizer;
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
@@ -139,13 +138,20 @@ public abstract class PartialEvaluator {
     private final NodePlugin[] nodePlugins;
     private final KnownTruffleTypes knownTruffleTypes;
 
+    /**
+     * The instrumentation object is used by the Truffle instrumentation to count executions. The
+     * value is lazily initialized the first time it is requested because it depends on the Truffle
+     * options, and tests that need the instrumentation table need to override these options after
+     * the TruffleRuntime object is created.
+     */
+    protected volatile InstrumentPhase.Instrumentation instrumentation;
+
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
-                    InstrumentPhase.Instrumentation instrumentation, KnownTruffleTypes knownFields) {
+                    KnownTruffleTypes knownFields) {
         this.providers = providers;
         this.architecture = architecture;
         this.canonicalizer = new CanonicalizerPhase();
         this.snippetReflection = snippetReflection;
-        this.instrumentation = instrumentation;
         this.knownTruffleTypes = knownFields;
 
         TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
@@ -163,6 +169,23 @@ public abstract class PartialEvaluator {
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
+    }
+
+    /**
+     * Gets the instrumentation manager associated with this compiler, creating it first if
+     * necessary. Each compiler instance has its own instrumentation manager.
+     */
+    public final InstrumentPhase.Instrumentation getInstrumentation() {
+        if (instrumentation == null) {
+            synchronized (this) {
+                if (instrumentation == null) {
+                    OptionValues options = TruffleCompilerOptions.getOptions();
+                    long[] accessTable = new long[TruffleCompilerOptions.TruffleInstrumentationTableSize.getValue(options)];
+                    instrumentation = new InstrumentPhase.Instrumentation(accessTable);
+                }
+            }
+        }
+        return instrumentation;
     }
 
     static ResolvedJavaMethod findRequiredMethod(ResolvedJavaType declaringClass, ResolvedJavaMethod[] methods, String name, String descriptor) {
@@ -202,14 +225,15 @@ public abstract class PartialEvaluator {
         OptionValues options = TruffleCompilerOptions.getOptions();
         ResolvedJavaMethod rootMethod = rootForCallTarget(compilable);
         // @formatter:off
-        final StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(options, debug, allowAssumptions).
                         name(name).
                         method(rootMethod).
                         speculationLog(log).
                         compilationId(compilationId).
-                        cancellable(cancellable).
-                        build();
+                        cancellable(cancellable);
         // @formatter:on
+        builder = customizeStructuredGraphBuilder(builder);
+        final StructuredGraph graph = builder.build();
 
         try (DebugContext.Scope s = debug.scope("CreateGraph", graph);
                         Indent indent = debug.logAndIndent("createGraph %s", graph);) {
@@ -231,6 +255,13 @@ public abstract class PartialEvaluator {
         }
 
         return graph;
+    }
+
+    /**
+     * Hook for subclasses: customize the StructuredGraph.
+     */
+    protected StructuredGraph.Builder customizeStructuredGraphBuilder(StructuredGraph.Builder builder) {
+        return builder;
     }
 
     /**
@@ -395,9 +426,6 @@ public abstract class PartialEvaluator {
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList, ResolvedJavaMethod callInlined,
                     SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
-        if (newConfig.trackNodeSourcePosition()) {
-            graph.setTrackNodeSourcePosition();
-        }
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();
@@ -430,6 +458,9 @@ public abstract class PartialEvaluator {
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin};
         }
 
+        if (configForParsing.trackNodeSourcePosition()) {
+            graph.setTrackNodeSourcePosition();
+        }
         SourceLanguagePositionProvider sourceLanguagePosition = new TruffleSourceLanguagePositionProvider(inliningDecision);
         PEGraphDecoder decoder = createGraphDecoder(graph, tierContext, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod,
                         sourceLanguagePosition);
@@ -481,10 +512,12 @@ public abstract class PartialEvaluator {
         new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition(),
-                            methodCallTargetNode.asNode().getNodeSourcePosition());
-            if (inlineGraph != null) {
-                InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
+            if (methodCallTargetNode.invoke().useForInlining()) {
+                StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition(),
+                                methodCallTargetNode.asNode().getNodeSourcePosition());
+                if (inlineGraph != null) {
+                    InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
+                }
             }
         }
 
@@ -512,10 +545,10 @@ public abstract class PartialEvaluator {
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
         if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue(graph.getOptions())) {
-            new InstrumentBranchesPhase(graph.getOptions(), snippetReflection, instrumentation).apply(graph, tierContext);
+            new InstrumentBranchesPhase(graph.getOptions(), snippetReflection, getInstrumentation()).apply(graph, tierContext);
         }
         if (TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue(graph.getOptions())) {
-            new InstrumentTruffleBoundariesPhase(graph.getOptions(), snippetReflection, instrumentation).apply(graph, tierContext);
+            new InstrumentTruffleBoundariesPhase(graph.getOptions(), snippetReflection, getInstrumentation()).apply(graph, tierContext);
         }
     }
 

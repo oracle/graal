@@ -99,7 +99,7 @@ final class NativeSignature {
             WordPointer argPtrs = UnmanagedMemory.malloc(nargs * SizeOf.get(WordPointer.class));
             // TODO WordPointer argPtrs = StackValue.get(nargs, SizeOf.get(WordPointer.class));
 
-            NativeTruffleEnv env = StackValue.get(SizeOf.get(NativeTruffleEnv.class));
+            NativeTruffleEnv env = StackValue.get(NativeTruffleEnv.class);
             NFIInitialization.initializeEnv(env, ctx);
 
             try (PinnedObject primBuffer = PinnedObject.create(primArgs)) {

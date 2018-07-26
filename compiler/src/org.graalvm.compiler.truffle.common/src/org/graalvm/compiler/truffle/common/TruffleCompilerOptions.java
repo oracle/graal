@@ -128,6 +128,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde)", type = OptionType.Debug)
     public static final OptionKey<String> TruffleCompileOnly = new OptionKey<>(null);
 
+    @Option(help = "Enable or disable truffle compilation.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TruffleCompilation = new OptionKey<>(true);
+
     @Option(help = "Compile immediately to test truffle compiler", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompileImmediately = new OptionKey<>(false);
 
@@ -195,7 +198,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Boolean> TruffleExperimentalSplittingDumpDecisions = new OptionKey<>(false);
 
     @Option(help = "Should forced splits be allowed (when using experimental splitting)", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleExperimentalSplittingAllowForcedSplits = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleExperimentalSplittingAllowForcedSplits = new OptionKey<>(true);
 
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);

@@ -344,7 +344,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
                             "java/lang/StringLatin1.equals([B[B)Z",
-                            "java/lang/StringLatin1.indexOf([BI[BII)I",
                             "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
                             "java/lang/StringLatin1.inflate([BI[CII)V",
@@ -371,6 +370,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (isJDK11OrHigher()) {
             // Relevant for Java flight recorder
             add(toBeInvestigated,
+                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
 

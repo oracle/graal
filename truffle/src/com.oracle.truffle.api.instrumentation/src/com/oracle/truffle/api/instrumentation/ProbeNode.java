@@ -42,6 +42,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
+import com.oracle.truffle.api.instrumentation.InstrumentationHandler.EngineInstrumenter;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -620,8 +621,8 @@ public final class ProbeNode extends Node {
             throw (ThreadDeath) t;
         }
         final Object currentVm = AccessorInstrumentHandler.engineAccess().getCurrentVM();
-        if (currentVm != null && AccessorInstrumentHandler.engineAccess().isInstrumentExceptionsAreThrown(currentVm)) {
-            sthrow(RuntimeException.class, t);
+        if (b.getInstrumenter() instanceof EngineInstrumenter || (currentVm != null && AccessorInstrumentHandler.engineAccess().isInstrumentExceptionsAreThrown(currentVm))) {
+            throw sthrow(RuntimeException.class, t);
         }
         // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
@@ -685,7 +686,7 @@ public final class ProbeNode extends Node {
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    private static <T extends Throwable> void sthrow(Class<T> type, Throwable t) throws T {
+    private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
         throw (T) t;
     }
 

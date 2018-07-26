@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -35,6 +35,8 @@ import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 
 import java.util.Map;
+
+import static com.oracle.truffle.api.CompilerDirectives.*;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
@@ -66,15 +68,13 @@ public class RegexObject implements RegexLanguageObject {
     private final RegexCompiler compiler;
     private final RegexSource source;
     private final TruffleObject namedCaptureGroups;
-    private TruffleObject compiledRegexObject;
-    private final RegexObjectExecMethod execMethod;
+    private @CompilationFinal TruffleObject compiledRegexObject;
     private RegexProfile regexProfile;
 
     public RegexObject(RegexCompiler compiler, RegexSource source, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
         this.source = source;
         this.namedCaptureGroups = namedCaptureGroups != null ? new TruffleReadOnlyMap(namedCaptureGroups) : TruffleNull.INSTANCE;
-        execMethod = new RegexObjectExecMethod(this);
     }
 
     public RegexSource getSource() {
@@ -87,12 +87,13 @@ public class RegexObject implements RegexLanguageObject {
 
     public TruffleObject getCompiledRegexObject() {
         if (compiledRegexObject == null) {
+            transferToInterpreterAndInvalidate();
             compiledRegexObject = compileRegex();
         }
         return compiledRegexObject;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private TruffleObject compileRegex() {
         return compiler.compile(source);
     }
@@ -102,7 +103,8 @@ public class RegexObject implements RegexLanguageObject {
     }
 
     public RegexObjectExecMethod getExecMethod() {
-        return execMethod;
+        // this allocation should get virtualized and optimized away by graal
+        return new RegexObjectExecMethod(this);
     }
 
     public RegexProfile getRegexProfile() {

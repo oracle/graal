@@ -577,7 +577,7 @@ public class PolyglotEngine {
             if (onlyInitialized && lang.getEnv(false) == null) {
                 continue;
             }
-            TruffleLanguage<?> spi = VMAccessor.NODES.getLanguageSpi(lang.shared.language);
+            TruffleLanguage<?> spi = lang.shared.spi;
             if (languageClazz.isInstance(spi)) {
                 return lang;
             }
@@ -1041,6 +1041,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Object asHostSymbol(Object vmObject, Class<?> symbolClass) {
+            return null;
+        }
+
+        @Override
         public Object findMetaObjectForLanguage(Object vmObject, Object value) {
             return null;
         }
@@ -1086,6 +1091,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Env getLanguageEnv(Object languageContextVMObject, LanguageInfo otherLanguage) {
+            return null;
+        }
+
+        @Override
         public <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
             PolyglotEngine engine = PolyglotEngine.GLOBAL_PROFILE.get();
             if (engine == null) {
@@ -1113,7 +1123,7 @@ public class PolyglotEngine {
                 throw new IllegalStateException("No current language available.");
             }
             Language language = engine.getLanguage(languageClass);
-            return languageClass.cast(VMAccessor.NODES.getLanguageSpi(language.shared.language));
+            return languageClass.cast(language.shared.spi);
         }
 
         @Override
@@ -1291,15 +1301,6 @@ public class PolyglotEngine {
         }
 
         @Override
-        public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
-            Object vm = getCurrentVM();
-            if (vm == null) {
-                throw new IllegalStateException("Cannot access current vm.");
-            }
-            return new FindContextNodeImpl<>(findEnv(vm, lang.getClass(), true));
-        }
-
-        @Override
         public void registerDebugger(Object vm, Object debugger) {
             PolyglotEngine engine = (PolyglotEngine) vm;
             assert engine.debugger()[0] == null || engine.debugger()[0] == debugger;
@@ -1421,7 +1422,7 @@ public class PolyglotEngine {
 
         @Override
         public RuntimeException wrapHostException(Object languageContext, Throwable exception) {
-            return PolyglotImpl.wrapHostException(null, exception);
+            return PolyglotImpl.wrapHostException((PolyglotLanguageContext) languageContext, exception);
         }
 
         @Override
@@ -1527,6 +1528,11 @@ public class PolyglotEngine {
         @Override
         public Object getCurrentOuterContext() {
             return null;
+        }
+
+        @Override
+        public Map<String, Level> getLogLevels(Object context) {
+            return Collections.emptyMap();
         }
     }
 }

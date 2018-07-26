@@ -46,6 +46,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      */
     private StackSlot deoptimizationRescueSlot;
     protected final Object stub;
+    private final boolean requiresReservedStackAccessCheck;
 
     private int maxInterpreterFrameSize;
 
@@ -55,9 +56,11 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      */
     private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
-    public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
+    public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub,
+                    boolean requiresReservedStackAccessCheck) {
         super(compilationId, lir, frameMapBuilder, callingConvention);
         this.stub = stub;
+        this.requiresReservedStackAccessCheck = requiresReservedStackAccessCheck;
     }
 
     public EconomicMap<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
@@ -82,5 +85,9 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
 
     public int getMaxInterpreterFrameSize() {
         return maxInterpreterFrameSize;
+    }
+
+    public boolean requiresReservedStackAccessCheck() {
+        return requiresReservedStackAccessCheck;
     }
 }

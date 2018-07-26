@@ -99,4 +99,4 @@ Sometimes, Eclipse gives strange error messages, especially after pulling a bigg
 
 ## License
 
-The Substrate VM is licensed under the [GPL 2](LICENSE.md).
+The Substrate VM is licensed under the [GPL 2 with Classpath exception](LICENSE.md).

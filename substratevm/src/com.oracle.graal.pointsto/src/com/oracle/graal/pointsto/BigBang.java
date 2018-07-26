@@ -480,6 +480,8 @@ public abstract class BigBang {
         return executor;
     }
 
+    public abstract boolean isValidClassLoader(Object valueObj);
+
     public interface TypeFlowRunnable extends DebugContextRunnable {
         TypeFlow<?> getTypeFlow();
     }

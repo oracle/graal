@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -34,6 +33,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.StreamHandler;
+
+import com.oracle.truffle.api.interop.TruffleObject;
 
 final class PolyglotLogHandler extends Handler {
 
@@ -66,9 +67,9 @@ final class PolyglotLogHandler extends Handler {
         }
     }
 
-    private Handler findDelegate() {
+    private static Handler findDelegate() {
         final PolyglotContextImpl currentContext = getCurrentOuterContext();
-        return currentContext != null ? currentContext.logHandler : null;
+        return currentContext != null ? currentContext.config.logHandler : null;
     }
 
     static PolyglotContextImpl getCurrentOuterContext() {
@@ -87,14 +88,16 @@ final class PolyglotLogHandler extends Handler {
 
     /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
-     * 
-     * @param out the {@link OutputStream} to print log messages into.
+     *
+     * @param out the {@link OutputStream} to print log messages into
      * @param closeStream if true the {@link Handler#close() handler's close} method closes given
-     *            stream.
+     *            stream
+     * @param flushOnPublish if true the {@link Handler#flush() flush} method is called after
+     *            {@link Handler#publish(java.util.logging.LogRecord) publish}
      * @return the {@link Handler}
      */
-    static Handler createStreamHandler(final OutputStream out, final boolean closeStream) {
-        return new PolyglotStreamHandler(out, closeStream);
+    static Handler createStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
+        return new PolyglotStreamHandler(out, closeStream, flushOnPublish);
     }
 
     private static final class ImmutableLogRecord extends LogRecord {
@@ -205,15 +208,26 @@ final class PolyglotLogHandler extends Handler {
     private static final class PolyglotStreamHandler extends StreamHandler {
 
         private final boolean closeStream;
+        private final boolean flushOnPublish;
 
-        PolyglotStreamHandler(final OutputStream out, final boolean closeStream) {
+        PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
             super(out, FormatterImpl.INSTANCE);
             setLevel(Level.ALL);
             this.closeStream = closeStream;
+            this.flushOnPublish = flushOnPublish;
         }
 
         @Override
-        public void close() throws SecurityException {
+        public synchronized void publish(LogRecord record) {
+            super.publish(record);
+            if (flushOnPublish) {
+                flush();
+            }
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public void close() {
             if (closeStream) {
                 super.close();
             } else {
@@ -255,17 +269,18 @@ final class PolyglotLogHandler extends Handler {
                 String name;
                 int index = loggerName.indexOf('.');
                 if (index < 0) {
-                    id = "";
-                    name = loggerName;
+                    id = loggerName;
+                    name = "";
                 } else {
                     id = loggerName.substring(0, index);
                     name = loggerName.substring(index + 1);
                 }
-                name = possibleSimpleName(name);
-                final StringBuilder sb = new StringBuilder();
-                sb.append(id);
+                if (name.isEmpty()) {
+                    return id;
+                }
+                final StringBuilder sb = new StringBuilder(id);
                 sb.append("::");
-                sb.append(name);
+                sb.append(possibleSimpleName(name));
                 return sb.toString();
             }
 

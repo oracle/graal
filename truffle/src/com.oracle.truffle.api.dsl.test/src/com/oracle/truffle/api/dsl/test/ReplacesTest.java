@@ -41,7 +41,7 @@ import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.PolymorphicToMonomorp
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces2Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces3Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces4Factory;
-import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
+import com.oracle.truffle.api.dsl.test.TestHelper.TestExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -94,7 +94,7 @@ public class ReplacesTest {
         assertRuns(Replaces3Factory.getInstance(), //
                         array(2, 1, 2, -3, -4), //
                         array(-2, 2, -2, -3, -4), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 // assert that we are always monomorphic
                                 Assert.assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
@@ -146,7 +146,7 @@ public class ReplacesTest {
         assertRuns(Replaces4Factory.getInstance(), //
                         array(-1, 0, 1, 2), //
                         array(1, 0, 1, 2), //
-                        new ExecutionListener() {
+                        new TestExecutionListener() {
                             public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
                                 Assert.assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
                             }

@@ -113,6 +113,19 @@ public class ImplicitCastTest {
 
     }
 
+    @TypeSystemReference(ImplicitCast0Types.class)
+    abstract static class ImplicitCastTypedExecuteNode extends Node {
+
+        public abstract Object execute(int value);
+
+        // TODO: this should not be an error
+        @ExpectError("Method signature (boolean) does not match to the expected signature: \n    Object op1(int arg0)")
+        @Specialization
+        public boolean op1(boolean value) {
+            return value;
+        }
+    }
+
     @Test
     public void testImplicitCast0() {
         ImplicitCast0Node node = ImplicitCast0NodeFactory.create(null);
@@ -220,7 +233,7 @@ public class ImplicitCastTest {
         CharSequence seq2 = "bar";
         charSequenceCast = 0;
         node.executeEvaluated(seq1, seq2);
-        Assert.assertEquals(2, charSequenceCast);
+        Assert.assertEquals(0, charSequenceCast);
     }
 
     @TypeSystem

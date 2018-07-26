@@ -773,6 +773,9 @@ public final class DebuggerTester implements AutoCloseable {
         trace("Put event " + this + ": " + Thread.currentThread());
         if (event instanceof SuspendedEvent) {
             try {
+                if (handler == null) {
+                    throw new AssertionError("Expected done but got event " + event);
+                }
                 handler.onSuspend((SuspendedEvent) event);
             } catch (Throwable e) {
                 newEvent.add(e);

@@ -93,14 +93,29 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. (default: randomly generated)", category = OptionCategory.EXPERT) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
-    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT) //
+    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT, deprecated = true) //
     static final OptionKey<Boolean> Remote = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.EXPERT) //
+    @com.oracle.truffle.api.Option(help = "Inspect internal sources. (default:false)", category = OptionCategory.DEBUG) //
     static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Inspect language initialization. (default:false)", category = OptionCategory.EXPERT) //
+    @com.oracle.truffle.api.Option(help = "Inspect language initialization. (default:false)", category = OptionCategory.DEBUG) //
     static final OptionKey<Boolean> Initialization = new OptionKey<>(false);
+
+    @com.oracle.truffle.api.Option(help = "Use TLS/SSL. (default:false)", category = OptionCategory.EXPERT) //
+    static final OptionKey<Boolean> Secure = new OptionKey<>(false);
+
+    @com.oracle.truffle.api.Option(help = "File path to keystore used for secure connection. (default:javax.net.ssl.keyStore system property)", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyStore = new OptionKey<>("");
+
+    @com.oracle.truffle.api.Option(help = "The keystore type. (default:javax.net.ssl.keyStoreType system property, or \\\"JKS\\\")", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyStoreType = new OptionKey<>("");
+
+    @com.oracle.truffle.api.Option(help = "The keystore password. (default:javax.net.ssl.keyStorePassword system property)", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyStorePassword = new OptionKey<>("");
+
+    @com.oracle.truffle.api.Option(help = "Password for recovering keys from a keystore. (default:javax.net.ssl.keyPassword system property, or keystore password)", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> KeyPassword = new OptionKey<>("");
 
     public static final String INSTRUMENT_ID = "inspect";
     static final String VERSION = "0.1";
@@ -114,7 +129,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             try {
                 InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
                 server = new Server(env, "Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal), options.get(Initialization),
-                                options.get(Path), connectionWatcher);
+                                options.get(Path), options.get(Secure), new KeyStoreOptions(options), connectionWatcher);
             } catch (IOException e) {
                 throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
@@ -211,8 +226,8 @@ public final class InspectorInstrument extends TruffleInstrument {
         private final String wsspath;
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
-                        final boolean inspectInternal, final boolean inspectInitialization, final String path, final ConnectionWatcher connectionWatcher)
-                        throws IOException {
+                        final boolean inspectInternal, final boolean inspectInitialization, final String path, final boolean secure, final KeyStoreOptions keyStoreOptions,
+                        final ConnectionWatcher connectionWatcher) throws IOException {
             PrintWriter info = new PrintWriter(env.err());
             if (path == null || path.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
@@ -223,8 +238,8 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, err);
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, connectionWatcher);
-            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
+            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher);
+            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
             info.println("Debugger listening on port " + wss.getListeningPort() + ".");
             info.println("To start debugging, open the following URL in Chrome:");
             info.println("    " + address);
@@ -284,9 +299,11 @@ public final class InspectorInstrument extends TruffleInstrument {
         }
 
         private static final String ADDRESS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?ws=";
+        private static final String ADDRESS_PREFIX_SECURE = "chrome-devtools://devtools/bundled/js_app.html?wss=";
 
-        private static String buildAddress(String hostAddress, int port, String path) {
-            return ADDRESS_PREFIX + hostAddress + ":" + port + path;
+        private static String buildAddress(String hostAddress, int port, String path, boolean secure) {
+            String prefix = secure ? ADDRESS_PREFIX_SECURE : ADDRESS_PREFIX;
+            return prefix + hostAddress + ":" + port + path;
         }
 
         public void close() {

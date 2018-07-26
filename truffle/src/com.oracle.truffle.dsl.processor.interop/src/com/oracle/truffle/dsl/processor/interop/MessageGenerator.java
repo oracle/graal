@@ -165,7 +165,7 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         if (currentMessage == null) {
             SuppressWarnings suppress = element.getAnnotation(SuppressWarnings.class);
             if (suppress == null || !Arrays.asList(suppress.value()).contains("unknown-message")) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, "Unknown message " + messageName, element);
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, "Unknown message " + messageName + " (add @SuppressWarnings(\"unknown-message\") to ignore this warning)", element);
             }
         }
         if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
@@ -197,6 +197,10 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         w.append(indent).append("                } else {\n");
         w.append(indent).append("                  throw e;\n");
         w.append(indent).append("                }\n");
+    }
+
+    public String getMessageName() {
+        return messageName;
     }
 
 }

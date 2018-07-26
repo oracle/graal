@@ -125,7 +125,7 @@ public class TestBase implements Feedback {
         expandedJarPath = expandedFolder.newFolder("expanded-data").toPath();
         JarFile jf = new JarFile(f);
         for (JarEntry en : Collections.list(jf.entries())) {
-            Path target = expandedJarPath.resolve(en.getName());
+            Path target = expandedJarPath.resolve(SystemUtils.fromCommonString(en.getName()));
             if (en.isDirectory()) {
                 Files.createDirectories(target);
             } else {
@@ -144,7 +144,7 @@ public class TestBase implements Feedback {
         if (expandedJarPath != null) {
             String n = getClass().getName();
             n = n.substring(0, n.lastIndexOf('.')).replace('.', '/');
-            basePath = expandedJarPath.resolve(Paths.get(n));
+            basePath = expandedJarPath.resolve(SystemUtils.fromCommonString(n));
         } else {
             try {
                 basePath = Paths.get(u.toURI()).getParent();
@@ -153,7 +153,7 @@ public class TestBase implements Feedback {
                 return null;
             }
         }
-        return basePath.resolve(Paths.get(relative));
+        return basePath.resolve(SystemUtils.fromCommonString(relative));
     }
 
     protected InputStream dataStream(String relative) {
@@ -506,4 +506,7 @@ public class TestBase implements Feedback {
 
     }
 
+    public static boolean isWindows() {
+        return SystemUtils.isWindows();
+    }
 }

@@ -157,6 +157,7 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
         ELFSymtab.Entry ent;
         if (symbolName != null) {
             ent = syms.getSymbol(symbolName);
+            assert ent != null;
         } else {
             // else we're a reloc type that doesn't need a symbol
             // assert this about the reloc type

@@ -511,7 +511,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * @param node For future use and debugging
      */
     public void registerAsAllocated(Node node) {
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
+        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         if (!isAllocated) {
             isAllocated = true;
         }
@@ -709,6 +709,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public boolean isInterface() {
         return wrapped.isInterface();
+    }
+
+    @Override
+    public boolean isEnum() {
+        return wrapped.isEnum();
     }
 
     @Override

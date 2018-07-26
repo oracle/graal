@@ -48,11 +48,9 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
-public class TestMemberAccess {
+public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     private final Node newNode = Message.createNew(0).createNode();
     private final Node executeNode = Message.createExecute(0).createNode();
@@ -124,40 +122,40 @@ public class TestMemberAccess {
 
     @Test
     public void testNullParameter() throws InteropException {
-        Object bo = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Boolean_2", JavaInterop.asTruffleObject(null));
+        Object bo = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Boolean_2", asTruffleObject(null));
         assertEquals("Boolean parameter method executed", Boolean.class.getName(), bo);
-        Object by = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Byte_2", JavaInterop.asTruffleObject(null));
+        Object by = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Byte_2", asTruffleObject(null));
         assertEquals("Byte parameter method executed", Byte.class.getName(), by);
-        Object c = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Character_2", JavaInterop.asTruffleObject(null));
+        Object c = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Character_2", asTruffleObject(null));
         assertEquals("Character parameter method executed", Character.class.getName(), c);
-        Object f = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Float_2", JavaInterop.asTruffleObject(null));
+        Object f = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Float_2", asTruffleObject(null));
         assertEquals("Float parameter method executed", Float.class.getName(), f);
-        Object d = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Double_2", JavaInterop.asTruffleObject(null));
+        Object d = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Double_2", asTruffleObject(null));
         assertEquals("Double parameter method executed", Double.class.getName(), d);
-        Object i = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Integer_2", JavaInterop.asTruffleObject(null));
+        Object i = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Integer_2", asTruffleObject(null));
         assertEquals("Integer parameter method executed", Integer.class.getName(), i);
-        Object l = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Long_2", JavaInterop.asTruffleObject(null));
+        Object l = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Long_2", asTruffleObject(null));
         assertEquals("Long parameter method executed", Long.class.getName(), l);
-        Object s = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Short_2", JavaInterop.asTruffleObject(null));
+        Object s = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_Short_2", asTruffleObject(null));
         assertEquals("Short parameter method executed", Short.class.getName(), s);
-        Object st = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_String_2", JavaInterop.asTruffleObject(null));
+        Object st = getValueFromMember("isNull__Ljava_lang_String_2Ljava_lang_String_2", asTruffleObject(null));
         assertEquals("String parameter method executed", String.class.getName(), st);
     }
 
     @Test
     public void testKeysAndInternalKeys() throws Exception {
-        TruffleObject testClass = JavaInterop.asTruffleObject(TestClass.class);
+        TruffleObject testClass = asTruffleHostSymbol(TestClass.class);
         assertKeys(testClass);
     }
 
     @Test
     public void testKeysAndInternalKeysOnInstance() throws Exception {
-        TruffleObject instance = JavaInterop.asTruffleObject(new TestClass());
+        TruffleObject instance = asTruffleObject(new TestClass());
         assertKeys(instance);
     }
 
     private void assertKeys(TruffleObject obj) throws UnsupportedMessageException {
-        List<?> keys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(keysNode, obj));
+        List<?> keys = asJavaObject(List.class, ForeignAccess.sendKeys(keysNode, obj));
         Set<String> foundKeys = new HashSet<>();
         for (Object key : keys) {
             assertTrue("Is string" + key, key instanceof String);
@@ -171,7 +169,7 @@ public class TestMemberAccess {
         }
 
         Set<String> foundInternalKeys = new HashSet<>();
-        List<?> internalKeys = JavaInterop.asJavaObject(List.class, ForeignAccess.sendKeys(keysNode, obj, true));
+        List<?> internalKeys = asJavaObject(List.class, ForeignAccess.sendKeys(keysNode, obj, true));
         for (Object key : internalKeys) {
             assertTrue("Is string" + key, key instanceof String);
             String keyName = (String) key;
@@ -298,22 +296,22 @@ public class TestMemberAccess {
 
     @Test
     public void testClassAsArg() throws InteropException {
-        TruffleObject clazz = JavaInterop.asTruffleObject(String.class);
+        TruffleObject clazz = asTruffleHostSymbol(String.class);
         assertEquals(String.class.getName(), getValueFromMember("classAsArg", clazz));
     }
 
     @Test
     public void testNewArray() throws InteropException {
-        TruffleObject arrayClass = JavaInterop.asTruffleObject(Array.class);
+        TruffleObject arrayClass = asTruffleHostSymbol(Array.class);
         TruffleObject newInstanceMethod = (TruffleObject) ForeignAccess.send(readNode, arrayClass, "newInstance");
-        TruffleObject stringArray = (TruffleObject) ForeignAccess.sendExecute(executeNode, newInstanceMethod, JavaInterop.asTruffleObject(String.class), 2);
+        TruffleObject stringArray = (TruffleObject) ForeignAccess.sendExecute(executeNode, newInstanceMethod, asTruffleHostSymbol(String.class), 2);
         assertTrue(JavaInteropTest.isArray(stringArray));
     }
 
     @Test
     public void testArrayOutOfBoundsAccess() throws InteropException {
         Object[] array = new Object[1];
-        TruffleObject arrayObject = JavaInterop.asTruffleObject(array);
+        TruffleObject arrayObject = asTruffleObject(array);
         assertTrue(JavaInteropTest.isArray(arrayObject));
         ForeignAccess.sendRead(readNode, arrayObject, 0);
         try {
@@ -325,7 +323,7 @@ public class TestMemberAccess {
 
     @Test
     public void testObjectReadIndex() throws InteropException {
-        TruffleObject arrayObject = JavaInterop.asTruffleObject(new TestClass());
+        TruffleObject arrayObject = asTruffleObject(new TestClass());
         try {
             ForeignAccess.sendRead(readNode, arrayObject, 0);
             fail();
@@ -335,7 +333,7 @@ public class TestMemberAccess {
 
     @Test
     public void testOverloadedConstructor1() throws InteropException {
-        TruffleObject testClass = JavaInterop.asTruffleObject(TestConstructor.class);
+        TruffleObject testClass = asTruffleHostSymbol(TestConstructor.class);
         TruffleObject testObj;
         testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass);
         assertEquals(void.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
@@ -347,7 +345,7 @@ public class TestMemberAccess {
 
     @Test
     public void testOverloadedConstructor2() throws InteropException {
-        TruffleObject testClass = JavaInterop.asTruffleObject(TestConstructor.class);
+        TruffleObject testClass = asTruffleHostSymbol(TestConstructor.class);
         TruffleObject testObj;
         testObj = (TruffleObject) ForeignAccess.sendNew(newNode, testClass, (short) 42);
         assertEquals(int.class.getName(), ForeignAccess.sendRead(readNode, testObj, "ctor"));
@@ -358,9 +356,9 @@ public class TestMemberAccess {
 
     @Test
     public void testOverloadedConstructor3() throws InteropException {
-        TruffleObject clazz = JavaInterop.asTruffleObject(TestConstructorException.class);
+        TruffleObject clazz = asTruffleHostSymbol(TestConstructorException.class);
         Object testObj = ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test", 42);
-        assertTrue(testObj instanceof TruffleObject && JavaInterop.isJavaObject(TestConstructorException.class, (TruffleObject) testObj));
+        assertTrue(testObj instanceof TruffleObject && env.asHostObject(testObj) instanceof TestConstructorException);
         JavaInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
     }
 
@@ -369,7 +367,7 @@ public class TestMemberAccess {
         List<Object> l = new ArrayList<>();
         l.add("one");
         l.add("two");
-        TruffleObject listObject = JavaInterop.asTruffleObject(l);
+        TruffleObject listObject = asTruffleObject(l);
         TruffleObject itFunction = (TruffleObject) ForeignAccess.sendRead(readNode, listObject, "iterator");
         TruffleObject it = (TruffleObject) ForeignAccess.sendExecute(executeNode, itFunction);
         TruffleObject hasNextFunction = (TruffleObject) ForeignAccess.sendRead(readNode, it, "hasNext");
@@ -404,7 +402,7 @@ public class TestMemberAccess {
     }
 
     private Object getValueFromMember(Class<?> javaClazz, String name, Object... parameters) throws InteropException {
-        TruffleObject clazz = JavaInterop.asTruffleObject(javaClazz);
+        TruffleObject clazz = asTruffleHostSymbol(javaClazz);
         Object o = ForeignAccess.sendNew(newNode, clazz);
         try {
             o = ForeignAccess.sendRead(readNode, (TruffleObject) o, name);

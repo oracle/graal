@@ -14,8 +14,7 @@ examplesGate : ${examplesCommon} {
 
 builds += [
   ${linux-amd64}     ${labsjdk8}    ${examplesGate} ${eclipse} ${jdt} { name: "gate-examples-linux-8"   },
-  ${linux-amd64}     ${oraclejdk9}  ${examplesGate} ${eclipse}        { name: "gate-examples-linux-9"   },
-  ${linux-amd64}     ${oraclejdk10} ${examplesGate} ${eclipse}        { name: "gate-examples-linux-10"   },
+  ${linux-amd64}     ${oraclejdk11} ${examplesGate} ${eclipse}        { name: "gate-examples-linux-11"  },
   ${solaris-sparcv9} ${labsjdk8}    ${examplesGate}                   { name: "gate-examples-solaris-8" },
   ${darwin-amd64}    ${labsjdk8}    ${examplesGate}                   { name: "gate-examples-darwin-8"  },
 ]

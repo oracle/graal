@@ -26,7 +26,6 @@ package com.oracle.svm.reflect.hosted;
 
 //Checkstyle: allow reflection
 
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -194,10 +193,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods) {
         for (Constructor<?> constructor : (Constructor<?>[]) constructors) {
             if (constructor.getParameterCount() == 0 && reflectionMethods.contains(constructor)) {
-                /* Ensure the annotations data structures are initialized. */
-                constructor.getDeclaredAnnotations();
-                constructor.getGenericParameterTypes();
-                constructor.getGenericExceptionTypes();
                 return constructor;
             }
         }
@@ -216,17 +211,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                             ". This is a known transient error and most likely does not cause any problems, unless your code relies on the enclosing method of exactly this class. If you can reliably reproduce this problem, please send us a test case.");
             // Checkstyle: resume
             return null;
-        }
-
-        if (enclosingMethod != null) {
-            enclosingMethod.getDeclaredAnnotations();
-            enclosingMethod.getGenericParameterTypes();
-            enclosingMethod.getGenericExceptionTypes();
-            enclosingMethod.getGenericReturnType();
-        } else if (enclosingConstructor != null) {
-            enclosingConstructor.getDeclaredAnnotations();
-            enclosingConstructor.getGenericParameterTypes();
-            enclosingConstructor.getGenericExceptionTypes();
         }
 
         if (enclosingMethod == null && enclosingConstructor == null) {
@@ -248,24 +232,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         List<Object> result = new ArrayList<>();
         for (Object element : (Object[]) elements) {
             if (filter.contains(element)) {
-                /* Ensure the generic info data structures are initialized. */
-                if (element instanceof Method) {
-                    Method method = (Method) element;
-                    method.getGenericReturnType();
-                }
-                if (element instanceof Executable) {
-                    Executable method = (Executable) element;
-                    method.getGenericParameterTypes();
-                    method.getGenericExceptionTypes();
-                }
-                if (element instanceof Field) {
-                    Field field = (Field) element;
-                    field.getGenericType();
-                }
-                if (element instanceof AccessibleObject) {
-                    /* Ensure the annotations data structures are initialized. */
-                    ((AccessibleObject) element).getDeclaredAnnotations();
-                }
                 result.add(element);
             }
         }

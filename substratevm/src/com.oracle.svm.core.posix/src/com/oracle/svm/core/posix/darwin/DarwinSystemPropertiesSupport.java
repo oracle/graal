@@ -39,6 +39,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 
 @Platforms({Platform.DARWIN.class})
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
@@ -58,6 +59,38 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
              */
             return "/var/tmp";
         }
+    }
+
+    private static volatile String osVersionValue = null;
+
+    @Override
+    protected String osVersionValue() {
+        if (osVersionValue != null) {
+            return osVersionValue;
+        }
+
+        /* On OSX Java returns the ProductVersion instead of kernel release info. */
+        CoreFoundation.CFDictionaryRef dict = CoreFoundation._CFCopyServerVersionDictionary();
+        if (dict.isNull()) {
+            dict = CoreFoundation._CFCopySystemVersionDictionary();
+        }
+        if (dict.isNull()) {
+            return osVersionValue = "Unknown";
+        }
+        CoreFoundation.CFStringRef dictKeyRef = DarwinCoreFoundationUtils.toCFStringRef("MacOSXProductVersion");
+        CoreFoundation.CFStringRef dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
+        CoreFoundation.CFRelease(dictKeyRef);
+        if (dictValue.isNull()) {
+            dictKeyRef = DarwinCoreFoundationUtils.toCFStringRef("ProductVersion");
+            dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
+            CoreFoundation.CFRelease(dictKeyRef);
+        }
+        if (dictValue.isNull()) {
+            return osVersionValue = "Unknown";
+        }
+        osVersionValue = DarwinCoreFoundationUtils.fromCFStringRef(dictValue);
+        CoreFoundation.CFRelease(dictValue);
+        return osVersionValue;
     }
 }
 

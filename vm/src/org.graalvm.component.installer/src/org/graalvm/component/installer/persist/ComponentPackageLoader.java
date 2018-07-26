@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -58,6 +57,7 @@ import static org.graalvm.component.installer.BundleConstants.META_INF_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_PERMISSIONS_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_SYMLINKS_PATH;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
@@ -269,9 +269,9 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     @SuppressWarnings({"rawtypes", "unchecked"})
     Map<String, String> parseSymlinks(Properties links) {
         for (String key : new HashSet<>(links.stringPropertyNames())) {
-            Path p = Paths.get(key).normalize();
+            Path p = SystemUtils.fromCommonString(key).normalize();
             String prop = (String) links.remove(key);
-            links.setProperty(p.toString(), prop);
+            links.setProperty(SystemUtils.toCommonPath(p), prop);
         }
         if (noVerifySymlinks) {
             return new HashMap(links);
@@ -285,9 +285,9 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                     throw feedback.failure("ERROR_CircularSymlink", null, l);
                 }
                 String target = links.getProperty(l);
-                Path linkPath = Paths.get(l);
+                Path linkPath = SystemUtils.fromCommonString(l);
                 Path targetPath = linkPath.resolveSibling(target).normalize();
-                String targetString = targetPath.toString();
+                String targetString = SystemUtils.toCommonPath(targetPath);
                 if (fileList.contains(targetString)) {
                     break;
                 }

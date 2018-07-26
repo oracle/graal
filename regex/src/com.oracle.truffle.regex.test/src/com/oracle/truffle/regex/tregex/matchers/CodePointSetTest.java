@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.regex.tregex.parser.CodePointRange;
-import com.oracle.truffle.regex.tregex.parser.CodePointSet;
-import com.oracle.truffle.regex.util.Constants;
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.Constants;
 import org.junit.Assert;
 import org.junit.Test;
 

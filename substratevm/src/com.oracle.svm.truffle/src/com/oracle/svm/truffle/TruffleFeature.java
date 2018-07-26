@@ -75,9 +75,9 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedCompilationProfile;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -162,9 +162,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return new SubstrateOptimizedCallTarget(sourceCallTarget, rootNode);
         }
 
-        public SubstratePartialEvaluator createPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
-                        InstrumentPhase.Instrumentation instrumentation) {
-            return new SubstratePartialEvaluator(providers, configForRoot, snippetReflection, architecture, instrumentation);
+        public SubstratePartialEvaluator createPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
+            return new SubstratePartialEvaluator(providers, configForRoot, snippetReflection, architecture);
         }
 
         @SuppressWarnings("unused")
@@ -712,6 +711,17 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             collectImplementations(subType, implementations);
         }
     }
+}
+
+@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
+
+    /**
+     * Truffle code can run during image generation. Discard the profiling information collected and
+     * start with a fresh profile at run time.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    OptimizedCompilationProfile compilationProfile;
 }
 
 // Checkstyle: stop

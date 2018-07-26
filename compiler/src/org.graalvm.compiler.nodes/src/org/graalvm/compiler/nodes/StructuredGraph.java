@@ -46,7 +46,6 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -381,11 +380,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
         this.methods = methods;
-        if (speculationLog != null && !(speculationLog instanceof GraphSpeculationLog)) {
-            this.speculationLog = new GraphSpeculationLog(speculationLog);
-        } else {
-            this.speculationLog = speculationLog;
-        }
+        this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         assert trackNodeSourcePosition != null;
@@ -934,10 +929,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * Records that {@code method} was used to build this graph.
      */
     public void recordMethod(ResolvedJavaMethod method) {
-        if (methods == null) {
-            throw new GraalError("inlined method recording not enabled for %s", this);
+        if (methods != null) {
+            methods.add(method);
         }
-        methods.add(method);
     }
 
     /**
@@ -945,14 +939,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * to build another graph.
      */
     public void updateMethods(StructuredGraph other) {
-        if (methods == null) {
-            throw new GraalError("inlined method recording not enabled for %s", this);
-        }
-        if (other.rootMethod != null) {
-            methods.add(other.rootMethod);
-        }
-        for (ResolvedJavaMethod m : other.methods) {
-            methods.add(m);
+        if (methods != null) {
+            if (other.rootMethod != null) {
+                methods.add(other.rootMethod);
+            }
+            for (ResolvedJavaMethod m : other.methods) {
+                methods.add(m);
+            }
         }
     }
 
@@ -1008,14 +1001,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             }
         }
         return res;
-    }
-
-    /**
-     *
-     * @return true if the graph contains only a {@link StartNode} and {@link ReturnNode}
-     */
-    public boolean isTrivial() {
-        return !(start.next() instanceof ReturnNode);
     }
 
     @Override

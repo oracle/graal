@@ -102,15 +102,17 @@ public final class ImageClassLoader {
         this.classLoader = classLoader;
     }
 
-    /** A public factory method that accepts a gr8964Tracing parameter. */
     public static ImageClassLoader create(Platform platform, String[] classpathAll, ClassLoader classLoader) {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
-        /* The Graal SDK is on the boot class path, and it contains annotated types. */
-        for (String s : System.getProperty("sun.boot.class.path").split(File.pathSeparator)) {
-            if (s.contains("graal-sdk")) {
-                classpathFiltered.add(s);
+        /* If the Graal SDK is on the boot class path, and it contains annotated types. */
+        final String sunBootClassPath = System.getProperty("sun.boot.class.path");
+        if (sunBootClassPath != null) {
+            for (String s : sunBootClassPath.split(File.pathSeparator)) {
+                if (s.contains("graal-sdk")) {
+                    classpathFiltered.add(s);
+                }
             }
         }
 
@@ -133,22 +135,21 @@ public final class ImageClassLoader {
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
         final boolean debugGR8964 = Boolean.valueOf(System.getProperty("debug_gr_8964", "false"));
         if (debugGR8964) {
-            System.err.print("[ImageClassLoader.initAllClasses");
+            System.err.println("[ImageClassLoader.initAllClasses");
             List<Path> pathList = new ArrayList<>();
             for (String classPathEntry : classpath) {
-                System.err.println();
                 System.err.println("  [classPathEntry: " + classPathEntry);
                 toClassPathEntries(classPathEntry).forEach(path -> {
                     pathList.add(path);
                     final Path absolutePath;
-                    System.err.println("             path: " + path.toString());
+                    System.err.print("    [        path: " + path.toString());
                     if (!path.isAbsolute()) {
                         absolutePath = path.toAbsolutePath();
-                        System.err.println("     absolutePath: " + path.toString());
+                        System.err.println();
+                        System.err.print("     absolutePath: " + path.toString());
                     } else {
                         absolutePath = path;
                     }
-                    System.err.print("                 ");
                     System.err.print(path.isAbsolute() ? "  absolute" : "");
                     final boolean exists = Files.exists(absolutePath);
                     System.err.print(exists ? "  exists" : "");
@@ -163,8 +164,9 @@ public final class ImageClassLoader {
                             System.err.print("  n/a");
                         }
                     }
-                    System.err.print("]");
+                    System.err.println(" ]");
                 });
+                System.err.println("  ]");
             }
             System.err.println("]");
             uniquePaths.addAll(pathList);

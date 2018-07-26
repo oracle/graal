@@ -62,8 +62,8 @@ public class CoreFoundation {
     public static native void CFStringAppendCharacters(CFMutableStringRef theString, PointerBase chars, SignedWord numChars);
 
     /**
-     * @function CFStringNormalize Normalizes the string into the specified form as described in
-     *           Unicode Technical Report #15.
+     * Normalizes the string into the specified form as described in Unicode Technical Report #15.
+     * 
      * @param theString The string which is to be normalized. If this parameter is not a valid
      *            mutable CFString, the behavior is undefined.
      * @param theForm The form into which the string is to be normalized. If this parameter is not a
@@ -74,18 +74,23 @@ public class CoreFoundation {
 
     /** Number of 16-bit Unicode characters in the string. */
     @CFunction
-    public static native SignedWord CFStringGetLength(CFStringRef theString);
-
-    /**
-     * Extracting the contents of the string. For obtaining multiple characters, calling
-     * CFStringGetCharacters() is more efficient than multiple calls to
-     * CFStringGetCharacterAtIndex(). If the length of the string is not known (so you can't use a
-     * fixed size buffer for CFStringGetCharacters()), another method is to use is
-     * CFStringGetCharacterFromInlineBuffer() (see further below).
-     */
-    @CFunction
-    public static native void CFStringGetCharacters(CFStringRef theString, SignedWord range, PointerBase buffer);
+    public static native long CFStringGetLength(CFStringRef theString);
 
     @CFunction
     public static native void CFRelease(PointerBase cf);
+
+    public interface CFDictionaryRef extends PointerBase {
+    }
+
+    @CFunction
+    public static native CFDictionaryRef _CFCopyServerVersionDictionary();
+
+    @CFunction
+    public static native CFDictionaryRef _CFCopySystemVersionDictionary();
+
+    @CFunction
+    public static native CFStringRef CFDictionaryGetValue(CFDictionaryRef theDict, CFStringRef key);
+
+    @CFunction
+    public static native char CFStringGetCharacterAtIndex(CFStringRef theString, long idx);
 }

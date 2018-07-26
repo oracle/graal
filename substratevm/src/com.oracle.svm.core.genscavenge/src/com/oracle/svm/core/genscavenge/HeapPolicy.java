@@ -92,17 +92,24 @@ public class HeapPolicy {
     /*
      * Instance field access methods.
      */
-
     CollectOnAllocationPolicy getCollectOnAllocationPolicy() {
         return collectOnAllocationPolicy;
     }
 
-    public static Word getProducedHeapChunkZapValue() {
-        return producedHeapChunkZapValue;
+    public static Word getProducedHeapChunkZapWord() {
+        return producedHeapChunkZapWord;
     }
 
-    public static Word getConsumedHeapChunkZapValue() {
-        return consumedHeapChunkZapValue;
+    public static int getProducedHeapChunkZapInt() {
+        return producedHeapChunkZapInt;
+    }
+
+    public static Word getConsumedHeapChunkZapWord() {
+        return consumedHeapChunkZapWord;
+    }
+
+    public static int getConsumedHeapChunkZapInt() {
+        return consumedHeapChunkZapInt;
     }
 
     /*
@@ -303,10 +310,12 @@ public class HeapPolicy {
     }
 
     /* - The value to use for zapping produced chunks. */
-    private static final Word producedHeapChunkZapValue = WordFactory.unsigned(0xbaadbeefbaadbeefL);
+    private static final int producedHeapChunkZapInt = 0xbaadbeef;
+    private static final Word producedHeapChunkZapWord = WordFactory.unsigned((long) producedHeapChunkZapInt << 32 | producedHeapChunkZapInt);
 
     /* - The value to use for zapping. */
-    private static final Word consumedHeapChunkZapValue = WordFactory.unsigned(0xdeadbeefdeadbeefL);
+    private static final int consumedHeapChunkZapInt = 0xdeadbeef;
+    private static final Word consumedHeapChunkZapWord = WordFactory.unsigned((long) consumedHeapChunkZapInt << 32 | consumedHeapChunkZapInt);
 
     static final AtomicUnsigned bytesAllocatedSinceLastCollection = new AtomicUnsigned();
 

@@ -43,7 +43,6 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Mark;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -80,7 +79,7 @@ public abstract class TruffleCallBoundaryInstrumentation extends CompilationResu
     private static int getFieldOffset(String name, ResolvedJavaType declaringType) {
         for (ResolvedJavaField field : declaringType.getInstanceFields(false)) {
             if (field.getName().equals(name)) {
-                return ((HotSpotResolvedJavaField) field).offset();
+                return field.getOffset();
             }
         }
         throw new NoSuchFieldError(declaringType.toJavaName() + "." + name);

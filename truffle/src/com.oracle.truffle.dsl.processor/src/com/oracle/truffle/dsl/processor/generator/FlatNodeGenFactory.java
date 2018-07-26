@@ -889,7 +889,8 @@ class FlatNodeGenFactory {
                 TypeMirror evaluatedType = signatureParameters.get(i);
                 TypeMirror specializedType = specialization.findParameterOrDie(node.getChildExecutions().get(i)).getType();
 
-                if (!isSubtypeBoxed(context, evaluatedType, specializedType) && !isSubtypeBoxed(context, specializedType, evaluatedType)) {
+                if (typeSystem.lookupCast(evaluatedType, specializedType) == null && !isSubtypeBoxed(context, evaluatedType, specializedType) &&
+                                !isSubtypeBoxed(context, specializedType, evaluatedType)) {
                     // not compatible parameter
                     continue outer;
                 }
@@ -3456,6 +3457,12 @@ class FlatNodeGenFactory {
         TypeMirror targetType = typeGuard.getType();
 
         if (!ElementUtils.needsCastTo(value.getTypeMirror(), targetType)) {
+            TypeMirror genericTargetType = node.getGenericSpecialization().findParameterOrDie(node.getChildExecutions().get(signatureIndex)).getType();
+            if (ElementUtils.typeEquals(value.getTypeMirror(), genericTargetType)) {
+                // no implicit casts needed if it matches the generic type
+                return null;
+            }
+
             boolean foundImplicitSubType = false;
             if (forceImplicitCast) {
                 List<ImplicitCastData> casts = typeSystem.lookupByTargetType(targetType);

@@ -71,7 +71,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final String TRUNCATION_SUFFIX = "...";
 
-    protected PolyglotLanguageContext languageContext;
+    protected final PolyglotLanguageContext languageContext;
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
@@ -90,7 +90,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 PolyglotLanguageContext displayLanguageContext = languageContext;
                 final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, value);
                 if (resolvedLanguage != null) {
-                    displayLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+                    displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
                 }
                 s = LANGUAGE.toStringIfVisible(displayLanguageContext.env, value, false);
             }
@@ -126,7 +126,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
             if (resolvedLanguage == null) {
                 return null;
             }
-            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
+            assert resolvedLanguageContext != null;
             return LANGUAGE.findMetaObject(resolvedLanguageContext.env, target);
         }
     }
@@ -169,7 +170,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 if (resolvedDisplayLanguage != null) {
                     displayLanguage = resolvedDisplayLanguage;
                 }
-                displayContext = languageContext.context.contexts[displayLanguage.index];
+                displayContext = languageContext.context.getContext(displayLanguage);
             } catch (Throwable e) {
                 // don't fail without assertions for stability.
                 assert rethrow(e);
@@ -334,7 +335,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 PolyglotLanguageContext displayLanguageContext = languageContext;
                 final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
                 if (resolvedLanguage != null) {
-                    displayLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+                    displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
                 }
                 return LANGUAGE.toStringIfVisible(displayLanguageContext.env, receiver, false);
             }
@@ -353,7 +354,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             if (resolvedLanguage == null) {
                 return null;
             }
-            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
             com.oracle.truffle.api.source.SourceSection result = LANGUAGE.findSourceLocation(resolvedLanguageContext.env, receiver);
             return result != null ? VMAccessor.engine().createSourceSection(resolvedLanguageContext, null, result) : null;
         } catch (final Throwable t) {
@@ -388,8 +389,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return new Interop(languageContext, receiver, receiverType);
     }
 
-    static void createDefaultValueCaches(PolyglotLanguageContext context) {
-        Map<Class<?>, PolyglotValue> valueCache = context.valueCache;
+    static void createDefaultValueCaches(PolyglotLanguageContext context, Map<Class<?>, PolyglotValue> valueCache) {
         valueCache.put(Boolean.class, new BooleanValueCache(context));
         valueCache.put(Byte.class, new ByteValueCache(context));
         valueCache.put(Short.class, new ShortValueCache(context));
@@ -1431,11 +1431,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private PolyglotValue getPrimitiveCache(Object primitive) {
             assert primitive != null;
-            PolyglotValue cache = languageContext.valueCache.get(primitive.getClass());
+            PolyglotValue cache = languageContext.getValueCache().get(primitive.getClass());
             if (cache == null) {
                 // TODO maybe this should be an assertion here because it likely means
                 // that unbox returned an invalid value.
-                cache = languageContext.defaultValueCache;
+                cache = languageContext.getDefaultValueCache();
             }
             return cache;
         }

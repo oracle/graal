@@ -26,6 +26,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -181,7 +182,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
 
         private final RegexSource source;
-        private final PreCalculatedResultFactory[] preCalculatedResults;
+        @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
 
         @Child private TRegexDFAExecutorNode forwardExecutorNode;
         private final TRegexDFAExecutorNode backwardExecutorNode;

@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -38,14 +41,14 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 /**
  * Manipulations of an Object header.
  * <p>
- * An ObjectHeader is a Pointer-sized collection of bits in each Object instance. It holds
+ * An ObjectHeader is a reference-sized collection of bits in each Object instance. It holds
  * meta-information about this instance. The ObjectHeader holds a DynamicHub, which identifies the
  * Class of the instance, and flags used by the garbage collector. Alternatively, e.g., during
- * garbage collection, the ObjectHeader may hold a forwarding pointer to the new location of this
+ * garbage collection, the ObjectHeader may hold a forwarding reference to the new location of this
  * instance if the Object has been moved by the collector.
  * <p>
  * I treat an ObjectHeader as an Unsigned, until careful examination allows me to cast it to a
- * Pointer, or to an Object. Since an ObjectHeader is just a collection of bits, rather than a
+ * Pointer, or to an Object. Since an ObjectHeader is just a collection of bits, rather than an
  * Object, the methods in this class are all static methods.
  * <p>
  * These methods operate on a bewildering mixture of Object *or* Pointer. Because a Pointer *is* an
@@ -63,28 +66,57 @@ public abstract class ObjectHeader {
 
     /*
      * Read and write of Object headers.
-     *
-     * These know that Object headers are one Word.
      */
 
-    public static UnsignedWord readHeaderFromPointer(Pointer p) {
-        return p.readWord(getHubOffset());
+    /**
+     * Read the header of the object at the specified address. When compressed references are
+     * enabled, the specified address must be the uncompressed absolute address of the object in
+     * memory.
+     */
+    public static UnsignedWord readHeaderFromPointer(Pointer objectPointer) {
+        if (getReferenceSize() == Integer.BYTES) {
+            return WordFactory.unsigned(objectPointer.readInt(getHubOffset()));
+        } else {
+            return objectPointer.readWord(getHubOffset());
+        }
     }
 
+    /**
+     * Write the header of a newly created object, using {@link LocationIdentity#init()}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void initializeHeaderOfNewObject(Pointer objectPointer, WordBase header) {
+        if (getReferenceSize() == Integer.BYTES) {
+            objectPointer.writeInt(getHubOffset(), (int) header.rawValue(), LocationIdentity.INIT_LOCATION);
+        } else {
+            objectPointer.writeWord(getHubOffset(), header, LocationIdentity.INIT_LOCATION);
+        }
+    }
+
+    /**
+     * Read the header of the specified object.
+     */
     public static UnsignedWord readHeaderFromObject(Object o) {
-        return ObjectAccess.readWord(o, getHubOffset());
+        if (getReferenceSize() == Integer.BYTES) {
+            return WordFactory.unsigned(ObjectAccess.readInt(o, getHubOffset()));
+        } else {
+            return ObjectAccess.readWord(o, getHubOffset());
+        }
     }
 
-    protected static void writeHeaderToObject(Object o, UnsignedWord value) {
-        ObjectAccess.writeWord(o, getHubOffset(), value);
+    /**
+     * Write the header of the specified object.
+     */
+    public static void writeHeaderToObject(Object o, WordBase header) {
+        if (getReferenceSize() == Integer.BYTES) {
+            ObjectAccess.writeInt(o, getHubOffset(), (int) header.rawValue());
+        } else {
+            ObjectAccess.writeWord(o, getHubOffset(), header);
+        }
     }
 
     public static DynamicHub readDynamicHubFromObject(Object o) {
         return KnownIntrinsics.readHub(o);
-    }
-
-    public static void writeDynamicHubToPointer(Pointer p, DynamicHub hub) {
-        p.writeObject(getHubOffset(), hub);
     }
 
     /** Decode a DynamicHub from an Object header. */
@@ -92,9 +124,13 @@ public abstract class ObjectHeader {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Pointer pointerValue = (Pointer) pointerBits;
-        final Object objectValue = pointerValue.toObject();
-        final DynamicHub result = KnownIntrinsics.unsafeCast(objectValue, DynamicHub.class);
-        return result;
+        final Object objectValue;
+        if (ReferenceAccess.singleton().haveCompressedReferences()) {
+            objectValue = ReferenceAccess.singleton().uncompressReference(pointerValue);
+        } else {
+            objectValue = pointerValue.toObject();
+        }
+        return KnownIntrinsics.unsafeCast(objectValue, DynamicHub.class);
     }
 
     /*
@@ -151,6 +187,12 @@ public abstract class ObjectHeader {
      * Convenience methods.
      */
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static int getReferenceSize() {
+        return ConfigurationValues.getObjectLayout().getReferenceSize();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getHubOffset() {
         return ConfigurationValues.getObjectLayout().getHubOffset();
     }

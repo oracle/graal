@@ -83,7 +83,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                  path=None,
                  with_polyglot_launcher=False,
                  with_lib_polyglot=False,
-                 force_bash=None,
+                 stage1=False,
                  **kw_args):
         self.components = components
         base_dir = base_dir or '.'
@@ -246,7 +246,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + _launcher_config.destination
                 # add `LauncherConfig.destination` to the layout
-                _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, force_bash), _component)
+                _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
                 # add links from jre/bin to launcher
                 _add_link(_jdk_jre_bin, _launcher_dest)
                 _jre_bin_names.append(basename(_launcher_dest))
@@ -330,17 +330,15 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             with_polyglot_launcher = True
             components_set.add('poly')
             if _force_bash_launchers(get_polyglot_launcher_project().native_image_config):
-                components_set.add('bployglot')
+                components_set.add('bpolyglot')
         else:
             with_polyglot_launcher = False
         if stage1:
-            force_bash = True
             components_set.add('stage1')
         else:
-            force_bash = None
             for component in components:
                 for launcher_config in _get_launcher_configs(component):
-                    if _force_bash_launchers(launcher_config, force_bash):
+                    if _force_bash_launchers(launcher_config):
                         components_set.add('b' + basename(launcher_config.destination))
 
         # Use custom distribution name and base dir for registered vm configurations
@@ -373,7 +371,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             path=None,
             with_polyglot_launcher=with_polyglot_launcher,
             with_lib_polyglot=with_lib_polyglot,
-            force_bash=force_bash,
+            stage1=stage1,
             **kw_args)
 
     def getBuildTask(self, args):
@@ -461,8 +459,9 @@ class SvmSupport(object):
     def native_image(self, build_args, output_file, allow_server=False, nonZeroIsFatal=True, out=None, err=None):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
-        native_image_bin = join(stage1.output, stage1.find_single_source_location('dependency:native-image.image-bash'))
-        native_image_command = [native_image_bin] + build_args
+        native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig('native-image', [], "", []), stage1=True)
+        native_image_bin = join(stage1.output, stage1.find_single_source_location('dependency:' + native_image_project_name))
+        native_image_command = [native_image_bin, '-H:+EnforceMaxRuntimeCompileMethods'] + build_args
         # currently, when building with the bash version of native-image, --no-server is implied (and can not be passed)
         output_directory = dirname(output_file)
         if "-H:Kind=SHARED_LIBRARY" in build_args:
@@ -705,36 +704,36 @@ class GraalVmNativeImage(mx.Project):
 class GraalVmLauncher(GraalVmNativeImage):
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, name, deps, workingSets, native_image_config, theLicense=None, force_bash=None, **kw_args):
+    def __init__(self, suite, name, deps, workingSets, native_image_config, theLicense=None, stage1=False, **kw_args):
         """
         :type native_image_config: mx_sdk.LauncherConfig
         """
         assert isinstance(native_image_config, mx_sdk.LauncherConfig), type(native_image_config).__name__
-        self.force_bash = force_bash
+        self.stage1 = stage1
         super(GraalVmLauncher, self).__init__(suite, name, deps, workingSets, native_image_config, theLicense=theLicense, **kw_args)
 
     def getBuildTask(self, args):
-        svm_support = _get_svm_support()
-        if svm_support.is_supported() and self.is_native():
-            return GraalVmSVMLauncherBuildTask(self, args, svm_support)
+        if self.is_native():
+            return GraalVmSVMLauncherBuildTask(self, args, _get_svm_support())
         else:
             return GraalVmBashLauncherBuildTask(self, args)
 
     def is_native(self):
-        return not _force_bash_launchers(self.native_image_config, self.force_bash)
+        return _get_svm_support().is_supported() and not _force_bash_launchers(self.native_image_config, self.stage1 or None)
 
     def output_file(self):
         return join(self.get_output_base(), self.name, self.native_image_name)
 
     def get_containing_graalvm(self):
-        if self.name.endswith('-bash') and not _force_bash_launchers(self.native_image_config):
+        if self.stage1:
             return get_stage1_graalvm_distribution()
         else:
             return get_final_graalvm_distribution()
 
     @staticmethod
-    def launcher_project_name(native_image_config, force_bash):
-        return GraalVmNativeImage.project_name(native_image_config) + ("-bash" if _force_bash_launchers(native_image_config, force_bash) else "")
+    def launcher_project_name(native_image_config, stage1=False):
+        is_bash = not _get_svm_support().is_supported() or _force_bash_launchers(native_image_config, stage1 or None)
+        return GraalVmNativeImage.project_name(native_image_config) + ("-bash" if is_bash else "") + ("-stage1" if stage1 else "")
 
 
 class GraalVmPolyglotLauncher(GraalVmLauncher):
@@ -745,7 +744,7 @@ class GraalVmPolyglotLauncher(GraalVmLauncher):
                     if isinstance(language_launcher_config, mx_sdk.LanguageLauncherConfig):
                         launcherConfig['jar_distributions'] += language_launcher_config.jar_distributions
         launcher_config = mx_sdk.LauncherConfig(**launcherConfig)
-        super(GraalVmPolyglotLauncher, self).__init__(suite, GraalVmLauncher.launcher_project_name(launcher_config, None), deps, workingSets, launcher_config, force_bash=None, **kw_args)
+        super(GraalVmPolyglotLauncher, self).__init__(suite, GraalVmLauncher.launcher_project_name(launcher_config), deps, workingSets, launcher_config, **kw_args)
 
     def build_args(self):
         graalvm_destination = get_final_graalvm_distribution().find_single_source_location('dependency:' + self.name)
@@ -790,13 +789,13 @@ class GraalVmLibrary(GraalVmNativeImage):
 
 
 class GraalVmMiscLauncher(GraalVmLauncher):
-    def __init__(self, native_image_config, force_bash=None, **kw_args):
-        super(GraalVmMiscLauncher, self).__init__(_suite, GraalVmLauncher.launcher_project_name(native_image_config, force_bash), [], None, native_image_config, force_bash=force_bash, **kw_args)
+    def __init__(self, native_image_config, stage1=False, **kw_args):
+        super(GraalVmMiscLauncher, self).__init__(_suite, GraalVmLauncher.launcher_project_name(native_image_config, stage1=stage1), [], None, native_image_config, stage1=stage1, **kw_args)
 
 
 class GraalVmLanguageLauncher(GraalVmLauncher):
-    def __init__(self, native_image_config, force_bash=None, **kw_args):
-        super(GraalVmLanguageLauncher, self).__init__(_suite, GraalVmLauncher.launcher_project_name(native_image_config, force_bash), [], None, native_image_config, force_bash=force_bash, **kw_args)
+    def __init__(self, native_image_config, stage1=False, **kw_args):
+        super(GraalVmLanguageLauncher, self).__init__(_suite, GraalVmLauncher.launcher_project_name(native_image_config, stage1=stage1), [], None, native_image_config, stage1=stage1, **kw_args)
 
     @staticmethod
     def default_tool_options():
@@ -1158,6 +1157,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+        self.maven = True
         super(GraalVmInstallableComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -1184,10 +1184,10 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
             other_comp_names += [c.short_name for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
-        main_comp_name = installable.main_component.name
+        main_comp_name = installable.main_component.dir_name
         version = _suite.release_version()
 
-        name = '{comp_name}_{other_comp_names}_{version}'.format(comp_name=main_comp_name, other_comp_names='-'.join(other_comp_names), version=version).upper().replace('-', '_')
+        name = '_'.join([main_comp_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
         base_dir = './{comp_name}-{version}-{os}-{arch}/'.format(comp_name=main_comp_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
         layout = {}
 
@@ -1210,6 +1210,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
                     new_key = base_dir + key.split(support_dir_pattern, 1)[1]
                     layout[new_key] = new_value
 
+        self.maven = True
         super(GraalVmStandaloneComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -1265,6 +1266,7 @@ def get_stage1_graalvm_distribution():
     if _stage1_graalvm_distribution == 'uninitialized':
         _stage1_graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
+        _stage1_graalvm_distribution.maven = False
     return _stage1_graalvm_distribution
 
 
@@ -1274,6 +1276,7 @@ def get_final_graalvm_distribution():
     if _final_graalvm_distribution == 'uninitialized':
         _final_graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout)
         _final_graalvm_distribution.description = "GraalVM distribution"
+        _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
 
 
@@ -1287,6 +1290,8 @@ def get_lib_polyglot_project():
             polyglot_lib_jar_dependencies = []
             polyglot_lib_build_dependencies = []
             has_polyglot_lib_entrypoints = False
+            if "LIBPOLYGLOT_DISABLE_BACKGROUND_COMPILATION" in os.environ:
+                polyglot_lib_build_args += ["-R:-TruffleBackgroundCompilation"]
             for component in mx_sdk.graalvm_components():
                 has_polyglot_lib_entrypoints |= component.has_polyglot_lib_entrypoints
                 polyglot_lib_build_args += component.polyglot_lib_build_args
@@ -1390,7 +1395,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     id_to_component = dict()
     names = set()
     short_names = set()
-    needs_stage1 = _with_polyglot_lib_project() or _with_polyglot_launcher_project()
+    needs_stage1 = False
     for component in mx_sdk.graalvm_components():
         if component.name in names:
             mx.abort("Two components are named '{}'. The name should be unique".format(component.name))
@@ -1399,31 +1404,27 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         names.add(component.name)
         short_names.add(component.short_name)
         id_to_component.setdefault(component.dir_name, []).append(component)
-        if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
-            register_distribution(GraalVmInstallableComponent(component))
         if register_project:
+            if isinstance(component, mx_sdk.GraalVmTruffleComponent):
+                config_class = GraalVmLanguageLauncher
+            else:
+                config_class = GraalVmMiscLauncher
             for launcher_config in _get_launcher_configs(component):
-                if isinstance(component, mx_sdk.GraalVmTruffleComponent):
-                    config_class = GraalVmLanguageLauncher
-                else:
-                    config_class = GraalVmMiscLauncher
                 launcher_project = config_class(launcher_config)
-                if not _force_bash_launchers(launcher_config):
-                    register_project(config_class(launcher_config, force_bash=True))
-                    needs_stage1 = True
                 register_project(launcher_project)
-        if isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js':
+                if launcher_project.is_native():
+                    needs_stage1 = True
+        # The JS components have issues ATM since they share the same directory
+        if isinstance(component, mx_sdk.GraalVmLanguage) and not (_disable_installable(component) or component.dir_name == 'js'):
             installable_component = GraalVmInstallableComponent(component)
             register_distribution(installable_component)
             if _get_svm_support().is_supported() and not _has_forced_launchers(component):
                 register_distribution(GraalVmStandaloneComponent(installable_component))
 
-    if needs_stage1:
-        register_distribution(get_stage1_graalvm_distribution())
-
     if register_project:
         lib_polyglot_project = get_lib_polyglot_project()
         if lib_polyglot_project:
+            needs_stage1 = True
             register_project(lib_polyglot_project)
         for components in id_to_component.values():
             truffle_components = [component for component in components if isinstance(component, mx_sdk.GraalVmTruffleComponent)]
@@ -1432,7 +1433,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
         polyglot_launcher_project = get_polyglot_launcher_project()
         if polyglot_launcher_project:
+            needs_stage1 = True
             register_project(polyglot_launcher_project)
+
+    if needs_stage1:
+        if register_project:
+            for component in mx_sdk.graalvm_components():
+                if isinstance(component, mx_sdk.GraalVmTruffleComponent):
+                    config_class = GraalVmLanguageLauncher
+                else:
+                    config_class = GraalVmMiscLauncher
+                for launcher_config in _get_launcher_configs(component):
+                    register_project(config_class(launcher_config, stage1=True))
+        register_distribution(get_stage1_graalvm_distribution())
 
 
 def has_component(name):
@@ -1479,20 +1492,81 @@ def log_graalvm_home(args):
     mx.log(graalvm_home())
 
 
+def graalvm_show(args):
+    """print the GraalVM config"""
+    parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
+    _ = parser.parse_args(args)
+
+    graalvm_dist = get_final_graalvm_distribution()
+    mx.log("GraalVM distribution: {}".format(graalvm_dist))
+    mx.log("Version: {}".format(_suite.release_version()))
+    mx.log("Components:")
+    for component in mx_sdk.graalvm_components():
+        mx.log(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
+
+    launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
+    if launchers:
+        mx.log("Launchers:")
+        for launcher in launchers:
+            mx.log(" - {} ({})".format(launcher.native_image_name, "native" if launcher.is_native() else "bash"))
+    else:
+        mx.log("No launcher")
+
+    libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
+    if libraries:
+        mx.log("Libraries:")
+        for library in libraries:
+            mx.log(" - {}".format(library.native_image_name))
+    else:
+        mx.log("No library")
+
+    installables = [d for d in _suite.dists if isinstance(d, GraalVmInstallableComponent)]
+    if installables:
+        mx.log("Installables:")
+        for i in installables:
+            mx.log(" - {}".format(i))
+    else:
+        mx.log("No installable")
+
+    standalones = [d for d in _suite.dists if isinstance(d, GraalVmStandaloneComponent)]
+    if standalones:
+        mx.log("Standalones:")
+        for s in standalones:
+            mx.log(" - {}".format(s))
+    else:
+        mx.log("No standalone")
+
+
 def _env_var_to_bool(name, default='false'):
-    val = mx.get_env(name, default).lower()
-    if val in ('false', '0', 'no'):
+    val = mx.get_env(name, default)
+    b = _str_to_bool(val)
+    if isinstance(b, bool):
+        return b
+    else:
+        raise mx.abort("Invalid boolean env var value {}={}; expected: <true | false>".format(name, val))
+
+
+def _str_to_bool(val):
+    """
+    :type val: str
+    :rtype: str | bool
+    """
+    low_val = val.lower()
+    if low_val in ('false', '0', 'no'):
         return False
-    elif val in ('true', '1', 'yes'):
+    elif low_val in ('true', '1', 'yes'):
         return True
-    raise mx.abort("Invalid boolean env var value {}={}; expected: <true | false>".format(name, val))
+    return val
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
+                                                               'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
 mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
-mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images', nargs='?', const=True, default=False)
+mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
+                                                               'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
@@ -1516,7 +1590,7 @@ def _force_bash_launchers(launcher, forced=None):
     :type forced: bool | None | str | list[str]
     """
     if forced is None:
-        forced = mx.get_opts().force_bash_launchers or _env_var_to_bool('FORCE_BASH_LAUNCHERS')
+        forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false'))
     if isinstance(forced, bool):
         return forced
     if isinstance(forced, str):
@@ -1527,8 +1601,20 @@ def _force_bash_launchers(launcher, forced=None):
     return launcher_name in forced
 
 
+def _disable_installable(component):
+    """ :type component: str | mx_sdk.GraalVmComponent """
+    disabled = _str_to_bool(mx.get_opts().disable_installables or mx.get_env('DISABLE_INSTALLABLES', 'false'))
+    if isinstance(disabled, bool):
+        return disabled
+    if isinstance(disabled, str):
+        disabled = disabled.split(',')
+    if isinstance(component, mx_sdk.GraalVmComponent):
+        component = component.short_name
+    return component in disabled
+
+
 def _has_forced_launchers(component, forced=None):
-    for launcher_config in component.launcher_configs:
+    for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config, forced):
             return True
     return False
@@ -1542,4 +1628,5 @@ mx.update_commands(_suite, {
     'graalvm-dist-name': [log_graalvm_dist_name, ''],
     'graalvm-version': [log_graalvm_version, ''],
     'graalvm-home': [log_graalvm_home, ''],
+    'graalvm-show': [graalvm_show, ''],
 })

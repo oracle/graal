@@ -477,19 +477,19 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             this.readFrameSlotsTags = new byte[readFrameSlots.length];
             this.writtenFrameSlotsTags = new byte[writtenFrameSlots.length];
             int maxIndex = -1;
-            maxIndex = initializeFrameSlots(readFrameSlots, readFrameSlotsTags, maxIndex);
-            maxIndex = initializeFrameSlots(writtenFrameSlots, writtenFrameSlotsTags, maxIndex);
+            maxIndex = initializeFrameSlots(frameDescriptor, readFrameSlots, readFrameSlotsTags, maxIndex);
+            maxIndex = initializeFrameSlots(frameDescriptor, writtenFrameSlots, writtenFrameSlotsTags, maxIndex);
             this.maxTagsLength = maxIndex + 1;
         }
 
-        private static int initializeFrameSlots(FrameSlot[] frameSlots, byte[] tags, int maxIndex) {
+        private static int initializeFrameSlots(FrameDescriptor frameDescriptor, FrameSlot[] frameSlots, byte[] tags, int maxIndex) {
             int currentMaxIndex = maxIndex;
             for (int i = 0; i < frameSlots.length; i++) {
                 FrameSlot frameSlot = frameSlots[i];
                 if (frameSlot.getIndex() > currentMaxIndex) {
                     currentMaxIndex = frameSlot.getIndex();
                 }
-                tags[i] = frameSlot.getKind().tag;
+                tags[i] = frameDescriptor.getFrameSlotKind(frameSlot).tag;
             }
             return currentMaxIndex;
         }
@@ -537,7 +537,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 if (CompilerDirectives.inInterpreter()) {
                     if (currentSourceTag == 0 && speculatedTag != 0) {
                         if (frameSlots == readFrameSlots) {
-                            throw new AssertionError("Frame slot " + slot + " was never writte outside the loop but virtualized as read frame slot.");
+                            throw new AssertionError("Frame slot " + slot + " was never written outside the loop but virtualized as read frame slot.");
                         } else {
                             throw new AssertionError("Frame slot " + slot + " was never written in the loop but virtualized as written frame slot.");
                         }

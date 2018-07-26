@@ -1,9 +1,11 @@
 suite = {
-  "mxversion" : "5.141.0",
+  "mxversion" : "5.178.0",
   "name" : "sdk",
-  "version" : "1.0.0-rc4",
+  "version" : "1.0.0-rc5",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
+  "groupId" : "org.graalvm",
   "developer" : {
     "name" : "Graal developers",
     "email" : "graal-dev@openjdk.java.net",
@@ -18,6 +20,11 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+    },
+    "lafo" : {
+      "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+      "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
       "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
     },
   },
@@ -152,10 +159,6 @@ suite = {
         "org.graalvm.collections",
       ],
       "distDependencies" : [],
-      "maven" : {
-        "groupId" : "org.graalvm",
-        "artifactId" : "graal-sdk"
-      },
       "javadocType": "api",
       "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
     },
@@ -167,6 +170,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_SDK",
       ],
+      "maven" : False,
     },
     "WORD_API" : {
       "subDir" : "src",
@@ -190,10 +194,6 @@ suite = {
       "distDependencies" : [
         "GRAAL_SDK",
       ],
-      "maven" : {
-        "groupId" : "org.graalvm",
-        "artifactId" : "launcher-common"
-      },
       "description" : "Common infrastructure to create language launchers using the Polyglot API.",
       "allowsJavadocWarnings": True,
     },
@@ -206,10 +206,6 @@ suite = {
       "distDependencies" : [
         "GRAAL_SDK",
       ],
-      "maven" : {
-        "groupId" : "org.graalvm",
-        "artifactId" : "polyglot-tck"
-      },
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
     },

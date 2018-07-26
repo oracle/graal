@@ -44,13 +44,15 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 
 @AutomaticFeature
 public final class ResourcesFeature implements Feature {
 
     public static class Options {
-        @Option(help = "Regexp to match names of resources to be included in the image.")//
+        @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
         public static final HostedOptionKey<String> IncludeResources = new HostedOptionKey<>("");
     }
 

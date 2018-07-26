@@ -44,6 +44,9 @@ import java.util.TreeSet;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+
 import java.io.PrintStream;
 
 /**
@@ -64,8 +67,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final boolean interactive;
     private final boolean internal;
     private final ClassLoader loader;
+    private final TruffleLanguage<?> globalInstance;
     private String languageHome;
-    final TruffleLanguage<?> singletonLanguage;
+    private volatile ContextPolicy policy;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
 
     static {
@@ -87,12 +91,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
         this.languageHome = url;
         if (TruffleOptions.AOT) {
-            this.languageClass = loadLanguageClass();
-            this.singletonLanguage = readSingleton(languageClass);
-        } else {
-            this.languageClass = null;
-            this.singletonLanguage = null;
+            initializeLanguageClass();
+            assert languageClass != null;
+            assert policy != null;
         }
+        this.globalInstance = null;
     }
 
     private static TreeSet<String> parseList(Properties info, String prefix) {
@@ -120,9 +123,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.internal = internal;
         this.dependentLanguages = Collections.emptySet();
         this.loader = instance.getClass().getClassLoader();
-        this.singletonLanguage = instance;
         this.languageClass = (Class<? extends TruffleLanguage<?>>) instance.getClass();
         this.languageHome = null;
+        this.policy = ContextPolicy.SHARED;
+        this.globalInstance = instance;
     }
 
     static Map<String, LanguageCache> languages() {
@@ -270,71 +274,56 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return languageHome;
     }
 
-    LoadedLanguage loadLanguage() {
+    TruffleLanguage<?> loadLanguage() {
+        if (globalInstance != null) {
+            return globalInstance;
+        }
         TruffleLanguage<?> instance;
-        boolean singleton = true;
         try {
-            if (TruffleOptions.AOT) {
-                instance = singletonLanguage;
-                if (instance == null) {
-                    instance = this.languageClass.newInstance();
-                    singleton = false;
-                }
-            } else {
-                Class<? extends TruffleLanguage<?>> clazz = loadLanguageClass();
-                instance = readSingleton(clazz);
-                if (instance == null) {
-                    instance = clazz.newInstance();
-                    singleton = false;
-                }
-            }
+            instance = getLanguageClass().newInstance();
         } catch (Exception e) {
             throw new IllegalStateException("Cannot create instance of " + name + " language implementation. Public default constructor expected in " + className + ".", e);
         }
-        return new LoadedLanguage(instance, singleton);
+        return instance;
     }
 
-    @SuppressWarnings("unchecked")
     Class<? extends TruffleLanguage<?>> getLanguageClass() {
-        if (TruffleOptions.AOT) {
-            TruffleLanguage<?> instance = singletonLanguage;
-            if (instance != null) {
-                return (Class<? extends TruffleLanguage<?>>) instance.getClass();
-            } else {
-                return this.languageClass;
-            }
-        } else {
-            return loadLanguageClass();
+        if (!TruffleOptions.AOT) {
+            initializeLanguageClass();
         }
+        return this.languageClass;
+    }
+
+    ContextPolicy getPolicy() {
+        initializeLanguageClass();
+        return policy;
     }
 
     @SuppressWarnings("unchecked")
-    private Class<? extends TruffleLanguage<?>> loadLanguageClass() {
+    private void initializeLanguageClass() {
         if (languageClass == null) {
             synchronized (this) {
                 if (languageClass == null) {
                     try {
-                        languageClass = (Class<? extends TruffleLanguage<?>>) Class.forName(className, true, loader);
+                        Class<?> loadedClass = Class.forName(className, true, loader);
+                        Registration reg = loadedClass.getAnnotation(Registration.class);
+                        if (reg == null) {
+                            policy = ContextPolicy.EXCLUSIVE;
+                        } else {
+                            policy = loadedClass.getAnnotation(Registration.class).contextPolicy();
+                        }
+                        languageClass = (Class<? extends TruffleLanguage<?>>) loadedClass;
                     } catch (Exception e) {
                         throw new IllegalStateException("Cannot load language " + name + ". Language implementation class " + className + " failed to load.", e);
                     }
                 }
             }
         }
-        return languageClass;
     }
 
     @Override
     public String toString() {
         return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + "]";
-    }
-
-    private static TruffleLanguage<?> readSingleton(Class<?> languageClass) {
-        try {
-            return (TruffleLanguage<?>) languageClass.getField("INSTANCE").get(null);
-        } catch (Exception ex) {
-            return null;
-        }
     }
 
     static void resetNativeImageCacheLanguageHomes() {

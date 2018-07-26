@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -38,19 +38,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
-import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Language;
-
-public class SourceSectionFilterTest {
+public class SourceSectionFilterTest extends AbstractPolyglotTest {
 
     private static final int ROOT_NODE_BITS_UNINITIALIZED = 0;
     private static final int ROOT_NODE_BITS_SAME_SOURCE = 1 << 1;
@@ -63,9 +60,10 @@ public class SourceSectionFilterTest {
 
     private static boolean isInstrumentedNode(SourceSectionFilter filter, Node instrumentedNode) {
         try {
+            boolean includes = filter.includes(instrumentedNode);
             Method m = filter.getClass().getDeclaredMethod("isInstrumentedNode", Set.class, Node.class, SourceSection.class);
             ReflectionUtils.setAccessible(m, true);
-            return (boolean) m.invoke(filter, ALL_TAGS, instrumentedNode, instrumentedNode != null ? instrumentedNode.getSourceSection() : null);
+            return includes && (boolean) m.invoke(filter, ALL_TAGS, instrumentedNode, instrumentedNode != null ? instrumentedNode.getSourceSection() : null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -77,6 +75,12 @@ public class SourceSectionFilterTest {
 
     private static boolean isInstrumentedRoot(SourceSectionFilter filter, Node root) {
         return isInstrumentedRoot(filter, root, ROOT_NODE_BITS_UNINITIALIZED);
+    }
+
+    @Before
+    public void setup() {
+        setupEnv();
+        context.initialize(InstrumentationTestLanguage.ID);
     }
 
     private static boolean isInstrumentedRoot(SourceSectionFilter filter, Node root, int rootNodeBits) {
@@ -127,29 +131,18 @@ public class SourceSectionFilterTest {
     }
 
     private static Node createNode(final SourceSection section, final Class<?>... tags) {
-        return new SourceSectionNode(section, tags);
+        SourceSectionNode node = new SourceSectionNode(section, tags);
+        try {
+            RootNode rootNode = createRootNode(section, null, node);
+            rootNode.adoptChildren();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        return node;
     }
 
     static RootNode createRootNode(final SourceSection section, final Boolean internal, Node... children) throws Exception {
-        Engine engine = Engine.create();
-        return createRootNode(engine, section, internal, children);
-    }
-
-    static RootNode createRootNode(Engine engine, final SourceSection section, final Boolean internal, Node... children) throws Exception {
-        Language language = engine.getLanguages().get(InstrumentationTestLanguage.ID);
-        Field impl = Language.class.getDeclaredField("impl");
-        ReflectionUtils.setAccessible(impl, true);
-        Object polyglotLanguage = impl.get(language);
-        Method ensureInitialized = polyglotLanguage.getClass().getDeclaredMethod("ensureInitialized");
-        ReflectionUtils.setAccessible(ensureInitialized, true);
-        ensureInitialized.invoke(polyglotLanguage);
-        Field info = polyglotLanguage.getClass().getDeclaredField("info");
-        ReflectionUtils.setAccessible(info, true);
-        LanguageInfo languageInfo = (LanguageInfo) info.get(polyglotLanguage);
-        Field spi = LanguageInfo.class.getDeclaredField("spi");
-        ReflectionUtils.setAccessible(spi, true);
-        TruffleLanguage<?> truffleLanguage = (TruffleLanguage<?>) spi.get(languageInfo);
-
+        TruffleLanguage<?> truffleLanguage = InstrumentationTestLanguage.current();
         return new RootNode(truffleLanguage) {
 
             @Node.Children Node[] rootChildren = children;

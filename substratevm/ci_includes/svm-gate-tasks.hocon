@@ -1,6 +1,5 @@
 builds += [
-  ${gate-svm-js-sulong-python}               ${labsjdk8} { name: "gate-svm-js-sulong-python"}        ${svm-capabilities-fast}
-  ${gate-svm-ruby}                           ${labsjdk8} { name: "gate-svm-ruby"}                    ${svm-capabilities-avx2}
+  ${gate-svm-js-python}                      ${labsjdk8} { name: "gate-svm-js-python"}        ${svm-capabilities-base}
   ${gate-svm-darwin-js}                      ${labsjdk8} { name: "gate-svm-darwin-js"}
   ${gate-svm-style-fullbuild}                ${labsjdk8} { name: "gate-svm-style-fullbuild"}
 ]

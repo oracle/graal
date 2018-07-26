@@ -194,6 +194,11 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     }
 
     @Override
+    public boolean isEnum() {
+        throw new InternalError("isEnum for " + hub.getName() + " unimplemented");
+    }
+
+    @Override
     public int getModifiers() {
         return hub.getModifiers();
     }

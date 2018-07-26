@@ -631,7 +631,7 @@ abstract class SteppingStrategy {
                     return true;
                 } else {
                     current = current.next;
-                    current.initialize(SuspendedContext.create(context), suspendAnchor);
+                    current.initialize(SuspendedContext.create(context, steppingSession.getDebugger().getEnv()), suspendAnchor);
                 }
             }
             return false;

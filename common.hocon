@@ -1,19 +1,18 @@
 # overlay version
-overlay = 24e18d34f3f0c43dbfbb48602edeeb158e021dc2
+overlay = 1deeaf6e01f16b72271b066cfc8d73d8ab3977d9
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.45", platformspecific: true}
-  openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.45", platformspecific: true}
-  labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.45-fastdebug", platformspecific: true}
-  oraclejdk9:    {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
-  oraclejdk10:   {name : oraclejdk, version : "10+46", platformspecific: true}
+  labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.46", platformspecific: true}
+  openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.46", platformspecific: true}
+  labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.46-fastdebug", platformspecific: true}
+  oraclejdk11:   {name : oraclejdk, version : "11+20", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180522-073957", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180629-011203", platformspecific: true}
 
 }
 
@@ -25,14 +24,12 @@ mx : {
   }
 }
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},        EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10},       EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
-oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdkSNAPSHOT}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk10} ]} }}
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"
@@ -130,14 +127,6 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-deploy-binaries : {
-  targets : [post-merge, deploy]
-  run : [
-    ["mx", "--strict-compliance", "build"]
-    ["mx", "deploy-binary", "--all-suites", "--skip-existing", ${binaries-repository}]
-  ]
-}
-
 maven-deploy-dry-run : {
   targets : [gate]
   run : [
@@ -171,16 +160,18 @@ svm-common-linux: ${svm-common} ${linux-amd64} {
   timelimit: "55:00"
 }
 
-svm-capabilities-fast : {
-  capabilities : [linux, amd64, fast]
+# fast is necessary here as slow machines don't handle image builds well
+svm-capabilities: [linux, amd64, fast]
+svm-capabilities-base : {
+  capabilities : ${svm-capabilities}
 }
 
 svm-capabilities-avx2 : {
-  capabilities : [linux, amd64, avx2]
+  capabilities : ${svm-capabilities} [avx2]
 }
 
 svm-capabilities-manycores : {
-  capabilities : [linux, amd64, manycores, fast]
+  capabilities : ${svm-capabilities} [manycores]
 }
 
 svm-common-darwin: ${svm-common} ${darwin-amd64} {
@@ -192,4 +183,3 @@ svm-common-sulong: {
     llvm: "==3.8"
   }
 }
-

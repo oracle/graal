@@ -33,25 +33,31 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 @TargetClass(java.lang.reflect.Proxy.class)
 final class Target_java_lang_reflect_Proxy {
 
     /** We have our own proxy cache so mark the original one as deleted. */
-    @Delete private static Target_java_lang_reflect_WeakCache proxyClassCache;
+    @Delete //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private static Target_java_lang_reflect_WeakCache proxyClassCache;
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private static Class<?> getProxyClass0(@SuppressWarnings("unused") ClassLoader loader, Class<?>... interfaces) {
         return ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(interfaces);
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     public static boolean isProxyClass(Class<?> cl) {
         return Proxy.class.isAssignableFrom(cl) && ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(cl);
     }
 }
 
-@TargetClass(className = "java.lang.reflect.WeakCache")
+@TargetClass(className = "java.lang.reflect.WeakCache", onlyWith = JDK8OrEarlier.class)
 final class Target_java_lang_reflect_WeakCache {
 }
 

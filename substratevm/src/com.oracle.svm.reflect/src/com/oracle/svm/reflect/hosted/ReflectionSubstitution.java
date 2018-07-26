@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-// Checkstyle: allow reflection
-
+/* Allow imports of java.lang.reflect and sun.misc.ProxyGenerator: Checkstyle: allow reflection. */
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -33,6 +32,8 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -44,9 +45,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.ProxyGenerator;
-import sun.reflect.ConstructorAccessor;
-import sun.reflect.FieldAccessor;
-import sun.reflect.MethodAccessor;
 
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
@@ -99,13 +97,24 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     private static Class<?> getAccessorInterface(Member member) {
         if (member instanceof Field) {
-            return FieldAccessor.class;
+            return packageJdkInternalReflectClassForName("FieldAccessor");
         } else if (member instanceof Method) {
-            return MethodAccessor.class;
+            return packageJdkInternalReflectClassForName("MethodAccessor");
         } else if (member instanceof Constructor) {
-            return ConstructorAccessor.class;
-        } else {
-            throw VMError.shouldNotReachHere();
+            return packageJdkInternalReflectClassForName("ConstructorAccessor");
+        }
+        throw VMError.shouldNotReachHere();
+    }
+
+    /** Track classes in the `reflect` package across JDK versions. */
+    private static Class<?> packageJdkInternalReflectClassForName(String className) {
+        final String packageName = (GraalServices.Java8OrEarlier ? "sun.reflect." : "jdk.internal.reflect.");
+        try {
+            /* { Allow reflection in hosted code. Checkstyle: stop. */
+            return Class.forName(packageName + className);
+            /* } Allow reflection in hosted code. Checkstyle: resume. */
+        } catch (ClassNotFoundException cnfe) {
+            throw VMError.shouldNotReachHere(cnfe);
         }
     }
 

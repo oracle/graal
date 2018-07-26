@@ -192,7 +192,7 @@ public class CInterfaceTutorial {
     @CEntryPoint(name = "java_entry_point")
     protected static void javaEntryPoint(@SuppressWarnings("unused") IsolateThread thread, MyData data) {
         /* Allocate a C structure in our stack frame. */
-        MyData copy = StackValue.get(SizeOf.get(MyData.class));
+        MyData copy = StackValue.get(MyData.class);
 
         /* Get the size of a C structure. */
         int dataSize = SizeOf.get(MyData.class);

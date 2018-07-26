@@ -81,7 +81,6 @@ public class PECoffRelocationTable extends ObjectFile.Element {
 
         @Override
         public long getOffset() {
-            // [TODO]: Calulate offset based on type and addend
             return offset;
         }
 

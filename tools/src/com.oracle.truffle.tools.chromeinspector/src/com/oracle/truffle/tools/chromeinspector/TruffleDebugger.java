@@ -59,6 +59,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -74,6 +75,7 @@ import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.CallFrame;
+import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 import com.oracle.truffle.tools.chromeinspector.types.Scope;
@@ -91,6 +93,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     // private Scope globalScope;
     private volatile DebuggerSuspendedInfo suspendedInfo; // Set when suspended
     private boolean running = true;
+    private boolean runningUnwind = false;
     private boolean silentResume = false;
     private volatile CommandLazyResponse commandLazyResponse;
     private final AtomicBoolean delayUnlock = new AtomicBoolean();
@@ -454,6 +457,10 @@ public final class TruffleDebugger extends DebuggerDomain {
         resume(postProcessor);
     }
 
+    static String getEvalNonInteractiveMessage() {
+        return "<Can not evaluate in a non-interactive language>";
+    }
+
     @Override
     public Params evaluateOnCallFrame(String callFrameId, String expression, String objectGroup,
                     boolean includeCommandLineAPI, boolean silent, boolean returnByValue,
@@ -480,10 +487,27 @@ public final class TruffleDebugger extends DebuggerDomain {
                     }
                     CallFrame cf = suspendedInfo.getCallFrames()[frameId];
                     JSONObject json = new JSONObject();
-                    DebugValue value = cf.getFrame().eval(expression);
-                    RemoteObject ro = new RemoteObject(value, context.getErr());
-                    context.getRemoteObjectsHandler().register(ro);
-                    json.put("result", ro.toJSON());
+                    LanguageInfo languageInfo = cf.getFrame().getLanguage();
+                    DebugValue value = null;
+                    if (languageInfo == null || !languageInfo.isInteractive()) {
+                        value = getVarValue(expression, cf);
+                        if (value == null) {
+                            String errorMessage = getEvalNonInteractiveMessage();
+                            ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
+                            json.put("exceptionDetails", exceptionDetails.createJSON(context));
+                            JSONObject err = new JSONObject();
+                            err.putOpt("value", errorMessage);
+                            err.putOpt("type", "string");
+                            json.put("result", err);
+                        }
+                    } else {
+                        value = cf.getFrame().eval(expression);
+                    }
+                    if (value != null) {
+                        RemoteObject ro = new RemoteObject(value, context.getErr());
+                        context.getRemoteObjectsHandler().register(ro);
+                        json.put("result", ro.toJSON());
+                    }
                     return json;
                 }
 
@@ -513,6 +537,18 @@ public final class TruffleDebugger extends DebuggerDomain {
         return new Params(jsonResult);
     }
 
+    /** Get value of variable "name", if any. */
+    static DebugValue getVarValue(String name, CallFrame cf) {
+        for (Scope scope : cf.getScopeChain()) {
+            DebugScope debugScope = scope.getObject().getScope();
+            DebugValue var = debugScope.getDeclaredValue(name);
+            if (var != null) {
+                return var;
+            }
+        }
+        return null;
+    }
+
     @Override
     public Params restartFrame(long cmdId, String callFrameId, CommandPostProcessor postProcessor) throws CommandProcessException {
         if (callFrameId == null) {
@@ -538,6 +574,7 @@ public final class TruffleDebugger extends DebuggerDomain {
                     res.put("callFrames", getFramesParam(suspInfo.getCallFrames()));
                     return new Event(cmdId, new Result(new Params(res)));
                 };
+                runningUnwind = true;
                 doResume();
             });
         }
@@ -716,8 +753,12 @@ public final class TruffleDebugger extends DebuggerDomain {
                     // Debugger has been disabled while waiting on locks
                     return;
                 }
-                slh.assureLoaded(ss.getSource());
-                context.setLastLanguage(ss.getSource().getLanguage(), ss.getSource().getMimeType());
+                if (!runningUnwind) {
+                    slh.assureLoaded(ss.getSource());
+                    context.setLastLanguage(ss.getSource().getLanguage(), ss.getSource().getMimeType());
+                } else {
+                    runningUnwind = false;
+                }
                 JSONObject jsonParams = new JSONObject();
                 CallFrame[] callFrames = createCallFrames(se.getStackFrames());
                 suspendedInfo = new DebuggerSuspendedInfo(se, callFrames);

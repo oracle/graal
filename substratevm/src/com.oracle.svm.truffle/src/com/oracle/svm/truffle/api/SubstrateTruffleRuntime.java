@@ -230,6 +230,17 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
+        if (SubstrateUtil.HOSTED) {
+            /*
+             * Truffle code can run during image generation. But for now it is the easiest to not
+             * JIT compile during image generation. Support would be difficult and require major
+             * refactorings in the Truffle runtime: we already run with the SubstrateTruffleRuntime
+             * and not with the HotSpotTruffleRuntime, so we do not have the correct configuration
+             * for Graal, we do not have the correct subclasses for the OptimizedCallTarget, ...
+             */
+            return null;
+        }
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return super.submitForCompilation(optimizedCallTarget);
         }

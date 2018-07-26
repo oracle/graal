@@ -41,6 +41,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 public class UniverseMetaAccess implements WrappedMetaAccess {
 
@@ -128,7 +130,27 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
     }
 
     @Override
+    public int getArrayBaseOffset(JavaKind elementKind) {
+        return wrapped.getArrayBaseOffset(elementKind);
+    }
+
+    @Override
+    public int getArrayIndexScale(JavaKind elementKind) {
+        return wrapped.getArrayIndexScale(elementKind);
+    }
+
+    @Override
     public long getMemorySize(JavaConstant constant) {
+        throw unimplemented();
+    }
+
+    @Override
+    public JavaConstant encodeSpeculation(Speculation speculation) {
+        throw unimplemented();
+    }
+
+    @Override
+    public Speculation decodeSpeculation(JavaConstant constant, SpeculationLog speculationLog) {
         throw unimplemented();
     }
 }

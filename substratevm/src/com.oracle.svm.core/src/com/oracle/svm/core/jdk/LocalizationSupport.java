@@ -33,6 +33,7 @@ import java.util.ResourceBundle;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -53,13 +54,16 @@ public final class LocalizationSupport {
     public LocalizationSupport() {
         charsets = new HashMap<>();
         cache = new HashMap<>();
-        addToCache("sun.util.resources.CalendarData");
-        addToCache("sun.util.resources.CurrencyNames");
-        addToCache("sun.util.resources.LocaleNames");
-        addToCache("sun.util.resources.TimeZoneNames");
-        addToCache("sun.text.resources.CollationData");
-        addToCache("sun.text.resources.FormatData");
-        addToCache("sun.util.logging.resources.logging");
+        if (GraalServices.Java8OrEarlier) {
+            /* For JDK-8, add these resource bundles to the cache. */
+            addToCache("sun.util.resources.CalendarData");
+            addToCache("sun.util.resources.CurrencyNames");
+            addToCache("sun.util.resources.LocaleNames");
+            addToCache("sun.util.resources.TimeZoneNames");
+            addToCache("sun.text.resources.CollationData");
+            addToCache("sun.text.resources.FormatData");
+            addToCache("sun.util.logging.resources.logging");
+        }
 
         String[] bundles = Options.IncludeResourceBundles.getValue().split(",");
         for (String bundle : bundles) {
@@ -82,7 +86,7 @@ public final class LocalizationSupport {
 
     /**
      * Get cached resource bundle.
-     * 
+     *
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) {

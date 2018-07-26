@@ -152,7 +152,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationId, lir, frameMapBuilder, makeCallingConvention(graph, (Stub) stub), stub);
+        return new HotSpotLIRGenerationResult(compilationId, lir, frameMapBuilder, makeCallingConvention(graph, (Stub) stub), stub, config.requiresReservedStackCheck(graph.getMethods()));
     }
 
     @Override
@@ -195,7 +195,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             final int frameSize = crb.frameMap.totalFrameSize();
             final int stackpoinerChange = -frameSize;
             SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
-            emitStackOverflowCheck(crb);
+            if (!isStub) {
+                emitStackOverflowCheck(crb);
+            }
 
             if (SPARCAssembler.isSimm13(stackpoinerChange)) {
                 masm.save(sp, stackpoinerChange, sp);

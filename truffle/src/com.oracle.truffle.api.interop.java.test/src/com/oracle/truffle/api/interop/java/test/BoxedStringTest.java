@@ -29,8 +29,6 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.polyglot.Context;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,8 +40,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = BoxedStringTest.class)
-@SuppressWarnings("deprecation")
-public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFactory {
+public class BoxedStringTest extends ProxyLanguageEnvTest implements TruffleObject, ForeignAccess.StandardFactory {
     public interface ExactMatchInterop {
         String stringValue();
 
@@ -55,23 +52,9 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
 
     static final List<String> KEYS = Arrays.asList(new String[]{"charValue", "stringValue"});
 
-    private Context context;
-
-    @Before
-    public void enterContext() {
-        context = Context.create();
-        context.enter();
-    }
-
-    @After
-    public void leaveContext() {
-        context.leave();
-        context.close();
-    }
-
     @Before
     public void initObjects() {
-        interop = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(ExactMatchInterop.class, this);
+        interop = asJavaObject(ExactMatchInterop.class, this);
     }
 
     @Test
@@ -112,9 +95,8 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
 
     @Resolve(message = "KEYS")
     public abstract static class KeysNode extends Node {
-        @SuppressWarnings("unused")
         public Object access(BoxedStringTest obj) {
-            return com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(KEYS);
+            return obj.asTruffleObject(KEYS);
         }
     }
 

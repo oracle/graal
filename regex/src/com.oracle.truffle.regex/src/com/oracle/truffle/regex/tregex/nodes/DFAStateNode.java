@@ -25,11 +25,14 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
+import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -42,21 +45,13 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private static final byte FLAG_FINAL_STATE = 1;
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
     private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
+    private static final byte FLAG_FIND_SINGLE_CHAR = 1 << 3;
 
     private final short id;
     private final byte flags;
-    protected final short loopToSelf;
+    final short loopToSelf;
     @CompilationFinal(dimensions = 1) protected final CharMatcher[] matchers;
-
-    public DFAStateNode(short id,
-                    boolean finalState,
-                    boolean anchoredFinalState,
-                    boolean hasBackwardPrefixState,
-                    short loopToSelf,
-                    short[] successors,
-                    CharMatcher[] matchers) {
-        this(id, initFlags(finalState, anchoredFinalState, hasBackwardPrefixState), loopToSelf, successors, matchers);
-    }
+    @Child private InputIndexOfNode indexOfNode;
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
         this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopToSelf,
@@ -64,7 +59,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
                         nodeSplitCopy.getMatchers());
     }
 
-    private DFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers) {
+    public DFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers) {
         super(successors);
         assert id > 0;
         this.id = id;
@@ -73,18 +68,29 @@ public class DFAStateNode extends DFAAbstractStateNode {
         this.matchers = matchers;
     }
 
-    private static byte initFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
-        byte newFlags = 0;
+    private InputIndexOfNode getIndexOfNode() {
+        if (indexOfNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            indexOfNode = insert(InputIndexOfNode.create());
+        }
+        return indexOfNode;
+    }
+
+    public static byte flags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean findSingleChar) {
+        byte flags = 0;
         if (finalState) {
-            newFlags |= FLAG_FINAL_STATE;
+            flags |= FLAG_FINAL_STATE;
         }
         if (anchoredFinalState) {
-            newFlags |= FLAG_ANCHORED_FINAL_STATE;
+            flags |= FLAG_ANCHORED_FINAL_STATE;
         }
         if (hasBackwardPrefixState) {
-            newFlags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
+            flags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
         }
-        return newFlags;
+        if (findSingleChar) {
+            flags |= FLAG_FIND_SINGLE_CHAR;
+        }
+        return flags;
     }
 
     @Override
@@ -111,6 +117,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     public boolean hasBackwardPrefixState() {
         return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
+    }
+
+    public boolean isFindSingleChar() {
+        return flagIsSet(FLAG_FIND_SINGLE_CHAR);
     }
 
     private boolean flagIsSet(byte flag) {
@@ -173,6 +183,26 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 return;
             }
             final int preLoopIndex = executor.getIndex(frame);
+            if (executor.isForward() && isFindSingleChar()) {
+                assert successors.length == 2;
+                int singleCharSuccessor = (loopToSelf + 1) % 2;
+                assert matchers[singleCharSuccessor] instanceof SingleCharMatcher : this;
+                CompilerAsserts.partialEvaluationConstant(singleCharSuccessor);
+                int i = getIndexOfNode().execute(executor.getInput(frame),
+                                ((SingleCharMatcher) matchers[singleCharSuccessor]).getChar(),
+                                preLoopIndex,
+                                executor.getCurMaxIndex(frame));
+                if (i < 0) {
+                    executor.setIndex(frame, executor.getCurMaxIndex(frame));
+                    executor.setSuccessorIndex(frame, atEnd3(frame, executor, preLoopIndex));
+                    return;
+                } else {
+                    executor.setIndex(frame, i + 1);
+                    executor.setSuccessorIndex(frame, singleCharSuccessor);
+                    successorFound3(frame, executor, singleCharSuccessor, preLoopIndex);
+                    return;
+                }
+            }
             while (executor.hasNext(frame)) {
                 if (!checkMatch3(frame, executor, preLoopIndex)) {
                     return;

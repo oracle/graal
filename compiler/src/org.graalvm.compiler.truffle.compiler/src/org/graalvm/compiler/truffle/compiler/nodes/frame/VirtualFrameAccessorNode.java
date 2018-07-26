@@ -44,6 +44,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public abstract class VirtualFrameAccessorNode extends FixedWithNextNode implements ControlFlowAnchored {
@@ -73,8 +74,8 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
          */
         LogicNode condition = LogicConstantNode.contradiction();
         tool.addNode(condition);
-        JavaConstant speculation = graph().getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
-        tool.addNode(new FixedGuardNode(condition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile, speculation, false));
+        Speculation speculation = graph().getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
+        tool.addNode(new FixedGuardNode(condition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateReprofile, speculation, false));
 
         if (getStackKind() == JavaKind.Void) {
             tool.delete();

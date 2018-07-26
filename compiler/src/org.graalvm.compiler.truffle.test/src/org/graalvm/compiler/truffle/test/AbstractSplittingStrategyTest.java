@@ -52,7 +52,7 @@ public class AbstractSplittingStrategyTest {
 
     @BeforeClass
     public static void before() {
-        doNotCompileScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompileOnly, "DisableCompilationsForThisTest");
+        doNotCompileScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilation, false);
         growthLimitScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingGrowthLimit, 2.0);
         hardLimitScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000);
     }
