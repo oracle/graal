@@ -774,7 +774,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         Object metaObject = getMetaObject(langId, obj);
         String metaObjectString = LanguageSpecificHacks.formatMetaObject(metaObject, langId);
-        System.out.println(metaObjectString);
         if (metaObjectString == null) {
             metaObjectString = metaObject != null ? metaObject.toString() : "";
         }
