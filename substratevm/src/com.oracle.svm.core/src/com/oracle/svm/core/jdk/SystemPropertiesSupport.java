@@ -46,7 +46,7 @@ public abstract class SystemPropertiesSupport {
 
     /** System properties that are taken from the VM hosting the image generator. */
     private static final String[] HOSTED_PROPERTIES = {
-                    "java.version", "java.vendor", "java.vendor.url",
+                    "java.version",
                     /*
                      * We do not support cross-compilation for now. Separator might also be cached
                      * in other classes, so changing them would be tricky.
@@ -75,6 +75,8 @@ public abstract class SystemPropertiesSupport {
 
         lazyRuntimeValues = new HashMap<>();
         lazyRuntimeValues.put("java.vm.name", () -> "Substrate VM");
+        lazyRuntimeValues.put("java.vendor", () -> "Oracle Corporation");
+        lazyRuntimeValues.put("java.vendor.url", () -> "https://www.graalvm.org/");
         lazyRuntimeValues.put("user.name", this::userNameValue);
         lazyRuntimeValues.put("user.home", this::userHomeValue);
         lazyRuntimeValues.put("user.dir", this::userDirValue);
