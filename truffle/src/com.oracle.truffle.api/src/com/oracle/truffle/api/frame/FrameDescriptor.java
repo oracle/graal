@@ -56,9 +56,9 @@ public final class FrameDescriptor implements Cloneable {
     private final Object defaultValue;
     private final ArrayList<FrameSlot> slots;
     private final EconomicMap<Object, FrameSlot> identifierToSlotMap;
-    private volatile Assumption version;
+    @CompilationFinal private volatile Assumption version;
     private EconomicMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
-    private volatile int size;
+    @CompilationFinal private volatile int size;
     @CompilationFinal private volatile ReentrantLock lock;
 
     /**
