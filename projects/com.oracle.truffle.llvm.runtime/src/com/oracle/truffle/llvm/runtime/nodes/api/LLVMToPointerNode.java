@@ -58,7 +58,7 @@ public abstract class LLVMToPointerNode extends LLVMNode {
     private LLVMToNativeNode getToNative() {
         if (toNative == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNative = LLVMToNativeNodeGen.createToNativeWithTarget();
+            toNative = insert(LLVMToNativeNodeGen.createToNativeWithTarget());
         }
         return toNative;
     }

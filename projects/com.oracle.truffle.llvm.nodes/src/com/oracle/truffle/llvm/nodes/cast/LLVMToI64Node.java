@@ -90,7 +90,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     private LLVMToNativeNode getToNative() {
         if (toNative == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNative = LLVMToNativeNode.createToNativeWithTarget();
+            toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
         }
         return toNative;
     }

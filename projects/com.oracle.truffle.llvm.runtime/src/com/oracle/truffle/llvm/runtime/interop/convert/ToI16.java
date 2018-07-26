@@ -99,7 +99,7 @@ abstract class ToI16 extends ForeignToLLVM {
     private short recursiveConvert(Object o) {
         if (toI16 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI16 = ToI16NodeGen.create();
+            toI16 = insert(ToI16NodeGen.create());
         }
         return (short) toI16.executeWithTarget(o);
     }

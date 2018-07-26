@@ -99,7 +99,7 @@ abstract class ToI32 extends ForeignToLLVM {
     private int recursiveConvert(Object o) {
         if (toI32 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI32 = ToI32NodeGen.create();
+            toI32 = insert(ToI32NodeGen.create());
         }
         return (int) toI32.executeWithTarget(o);
     }

@@ -99,7 +99,7 @@ abstract class ToFloat extends ForeignToLLVM {
     private float recursiveConvert(Object o) {
         if (toFloat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toFloat = ToFloatNodeGen.create();
+            toFloat = insert(ToFloatNodeGen.create());
         }
         return (float) toFloat.executeWithTarget(o);
     }
