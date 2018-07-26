@@ -287,7 +287,12 @@ public final class ComponentInstaller {
             if (envVar != null) {
                 def = envVar;
             } else {
-                def = f.l10n("Installer_BuiltingCatalogURL");
+                String releaseCatalog = env.getLocalRegistry().getGraalCapabilities().get(CommonConstants.RELEASE_CATALOG_KEY);
+                if (releaseCatalog == null) {
+                    def = f.l10n("Installer_BuiltingCatalogURL"); // NOI18N
+                } else {
+                    def = releaseCatalog;
+                }
             }
         }
         String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);

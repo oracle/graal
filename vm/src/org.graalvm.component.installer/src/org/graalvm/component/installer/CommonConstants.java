@@ -72,4 +72,9 @@ public class CommonConstants {
      * display, if the component is not ambiguous.
      */
     public static final String GRAALVM_CORE_PREFIX = "org.graalvm."; // NOI18N
+
+    /**
+     * Key in <code>release</code> file with catalog URL.
+     */
+    public static final String RELEASE_CATALOG_KEY = "component_catalog"; // NOI18N
 }
