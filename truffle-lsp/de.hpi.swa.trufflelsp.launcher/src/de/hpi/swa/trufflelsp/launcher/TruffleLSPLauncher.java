@@ -89,7 +89,6 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
             });
 
             public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult) {
-                System.out.println("Submitting new task (default context)");
                 return executor.submit(new Callable<T>() {
 
                     public T call() throws Exception {
@@ -99,7 +98,6 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
             }
 
             public <T> Future<T> executeWithNestedContext(Supplier<T> taskWithResult) {
-                System.out.println("Submitting new task (new context)");
                 return executor.submit(new Callable<T>() {
 
                     public T call() throws Exception {
