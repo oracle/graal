@@ -211,6 +211,7 @@ public abstract class JavaThreads {
         }
     }
 
+    @NeverInline("Truffle compilation must not inline this method")
     private static Thread createThread(IsolateThread isolateThread) {
         /*
          * Either the main thread, or VMThread was started a different way. Create a new Thread
@@ -260,7 +261,6 @@ public abstract class JavaThreads {
         return assignJavaThread(CEntryPointContext.getCurrentIsolateThread(), thread, manuallyStarted);
     }
 
-    @NeverInline("Truffle compilation must not inline this method")
     private static boolean assignJavaThread(IsolateThread isolateThread, Thread thread, boolean manuallyStarted) {
         if (!currentThread.compareAndSet(isolateThread, null, thread)) {
             return false;
