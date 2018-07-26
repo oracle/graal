@@ -56,9 +56,9 @@ public final class FrameDescriptor implements Cloneable {
     private final Object defaultValue;
     private final ArrayList<FrameSlot> slots;
     private final EconomicMap<Object, FrameSlot> identifierToSlotMap;
-    private volatile Assumption version;
+    @CompilationFinal private volatile Assumption version;
     private EconomicMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
-    private volatile int size;
+    @CompilationFinal private volatile int size;
     @CompilationFinal private volatile ReentrantLock lock;
 
     /**
@@ -371,7 +371,12 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.8 or earlier
      */
     public int getSize() {
-        return size;
+        if (CompilerDirectives.inCompiledCode()) {
+            if (!this.version.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+        }
+        return this.size;
     }
 
     /**

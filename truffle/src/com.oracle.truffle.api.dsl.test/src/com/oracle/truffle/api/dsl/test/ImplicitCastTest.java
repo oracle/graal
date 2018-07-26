@@ -233,7 +233,7 @@ public class ImplicitCastTest {
         CharSequence seq2 = "bar";
         charSequenceCast = 0;
         node.executeEvaluated(seq1, seq2);
-        Assert.assertEquals(2, charSequenceCast);
+        Assert.assertEquals(0, charSequenceCast);
     }
 
     @TypeSystem

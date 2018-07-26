@@ -123,8 +123,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
             List<String> replacesDefs = new ArrayList<>();
             replacesDefs.addAll(ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "replaces"));
 
-            // TODO remove if deprecated contains api is removed.
-            replacesDefs.addAll(ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains"));
             Set<String> containsNames = specialization.getReplacesNames();
             containsNames.clear();
             if (replacesDefs != null) {
@@ -133,10 +131,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                         specialization.getReplacesNames().add(include);
                     } else {
                         AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "replaces");
-                        if (value == null) {
-                            // TODO remove if deprecated api was removed.
-                            value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
-                        }
                         specialization.addError(value, "Duplicate replace declaration '%s'.", include);
                     }
                 }
