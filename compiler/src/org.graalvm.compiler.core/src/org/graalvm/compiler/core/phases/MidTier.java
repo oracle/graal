@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import static org.graalvm.compiler.core.SpeculativeExecutionAttacksMitigations.AccessGuardTargets;
-import static org.graalvm.compiler.core.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.GuardTargets;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
@@ -81,7 +82,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new GuardLoweringPhase());
 
-        if (MitigateSpeculativeExecutionAttacks.getValue(options) == AccessGuardTargets) {
+        if (MitigateSpeculativeExecutionAttacks.getValue(options) == GuardTargets || MitigateSpeculativeExecutionAttacks.getValue(options) == NonDeoptGuardTargets) {
             appendPhase(new InsertGuardFencesPhase());
         }
 

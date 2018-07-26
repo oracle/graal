@@ -31,6 +31,7 @@ import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static org.graalvm.compiler.nodes.java.ArrayLengthNode.readArrayLength;
 import static org.graalvm.compiler.nodes.util.GraphUtil.skipPiWhileNonNull;
@@ -441,13 +442,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
+    public static final IntegerStamp POSITIVE_ARRAY_INDEX_STAMP = StampFactory.forInteger(32, 0, Integer.MAX_VALUE - 1);
+
     /**
      * Create a PiNode on the index proving that the index is positive. On some platforms this is
      * important to allow the index to be used as an int in the address mode.
      */
     public AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck) {
-        IntegerStamp indexStamp = StampFactory.forInteger(32, 0, Integer.MAX_VALUE - 1);
-        ValueNode positiveIndex = graph.maybeAddOrUnique(PiNode.create(index, indexStamp, boundsCheck != null ? boundsCheck.asNode() : null));
+        ValueNode positiveIndex = graph.maybeAddOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
         return createArrayAddress(graph, array, elementKind, positiveIndex);
     }
 
@@ -477,8 +479,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Stamp loadStamp = loadStamp(loadIndexed.stamp(NodeView.DEFAULT), elementKind);
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
-        AddressNode address = createArrayIndexAddress(graph, array, elementKind,
-                        proxyIndex(loadIndexed, loadIndexed.index(), array, tool), boundsCheck);
+        ValueNode index = loadIndexed.index();
+        if (UseIndexMasking.getValue(graph.getOptions())) {
+            index = proxyIndex(loadIndexed, index, array, tool);
+        }
+        AddressNode address = createArrayIndexAddress(graph, array, elementKind, index, boundsCheck);
 
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
         memoryRead.setGuard(boundsCheck);

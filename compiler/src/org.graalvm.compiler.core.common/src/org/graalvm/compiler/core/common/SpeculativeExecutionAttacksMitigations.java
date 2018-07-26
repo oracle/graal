@@ -22,21 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core;
+package org.graalvm.compiler.core.common;
 
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 
 public enum SpeculativeExecutionAttacksMitigations {
     None,
     AllTargets,
-    AccessGuardTargets;
+    GuardTargets,
+    NonDeoptGuardTargets;
 
     public static class Options {
         // @formatter:off
         @Option(help = "Select a strategy to mitigate speculative execution attacks (e.g., SPECTRE)", type = OptionType.Expert)
         public static final EnumOptionKey<SpeculativeExecutionAttacksMitigations> MitigateSpeculativeExecutionAttacks = new EnumOptionKey<>(None);
+        @Option(help = "", type = OptionType.Expert)
+        public static final OptionKey<Boolean> UseIndexMasking = new OptionKey<>(false);
         // @formatter:on
     }
 }
