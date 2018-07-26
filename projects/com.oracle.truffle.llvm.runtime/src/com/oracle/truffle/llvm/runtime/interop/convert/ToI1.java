@@ -100,7 +100,7 @@ abstract class ToI1 extends ForeignToLLVM {
     private boolean recursiveConvert(Object o) {
         if (toI1 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI1 = ToI1NodeGen.create();
+            toI1 = insert(ToI1NodeGen.create());
         }
         return (boolean) toI1.executeWithTarget(o);
     }

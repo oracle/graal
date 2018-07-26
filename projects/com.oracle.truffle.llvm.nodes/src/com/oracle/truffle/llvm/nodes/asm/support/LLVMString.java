@@ -35,63 +35,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 // All methods can be used without @TruffleBoundary
 public class LLVMString {
-    public static byte[] memcpy(LLVMMemory memory, LLVMNativePointer address, int size) {
-        byte[] out = new byte[size];
-        LLVMNativePointer ptr = address;
-        for (int i = 0; i < size; i++) {
-            out[i] = memory.getI8(ptr);
-            ptr = ptr.increment(1);
-        }
-        return out;
-    }
-
-    public static void memcpy(LLVMMemory memory, byte[] src, LLVMNativePointer dst, long size) {
-        int min = src.length;
-        if (min > size) {
-            min = (int) size;
-        }
-        LLVMNativePointer ptr = dst;
-        for (int i = 0; i < min; i++) {
-            memory.putI8(ptr, src[i]);
-            ptr = ptr.increment(1);
-        }
+    public static void strcpy(LLVMMemory memory, LLVMNativePointer dst, String src) {
+        memory.putByteArray(dst, getBytes(src));
+        LLVMNativePointer zero = dst.increment(src.length());
+        memory.putI8(zero, (byte) 0);
     }
 
     @TruffleBoundary
     private static byte[] getBytes(String str) {
         return str.getBytes();
-    }
-
-    @TruffleBoundary
-    private static String toString(byte[] bytes) {
-        return new String(bytes);
-    }
-
-    public static void strcpy(LLVMMemory memory, LLVMNativePointer dst, String src) {
-        memcpy(memory, getBytes(src), dst, src.length());
-        LLVMNativePointer zero = dst.increment(src.length());
-        memory.putI8(zero, (byte) 0);
-    }
-
-    public static void strncpy(LLVMMemory memory, LLVMNativePointer dst, String src, long size) {
-        memcpy(memory, getBytes(src), dst, size);
-        if (src.length() < size) {
-            LLVMNativePointer zero = dst.increment(src.length());
-            memory.putI8(zero, (byte) 0);
-        }
-    }
-
-    public static long strlen(LLVMMemory memory, LLVMNativePointer address) {
-        LLVMNativePointer ptr = address;
-        while (memory.getI8(ptr) != 0) {
-            ptr = ptr.increment(1);
-        }
-        return ptr.asNative() - address.asNative();
-    }
-
-    public static String cstr(LLVMMemory memory, LLVMNativePointer address) {
-        long len = strlen(memory, address);
-        byte[] bytes = memcpy(memory, address, (int) len);
-        return toString(bytes);
     }
 }

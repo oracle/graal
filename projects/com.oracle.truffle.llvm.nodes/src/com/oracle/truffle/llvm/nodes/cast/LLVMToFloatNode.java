@@ -194,19 +194,13 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
         @Specialization
         protected float doI32Vector(LLVMI32Vector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size";
             return Float.intBitsToFloat(from.getValue(0));
         }
 
         @Specialization
         protected float doFloatVector(LLVMFloatVector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size";
             return from.getValue(0);
         }
     }

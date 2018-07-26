@@ -29,12 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMByteSwap {
 
@@ -66,15 +71,15 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapVI16 extends LLVMBuiltin {
-
+    public abstract static class LLVMByteSwapI16Vector extends LLVMBuiltin {
         private final int vectorLen;
 
-        protected LLVMByteSwapVI16(int vectorLen) {
+        protected LLVMByteSwapI16Vector(int vectorLen) {
             this.vectorLen = vectorLen;
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doI16Vector(LLVMI16Vector vector) {
             short[] result = new short[vectorLen];
             for (int i = 0; i < vectorLen; i++) {
@@ -85,15 +90,15 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapVI32 extends LLVMBuiltin {
-
+    public abstract static class LLVMByteSwapI32Vector extends LLVMBuiltin {
         private final int vectorLen;
 
-        protected LLVMByteSwapVI32(int vectorLen) {
+        protected LLVMByteSwapI32Vector(int vectorLen) {
             this.vectorLen = vectorLen;
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doI32Vector(LLVMI32Vector vector) {
             int[] result = new int[vectorLen];
             for (int i = 0; i < vectorLen; i++) {
@@ -104,21 +109,42 @@ public abstract class LLVMByteSwap {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMByteSwapVI64 extends LLVMBuiltin {
-
+    public abstract static class LLVMByteSwapI64Vector extends LLVMBuiltin {
         private final int vectorLen;
 
-        protected LLVMByteSwapVI64(int vectorLen) {
+        protected LLVMByteSwapI64Vector(int vectorLen) {
             this.vectorLen = vectorLen;
         }
 
         @Specialization
-        protected LLVMI64Vector doI32Vector(LLVMI64Vector vector) {
+        @ExplodeLoop
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector vector) {
             long[] result = new long[vectorLen];
             for (int i = 0; i < vectorLen; i++) {
                 result[i] = Long.reverseBytes(vector.getValue(i));
             }
             return LLVMI64Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doPointerVector(LLVMPointerVector vector,
+                        @Cached("createToNativeNodes()") LLVMToNativeNode[] toNative) {
+            long[] result = new long[vectorLen];
+            for (int i = 0; i < vectorLen; i++) {
+                long value = toNative[i].executeWithTarget(vector.getValue(i)).asNative();
+                result[i] = Long.reverseBytes(value);
+            }
+            return LLVMI64Vector.create(result);
+        }
+
+        @TruffleBoundary
+        protected LLVMToNativeNode[] createToNativeNodes() {
+            LLVMToNativeNode[] result = new LLVMToNativeNode[vectorLen];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = LLVMToNativeNode.createToNativeWithTarget();
+            }
+            return result;
         }
     }
 }

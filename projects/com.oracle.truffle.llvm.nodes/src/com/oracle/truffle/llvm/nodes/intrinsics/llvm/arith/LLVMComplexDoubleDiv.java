@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMDoubleStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMDoubleStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMComplexMul extends LLVMExpressionNode {
+public final class LLVMComplexDoubleDiv extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode aNode;
     @Child private LLVMExpressionNode bNode;
@@ -45,22 +45,15 @@ public final class LLVMComplexMul extends LLVMExpressionNode {
     @Child private LLVMExpressionNode dNode;
     @Child private LLVMExpressionNode alloc;
 
-    public LLVMComplexMul(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
+    @Child private LLVMDoubleStoreNode store;
+
+    public LLVMComplexDoubleDiv(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
         this.alloc = alloc;
         this.aNode = a;
         this.bNode = b;
         this.cNode = c;
         this.dNode = d;
-    }
-
-    @CompilationFinal private LLVMMemory memory;
-
-    private LLVMMemory getMemory() {
-        if (memory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memory = getLLVMMemory();
-        }
-        return memory;
+        this.store = LLVMDoubleStoreNodeGen.create(null, null);
     }
 
     @Override
@@ -71,16 +64,13 @@ public final class LLVMComplexMul extends LLVMExpressionNode {
             double c = cNode.executeDouble(frame);
             double d = dNode.executeDouble(frame);
 
-            double ac = a * c;
-            double bd = b * d;
-            double ad = a * d;
-            double bc = b * c;
-            double zReal = ac - bd;
-            double zImag = ad + bc;
+            double denom = c * c + d * d;
+            double zReal = (a * c + b * d) / denom;
+            double zImag = (b * c - a * d) / denom;
 
-            LLVMNativePointer allocatedMemory = alloc.executeLLVMNativePointer(frame);
-            getMemory().putDouble(allocatedMemory, zReal);
-            getMemory().putDouble(allocatedMemory.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
+            LLVMPointer allocatedMemory = alloc.executeLLVMPointer(frame);
+            store.executeWithTarget(allocatedMemory, zReal);
+            store.executeWithTarget(allocatedMemory.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
 
             return allocatedMemory;
         } catch (UnexpectedResultException e) {

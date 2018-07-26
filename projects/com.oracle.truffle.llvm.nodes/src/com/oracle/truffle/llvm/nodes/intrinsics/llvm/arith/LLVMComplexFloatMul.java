@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,56 +30,42 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
-public final class LLVMComplexDiv extends LLVMExpressionNode {
+public final class LLVMComplexFloatMul extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode aNode;
     @Child private LLVMExpressionNode bNode;
     @Child private LLVMExpressionNode cNode;
     @Child private LLVMExpressionNode dNode;
-    @Child private LLVMExpressionNode alloc;
 
-    public LLVMComplexDiv(LLVMExpressionNode alloc, LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
-        this.alloc = alloc;
+    public LLVMComplexFloatMul(LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
         this.aNode = a;
         this.bNode = b;
         this.cNode = c;
         this.dNode = d;
     }
 
-    @CompilationFinal private LLVMMemory memory;
-
-    private LLVMMemory getMemory() {
-        if (memory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memory = getLLVMMemory();
-        }
-        return memory;
-    }
-
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
-            double a = aNode.executeDouble(frame);
-            double b = bNode.executeDouble(frame);
-            double c = cNode.executeDouble(frame);
-            double d = dNode.executeDouble(frame);
+            float a = aNode.executeFloat(frame);
+            float b = bNode.executeFloat(frame);
+            float c = cNode.executeFloat(frame);
+            float d = dNode.executeFloat(frame);
 
-            double denom = c * c + d * d;
-            double zReal = (a * c + b * d) / denom;
-            double zImag = (b * c - a * d) / denom;
+            float ac = a * c;
+            float bd = b * d;
+            float ad = a * d;
+            float bc = b * c;
+            float zReal = ac - bd;
+            float zImag = ad + bc;
 
-            LLVMNativePointer allocatedMemory = alloc.executeLLVMNativePointer(frame);
-            getMemory().putDouble(allocatedMemory, zReal);
-            getMemory().putDouble(allocatedMemory.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
-
-            return allocatedMemory;
+            float[] values = {zReal, zImag};
+            return LLVMFloatVector.create(values);
         } catch (UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

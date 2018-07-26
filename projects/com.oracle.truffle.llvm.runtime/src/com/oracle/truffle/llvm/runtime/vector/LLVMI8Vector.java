@@ -29,14 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import java.util.Arrays;
-import java.util.function.BiFunction;
-
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
-public final class LLVMI8Vector {
-
+public final class LLVMI8Vector extends LLVMVector {
     private final byte[] vector;
 
     public static LLVMI8Vector create(byte[] vector) {
@@ -47,170 +43,12 @@ public final class LLVMI8Vector {
         this.vector = vector;
     }
 
-    // We do not want to use lambdas because of bad startup
-    private interface Operation {
-        byte eval(byte a, byte b);
-    }
-
-    private static LLVMI8Vector doOperation(LLVMI8Vector lhs, LLVMI8Vector rhs, Operation op) {
-        byte[] left = lhs.vector;
-        byte[] right = rhs.vector;
-
-        // not sure if this assert is true for llvm ir in general
-        // this implementation however assumes it
-        assert left.length == right.length;
-
-        byte[] result = new byte[left.length];
-
-        for (int i = 0; i < left.length; i++) {
-            result[i] = op.eval(left[i], right[i]);
-        }
-        return create(result);
-    }
-
-    public LLVMI8Vector add(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a + b);
-            }
-        });
-    }
-
-    public LLVMI8Vector mul(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a * b);
-            }
-        });
-    }
-
-    public LLVMI8Vector sub(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a - b);
-            }
-        });
-    }
-
-    public LLVMI8Vector div(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a / b);
-            }
-        });
-    }
-
-    public LLVMI8Vector divUnsigned(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (Byte.toUnsignedInt(a) / Byte.toUnsignedInt(b));
-            }
-        });
-    }
-
-    public LLVMI8Vector rem(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a % b);
-            }
-        });
-    }
-
-    public LLVMI8Vector remUnsigned(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (Byte.toUnsignedInt(a) % Byte.toUnsignedInt(b));
-            }
-        });
-    }
-
-    public LLVMI8Vector and(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a & b);
-            }
-        });
-    }
-
-    public LLVMI8Vector or(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a | b);
-            }
-        });
-    }
-
-    public LLVMI8Vector leftShift(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a << b);
-            }
-        });
-    }
-
-    public LLVMI8Vector logicalRightShift(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a >>> b);
-            }
-        });
-    }
-
-    public LLVMI8Vector arithmeticRightShift(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a >> b);
-            }
-        });
-    }
-
-    public LLVMI8Vector xor(LLVMI8Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public byte eval(byte a, byte b) {
-                return (byte) (a ^ b);
-            }
-        });
-    }
-
-    public byte[] getValues() {
-        return vector;
-    }
-
     public byte getValue(int index) {
         return vector[index];
     }
 
-    public LLVMI8Vector insert(byte element, int index) {
-        byte[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element;
-        return create(copyOf);
-    }
-
+    @Override
     public int getLength() {
         return vector.length;
-    }
-
-    public LLVMI1Vector doCompare(LLVMI8Vector other, BiFunction<Byte, Byte, Boolean> comparison) {
-        int length = getLength();
-        boolean[] values = new boolean[length];
-
-        for (int i = 0; i < length; i++) {
-            values[i] = comparison.apply(getValue(i), other.getValue(i));
-        }
-
-        return LLVMI1Vector.create(values);
     }
 }

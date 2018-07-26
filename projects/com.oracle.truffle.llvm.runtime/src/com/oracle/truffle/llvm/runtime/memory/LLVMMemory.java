@@ -37,14 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMMemory {
 
@@ -62,12 +54,11 @@ public abstract class LLVMMemory {
 
     public abstract LLVMNativePointer allocateMemory(long size);
 
-    public abstract LLVMNativePointer reallocateMemory(LLVMNativePointer addr, long size);
-
     /**
-     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
+     * Use a realloc node instead.
      */
-    public abstract LLVMNativePointer allocateDerefMemory();
+    @Deprecated
+    public abstract LLVMNativePointer reallocateMemory(LLVMNativePointer addr, long size);
 
     public abstract boolean getI1(LLVMNativePointer addr);
 
@@ -147,45 +138,9 @@ public abstract class LLVMMemory {
 
     public abstract void putPointer(long ptr, long ptrValue);
 
-    public abstract LLVMI32Vector getI32Vector(LLVMNativePointer address, int vectorLength);
+    public abstract void putByteArray(LLVMNativePointer addr, byte[] bytes);
 
-    public abstract LLVMI8Vector getI8Vector(LLVMNativePointer address, int vectorLength);
-
-    public abstract LLVMI1Vector getI1Vector(LLVMNativePointer address, int vectorLength);
-
-    public abstract LLVMI16Vector getI16Vector(LLVMNativePointer address, int vectorLength);
-
-    public abstract LLVMI64Vector getI64Vector(LLVMNativePointer address, int vectorLength);
-
-    public abstract LLVMFloatVector getFloatVector(LLVMNativePointer address, int vectorLength);
-
-    public abstract LLVMDoubleVector getDoubleVector(LLVMNativePointer address, int vectorLength);
-
-    public abstract LLVMPointerVector getPointerVector(LLVMNativePointer address, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMDoubleVector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMFloatVector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMI16Vector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMI1Vector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMI32Vector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMI64Vector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMI8Vector vector, int vectorLength);
-
-    public abstract void putVector(LLVMNativePointer address, LLVMPointerVector vector, int vectorLength);
-
-    public abstract LLVMNativePointer allocateCString(String string);
-
-    public abstract void putFunctionPointer(LLVMNativePointer address, long functionIndex);
-
-    public abstract void putFunctionPointer(long ptr, long functionIndex);
-
-    public abstract long getFunctionPointer(LLVMNativePointer addr);
+    public abstract void putByteArray(long ptr, byte[] bytes);
 
     public abstract CMPXCHGI32 compareAndSwapI32(LLVMNativePointer p, int comparisonValue, int newValue);
 
@@ -218,6 +173,11 @@ public abstract class LLVMMemory {
     public abstract boolean getAndOpI1(LLVMNativePointer address, boolean value, BinaryOperator<Boolean> f);
 
     public abstract void fullFence();
+
+    /**
+     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
+     */
+    public abstract LLVMNativePointer allocateDerefMemory();
 
     public abstract boolean isDerefMemory(LLVMNativePointer addr);
 

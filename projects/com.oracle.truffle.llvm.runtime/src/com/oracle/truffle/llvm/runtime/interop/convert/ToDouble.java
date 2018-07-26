@@ -99,7 +99,7 @@ abstract class ToDouble extends ForeignToLLVM {
     private double recursiveConvert(Object o) {
         if (toDouble == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toDouble = ToDoubleNodeGen.create();
+            toDouble = insert(ToDoubleNodeGen.create());
         }
         return (double) toDouble.executeWithTarget(o);
     }

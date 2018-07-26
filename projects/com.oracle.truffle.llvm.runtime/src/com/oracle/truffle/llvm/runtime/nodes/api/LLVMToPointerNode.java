@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,28 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.vector;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@ValueType
-public final class LLVMI64Vector extends LLVMVector {
-    private final long[] vector;
+public abstract class LLVMToPointerNode extends LLVMNode {
+    public abstract LLVMPointer executeWithTarget(Object obj);
 
-    public static LLVMI64Vector create(long[] vector) {
-        return new LLVMI64Vector(vector);
+    @Child private LLVMToNativeNode toNative;
+
+    @Specialization
+    protected LLVMPointer doPointer(LLVMPointer obj) {
+        return obj;
     }
 
-    private LLVMI64Vector(long[] vector) {
-        this.vector = vector;
+    @Specialization
+    protected LLVMNativePointer doLong(long obj) {
+        return LLVMNativePointer.create(obj);
     }
 
-    public long getValue(int index) {
-        return vector[index];
+    @Fallback
+    protected LLVMNativePointer doFallback(Object obj) {
+        return getToNative().executeWithTarget(obj);
     }
 
-    @Override
-    public int getLength() {
-        return vector.length;
+    private LLVMToNativeNode getToNative() {
+        if (toNative == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toNative = insert(LLVMToNativeNodeGen.createToNativeWithTarget());
+        }
+        return toNative;
     }
 }

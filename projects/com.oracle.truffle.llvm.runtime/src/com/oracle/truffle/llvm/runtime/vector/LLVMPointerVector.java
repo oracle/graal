@@ -29,222 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import java.util.Arrays;
-import java.util.function.BiFunction;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMPointerVector {
-    private final long[] vector;    // no LLVMNativePointer stored to improve performance
+@ValueType
+public final class LLVMPointerVector extends LLVMVector {
+    private final LLVMPointer[] vector;
 
-    public static LLVMPointerVector create(LLVMNativePointer[] vector) {
+    public static LLVMPointerVector create(LLVMPointer[] vector) {
         return new LLVMPointerVector(vector);
     }
 
-    public static LLVMPointerVector create(long[] vector) {
-        return new LLVMPointerVector(vector);
-    }
-
-    public static LLVMPointerVector createNullVector() {
-        return new LLVMPointerVector();
-    }
-
-    private LLVMPointerVector(LLVMNativePointer[] vector) {
-        this.vector = new long[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = vector[i].asNative();
-        }
-    }
-
-    private LLVMPointerVector(long[] vector) {
+    private LLVMPointerVector(LLVMPointer[] vector) {
         this.vector = vector;
     }
 
-    private LLVMPointerVector() {
-        this.vector = null;
-    }
-
-    // We do not want to use lambdas because of bad startup
-    private interface Operation {
-        long eval(long a, long b);
-    }
-
-    private static LLVMPointerVector doOperation(LLVMPointerVector lhs, LLVMPointerVector rhs, Operation op) {
-        long[] left = lhs.vector;
-        long[] right = rhs.vector;
-
-        // not sure if this assert is true for llvm ir in general
-        // this implementation however assumes it
-        assert left.length == right.length;
-
-        long[] result = new long[left.length];
-
-        for (int i = 0; i < left.length; i++) {
-            result[i] = op.eval(left[i], right[i]);
-        }
-        return create(result);
-    }
-
-    public LLVMPointerVector add(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a + b;
-            }
-        });
-    }
-
-    public LLVMPointerVector mul(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a * b;
-            }
-        });
-    }
-
-    public LLVMPointerVector sub(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a - b;
-            }
-        });
-    }
-
-    public LLVMPointerVector div(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a / b;
-            }
-        });
-    }
-
-    public LLVMPointerVector divUnsigned(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return Long.divideUnsigned(a, b);
-            }
-        });
-    }
-
-    public LLVMPointerVector rem(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a % b;
-            }
-        });
-    }
-
-    public LLVMPointerVector remUnsigned(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return Long.remainderUnsigned(a, b);
-            }
-        });
-    }
-
-    public LLVMPointerVector and(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a & b;
-            }
-        });
-    }
-
-    public LLVMPointerVector or(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a | b;
-            }
-        });
-    }
-
-    public LLVMPointerVector leftShift(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a << b;
-            }
-        });
-    }
-
-    public LLVMPointerVector logicalRightShift(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a >>> b;
-            }
-        });
-    }
-
-    public LLVMPointerVector arithmeticRightShift(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a >> b;
-            }
-        });
-    }
-
-    public LLVMPointerVector xor(LLVMPointerVector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public long eval(long a, long b) {
-                return a ^ b;
-            }
-        });
-    }
-
-    public long[] getValues() {
-        return vector;
-    }
-
-    public LLVMNativePointer[] getPointers() {
-        LLVMNativePointer[] addresses = new LLVMNativePointer[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            addresses[i] = LLVMNativePointer.create(vector[i]);
-        }
-        return addresses;
-    }
-
-    public long getValue(int index) {
+    public LLVMPointer getValue(int index) {
         return vector[index];
     }
 
-    public LLVMNativePointer getPointer(int index) {
-        return LLVMNativePointer.create(vector[index]);
-    }
-
-    public LLVMPointerVector insert(LLVMNativePointer element, int index) {
-        long[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element.asNative();
-        return create(copyOf);
-    }
-
-    public LLVMPointerVector insert(long element, int index) {
-        long[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element;
-        return create(copyOf);
-    }
-
+    @Override
     public int getLength() {
         return vector.length;
-    }
-
-    public LLVMI1Vector doCompare(LLVMPointerVector other, BiFunction<Long, Long, Boolean> compare) {
-        int length = other.getLength();
-        boolean[] values = new boolean[length];
-
-        for (int i = 0; i < length; i++) {
-            values[i] = compare.apply(getValue(i), other.getValue(i));
-        }
-
-        return LLVMI1Vector.create(values);
     }
 }

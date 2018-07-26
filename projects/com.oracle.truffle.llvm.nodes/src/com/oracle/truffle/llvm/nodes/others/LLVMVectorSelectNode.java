@@ -30,10 +30,13 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -41,166 +44,138 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
-public abstract class LLVMVectorSelectNode {
+@NodeChild(value = "conditionNode", type = LLVMExpressionNode.class)
+@NodeChild(value = "trueNode", type = LLVMExpressionNode.class)
+@NodeChild(value = "elseNode", type = LLVMExpressionNode.class)
+@NodeField(name = "vectorLength", type = int.class)
+public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
+    protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI1VectorSelectNode extends LLVMExpressionNode {
+    protected abstract int getVectorLength();
 
+    public abstract static class LLVMI1VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI1Vector doOp(LLVMI1Vector condition, LLVMI1Vector trueValue, LLVMI1Vector elseValue) {
-            int length = condition.getLength();
-
-            boolean[] values = new boolean[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            assert condition.getLength() == getVectorLength();
+            boolean[] values = new boolean[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
             }
-
             return LLVMI1Vector.create(values);
         }
     }
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI8VectorSelectNode extends LLVMExpressionNode {
-
+    public abstract static class LLVMI8VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI8Vector doOp(LLVMI1Vector condition, LLVMI8Vector trueValue, LLVMI8Vector elseValue) {
-            int length = condition.getLength();
-
-            byte[] values = new byte[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            assert condition.getLength() == getVectorLength();
+            byte[] values = new byte[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
             }
-
             return LLVMI8Vector.create(values);
         }
     }
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI16VectorSelectNode extends LLVMExpressionNode {
-
+    public abstract static class LLVMI16VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI16Vector doOp(LLVMI1Vector condition, LLVMI16Vector trueValue, LLVMI16Vector elseValue) {
-            int length = condition.getLength();
-
-            short[] values = new short[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            assert condition.getLength() == getVectorLength();
+            short[] values = new short[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
             }
-
             return LLVMI16Vector.create(values);
         }
     }
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI32VectorSelectNode extends LLVMExpressionNode {
-
+    public abstract static class LLVMI32VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doOp(LLVMI1Vector condition, LLVMI32Vector trueValue, LLVMI32Vector elseValue) {
-            int length = condition.getLength();
-
-            int[] values = new int[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            assert condition.getLength() == getVectorLength();
+            int[] values = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
             }
-
             return LLVMI32Vector.create(values);
         }
     }
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMI64VectorSelectNode extends LLVMExpressionNode {
+    public abstract static class LLVMI64VectorSelectNode extends LLVMVectorSelectNode {
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue) {
+            assert condition.getLength() == getVectorLength();
+            long[] values = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
+            }
+            return LLVMI64Vector.create(values);
+        }
 
         @Specialization
-        protected LLVMI64Vector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue) {
-            int length = condition.getLength();
-
-            long[] values = new long[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+        @ExplodeLoop
+        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMPointerVector elseValue) {
+            assert condition.getLength() == getVectorLength();
+            LLVMPointer[] values = new LLVMPointer[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? LLVMNativePointer.create(trueValue.getValue(i)) : elseValue.getValue(i);
             }
+            return LLVMPointerVector.create(values);
+        }
 
-            return LLVMI64Vector.create(values);
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMI64Vector elseValue) {
+            assert condition.getLength() == getVectorLength();
+            LLVMPointer[] values = new LLVMPointer[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : LLVMNativePointer.create(elseValue.getValue(i));
+            }
+            return LLVMPointerVector.create(values);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMPointerVector elseValue) {
+            assert condition.getLength() == getVectorLength();
+            LLVMPointer[] values = new LLVMPointer[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
+            }
+            return LLVMPointerVector.create(values);
         }
     }
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMFloatVectorSelectNode extends LLVMExpressionNode {
-
+    public abstract static class LLVMFloatVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMFloatVector doOp(LLVMI1Vector condition, LLVMFloatVector trueValue, LLVMFloatVector elseValue) {
-            int length = condition.getLength();
-
-            float[] values = new float[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            assert condition.getLength() == getVectorLength();
+            float[] values = new float[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
             }
-
             return LLVMFloatVector.create(values);
         }
     }
 
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMDoubleVectorSelectNode extends LLVMExpressionNode {
-
+    public abstract static class LLVMDoubleVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
+        @ExplodeLoop
         protected LLVMDoubleVector doOp(LLVMI1Vector condition, LLVMDoubleVector trueValue, LLVMDoubleVector elseValue) {
-            int length = condition.getLength();
-
-            double[] values = new double[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
+            assert condition.getLength() == getVectorLength();
+            double[] values = new double[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                values[i] = conditionProfile.profile(condition.getValue(i)) ? trueValue.getValue(i) : elseValue.getValue(i);
             }
-
             return LLVMDoubleVector.create(values);
-        }
-    }
-
-    @NodeChildren({
-                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMAddressVectorSelectNode extends LLVMExpressionNode {
-
-        @Specialization
-        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMPointerVector elseValue) {
-            int length = condition.getLength();
-
-            long[] values = new long[length];
-
-            for (int i = 0; i < length; i++) {
-                values[i] = condition.getValue(i) ? trueValue.getValue(i) : elseValue.getValue(i);
-            }
-
-            return LLVMPointerVector.create(values);
         }
     }
 }

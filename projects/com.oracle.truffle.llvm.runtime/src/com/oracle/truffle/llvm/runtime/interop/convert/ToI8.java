@@ -100,7 +100,7 @@ abstract class ToI8 extends ForeignToLLVM {
     private byte recursiveConvert(Object o) {
         if (toI8 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI8 = ToI8NodeGen.create();
+            toI8 = insert(ToI8NodeGen.create());
         }
         return (byte) toI8.executeWithTarget(o);
     }

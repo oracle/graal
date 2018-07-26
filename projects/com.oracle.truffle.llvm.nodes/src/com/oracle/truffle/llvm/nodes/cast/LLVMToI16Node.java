@@ -191,10 +191,7 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
         @Specialization
         protected short doI16Vector(LLVMI16Vector from) {
-            if (from.getLength() != 1) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == 1 : "invalid vector size";
             return from.getValue(0);
         }
     }

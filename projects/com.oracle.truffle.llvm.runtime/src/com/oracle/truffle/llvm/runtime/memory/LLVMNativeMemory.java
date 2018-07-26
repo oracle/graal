@@ -29,15 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.ADDRESS_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.DOUBLE_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.FLOAT_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I16_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I1_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I32_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I64_SIZE_IN_BYTES;
-import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I8_SIZE_IN_BYTES;
-
 import java.lang.reflect.Field;
 import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
@@ -47,19 +38,10 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 import sun.misc.Unsafe;
 
@@ -172,6 +154,8 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public LLVMNativePointer reallocateMemory(LLVMNativePointer addr, long size) {
         // a null pointer is a valid argument
         try {
@@ -391,11 +375,13 @@ public final class LLVMNativeMemory extends LLVMMemory {
         }
     }
 
-    private void putByteArray(LLVMNativePointer addr, byte[] bytes) {
+    @Override
+    public void putByteArray(LLVMNativePointer addr, byte[] bytes) {
         putByteArray(addr.asNative(), bytes);
     }
 
-    private void putByteArray(long ptr, byte[] bytes) {
+    @Override
+    public void putByteArray(long ptr, byte[] bytes) {
         long currentptr = ptr;
         for (int i = 0; i < bytes.length; i++) {
             putI8(currentptr, bytes[i]);
@@ -454,220 +440,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
     public void putPointer(long ptr, long ptrValue) {
         assert ptr != 0;
         unsafe.putAddress(ptr, ptrValue);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMI32Vector getI32Vector(LLVMNativePointer address, int vectorLength) {
-        int[] vector = new int[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getI32(currentPtr);
-            currentPtr += I32_SIZE_IN_BYTES;
-        }
-        return LLVMI32Vector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMI8Vector getI8Vector(LLVMNativePointer address, int vectorLength) {
-        byte[] vector = new byte[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getI8(currentPtr);
-            currentPtr += I8_SIZE_IN_BYTES;
-        }
-        return LLVMI8Vector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMI1Vector getI1Vector(LLVMNativePointer address, int vectorLength) {
-        boolean[] vector = new boolean[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getI1(currentPtr);
-            currentPtr += I1_SIZE_IN_BYTES;
-        }
-        return LLVMI1Vector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMI16Vector getI16Vector(LLVMNativePointer address, int vectorLength) {
-        short[] vector = new short[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getI16(currentPtr);
-            currentPtr += I16_SIZE_IN_BYTES;
-        }
-        return LLVMI16Vector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMI64Vector getI64Vector(LLVMNativePointer address, int vectorLength) {
-        long[] vector = new long[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getI64(currentPtr);
-            currentPtr += I64_SIZE_IN_BYTES;
-        }
-        return LLVMI64Vector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMFloatVector getFloatVector(LLVMNativePointer address, int vectorLength) {
-        float[] vector = new float[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getFloat(currentPtr);
-            currentPtr += FLOAT_SIZE_IN_BYTES;
-        }
-        return LLVMFloatVector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMDoubleVector getDoubleVector(LLVMNativePointer address, int vectorLength) {
-        double[] vector = new double[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getDouble(currentPtr);
-            currentPtr += DOUBLE_SIZE_IN_BYTES;
-        }
-        return LLVMDoubleVector.create(vector);
-    }
-
-    @Override
-    @ExplodeLoop
-    public LLVMPointerVector getPointerVector(LLVMNativePointer address, int vectorLength) {
-        LLVMNativePointer[] vector = new LLVMNativePointer[vectorLength];
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getPointer(currentPtr);
-            currentPtr += ADDRESS_SIZE_IN_BYTES;
-        }
-        return LLVMPointerVector.create(vector);
-    }
-
-    // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
-    // implemented
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMDoubleVector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putDouble(currentPtr, vector.getValue(i));
-            currentPtr += DOUBLE_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMFloatVector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putFloat(currentPtr, vector.getValue(i));
-            currentPtr += FLOAT_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMI16Vector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putI16(currentPtr, vector.getValue(i));
-            currentPtr += I16_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMI1Vector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putI1(currentPtr, vector.getValue(i));
-            currentPtr += I1_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMI32Vector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putI32(currentPtr, vector.getValue(i));
-            currentPtr += I32_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMI64Vector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putI64(currentPtr, vector.getValue(i));
-            currentPtr += I64_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMI8Vector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putI8(currentPtr, vector.getValue(i));
-            currentPtr += I8_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    @ExplodeLoop
-    public void putVector(LLVMNativePointer address, LLVMPointerVector vector, int vectorLength) {
-        assert vector.getLength() == vectorLength;
-        long currentPtr = address.asNative();
-        for (int i = 0; i < vectorLength; i++) {
-            putPointer(currentPtr, vector.getValue(i));
-            currentPtr += ADDRESS_SIZE_IN_BYTES;
-        }
-    }
-
-    @Override
-    public LLVMNativePointer allocateCString(String string) {
-        LLVMNativePointer basePointer = allocateMemory(string.length() + 1);
-        long currentPointer = basePointer.asNative();
-        for (int i = 0; i < string.length(); i++) {
-            byte c = (byte) string.charAt(i);
-            putI8(currentPointer, c);
-            currentPointer++;
-        }
-        putI8(currentPointer, (byte) 0);
-        return basePointer;
-    }
-
-    @Override
-    public void putFunctionPointer(LLVMNativePointer address, long functionIndex) {
-        putI64(address, functionIndex);
-    }
-
-    @Override
-    public void putFunctionPointer(long ptr, long functionIndex) {
-        putI64(ptr, functionIndex);
-    }
-
-    @Override
-    public long getFunctionPointer(LLVMNativePointer addr) {
-        return getI64(addr);
     }
 
     @Override

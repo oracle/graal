@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -138,27 +138,24 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVM80BitFloat doI1Vector(LLVMI1Vector from) {
-            if (from.getLength() != LLVM80BitFloat.BIT_WIDTH) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
-            byte[] values = new byte[LLVM80BitFloat.BYTE_WIDTH];
+            assert from.getLength() == LLVM80BitFloat.BIT_WIDTH : "invalid vector size";
+            byte[] result = new byte[LLVM80BitFloat.BYTE_WIDTH];
             for (int i = 0; i < LLVM80BitFloat.BYTE_WIDTH; i++) {
-                values[i] = 0;
+                byte value = 0;
                 for (int j = 0; j < Byte.SIZE; j++) {
-                    values[i] |= (from.getValue(i * Byte.SIZE + j) ? 1L : 0L) << j;
+                    value |= (from.getValue(i * Byte.SIZE + j) ? 1L : 0L) << j;
                 }
+                result[i] = value;
             }
-            return LLVM80BitFloat.fromBytes(values);
+            return LLVM80BitFloat.fromBytes(result);
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVM80BitFloat doI8Vector(LLVMI8Vector from) {
-            if (from.getLength() != LLVM80BitFloat.BIT_WIDTH / Byte.SIZE) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == LLVM80BitFloat.BIT_WIDTH / Byte.SIZE : "invalid vector size";
             byte[] values = new byte[LLVM80BitFloat.BYTE_WIDTH];
             for (int i = 0; i < LLVM80BitFloat.BYTE_WIDTH; i++) {
                 values[i] = from.getValue(i);
@@ -167,11 +164,9 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVM80BitFloat doI16Vector(LLVMI16Vector from) {
-            if (from.getLength() != LLVM80BitFloat.BIT_WIDTH / Short.SIZE) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("invalid vector size!");
-            }
+            assert from.getLength() == LLVM80BitFloat.BIT_WIDTH / Short.SIZE : "invalid vector size";
             byte[] values = new byte[LLVM80BitFloat.BYTE_WIDTH];
             for (int i = 0; i < LLVM80BitFloat.BIT_WIDTH / Short.SIZE; i++) {
                 values[i * 2] = (byte) (from.getValue(i) & 0xFF);

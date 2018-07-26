@@ -108,7 +108,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         }
 
         protected LLVMNativePointer derefMain(LLVMMemory memory, LLVMNativePointer mainPointer) {
-            return LLVMNativePointer.create(memory.getFunctionPointer(mainPointer));
+            return memory.getPointer(mainPointer);
         }
 
         static final class LangStartVtableType {
@@ -119,12 +119,12 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             }
 
             long readFn(LLVMMemory memory, long address) {
-                return memory.getFunctionPointer(LLVMNativePointer.create(address + offsetFn));
+                return memory.getPointer(address + offsetFn).asNative();
             }
 
             @SuppressWarnings("static-method")
             long readDropInPlace(LLVMMemory memory, long address) {
-                return memory.getFunctionPointer(LLVMNativePointer.create(address));
+                return memory.getPointer(address).asNative();
             }
 
             static LangStartVtableType create(DataLayout datalayout, Type vtableType) {

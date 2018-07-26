@@ -99,7 +99,7 @@ abstract class ToI64 extends ForeignToLLVM {
     private long recursiveConvert(Object o) {
         if (toI64 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI64 = ToI64NodeGen.create();
+            toI64 = insert(ToI64NodeGen.create());
         }
         return (long) toI64.executeWithTarget(o);
     }

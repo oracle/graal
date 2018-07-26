@@ -93,17 +93,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createFence();
 
-    LLVMExpressionNode createShl(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createLShr(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createAShr(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createAnd(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createOr(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createXor(LLVMExpressionNode left, LLVMExpressionNode right);
+    LLVMExpressionNode createArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right);
 
     LLVMExpressionNode createLiteral(Object value, Type type);
 
@@ -138,20 +128,6 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, Type targetType);
 
     LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType);
-
-    LLVMExpressionNode createAdd(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createSub(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createMul(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createDiv(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createUDiv(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createRem(LLVMExpressionNode left, LLVMExpressionNode right);
-
-    LLVMExpressionNode createURem(LLVMExpressionNode left, LLVMExpressionNode right);
 
     LLVMExpressionNode createExtractValue(Type type, LLVMExpressionNode targetAddress);
 

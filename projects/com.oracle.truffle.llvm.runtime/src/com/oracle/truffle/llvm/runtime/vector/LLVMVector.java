@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,24 +31,10 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
+/**
+ * Vectors are immutable value types.
+ */
 @ValueType
-public final class LLVMI64Vector extends LLVMVector {
-    private final long[] vector;
-
-    public static LLVMI64Vector create(long[] vector) {
-        return new LLVMI64Vector(vector);
-    }
-
-    private LLVMI64Vector(long[] vector) {
-        this.vector = vector;
-    }
-
-    public long getValue(int index) {
-        return vector[index];
-    }
-
-    @Override
-    public int getLength() {
-        return vector.length;
-    }
+public abstract class LLVMVector {
+    public abstract int getLength();
 }

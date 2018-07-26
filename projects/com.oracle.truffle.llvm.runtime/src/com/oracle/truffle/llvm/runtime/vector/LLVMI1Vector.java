@@ -29,15 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import java.util.Arrays;
-import java.util.function.BiFunction;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
-public final class LLVMI1Vector {
-
+public final class LLVMI1Vector extends LLVMVector {
     private final boolean[] vector;
 
     public static LLVMI1Vector create(boolean[] vector) {
@@ -48,186 +43,12 @@ public final class LLVMI1Vector {
         this.vector = vector;
     }
 
-    // We do not want to use lambdas because of bad startup
-    private interface Operation {
-        boolean eval(boolean a, boolean b);
-    }
-
-    private static LLVMI1Vector doOperation(LLVMI1Vector lhs, LLVMI1Vector rhs, Operation op) {
-        boolean[] left = lhs.vector;
-        boolean[] right = rhs.vector;
-
-        // not sure if this assert is true for llvm ir in general
-        // this implementation however assumes it
-        assert left.length == right.length;
-
-        boolean[] result = new boolean[left.length];
-
-        for (int i = 0; i < left.length; i++) {
-            result[i] = op.eval(left[i], right[i]);
-        }
-        return create(result);
-    }
-
-    public LLVMI1Vector add(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a ^ b;
-            }
-        });
-    }
-
-    public LLVMI1Vector mul(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a & b;
-            }
-        });
-    }
-
-    public LLVMI1Vector sub(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a ^ b;
-            }
-        });
-    }
-
-    public LLVMI1Vector div(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                if (!b) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new ArithmeticException("Division by zero!");
-                }
-                return a;
-            }
-        });
-    }
-
-    public LLVMI1Vector divUnsigned(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                if (!b) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new ArithmeticException("Division by zero!");
-                }
-                return a;
-            }
-        });
-    }
-
-    public LLVMI1Vector rem(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                if (!b) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new ArithmeticException("Division by zero!");
-                }
-                return false;
-            }
-        });
-    }
-
-    public LLVMI1Vector remUnsigned(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                if (!b) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new ArithmeticException("Division by zero!");
-                }
-                return false;
-            }
-        });
-    }
-
-    public LLVMI1Vector and(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a & b;
-            }
-        });
-    }
-
-    public LLVMI1Vector or(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a | b;
-            }
-        });
-    }
-
-    public LLVMI1Vector leftShift(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a & !b;
-            }
-        });
-    }
-
-    public LLVMI1Vector logicalRightShift(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a & !b;
-            }
-        });
-    }
-
-    public LLVMI1Vector arithmeticRightShift(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a;
-            }
-        });
-    }
-
-    public LLVMI1Vector xor(LLVMI1Vector rightValue) {
-        return doOperation(this, rightValue, new Operation() {
-            @Override
-            public boolean eval(boolean a, boolean b) {
-                return a ^ b;
-            }
-        });
-    }
-
-    public boolean[] getValues() {
-        return vector;
-    }
-
     public boolean getValue(int index) {
         return vector[index];
     }
 
-    public LLVMI1Vector insert(boolean element, int index) {
-        boolean[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element;
-        return create(copyOf);
-    }
-
+    @Override
     public int getLength() {
         return vector.length;
-    }
-
-    public LLVMI1Vector doCompare(LLVMI1Vector other, BiFunction<Boolean, Boolean, Boolean> comparison) {
-        int length = getLength();
-        boolean[] values = new boolean[length];
-
-        for (int i = 0; i < length; i++) {
-            values[i] = comparison.apply(getValue(i), other.getValue(i));
-        }
-
-        return LLVMI1Vector.create(values);
     }
 }
