@@ -33,8 +33,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 
-import java.util.function.Function;
-
 public abstract class ExecuteRegexObjectNode extends Node {
 
     @Child private Node executeNode = Message.createExecute(3).createNode();
@@ -47,18 +45,19 @@ public abstract class ExecuteRegexObjectNode extends Node {
 
     @Specialization(guards = "receiver == cachedReceiver", limit = "3")
     protected Object executeFixed(RegexObject receiver, Object input, Object fromIndex,
-                    @SuppressWarnings("unused") @Cached("receiver") RegexObject cachedReceiver) {
-        return doExecute(r -> r.getCompiledRegexObject(), receiver, input, fromIndex);
+                    @Cached("receiver") @SuppressWarnings("unused") RegexObject cachedReceiver,
+                    @Cached("receiver.getCompiledRegexObject()") TruffleObject cachedCompiledRegex) {
+        return doExecute(cachedCompiledRegex, receiver, input, fromIndex);
     }
 
     @Specialization(replaces = "executeFixed")
     protected Object executeVarying(RegexObject receiver, Object input, Object fromIndex) {
-        return doExecute(r -> r.getVolatileCompiledRegexObject(), receiver, input, fromIndex);
+        return doExecute(receiver.getCompiledRegexObject(), receiver, input, fromIndex);
     }
 
-    private Object doExecute(Function<RegexObject, TruffleObject> getCompiledRegexObject, RegexObject receiver, Object input, Object fromIndex) {
+    private Object doExecute(TruffleObject compiledRegexObject, RegexObject regexObject, Object input, Object fromIndex) {
         try {
-            return ForeignAccess.sendExecute(executeNode, getCompiledRegexObject.apply(receiver), receiver, input, fromIndex);
+            return ForeignAccess.sendExecute(executeNode, compiledRegexObject, regexObject, input, fromIndex);
         } catch (InteropException ex) {
             throw ex.raise();
         }
