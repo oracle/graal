@@ -1305,6 +1305,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     }
 
     protected void registerMathFunctionIntrinsics() {
+        // TEMP (chaeubl): add a function that adds the intrinsics and checks if they are not
+        // present yet
         factories.put("@log2", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
@@ -1313,6 +1315,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             }
         });
         factories.put("@sqrt", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMSqrtNodeGen.create(LLVMArgNodeGen.create(1), null);
+            }
+        });
+        factories.put("@sqrtf", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
@@ -1369,6 +1378,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             }
         });
         factories.put("@fabs", new LLVMNativeIntrinsicFactory(true, false) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1), null);
+            }
+        });
+        factories.put("@fabsf", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {

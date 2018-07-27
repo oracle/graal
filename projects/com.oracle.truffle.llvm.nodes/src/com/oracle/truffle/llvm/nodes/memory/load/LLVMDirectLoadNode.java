@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
@@ -95,11 +96,12 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization
+        @ExplodeLoop
         protected LLVM80BitFloat doForeign(LLVMManagedPointer addr) {
             byte[] result = new byte[LLVM80BitFloat.BYTE_WIDTH];
             LLVMManagedPointer currentPtr = addr;
             for (int i = 0; i < result.length; i++) {
-                result[i] = (Byte) getForeignReadNode().execute(currentPtr);
+                result[i] = (byte) getForeignReadNode().execute(currentPtr);
                 currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
             }
             return LLVM80BitFloat.fromBytes(result);

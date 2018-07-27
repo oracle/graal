@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
@@ -203,6 +204,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
 
     }
 
+    @ExplodeLoop
     private int calculateUsedFpArea(Object[] realArguments) {
         assert numberOfExplicitArguments <= realArguments.length;
 
@@ -216,6 +218,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         return usedFpArea;
     }
 
+    @ExplodeLoop
     private int calculateUsedGpArea(Object[] realArguments) {
         assert numberOfExplicitArguments <= realArguments.length;
 
