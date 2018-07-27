@@ -109,14 +109,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--expert-options":
                 args.poll();
-                String expertUserOption = OptionType.User.name();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + expertUserOption);
-                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + expertUserOption);
+                nativeImage.setQueryOption(OptionType.User.name());
                 return true;
             case "--expert-options-all":
                 args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
-                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
+                nativeImage.setQueryOption("");
                 return true;
         }
 
