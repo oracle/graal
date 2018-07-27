@@ -1181,7 +1181,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
             other_comp_names += [c.short_name for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
-        main_comp_name = installable.main_component.dir_name
+        main_comp_name = installable.main_component.suite.name
         version = _suite.release_version()
 
         name = '_'.join([main_comp_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
