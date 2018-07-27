@@ -112,7 +112,7 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
         return null;
     }
 
-    public static void copy(UnsafeArrayAccess arrayAccess, LLVMMemory memory, LLVMVirtualAllocationAddress target, long source, long length) {
+    private static void copy(UnsafeArrayAccess arrayAccess, LLVMMemory memory, LLVMVirtualAllocationAddress target, long source, long length) {
         long sourcePointer = source;
         LLVMVirtualAllocationAddress targetAddress = target;
         for (long i = 0; i < length; i++) {
@@ -123,7 +123,7 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
         }
     }
 
-    public static void copy(UnsafeArrayAccess arrayAccess, LLVMMemory memory, long target, LLVMVirtualAllocationAddress source, long length) {
+    private static void copy(UnsafeArrayAccess arrayAccess, LLVMMemory memory, long target, LLVMVirtualAllocationAddress source, long length) {
         LLVMVirtualAllocationAddress sourcePointer = source;
         long targetAddress = target;
         for (long i = 0; i < length; i++) {
@@ -134,7 +134,7 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
         }
     }
 
-    public static void copy(UnsafeArrayAccess memory, LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, long length) {
+    private static void copy(UnsafeArrayAccess memory, LLVMVirtualAllocationAddress target, LLVMVirtualAllocationAddress source, long length) {
         LLVMVirtualAllocationAddress sourcePointer = source;
         LLVMVirtualAllocationAddress targetAddress = target;
         for (long i = 0; i < length; i++) {

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.asm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,8 +38,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
+import com.oracle.truffle.llvm.nodes.op.ToComparableValue;
+import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(value = "a", type = LLVMExpressionNode.class), @NodeChild(value = "src", type = LLVMExpressionNode.class), @NodeChild(value = "dst", type = LLVMExpressionNode.class)})
@@ -142,6 +147,29 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMStatementNode {
             } else {
                 out2.execute(frame, dst);
             }
+        }
+
+        @Specialization
+        protected void doOp(VirtualFrame frame, LLVMManagedPointer pointerA, LLVMNativePointer pointerSrc, LLVMManagedPointer pointerDst,
+                        @Cached("createToComparable()") ToComparableValue toComparableA,
+                        @Cached("createToComparable()") ToComparableValue toComparableB) {
+            long a = toComparableA.executeWithTarget(pointerA);
+            long dst = toComparableB.executeWithTarget(pointerDst);
+
+            long result = a - dst;
+            boolean carry = Long.compareUnsigned(a, dst) < 0;
+            boolean adjust = (((a ^ dst) ^ result) & 0x10) != 0;
+            flags.execute(frame, false, carry, adjust, result);
+            if (profile.profile(pointerA.equals(pointerDst))) {
+                out1.execute(frame, pointerSrc);
+            } else {
+                out2.execute(frame, pointerDst);
+            }
+        }
+
+        @TruffleBoundary
+        protected static ToComparableValue createToComparable() {
+            return ToComparableValueNodeGen.create();
         }
     }
 }

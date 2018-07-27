@@ -147,8 +147,8 @@ public final class LLVMScope implements TruffleObject {
         LLVMSymbol removedSymbol = symbols.remove(name);
 
         if (removedSymbol.isFunction()) {
-            assert functionKeys.contains(stripAtCharacter(name));
-            functionKeys.remove(stripAtCharacter(name));
+            boolean contained = functionKeys.remove(stripAtCharacter(name));
+            assert contained;
         }
     }
 

@@ -33,7 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -173,16 +175,23 @@ public abstract class LLVMCMathsIntrinsics {
         protected LLVM80BitFloat do80Float(LLVM80BitFloat value) {
             return value.abs();
         }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMFAbsVectorNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
 
         @Specialization
+        @ExplodeLoop
         protected LLVMDoubleVector doVector(LLVMDoubleVector value) {
-            double[] result = new double[value.getLength()];
-            for (int i = 0; i < result.length; i++) {
+            assert value.getLength() == getVectorLength();
+            double[] result = new double[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
                 result[i] = Math.abs(value.getValue(i));
             }
             return LLVMDoubleVector.create(result);
         }
-
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
