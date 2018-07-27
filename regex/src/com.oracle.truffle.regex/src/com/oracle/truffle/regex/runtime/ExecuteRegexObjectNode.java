@@ -53,7 +53,7 @@ public abstract class ExecuteRegexObjectNode extends Node {
 
     @Specialization(replaces = "executeFixed")
     protected Object executeVarying(RegexObject receiver, Object input, Object fromIndex) {
-        return doExecute(r -> r.compileRegex(), receiver, input, fromIndex);
+        return doExecute(r -> r.getVolatileCompiledRegexObject(), receiver, input, fromIndex);
     }
 
     private Object doExecute(Function<RegexObject, TruffleObject> getCompiledRegexObject, RegexObject receiver, Object input, Object fromIndex) {

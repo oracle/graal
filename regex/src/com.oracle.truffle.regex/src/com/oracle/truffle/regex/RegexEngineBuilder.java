@@ -104,10 +104,10 @@ public class RegexEngineBuilder implements RegexLanguageObject {
             @TruffleBoundary
             private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
                 if (fallbackCompiler != null) {
-                    return new CachingRegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler)),
+                    return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler),
                                     options.isRegressionTestMode());
                 } else {
-                    return new CachingRegexEngine(new CachingRegexCompiler(new TRegexCompiler(regexLanguage, options)), options.isRegressionTestMode());
+                    return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options.isRegressionTestMode());
                 }
             }
         }
