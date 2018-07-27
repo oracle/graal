@@ -25,7 +25,6 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.util.CompilationResult;
 import com.oracle.truffle.regex.util.LRUCache;
@@ -33,36 +32,35 @@ import com.oracle.truffle.regex.util.LRUCache;
 import java.util.Collections;
 import java.util.Map;
 
-public class CachingRegexCompiler extends RegexCompiler {
+public class CachingRegexEngine extends RegexEngine {
 
-    private final RegexCompiler compiler;
-    private final Map<RegexSource, CompilationResult<TruffleObject>> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
+    private final Map<RegexSource, CompilationResult<RegexObject>> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
 
-    public CachingRegexCompiler(TruffleObject compiler) {
-        this.compiler = ForeignRegexCompiler.importRegexCompiler(compiler);
+    public CachingRegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
+        super(compiler, eagerCompilation);
     }
 
     @Override
-    public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
-        CompilationResult<TruffleObject> result = cacheGet(source);
+    public RegexObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
+        CompilationResult<RegexObject> result = cacheGet(regexSource);
         if (result == null) {
-            result = doCompile(source);
-            cachePut(source, result);
+            result = doCompile(regexSource);
+            cachePut(regexSource, result);
         }
         return result.unpack();
     }
 
-    private CompilationResult<TruffleObject> doCompile(RegexSource regexSource) {
-        return CompilationResult.pack(() -> compiler.compile(regexSource));
+    private CompilationResult<RegexObject> doCompile(RegexSource regexSource) {
+        return CompilationResult.pack(() -> super.compile(regexSource));
     }
 
     @TruffleBoundary
-    private CompilationResult<TruffleObject> cacheGet(RegexSource source) {
+    private CompilationResult<RegexObject> cacheGet(RegexSource source) {
         return cache.get(source);
     }
 
     @TruffleBoundary
-    private CompilationResult<TruffleObject> cachePut(RegexSource source, CompilationResult<TruffleObject> result) {
+    private CompilationResult<RegexObject> cachePut(RegexSource source, CompilationResult<RegexObject> result) {
         return cache.put(source, result);
     }
 }
