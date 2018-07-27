@@ -171,6 +171,14 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
         }
         return getter.getObject((P) cachedProvider, locale, key, params);
     }
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter,
+                    Locale locale,
+                    Boolean isObjectProvider,
+                    String key,
+                    Object... params);
 }
 
 @TargetClass(sun.util.locale.provider.LocaleProviderAdapter.class)

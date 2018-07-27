@@ -34,6 +34,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Time;
@@ -45,7 +46,7 @@ public final class PosixSunNioSubstitutions {
 
     /** Translations of jdk/src/solaris/native/sun/nio/ch/PollArrayWrapper.c?v=Java_1.8.0_40_b10. */
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    @TargetClass(className = "sun.nio.ch.PollArrayWrapper")
+    @TargetClass(className = "sun.nio.ch.PollArrayWrapper", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_ch_PollArrayWrapper {
 
         // 035 #define RESTARTABLE(_cmd, _result) do { \

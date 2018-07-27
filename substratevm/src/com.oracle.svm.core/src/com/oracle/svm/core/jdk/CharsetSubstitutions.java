@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -73,9 +74,7 @@ final class Target_java_nio_charset_Charset {
         }
 
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        String lowerCaseName = Target_sun_nio_cs_FastCharsetProvider.toLower(charsetName);
-
-        Charset result = charsets.get(lowerCaseName);
+        Charset result = charsets.get(charsetName.toLowerCase());
 
         if (result == null) {
             /* Only need to check the name if we didn't find a charset for it */
@@ -92,13 +91,6 @@ final class Target_java_nio_charset_Charset {
     private static boolean atBugLevel(String bl) {
         return false;
     }
-}
-
-@TargetClass(sun.nio.cs.FastCharsetProvider.class)
-final class Target_sun_nio_cs_FastCharsetProvider {
-
-    @Alias
-    protected static native String toLower(String s);
 }
 
 /** Dummy class to have a class with the file's name. */

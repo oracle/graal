@@ -62,10 +62,14 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.StackTraceBuilder;
+import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -567,36 +571,36 @@ final class Target_java_lang_Thread {
     AtomicReference<ParkEvent> sleepParkEvent;
 
     @Alias//
-    private ClassLoader contextClassLoader;
+    ClassLoader contextClassLoader;
 
     @Alias//
-    private volatile String name;
+    volatile String name;
 
     @Alias//
-    private int priority;
+    int priority;
 
     /* Whether or not the thread is a daemon . */
     @Alias//
-    private boolean daemon;
+    boolean daemon;
 
     /* What will be run. */
     @Alias//
-    private Runnable target;
+    Runnable target;
 
     /* The group of this thread */
     @Alias//
-    private ThreadGroup group;
+    ThreadGroup group;
 
     /*
      * The requested stack size for this thread, or 0 if the creator did not specify a stack size.
      * It is up to the VM to do whatever it likes with this number; some VMs will ignore it.
      */
     @Alias//
-    private long stackSize;
+    long stackSize;
 
     /* Thread ID */
     @Alias//
-    private long tid;
+    long tid;
 
     /** We have our own atomic sequence numbers in {@link JavaThreads}. */
     @Delete//
@@ -608,7 +612,7 @@ final class Target_java_lang_Thread {
     public volatile int threadStatus;
 
     @Alias//
-    private final Object blockerLock;
+    private /* final */ Object blockerLock;
 
     @Alias
     native void setPriority(int newPriority);
@@ -625,7 +629,7 @@ final class Target_java_lang_Thread {
 
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
-    private static long nextThreadID() {
+    static long nextThreadID() {
         return JavaThreads.singleton().threadSeqNumber.incrementAndGet();
     }
 
@@ -657,7 +661,7 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
-    private static Thread currentThread() {
+    static Thread currentThread() {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             return JavaThreads.singleton().singleThread;
         }
@@ -666,40 +670,15 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @SuppressWarnings("all")
-    private void init(ThreadGroup g, Runnable target, String name, long stackSize) {
-        /*
-         * This method is a copy of the original implementation, with unsupported features removed.
-         */
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private void init(ThreadGroup groupArg, Runnable targetArg, String nameArg, long stackSizeArg) {
+        Util_java_lang_Thread.initialize(this, groupArg, targetArg, nameArg, stackSizeArg);
+    }
 
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
-
-        if (name == null) {
-            throw new NullPointerException("name cannot be null");
-        }
-        this.name = name;
-
-        Thread parent = currentThread();
-        if (g == null) {
-            /* Use the parent thread group. */
-            g = parent.getThreadGroup();
-        }
-
-        JavaThreads.toTarget(g).addUnstarted();
-
-        this.group = g;
-        this.daemon = parent.isDaemon();
-        contextClassLoader = parent.getContextClassLoader();
-        this.priority = parent.getPriority();
-        this.target = target;
-        setPriority(priority);
-
-        /* Stash the specified stack size in case the VM cares */
-        this.stackSize = stackSize;
-
-        /* Set thread ID */
-        tid = nextThreadID();
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    private Target_java_lang_Thread(ThreadGroup g, Runnable target, String name, long stackSize) {
+        Util_java_lang_Thread.initialize(this, g, target, name, stackSize);
     }
 
     @Substitute
@@ -751,7 +730,7 @@ final class Target_java_lang_Thread {
             }
         }
 
-        return sun.misc.VM.toThreadState(threadStatus);
+        return Target_jdk_internal_misc_VM.toThreadState(threadStatus);
     }
 
     @Substitute
@@ -857,6 +836,46 @@ final class Target_java_lang_Thread {
     @Substitute
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         return JavaThreads.getAllStackTraces();
+    }
+}
+
+final class Util_java_lang_Thread {
+
+    static void initialize(Target_java_lang_Thread tjlt, ThreadGroup groupArg, Runnable target, String name, long stackSize) {
+        /*
+         * This method is a copy of the implementation of
+         *
+         * Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)
+         *
+         * with unsupported features removed. It is used as the body of `init` in JDK8OrEarlier, and
+         * as the body of the `Thread` constructor in JDK9OrLater.
+         */
+
+        tjlt.unsafeParkEvent = new AtomicReference<>();
+        tjlt.sleepParkEvent = new AtomicReference<>();
+
+        if (name == null) {
+            throw new NullPointerException("name cannot be null");
+        }
+        tjlt.name = name;
+
+        final Thread parent = Target_java_lang_Thread.currentThread();
+        final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
+
+        JavaThreads.toTarget(group).addUnstarted();
+
+        tjlt.group = group;
+        tjlt.daemon = parent.isDaemon();
+        tjlt.contextClassLoader = parent.getContextClassLoader();
+        tjlt.priority = parent.getPriority();
+        tjlt.target = target;
+        tjlt.setPriority(tjlt.priority);
+
+        /* Stash the specified stack size in case the VM cares */
+        tjlt.stackSize = stackSize;
+
+        /* Set thread ID */
+        tjlt.tid = Target_java_lang_Thread.nextThreadID();
     }
 }
 

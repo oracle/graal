@@ -38,6 +38,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
@@ -73,7 +75,8 @@ public final class Target_java_lang_reflect_Executable {
     @Alias //
     Parameter[] parameters;
 
-    @Alias
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     native Target_java_lang_reflect_Executable getRoot();
 
     @Substitute
