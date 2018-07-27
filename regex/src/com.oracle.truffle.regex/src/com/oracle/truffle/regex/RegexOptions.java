@@ -91,8 +91,10 @@ public final class RegexOptions {
 
     private static RegexFlavor parseFlavor(String optionsString, String value) throws RegexSyntaxException {
         switch (value) {
-            case "Python":
-                return PythonFlavor.INSTANCE;
+            case "PythonStr":
+                return PythonFlavor.STR_INSTANCE;
+            case "PythonBytes":
+                return PythonFlavor.BYTES_INSTANCE;
             case "ECMAScript":
                 return null;
             default:

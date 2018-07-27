@@ -30,6 +30,11 @@ public class RegexSyntaxException extends RuntimeException {
 
     private static final String template = "Invalid regular expression: /%s/%s: %s";
     private static final String templateNoFlags = "Invalid regular expression: %s: %s";
+    private static final String templatePosition = "Invalid regular expression: /%s/%s:%d: %s";
+
+    private String reason;
+    private RegexSource regexSrc;
+    private int position = -1;
 
     public RegexSyntaxException(String msg) {
         super(msg);
@@ -38,16 +43,42 @@ public class RegexSyntaxException extends RuntimeException {
     @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, String msg) {
         super(String.format(templateNoFlags, pattern, msg));
+        this.reason = msg;
+        this.regexSrc = new RegexSource(pattern);
     }
 
     @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, String flags, String msg) {
         super(String.format(template, pattern, flags, msg));
+        this.reason = msg;
+        this.regexSrc = new RegexSource(pattern, flags);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public RegexSyntaxException(String pattern, String flags, String msg, int position) {
+        super(String.format(template, pattern, flags, position, msg));
+        this.reason = msg;
+        this.regexSrc = new RegexSource(pattern, flags);
+        this.position = position;
     }
 
     @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
         super(String.format(template, pattern, flags, msg), ex);
+        this.reason = msg;
+        this.regexSrc = new RegexSource(pattern, flags);
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public RegexSource getRegex() {
+        return regexSrc;
+    }
+
+    public Integer getPosition() {
+        return position;
     }
 
     private static final long serialVersionUID = 1L;
