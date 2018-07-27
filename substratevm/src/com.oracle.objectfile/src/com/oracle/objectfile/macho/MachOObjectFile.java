@@ -1663,7 +1663,7 @@ public final class MachOObjectFile extends ObjectFile {
         @Override
         protected void writePayload(OutputAssembler out, Map<Element, LayoutDecisionMap> alreadyDecided) {
             int symtabOffset = (int) alreadyDecided.get(symtab).getDecidedValue(LayoutDecision.Kind.OFFSET);
-            int symtabEntriesCount = symtab.entries.size();
+            int symtabEntriesCount = symtab.getEntryCount();
             int strtabOffset = (int) alreadyDecided.get(symtab.strtab).getDecidedValue(LayoutDecision.Kind.OFFSET);
             int strtabSize = (int) alreadyDecided.get(symtab.strtab).getDecidedValue(LayoutDecision.Kind.SIZE);
             writePayloadFields(out, symtabOffset, symtabEntriesCount, strtabOffset, strtabSize);
