@@ -34,6 +34,7 @@ import static com.oracle.svm.core.posix.headers.Unistd.write;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -54,6 +55,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.RuntimeFeature;
@@ -173,6 +175,19 @@ public class PosixUtils {
     private static final class Target_java_io_FileDescriptor {
 
         @Alias int fd;
+
+        /* jdk/src/solaris/native/java/io/FileDescriptor_md.c */
+        // 53 JNIEXPORT void JNICALL
+        // 54 Java_java_io_FileDescriptor_sync(JNIEnv *env, jobject this) {
+        @Substitute
+        public /* native */ void sync() throws SyncFailedException {
+            // 55 FD fd = THIS_FD(this);
+            // 56 if (IO_Sync(fd) == -1) {
+            if (Unistd.fsync(fd) == -1) {
+                // 57 JNU_ThrowByName(env, "java/io/SyncFailedException", "sync failed");
+                throw new SyncFailedException("sync failed");
+            }
+        }
     }
 
     public static int getFD(FileDescriptor descriptor) {
