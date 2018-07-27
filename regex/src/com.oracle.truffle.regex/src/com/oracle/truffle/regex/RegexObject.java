@@ -69,7 +69,6 @@ public class RegexObject implements RegexLanguageObject {
     private final RegexSource source;
     private final TruffleObject namedCaptureGroups;
     private @CompilationFinal TruffleObject compiledRegexObject;
-    private RegexProfile regexProfile;
 
     public RegexObject(RegexCompiler compiler, RegexSource source, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
@@ -105,13 +104,6 @@ public class RegexObject implements RegexLanguageObject {
     public RegexObjectExecMethod getExecMethod() {
         // this allocation should get virtualized and optimized away by graal
         return new RegexObjectExecMethod(this);
-    }
-
-    public RegexProfile getRegexProfile() {
-        if (regexProfile == null) {
-            regexProfile = new RegexProfile();
-        }
-        return regexProfile;
     }
 
     public static boolean isInstance(TruffleObject object) {

@@ -117,4 +117,9 @@ public final class RegexProfile {
         return String.format("calls: %d, matches: %d (%.2f%%), cg accesses: %d (%.2f%%), avg matched portion of search space: %.2f%%",
                         calls.getCount(), matches.getCount(), matchRatio() * 100, captureGroupAccesses.getCount(), cgAccessRatio() * 100, avgMatchedPortionOfSearchSpace * 100);
     }
+
+    public interface TracksRegexProfile {
+        RegexProfile getRegexProfile();
+    }
+
 }
