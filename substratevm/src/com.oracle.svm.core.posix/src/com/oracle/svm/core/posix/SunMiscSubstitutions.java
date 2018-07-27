@@ -31,6 +31,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
@@ -80,6 +81,10 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
+        if (ImageInfo.isSharedLibrary()) {
+            throw new IllegalArgumentException("Installing signal handlers is not allowed for native-image shared libraries.");
+        }
+
         return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }
 
