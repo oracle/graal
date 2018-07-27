@@ -94,7 +94,7 @@ public class RegexObject implements RegexLanguageObject {
     }
 
     @TruffleBoundary
-    private TruffleObject compileRegex() {
+    public TruffleObject compileRegex() {
         return compiler.compile(source);
     }
 
