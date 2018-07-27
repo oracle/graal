@@ -93,7 +93,6 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String svmVersion = System.getProperty("substratevm.version", "dev");
     static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
 
     static String getResource(String resourceName) {
@@ -435,7 +434,6 @@ public class NativeImage {
 
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
 
-        addImageBuilderJavaArgs("-Dsubstratevm.version=" + svmVersion);
         addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
 
