@@ -1,7 +1,7 @@
 // Checkstyle: stop
 // @formatter:off
 // Class copied from JDK9
-package com.oracle.svm.core.posix.zipfile;
+package com.oracle.svm.core.jdk.zipfile;
 /*
  * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -29,9 +29,7 @@ package com.oracle.svm.core.posix.zipfile;
 
 //package java.util.zip;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import static com.oracle.svm.core.jdk.zipfile.ZipConstants.ENDHDR;
 
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -39,7 +37,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.concurrent.TimeUnit;
 
-import static com.oracle.svm.core.posix.zipfile.ZipConstants.ENDHDR;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 @SuppressWarnings("all")
 @Substitute

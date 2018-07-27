@@ -1,7 +1,7 @@
 // Checkstyle: stop
 // @formatter:off
 // Class copied from JDK9
-package com.oracle.svm.core.posix.zipfile;
+package com.oracle.svm.core.jdk.zipfile;
 
 /*
  * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -35,8 +35,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import java.net.URL;
 import java.util.jar.JarFile;
@@ -44,8 +42,10 @@ import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 import java.util.zip.ZipException;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.snippets.KnownIntrinsics;import sun.misc.PerfCounter;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
+import sun.misc.PerfCounter;
 import sun.misc.SharedSecrets;
 import sun.misc.JavaUtilZipFileAccess;
 import sun.misc.VM;
@@ -85,9 +85,8 @@ import java.util.stream.StreamSupport;
 //import jdk.internal.misc.VM;
 //import jdk.internal.perf.PerfCounter;
 
-import static com.oracle.svm.core.posix.zipfile.ZipConstants.*;
-import static com.oracle.svm.core.posix.zipfile.ZipConstants64.*;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.*;
+import static com.oracle.svm.core.jdk.zipfile.ZipConstants64.*;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.*;
 // SVM end
 
 /**
@@ -1410,16 +1409,15 @@ public final class ZipFile implements ZipConstants, Closeable {
         }
     }
 
-    @Platforms({ Platform.LINUX.class, Platform.DARWIN.class})
     @TargetClass(java.util.jar.JarFile.class)
     static final class Target_java_util_jar_JarFile {
         @Substitute
+        @SuppressFBWarnings(value = "BC", justification = "Target_java_util_jar_JarFile is an alias for java.util.jar.JarFile")
         private String[] getMetaInfEntryNames() {
             return ((ZipFile)(Object)this).getMetaInfEntryNames();
         }
     }
 
-    @Platforms({ Platform.LINUX.class, Platform.DARWIN.class})
     @TargetClass(className = "sun.net.www.protocol.jar.JarFileFactory")
     static final class Target_sun_net_www_protocol_jar_JarFileFactory {
         @Alias//

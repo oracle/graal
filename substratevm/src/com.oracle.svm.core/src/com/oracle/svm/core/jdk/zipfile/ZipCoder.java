@@ -1,7 +1,7 @@
 // Checkstyle: stop
 // @formatter:off
 // Class copied from JDK9
-package com.oracle.svm.core.posix.zipfile;
+package com.oracle.svm.core.jdk.zipfile;
 /*
  * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -28,6 +28,7 @@ package com.oracle.svm.core.posix.zipfile;
  */
 
 //package java.util.zip;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -40,8 +41,8 @@ import java.util.Arrays;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+
 import sun.nio.cs.ArrayDecoder;
 import sun.nio.cs.ArrayEncoder;
 

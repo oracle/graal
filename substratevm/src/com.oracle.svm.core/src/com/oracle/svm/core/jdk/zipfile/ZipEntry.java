@@ -1,7 +1,7 @@
 // Checkstyle: stop
 // @formatter:off
 // Class copied from JDK9
-package com.oracle.svm.core.posix.zipfile;
+package com.oracle.svm.core.jdk.zipfile;
 /*
  * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -29,17 +29,17 @@ package com.oracle.svm.core.posix.zipfile;
 
 // package java.util.zip;
 
-import static com.oracle.svm.core.posix.zipfile.ZipConstants64.EXTID_EXTT;
-import static com.oracle.svm.core.posix.zipfile.ZipConstants64.EXTID_NTFS;
-import static com.oracle.svm.core.posix.zipfile.ZipConstants64.EXTID_ZIP64;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.WINDOWS_TIME_NOT_AVAILABLE;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.extendedDosToJavaTime;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.get16;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.get32S;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.get64;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.javaToExtendedDosTime;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.unixTimeToFileTime;
-import static com.oracle.svm.core.posix.zipfile.ZipUtils.winTimeToFileTime;
+import static com.oracle.svm.core.jdk.zipfile.ZipConstants64.EXTID_EXTT;
+import static com.oracle.svm.core.jdk.zipfile.ZipConstants64.EXTID_NTFS;
+import static com.oracle.svm.core.jdk.zipfile.ZipConstants64.EXTID_ZIP64;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.WINDOWS_TIME_NOT_AVAILABLE;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.extendedDosToJavaTime;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.get16;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.get32S;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.get64;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.javaToExtendedDosTime;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.unixTimeToFileTime;
+import static com.oracle.svm.core.jdk.zipfile.ZipUtils.winTimeToFileTime;
 
 import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
