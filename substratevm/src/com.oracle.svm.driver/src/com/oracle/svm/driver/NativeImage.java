@@ -177,6 +177,7 @@ public class NativeImage {
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean dryRun = false;
+    private String queryOption = null;
 
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
@@ -622,8 +623,13 @@ public class NativeImage {
 
         completeOptionArgs();
 
+        if (queryOption != null) {
+            addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + queryOption);
+            addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + queryOption);
+        }
+
         /* If no customImageClasspath was specified put "." on classpath */
-        if (customImageClasspath.isEmpty()) {
+        if (customImageClasspath.isEmpty() && queryOption == null) {
             addImageProvidedClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
@@ -902,6 +908,10 @@ public class NativeImage {
 
     boolean isDryRun() {
         return dryRun;
+    }
+
+    public void setQueryOption(String val) {
+        this.queryOption = val;
     }
 
     void showVerboseMessage(boolean show, String message) {
