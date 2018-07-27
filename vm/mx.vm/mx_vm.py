@@ -216,9 +216,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             else:
                 _component_base = _component_type_base
 
-            if _component.dir_name == 'visualvm':
-                _add(layout, "<jdk_base>/lib/visualvm/platform", "link:../visualizer/platform")
-
             _add(layout, '<jdk_base>/jre/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component, with_sources=True)
             _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
