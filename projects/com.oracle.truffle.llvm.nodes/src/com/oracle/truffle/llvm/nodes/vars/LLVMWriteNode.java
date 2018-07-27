@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 @NodeField(name = "slot", type = FrameSlot.class)
 @NodeField(name = "source", type = LLVMSourceLocation.class)
@@ -199,6 +200,11 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
 
         @Specialization
         protected void writeVector(VirtualFrame frame, LLVMI64Vector value) {
+            frame.setObject(getSlot(), value);
+        }
+
+        @Specialization
+        protected void writeVector(VirtualFrame frame, LLVMPointerVector value) {
             frame.setObject(getSlot(), value);
         }
 
