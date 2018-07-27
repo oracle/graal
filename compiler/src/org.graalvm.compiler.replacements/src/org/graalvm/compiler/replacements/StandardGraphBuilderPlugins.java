@@ -161,13 +161,19 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static final Field STRING_VALUE_FIELD;
+    private static final Field STRING_CODER_FIELD;
 
     static {
+        Field coder = null;
         try {
             STRING_VALUE_FIELD = String.class.getDeclaredField("value");
+            if (!Java8OrEarlier) {
+                coder = String.class.getDeclaredField("coder");
+            }
         } catch (NoSuchFieldException e) {
             throw new GraalError(e);
         }
+        STRING_CODER_FIELD = coder;
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, SnippetReflectionProvider snippetReflection) {
@@ -214,6 +220,15 @@ public class StandardGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
                     b.addPush(JavaKind.Object, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
+                                    b.getOptions(), b.getAssumptions(), value, field, false, false));
+                    return true;
+                }
+            });
+            sr.register1("getCoder", String.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
+                    b.addPush(JavaKind.Int, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
                                     b.getOptions(), b.getAssumptions(), value, field, false, false));
                     return true;
                 }
