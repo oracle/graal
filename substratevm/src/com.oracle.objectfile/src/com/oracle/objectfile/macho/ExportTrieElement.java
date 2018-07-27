@@ -373,7 +373,7 @@ class ExportTrieElement extends MachOObjectFile.LinkEditElement {
     public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
         /* We need to build a prefix tree out of our exported symbols. */
 
-        for (MachOSymtab.Entry ent : ((LinkEditSegment64Command) owner.getLinkEditSegment()).getSymtab().getEntries()) {
+        for (MachOSymtab.Entry ent : ((LinkEditSegment64Command) owner.getLinkEditSegment()).getSymtab().getSortedEntries()) {
             if (ent.isExternal() && ent.isDefined()) {
                 // FIXME: do we really want the vaddr?
                 long symbolVaddr = (int) alreadyDecided.get(ent.getDefinedSection()).getDecidedValue(LayoutDecision.Kind.VADDR) + ent.getDefinedOffset();
