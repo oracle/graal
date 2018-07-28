@@ -184,7 +184,7 @@ public final class Main {
                 System.gc();
             }
 
-            int gc = runtime.getGarbageCollector().ordinal()+1;
+            int gc = runtime.getGarbageCollector().ordinal() + 1;
             BinaryContainer binaryContainer = new BinaryContainer(graalOptions, graalHotSpotVMConfig, graphBuilderConfig, gc, JVM_VERSION);
             DataBuilder dataBuilder = new DataBuilder(this, backend, classes, binaryContainer);
 
