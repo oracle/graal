@@ -10,12 +10,12 @@ The `ZipFile.c` implementation relies on code from `jvm.h` for file operations (
 While it would be possible to extract only the used parts from `jvm.h` and write a custom `zlib` wrapper this would produce hard to maintain `C` code especially across different Java versions and OSs.
 
 Thus we copied over the JDK 9 classes and replaced the JDK 8 classes via substitution:
-- `com.oracle.svm.core.posix.zipfile.ZipFile` is based on `java.base/java.util.zip.ZipFile`
-- `com.oracle.svm.core.posix.zipfile.ZipEntry` is based on `java.base/java.util.zip.ZipEntry`
-- `com.oracle.svm.core.posix.zipfile.ZipUtils` is based on `java.base/java.util.zip.ZipUtils`
-- `com.oracle.svm.core.posix.zipfile.ZipConstants` is based on `java.base/java.util.zip.ZipConstants`
-- `com.oracle.svm.core.posix.zipfile.ZipConstants64` is based on `java.base/java.util.zip.ZipConstants64`
-- `com.oracle.svm.core.posix.zipfile.ZipCoder` is based on `java.base/java.util.zip.ZipCoder`
+- `com.oracle.svm.core.jdk.zipfile.ZipFile` is based on `java.base/java.util.zip.ZipFile`
+- `com.oracle.svm.core.jdk.zipfile.ZipEntry` is based on `java.base/java.util.zip.ZipEntry`
+- `com.oracle.svm.core.jdk.zipfile.ZipUtils` is based on `java.base/java.util.zip.ZipUtils`
+- `com.oracle.svm.core.jdk.zipfile.ZipConstants` is based on `java.base/java.util.zip.ZipConstants`
+- `com.oracle.svm.core.jdk.zipfile.ZipConstants64` is based on `java.base/java.util.zip.ZipConstants64`
+- `com.oracle.svm.core.jdk.zipfile.ZipCoder` is based on `java.base/java.util.zip.ZipCoder`
 
 These classes exist in JDK 8 as well and using more fine grained substitutions would have been possible (e.g., substituting only those methods and fields that are different).
 However the number of changes in JDK9 is significant and this approach would have resulted in very fragmented substitution code.
