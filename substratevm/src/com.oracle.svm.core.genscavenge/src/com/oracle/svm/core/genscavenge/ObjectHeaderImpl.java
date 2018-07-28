@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -37,6 +38,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -260,6 +263,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public long setBootImageOnLong(long l) {
+        assert (l & BITS_MASK.rawValue()) == 0 : "Object header bits must be zero";
         return (l | BOOT_IMAGE.rawValue());
     }
 
@@ -301,18 +305,28 @@ public class ObjectHeaderImpl extends ObjectHeader {
 
     /** Extract a forwarding Pointer from a header. */
     @Override
-    public Pointer getForwardingPointer(UnsignedWord header) {
-        return Word.objectToUntrackedPointer(getForwardedObject(header));
+    public Pointer getForwardingPointer(Pointer objectPointer) {
+        return Word.objectToUntrackedPointer(getForwardedObject(objectPointer));
     }
 
     /** Extract a forwarded Object from a header. */
     @Override
-    public Object getForwardedObject(UnsignedWord header) {
-        final UnsignedWord pointerBits = clearBits(header);
+    public Object getForwardedObject(Pointer ptr) {
+        UnsignedWord header = readHeaderFromPointer(ptr);
+        assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            return ReferenceAccess.singleton().uncompressReference(pointerBits);
+            if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
+                // References compressed with shift have no bits to spare, so the forwarding
+                // reference is stored separately, after the object header
+                ObjectLayout layout = ConfigurationValues.getObjectLayout();
+                assert layout.isAligned(getHubOffset()) && (2 * getReferenceSize()) <= layout.getAlignment() : "Forwarding reference must fit after hub";
+                int forwardRefOffset = getHubOffset() + getReferenceSize();
+                return ReferenceAccess.singleton().readObjectAt(ptr.add(forwardRefOffset), true);
+            } else {
+                return ReferenceAccess.singleton().uncompressReference(clearBits(header));
+            }
         } else {
-            return ((Pointer) pointerBits).toObject();
+            return ((Pointer) clearBits(header)).toObject();
         }
     }
 
@@ -431,7 +445,14 @@ public class ObjectHeaderImpl extends ObjectHeader {
         /* Turn the copy Object into a Pointer, and encode that as a forwarding pointer. */
         UnsignedWord forwardHeader;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
+            if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
+                // Compression with a shift uses all bits of a reference, so store the forwarding
+                // pointer in the location following the hub pointer.
+                forwardHeader = WordFactory.unsigned(0xf0f0f0f0f0f0f0f0L);
+                ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy);
+            } else {
+                forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
+            }
         } else {
             forwardHeader = Word.objectToUntrackedPointer(copy);
         }

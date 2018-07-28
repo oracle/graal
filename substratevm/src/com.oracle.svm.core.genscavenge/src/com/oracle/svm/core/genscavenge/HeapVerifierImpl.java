@@ -116,7 +116,7 @@ public class HeapVerifierImpl implements HeapVerifier {
         trace.string("  header: ").hex(header);
         final ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         if (ohi.isForwardedHeader(header)) {
-            final Object obj = ohi.getForwardedObject(header);
+            final Object obj = ohi.getForwardedObject(ptr);
             final Pointer op = Word.objectToUntrackedPointer(obj);
             trace.string("  forwards to ").hex(op).newline();
             if (!verifyObjectAt(op)) {

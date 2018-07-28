@@ -123,12 +123,12 @@ public abstract class ObjectHeader {
     protected static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
-        final Pointer pointerValue = (Pointer) pointerBits;
         final Object objectValue;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            objectValue = ReferenceAccess.singleton().uncompressReference(pointerValue);
+            UnsignedWord compressedBits = pointerBits.unsignedShiftRight(ReferenceAccess.singleton().getCompressEncoding().getShift());
+            objectValue = ReferenceAccess.singleton().uncompressReference(compressedBits);
         } else {
-            objectValue = pointerValue.toObject();
+            objectValue = ((Pointer) pointerBits).toObject();
         }
         return KnownIntrinsics.unsafeCast(objectValue, DynamicHub.class);
     }
@@ -150,10 +150,10 @@ public abstract class ObjectHeader {
     public abstract boolean isForwardedHeader(UnsignedWord header);
 
     /** Extract a forwarding Pointer from a header. */
-    public abstract Pointer getForwardingPointer(UnsignedWord header);
+    public abstract Pointer getForwardingPointer(Pointer objectPointer);
 
     /** Extract a forwarded Object from a header. */
-    public abstract Object getForwardedObject(UnsignedWord header);
+    public abstract Object getForwardedObject(Pointer objectPointer);
 
     /*
      * ObjectHeaders record (among other things) if it was allocated by a SystemAllocator or in the
@@ -193,7 +193,7 @@ public abstract class ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static int getHubOffset() {
+    protected static int getHubOffset() {
         return ConfigurationValues.getObjectLayout().getHubOffset();
     }
 

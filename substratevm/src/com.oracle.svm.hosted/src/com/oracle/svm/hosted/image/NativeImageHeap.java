@@ -662,19 +662,22 @@ public final class NativeImageHeap {
         write(buffer, index, con, info);
     }
 
-    private void writeDynamicHub(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
+    private void writeDynamicHub(RelocatableBuffer buffer, int index, DynamicHub target) {
         assert target != null : "Null DynamicHub found during native image generation.";
         mustBeReferenceAligned(index);
 
         ObjectInfo targetInfo = objects.get(target);
         assert targetInfo != null : "Unknown object " + target.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
 
-        // Note that this object is allocated on the native image heap.
         if (useHeapBase()) {
-            writeReferenceValue(buffer, index, targetInfo.getOffsetInSection() | objectHeaderBits);
+            // NOTE: we do not apply a shift to the hub reference in the object header because the
+            // least significant bits are used for state information
+            long targetOffset = targetInfo.getOffsetInSection();
+            long bits = Heap.getHeap().getObjectHeader().setBootImageOnLong(targetOffset);
+            writeReferenceValue(buffer, index, bits);
         } else {
             // The address of the DynamicHub target will have to be added by the link editor.
-            // DynamicHubs are the size of Object references.
+            long objectHeaderBits = Heap.getHeap().getObjectHeader().setBootImageOnLong(0L);
             addDirectRelocationWithAddend(buffer, index, target, objectHeaderBits);
         }
     }
@@ -747,7 +750,7 @@ public final class NativeImageHeap {
         if (referenceSize() == Long.BYTES) {
             buffer.getBuffer().putLong(index, value);
         } else if (referenceSize() == Integer.BYTES) {
-            buffer.getBuffer().putInt(index, Math.toIntExact(value));
+            buffer.getBuffer().putInt(index, NumUtil.safeToInt(value));
         } else {
             throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }
@@ -827,8 +830,7 @@ public final class NativeImageHeap {
         final HostedClass clazz = info.getClazz();
         final DynamicHub hub = clazz.getHub();
 
-        final long objectHeaderBits = Heap.getHeap().getObjectHeader().setBootImageOnLong(0L);
-        writeDynamicHub(buffer, indexInSection, hub, objectHeaderBits);
+        writeDynamicHub(buffer, indexInSection, hub);
 
         if (clazz.isInstanceClass()) {
             JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
