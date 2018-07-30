@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -141,7 +142,7 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
     }
 
     @Override
-    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
-        return GraphUtil.arrayLength(getObject(), mode);
+    public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
+        return GraphUtil.arrayLength(getObject(), mode, constantReflection);
     }
 }
