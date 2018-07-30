@@ -583,9 +583,10 @@ def svm_gate_body(args, tasks):
         if t:
             maven_plugin_install([])
 
-def native_junit(native_image, unittest_args, build_args=None, run_args=None):
+def native_junit(native_image, unittest_args=None, build_args=None, run_args=None):
+    unittest_args = unittest_args or ['com.oracle.svm.test']
     build_args = build_args or []
-    run_args = run_args or []
+    run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
@@ -595,6 +596,10 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
             unittest_deps.extend(test_deps)
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
+        if not exists(unittest_file):
+            mx.abort('No matching unit tests found. Skip image build and execution.')
+        with open(unittest_file, 'r') as f:
+            mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
         unittest_image = native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         mx.run([unittest_image] + run_args)
@@ -905,4 +910,5 @@ mx.update_commands(suite, {
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
     'maven-plugin-install': [maven_plugin_install, ''],
+    'native-unittest' : [lambda args: native_image_context_run(native_junit, args), ''],
 })
