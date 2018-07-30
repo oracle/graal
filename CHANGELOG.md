@@ -9,6 +9,8 @@ Improvements:
 
 * Support "zero-length array at end of struct" pattern when accessing polyglot
   values as structs.
+* Improved performance of global variable access.
+* Improved support for vectorized bitcode operations.
 
 # Version 1.0.0 RC4
 
