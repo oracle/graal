@@ -633,9 +633,8 @@ public final class LLVMContext {
         return sourceContext;
     }
 
+    @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        CompilerAsserts.neverPartOfCompilation();
-
         LLVMGlobal result = globalsReverseMap.get(pointer);
         if (result == null) {
             throw new IllegalStateException("Could not find pointer " + pointer);
