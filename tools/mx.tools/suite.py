@@ -111,6 +111,26 @@ suite = {
           ],
           "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
         },
+        "VISUALVM_COMMON" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-592.tar.gz"],
+            "sha1" : "2b5fee653a160f6a3a863527cd68e49b8566d978",
+        },
+        "VISUALVM_PLATFORM_SPECIFIC" : {
+            "os_arch" : {
+                "linux" : {
+                    "amd64" : {
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-592-linux-amd64.tar.gz"],
+                        "sha1" : "725aeb7cdf1ed8c5272b2b4efd57101102676676",
+                    }
+                },
+                "darwin" : {
+                    "amd64" : {
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-592-macosx-x86_64.tar.gz"],
+                        "sha1" : "8ae21feaa9960e583d8868b63ea1bc31a9ccf399",
+                    }
+                },
+            }
+        },
     },
 
     "distributions": {
@@ -172,6 +192,18 @@ suite = {
             "description" : "Truffle Profiler support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-profiler.properties",
+            },
+        },
+        "VISUALVM_GRAALVM_SUPPORT": {
+            "native": True,
+            "platformDependent": True,
+            "description": "VisualVM support distribution for the GraalVM",
+            "layout": {
+                "./": [
+                    "extracted-dependency:VISUALVM_COMMON/lib/visualvm/*",
+                    "extracted-dependency:VISUALVM_PLATFORM_SPECIFIC/./lib/visualvm/*",
+                    "extracted-dependency:VISUALVM_PLATFORM_SPECIFIC/./bin"
+                ],
             },
         },
     },

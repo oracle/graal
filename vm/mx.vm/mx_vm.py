@@ -161,6 +161,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
+                    exclude_base + '/bin/jvisualvm',
                     exclude_base + '/lib/visualvm',
                     exclude_base + hsdis,
                 ]
@@ -1566,7 +1567,7 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
-register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
+register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
 
 
 def _debug_images():
