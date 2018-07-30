@@ -84,15 +84,15 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @Specialization
         @SuppressWarnings("unused")
-        protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMGlobal vtable, long argc, LLVMPointer argv,
+        protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
             LLVMMemory memory = getLLVMMemory();
-            LangStartVtableType langStartVtable = createLangStartVtable(vtable.getPointeeType());
-            LLVMNativePointer vtablePointer = toNative.executeWithTarget(vtable);
-            LLVMNativePointer fn = readFn(memory, vtablePointer, langStartVtable);
-            LLVMNativePointer dropInPlace = readDropInPlace(memory, vtablePointer, langStartVtable);
+            LLVMGlobal vtableGlobal = getContextReference().get().findGlobal(vtable);
+            LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
+            LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);
+            LLVMNativePointer dropInPlace = readDropInPlace(memory, vtable, langStartVtable);
             LLVMNativePointer main = derefMain(memory, mainPointer);
             Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stackPointer, main});
             dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stackPointer, mainPointer});
