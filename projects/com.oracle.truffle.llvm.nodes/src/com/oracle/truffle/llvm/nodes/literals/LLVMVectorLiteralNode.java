@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMRewriteException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNodeGen;
@@ -136,14 +138,19 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @Specialization(rewriteOn = UnexpectedResultException.class)
+        @Specialization(rewriteOn = LLVMRewriteException.class)
         @ExplodeLoop
-        protected LLVMI64Vector doI64Vector(VirtualFrame frame) throws UnexpectedResultException {
-            long[] vals = new long[values.length];
-            for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeI64(frame);
+        protected LLVMI64Vector doI64Vector(VirtualFrame frame) throws LLVMRewriteException {
+            try {
+                long[] vals = new long[values.length];
+                for (int i = 0; i < values.length; i++) {
+                    vals[i] = values[i].executeI64(frame);
+                }
+                return LLVMI64Vector.create(vals);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMRewriteException(e);
             }
-            return LLVMI64Vector.create(vals);
         }
 
         @Specialization
@@ -167,14 +174,19 @@ public class LLVMVectorLiteralNode {
             this.values = values;
         }
 
-        @Specialization(rewriteOn = UnexpectedResultException.class)
+        @Specialization(rewriteOn = LLVMRewriteException.class)
         @ExplodeLoop
-        protected LLVMPointerVector doPointerVector(VirtualFrame frame) throws UnexpectedResultException {
-            LLVMPointer[] vals = new LLVMPointer[values.length];
-            for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeLLVMPointer(frame);
+        protected LLVMPointerVector doPointerVector(VirtualFrame frame) throws LLVMRewriteException {
+            try {
+                LLVMPointer[] vals = new LLVMPointer[values.length];
+                for (int i = 0; i < values.length; i++) {
+                    vals[i] = values[i].executeLLVMPointer(frame);
+                }
+                return LLVMPointerVector.create(vals);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMRewriteException(e);
             }
-            return LLVMPointerVector.create(vals);
         }
 
         @Specialization

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.op;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -44,6 +45,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object left, Object right);
+
+    @TruffleBoundary
+    protected static ToComparableValue createToComparable() {
+        return ToComparableValueNodeGen.create();
+    }
 
     public abstract static class LLVMAddNode extends LLVMArithmeticNode {
         @Specialization

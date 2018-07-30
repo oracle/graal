@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadPointerVectorNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMRewriteException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
@@ -247,9 +249,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return LLVMI64Vector.create(vector);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
+        @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = LLVMRewriteException.class)
         protected LLVMI64Vector doI64VectorDerefHandle(LLVMNativePointer addr,
-                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws UnexpectedResultException {
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws LLVMRewriteException {
             return doI64Vector(getDerefHandleGetReceiverNode().execute(addr), foreignReads);
         }
 
@@ -259,17 +261,22 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return doPointerVector(getDerefHandleGetReceiverNode().execute(addr), load);
         }
 
-        @Specialization(rewriteOn = UnexpectedResultException.class)
+        @Specialization(rewriteOn = LLVMRewriteException.class)
         @ExplodeLoop
         protected LLVMI64Vector doI64Vector(LLVMManagedPointer addr,
-                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws UnexpectedResultException {
-            long[] vector = new long[getVectorLength()];
-            LLVMManagedPointer currentPtr = addr;
-            for (int i = 0; i < vector.length; i++) {
-                vector[i] = LLVMTypesGen.expectLong(foreignReads[i].execute(currentPtr));
-                currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws LLVMRewriteException {
+            try {
+                long[] vector = new long[getVectorLength()];
+                LLVMManagedPointer currentPtr = addr;
+                for (int i = 0; i < vector.length; i++) {
+                    vector[i] = LLVMTypesGen.expectLong(foreignReads[i].execute(currentPtr));
+                    currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
+                }
+                return LLVMI64Vector.create(vector);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMRewriteException(e);
             }
-            return LLVMI64Vector.create(vector);
         }
 
         @Specialization
@@ -305,9 +312,9 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return LLVMPointerVector.create(vector);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
+        @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = LLVMRewriteException.class)
         protected LLVMPointerVector doPointerVectorDerefHandle(LLVMNativePointer addr,
-                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws UnexpectedResultException {
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws LLVMRewriteException {
             return doForeignPointers(getDerefHandleGetReceiverNode().execute(addr), foreignReads);
         }
 
@@ -318,17 +325,22 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return doForeignMixed(getDerefHandleGetReceiverNode().execute(addr), foreignReads, toPointerNodes);
         }
 
-        @Specialization(rewriteOn = UnexpectedResultException.class)
+        @Specialization(rewriteOn = LLVMRewriteException.class)
         @ExplodeLoop
         protected LLVMPointerVector doForeignPointers(LLVMManagedPointer addr,
-                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws UnexpectedResultException {
-            LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
-            LLVMManagedPointer currentPtr = addr;
-            for (int i = 0; i < vector.length; i++) {
-                vector[i] = LLVMTypesGen.expectLLVMPointer(foreignReads[i].execute(currentPtr));
-                currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) throws LLVMRewriteException {
+            try {
+                LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
+                LLVMManagedPointer currentPtr = addr;
+                for (int i = 0; i < vector.length; i++) {
+                    vector[i] = LLVMTypesGen.expectLLVMPointer(foreignReads[i].execute(currentPtr));
+                    currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
+                }
+                return LLVMPointerVector.create(vector);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMRewriteException(e);
             }
-            return LLVMPointerVector.create(vector);
         }
 
         @Specialization
