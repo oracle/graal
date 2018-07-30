@@ -25,6 +25,10 @@
 
 package com.oracle.svm.hosted.substitute;
 
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.ArrayBaseOffset;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.ArrayIndexScale;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.ArrayIndexShift;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.reflect.Field;
@@ -318,7 +322,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          * If the value returned by the call to Unsafe.objectFieldOffset() is stored into a field
          * then that must be the offset field.
          */
-        ResolvedJavaField offsetField = extractValueStoreField(unsafeObjectFieldOffsetInvoke.asNode(), unsuccessfulReasons);
+        ResolvedJavaField offsetField = extractValueStoreField(unsafeObjectFieldOffsetInvoke.asNode(), FieldOffset, unsuccessfulReasons);
 
         /*
          * If the target field holder and name, and the offset field were found try to register a
@@ -327,12 +331,12 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (targetFieldHolder != null && targetFieldName != null && offsetField != null) {
             Class<?> finalTargetFieldHolder = targetFieldHolder;
             String finalTargetFieldName = targetFieldName;
-            Supplier<ComputedValueField> supplier = () -> new ComputedValueField(offsetField, null, Kind.FieldOffset, finalTargetFieldHolder, finalTargetFieldName, false);
-            if (tryAutomaticRecomputation(offsetField, Kind.FieldOffset, supplier)) {
-                reportSuccessfulAutomaticRecomputation(Kind.FieldOffset, offsetField, targetFieldHolder.getName() + "." + targetFieldName);
+            Supplier<ComputedValueField> supplier = () -> new ComputedValueField(offsetField, null, FieldOffset, finalTargetFieldHolder, finalTargetFieldName, false);
+            if (tryAutomaticRecomputation(offsetField, FieldOffset, supplier)) {
+                reportSuccessfulAutomaticRecomputation(FieldOffset, offsetField, targetFieldHolder.getName() + "." + targetFieldName);
             }
         } else {
-            reportUnsuccessfulAutomaticRecomputation(type, unsafeObjectFieldOffsetInvoke, Kind.FieldOffset, unsuccessfulReasons);
+            reportUnsuccessfulAutomaticRecomputation(type, offsetField, unsafeObjectFieldOffsetInvoke, FieldOffset, unsuccessfulReasons);
         }
     }
 
@@ -360,16 +364,16 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          * If the value returned by the call to Unsafe.arrayBaseOffset() is stored into a field then
          * that must be the offset field.
          */
-        ResolvedJavaField offsetField = extractValueStoreField(unsafeArrayBaseOffsetInvoke.asNode(), unsuccessfulReasons);
+        ResolvedJavaField offsetField = extractValueStoreField(unsafeArrayBaseOffsetInvoke.asNode(), ArrayBaseOffset, unsuccessfulReasons);
 
         if (arrayClass != null && offsetField != null) {
             Class<?> finalArrayClass = arrayClass;
-            Supplier<ComputedValueField> supplier = () -> new ComputedValueField(offsetField, null, Kind.ArrayBaseOffset, finalArrayClass, null, true);
-            if (tryAutomaticRecomputation(offsetField, Kind.ArrayBaseOffset, supplier)) {
-                reportSuccessfulAutomaticRecomputation(Kind.ArrayBaseOffset, offsetField, arrayClass.getCanonicalName());
+            Supplier<ComputedValueField> supplier = () -> new ComputedValueField(offsetField, null, ArrayBaseOffset, finalArrayClass, null, true);
+            if (tryAutomaticRecomputation(offsetField, ArrayBaseOffset, supplier)) {
+                reportSuccessfulAutomaticRecomputation(ArrayBaseOffset, offsetField, arrayClass.getCanonicalName());
             }
         } else {
-            reportUnsuccessfulAutomaticRecomputation(type, unsafeArrayBaseOffsetInvoke, Kind.ArrayBaseOffset, unsuccessfulReasons);
+            reportUnsuccessfulAutomaticRecomputation(type, offsetField, unsafeArrayBaseOffsetInvoke, ArrayBaseOffset, unsuccessfulReasons);
         }
     }
 
@@ -397,7 +401,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          * If the value returned by the call to Unsafe.unsafeArrayIndexScale() is stored into a
          * field then that must be the offset field.
          */
-        ResolvedJavaField indexScaleField = extractValueStoreField(unsafeArrayIndexScale.asNode(), unsuccessfulReasons);
+        ResolvedJavaField indexScaleField = extractValueStoreField(unsafeArrayIndexScale.asNode(), ArrayIndexScale, unsuccessfulReasons);
 
         boolean indexScaleComputed = false;
         boolean indexShiftComputed = false;
@@ -405,9 +409,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (arrayClass != null) {
             if (indexScaleField != null) {
                 Class<?> finalArrayClass = arrayClass;
-                Supplier<ComputedValueField> supplier = () -> new ComputedValueField(indexScaleField, null, Kind.ArrayIndexScale, finalArrayClass, null, true);
-                if (tryAutomaticRecomputation(indexScaleField, Kind.ArrayIndexScale, supplier)) {
-                    reportSuccessfulAutomaticRecomputation(Kind.ArrayIndexScale, indexScaleField, arrayClass.getCanonicalName());
+                Supplier<ComputedValueField> supplier = () -> new ComputedValueField(indexScaleField, null, ArrayIndexScale, finalArrayClass, null, true);
+                if (tryAutomaticRecomputation(indexScaleField, ArrayIndexScale, supplier)) {
+                    reportSuccessfulAutomaticRecomputation(ArrayIndexScale, indexScaleField, arrayClass.getCanonicalName());
                     indexScaleComputed = true;
                     /* Try substitution for the array index shift computation if present. */
                     indexShiftComputed = processArrayIndexShiftFromField(type, indexScaleField, arrayClass, clinitGraph);
@@ -421,7 +425,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             }
         }
         if (!indexScaleComputed && !indexShiftComputed) {
-            reportUnsuccessfulAutomaticRecomputation(type, unsafeArrayIndexScale, Kind.ArrayIndexScale, unsuccessfulReasons);
+            reportUnsuccessfulAutomaticRecomputation(type, indexScaleField, unsafeArrayIndexScale, ArrayIndexScale, unsuccessfulReasons);
         }
     }
 
@@ -506,7 +510,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                      */
                     SubNode subNode = numberOfLeadingZerosInvokeSubUsages.first();
                     if (subNodeComputesLog2(subNode, numberOfLeadingZerosInvoke)) {
-                        indexShiftField = extractValueStoreField(subNode, unsuccessfulReasons);
+                        indexShiftField = extractValueStoreField(subNode, ArrayIndexShift, unsuccessfulReasons);
                     } else {
                         unsuccessfulReasons.add("The index array scale value provided by " + indexScaleValue + " is not used to calculate the array index shift.");
                     }
@@ -516,14 +520,19 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
                 if (indexShiftField != null) {
                     ResolvedJavaField finalIndexShiftField = indexShiftField;
-                    Supplier<ComputedValueField> supplier = () -> new ComputedValueField(finalIndexShiftField, null, Kind.ArrayIndexShift, arrayClass, null, true);
-                    if (tryAutomaticRecomputation(indexShiftField, Kind.ArrayIndexShift, supplier)) {
-                        reportSuccessfulAutomaticRecomputation(Kind.ArrayIndexShift, indexShiftField, arrayClass.getCanonicalName());
+                    Supplier<ComputedValueField> supplier = () -> new ComputedValueField(finalIndexShiftField, null, ArrayIndexShift, arrayClass, null, true);
+                    if (tryAutomaticRecomputation(indexShiftField, ArrayIndexShift, supplier)) {
+                        reportSuccessfulAutomaticRecomputation(ArrayIndexShift, indexShiftField, arrayClass.getCanonicalName());
                         return true;
                     }
                 } else {
                     if (!silentFailure) {
-                        reportUnsuccessfulAutomaticRecomputation(type, numberOfLeadingZerosInvoke, Kind.ArrayIndexShift, unsuccessfulReasons);
+                        /*
+                         * Passing null here for the computedField is ok, there is no actual field
+                         * that we can refer to in the error, and we check for null inside the
+                         * method.
+                         */
+                        reportUnsuccessfulAutomaticRecomputation(type, null, numberOfLeadingZerosInvoke, ArrayIndexShift, unsuccessfulReasons);
                     }
                 }
             }
@@ -563,7 +572,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      * returned. If the field is either not static or not final the method returns null and the
      * reason is recorded in the unsuccessfulReasons parameter.
      */
-    private static ResolvedJavaField extractValueStoreField(ValueNode valueNode, List<String> unsuccessfulReasons) {
+    private static ResolvedJavaField extractValueStoreField(ValueNode valueNode, Kind substitutionKind, List<String> unsuccessfulReasons) {
         ResolvedJavaField offsetField = null;
 
         NodeIterable<Node> valueNodeUsages = valueNode.usages();
@@ -584,12 +593,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             if (offsetField.isStatic() && offsetField.isFinal()) {
                 return offsetField;
             } else {
-                if (!offsetField.isStatic()) {
-                    unsuccessfulReasons.add("The offset field " + offsetField.format("%H.%n") + " is not static.");
-                }
-                if (!offsetField.isFinal()) {
-                    unsuccessfulReasons.add("The offset field " + offsetField.format("%H.%n") + " is not final.");
-                }
+                String message = "The field " + offsetField.format("%H.%n") + ", where the value produced by the " + kindAsString(substitutionKind) +
+                                " computation is stored, is not" + (!offsetField.isStatic() ? " static" : "") + (!offsetField.isFinal() ? " final" : "") + ".";
+                unsuccessfulReasons.add(message);
             }
         } else {
             String producer;
@@ -605,7 +611,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 throw VMError.shouldNotReachHere();
             }
             String message = "Could not determine the field where the value produced by the " + producer +
-                            " is stored. The " + operation + " is not directly followed by a field store or by a sign extend node followed directly by a field store. ";
+                            " for the " + kindAsString(substitutionKind) + " computation is stored. The " + operation +
+                            " is not directly followed by a field store or by a sign extend node followed directly by a field store. ";
             unsuccessfulReasons.add(message);
         }
         return null;
@@ -671,7 +678,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String annotatedFieldStr = computedSubstitutionField.getAnnotated().format("%H.%n");
             String offsetFieldStr = offsetField.format("%H.%n");
 
-            String msg = "Detected unnecessary " + kindStr + " " + annotatedFieldStr + " substitution field for " + offsetFieldStr + ". ";
+            String msg = "Warning: Detected unnecessary " + kindStr + " " + annotatedFieldStr + " substitution field for " + offsetFieldStr + ". ";
             msg += "The annotated field can be removed. This " + kind + " computation can be detected automatically. ";
             msg += "Use option -H:+" + Options.UnsafeAutomaticSubstitutionsLogLevel.getName() + "=" + INFO_LEVEL + " to print all automatically detected substitutions. ";
 
@@ -684,7 +691,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
             String substitutedFieldStr = substitutedField.format("%H.%n");
 
-            String msg = substitutionKindStr + " substitution automatically registered for " + substitutedFieldStr + ", target element " + target + ".";
+            String msg = "Info:" + substitutionKindStr + " substitution automatically registered for " + substitutedFieldStr + ", target element " + target + ".";
 
             System.out.println(msg);
         }
@@ -697,7 +704,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String offsetFieldStr = offsetField.format("%H.%n");
             String overwrittenFieldStr = overwrittenField.format("%H.%n");
 
-            String msg = "The " + overwrittenKindStr + " " + overwrittenFieldStr + " substitution was overwritten. ";
+            String msg = "Info: The " + overwrittenKindStr + " " + overwrittenFieldStr + " substitution was overwritten. ";
             msg += "A " + newKindStr + " substitution for " + offsetFieldStr + " was automatically registered.";
 
             System.out.println(msg);
@@ -709,7 +716,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String fieldStr = field.format("%H.%n");
             String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
 
-            String msg = "The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
+            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
             msg += "Conflicting substitution: " + conflictingSubstitution;
             msg += "Add a " + substitutionKindStr + " manual substitution for " + fieldStr + ". ";
 
@@ -717,7 +724,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
     }
 
-    private void reportUnsuccessfulAutomaticRecomputation(ResolvedJavaType type, Invoke invoke, Kind substitutionKind, List<String> reasons) {
+    private void reportUnsuccessfulAutomaticRecomputation(ResolvedJavaType type, ResolvedJavaField computedField, Invoke invoke, Kind substitutionKind, List<String> reasons) {
         String msg = "";
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
             if (!suppressWarningsFor(type) || Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= DEBUG_LEVEL) {
@@ -726,14 +733,17 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
                 msg += substitutionKindStr + " automatic substitution failed. ";
                 msg += "The automatic substitution registration was attempted because ";
-                if (substitutionKind == Kind.ArrayIndexShift) {
-                    msg += "an " + Kind.ArrayIndexScale + " computation followed by a call to " + invokeStr + " ";
+                if (substitutionKind == ArrayIndexShift) {
+                    msg += "an " + ArrayIndexScale + " computation followed by a call to " + invokeStr + " ";
                 } else {
                     msg += "a call to " + invokeStr + " ";
                 }
                 msg += "was detected in the static initializer of " + type.toJavaName() + ". ";
-                msg += "Add a " + substitutionKindStr + " manual substitution for " + type.toJavaName() + ". ";
-                msg += "Detailed failure reason(s): " + reasons.stream().collect(Collectors.joining(", ")) + ". ";
+                if (computedField != null) {
+                    /* If the computed field is null then reasons will contain the details. */
+                    msg += "Add a " + substitutionKindStr + " manual substitution for " + computedField.format("%H.%n") + ". ";
+                }
+                msg += "Detailed failure reason(s): " + reasons.stream().collect(Collectors.joining(", "));
             }
         }
 
@@ -753,7 +763,22 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
 
         if (!msg.isEmpty()) {
-            System.out.println(msg);
+            System.out.println("Warning: " + msg);
+        }
+    }
+
+    private static String kindAsString(Kind substitutionKind) {
+        switch (substitutionKind) {
+            case FieldOffset:
+                return "field offset";
+            case ArrayBaseOffset:
+                return "array base offset";
+            case ArrayIndexScale:
+                return "array index scale";
+            case ArrayIndexShift:
+                return "array index shift";
+            default:
+                throw VMError.shouldNotReachHere("Unexpected substitution kind: " + substitutionKind);
         }
     }
 
