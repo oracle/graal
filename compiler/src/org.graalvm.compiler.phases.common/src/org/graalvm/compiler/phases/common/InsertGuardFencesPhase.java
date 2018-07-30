@@ -50,6 +50,10 @@ import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitiga
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
 
+/**
+ * This phase sets the {@linkplain AbstractBeginNode#setWithSpeculationFence() speculation fence} flag on
+ * {@linkplain AbstractBeginNode begin nodes} in order to mitigate speculative execution attacks.
+ */
 public class InsertGuardFencesPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
