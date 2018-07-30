@@ -172,6 +172,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     include_by_default=True,
 ))
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
+    suite=_suite,
+    name='VisualVM',
+    short_name='vvm',
+    dir_name='visualvm',
+    license_files=[],
+    third_party_license_files=[],
+    support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
+    provided_executables=['bin/jvisualvm']
+))
+
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
