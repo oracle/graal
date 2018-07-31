@@ -132,7 +132,6 @@ public final class ImageInfo {
      * @since 1.0
      */
     public static boolean isExecutable() {
-        assert inImageCode() : "Method must be called in image code.";
         return PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
     }
 
@@ -142,7 +141,6 @@ public final class ImageInfo {
      * @since 1.0
      */
     public static boolean isSharedLibrary() {
-        assert inImageCode() : "Method must be called in image code.";
         return PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
     }
 }

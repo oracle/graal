@@ -101,6 +101,12 @@ int cSunMiscSignal_open() {
 	/* Claim ownership. */
 	int const previousState = cSunMiscSignal_atomicCompareAndSwap_int(&cSunMiscSignal_state, cSunMiscSignal_CLOSED, cSunMiscSignal_OPEN);
 	if (previousState == cSunMiscSignal_CLOSED) {
+		/* Reset all signal counts */
+	    int i = 0;
+	    while (i < NSIG) {
+		  cSunMiscSignal_table[i] = 0;
+		  i += 1;
+	    }
 		/* Get a process-specific name for the semaphore. */
 		char cSunMiscSignal_semaphoreName[NAME_MAX];
 		const char* const nameFormat = "/cSunMiscSignal-%d";
@@ -135,13 +141,6 @@ int cSunMiscSignal_close() {
 			return semCloseResult;
 		}
 		cSunMiscSignal_semaphore = NULL;
-	}
-
-	/* Reset all signal counts */
-	int i = 0;
-	while (i < NSIG) {
-		cSunMiscSignal_table[i] = 0;
-		i += 1;
 	}
 
 	cSunMiscSignal_state = cSunMiscSignal_CLOSED;

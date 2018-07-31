@@ -31,10 +31,8 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.truffle.TruffleFeature;
 import com.oracle.truffle.nfi.NFILanguage;
-import com.oracle.truffle.nfi.impl.NativeAllocation;
 
 /**
  * Support for the default (trufflenfi/native) backend of the {@link NFILanguage} on SVM. This is
@@ -61,7 +59,5 @@ public final class TruffleNFIFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(TruffleNFISupport.class, new TruffleNFISupport());
         access.registerObjectReplacer(new NativeObjectReplacer(access));
-
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(NativeAllocation::tearDown);
     }
 }

@@ -150,7 +150,7 @@ public final class NativeAllocation extends PhantomReference<Object> {
                             alloc.destructor.destroy();
                         }
                     } catch (InterruptedException ex) {
-                        // ignore
+                        /* Happens on isolate tear down. We simply finish running this thread. */
                     }
                 }
             }, "nfi-gc");
@@ -162,14 +162,6 @@ public final class NativeAllocation extends PhantomReference<Object> {
                 // nothing to do, another thread already started the GC thread
                 assert other != null && other != thread;
             }
-        }
-    }
-
-    public static void tearDown() {
-        Thread thread = gcThread.get();
-        if (thread != null) {
-            thread.interrupt();
-            gcThread.set(null);
         }
     }
 

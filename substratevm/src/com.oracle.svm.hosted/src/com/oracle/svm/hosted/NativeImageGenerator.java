@@ -426,7 +426,7 @@ public class NativeImageGenerator {
             }
         } finally {
             shutdownPoolSafe();
-            System.clearProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY);
+            clearSystemPropertiesForImage();
         }
     }
 
@@ -437,6 +437,11 @@ public class NativeImageGenerator {
         } else {
             System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY);
         }
+    }
+
+    private static void clearSystemPropertiesForImage() {
+        System.clearProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY);
+        System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
     private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {

@@ -47,7 +47,7 @@ public class CSunMiscSignal {
     @CFunction("cSunMiscSignal_await")
     public static native int await();
 
-    /* Wait for a notification on the semaphore. */
+    /* Notify a thread waiting on the semaphore. */
     @CFunction("cSunMiscSignal_post")
     public static native int post();
 
