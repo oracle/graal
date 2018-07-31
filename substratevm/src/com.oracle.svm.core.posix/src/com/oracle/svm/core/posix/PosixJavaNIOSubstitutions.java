@@ -3368,7 +3368,7 @@ public final class PosixJavaNIOSubstitutions {
      * jdk/src/solaris/native/sun/nio/fs/GnomeFileTypeDetector.c?v=Java_1.8.0_40_b10
      */
     @Platforms({Platform.LINUX.class})
-    @TargetClass(className = "sun.nio.fs.GnomeFileTypeDetector")
+    @TargetClass(className = "sun.nio.fs.GnomeFileTypeDetector", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_fs_GnomeFileTypeDetector {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3796,7 +3796,7 @@ public final class PosixJavaNIOSubstitutions {
      * jdk/src/solaris/native/sun/nio/fs/MagicFileTypeDetector.c?v=Java_1.8.0_40_b10
      */
     @Platforms({Platform.LINUX.class})
-    @TargetClass(className = "sun.nio.fs.MagicFileTypeDetector")
+    @TargetClass(className = "sun.nio.fs.MagicFileTypeDetector", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_fs_MagicFileTypeDetector {
         /* { Do not format quoted code: @formatter:off */
 
