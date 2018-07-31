@@ -33,7 +33,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -50,9 +49,5 @@ public abstract class LLVMIntrinsic extends LLVMExpressionNode {
 
     protected Node createForeignReadNode() {
         return Message.READ.createNode();
-    }
-
-    protected boolean isNfiAvailable() {
-        return getContextReference().get().hasContextExtension(NFIContextExtension.class);
     }
 }
