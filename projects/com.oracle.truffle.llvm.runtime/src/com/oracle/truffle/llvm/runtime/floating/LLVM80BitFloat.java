@@ -349,18 +349,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         return LLVM80BitFloat.fromRawValues(newSign, newExponent, newFraction);
     }
 
-    public LLVM80BitFloat rem(LLVM80BitFloat right) {
-        return fromDouble(getDoubleValue() % right.getDoubleValue());
-    }
-
-    public LLVM80BitFloat pow(int right) {
-        return fromDouble(Math.pow(getDoubleValue(), right));
-    }
-
-    public LLVM80BitFloat pow(LLVM80BitFloat right) {
-        return fromDouble(Math.pow(getDoubleValue(), right.getDoubleValue()));
-    }
-
     public LLVM80BitFloat abs() {
         return LLVM80BitFloat.fromRawValues(false, biasedExponent, fraction);
     }

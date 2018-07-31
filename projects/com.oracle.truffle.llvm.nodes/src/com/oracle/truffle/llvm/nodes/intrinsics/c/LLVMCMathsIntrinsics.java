@@ -29,20 +29,26 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMDoubleStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMDoubleStoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMFloatStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
 /**
  * Implements the C functions from math.h.
@@ -61,6 +67,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.sqrt(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -74,6 +87,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.log(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -91,6 +111,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.log(value) / LOG_2;
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -104,6 +131,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.log10(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -119,6 +153,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.rint(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -132,6 +173,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.ceil(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -147,6 +195,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.floor(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -154,6 +209,11 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected int doIntrinsic(int value) {
+            return Math.abs(value);
+        }
+
+        @Specialization
+        protected long doIntrinsic(long value) {
             return Math.abs(value);
         }
     }
@@ -172,7 +232,7 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
-        protected LLVM80BitFloat do80Float(LLVM80BitFloat value) {
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
             return value.abs();
         }
     }
@@ -192,6 +252,17 @@ public abstract class LLVMCMathsIntrinsics {
             }
             return LLVMDoubleVector.create(result);
         }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doVector(LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float[] result = new float[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                result[i] = Math.abs(value.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -205,6 +276,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.exp(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -220,14 +298,33 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doIntrinsic(double value) {
             return Math.pow(2, value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMLdexp extends LLVMIntrinsic {
 
         @Specialization
+        protected float doIntrinsic(float value, int exp) {
+            return value * (float) Math.pow(2, exp);
+        }
+
+        @Specialization
         protected double doIntrinsic(double value, int exp) {
             return value * Math.pow(2, exp);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value, int exp) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue(), exp);
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -235,12 +332,47 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMModf extends LLVMIntrinsic {
 
         @Specialization
-        protected double doIntrinsic(double value, LLVMNativePointer integralAddr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            double fractional = Math.IEEEremainder(value, 1);
+        protected double doIntrinsic(double value, LLVMPointer integralAddr,
+                        @Cached("createDoubleStore()") LLVMDoubleStoreNode store) {
+            double fractional = value % 1;
             double integral = value - fractional;
-            memory.putDouble(integralAddr, integral);
+            store.executeWithTarget(integralAddr, integral);
             return fractional;
+        }
+
+        @Specialization
+        protected float doIntrinsic(float value, LLVMPointer integralAddr,
+                        @Cached("createFloatStore()") LLVMFloatStoreNode store) {
+            float fractional = value % 1;
+            float integral = value - fractional;
+            store.executeWithTarget(integralAddr, integral);
+            return fractional;
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat longDoubleValue, LLVMPointer integralAddr,
+                        @Cached("create80BitFloatStore()") LLVM80BitFloatStoreNode store) {
+            assert !isNfiAvailable();
+            double value = longDoubleValue.getDoubleValue();
+            double fractional = value % 1;
+            double integral = value - fractional;
+            store.executeWithTarget(integralAddr, integral);
+            return LLVM80BitFloat.fromDouble(fractional);
+        }
+
+        @TruffleBoundary
+        protected static LLVMDoubleStoreNode createDoubleStore() {
+            return LLVMDoubleStoreNodeGen.create(null, null);
+        }
+
+        @TruffleBoundary
+        protected static LLVMFloatStoreNode createFloatStore() {
+            return LLVMFloatStoreNodeGen.create(null, null);
+        }
+
+        @TruffleBoundary
+        protected static LLVM80BitFloatStoreNode create80BitFloatStore() {
+            return LLVM80BitFloatStoreNodeGen.create(null, null);
         }
     }
 
@@ -249,24 +381,19 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected double doIntrinsic(double numer, double denom) {
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, denom == 0)) {
-                return 0;
-            } else {
-                return Math.IEEEremainder(numer, denom);
-            }
+            return numer % denom;
         }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMFmodl extends LLVMIntrinsic {
 
         @Specialization
-        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat numer, LLVM80BitFloat denom) {
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, denom.isZero())) {
-                return LLVM80BitFloat.fromInt(0);
-            } else {
-                return numer.rem(denom);
-            }
+        protected double doIntrinsic(float numer, float denom) {
+            return numer % denom;
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value, int exp) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue(), exp);
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -294,22 +421,17 @@ public abstract class LLVMCMathsIntrinsics {
         }
 
         @Specialization
-        protected LLVM80BitFloat do80BitFloat(LLVM80BitFloat val, int pow) {
-            return val.pow(pow);
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value, int pow) {
+            assert !isNfiAvailable();
+            double result = doDouble(value.getDoubleValue(), pow);
+            return LLVM80BitFloat.fromDouble(result);
         }
 
         @Specialization
-        protected LLVM80BitFloat do80BitFloat(LLVM80BitFloat val, LLVM80BitFloat pow) {
-            return val.pow(pow);
-        }
-    }
-
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLAbs extends LLVMIntrinsic {
-
-        @Specialization
-        protected long doIntrinsic(long value) {
-            return Math.abs(value);
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat a, LLVM80BitFloat b) {
+            assert !isNfiAvailable();
+            double result = doDouble(a.getDoubleValue(), b.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -325,6 +447,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.sin(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -338,6 +467,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.sinh(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -353,6 +489,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.asin(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -366,6 +509,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.cos(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -381,6 +531,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.cosh(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -394,6 +551,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.acos(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -409,6 +573,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.tan(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -422,6 +593,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value) {
             return (float) Math.tanh(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
@@ -437,6 +615,13 @@ public abstract class LLVMCMathsIntrinsics {
         protected float doIntrinsic(float value) {
             return (float) Math.atan(value);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -450,6 +635,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected float doIntrinsic(float value1, float value2) {
             return (float) Math.atan2(value1, value2);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value1, LLVM80BitFloat value2) {
+            assert !isNfiAvailable();
+            double result = doIntrinsic(value1.getDoubleValue(), value2.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
         }
     }
 
