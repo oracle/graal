@@ -174,6 +174,14 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         return (AnalysisMethod) lookupMethodInUniverse(metaAccess, targetMethod);
     }
 
+    private ResolvedJavaMethod unwrapMethodAndLookupInUniverse(UniverseMetaAccess metaAccess) {
+        ResolvedJavaMethod unwrappedTargetMethod = targetMethod;
+        while (unwrappedTargetMethod instanceof WrappedJavaMethod) {
+            unwrappedTargetMethod = ((WrappedJavaMethod) unwrappedTargetMethod).getWrapped();
+        }
+        return lookupMethodInUniverse(metaAccess, unwrappedTargetMethod);
+    }
+
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
@@ -197,11 +205,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         adaptArgumentValues(providers, kit, parameterTypes, parameterEnumInfos, args);
 
-        ResolvedJavaMethod unwrappedTargetMethod = targetMethod;
-        while (unwrappedTargetMethod instanceof WrappedJavaMethod) {
-            unwrappedTargetMethod = ((WrappedJavaMethod) unwrappedTargetMethod).getWrapped();
-        }
-        ResolvedJavaMethod universeTargetMethod = lookupMethodInUniverse(metaAccess, unwrappedTargetMethod);
+        ResolvedJavaMethod universeTargetMethod = unwrapMethodAndLookupInUniverse(metaAccess);
 
         int invokeBci = kit.bci();
         int exceptionEdgeBci = kit.bci();
@@ -232,17 +236,19 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {
+        ResolvedJavaMethod universeTargetMethod = unwrapMethodAndLookupInUniverse((UniverseMetaAccess) providers.getMetaAccess());
+
         UserError.guarantee(entryPointData.getPrologue() == CEntryPointData.DEFAULT_PROLOGUE,
-                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom prologue: " + targetMethod.format("%H.%n(%p)"));
+                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom prologue: " + universeTargetMethod.format("%H.%n(%p)"));
         UserError.guarantee(entryPointData.getEpilogue() == CEntryPointData.DEFAULT_EPILOGUE,
-                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom epilogue: " + targetMethod.format("%H.%n(%p)"));
+                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom epilogue: " + universeTargetMethod.format("%H.%n(%p)"));
         UserError.guarantee(entryPointData.getExceptionHandler() == CEntryPointData.DEFAULT_EXCEPTION_HANDLER,
-                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom exception handler: " + targetMethod.format("%H.%n(%p)"));
+                        "@" + CEntryPoint.class.getSimpleName() + " method declared as built-in must not have a custom exception handler: " + universeTargetMethod.format("%H.%n(%p)"));
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
 
-        ExecutionContextParameters executionContext = findExecutionContextParameters(providers, targetMethod.toParameterTypes(), targetMethod.getParameterAnnotations());
+        ExecutionContextParameters executionContext = findExecutionContextParameters(providers, universeTargetMethod.toParameterTypes(), universeTargetMethod.getParameterAnnotations());
 
         String builtinName = entryPointData.getBuiltin().name().toLowerCase();
         ResolvedJavaMethod builtinCallee = null;
@@ -258,9 +264,9 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
         int builtinIsolateIndex = -1;
         int builtinThreadIndex = -1;
-        Parameter[] builtinParameters = builtinCallee.getParameters();
-        for (int i = 0; i < builtinParameters.length; i++) {
-            ResolvedJavaType type = (ResolvedJavaType) builtinParameters[i].getType();
+        JavaType[] builtinParamTypes = builtinCallee.toParameterTypes();
+        for (int i = 0; i < builtinParamTypes.length; i++) {
+            ResolvedJavaType type = (ResolvedJavaType) builtinParamTypes[i];
             if (isolateType.isAssignableFrom(type)) {
                 VMError.guarantee(builtinIsolateIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
                                 Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
@@ -277,7 +283,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         ValueNode[] args = kit.loadArguments(method.toParameterTypes()).toArray(new ValueNode[0]);
 
-        ValueNode[] builtinArgs = new ValueNode[builtinParameters.length];
+        ValueNode[] builtinArgs = new ValueNode[builtinParamTypes.length];
         if (builtinIsolateIndex != -1) {
             VMError.guarantee(executionContext.designatedIsolateIndex != -1 || executionContext.isolateCount == 1,
                             "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
@@ -302,7 +308,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
-        kit.createReturn(invoke, targetMethod.getSignature().getReturnKind());
+        kit.createReturn(invoke, universeTargetMethod.getSignature().getReturnKind());
 
         assert kit.getGraph().verify();
         return kit.getGraph();
