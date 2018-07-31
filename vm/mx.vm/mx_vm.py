@@ -161,6 +161,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
+                    exclude_base + '/bin/jvisualvm',
                     exclude_base + '/lib/visualvm',
                     exclude_base + hsdis,
                 ]
@@ -256,9 +257,12 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _jre_bin_names.append(basename(_link_dest))
 
             for _provided_executable in _component.provided_executables:
-                _link_dest = _component_base + _provided_executable
-                _add_link(_jdk_jre_bin, _link_dest)
-                _jre_bin_names.append(basename(_link_dest))
+                if _component.short_name is 'vvm':
+                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable)
+                else:
+                    _link_dest = _component_base + _provided_executable
+                    _add_link(_jdk_jre_bin, _link_dest)
+                    _jre_bin_names.append(basename(_link_dest))
 
             if 'jre' in _jdk_jre_bin:
                 # Add jdk to jre links
@@ -1599,7 +1603,7 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
-register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
+register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
 
 
 def _debug_images():
