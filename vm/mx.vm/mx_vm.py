@@ -257,9 +257,12 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _jre_bin_names.append(basename(_link_dest))
 
             for _provided_executable in _component.provided_executables:
-                _link_dest = _component_base + _provided_executable
-                _add_link(_jdk_jre_bin, _link_dest)
-                _jre_bin_names.append(basename(_link_dest))
+                if _component.short_name is 'vvm':
+                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable)
+                else:
+                    _link_dest = _component_base + _provided_executable
+                    _add_link(_jdk_jre_bin, _link_dest)
+                    _jre_bin_names.append(basename(_link_dest))
 
             if 'jre' in _jdk_jre_bin:
                 # Add jdk to jre links
