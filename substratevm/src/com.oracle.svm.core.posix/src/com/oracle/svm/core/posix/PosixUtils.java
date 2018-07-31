@@ -57,7 +57,9 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -187,6 +189,20 @@ public class PosixUtils {
                 // 57 JNU_ThrowByName(env, "java/io/SyncFailedException", "sync failed");
                 throw new SyncFailedException("sync failed");
             }
+        }
+
+        @Substitute //
+        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @SuppressWarnings({"unused"})
+        private static /* native */ boolean getAppend(int fd) {
+            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.getAppend");
+        }
+
+        @Substitute //
+        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @SuppressWarnings({"unused", "static-method"})
+        private /* native */ void close0() throws IOException {
+            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.close0");
         }
     }
 
