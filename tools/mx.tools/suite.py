@@ -202,7 +202,6 @@ suite = {
                 "./": [
                     "extracted-dependency:VISUALVM_COMMON/lib/visualvm/*",
                     "extracted-dependency:VISUALVM_PLATFORM_SPECIFIC/./lib/visualvm/*",
-                    "extracted-dependency:VISUALVM_PLATFORM_SPECIFIC/./bin"
                 ],
             },
         },
