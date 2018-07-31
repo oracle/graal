@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,13 +49,13 @@ public class LLVMSyscall extends LLVMIntrinsic {
 
     public LLVMSyscall() {
         Converter conv = new SyscallArgConverter();
-        rax = LLVMOptionalArgNodeGen.create(conv, 1, (long) 0);
-        rdi = LLVMOptionalArgNodeGen.create(conv, 2, (long) 0);
-        rsi = LLVMOptionalArgNodeGen.create(conv, 3, (long) 0);
-        rdx = LLVMOptionalArgNodeGen.create(conv, 4, (long) 0);
-        r10 = LLVMOptionalArgNodeGen.create(conv, 5, (long) 0);
-        r8 = LLVMOptionalArgNodeGen.create(conv, 6, (long) 0);
-        r9 = LLVMOptionalArgNodeGen.create(conv, 7, (long) 0);
+        rax = LLVMOptionalArgNodeGen.create(conv, 1, 0L);
+        rdi = LLVMOptionalArgNodeGen.create(conv, 2, 0L);
+        rsi = LLVMOptionalArgNodeGen.create(conv, 3, 0L);
+        rdx = LLVMOptionalArgNodeGen.create(conv, 4, 0L);
+        r10 = LLVMOptionalArgNodeGen.create(conv, 5, 0L);
+        r8 = LLVMOptionalArgNodeGen.create(conv, 6, 0L);
+        r9 = LLVMOptionalArgNodeGen.create(conv, 7, 0L);
         syscall = LLVMAMD64SyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
     }
 

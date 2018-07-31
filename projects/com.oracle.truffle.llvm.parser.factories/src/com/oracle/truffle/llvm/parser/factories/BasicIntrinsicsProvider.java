@@ -54,13 +54,13 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LL
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCoshNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExp2NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpm1NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFmodNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFmodlNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLAbsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLdexpNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog1pNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMModfNodeGen;
@@ -143,6 +143,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMMallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatDiv;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDoubleDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDoubleMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexFloatDiv;
@@ -1264,13 +1266,17 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
                 return LLVMSignalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
-        add("@syscall", new LLVMIntrinsicFactory(true, false) {
+
+        LLVMIntrinsicFactory syscall = new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return new LLVMSyscall();
             }
-        });
+        };
+
+        add("@syscall", syscall);
+        add("@__syscall", syscall);
     }
 
     protected void registerRustIntrinsics() {
@@ -1305,307 +1311,203 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     }
 
     protected void registerMathFunctionIntrinsics() {
-        add("@log2", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLog2NodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        add("@sqrt", new LLVMIntrinsicFactory(true, false) {
+        // TODO (chaeubl): There is no doubt that not all of these intrinsics are valid as they use
+        // double arithmetics to simulate floating arithmetics, which can change the precision.
+        // Furthermore, it is possible that there are mismatches between Java and C semantics.
+        addFloatingPointMathFunction("@sqrt", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMSqrtNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@sqrtf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSqrtNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        add("@log", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@log", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMLogNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@log10", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@log2", new LLVMIntrinsicFactory(true, false) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMLog2NodeGen.create(LLVMArgNodeGen.create(1), null);
+            }
+        });
+        addFloatingPointMathFunction("@log10", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMLog10NodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@rint", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@log1p", new LLVMIntrinsicFactory(true, false) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMLog1pNodeGen.create(LLVMArgNodeGen.create(1), null);
+            }
+        });
+        addFloatingPointMathFunction("@rint", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMRintNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@ceil", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@ceil", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMCeilNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@floor", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@floor", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMFloorNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@abs", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMAbsNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@labs", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLAbsNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@fabs", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@fabs", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@fabsf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        add("@pow", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@pow", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), null);
             }
         });
-        add("@exp", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@exp", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMExpNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-        add("@exp2", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@exp2", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMExp2NodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
+        addFloatingPointMathFunction("@expm1", new LLVMIntrinsicFactory(true, false) {
 
-        add("@sin", new LLVMIntrinsicFactory(true, false) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMExpm1NodeGen.create(LLVMArgNodeGen.create(1), null);
+            }
+        });
+        addFloatingPointMathFunction("@sin", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMSinNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-
-        add("@sinf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSinNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-
-        add("@cos", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@cos", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMCosNodeGen.create(LLVMArgNodeGen.create(1), null);
             }
         });
-
-        add("@cosf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCosNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-
-        add("@tan", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@tan", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMTanNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@tanf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTanNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@atan2", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@atan2", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
-
-        add("@atan2f", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@asin", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@asin", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMASinNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@asinf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMASinNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@acos", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@acos", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMACosNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@acosf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMACosNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@atan", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@atan", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMATanNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@atanf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMATanNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@sinh", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@sinh", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@sinhf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@cosh", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@cosh", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@coshf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@tanh", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@tanh", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-
-        add("@tanhf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@ldexp", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@ldexp", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMLdexpNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
-
-        add("@modf", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@modf", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMModfNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
-
-        add("@fmod", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@fmod", new LLVMIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMFmodNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
+        addFloatingPointMathFunction("@copysign", new LLVMIntrinsicFactory(true, false) {
 
-        add("@fmodl", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFmodlNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@copysign", new LLVMIntrinsicFactory(true, false) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), null);
+            }
+        });
+
+        addIntegerMathFunction("@abs", new LLVMIntrinsicFactory(true, false) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMAbsNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
     }
@@ -1740,10 +1642,36 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
                 return new LLVMComplexDoubleMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
             }
         });
+
+        // 80-bit FP functions store their results in the structure that is passed as arg1
+        add("@__divxc3", new LLVMIntrinsicFactory(true, false) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return new LLVMComplex80BitFloatDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
+            }
+        });
+        add("@__mulxc3", new LLVMIntrinsicFactory(true, false) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return new LLVMComplex80BitFloatMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
+            }
+        });
+    }
+
+    protected void addFloatingPointMathFunction(String functionName, LLVMIntrinsicFactory factory) {
+        add(functionName, factory);
+        add(functionName + "f", factory);
+        add(functionName + "l", factory);
+    }
+
+    protected void addIntegerMathFunction(String functionName, LLVMIntrinsicFactory factory) {
+        add(functionName, factory);
+        add(functionName.replaceFirst("@", "@l") + functionName, factory);
     }
 
     protected void add(String name, LLVMIntrinsicFactory factory) {
         LLVMIntrinsicFactory existing = factories.put(name, factory);
         assert existing == null : "same intrinsic was added more than once";
+        assert name.length() > 0 && name.charAt(0) == '@';
     }
 }

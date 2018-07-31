@@ -37,8 +37,8 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI1StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 
 @NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
 public abstract class LLVMBuiltin extends LLVMIntrinsic {
