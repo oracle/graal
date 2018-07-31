@@ -292,18 +292,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.append("(");
 
         String sep = "";
+        Parameter[] parameterInfo = m.getParameters();
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
             writer.append(sep);
             sep = ", ";
             writer.append(CSourceCodeWriter.toCTypeName(m,
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
-                            m.getParameters()[i].getDeclaredAnnotation(CConst.class) != null,
-                            m.getParameters()[i].getDeclaredAnnotation(CUnsigned.class) != null,
+                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CConst.class) != null,
+                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CUnsigned.class) != null,
                             metaAccess, nativeLibs));
-            Parameter param = m.getParameters()[i];
-            if (param.isNamePresent()) {
+            if (parameterInfo != null && parameterInfo[i].isNamePresent()) {
                 writer.append(" ");
-                writer.append(param.getName());
+                writer.append(parameterInfo[i].getName());
             }
         }
         writer.appendln(");");
