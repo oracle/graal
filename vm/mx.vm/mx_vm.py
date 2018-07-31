@@ -1415,7 +1415,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if isinstance(component, mx_sdk.GraalVmLanguage) and not (_disable_installable(component) or component.dir_name == 'js'):
             installable_component = GraalVmInstallableComponent(component)
             register_distribution(installable_component)
-            if _get_svm_support().is_supported() and not _has_forced_launchers(component):
+            if has_svm_launcher(component):
                 register_distribution(GraalVmStandaloneComponent(installable_component))
 
     if register_project:
@@ -1445,8 +1445,41 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_distribution(get_stage1_graalvm_distribution())
 
 
-def has_component(name):
-    return any((c.short_name == name or c.name == name for c in mx_sdk.graalvm_components()))
+def has_svm_launcher(component):
+    """:type component: mx.GraalVmComponent | str"""
+    component = get_component(component) if isinstance(component, str) else component
+    return _get_svm_support().is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
+
+
+def has_svm_polyglot_lib():
+    return _get_svm_support().is_supported() and _with_polyglot_lib_project()
+
+
+def get_component(name):
+    """:type name: str"""
+    for c in mx_sdk.graalvm_components():
+        if c.short_name == name or c.name == name:
+            return c
+    return None
+
+
+def has_component(name, fatalIfMissing=False):
+    """
+    :type name: str
+    :type fatalIfMissing: bool
+    """
+    result = get_component(name)
+    if fatalIfMissing and not result:
+        mx.abort("'{}' is not registered as GraalVM component. Did you forget to dynamically import it?".format(name))
+    return result
+
+
+def has_components(names, fatalIfMissing=False):
+    """
+    :type names: list[str]
+    :type fatalIfMissing: bool
+    """
+    return all((has_component(name, fatalIfMissing=fatalIfMissing) for name in names))
 
 
 def graalvm_output():
@@ -1556,7 +1589,7 @@ def _str_to_bool(val):
     return val
 
 
-mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
+mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
@@ -1611,6 +1644,7 @@ def _disable_installable(component):
 
 
 def _has_forced_launchers(component, forced=None):
+    """:type component: mx.GraalVmComponent"""
     for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config, forced):
             return True
