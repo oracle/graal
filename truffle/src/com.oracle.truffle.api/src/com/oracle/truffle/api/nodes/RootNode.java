@@ -156,8 +156,7 @@ public abstract class RootNode extends ExecutableNode {
             this.sourceVM = getCurrentVM();
         }
 
-        FrameDescriptor newFrameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
-        this.frameDescriptor = Node.ACCESSOR.framesSupport().makeThreadSafe(newFrameDescriptor, lock);
+        this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
     }
 
     private static Object getCurrentVM() {
