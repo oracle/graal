@@ -44,6 +44,7 @@ import collections
 import itertools
 import glob
 from xml.dom.minidom import parse
+from argparse import ArgumentParser
 
 import mx
 import mx_compiler
@@ -606,6 +607,23 @@ def native_junit(native_image, unittest_args=None, build_args=None, run_args=Non
     finally:
         remove_tree(junit_tmp_dir)
 
+def native_unittest(native_image, cmdline_args):
+    parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
+    mask_str = '#'
+    def mask(arg):
+        if arg in ['--', '--build-args', '--run-args']:
+            return arg
+        else:
+            return arg.replace('-', mask_str)
+    cmdline_args = [mask(arg) for arg in cmdline_args]
+    parser.add_argument('--build-args', metavar='ARG', nargs='*', default=[])
+    parser.add_argument('--run-args', metavar='ARG', nargs='*', default=[])
+    parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
+    pargs = parser.parse_args(cmdline_args)
+    def unmask(args):
+        return [arg.replace(mask_str, '-') for arg in args]
+    native_junit(native_image, unmask(pargs.unittest_args), unmask(pargs.build_args), unmask(pargs.run_args))
+
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
     jsruncmd = [binary] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
@@ -910,5 +928,5 @@ mx.update_commands(suite, {
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
     'maven-plugin-install': [maven_plugin_install, ''],
-    'native-unittest' : [lambda args: native_image_context_run(native_junit, args), ''],
+    'native-unittest' : [lambda args: native_image_context_run(native_unittest, args), ''],
 })
