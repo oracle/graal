@@ -58,7 +58,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
@@ -74,16 +73,14 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 final class LLVMRuntimeDebugInformation {
 
     private final FrameDescriptor frame;
-    private final NodeFactory factory;
     private final LLVMContext context;
     private final List<FrameSlot> notNullableSlots;
     private final LLVMSymbolReadResolver symbols;
     private final boolean isEnabled;
     private final StaticValueAccessVisitor staticValueAccessVisitor;
 
-    LLVMRuntimeDebugInformation(FrameDescriptor frame, NodeFactory factory, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols) {
+    LLVMRuntimeDebugInformation(FrameDescriptor frame, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols) {
         this.frame = frame;
-        this.factory = factory;
         this.context = context;
         this.notNullableSlots = notNullableSlots;
         this.symbols = symbols;
@@ -114,7 +111,7 @@ final class LLVMRuntimeDebugInformation {
         private void visitFrameValue(String name) {
             final FrameSlot slot = frame.findFrameSlot(name);
             assert slot != null;
-            final LLVMFrameValueAccess valueAccess = factory.createDebugFrameValue(slot, isDeclaration);
+            final LLVMFrameValueAccess valueAccess = context.getNodeFactory().createDebugFrameValue(slot, isDeclaration);
             context.getSourceContext().registerFrameValue(symbol, valueAccess);
             notNullableSlots.add(slot);
             variable.addStaticValue();
@@ -123,7 +120,7 @@ final class LLVMRuntimeDebugInformation {
         private void visitSimpleConstant(SymbolImpl constant) {
             final LLVMExpressionNode node = symbols.resolve(constant);
             assert node != null;
-            final LLVMDebugObjectBuilder value = factory.createDebugStaticValue(node, false);
+            final LLVMDebugObjectBuilder value = context.getNodeFactory().createDebugStaticValue(node, false);
             context.getSourceContext().registerStatic(symbol, value);
             variable.addStaticValue();
         }
@@ -207,7 +204,7 @@ final class LLVMRuntimeDebugInformation {
                 }
 
                 final LLVMSourceSymbol symbol = local.getSymbol();
-                final LLVMFrameValueAccess alloc = factory.createDebugFrameValue(frameSlot, true);
+                final LLVMFrameValueAccess alloc = context.getNodeFactory().createDebugFrameValue(frameSlot, true);
                 notNullableSlots.add(frameSlot);
                 context.getSourceContext().registerFrameValue(symbol, alloc);
                 local.addStaticValue();
@@ -248,7 +245,7 @@ final class LLVMRuntimeDebugInformation {
             }
         }
 
-        return factory.createDebugValueInit(targetSlot, offsets, lengths);
+        return context.getNodeFactory().createDebugValueInit(targetSlot, offsets, lengths);
     }
 
     private static final int[] CLEAR_NONE = new int[0];
@@ -322,8 +319,8 @@ final class LLVMRuntimeDebugInformation {
         final boolean mustDereference = isDeclaration || mustDereferenceValue(expression, variable.getSourceType(), value);
 
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
-        final LLVMExpressionNode containerRead = factory.createFrameRead(MetaType.DEBUG, targetSlot);
-        return factory.createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
+        final LLVMExpressionNode containerRead = context.getNodeFactory().createFrameRead(MetaType.DEBUG, targetSlot);
+        return context.getNodeFactory().createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
 
 }

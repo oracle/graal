@@ -39,7 +39,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMRaiseExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbortNodeGen;
@@ -156,9 +155,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGe
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -217,10 +216,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
     protected final Map<String, LLVMIntrinsicFactory> factories = new HashMap<>();
     protected final Demangler demangler = new Demangler();
-    protected final TruffleLanguage<?> language;
+    protected final LLVMContext context;
 
-    public BasicIntrinsicsProvider(TruffleLanguage<?> language) {
-        this.language = language;
+    public BasicIntrinsicsProvider(LLVMContext context) {
+        this.context = context;
     }
 
     public abstract static class LLVMIntrinsicFactory {
@@ -325,13 +324,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         }
     }
 
-    public BasicIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
-        registerTruffleIntrinsics(nodeFactory);
+    public BasicIntrinsicsProvider collectIntrinsics() {
+        registerTruffleIntrinsics();
         registerSulongIntrinsics();
         registerAbortIntrinsics();
         registerRustIntrinsics();
         registerMathFunctionIntrinsics();
-        registerMemoryFunctionIntrinsics(nodeFactory);
+        registerMemoryFunctionIntrinsics();
         registerExceptionIntrinsics();
         registerComplexNumberIntrinsics();
         registerCTypeIntrinsics();
@@ -352,7 +351,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     }
 
     protected RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
-        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
+        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(context.getLanguage(), functionName, node));
     }
 
     protected LLVMExpressionNode[] argumentsArray(int startIndex, int arity) {
@@ -386,7 +385,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         });
     }
 
-    protected void registerTruffleIntrinsics(NodeFactory nodeFactory) {
+    protected void registerTruffleIntrinsics() {
         LLVMIntrinsicFactory polyglotImport = new LLVMIntrinsicFactory(true, true) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
@@ -1066,7 +1065,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleStringAsCStringNodeGen.create(nodeFactory.createAllocateString(), LLVMArgNodeGen.create(1));
+                return LLVMTruffleStringAsCStringNodeGen.create(context.getNodeFactory().createAllocateString(), LLVMArgNodeGen.create(1));
             }
         });
 
@@ -1550,7 +1549,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         });
     }
 
-    protected void registerMemoryFunctionIntrinsics(NodeFactory factory) {
+    protected void registerMemoryFunctionIntrinsics() {
         add("@malloc", new LLVMIntrinsicFactory(true, false) {
 
             @Override
@@ -1562,7 +1561,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCallocNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMCallocNodeGen.create(context.getNodeFactory().createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@realloc", new LLVMIntrinsicFactory(true, false) {
@@ -1582,7 +1581,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         LLVMIntrinsicFactory memset = new LLVMIntrinsicFactory(true, false) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLibcMemsetNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
+                return LLVMLibcMemsetNodeGen.create(context.getNodeFactory().createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
             }
         };
         add("@memset", memset);
@@ -1590,7 +1589,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         LLVMIntrinsicFactory memcpy = new LLVMIntrinsicFactory(true, false) {
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLibcMemcpyNodeGen.create(factory.createMemMove(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
+                return LLVMLibcMemcpyNodeGen.create(context.getNodeFactory().createMemMove(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
             }
         };
         add("@memcpy", memcpy);

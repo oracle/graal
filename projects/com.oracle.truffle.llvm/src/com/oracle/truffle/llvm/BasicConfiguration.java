@@ -34,10 +34,10 @@ import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicSystemContextExtension;
-import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
+import com.oracle.truffle.llvm.runtime.Configuration;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
@@ -60,17 +60,17 @@ public final class BasicConfiguration implements Configuration {
     }
 
     @Override
-    public NodeFactory getNodeFactory(LLVMContext context) {
-        return new BasicNodeFactory();
+    public NodeFactory createNodeFactory(LLVMContext context) {
+        return new BasicNodeFactory(context);
     }
 
     @Override
-    public List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language) {
+    public List<ContextExtension> createContextExtensions(LLVMContext context) {
         List<ContextExtension> result = new ArrayList<>();
-        result.add(new BasicIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory()));
+        result.add(new BasicIntrinsicsProvider(context).collectIntrinsics());
         result.add(new BasicSystemContextExtension());
-        if (env.getOptions().get(SulongEngineOption.ENABLE_NFI)) {
-            result.add(new NFIContextExtension(env));
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_NFI)) {
+            result.add(new NFIContextExtension(context.getEnv()));
         }
         return result;
     }

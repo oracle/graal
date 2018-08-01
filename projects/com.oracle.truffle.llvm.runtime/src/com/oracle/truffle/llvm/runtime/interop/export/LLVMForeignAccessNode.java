@@ -77,7 +77,7 @@ public abstract class LLVMForeignAccessNode {
         LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
             CompilerAsserts.neverPartOfCompilation();
             ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
-            return ctxRef.get().getInteropNodeFactory().createLoadNode(kind);
+            return ctxRef.get().getNodeFactory().createLoadNode(kind);
         }
     }
 
@@ -98,7 +98,7 @@ public abstract class LLVMForeignAccessNode {
         LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
             CompilerAsserts.neverPartOfCompilation();
             ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
-            return ctxRef.get().getInteropNodeFactory().createStoreNode(kind);
+            return ctxRef.get().getNodeFactory().createStoreNode(kind);
         }
     }
 }

@@ -35,14 +35,14 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface GetStackSpaceFactory {
 
-    LLVMExpressionNode createGetStackSpace(NodeFactory nodeFactory, LLVMContext context, Type type);
+    LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type);
 
     static GetStackSpaceFactory createAllocaFactory() {
-        return (nodeFactory, context, type) -> nodeFactory.createAlloca(context, type);
+        return (context, type) -> context.getNodeFactory().createAlloca(type);
     }
 
     static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
-        return (nodeFactory, context, type) -> nodeFactory.createGetUniqueStackSpace(context, type, uniquesRegion);
+        return (context, type) -> context.getNodeFactory().createGetUniqueStackSpace(type, uniquesRegion);
     }
 
 }

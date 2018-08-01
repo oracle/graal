@@ -27,16 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm;
+package com.oracle.truffle.llvm.runtime;
 
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
-
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 
 public interface Configuration {
 
@@ -44,13 +39,13 @@ public interface Configuration {
 
     List<OptionDescriptor> getOptionDescriptors();
 
-    NodeFactory getNodeFactory(LLVMContext context);
+    NodeFactory createNodeFactory(LLVMContext context);
 
     /**
      * Context extensions encapsulate optional functionality that has a state and which therefore
      * needs to live on the context-level.
      */
-    List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language);
+    List<ContextExtension> createContextExtensions(LLVMContext context);
 
     /**
      * Capabilities encapsulate functionality that is stateless so that it can live on the

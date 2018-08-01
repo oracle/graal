@@ -60,7 +60,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
@@ -111,6 +110,7 @@ public final class LLVMContext {
 
     private final LLVMLanguage language;
     private final Env env;
+    private final Configuration activeConfiguration;
     private final LLVMScope globalScope;
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
@@ -131,7 +131,7 @@ public final class LLVMContext {
     private boolean cleanupNecessary;
     private boolean defaultLibrariesLoaded;
 
-    private final InteropNodeFactory interopNodeFactory;
+    private final NodeFactory nodeFactory;
 
     private final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 1;
@@ -150,10 +150,12 @@ public final class LLVMContext {
         }
     }
 
-    public LLVMContext(LLVMLanguage language, Env env, List<ContextExtension> contextExtensions, InteropNodeFactory interopNodeFactory, String languageHome) {
+    public LLVMContext(LLVMLanguage language, Env env, Configuration activeConfiguration, String languageHome) {
         this.language = language;
         this.env = env;
-        this.contextExtensions = contextExtensions;
+        this.activeConfiguration = activeConfiguration;
+        this.nodeFactory = activeConfiguration.createNodeFactory(this);
+        this.contextExtensions = activeConfiguration.createContextExtensions(this);
         this.initialized = false;
         this.cleanupNecessary = false;
         this.defaultLibrariesLoaded = false;
@@ -177,8 +179,6 @@ public final class LLVMContext {
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
         this.environment = System.getenv();
-
-        this.interopNodeFactory = interopNodeFactory;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
         if (languageHome != null) {
@@ -296,8 +296,8 @@ public final class LLVMContext {
         }
     }
 
-    public InteropNodeFactory getInteropNodeFactory() {
-        return interopNodeFactory;
+    public NodeFactory getNodeFactory() {
+        return nodeFactory;
     }
 
     public <T> T getContextExtension(Class<T> type) {
@@ -404,6 +404,10 @@ public final class LLVMContext {
 
     public Env getEnv() {
         return env;
+    }
+
+    public Configuration getActiveConfiguration() {
+        return activeConfiguration;
     }
 
     public LLVMScope getGlobalScope() {
