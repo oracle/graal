@@ -228,6 +228,22 @@ suite = {
             "findbugs": "false",
         },
 
+        "com.oracle.svm.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "1.8",
+            "findbugs": "false",
+        },
+
         "com.oracle.svm.reflect": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -566,6 +582,18 @@ suite = {
             ],
             "exclude": [
             ]
+        },
+
+        "SVM_TESTS" : {
+          "relpath" : True,
+          "dependencies" : [
+            "com.oracle.svm.test",
+          ],
+          "distDependencies": [
+            "mx:JUNIT_TOOL",
+            "sdk:GRAAL_SDK",
+          ],
+          "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {
