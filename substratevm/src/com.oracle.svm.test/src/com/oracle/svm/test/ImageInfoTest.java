@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class ImageInfoTests {
+public class ImageInfoTest {
     static {
         Assert.assertTrue(ImageInfo.inImageCode());
         Assert.assertTrue(ImageInfo.inImageBuildtimeCode());
@@ -36,7 +36,7 @@ public class ImageInfoTests {
     }
 
     @Test
-    public void checkImageCodeMethods() {
+    public void testImageCodeMethods() {
         Assert.assertTrue(ImageInfo.inImageCode());
         Assert.assertTrue(ImageInfo.inImageRuntimeCode());
         Assert.assertFalse(ImageInfo.inImageBuildtimeCode());
