@@ -49,10 +49,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.Runner.SulongLibrary;
+import com.oracle.truffle.llvm.runtime.Configuration;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -89,7 +89,7 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         Configuration activeConfiguration = getActiveConfiguration(env);
-        LLVMContext newContext = new LLVMContext(this, env, activeConfiguration.createContextExtensions(env, this), getNodeFactory(env), getLanguageHome());
+        LLVMContext newContext = new LLVMContext(this, env, activeConfiguration, getLanguageHome());
         if (mainContext == null) {
             mainContext = newContext;
         } else {
@@ -108,7 +108,7 @@ public final class Sulong extends LLVMLanguage {
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
         LLVMContext context = findLLVMContext();
-        return new Runner(context, getNodeFactory(context.getEnv())).parse(source);
+        return new Runner(context).parse(source);
     }
 
     @Override
@@ -175,10 +175,6 @@ public final class Sulong extends LLVMLanguage {
             optionDescriptors.addAll(c.getOptionDescriptors());
         }
         return OptionDescriptors.create(optionDescriptors);
-    }
-
-    private NodeFactory getNodeFactory(Env env) {
-        return getActiveConfiguration(env).getNodeFactory(findLLVMContext());
     }
 
     @TruffleBoundary

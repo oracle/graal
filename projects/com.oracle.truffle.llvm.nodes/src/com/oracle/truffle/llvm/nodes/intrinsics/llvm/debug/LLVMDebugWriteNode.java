@@ -50,7 +50,7 @@ public abstract class LLVMDebugWriteNode extends LLVMStatementNode {
     }
 
     protected LLVMDebugValue.Builder createBuilder() {
-        return builder.createBuilder(getContextReference());
+        return builder.createBuilder();
     }
 
     public abstract static class SimpleWriteNode extends LLVMDebugWriteNode {

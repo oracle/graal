@@ -41,10 +41,9 @@ grammar InlineAssembly;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 }
 
 @lexer::header
@@ -70,7 +69,7 @@ private static final class BailoutErrorListener extends BaseErrorListener {
     }
 }
 
-public static LLVMInlineAssemblyRootNode parseInlineAssembly(NodeFactory nodeFactory, LLVMLanguage language, LLVMSourceLocation sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
+public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMContext context, LLVMSourceLocation sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
     InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
     InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();
@@ -79,7 +78,7 @@ public static LLVMInlineAssemblyRootNode parseInlineAssembly(NodeFactory nodeFac
     lexer.addErrorListener(listener);
     parser.addErrorListener(listener);
     parser.snippet = asmSnippet;
-    parser.factory = new AsmFactory(nodeFactory, language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
+    parser.factory = new AsmFactory(context, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
     parser.inline_assembly();
     if (parser.root == null) {
         throw new IllegalStateException("no roots produced by inline assembly snippet");
