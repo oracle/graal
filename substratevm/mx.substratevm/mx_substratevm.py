@@ -496,6 +496,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'test',
     'maven',
     'js',
     'python',
@@ -568,6 +569,10 @@ def svm_gate_body(args, tasks):
             if t:
                 helloworld(native_image)
                 cinterfacetutorial(native_image)
+
+        with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
+            if t:
+                native_junit(native_image)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
