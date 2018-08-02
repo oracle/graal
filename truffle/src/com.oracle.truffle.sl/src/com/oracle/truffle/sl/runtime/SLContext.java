@@ -121,6 +121,13 @@ public final class SLContext {
     }
 
     /**
+     * Return the current Truffle environment.
+     */
+    public Env getEnv() {
+        return env;
+    }
+
+    /**
      * Returns the default input, i.e., the source for the {@link SLReadlnBuiltin}. To allow unit
      * testing, we do not use {@link System#in} directly.
      */
