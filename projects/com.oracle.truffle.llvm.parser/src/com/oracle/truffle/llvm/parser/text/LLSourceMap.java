@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.text;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -49,14 +49,14 @@ final class LLSourceMap {
     static final class Function {
 
         private final String name;
-        private final LinkedList<Instruction> instructionList;
+        private final ArrayDeque<Instruction> instructionList;
         private final int startLine;
         private int endLine;
 
         Function(String name, int startLine) {
             this.name = name;
             this.startLine = startLine;
-            this.instructionList = new LinkedList<>();
+            this.instructionList = new ArrayDeque<>();
         }
 
         void add(String var, int line) {
@@ -67,7 +67,7 @@ final class LLSourceMap {
             this.endLine = line;
         }
 
-        LinkedList<Instruction> getInstructionList() {
+        ArrayDeque<Instruction> getInstructionList() {
             return instructionList;
         }
 

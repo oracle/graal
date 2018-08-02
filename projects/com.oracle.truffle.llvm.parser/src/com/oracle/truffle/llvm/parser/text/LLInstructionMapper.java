@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.text;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -64,9 +64,9 @@ final class LLInstructionMapper {
 
         private final Source llSource;
         private final LLVMSourceLocation parentLocation;
-        private final LinkedList<LLSourceMap.Instruction> llInstructions;
+        private final ArrayDeque<LLSourceMap.Instruction> llInstructions;
 
-        private Mapper(Source llSource, LLVMSourceLocation parentLocation, LinkedList<LLSourceMap.Instruction> llInstructions) {
+        private Mapper(Source llSource, LLVMSourceLocation parentLocation, ArrayDeque<LLSourceMap.Instruction> llInstructions) {
             this.llSource = llSource;
             this.parentLocation = parentLocation;
             this.llInstructions = llInstructions;
