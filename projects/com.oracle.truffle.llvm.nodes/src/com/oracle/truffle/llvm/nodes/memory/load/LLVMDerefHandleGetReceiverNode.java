@@ -52,11 +52,15 @@ public class LLVMDerefHandleGetReceiverNode extends LLVMNode {
     }
 
     public LLVMManagedPointer execute(LLVMNativePointer addr) {
+        return execute(addr.asNative());
+    }
+
+    public LLVMManagedPointer execute(long addr) {
         long mask = LLVMNativeMemory.getDerefHandleObjectMask();
-        LLVMNativePointer objectBaseAddr = LLVMNativePointer.create(addr.asNative() & ~mask);
+        LLVMNativePointer objectBaseAddr = LLVMNativePointer.create(addr & ~mask);
         TruffleObject receiver = getContext().getManagedObjectForHandle(objectBaseAddr);
         LLVMManagedPointer pointerToForeign = LLVMManagedPointer.create(receiver);
-        return pointerToForeign.increment(addr.asNative() & mask);
+        return pointerToForeign.increment(addr & mask);
     }
 
     public static LLVMDerefHandleGetReceiverNode create() {
