@@ -101,7 +101,7 @@ public final class LanguageInfo {
 
     /**
      * Returns the MIME types supported by this language. This set is equivalent to the set provided
-     * by {@link Registration#mimeType()}.
+     * by {@link Registration#characterMimeTypes()} and {@link Registration#byteMimeTypes()}.
      *
      * @since 0.25
      */

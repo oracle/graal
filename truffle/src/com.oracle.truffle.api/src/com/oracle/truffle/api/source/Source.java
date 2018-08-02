@@ -79,7 +79,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * {@link SourceSnippets#fromURL}
  *
  * Each URL source is represented as a canonical object, indexed by the URL. Contents are <em>read
- * eagerly</em> once the {@link Builder#build()} method is called.
+ * eagerly</em> once the {@link SourceBuilder#build()} method is called.
  *
  * <h3>Source from a literal text</h3>
  *
@@ -95,7 +95,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  *
  * {@link SourceSnippets#fromReader}
  *
- * the content is <em>read eagerly</em> once the {@link Builder#build()} method is called.
+ * the content is <em>read eagerly</em> once the {@link SourceBuilder#build()} method is called.
  *
  * <h3>Reading from bytes</h3>
  *
@@ -124,6 +124,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("deprecation")
 public abstract class Source {
 
     private static final String UNKNOWN_MIME_TYPE = "content/unknown";
@@ -181,7 +182,8 @@ public abstract class Source {
      * On the other hand, tools should be free to make <em>internal</em> sources visible in
      * (possibly privileged) modes that are useful for language implementors.
      * <p>
-     * One can specify whether a source is internal when {@link Builder#internal() building it}.
+     * One can specify whether a source is internal when {@link SourceBuilder#internal(boolean)
+     * building it}.
      *
      * @return whether this source is marked as <em>internal</em>
      * @since 0.15
@@ -214,8 +216,8 @@ public abstract class Source {
      * input during the execution, to clarify the execution behavior by asking questions for
      * instance. Non-interactive languages are expected to ignore this property.
      * <p>
-     * One can specify whether a source is interactive when {@link Builder#interactive() building
-     * it}.
+     * One can specify whether a source is interactive when
+     * {@link SourceBuilder#interactive(boolean) building it}.
      *
      * @return whether this source is marked as <em>interactive</em>
      * @since 0.21
