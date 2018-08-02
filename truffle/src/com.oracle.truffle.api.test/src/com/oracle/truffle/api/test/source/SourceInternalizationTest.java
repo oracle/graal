@@ -28,6 +28,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -170,6 +171,19 @@ public class SourceInternalizationTest {
         }
         service.shutdown();
         assertTrue(service.awaitTermination(10000, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void testUncachedAreNotInterned() {
+        Source source1 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(false).build();
+        Source source2 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(false).build();
+        assertNotSame(source1, source2);
+        assertEquals(source1, source2);
+
+        source1 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(true).build();
+        source2 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(true).build();
+
+        assertSame(source1, source2);
     }
 
     @Test

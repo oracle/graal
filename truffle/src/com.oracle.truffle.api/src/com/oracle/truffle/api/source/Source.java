@@ -123,7 +123,7 @@ import com.oracle.truffle.api.TruffleOptions;
  */
 public abstract class Source {
 
-    private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, false).toSource();
+    private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, true).toSourceInterned();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
 
