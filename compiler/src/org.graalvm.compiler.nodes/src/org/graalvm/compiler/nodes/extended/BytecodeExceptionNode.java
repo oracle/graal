@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,8 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         CLASS_CAST(2, ClassCastException.class),
         ARRAY_STORE(1, ArrayStoreException.class),
         DIVISION_BY_ZERO(0, ArithmeticException.class),
-        EXACT_OVERFLOW(1, ArithmeticException.class);
+        INTEGER_EXACT_OVERFLOW(0, ArithmeticException.class),
+        LONG_EXACT_OVERFLOW(0, ArithmeticException.class);
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;

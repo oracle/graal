@@ -4354,9 +4354,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, String message) {
-        ConstantNode exceptionMessage = ConstantNode.forConstant(constantReflection.forString(message.intern()), metaAccess, graph);
-        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(metaAccess, BytecodeExceptionKind.EXACT_OVERFLOW, exceptionMessage));
+    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind) {
+        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(metaAccess, exceptionKind));
         exceptionNode.setStateAfter(createFrameState(bci(), exceptionNode));
         AbstractBeginNode exceptionDispatch = handleException(exceptionNode, bci(), false);
         exceptionNode.setNext(exceptionDispatch);

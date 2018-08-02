@@ -338,7 +338,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     @SuppressWarnings("ununsed")
-    default AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, String message) {
+    default AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind) {
         return null;
     }
 }

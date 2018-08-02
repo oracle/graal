@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,6 +114,8 @@ import org.graalvm.compiler.hotspot.stubs.ClassCastExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.CreateExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.DivisionByZeroExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
+import org.graalvm.compiler.hotspot.stubs.IntegerExactOverflowExceptionStub;
+import org.graalvm.compiler.hotspot.stubs.LongExactOverflowExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.NewArrayStub;
 import org.graalvm.compiler.hotspot.stubs.NewInstanceStub;
 import org.graalvm.compiler.hotspot.stubs.NullPointerExceptionStub;
@@ -299,6 +301,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         link(new NullPointerExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), REEXECUTABLE, SAFEPOINT, any())));
         link(new OutOfBoundsExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), REEXECUTABLE, SAFEPOINT, any())));
         link(new DivisionByZeroExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), REEXECUTABLE, SAFEPOINT, any())));
+        link(new IntegerExactOverflowExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW), REEXECUTABLE, SAFEPOINT, any())));
+        link(new LongExactOverflowExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.LONG_EXACT_OVERFLOW), REEXECUTABLE, SAFEPOINT, any())));
 
         linkForeignCall(options, providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
         linkForeignCall(options, providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
