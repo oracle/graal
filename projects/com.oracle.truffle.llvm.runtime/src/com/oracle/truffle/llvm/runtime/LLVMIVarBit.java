@@ -48,7 +48,7 @@ public final class LLVMIVarBit {
 
     private LLVMIVarBit() {
         this.bits = 0;
-        this.arr = null;
+        this.arr = new byte[0];
     }
 
     private LLVMIVarBit(int bits, byte[] arr, int arrBits, boolean signExtend) {
@@ -439,7 +439,7 @@ public final class LLVMIVarBit {
     @Override
     @TruffleBoundary
     public String toString() {
-        if (arr == null) {
+        if (isZero()) {
             return Integer.toString(0);
         }
         return String.format("i%d %s", getBitSize(), asBigInteger().toString());
