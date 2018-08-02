@@ -138,11 +138,13 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
             ],
+            "maven": False,
         },
         "INSTALLER": {
             "subDir": "src",
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",
             "dependencies": ["org.graalvm.component.installer"],
+            "maven": False,
         },
         "INSTALLER_TESTS": {
             "subDir": "src",
