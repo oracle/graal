@@ -35,7 +35,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
@@ -59,7 +59,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToHostValueNode;
-import org.graalvm.polyglot.SourceSection;
 
 @SuppressWarnings("deprecation")
 abstract class PolyglotValue extends AbstractValueImpl {
@@ -76,27 +75,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
         this.languageContext = languageContext;
-    }
-
-    protected final String formatSuppliedValues(UnsupportedTypeException e) {
-        Object[] suppliedValues = e.getSuppliedValues();
-        String[] args = new String[suppliedValues.length];
-        for (int i = 0; i < suppliedValues.length; i++) {
-            Object value = suppliedValues[i];
-            String s = null;
-            if (value == null) {
-                s = "null";
-            } else {
-                PolyglotLanguageContext displayLanguageContext = languageContext;
-                final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, value);
-                if (resolvedLanguage != null) {
-                    displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
-                }
-                s = LANGUAGE.toStringIfVisible(displayLanguageContext.env, value, false);
-            }
-            args[i] = s;
-        }
-        return Arrays.toString(args);
     }
 
     @Override
@@ -317,10 +295,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
             formattedArgs[i] = getValueInfo(context, arguments[i]);
         }
         return formattedArgs;
-    }
-
-    private static PolyglotException error(String message) {
-        throw new PolyglotUnsupportedException(message, null);
     }
 
     @Override
@@ -2305,17 +2279,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     throw invalidInstantiateArgumentType(polyglot.languageContext, receiver, args);
                 } catch (ArityException e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw handleInvalidArity(e);
+                    throw invalidInstantiateArity(polyglot.languageContext, receiver, args, e.getExpectedArity(), e.getActualArity());
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     return polyglot.newInstanceUnsupported(receiver);
                 }
-            }
-
-            private PolyglotException handleInvalidArity(ArityException e) {
-                int actual = e.getActualArity();
-                int expected = e.getExpectedArity();
-                return error(String.format("Expected %s number of arguments but got %s when creating a new instance of %s.", expected, actual, toString()));
             }
 
             @Override

@@ -37,11 +37,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -68,15 +66,12 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     static final class HostContext {
 
-        final Env env;
         volatile PolyglotLanguageContext internalContext;
         final Map<String, Class<?>> classCache = new HashMap<>();
         private volatile Iterable<Scope> topScopes;
         private volatile HostClassLoader classloader;
-        @CompilationFinal Value nullValue;
 
-        HostContext(Env env) {
-            this.env = env;
+        HostContext() {
         }
 
         @TruffleBoundary
@@ -233,7 +228,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new HostContext(env);
+        return new HostContext();
     }
 
     @Override

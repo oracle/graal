@@ -32,7 +32,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -574,10 +573,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
     }
 
-    OptionDescriptors getEngineOptions() {
-        throw new UnsupportedOperationException();
-    }
-
     void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this);
         contexts.add(context);
@@ -796,12 +791,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
         return allOptions;
-    }
-
-    Collection<Thread> getAllThreads(PolyglotContextImpl context) {
-        synchronized (context) {
-            return new ArrayList<>(context.getSeenThreads().keySet());
-        }
     }
 
     static PolyglotEngineImpl preInitialize(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, ClassLoader contextClassLoader, Handler logHandler) {

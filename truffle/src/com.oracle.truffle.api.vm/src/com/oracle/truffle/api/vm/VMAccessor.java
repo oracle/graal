@@ -30,28 +30,21 @@ import java.util.Collections;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 
 class VMAccessor extends Accessor {
 
-    @CompilationFinal static VMAccessor SPI;
+    static final VMAccessor SPI = new VMAccessor();
 
-    @CompilationFinal static Nodes NODES;
-    @CompilationFinal static SourceSupport SOURCE;
-    @CompilationFinal static InstrumentSupport INSTRUMENT;
-    @CompilationFinal static JavaInteropSupport JAVAINTEROP;
-    @CompilationFinal static LanguageSupport LANGUAGE;
-
-    private static volatile EngineSupport engineSupport;
+    static final Nodes NODES = SPI.nodes();
+    static final SourceSupport SOURCE = SPI.sourceSupport();
+    static final InstrumentSupport INSTRUMENT = SPI.instrumentSupport();
+    static final JavaInteropSupport JAVAINTEROP = SPI.javaInteropSupport();
+    static final LanguageSupport LANGUAGE = SPI.languageSupport();
 
     static EngineSupport engine() {
         return SPI.engineSupport();
-    }
-
-    static InstrumentSupport instrumentAccess() {
-        return SPI.instrumentSupport();
     }
 
     static Collection<ClassLoader> allLoaders() {
@@ -68,19 +61,10 @@ class VMAccessor extends Accessor {
         return super.getCompilerOptions();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected EngineSupport engineSupport() {
-        return engineSupport;
-    }
-
-    static void initialize(EngineSupport support) {
-        engineSupport = support;
-        SPI = new VMAccessor();
-        NODES = SPI.nodes();
-        INSTRUMENT = SPI.instrumentSupport();
-        JAVAINTEROP = SPI.javaInteropSupport();
-        LANGUAGE = SPI.languageSupport();
-        SOURCE = SPI.sourceSupport();
+        return new com.oracle.truffle.api.vm.PolyglotImpl.EngineImpl();
     }
 
     @Override

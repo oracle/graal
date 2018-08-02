@@ -67,7 +67,6 @@ import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -100,19 +99,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final PolyglotExecutionListener executionListenerImpl = new PolyglotExecutionListener(this);
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
-    private static void ensureInitialized() {
-        if (VMAccessor.SPI == null || !(VMAccessor.SPI.engineSupport() instanceof EngineImpl)) {
-            VMAccessor.initialize(new EngineImpl());
-        }
-    }
-
     /**
      * Internal method do not use.
      *
      * @since 0.27
      */
     public PolyglotImpl() {
-        ensureInitialized();
+        VMAccessor.allLoaders();
     }
 
     /**
@@ -167,7 +160,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler) {
-        ensureInitialized();
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
         }
@@ -203,7 +195,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public void preInitializeEngine() {
-        ensureInitialized();
         final Handler logHandler = PolyglotLogHandler.createStreamHandler(System.out, false, true);
         try {
             final PolyglotEngineImpl preInitializedEngine = PolyglotEngineImpl.preInitialize(
@@ -347,10 +338,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (e instanceof PolyglotArrayIndexOutOfBoundsException) {
             throw (PolyglotArrayIndexOutOfBoundsException) e;
         }
-    }
-
-    static boolean isGuestInteropValue(Object receiver) {
-        return isGuestPrimitive(receiver) || receiver instanceof TruffleObject;
     }
 
     static boolean isGuestPrimitive(Object receiver) {
@@ -669,9 +656,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object findOriginalObject(Object truffleObject) {
-            if (truffleObject instanceof EngineTruffleObject) {
-                return ((EngineTruffleObject) truffleObject).getDelegate();
-            }
             return truffleObject;
         }
 

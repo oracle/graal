@@ -171,7 +171,7 @@ class PolyglotSource extends AbstractSourceImpl {
         return findLanguageImpl(path);
     }
 
-    static String findLanguageImpl(Path path) throws IOException {
+    private static String findLanguageImpl(Path path) throws IOException {
         String mimeType = getMimeType(path);
 
         if (mimeType != null) {
@@ -193,7 +193,7 @@ class PolyglotSource extends AbstractSourceImpl {
         return null;
     }
 
-    static String getMimeType(Path filePath) throws IOException {
+    private static String getMimeType(Path filePath) throws IOException {
         if (!TruffleOptions.AOT) {
             Collection<ClassLoader> loaders = VMAccessor.allLoaders();
             for (ClassLoader l : loaders) {

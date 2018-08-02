@@ -581,11 +581,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return new ToGuestValueNode();
     }
 
-    PolyglotSourceCache getSourceCache() {
-        assert isInitialized();
-        return lazy.sourceCache;
-    }
-
     @TruffleBoundary
     Value toHostValue(Object value) {
         assert lazy != null;

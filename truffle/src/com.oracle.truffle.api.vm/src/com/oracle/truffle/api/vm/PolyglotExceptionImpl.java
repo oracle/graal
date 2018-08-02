@@ -55,12 +55,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
     private static final boolean TRACE_STACK_TRACE_WALKING = false;
 
-    PolyglotException api;
+    private PolyglotException api;
 
     final PolyglotContextImpl context;
-    final PolyglotEngineImpl engine;
+    private final PolyglotEngineImpl engine;
     final Throwable exception;
-    final List<TruffleStackTraceElement> guestFrames;
+    private final List<TruffleStackTraceElement> guestFrames;
 
     private StackTraceElement[] javaStackTrace;
     private List<StackFrame> materializedFrames;

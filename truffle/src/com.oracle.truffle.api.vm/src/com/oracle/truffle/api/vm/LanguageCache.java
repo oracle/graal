@@ -53,7 +53,6 @@ import java.io.PrintStream;
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
  * runtimeCache with languages found in application classloader.
  */
-@SuppressWarnings("deprecation")
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static volatile Map<String, LanguageCache> runtimeCache;
@@ -71,12 +70,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private String languageHome;
     private volatile ContextPolicy policy;
     private volatile Class<? extends TruffleLanguage<?>> languageClass;
-
-    static {
-        if (VMAccessor.SPI == null) {
-            VMAccessor.initialize(new com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl());
-        }
-    }
 
     private LanguageCache(String id, String prefix, Properties info, ClassLoader loader, String url) {
         this.loader = loader;
@@ -330,26 +323,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         for (LanguageCache languageCache : languages().values()) {
             languageCache.languageHome = null;
         }
-    }
-
-    static final class LoadedLanguage {
-
-        private final TruffleLanguage<?> language;
-        private final boolean singleton;
-
-        LoadedLanguage(TruffleLanguage<?> language, boolean singleton) {
-            this.singleton = singleton;
-            this.language = language;
-        }
-
-        TruffleLanguage<?> getLanguage() {
-            return language;
-        }
-
-        boolean isSingleton() {
-            return singleton;
-        }
-
     }
 
     /**

@@ -169,7 +169,7 @@ final class OptionValuesImpl implements OptionValues {
         return descriptor;
     }
 
-    RuntimeException failNotFound(String key) {
+    private RuntimeException failNotFound(String key) {
         OptionDescriptors allOptions;
         Exception errorOptions = null;
         try {

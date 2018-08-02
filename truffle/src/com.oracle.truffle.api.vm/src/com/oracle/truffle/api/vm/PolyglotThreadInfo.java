@@ -70,10 +70,6 @@ final class PolyglotThreadInfo {
         return thread != null && enteredCount > 0 && !cancelled;
     }
 
-    Thread getThread() {
-        return thread;
-    }
-
     @Override
     public String toString() {
         return super.toString() + "[thread=" + thread + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";

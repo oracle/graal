@@ -47,9 +47,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 final class PolyglotBindings implements TruffleObject {
 
     // a bindings object for each language.
-    final PolyglotLanguageContext languageContext;
+    private final PolyglotLanguageContext languageContext;
     // the bindings map that shared across a bindings object for each language context
-    final Map<String, Value> bindings;
+    private final Map<String, Value> bindings;
 
     PolyglotBindings(PolyglotLanguageContext languageContext, Map<String, Value> bindings) {
         this.languageContext = languageContext;

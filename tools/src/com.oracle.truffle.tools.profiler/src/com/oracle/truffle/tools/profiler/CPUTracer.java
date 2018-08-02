@@ -87,20 +87,6 @@ public final class CPUTracer implements Closeable {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link CPUTracer}
-     * @since 0.30
-     * @deprecated use {@link #find(Engine)} instead
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static CPUTracer find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return CPUTracerInstrument.getTracer(engine);
-    }
-
-    /**
-     * Finds {@link CPUTracer} associated with given engine.
-     *
-     * @param engine the engine to find debugger for
-     * @return an instance of associated {@link CPUTracer}
      * @since 1.0
      */
     public static CPUTracer find(Engine engine) {

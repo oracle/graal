@@ -50,7 +50,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -547,7 +546,6 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 }
 
-@SuppressWarnings("deprecation")
 @ImportStatic({Message.class, JavaInteropReflect.class})
 abstract class ProxyInvokeNode extends Node {
 
@@ -577,79 +575,13 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("IS_EXECUTABLE.createNode()") Node isExecutableNode,
                     @Cached("EXECUTE.createNode()") Node executeNode,
                     @Cached("createBinaryProfile()") ConditionProfile branchProfile,
-                    @Cached("create()") ToJavaNode toJava,
-                    @Cached("findMessage(method)") Message message,
-                    @Cached("maybeCreateNode(message)") Node messageNode) {
-        Object result;
-        if (message == null) {
-            result = invokeOrExecute(languageContext, receiver, arguments, name, invokeNode, keyInfoNode, readNode, isExecutableNode, executeNode, branchProfile);
-        } else {
-            // legacy behavior for MethodMessage
-            try {
-                result = handleMessage(message, messageNode, receiver, name, arguments);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                // MethodMessage is not reachable normally so its not a problem to rethrow interop
-                // exceptions
-                // to make current unit tests happy.
-                throw e.raise();
-            }
-        }
+                    @Cached("create()") ToJavaNode toJava) {
+        Object result = invokeOrExecute(languageContext, receiver, arguments, name, invokeNode, keyInfoNode, readNode, isExecutableNode, executeNode, branchProfile);
         return toJava.execute(result, returnClass, returnType, languageContext);
     }
 
     protected static Node maybeCreateNode(Message message) {
         return message == null ? null : message.createNode();
-    }
-
-    private static Object handleMessage(Message message, Node messageNode, TruffleObject obj, String name, Object[] args) throws InteropException {
-        if (message == Message.WRITE) {
-            ForeignAccess.sendWrite(messageNode, obj, name, args[0]);
-            return null;
-        }
-        if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
-            return ForeignAccess.send(messageNode, obj);
-        }
-
-        if (message == Message.KEY_INFO) {
-            return ForeignAccess.sendKeyInfo(messageNode, obj, name);
-        }
-
-        if (message == Message.READ) {
-            return ForeignAccess.sendRead(messageNode, obj, name);
-        }
-
-        if (message == Message.UNBOX) {
-            return ForeignAccess.sendUnbox(messageNode, obj);
-        }
-
-        if (Message.EXECUTE.equals(message)) {
-            return ForeignAccess.sendExecute(messageNode, obj, args);
-        }
-
-        if (Message.INVOKE.equals(message)) {
-            return ForeignAccess.sendInvoke(messageNode, obj, name, args);
-        }
-
-        if (Message.NEW.equals(message)) {
-            return ForeignAccess.sendNew(messageNode, obj, args);
-        }
-
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(message);
-    }
-
-    protected static Message findMessage(Method method) {
-        CompilerAsserts.neverPartOfCompilation();
-        MethodMessage mm = method.getAnnotation(MethodMessage.class);
-        if (mm == null) {
-            return null;
-        }
-        Message message = Message.valueOf(mm.message());
-        if (message == Message.WRITE && method.getParameterTypes().length != 1) {
-            throw new IllegalStateException("Method needs to have a single argument to handle WRITE message " + method);
-        }
-        return message;
     }
 
     @TruffleBoundary

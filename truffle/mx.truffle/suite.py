@@ -297,7 +297,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.tools",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.dsl.test",
         "mx:JUNIT"
@@ -556,32 +555,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Tools",
-    },
-
-    "com.oracle.truffle.tools" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-                        "com.oracle.truffle.api.vm"],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,Tools",
-    },
-
-    "com.oracle.truffle.tools.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-          "com.oracle.truffle.tools",
-          "com.oracle.truffle.api.instrumentation.test",
-          "mx:JUNIT"
-          ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle,Tools",
-      "testProject" : True,
     },
 
     "com.oracle.truffle.nfi" : {
@@ -930,20 +903,6 @@ suite = {
       "maven" : False
     },
 
-     "TRUFFLE_DEBUG" : {
-      "subDir" : "src",
-      "javaCompliance" : "1.8",
-      "dependencies" : [
-        "com.oracle.truffle.tools"
-      ],
-      "exclude" : ["JLINE"],
-      "distDependencies" : [
-          "TRUFFLE_API",
-      ],
-      "description" : "Truffle Tools APIs.",
-      "allowsJavadocWarnings": True,
-     },
-
     "TRUFFLE_INSTRUMENT_TEST" : {
       "subDir" : "src",
       "javaCompliance" : "1.8",
@@ -954,7 +913,6 @@ suite = {
       "distDependencies" : [
         "TRUFFLE_API",
         "TRUFFLE_DSL_PROCESSOR",
-        "TRUFFLE_DEBUG",
       ],
       "description" : "Instrumentation tests including InstrumentationTestLanguage.",
       "allowsJavadocWarnings": True,
@@ -973,7 +931,6 @@ suite = {
          "com.oracle.truffle.api.interop.java.test",
          "com.oracle.truffle.api.object.dsl.test",
          "com.oracle.truffle.object.basic.test",
-         "com.oracle.truffle.tools.test",
          "com.oracle.truffle.nfi.test",
        ],
        "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
@@ -981,7 +938,6 @@ suite = {
          "TRUFFLE_API",
          "TRUFFLE_NFI",
          "TRUFFLE_DSL_PROCESSOR",
-         "TRUFFLE_DEBUG",
          "TRUFFLE_INSTRUMENT_TEST",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",

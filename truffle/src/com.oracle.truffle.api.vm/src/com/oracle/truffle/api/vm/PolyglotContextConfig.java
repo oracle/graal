@@ -50,7 +50,6 @@ final class PolyglotContextConfig {
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
     final Set<String> allowedPublicLanguages;
-    final Map<String, String> options;
     private final Map<String, OptionValuesImpl> optionsByLanguage;
     @CompilationFinal FileSystem fileSystem;
     final Map<String, Level> logLevels;    // effectively final
@@ -74,7 +73,6 @@ final class PolyglotContextConfig {
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.allowedPublicLanguages = allowedPublicLanguages;
-        this.options = options;
         this.fileSystem = fileSystem;
         this.optionsByLanguage = new HashMap<>();
         this.logHandler = logHandler;
@@ -109,14 +107,6 @@ final class PolyglotContextConfig {
             values = lang.getOptionValues();
         }
         return values.copy();
-    }
-
-    Object getSourceCacheKey(PolyglotLanguage language) {
-        OptionValuesImpl values = optionsByLanguage.get(language.getId());
-        if (values == null) {
-            values = new OptionValuesImpl(language.engine, language.getOptions());
-        }
-        return values;
     }
 
     private static PolyglotLanguage findLanguageForOption(PolyglotEngineImpl engine, final String optionKey, String group) {

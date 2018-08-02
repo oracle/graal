@@ -22,17 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test.vm;
+package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.vm.*;
-import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
+
+import java.util.Arrays;
+
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class PrimitiveTypesInValueAsTest {
 
@@ -72,8 +73,9 @@ public class PrimitiveTypesInValueAsTest {
 
     @Test
     public void testFindGlobalSymbolAndValueAs() {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().globalSymbol("value", value).build();
-        Object computed = engine.findGlobalSymbol("value").as(type);
-        assertEquals(value, computed);
+        try (Context context = Context.create()) {
+            Object computed = context.asValue(value).as(type);
+            assertEquals(value, computed);
+        }
     }
 }

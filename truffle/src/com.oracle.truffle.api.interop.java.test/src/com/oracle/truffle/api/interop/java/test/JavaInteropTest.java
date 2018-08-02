@@ -165,12 +165,6 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void writeX() {
-        xyp.x(10);
-        assertEquals("Changed", 10, data.x);
-    }
-
-    @Test
     public void assertThisIsSame() {
         assertThisCalled = false;
         XYPlus anotherThis = xyp.assertThis(data);
@@ -1189,10 +1183,6 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
         Map<String, Data> dataMap();
 
         int x();
-
-        @SuppressWarnings("deprecation")
-        @MethodMessage(message = "WRITE")
-        void x(int v);
 
         double y();
 
