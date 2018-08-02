@@ -261,5 +261,5 @@ int pthread_setspecific(pthread_key_t key, const void *value) {
   ERR_UNSUPPORTED(pthread_setspecific);
 }
 void pthread_testcancel(void) {
-  ERR_UNSUPPORTED(pthread_testcancel);
+  // do nothing - this is fine as long as no other pthread methods are supported
 }

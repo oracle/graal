@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMSelectNode extends LLVMExpressionNode {
@@ -75,7 +76,9 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI64SelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected long doOp(boolean cond, long trueBranch, long elseBranch) {
+        protected Object doOp(boolean cond, Object trueBranch, Object elseBranch) {
+            assert trueBranch instanceof Long || LLVMPointer.isInstance(trueBranch);
+            assert elseBranch instanceof Long || LLVMPointer.isInstance(elseBranch);
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
