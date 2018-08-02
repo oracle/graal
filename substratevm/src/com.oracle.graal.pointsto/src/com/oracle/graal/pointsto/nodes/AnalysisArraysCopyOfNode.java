@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -64,7 +65,7 @@ public class AnalysisArraysCopyOfNode extends FixedWithNextNode implements Array
     }
 
     @Override
-    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
+    public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         return newLength;
     }
 
