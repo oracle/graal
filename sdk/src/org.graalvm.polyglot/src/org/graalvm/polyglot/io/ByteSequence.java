@@ -103,7 +103,7 @@ public interface ByteSequence {
             }
 
             public byte byteAt(int index) {
-                return byteAt(realStartIndex + index);
+                return ByteSequence.this.byteAt(realStartIndex + index);
             }
         };
     }
