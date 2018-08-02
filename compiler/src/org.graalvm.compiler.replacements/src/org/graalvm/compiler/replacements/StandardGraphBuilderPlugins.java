@@ -520,14 +520,11 @@ public class StandardGraphBuilderPlugins {
                         ConstantNode y = ConstantNode.forIntegerKind(kind, 1);
                         if (b.needsExplicitException()) {
                             AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
-                            if (exceptionEdge != null) {
-                                IntegerSubExactSplitNode split = b.addPush(kind,
-                                                new IntegerSubExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
-                                split.setNext(b.add(new BeginNode()));
-                                return true;
-                            }
+                            IntegerSubExactSplitNode split = b.addPush(kind, new IntegerSubExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
+                            split.setNext(b.add(new BeginNode()));
+                        } else {
+                            b.addPush(kind, new IntegerSubExactNode(x, y));
                         }
-                        b.addPush(kind, new IntegerSubExactNode(x, y));
                         return true;
                     }
                 });
@@ -538,13 +535,11 @@ public class StandardGraphBuilderPlugins {
                         ConstantNode y = ConstantNode.forIntegerKind(kind, 1);
                         if (b.needsExplicitException()) {
                             AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
-                            if (exceptionEdge != null) {
-                                IntegerAddExactSplitNode split = b.addPush(kind, new IntegerAddExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
-                                split.setNext(b.add(new BeginNode()));
-                                return true;
-                            }
+                            IntegerAddExactSplitNode split = b.addPush(kind, new IntegerAddExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
+                            split.setNext(b.add(new BeginNode()));
+                        } else {
+                            b.addPush(kind, new IntegerAddExactNode(x, y));
                         }
-                        b.addPush(kind, new IntegerAddExactNode(x, y));
                         return true;
                     }
                 });
@@ -554,13 +549,11 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                         if (b.needsExplicitException()) {
                             AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
-                            if (exceptionEdge != null) {
-                                IntegerAddExactSplitNode split = b.addPush(kind, new IntegerAddExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
-                                split.setNext(b.add(new BeginNode()));
-                                return true;
-                            }
+                            IntegerAddExactSplitNode split = b.addPush(kind, new IntegerAddExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
+                            split.setNext(b.add(new BeginNode()));
+                        } else {
+                            b.addPush(kind, new IntegerAddExactNode(x, y));
                         }
-                        b.addPush(kind, new IntegerAddExactNode(x, y));
                         return true;
                     }
                 });
@@ -570,13 +563,11 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                         if (b.needsExplicitException()) {
                             AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
-                            if (exceptionEdge != null) {
-                                IntegerSubExactSplitNode split = b.addPush(kind, new IntegerSubExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
-                                split.setNext(b.add(new BeginNode()));
-                                return true;
-                            }
+                            IntegerSubExactSplitNode split = b.addPush(kind, new IntegerSubExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
+                            split.setNext(b.add(new BeginNode()));
+                        } else {
+                            b.addPush(kind, new IntegerSubExactNode(x, y));
                         }
-                        b.addPush(kind, new IntegerSubExactNode(x, y));
                         return true;
                     }
                 });
@@ -586,13 +577,11 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                         if (b.needsExplicitException()) {
                             AbstractBeginNode exceptionEdge = b.genExplicitExceptionEdge(exceptionKind);
-                            if (exceptionEdge != null) {
-                                IntegerMulExactSplitNode split = b.addPush(kind, new IntegerMulExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
-                                split.setNext(b.add(new BeginNode()));
-                                return true;
-                            }
+                            IntegerMulExactSplitNode split = b.addPush(kind, new IntegerMulExactSplitNode(x.stamp(NodeView.DEFAULT).unrestricted(), x, y, null, exceptionEdge));
+                            split.setNext(b.add(new BeginNode()));
+                        } else {
+                            b.addPush(kind, new IntegerMulExactNode(x, y));
                         }
-                        b.addPush(kind, new IntegerMulExactNode(x, y));
                         return true;
                     }
                 });

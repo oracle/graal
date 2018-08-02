@@ -333,12 +333,21 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         }
     }
 
+    /**
+     * @return true if an explicit exception check should be emitted.
+     */
     default boolean needsExplicitException() {
         return false;
     }
 
-    @SuppressWarnings("ununsed")
-    default AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind) {
+    /**
+     * Generates an exception edge for the current bytecode. When {@link #needsExplicitException()}
+     * returns true, this method should return non-null begin nodes.
+     *
+     * @param exceptionKind the type of exception to be created.
+     * @return a begin node that precedes the actual exception instantiation code.
+     */
+    default AbstractBeginNode genExplicitExceptionEdge(@SuppressWarnings("ununsed") BytecodeExceptionKind exceptionKind) {
         return null;
     }
 }

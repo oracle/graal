@@ -4339,9 +4339,6 @@ public class BytecodeParser implements GraphBuilderContext {
         return needsExplicitException();
     }
 
-    /**
-     * Returns true if an explicit exception check should be emitted.
-     */
     @Override
     public boolean needsExplicitException() {
         BytecodeExceptionMode exceptionMode = graphBuilderConfig.getBytecodeExceptionMode();
