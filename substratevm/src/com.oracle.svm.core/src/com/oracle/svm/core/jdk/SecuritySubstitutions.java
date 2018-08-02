@@ -124,11 +124,6 @@ final class Target_java_security_AccessControlContext {
     @Alias protected boolean isPrivileged;
 }
 
-@Substitute
-@TargetClass(java.security.ProtectionDomain.class)
-final class Target_java_security_ProtectionDomain {
-}
-
 @TargetClass(className = "javax.crypto.JceSecurityManager")
 @SuppressWarnings({"static-method", "unused"})
 final class Target_javax_crypto_JceSecurityManager {
