@@ -40,7 +40,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.Profiler;
+import com.oracle.truffle.tools.*;
 
 @SuppressWarnings("deprecation")
 public class ProfilerTest extends AbstractInstrumentationTest {
