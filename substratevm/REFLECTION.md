@@ -58,7 +58,7 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
 	  {
 	    "name" : "java.lang.Class",
         "allDeclaredConstructors" : true,
-        "allPublicConstructors" : true
+        "allPublicConstructors" : true,
 	    "allDeclaredMethods" : true,
 	    "allPublicMethods" : true
 	  },
