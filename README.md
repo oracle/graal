@@ -92,6 +92,13 @@ not recommended with Sulong. In particular, cross-language interoperability
 with Java or another Truffle language will not work when the bitcode is
 compiled without optimizations.
 
+##### Compiling C++
+
+You need to add `-stdlib=libc++` when compiling C++ code in order to use
+the right standard library.
+
+    clang++ -O1 -c -emit-llvm -stdlib=libc++ -o test.bc test.cpp
+
 Build Dependencies
 ------------------
 
