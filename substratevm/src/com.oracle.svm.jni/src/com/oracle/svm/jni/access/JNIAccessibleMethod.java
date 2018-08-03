@@ -95,7 +95,7 @@ public final class JNIAccessibleMethod {
                     JNIJavaCallWrapperMethod valistNonvirtualCallWrapperMethod) {
 
         assert varargsCallWrapper != null && arrayCallWrapper != null && valistCallWrapper != null;
-        assert Modifier.isStatic(modifiers) //
+        assert (Modifier.isStatic(modifiers) || Modifier.isAbstract(modifiers)) //
                         ? (varargsNonvirtualCallWrapperMethod == null && arrayNonvirtualCallWrapperMethod == null && valistNonvirtualCallWrapperMethod == null)
                         : (varargsNonvirtualCallWrapperMethod != null & arrayNonvirtualCallWrapperMethod != null && valistNonvirtualCallWrapperMethod != null);
         this.modifiers = modifiers;
@@ -123,7 +123,7 @@ public final class JNIAccessibleMethod {
         varargsCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(varargsCallWrapperMethod)));
         arrayCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayCallWrapperMethod)));
         valistCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistCallWrapperMethod)));
-        if (!isStatic()) {
+        if (!Modifier.isStatic(modifiers) && !Modifier.isAbstract(modifiers)) {
             varargsNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(varargsNonvirtualCallWrapperMethod)));
             arrayNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayNonvirtualCallWrapperMethod)));
             valistNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistNonvirtualCallWrapperMethod)));
