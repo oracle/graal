@@ -31,7 +31,11 @@ import org.junit.After;
 import org.junit.Before;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public abstract class ProxyLanguageEnvTest {
@@ -65,6 +69,14 @@ public abstract class ProxyLanguageEnvTest {
             return (TruffleObject) value;
         } else {
             return (TruffleObject) env.asBoxedGuestValue(javaObj);
+        }
+    }
+
+    TruffleObject toJavaClass(TruffleObject obj) {
+        try {
+            return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), obj, "class");
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
         }
     }
 

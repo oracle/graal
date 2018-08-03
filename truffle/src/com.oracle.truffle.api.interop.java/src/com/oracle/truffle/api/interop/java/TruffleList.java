@@ -150,9 +150,6 @@ class TruffleList<T> extends AbstractList<T> {
 
         static TruffleListCache lookup(Object languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
-            if (engine == null) {
-                return new TruffleListCache(receiverClass, valueClass, valueType);
-            }
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
             TruffleListCache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, TruffleListCache.class);
             if (cache == null) {

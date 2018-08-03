@@ -40,10 +40,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 interface JavaFieldDesc {
     String getName();
-
-    default boolean isInternal() {
-        return false;
-    }
 }
 
 abstract class SingleFieldDesc implements JavaFieldDesc {

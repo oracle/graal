@@ -26,10 +26,13 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -40,6 +43,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.java.JavaObjectMessageResolutionFactory.KeyInfoCacheNodeGen;
+import com.oracle.truffle.api.interop.java.JavaObjectMessageResolutionFactory.MapRemoveNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = JavaObject.class)
@@ -405,6 +410,35 @@ class JavaObjectMessageResolution {
         }
     }
 
+    abstract static class MapRemoveNode extends Node {
+
+        protected abstract Object executeWithTarget(JavaObject receiver, String name);
+
+        @SuppressWarnings("unchecked")
+        @TruffleBoundary
+        @Specialization(guards = {"isMap(receiver)"})
+        protected Object doMapGeneric(JavaObject receiver, String name) {
+            Map<String, Object> map = (Map<String, Object>) receiver.obj;
+            if (!map.containsKey(name)) {
+                throw UnknownIdentifierException.raise(name);
+            }
+            map.remove(name);
+            return true;
+        }
+
+        @SuppressWarnings("unused")
+        @TruffleBoundary
+        @Specialization(guards = {"!isMap(receiver)"})
+        protected static Object notMap(JavaObject receiver, String name) {
+            throw UnsupportedMessageException.raise(Message.REMOVE);
+        }
+
+        static boolean isMap(JavaObject receiver) {
+            return receiver.obj instanceof Map;
+        }
+
+    }
+
     @Resolve(message = "REMOVE")
     abstract static class RemoveNode extends Node {
         @Child private ArrayRemoveNode arrayRemove;
@@ -421,7 +455,7 @@ class JavaObjectMessageResolution {
         public Object access(JavaObject receiver, String name) {
             if (mapRemove == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                mapRemove = insert(MapRemoveNode.create());
+                mapRemove = insert(MapRemoveNodeGen.create());
             }
             return mapRemove.executeWithTarget(receiver, name);
         }
@@ -444,6 +478,31 @@ class JavaObjectMessageResolution {
             }
             String[] fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), receiver.isStaticClass(), includeInternal);
             return JavaObject.forObject(fields, receiver.languageContext);
+        }
+    }
+
+    abstract static class KeyInfoCacheNode extends Node {
+        static final int LIMIT = 3;
+
+        KeyInfoCacheNode() {
+        }
+
+        public abstract int execute(Class<?> clazz, String name, boolean onlyStatic);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+        static int doCached(Class<?> clazz, String name, boolean onlyStatic,
+                        @Cached("onlyStatic") boolean cachedStatic,
+                        @Cached("clazz") Class<?> cachedClazz,
+                        @Cached("name") String cachedName,
+                        @Cached("doUncached(clazz, name, onlyStatic)") int cachedKeyInfo) {
+            assert cachedKeyInfo == doUncached(clazz, name, onlyStatic);
+            return cachedKeyInfo;
+        }
+
+        @Specialization(replaces = "doCached")
+        static int doUncached(Class<?> clazz, String name, boolean onlyStatic) {
+            return JavaInteropReflect.findKeyInfo(clazz, name, onlyStatic);
         }
     }
 
@@ -500,7 +559,7 @@ class JavaObjectMessageResolution {
         private KeyInfoCacheNode keyInfoCache() {
             if (keyInfoCache == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                keyInfoCache = insert(KeyInfoCacheNode.create());
+                keyInfoCache = insert(KeyInfoCacheNodeGen.create());
             }
             return keyInfoCache;
         }

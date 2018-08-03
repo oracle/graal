@@ -24,12 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -38,11 +33,9 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@SuppressWarnings("deprecation")
 public class JavaInteropNullTest {
 
     @FunctionalInterface
@@ -99,13 +92,4 @@ public class JavaInteropNullTest {
         }
     }
 
-    @Test
-    public void testNullArg() {
-        TruffleObject callback = JavaInterop.asTruffleFunction(StringCallback.class, (obj) -> {
-            Assert.assertNull(obj);
-        });
-
-        CallTarget target = Truffle.getRuntime().createCallTarget(new TestRootNode(callback));
-        target.call(new TestNull());
-    }
 }

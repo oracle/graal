@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.ArrayReadNodeGen.ArrayGetNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 abstract class ArrayReadNode extends Node {
 
     abstract static class ArrayGet extends Node {

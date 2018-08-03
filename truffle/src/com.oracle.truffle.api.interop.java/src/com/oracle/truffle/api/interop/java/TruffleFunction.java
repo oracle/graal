@@ -144,9 +144,6 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
         private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
             EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
-            if (engine == null) {
-                return createTarget(new Apply(receiverClass, returnClass, returnType));
-            }
             Apply apply = new Apply(receiverClass, returnClass, returnType);
             CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {

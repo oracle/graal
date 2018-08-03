@@ -1935,8 +1935,7 @@ public abstract class TruffleLanguage<C> {
         Object findMetaObjectImpl(Object obj) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
-                final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
-                return getSpi().findMetaObject(c, rawValue);
+                return getSpi().findMetaObject(c, obj);
             } else {
                 return null;
             }
@@ -1945,16 +1944,14 @@ public abstract class TruffleLanguage<C> {
         SourceSection findSourceLocation(Object obj) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
-                final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
-                return getSpi().findSourceLocation(c, rawValue);
+                return getSpi().findSourceLocation(c, obj);
             } else {
                 return null;
             }
         }
 
         boolean isObjectOfLanguage(Object obj) {
-            final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
-            return getSpi().isObjectOfLanguage(rawValue);
+            return getSpi().isObjectOfLanguage(obj);
         }
 
         Iterable<Scope> findLocalScopes(Node node, Frame frame) {

@@ -83,22 +83,6 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static boolean isApplicableByArity(JavaMethodDesc method, int nArgs) {
-        if (method instanceof SingleMethodDesc) {
-            return nArgs == ((SingleMethodDesc) method).getParameterCount() ||
-                            ((SingleMethodDesc) method).isVarArgs() && nArgs >= ((SingleMethodDesc) method).getParameterCount() - 1;
-        } else {
-            SingleMethodDesc[] overloads = ((OverloadedMethodDesc) method).getOverloads();
-            for (SingleMethodDesc overload : overloads) {
-                if (isApplicableByArity(overload, nArgs)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
     static JavaMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
         if (TruffleOptions.AOT) {
             return null;
@@ -178,14 +162,6 @@ final class JavaInteropReflect {
         final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
-    }
-
-    static <T> TruffleObject asTruffleFunction(Class<T> functionalInterface, T implementation, Object languageContext) {
-        final Method method = functionalInterfaceMethod(functionalInterface);
-        if (method == null) {
-            throw new IllegalArgumentException();
-        }
-        return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -402,9 +378,6 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
         EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
-        if (engine == null) {
-            return createTarget(new FunctionProxyNode(receiverClass, method));
-        }
         FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
         CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
@@ -534,9 +507,6 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
         EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
-        if (engine == null) {
-            return createTarget(new ObjectProxyNode(receiverClass, interfaceClass));
-        }
         ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
         CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
@@ -578,10 +548,6 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("create()") ToJavaNode toJava) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, invokeNode, keyInfoNode, readNode, isExecutableNode, executeNode, branchProfile);
         return toJava.execute(result, returnClass, returnType, languageContext);
-    }
-
-    protected static Node maybeCreateNode(Message message) {
-        return message == null ? null : message.createNode();
     }
 
     @TruffleBoundary

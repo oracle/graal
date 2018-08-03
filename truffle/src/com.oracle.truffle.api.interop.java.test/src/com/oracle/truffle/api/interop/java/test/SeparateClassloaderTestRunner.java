@@ -33,13 +33,12 @@ import java.net.URLClassLoader;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 
-import com.oracle.truffle.api.interop.java.*;
-
-@SuppressWarnings("deprecation")
 public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner {
     public SeparateClassloaderTestRunner(Class<?> clazz) throws InitializationError {
         super(getFromTestClassloader(clazz));
     }
+
+    private static final String JAVA_INTEROP_PACKAGE = "com.oracle.truffle.api.interop.java";
 
     private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
@@ -65,7 +64,7 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
 
         @Override
         public Class<?> loadClass(String name) throws ClassNotFoundException {
-            if (name.startsWith(JavaInterop.class.getPackage().getName())) {
+            if (name.startsWith(JAVA_INTEROP_PACKAGE)) {
                 return super.findClass(name);
             }
             return super.loadClass(name);
@@ -81,7 +80,7 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
 
         @Override
         public Class<?> loadClass(String name) throws ClassNotFoundException {
-            if (name.startsWith(JavaInterop.class.getPackage().getName())) {
+            if (name.startsWith(JAVA_INTEROP_PACKAGE)) {
                 return findClassInModule(name);
             }
             return super.loadClass(name);

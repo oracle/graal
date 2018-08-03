@@ -655,11 +655,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Object findOriginalObject(Object truffleObject) {
-            return truffleObject;
-        }
-
-        @Override
         public <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType) {
             if (languageContext == null) {
                 return value;

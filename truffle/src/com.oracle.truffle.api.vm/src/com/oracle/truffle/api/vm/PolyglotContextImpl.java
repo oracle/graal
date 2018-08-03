@@ -193,6 +193,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
         hostContext.ensureInitialized(null);
+        ((HostContext) hostContext.getContextImpl()).internalContext = hostContext;
         return newContexts;
     }
 

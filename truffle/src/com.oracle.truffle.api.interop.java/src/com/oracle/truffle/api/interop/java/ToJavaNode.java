@@ -46,7 +46,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 abstract class ToJavaNode extends Node {
     static final int LIMIT = 3;
 
@@ -243,9 +242,6 @@ abstract class ToJavaNode extends Node {
         Object primitiveValue = primitive.unbox(truffleObject);
         if (primitiveValue != null) {
             return primitiveValue;
-        } else if (languageContext == null) {
-            // for legacy support
-            return truffleObject;
         } else if (primitive.hasKeys(truffleObject)) {
             return asJavaObject(truffleObject, Map.class, null, languageContext);
         } else if (primitive.hasSize(truffleObject)) {
@@ -270,9 +266,6 @@ abstract class ToJavaNode extends Node {
             obj = JavaObject.valueOf(truffleObject);
         } else if (targetType == Object.class) {
             obj = convertToObject(truffleObject, languageContext);
-        } else if (languageContext == null && targetType.isInstance(truffleObject)) {
-            // legacy support for cast rather than wrap
-            return targetType.cast(truffleObject);
         } else if (targetType == List.class) {
             if (primitive.hasSize(truffleObject)) {
                 boolean implementsFunction = shouldImplementFunction(truffleObject);
@@ -316,12 +309,7 @@ abstract class ToJavaNode extends Node {
             } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
                 obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
-                if (languageContext == null) {
-                    // legacy support
-                    obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
-                } else {
-                    throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members.");
-                }
+                throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members.");
             }
         } else {
             throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Unsupported target type.");

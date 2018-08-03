@@ -38,10 +38,6 @@ final class TypeAndClass<T> {
         this.clazz = clazz;
     }
 
-    T cast(Object o) {
-        return clazz.cast(o);
-    }
-
     @Override
     public String toString() {
         return "[" + clazz + ": " + Objects.toString(type) + "]";

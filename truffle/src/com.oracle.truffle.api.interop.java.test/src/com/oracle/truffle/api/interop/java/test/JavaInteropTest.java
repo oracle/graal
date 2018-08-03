@@ -71,7 +71,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -126,28 +125,18 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
         assertTrue(env.isHostObject(firstElement));
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void conversionToClassYieldsTheClass() {
         TruffleObject expected = asTruffleObject(Data.class);
-        TruffleObject computed = JavaInterop.toJavaClass(obj);
+        TruffleObject computed = toJavaClass(asTruffleHostSymbol(Data.class));
         assertEquals("Both class objects are the same", expected, computed);
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void conversionToClass2() {
         TruffleObject expected = asTruffleObject(Class.class);
-        TruffleObject computed = JavaInterop.toJavaClass(asTruffleHostSymbol(Data.class));
+        TruffleObject computed = toJavaClass(asTruffleHostSymbol(Class.class));
         assertEquals("Both class objects are the same", expected, computed);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Test
-    public void conversionToClassNull() {
-        TruffleObject expected = asTruffleObject(null);
-        TruffleObject computed = JavaInterop.toJavaClass(expected);
-        assertEquals(expected, computed);
     }
 
     @Test
@@ -469,24 +458,6 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
 
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    public void isPrimitive() {
-        assertFalse(JavaInterop.isPrimitive(null));
-        assertFalse(JavaInterop.isPrimitive(new Object()));
-        assertFalse(JavaInterop.isPrimitive(this));
-        assertTrue(JavaInterop.isPrimitive(42));
-        assertTrue(JavaInterop.isPrimitive((byte) 42));
-        assertTrue(JavaInterop.isPrimitive((short) 42));
-        assertTrue(JavaInterop.isPrimitive(424242424242L));
-        assertTrue(JavaInterop.isPrimitive(42.42f));
-        assertTrue(JavaInterop.isPrimitive(42e42));
-        assertTrue(JavaInterop.isPrimitive("42"));
-        assertTrue(JavaInterop.isPrimitive('4'));
-        assertTrue(JavaInterop.isPrimitive(true));
-        assertTrue(JavaInterop.isPrimitive(false));
-    }
-
     private boolean isJavaObject(Class<?> type, TruffleObject object) {
         return env.isHostObject(object) && type.isInstance(env.asHostObject(object));
     }
@@ -550,9 +521,8 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
         assertFalse("TruffleObject isn't functional interface", is);
     }
 
-    @SuppressWarnings("deprecation")
     private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
-        Method isFunctionaInterface = Class.forName(JavaInterop.class.getName().concat("Reflect")).getDeclaredMethod("isFunctionalInterface", Class.class);
+        Method isFunctionaInterface = Class.forName("com.oracle.truffle.api.interop.java.JavaInteropReflect").getDeclaredMethod("isFunctionalInterface", Class.class);
         ReflectionUtils.setAccessible(isFunctionaInterface, true);
         return (boolean) isFunctionaInterface.invoke(null, clazz);
     }
@@ -809,50 +779,6 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
         assertEquals(0, getKeyInfo(array, Double.NEGATIVE_INFINITY));
         assertEquals(0, getKeyInfo(array, Double.NaN));
         assertEquals(0, getKeyInfo(array, Double.POSITIVE_INFINITY));
-    }
-
-    @Test
-    @SuppressWarnings("rawtypes")
-    public void internalKeys() {
-        // All non-internal
-        InternalPropertiesObject ipobj = new InternalPropertiesObject(0);
-        Map map = asJavaObject(Map.class, ipobj);
-        checkInternalKeys(map, "[p1, p2, p3, p4, p5, p6]");
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
-        // All internal
-        ipobj = new InternalPropertiesObject(-1);
-        map = asJavaObject(Map.class, ipobj);
-        checkInternalKeys(map, "[]");
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
-        // Combinations:
-        ipobj = new InternalPropertiesObject(0b1101000);
-        map = asJavaObject(Map.class, ipobj);
-        checkInternalKeys(map, "[p1, p2, p4]");
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p2")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p4")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
-        ipobj = new InternalPropertiesObject(0b1001110);
-        map = asJavaObject(Map.class, ipobj);
-        checkInternalKeys(map, "[p4, p5]");
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p4")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
-        ipobj = new InternalPropertiesObject(0b0101010);
-        map = asJavaObject(Map.class, ipobj);
-        checkInternalKeys(map, "[p2, p4, p6]");
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p1")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p2")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p3")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p4")));
-        assertTrue(KeyInfo.isInternal(getKeyInfo(ipobj, "p5")));
-        assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
     }
 
     @Test
@@ -1164,15 +1090,6 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
 
     public static final class TestJavaObject {
         public int aField = 10;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
-    private static void checkInternalKeys(Map map, String nonInternalKeys) {
-        Map mapWithInternalKeys = JavaInterop.getMapView(map, true);
-        Map mapWithoutInternalKeys = JavaInterop.getMapView(map, false);
-        assertEquals(nonInternalKeys, map.keySet().toString());
-        assertEquals(nonInternalKeys, mapWithoutInternalKeys.keySet().toString());
-        assertEquals("[p1, p2, p3, p4, p5, p6]", mapWithInternalKeys.keySet().toString());
     }
 
     public interface XYPlus {

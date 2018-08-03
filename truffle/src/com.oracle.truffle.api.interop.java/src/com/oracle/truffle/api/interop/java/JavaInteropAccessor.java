@@ -32,7 +32,6 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 final class JavaInteropAccessor extends Accessor {
 
     EngineSupport engine() {
@@ -124,7 +123,4 @@ final class JavaInteropAccessor extends Accessor {
         };
     }
 
-    InteropSupport interop() {
-        return interopSupport();
-    }
 }

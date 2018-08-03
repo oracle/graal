@@ -380,8 +380,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
         private static final String POLYGLOT_PACKAGE = Engine.class.getName().substring(0, Engine.class.getName().lastIndexOf('.') + 1);
         private static final String PROXY_PACKAGE = PolyglotProxy.class.getName();
-        private static final String JAVA_INTEROP_PACKAGE = com.oracle.truffle.api.interop.java.JavaInterop.class.getName().substring(0,
-                        com.oracle.truffle.api.interop.java.JavaInterop.class.getName().lastIndexOf('.') + 1);
+        private static final String JAVA_INTEROP_PACKAGE = "com.oracle.truffle.api.interop.java.";
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
                         JAVA_INTEROP_PACKAGE + "TruffleMap",
                         JAVA_INTEROP_PACKAGE + "TruffleList",

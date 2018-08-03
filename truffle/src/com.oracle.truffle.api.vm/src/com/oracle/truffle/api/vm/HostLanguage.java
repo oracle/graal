@@ -76,7 +76,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         @TruffleBoundary
         Class<?> findClass(String className) {
-            lookupInternalContext();
             checkHostAccessAllowed();
             if (TruffleOptions.AOT) {
                 throw new HostLanguageException(String.format("The host class %s is not accessible in native mode.", className));
@@ -104,14 +103,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             return classloader;
         }
 
-        private void lookupInternalContext() {
-            if (internalContext == null) {
-                internalContext = PolyglotContextImpl.current().getHostContext();
-            }
-        }
-
         private Class<?> findClassImpl(String className) {
-            lookupInternalContext();
             validateClass(className);
             if (className.endsWith("[]")) {
                 Class<?> componentType = findClass(className.substring(0, className.length() - 2));
@@ -159,7 +151,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         public void addToHostClasspath(TruffleFile classpathEntry) {
-            lookupInternalContext();
             checkHostAccessAllowed();
             if (TruffleOptions.AOT) {
                 throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));

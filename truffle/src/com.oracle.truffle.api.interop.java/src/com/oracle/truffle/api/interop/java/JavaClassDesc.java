@@ -381,10 +381,6 @@ final class JavaClassDesc {
         }
     }
 
-    public Collection<String> getJNIMethodNames(boolean onlyStatic) {
-        return Collections.unmodifiableCollection((onlyStatic ? getJNIMembers().staticMethods : getJNIMembers().methods).keySet());
-    }
-
     /**
      * Looks up public constructor in this class.
      *

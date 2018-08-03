@@ -99,7 +99,4 @@ final class TruffleExecuteNode extends Node {
         return toHost.execute(result, resultClass, resultType, languageContext);
     }
 
-    public static TruffleExecuteNode create() {
-        return new TruffleExecuteNode();
-    }
 }

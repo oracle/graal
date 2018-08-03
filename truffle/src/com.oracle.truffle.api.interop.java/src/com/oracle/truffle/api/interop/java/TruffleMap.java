@@ -65,20 +65,10 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
     final TruffleObject guestObject;
     final TruffleMapCache cache;
 
-    private final boolean includeInternal;
-
     TruffleMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         this.guestObject = obj;
         this.languageContext = languageContext;
-        this.includeInternal = false;
         this.cache = TruffleMapCache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
-    }
-
-    private TruffleMap(TruffleMap<K, V> map, boolean includeInternal) {
-        this.guestObject = map.guestObject;
-        this.cache = map.cache;
-        this.languageContext = map.languageContext;
-        this.includeInternal = includeInternal;
     }
 
     static <K, V> Map<K, V> create(Object languageContext, TruffleObject foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
@@ -89,10 +79,6 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
     }
 
-    TruffleMap<K, V> cloneInternal(boolean includeInternalKeys) {
-        return new TruffleMap<>(this, includeInternalKeys);
-    }
-
     @Override
     public boolean containsKey(Object key) {
         return (boolean) cache.containsKey.call(languageContext, guestObject, key);
@@ -101,7 +87,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
     @SuppressWarnings("unchecked")
     @Override
     public Set<Entry<K, V>> entrySet() {
-        return (Set<Entry<K, V>>) cache.entrySet.call(languageContext, guestObject, this, includeInternal);
+        return (Set<Entry<K, V>>) cache.entrySet.call(languageContext, guestObject, this);
     }
 
     @SuppressWarnings("unchecked")
@@ -370,9 +356,6 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         static TruffleMapCache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
-            if (engine == null) {
-                return new TruffleMapCache(receiverClass, keyClass, valueClass, valueType);
-            }
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
             TruffleMapCache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, TruffleMapCache.class);
             if (cache == null) {
@@ -496,12 +479,11 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                 int keysSize = 0;
                 int elemSize = 0;
                 TruffleMap<Object, Object> originalMap = (TruffleMap<Object, Object>) args[offset];
-                boolean includeInternal = (boolean) args[offset + 1];
 
                 if (cache.memberKey && sendHasKeys(hasKeys, receiver)) {
                     TruffleObject truffleKeys;
                     try {
-                        truffleKeys = sendKeys(keysNode, receiver, includeInternal);
+                        truffleKeys = sendKeys(keysNode, receiver);
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
                         return Collections.emptySet();

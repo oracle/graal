@@ -50,7 +50,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-@SuppressWarnings("deprecation")
 abstract class ExecuteMethodNode extends Node {
     static final int LIMIT = 3;
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
