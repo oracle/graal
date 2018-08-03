@@ -536,14 +536,7 @@ final class DIScopeBuilder {
 
         if (source == null) {
             final String sourceText = STDIN_FILENAME.equals(path) ? STDIN_SOURCE_TEXT : path;
-            source = Source.newBuilder(sourceText).mimeType(MIMETYPE_UNAVAILABLE).name(sourceText).build();
-        }
-
-        if (source == null) {
-            try {
-                source = Source.newBuilder(path).mimeType(MIMETYPE_UNAVAILABLE).name(path).build();
-            } catch (Throwable ignored) {
-            }
+            source = Source.newBuilder("llvm", sourceText, sourceText).mimeType(MIMETYPE_UNAVAILABLE).build();
         }
 
         sources.put(path, source);

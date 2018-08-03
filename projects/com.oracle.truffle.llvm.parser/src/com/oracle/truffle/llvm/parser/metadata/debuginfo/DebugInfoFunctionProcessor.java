@@ -116,7 +116,7 @@ public final class DebugInfoFunctionProcessor {
 
         if (scope == null) {
             final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
-            final Source irSource = Source.newBuilder(sourceText).mimeType(DIScopeBuilder.getMimeType(null)).name(sourceText).build();
+            final Source irSource = Source.newBuilder("llvm", sourceText, sourceText).mimeType(DIScopeBuilder.getMimeType(null)).build();
             final SourceSection simpleSection = irSource.createSection(1);
             scope = LLVMSourceLocation.createBitcodeFunction(function.getName(), simpleSection);
         }

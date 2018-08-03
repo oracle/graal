@@ -121,9 +121,10 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                         @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
             Source sourceObject;
             if (legacyMimeTypeEval) {
-                sourceObject = Source.newBuilder(code).name("<eval>").mimeType(id).build();
+                String language = Source.findLanguage(id);
+                sourceObject = Source.newBuilder(language, code, "<eval>").mimeType(id).build();
             } else {
-                sourceObject = Source.newBuilder(code).name("<eval>").language(id).build();
+                sourceObject = Source.newBuilder(id, code, "<eval>").build();
             }
             return ctxRef.get().getEnv().parse(sourceObject);
         }
@@ -138,7 +139,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
             try {
                 // never cache, since the file content could change between invocations
                 Env env = ctxRef.get().getEnv();
-                Source sourceObject = env.newSourceBuilder(env.getTruffleFile(filename)).name("<eval>").language(id).build();
+                Source sourceObject = Source.newBuilder(id, env.getTruffleFile(filename)).build();
                 return env.parse(sourceObject);
             } catch (IOException ex) {
                 throw new LLVMPolyglotException(this, "Could not parse file %s (%s).", filename, ex.getMessage());
