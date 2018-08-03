@@ -441,38 +441,6 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.metadata" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.api.instrumentation"
-      ],
-      "exports" : [
-        "<package-info>", # exports all packages containing package-info.java
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
-      "javaCompliance" : "1.8",
-      "workingSets" : "API,Truffle",
-    },
-
-    "com.oracle.truffle.api.metadata.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.metadata",
-        "com.oracle.truffle.api.interop.java",
-        "com.oracle.truffle.api.instrumentation.test",
-        "mx:JUNIT"
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,Tools",
-      "testProject" : True,
-    },
-
     "com.oracle.truffle.object" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -703,7 +671,6 @@ suite = {
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.profiles",
-        "com.oracle.truffle.api.metadata",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.api.vm",
@@ -926,7 +893,6 @@ suite = {
          "com.oracle.truffle.api.benchmark",
          "com.oracle.truffle.api.dsl.test",
          "com.oracle.truffle.api.instrumentation.test",
-         "com.oracle.truffle.api.metadata.test",
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.interop.java.test",
          "com.oracle.truffle.api.object.dsl.test",
