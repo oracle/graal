@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.elf;
 
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ElfSectionHeaderTable {
     private static final int ELF32_SHTENT_SIZE = 40;
@@ -134,30 +134,27 @@ public final class ElfSectionHeaderTable {
 
     private final Entry[] entries;
     private final Map<Integer, String> stringMap;
-    private final ByteBuffer stringTable;
+    private final ByteSequence stringTable;
 
-    private ElfSectionHeaderTable(Entry[] entries, ByteBuffer stringTable) {
+    private ElfSectionHeaderTable(Entry[] entries, ByteSequence stringTable) {
         this.entries = entries;
         this.stringMap = new HashMap<>();
         this.stringTable = stringTable;
     }
 
-    public static ElfSectionHeaderTable create(ElfHeader header, ByteBuffer buffer, boolean is64Bit) {
+    public static ElfSectionHeaderTable create(ElfHeader header, ElfReader buffer) {
         Entry[] entries = new Entry[header.getShnum()];
-        buffer.position((int) header.getShoff());
+        buffer.setPosition((int) header.getShoff());
         for (int cntr = 0; cntr < entries.length; cntr++) {
-            entries[cntr] = readEntry(header, buffer, is64Bit);
+            entries[cntr] = readEntry(header, buffer);
         }
 
         // read string table
-        ByteBuffer data = null;
+        ByteSequence data = null;
         if (header.getShstrndx() < entries.length) {
             Entry e = entries[header.getShstrndx()];
             if (e.getSize() > 0) {
-                data = buffer.duplicate();
-                data.position((int) e.getOffset());
-                data.limit((int) (e.getOffset() + e.getSize()));
-                data = data.slice();
+                data = buffer.getStringTable(e.getOffset(), e.getSize());
             }
         }
         return new ElfSectionHeaderTable(entries, data);
@@ -177,18 +174,17 @@ public final class ElfSectionHeaderTable {
     }
 
     private String getString(int ind) {
-        if (stringTable == null || ind >= stringTable.limit()) {
+        if (stringTable == null || ind >= stringTable.length()) {
             return "";
         }
         String str = stringMap.get(ind);
         if (str == null) {
             final StringBuilder buf = new StringBuilder();
-            final ByteBuffer bb = stringTable.duplicate();
-            bb.position(ind);
-            byte b = bb.get();
+            int pos = ind;
+            byte b = stringTable.byteAt(pos++);
             while (b != 0) {
                 buf.append((char) b);
-                b = bb.get();
+                b = stringTable.byteAt(pos++);
             }
             str = buf.toString();
             stringMap.put(ind, str);
@@ -196,15 +192,15 @@ public final class ElfSectionHeaderTable {
         return str;
     }
 
-    private static Entry readEntry(ElfHeader header, ByteBuffer buffer, boolean is64Bit) {
-        if (is64Bit) {
+    private static Entry readEntry(ElfHeader header, ElfReader buffer) {
+        if (buffer.is64Bit()) {
             return readEntry64(header, buffer);
         } else {
             return readEntry32(header, buffer);
         }
     }
 
-    private static Entry readEntry32(ElfHeader header, ByteBuffer buffer) {
+    private static Entry readEntry32(ElfHeader header, ElfReader buffer) {
         int shName = buffer.getInt();
         int shType = buffer.getInt();
         long shFlags = buffer.getInt();
@@ -216,12 +212,12 @@ public final class ElfSectionHeaderTable {
         long shAddralign = buffer.getInt();
         long shEntsize = buffer.getInt();
 
-        buffer.position(buffer.position() + header.getShentsize() - ELF32_SHTENT_SIZE);
+        buffer.skip(header.getShentsize() - ELF32_SHTENT_SIZE);
 
         return new Entry(shName, shType, shFlags, shAddr, shOffset, shSize, shLink, shInfo, shAddralign, shEntsize);
     }
 
-    private static Entry readEntry64(ElfHeader header, ByteBuffer buffer) {
+    private static Entry readEntry64(ElfHeader header, ElfReader buffer) {
         int shName = buffer.getInt();
         int shType = buffer.getInt();
         long shFlags = buffer.getLong();
@@ -233,7 +229,7 @@ public final class ElfSectionHeaderTable {
         long shAddralign = buffer.getLong();
         long shEntsize = buffer.getLong();
 
-        buffer.position(buffer.position() + header.getShentsize() - ELF64_SHTENT_SIZE);
+        buffer.skip(header.getShentsize() - ELF64_SHTENT_SIZE);
 
         return new Entry(shName, shType, shFlags, shAddr, shOffset, shSize, shLink, shInfo, shAddralign, shEntsize);
     }

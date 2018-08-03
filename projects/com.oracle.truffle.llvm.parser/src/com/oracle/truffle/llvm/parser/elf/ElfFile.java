@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.elf;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ElfFile {
-    private static final int EI_NIDENT = 16;
-    private static final int EI_CLASS = 4;
-    private static final int EI_DATA = 5;
-    private static final int ELFDATA2MSB = 2;
-    private static final int ELFCLASS64 = 2;
 
     private final ElfHeader header;
     private final ElfSectionHeaderTable sectionHeaderTable;
@@ -50,15 +44,12 @@ public final class ElfFile {
         this.dynamicSection = dynamicSection;
     }
 
-    public static ElfFile create(ByteBuffer data) {
-        checkIdent(data);
-        ByteOrder order = isBigEndian(data) ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
-        data.order(order).position(EI_NIDENT);
-        boolean is64Bit = is64Bit(data);
+    public static ElfFile create(ByteSequence data) {
+        ElfReader reader = new ElfReader(data);
 
-        ElfHeader header = ElfHeader.create(data, is64Bit);
-        ElfSectionHeaderTable sectionHeaderTable = ElfSectionHeaderTable.create(header, data, is64Bit);
-        ElfDynamicSection dynamicSection = ElfDynamicSection.create(sectionHeaderTable, data, is64Bit);
+        ElfHeader header = ElfHeader.create(reader);
+        ElfSectionHeaderTable sectionHeaderTable = ElfSectionHeaderTable.create(header, reader);
+        ElfDynamicSection dynamicSection = ElfDynamicSection.create(sectionHeaderTable, reader);
         return new ElfFile(header, sectionHeaderTable, dynamicSection);
     }
 
@@ -72,26 +63,5 @@ public final class ElfFile {
 
     public ElfSectionHeaderTable getSectionHeaderTable() {
         return sectionHeaderTable;
-    }
-
-    private static boolean isBigEndian(ByteBuffer ident) {
-        return ident.get(EI_DATA) == ELFDATA2MSB;
-    }
-
-    private static boolean is64Bit(ByteBuffer ident) {
-        return ident.get(EI_CLASS) == ELFCLASS64;
-    }
-
-    private static void checkIdent(ByteBuffer ident) {
-        checkIndentByte(ident, 0, 0x7f);
-        checkIndentByte(ident, 1, 'E');
-        checkIndentByte(ident, 2, 'L');
-        checkIndentByte(ident, 3, 'F');
-    }
-
-    private static void checkIndentByte(ByteBuffer ident, int ind, int val) {
-        if (ident.get(ind) != val) {
-            throw new IllegalArgumentException("Invalid ELF file!");
-        }
     }
 }

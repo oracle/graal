@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.elf;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ElfDynamicSection {
 
@@ -63,23 +63,21 @@ public final class ElfDynamicSection {
     }
 
     private final Entry[] entries;
-    private final ByteBuffer buffer;
-    private final long strTabAddress;
-    private final long strTabSize;
+    private final ByteSequence buffer;
 
-    private ElfDynamicSection(ElfSectionHeaderTable sht, Entry[] entries, ByteBuffer buffer) {
+    private ElfDynamicSection(ElfSectionHeaderTable sht, Entry[] entries, ElfReader buffer) {
         this.entries = entries;
-        this.buffer = buffer.duplicate();
-        this.strTabAddress = Arrays.stream(entries).filter(e -> e.getTag() == DT_STRTAB).map(e -> addressToOffset(sht, e.getValue())).findAny().orElse(0L);
-        this.strTabSize = Arrays.stream(entries).filter(e -> e.getTag() == DT_STRSZ).map(e -> e.getValue()).findAny().orElse(0L);
+        long strTabAddress = Arrays.stream(entries).filter(e -> e.getTag() == DT_STRTAB).map(e -> addressToOffset(sht, e.getValue())).findAny().orElse(0L);
+        long strTabSize = Arrays.stream(entries).filter(e -> e.getTag() == DT_STRSZ).map(e -> e.getValue()).findAny().orElse(0L);
+        this.buffer = buffer.getStringTable(strTabAddress, strTabSize);
     }
 
-    public static ElfDynamicSection create(ElfSectionHeaderTable sht, ByteBuffer buffer, boolean is64Bit) {
+    public static ElfDynamicSection create(ElfSectionHeaderTable sht, ElfReader buffer) {
         ElfSectionHeaderTable.Entry dynamiSHEntry = getDynamiSHEntry(sht);
         if (dynamiSHEntry != null) {
             long offset = dynamiSHEntry.getOffset();
             long size = dynamiSHEntry.getSize();
-            return new ElfDynamicSection(sht, readEntries(buffer, is64Bit, offset, size), buffer);
+            return new ElfDynamicSection(sht, readEntries(buffer, offset, size), buffer);
         } else {
             return null;
         }
@@ -96,17 +94,17 @@ public final class ElfDynamicSection {
         return offset;
     }
 
-    private static Entry[] readEntries(final ByteBuffer buffer, boolean is64Bit, long offset, long size) {
+    private static Entry[] readEntries(final ElfReader buffer, long offset, long size) {
         if (size == 0) {
             return new Entry[0];
         }
-        buffer.position((int) offset);
+        buffer.setPosition((int) offset);
 
         // load each of the section header entries
         List<Entry> entries = new ArrayList<>();
-        for (long cntr = 0; cntr < size; cntr += is64Bit ? 16 : 8) {
-            long tag = is64Bit ? buffer.getLong() : buffer.getInt();
-            long unionValue = is64Bit ? buffer.getLong() : buffer.getInt();
+        for (long cntr = 0; cntr < size; cntr += buffer.is64Bit() ? 16 : 8) {
+            long tag = buffer.is64Bit() ? buffer.getLong() : buffer.getInt();
+            long unionValue = buffer.is64Bit() ? buffer.getLong() : buffer.getInt();
             entries.add(new Entry(tag, unionValue));
         }
         return entries.toArray(new Entry[entries.size()]);
@@ -138,17 +136,17 @@ public final class ElfDynamicSection {
     }
 
     private String getString(long offset) {
-        if (strTabAddress == 0 || strTabSize == 0) {
+        if (buffer.length() == 0) {
             return "";
         }
 
-        buffer.position((int) (strTabAddress + offset));
+        int pos = (int) offset;
         StringBuilder sb = new StringBuilder();
 
-        byte b = buffer.get();
+        byte b = buffer.byteAt(pos++);
         while (b != 0) {
             sb.append((char) b);
-            b = buffer.get();
+            b = buffer.byteAt(pos++);
         }
 
         return sb.toString();

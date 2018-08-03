@@ -30,8 +30,6 @@
 
 package com.oracle.truffle.llvm.parser.scanner;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +47,7 @@ import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import org.graalvm.polyglot.io.ByteSequence;
 
 public final class LLVMScanner {
 
@@ -88,7 +87,7 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(ByteBuffer bytes, Source bcSource, LLVMContext context) {
+    public static ModelModule parse(ByteSequence bytes, Source bcSource, LLVMContext context) {
         assert bytes != null;
         if (!isSupportedFile(bytes)) {
             return null;
@@ -96,24 +95,21 @@ public final class LLVMScanner {
 
         final ModelModule model = new ModelModule();
 
-        ByteBuffer b = bytes.duplicate();
-        b.order(ByteOrder.LITTLE_ENDIAN);
-        ByteBuffer bitcode;
-        long magicWord = Integer.toUnsignedLong(b.getInt());
+        BitStream b = BitStream.create(bytes);
+        ByteSequence bitcode;
+        // 0: magic word
+        long magicWord = Integer.toUnsignedLong((int) b.read(0, Integer.SIZE));
         if (Long.compareUnsigned(magicWord, BC_MAGIC_WORD) == 0) {
-            bitcode = b;
+            bitcode = bytes;
         } else if (magicWord == WRAPPER_MAGIC_WORD) {
-            // Version
-            b.getInt();
-            // Offset32
-            long offset = b.getInt();
-            // Size32
-            long size = b.getInt();
-            b.position((int) offset);
-            b.limit((int) (offset + size));
-            bitcode = b.slice();
+            // 32: version
+            // 64: offset32
+            long offset = b.read(64, Integer.SIZE);
+            // 96: size32
+            long size = b.read(96, Integer.SIZE);
+            bitcode = bytes.subSequence((int) offset, (int) (offset + size));
         } else if (magicWord == ELF_MAGIC_WORD) {
-            ElfFile elfFile = ElfFile.create(b);
+            ElfFile elfFile = ElfFile.create(bytes);
             Entry llvmbc = elfFile.getSectionHeaderTable().getEntry(".llvmbc");
             if (llvmbc == null) {
                 // ELF File does not contain an .llvmbc section
@@ -128,9 +124,7 @@ public final class LLVMScanner {
             }
             long offset = llvmbc.getOffset();
             long size = llvmbc.getSize();
-            b.position((int) offset);
-            b.limit((int) (offset + size));
-            bitcode = b.slice();
+            bitcode = bytes.subSequence((int) offset, (int) (offset + size));
         } else {
             throw new LLVMParserException("Not a valid input file!");
         }
@@ -140,14 +134,13 @@ public final class LLVMScanner {
         return model;
     }
 
-    private static boolean isSupportedFile(ByteBuffer bytes) {
-        ByteBuffer duplicate = bytes.duplicate();
-        BitStream bs = BitStream.create(duplicate);
+    private static boolean isSupportedFile(ByteSequence bytes) {
+        BitStream bs = BitStream.create(bytes);
         long magicWord = bs.read(0, Integer.SIZE);
         return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
     }
 
-    private static void parseBitcodeBlock(ByteBuffer bitcode, ModelModule model, Source bcSource, LLVMContext context) {
+    private static void parseBitcodeBlock(ByteSequence bitcode, ModelModule model, Source bcSource, LLVMContext context) {
         final BitStream bitstream = BitStream.create(bitcode);
         final BCFileRoot fileParser = new BCFileRoot(model, bcSource);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);

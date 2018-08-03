@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
@@ -126,6 +125,7 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
+import org.graalvm.polyglot.io.ByteSequence;
 
 public final class Runner {
 
@@ -333,26 +333,37 @@ public final class Runner {
     }
 
     private ParserInput getParserData(Source source) {
-        ByteBuffer bytes;
+        ByteSequence bytes;
         ExternalLibrary library;
-        if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-            bytes = ByteBuffer.wrap(decodeBase64(source.getCharacters()));
-            library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
-        } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
-            NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
-            String filename = descriptor.getFilename();
-            bytes = read(filename);
-            library = new ExternalLibrary(Paths.get(filename), false);
-        } else if (source.getPath() != null) {
-            bytes = read(source.getPath());
-            library = new ExternalLibrary(Paths.get(source.getPath()), false);
+        if (source.hasBytes()) {
+            bytes = source.getBytes();
+            if (source.getPath() != null) {
+                library = new ExternalLibrary(Paths.get(source.getPath()), false);
+            } else {
+                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
+            }
+        } else if (source.hasCharacters()) {
+            switch (source.getMimeType()) {
+                case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
+                    bytes = ByteSequence.create(decodeBase64(source.getCharacters()));
+                    library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
+                    break;
+                case LLVMLanguage.LLVM_SULONG_TYPE:
+                    NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
+                    String filename = descriptor.getFilename();
+                    bytes = read(filename);
+                    library = new ExternalLibrary(Paths.get(filename), false);
+                    break;
+                default:
+                    throw new LLVMParserException("Character-based source with unexpected mime type: " + source.getMimeType());
+            }
         } else {
-            throw new LLVMParserException("Neither a valid path nor a valid mime-type were specified.");
+            throw new LLVMParserException("Should not reach here: Source is neither char-based nor byte-based!");
         }
         return new ParserInput(bytes, library);
     }
 
-    private CallTarget parse(Source source, ByteBuffer bytes, ExternalLibrary library) {
+    private CallTarget parse(Source source, ByteSequence bytes, ExternalLibrary library) {
         // process the bitcode file and its dependencies in the dynamic linking order
         // (breadth-first)
         List<LLVMParserResult> parserResults = new ArrayList<>();
@@ -616,19 +627,18 @@ public final class Runner {
         }
 
         Path path = lib.getPath();
-        byte[] bytes;
+        TruffleFile file = context.getEnv().getTruffleFile(path.toUri());
+        Source source;
         try {
-            bytes = context.getEnv().getTruffleFile(path.toString()).readAllBytes();
+            source = Source.newBuilder("llvm", file).build();
         } catch (IOException | SecurityException | OutOfMemoryError ex) {
             throw new LLVMParserException("Error reading file " + path + ".");
         }
-        // at the moment, we don't need the bitcode as the content of the source
-        Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
-        return parse(parserResults, dependencyQueue, source, lib, ByteBuffer.wrap(bytes));
+        return parse(parserResults, dependencyQueue, source, lib, source.getBytes());
     }
 
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
-                    ExternalLibrary library, ByteBuffer bytes) {
+                    ExternalLibrary library, ByteSequence bytes) {
         ModelModule module = LLVMScanner.parse(bytes, source, context);
         if (module != null) {
             library.setIsNative(false);
@@ -985,12 +995,12 @@ public final class Runner {
         return Base64.getDecoder().decode(result);
     }
 
-    private ByteBuffer read(String filename) {
+    private ByteSequence read(String filename) {
         try {
             TruffleFile truffleFile = context.getEnv().getTruffleFile(filename);
-            return ByteBuffer.wrap(truffleFile.readAllBytes());
+            return ByteSequence.create(truffleFile.readAllBytes());
         } catch (IOException | SecurityException | OutOfMemoryError ignore) {
-            return ByteBuffer.allocate(0);
+            return ByteSequence.create(new byte[0]);
         }
     }
 
@@ -1095,10 +1105,10 @@ public final class Runner {
     }
 
     private static final class ParserInput {
-        private final ByteBuffer bytes;
+        private final ByteSequence bytes;
         private final ExternalLibrary library;
 
-        private ParserInput(ByteBuffer bytes, ExternalLibrary library) {
+        private ParserInput(ByteSequence bytes, ExternalLibrary library) {
             this.bytes = bytes;
             this.library = library;
         }
