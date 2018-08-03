@@ -42,6 +42,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -53,7 +54,6 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -88,7 +88,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
 
     protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
-    protected final Map<SourceSection, SourceSection> section2definition = new HashMap<>();
 
     private final TruffleInstrument.Env env;
     private final PrintWriter err;
@@ -725,7 +724,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             truffleObj = (TruffleObject) LanguageSpecificHacks.getBoxedObject(obj, langId);
         }
 
-        if (truffleObj != null) {
+        if (truffleObj != null && key != null) {
             try {
                 Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj, key);
                 List<Object> nameAndParams = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
@@ -897,7 +896,8 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
             final CallTarget callTarget = parse(surrogateOfTestFile);
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
-                            SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
+// SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
+                            SourceSectionFilter.ANY,
                             new ExecutionEventNodeFactory() {
 
                                 public ExecutionEventNode create(final EventContext eventContext) {
@@ -948,23 +948,9 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         }
     }
 
+    @SuppressWarnings("unused")
     public List<? extends Location> getDefinitions(URI uri, int line, int character) {
         List<Location> locations = new ArrayList<>();
-
-        TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
-        SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
-        if (sourceWrapper.isParsingSuccessful()) {
-            Source source = sourceWrapper.getSource();
-
-            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), character);
-            SourceSection containsSection = nearestSections.getContainsSourceSection();
-            if (containsSection != null) {
-                SourceSection definition = this.section2definition.get(containsSection);
-                if (definition != null) {
-                    locations.add(new Location(uri.toString(), sourceSectionToRange(definition)));
-                }
-            }
-        }
         return locations;
     }
 
@@ -995,17 +981,30 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         if (sourceWrapper.isParsingSuccessful()) {
             Source source = sourceWrapper.getSource();
-            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), column);
+            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), column + 1);
             SourceSection containsSection = nearestSections.getContainsSourceSection();
             if (containsSection != null) {
-                SourceSection definition = this.section2definition.get(containsSection);
-                if (definition != null) {
-                    MarkedString markedString = new MarkedString(surrogate.getLangId(), definition.getCharacters().toString());
-                    contents.add(Either.forRight(markedString));
+                List<CoverageData> coverages = surrogate.getCoverageData(containsSection);
+                if (coverages != null) {
+                    String hoverInfo = extractHoverInfos(coverages, containsSection.getCharacters().toString(), surrogate.getLangId());
+                    if (hoverInfo != null) {
+                        contents.add(Either.forLeft(hoverInfo.toString()));
+                    }
                 }
             }
         }
         return new Hover(contents);
+    }
+
+    private String extractHoverInfos(List<CoverageData> coverages, String id, String langId) {
+        for (CoverageData coverageData : coverages) {
+            FrameSlot frameSlot = coverageData.getFrame().getFrameDescriptor().getSlots().stream().filter(slot -> slot.getIdentifier().equals(id)).findFirst().orElseGet(() -> null);
+            if (frameSlot != null) {
+                Object obj = coverageData.getFrame().getValue(frameSlot);
+                return createCompletionDetail(null, obj, langId);
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unused")

@@ -1,7 +1,5 @@
 package de.hpi.swa.trufflelsp;
 
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
