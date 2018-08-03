@@ -29,7 +29,6 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 
-@SuppressWarnings("deprecation")
 @Option.Group(PolyglotImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
     static final String OPTION_GROUP_LOG = "log";

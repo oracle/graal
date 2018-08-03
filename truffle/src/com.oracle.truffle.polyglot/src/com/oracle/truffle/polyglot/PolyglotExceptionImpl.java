@@ -48,7 +48,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 
-@SuppressWarnings("deprecation")
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     private static final String CAUSE_CAPTION = "Caused by host exception: ";
@@ -382,9 +381,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         private static final String PROXY_PACKAGE = PolyglotProxy.class.getName();
         private static final String JAVA_INTEROP_PACKAGE = "com.oracle.truffle.api.interop.java.";
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
-                        JAVA_INTEROP_PACKAGE + "TruffleMap",
-                        JAVA_INTEROP_PACKAGE + "TruffleList",
-                        JAVA_INTEROP_PACKAGE + "TruffleFunction",
+                        JAVA_INTEROP_PACKAGE + "PolyglotMap",
+                        JAVA_INTEROP_PACKAGE + "PolyglotList",
+                        JAVA_INTEROP_PACKAGE + "PolyglotFunction",
                         JAVA_INTEROP_PACKAGE + "FunctionProxyHandler",
                         JAVA_INTEROP_PACKAGE + "ObjectProxyHandler"
         };

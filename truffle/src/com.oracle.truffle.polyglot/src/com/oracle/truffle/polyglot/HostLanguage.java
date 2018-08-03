@@ -61,7 +61,6 @@ import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 /*
  * Java host language implementation.
  */
-@SuppressWarnings("deprecation")
 class HostLanguage extends TruffleLanguage<HostContext> {
 
     static final class HostContext {

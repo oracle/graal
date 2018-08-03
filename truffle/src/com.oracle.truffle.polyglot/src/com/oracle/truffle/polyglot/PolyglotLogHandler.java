@@ -186,7 +186,6 @@ final class PolyglotLogHandler extends Handler {
             throw new UnsupportedOperationException("Setting Throwable is not supported.");
         }
 
-        @SuppressWarnings("deprecation")
         private static Object safeValue(final Object param, final PolyglotContextImpl context) {
             if (param == null || PolyglotImpl.EngineImpl.isPrimitive(param)) {
                 return param;

@@ -61,10 +61,9 @@ class VMAccessor extends Accessor {
         return super.getCompilerOptions();
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     protected EngineSupport engineSupport() {
-        return new com.oracle.truffle.polyglot.PolyglotImpl.EngineImpl();
+        return new PolyglotImpl.EngineImpl();
     }
 
     @Override

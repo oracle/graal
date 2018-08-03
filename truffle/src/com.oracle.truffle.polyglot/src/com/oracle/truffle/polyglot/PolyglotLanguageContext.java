@@ -52,7 +52,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import java.util.logging.Level;
 
-@SuppressWarnings("deprecation")
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger("engine", PolyglotLanguageContext.class);

@@ -82,11 +82,7 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
  */
 /**
  * Internal service implementation of the polyglot API.
- *
- * @since 0.27
- * @deprecated do not use directly
  */
-@Deprecated
 public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
@@ -101,17 +97,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Internal method do not use.
-     *
-     * @since 0.27
      */
     public PolyglotImpl() {
-        VMAccessor.allLoaders();
     }
 
     /**
      * Internal method do not use.
-     *
-     * @since 0.27
      */
     @Override
     public AbstractSourceImpl getSourceImpl() {
@@ -120,8 +111,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Internal method do not use.
-     *
-     * @since 0.27
      */
     @Override
     public AbstractSourceSectionImpl getSourceSectionImpl() {
@@ -130,8 +119,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Internal method do not use.
-     *
-     * @since 1.0
      */
     @Override
     public AbstractExecutionListenerImpl getExecutionListenerImpl() {
@@ -140,8 +127,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Internal method do not use.
-     *
-     * @since 1.0
      */
     @Override
     public Context getCurrentContext() {
@@ -154,8 +139,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Internal method do not use.
-     *
-     * @since 0.27
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
@@ -190,8 +173,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Pre-initializes a polyglot engine instance.
-     *
-     * @since 0.31
      */
     @Override
     public void preInitializeEngine() {
@@ -212,8 +193,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Cleans the pre-initialized polyglot engine instance.
-     *
-     * @since 0.31
      */
     @Override
     public void resetPreInitializedEngine() {
@@ -223,8 +202,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     /**
      * Internal method do not use.
-     *
-     * @since 0.27
      */
     @Override
     public Class<?> loadLanguageClass(String className) {

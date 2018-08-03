@@ -54,7 +54,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@SuppressWarnings("deprecation")
 final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
 
     static final Object[] EMPTY_ARRAY = new Object[0];
