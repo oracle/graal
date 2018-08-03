@@ -104,7 +104,7 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.vm" : {
+    "com.oracle.truffle.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "uses" : ["com.oracle.truffle.api.impl.TruffleLocator", "org.graalvm.polyglot.impl.AbstractPolyglotImpl",],
@@ -131,7 +131,7 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.polyglot",
         "mx:JUNIT",
       ],
       "imports" : ["jdk.internal.loader"],
@@ -178,7 +178,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
-        "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.polyglot",
         "com.oracle.truffle.api.test",
         "mx:JUNIT",
       ],
@@ -310,8 +310,8 @@ suite = {
     "com.oracle.truffle.api.debug" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.vm"],
-      "generatedDependencies" : ["com.oracle.truffle.api.vm"],
+      "dependencies" : ["com.oracle.truffle.polyglot"],
+      "generatedDependencies" : ["com.oracle.truffle.polyglot"],
       "runtimeDeps" : [
         "java.desktop"
       ],
@@ -361,7 +361,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
-        "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.polyglot",
         "com.oracle.truffle.object.basic",
         "com.oracle.truffle.api.test",
         "mx:JUNIT"
@@ -673,9 +673,9 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
         "com.oracle.truffle.api.object.dsl",
+        "com.oracle.truffle.polyglot",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK"
