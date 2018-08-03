@@ -181,6 +181,20 @@ multiple arguments separated by `:`.
 
     mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
+#### Running with the Graal compiler
+
+In contrast to Graal VM, `mx lli` will by default  *not* optimize your program.
+If you are interested in high performance, you might want to import the Graal
+compiler. To do so, first ensure that the compiler is built:
+
+    mx --dynamicimport /compiler build
+
+Once the compiler is ready
+
+    mx --dynamicimport /compiler --jdk jvmci lli test.bc
+
+#### IDE Setup
+
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
 for other IDEs):
