@@ -32,7 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-class JavaInteropErrors {
+class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException nullCoercion(Object languageContext, TruffleObject nullValue, Type targetType) {
@@ -151,7 +151,7 @@ class JavaInteropErrors {
     }
 
     static String getValueInfo(Object languageContext, Object value) {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         if (engine == null) {
             return value.toString();
         } else {
@@ -161,31 +161,31 @@ class JavaInteropErrors {
 
     private static RuntimeException newNullPointerException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newNullPointerException(message, null) : new NullPointerException(message);
     }
 
     private static RuntimeException newUnsupportedOperationException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newUnsupportedOperationException(message, null) : new UnsupportedOperationException(message);
     }
 
     private static RuntimeException newClassCastException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newClassCastException(message, null) : new ClassCastException(message);
     }
 
     static final RuntimeException newIllegalArgumentException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newIllegalArgumentException(message, null) : new IllegalArgumentException(message);
     }
 
     private static RuntimeException newArrayIndexOutOfBounds(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newArrayIndexOutOfBounds(message, null) : new ArrayIndexOutOfBoundsException(message);
     }
 

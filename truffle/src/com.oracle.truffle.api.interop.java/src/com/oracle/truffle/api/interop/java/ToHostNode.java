@@ -46,7 +46,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-abstract class ToJavaNode extends Node {
+abstract class ToHostNode extends Node {
     static final int LIMIT = 3;
 
     /** Subtype or lossless conversion to primitive type (incl. unboxing). */
@@ -63,7 +63,7 @@ abstract class ToJavaNode extends Node {
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
-    @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
+    @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
 
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, Object languageContext);
 
@@ -102,12 +102,12 @@ abstract class ToJavaNode extends Node {
                         return (char) v;
                     }
                 }
-            } else if (targetType == String.class && JavaInterop.isPrimitive(unboxed)) {
+            } else if (targetType == String.class && HostInterop.isPrimitive(unboxed)) {
                 return convertToString(unboxed);
             }
         }
         if (targetType == Value.class && languageContext != null) {
-            convertedValue = value instanceof Value ? value : JavaInterop.toHostValue(value, languageContext);
+            convertedValue = value instanceof Value ? value : HostInterop.toHostValue(value, languageContext);
         } else if (value instanceof TruffleObject) {
             convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext);
         } else if (targetType.isAssignableFrom(value.getClass())) {
@@ -120,13 +120,13 @@ abstract class ToJavaNode extends Node {
             } else {
                 reason = "Unsupported target type.";
             }
-            throw JavaInteropErrors.cannotConvert(languageContext, value, targetType, reason);
+            throw HostInteropErrors.cannotConvert(languageContext, value, targetType, reason);
         }
         return convertedValue;
     }
 
     boolean canConvertToPrimitive(Object value, Class<?> targetType, int priority) {
-        if (JavaObject.isJavaInstance(targetType, value)) {
+        if (HostObject.isJavaInstance(targetType, value)) {
             return true;
         }
         if (!isAssignableFromTrufflePrimitiveType(targetType)) {
@@ -148,7 +148,7 @@ abstract class ToJavaNode extends Node {
                     return true;
                 }
             }
-        } else if (priority >= COERCE && targetType == String.class && JavaInterop.isPrimitive(unboxed)) {
+        } else if (priority >= COERCE && targetType == String.class && HostInterop.isPrimitive(unboxed)) {
             return true;
         }
         return false;
@@ -181,7 +181,7 @@ abstract class ToJavaNode extends Node {
                 return true;
             } else if (targetType == Object.class) {
                 return true;
-            } else if (JavaObject.isJavaInstance(targetType, tValue)) {
+            } else if (HostObject.isJavaInstance(targetType, tValue)) {
                 return true;
             } else if (targetType == List.class) {
                 return primitive.hasSize(tValue);
@@ -191,7 +191,7 @@ abstract class ToJavaNode extends Node {
                 return isExecutable(tValue) || isInstantiable(tValue) || (TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, tValue));
             } else if (targetType.isArray()) {
                 return primitive.hasKeys(tValue);
-            } else if (priority < HOST_PROXY && JavaObject.isInstance(tValue)) {
+            } else if (priority < HOST_PROXY && HostObject.isInstance(tValue)) {
                 return false;
             } else {
                 if (TruffleOptions.AOT) {
@@ -202,7 +202,7 @@ abstract class ToJavaNode extends Node {
                         return false;
                     }
                 } else {
-                    if (JavaInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
+                    if (HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
                         return true;
                     } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
                         return true;
@@ -249,7 +249,7 @@ abstract class ToJavaNode extends Node {
         } else if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
             return asJavaObject(truffleObject, Function.class, null, languageContext);
         } else {
-            return JavaInterop.toHostValue(truffleObject, languageContext);
+            return HostInterop.toHostValue(truffleObject, languageContext);
         }
     }
 
@@ -259,20 +259,20 @@ abstract class ToJavaNode extends Node {
         Object obj;
         if (primitive.isNull(truffleObject)) {
             if (targetType.isPrimitive()) {
-                throw JavaInteropErrors.nullCoercion(languageContext, truffleObject, targetType);
+                throw HostInteropErrors.nullCoercion(languageContext, truffleObject, targetType);
             }
             return null;
-        } else if (JavaObject.isJavaInstance(targetType, truffleObject)) {
-            obj = JavaObject.valueOf(truffleObject);
+        } else if (HostObject.isJavaInstance(targetType, truffleObject)) {
+            obj = HostObject.valueOf(truffleObject);
         } else if (targetType == Object.class) {
             obj = convertToObject(truffleObject, languageContext);
         } else if (targetType == List.class) {
             if (primitive.hasSize(truffleObject)) {
                 boolean implementsFunction = shouldImplementFunction(truffleObject);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
-                obj = TruffleList.create(languageContext, truffleObject, implementsFunction, elementType.clazz, elementType.type);
+                obj = PolyglotList.create(languageContext, truffleObject, implementsFunction, elementType.clazz, elementType.type);
             } else {
-                throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have array elements.");
+                throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have array elements.");
             }
         } else if (targetType == Map.class) {
             Class<?> keyClazz = getGenericParameterType(genericType, 0).clazz;
@@ -284,35 +284,35 @@ abstract class ToJavaNode extends Node {
             boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && primitive.hasKeys(truffleObject);
             if (hasKeys || hasSize) {
                 boolean implementsFunction = shouldImplementFunction(truffleObject);
-                obj = TruffleMap.create(languageContext, truffleObject, implementsFunction, keyClazz, valueType.clazz, valueType.type);
+                obj = PolyglotMap.create(languageContext, truffleObject, implementsFunction, keyClazz, valueType.clazz, valueType.type);
             } else {
-                throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members or array elements.");
+                throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members or array elements.");
             }
         } else if (targetType == Function.class) {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
-                obj = TruffleFunction.create(languageContext, truffleObject, returnType.clazz, returnType.type);
+                obj = PolyglotFunction.create(languageContext, truffleObject, returnType.clazz, returnType.type);
             } else if (!TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
-                obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
+                obj = HostInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
-                throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must be executable or instantiable.");
+                throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must be executable or instantiable.");
             }
         } else if (targetType.isArray()) {
             if (primitive.hasSize(truffleObject)) {
                 obj = truffleObjectToArray(truffleObject, targetType, genericType, languageContext);
             } else {
-                throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have array elements.");
+                throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have array elements.");
             }
         } else if (!TruffleOptions.AOT && targetType.isInterface()) {
-            if (JavaInteropReflect.isFunctionalInterface(targetType) && (isExecutable(truffleObject) || isInstantiable(truffleObject))) {
-                obj = JavaInteropReflect.asJavaFunction(targetType, truffleObject, languageContext);
+            if (HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(truffleObject) || isInstantiable(truffleObject))) {
+                obj = HostInteropReflect.asJavaFunction(targetType, truffleObject, languageContext);
             } else if (ForeignAccess.sendHasKeys(hasKeysNode, truffleObject)) {
-                obj = JavaInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
+                obj = HostInteropReflect.newProxyInstance(targetType, truffleObject, languageContext);
             } else {
-                throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members.");
+                throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Value must have members.");
             }
         } else {
-            throw JavaInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Unsupported target type.");
+            throw HostInteropErrors.cannotConvert(languageContext, truffleObject, targetType, "Unsupported target type.");
         }
 
         assert targetType.isInstance(obj);
@@ -341,7 +341,7 @@ abstract class ToJavaNode extends Node {
 
     @TruffleBoundary
     private static ClassCastException newClassCastException(String message) {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newClassCastException(message, null) : new ClassCastException(message);
     }
 
@@ -375,7 +375,7 @@ abstract class ToJavaNode extends Node {
 
     private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType, Object languageContext) {
         Class<?> componentType = arrayType.getComponentType();
-        List<?> list = TruffleList.create(languageContext, foreignObject, false, componentType, getGenericArrayComponentType(genericArrayType));
+        List<?> list = PolyglotList.create(languageContext, foreignObject, false, componentType, getGenericArrayComponentType(genericArrayType));
         Object array = Array.newInstance(componentType, list.size());
         for (int i = 0; i < list.size(); i++) {
             Array.set(array, i, list.get(i));
@@ -388,7 +388,46 @@ abstract class ToJavaNode extends Node {
         return value.toString();
     }
 
-    public static ToJavaNode create() {
-        return ToJavaNodeGen.create();
+    public static ToHostNode create() {
+        return ToHostNodeGen.create();
     }
+
+    static final class TypeAndClass<T> {
+        static final TypeAndClass<Object> ANY = new TypeAndClass<>(null, Object.class);
+
+        final Type type;
+        final Class<T> clazz;
+
+        TypeAndClass(Type type, Class<T> clazz) {
+            this.type = type;
+            this.clazz = clazz;
+        }
+
+        @Override
+        public String toString() {
+            return "[" + clazz + ": " + Objects.toString(type) + "]";
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((clazz == null) ? 0 : clazz.hashCode());
+            result = prime * result + ((type == null) ? 0 : type.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof TypeAndClass<?>)) {
+                return false;
+            }
+            TypeAndClass<?> other = (TypeAndClass<?>) obj;
+            return Objects.equals(clazz, other.clazz) && Objects.equals(type, other.type);
+        }
+    }
+
 }

@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
-final class ToPrimitiveNode extends Node {
+final class ToHostPrimitiveNode extends Node {
     private static final double DOUBLE_MAX_SAFE_INTEGER = 9007199254740991d; // 2 ** 53 - 1
     private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
     private static final float FLOAT_MAX_SAFE_INTEGER = 16777215f; // 2 ** 24 - 1
@@ -43,7 +43,7 @@ final class ToPrimitiveNode extends Node {
     @Child Node hasSizeNode;
     @Child Node unboxNode;
 
-    private ToPrimitiveNode() {
+    private ToHostPrimitiveNode() {
         this.isNullNode = Message.IS_NULL.createNode();
         this.isBoxedNode = Message.IS_BOXED.createNode();
         this.hasKeysNode = Message.HAS_KEYS.createNode();
@@ -51,8 +51,8 @@ final class ToPrimitiveNode extends Node {
         this.unboxNode = Message.UNBOX.createNode();
     }
 
-    static ToPrimitiveNode create() {
-        return new ToPrimitiveNode();
+    static ToHostPrimitiveNode create() {
+        return new ToHostPrimitiveNode();
     }
 
     Integer toInteger(Object value) {
@@ -61,8 +61,8 @@ final class ToPrimitiveNode extends Node {
     }
 
     Object unbox(Object value) {
-        if (value instanceof JavaObject) {
-            return ((JavaObject) value).obj;
+        if (value instanceof HostObject) {
+            return ((HostObject) value).obj;
         } else if (value instanceof TruffleObject) {
             return unbox((TruffleObject) value);
         } else {
@@ -407,6 +407,6 @@ final class ToPrimitiveNode extends Node {
     }
 
     private boolean isUnboxed(Object value) {
-        return !(value instanceof JavaObject) && !(value instanceof TruffleObject && isBoxed((TruffleObject) value));
+        return !(value instanceof HostObject) && !(value instanceof TruffleObject && isBoxed((TruffleObject) value));
     }
 }

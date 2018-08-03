@@ -59,10 +59,10 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-final class JavaInteropReflect {
+final class HostInteropReflect {
     static final Object[] EMPTY = {};
 
-    private JavaInteropReflect() {
+    private HostInteropReflect() {
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -83,13 +83,13 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
+    static HostMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
         if (TruffleOptions.AOT) {
             return null;
         }
 
-        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
-        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+        HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
             foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
         }
@@ -97,8 +97,8 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
+    static HostFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
         return classDesc.lookupField(name, onlyStatic);
     }
 
@@ -113,8 +113,8 @@ final class JavaInteropReflect {
         boolean invocable = false;
         boolean internal = false;
 
-        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
-        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
+        HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             readable = true;
             invocable = true;
@@ -128,7 +128,7 @@ final class JavaInteropReflect {
         }
 
         if (!readable) {
-            JavaFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
+            HostFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
             if (foundField != null) {
                 readable = true;
                 writable = true;
@@ -183,7 +183,7 @@ final class JavaInteropReflect {
         }
         Method found = null;
         for (Method m : functionalInterface.getMethods()) {
-            if (Modifier.isAbstract(m.getModifiers()) && !JavaClassDesc.isObjectMethodOverride(m)) {
+            if (Modifier.isAbstract(m.getModifiers()) && !HostClassDesc.isObjectMethodOverride(m)) {
                 if (found != null) {
                     return null;
                 }
@@ -197,7 +197,7 @@ final class JavaInteropReflect {
         if (obj instanceof Proxy) {
             return asTruffleObjectProxy(obj, languageContext);
         }
-        return JavaObject.forObject(obj, languageContext);
+        return HostObject.forObject(obj, languageContext);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -210,7 +210,7 @@ final class JavaInteropReflect {
                 return ((ObjectProxyHandler) h).obj;
             }
         }
-        return JavaObject.forObject(obj, languageContext);
+        return HostObject.forObject(obj, languageContext);
     }
 
     static Object newProxyInstance(Class<?> clazz, TruffleObject obj, Object languageContext) throws IllegalArgumentException {
@@ -224,7 +224,7 @@ final class JavaInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static String[] findUniquePublicMemberNames(Class<?> clazz, boolean onlyStatic, boolean includeInternal) throws SecurityException {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
+        HostClassDesc classDesc = HostClassDesc.forClass(clazz);
         EconomicSet<String> names = EconomicSet.create();
         names.addAll(classDesc.getFieldNames(onlyStatic));
         names.addAll(classDesc.getMethodNames(onlyStatic, includeInternal));
@@ -328,7 +328,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
 
     final Class<?> receiverClass;
     final Method method;
-    @Child private TruffleExecuteNode executeNode;
+    @Child private PolyglotExecuteNode executeNode;
     @CompilationFinal private Class<?> returnClass;
     @CompilationFinal private Type returnType;
 
@@ -352,9 +352,9 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
         if (executeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.returnClass = JavaInteropReflect.getMethodReturnType(method);
-            this.returnType = JavaInteropReflect.getMethodGenericReturnType(method);
-            this.executeNode = insert(new TruffleExecuteNode());
+            this.returnClass = HostInteropReflect.getMethodReturnType(method);
+            this.returnType = HostInteropReflect.getMethodGenericReturnType(method);
+            this.executeNode = insert(new PolyglotExecuteNode());
         }
         return executeNode.execute(languageContext, function, args[offset], returnClass, returnType);
     }
@@ -377,7 +377,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
         CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
@@ -506,7 +506,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
         CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
@@ -516,7 +516,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 }
 
-@ImportStatic({Message.class, JavaInteropReflect.class})
+@ImportStatic({Message.class, HostInteropReflect.class})
 abstract class ProxyInvokeNode extends Node {
 
     public abstract Object execute(Object languageContext, TruffleObject receiver, Method method, Object[] arguments);
@@ -545,7 +545,7 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("IS_EXECUTABLE.createNode()") Node isExecutableNode,
                     @Cached("EXECUTE.createNode()") Node executeNode,
                     @Cached("createBinaryProfile()") ConditionProfile branchProfile,
-                    @Cached("create()") ToJavaNode toJava) {
+                    @Cached("create()") ToHostNode toJava) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, invokeNode, keyInfoNode, readNode, isExecutableNode, executeNode, branchProfile);
         return toJava.execute(result, returnClass, returnType, languageContext);
     }
@@ -591,19 +591,19 @@ abstract class ProxyInvokeNode extends Node {
                 }
             }
             CompilerDirectives.transferToInterpreter();
-            throw JavaInteropErrors.invokeUnsupported(polyglotContext, receiver, name);
+            throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, name);
         } catch (UnknownIdentifierException e) {
             CompilerDirectives.transferToInterpreter();
-            throw JavaInteropErrors.invokeUnsupported(polyglotContext, receiver, name);
+            throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, name);
         } catch (UnsupportedTypeException e) {
             CompilerDirectives.transferToInterpreter();
-            throw JavaInteropErrors.invalidExecuteArgumentType(polyglotContext, receiver, e.getSuppliedValues());
+            throw HostInteropErrors.invalidExecuteArgumentType(polyglotContext, receiver, e.getSuppliedValues());
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreter();
-            throw JavaInteropErrors.invalidExecuteArity(polyglotContext, receiver, arguments, e.getExpectedArity(), e.getActualArity());
+            throw HostInteropErrors.invalidExecuteArity(polyglotContext, receiver, arguments, e.getExpectedArity(), e.getActualArity());
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw JavaInteropErrors.invokeUnsupported(polyglotContext, receiver, name);
+            throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, name);
         }
     }
 
@@ -624,7 +624,7 @@ final class ObjectProxyHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
-        return invoke.call(languageContext, obj, method, arguments == null ? JavaInteropReflect.EMPTY : arguments);
+        return invoke.call(languageContext, obj, method, arguments == null ? HostInteropReflect.EMPTY : arguments);
     }
 
 }

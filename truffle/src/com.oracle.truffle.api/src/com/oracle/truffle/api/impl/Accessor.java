@@ -599,7 +599,7 @@ public abstract class Accessor {
     @SuppressWarnings("all")
     private static void conditionallyInitJavaInterop() throws IllegalStateException {
         try {
-            Class.forName("com.oracle.truffle.api.interop.java.JavaInteropAccessor", true, Accessor.class.getClassLoader());
+            Class.forName("com.oracle.truffle.api.interop.java.HostInteropAccessor", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;
@@ -610,7 +610,7 @@ public abstract class Accessor {
     }
 
     protected Accessor() {
-        if (!this.getClass().getName().startsWith("com.oracle.truffle.api") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
+        if (!this.getClass().getName().startsWith("com.oracle.truffle") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
             throw new IllegalStateException();
         }
         String simpleName = this.getClass().getSimpleName();
@@ -638,7 +638,7 @@ public abstract class Accessor {
             SOURCE = this.sourceSupport();
         } else if (simpleName.endsWith("DumpAccessor")) {
             DUMP = this.dumpSupport();
-        } else if (simpleName.endsWith("JavaInteropAccessor")) {
+        } else if (simpleName.endsWith("HostInteropAccessor")) {
             JAVAINTEROP = this.javaInteropSupport();
         } else if (simpleName.endsWith("InteropAccessor")) {
             INTEROP = this.interopSupport();

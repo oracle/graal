@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,21 +32,18 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-interface JavaFieldDesc {
-    String getName();
-}
+abstract class HostFieldDesc {
 
-abstract class SingleFieldDesc implements JavaFieldDesc {
     private final Class<?> type;
     private final Type genericType;
 
-    protected SingleFieldDesc(Class<?> type, Type genericType) {
+    private HostFieldDesc(Class<?> type, Type genericType) {
         this.type = type;
         this.genericType = genericType;
     }
@@ -63,7 +60,7 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
 
     public abstract void set(Object receiver, Object value);
 
-    static JavaFieldDesc unreflect(Field reflectionField) {
+    static HostFieldDesc unreflect(Field reflectionField) {
         assert isAccessible(reflectionField);
         if (TruffleOptions.AOT) {
             return new ReflectImpl(reflectionField);
@@ -76,7 +73,7 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
         return Modifier.isPublic(field.getModifiers()) && Modifier.isPublic(field.getDeclaringClass().getModifiers());
     }
 
-    private static final class ReflectImpl extends SingleFieldDesc {
+    private static final class ReflectImpl extends HostFieldDesc {
         private final Field field;
 
         ReflectImpl(Field field) {
@@ -84,16 +81,12 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
             this.field = field;
         }
 
-        public String getName() {
-            return field.getName();
-        }
-
         @Override
         public Object get(Object receiver) {
             try {
                 return reflectGet(field, receiver);
             } catch (IllegalArgumentException e) {
-                throw UnsupportedTypeException.raise(e, JavaInteropReflect.EMPTY);
+                throw UnsupportedTypeException.raise(e, HostInteropReflect.EMPTY);
             } catch (IllegalAccessException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
@@ -105,7 +98,7 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
             try {
                 reflectSet(field, receiver, value);
             } catch (IllegalArgumentException e) {
-                throw UnsupportedTypeException.raise(e, JavaInteropReflect.EMPTY);
+                throw UnsupportedTypeException.raise(e, HostInteropReflect.EMPTY);
             } catch (IllegalAccessException e) {
                 CompilerDirectives.transferToInterpreter();
                 if (Modifier.isFinal(field.getModifiers())) {
@@ -132,7 +125,7 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
         }
     }
 
-    private static final class MHImpl extends SingleFieldDesc {
+    private static final class MHImpl extends HostFieldDesc {
         private final Field field;
         @CompilationFinal private MethodHandle getHandle;
         @CompilationFinal private MethodHandle setHandle;
@@ -140,10 +133,6 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
         MHImpl(Field field) {
             super(field.getType(), field.getGenericType());
             this.field = field;
-        }
-
-        public String getName() {
-            return field.getName();
         }
 
         @Override
@@ -155,9 +144,9 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
             try {
                 return invokeGetHandle(getHandle, receiver);
             } catch (Exception e) {
-                throw UnsupportedTypeException.raise(e, JavaInteropReflect.EMPTY);
+                throw UnsupportedTypeException.raise(e, HostInteropReflect.EMPTY);
             } catch (Throwable e) {
-                throw JavaInteropReflect.rethrow(e);
+                throw HostInteropReflect.rethrow(e);
             }
         }
 
@@ -172,7 +161,7 @@ abstract class SingleFieldDesc implements JavaFieldDesc {
             } catch (Exception e) {
                 throw UnsupportedTypeException.raise(e, new Object[]{value});
             } catch (Throwable e) {
-                throw JavaInteropReflect.rethrow(e);
+                throw HostInteropReflect.rethrow(e);
             }
         }
 

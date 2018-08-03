@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,19 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-interface JavaMethodDesc {
-    String getName();
+import java.lang.reflect.Type;
+import java.util.function.Function;
 
-    JavaMethodDesc[] getOverloads();
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    default boolean isInternal() {
-        return false;
+class PolyglotMapAndFunction<K, V> extends PolyglotMap<K, V> implements Function<Object[], Object> {
+
+    PolyglotMapAndFunction(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+        super(languageContext, obj, keyClass, valueClass, valueType);
     }
 
-    boolean isMethod();
-
-    boolean isConstructor();
-
+    @Override
+    public final Object apply(Object[] arguments) {
+        return cache.apply.call(languageContext, guestObject, arguments);
+    }
 }

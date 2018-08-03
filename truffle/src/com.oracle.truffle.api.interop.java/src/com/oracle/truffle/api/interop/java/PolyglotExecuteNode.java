@@ -41,7 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-final class TruffleExecuteNode extends Node {
+final class PolyglotExecuteNode extends Node {
 
     private static final Object[] EMPTY = new Object[0];
 
@@ -51,7 +51,7 @@ final class TruffleExecuteNode extends Node {
     @Child private Node instantiate = Message.NEW.createNode();
     private final BiFunction<Object, Object[], Object[]> toGuests = HostEntryRootNode.createToGuestValuesNode();
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
-    @Child private ToJavaNode toHost = ToJavaNode.create();
+    @Child private ToHostNode toHost = ToHostNode.create();
 
     public Object execute(Object languageContext, TruffleObject function, Object functionArgsObject,
                     Class<?> resultClass, Type resultType) {
@@ -75,26 +75,25 @@ final class TruffleExecuteNode extends Node {
                 result = sendNew(instantiate, function, functionArgs);
             } else {
                 CompilerDirectives.transferToInterpreter();
-                throw JavaInteropErrors.executeUnsupported(languageContext, function);
+                throw HostInteropErrors.executeUnsupported(languageContext, function);
             }
         } catch (UnsupportedTypeException e) {
-
             CompilerDirectives.transferToInterpreter();
             if (executable) {
-                throw JavaInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
+                throw HostInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
             } else {
-                throw JavaInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
+                throw HostInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
             }
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreter();
             if (executable) {
-                throw JavaInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+                throw HostInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
             } else {
-                throw JavaInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+                throw HostInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
             }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw JavaInteropErrors.executeUnsupported(languageContext, function);
+            throw HostInteropErrors.executeUnsupported(languageContext, function);
         }
         return toHost.execute(result, resultClass, resultType, languageContext);
     }

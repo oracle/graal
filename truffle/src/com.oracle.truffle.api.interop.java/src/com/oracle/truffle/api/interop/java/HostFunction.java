@@ -25,22 +25,69 @@
 package com.oracle.truffle.api.interop.java;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = JavaFunctionObject.class)
-class JavaFunctionMessageResolution {
+final class HostFunction implements TruffleObject {
+
+    final HostMethodDesc method;
+    final Object obj;
+    final Object languageContext;
+
+    HostFunction(HostMethodDesc method, Object obj, Object languageContext) {
+        this.method = method;
+        this.obj = obj;
+        this.languageContext = languageContext;
+    }
+
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof HostFunction;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return HostFunctionMRForeign.ACCESS;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof HostFunction) {
+            HostFunction other = (HostFunction) o;
+            return this.method == other.method && this.obj == other.obj && this.languageContext == other.languageContext;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return method.hashCode();
+    }
+
+    String getDescription() {
+        if (obj == null) {
+            return "null";
+        }
+        String typeName = obj.getClass().getTypeName();
+        return typeName + "." + method.getName();
+    }
+
+}
+
+@MessageResolution(receiverType = HostFunction.class)
+class HostFunctionMR {
 
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteNode extends Node {
 
-        @Child private ExecuteMethodNode doExecute;
+        @Child private HostExecuteNode doExecute;
 
-        public Object access(JavaFunctionObject function, Object[] args) {
+        public Object access(HostFunction function, Object[] args) {
             if (doExecute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                doExecute = insert(ExecuteMethodNode.create());
+                doExecute = insert(HostExecuteNode.create());
             }
             return doExecute.execute(function.method, function.obj, args, function.languageContext);
         }
@@ -49,7 +96,7 @@ class JavaFunctionMessageResolution {
     @Resolve(message = "IS_EXECUTABLE")
     abstract static class IsExecutableNode extends Node {
 
-        public Object access(@SuppressWarnings("unused") JavaFunctionObject receiver) {
+        public Object access(@SuppressWarnings("unused") HostFunction receiver) {
             return Boolean.TRUE;
         }
 

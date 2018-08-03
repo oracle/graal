@@ -63,7 +63,7 @@ import org.graalvm.polyglot.management.ExecutionListener;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-        if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
+        if (!getClass().getName().equals("com.oracle.truffle.polyglot.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
             throw new AssertionError("Only one implementation Engine.Impl allowed.");
         }
     }
@@ -276,7 +276,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract static class AbstractContextImpl {
 
         protected AbstractContextImpl(AbstractPolyglotImpl impl) {
-            if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotContextImpl")) {
+            if (!getClass().getName().equals("com.oracle.truffle.polyglot.PolyglotContextImpl")) {
                 throw new AssertionError("Only one implementation of AbstractContextImpl allowed.");
             }
         }

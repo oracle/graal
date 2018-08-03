@@ -32,13 +32,13 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-final class JavaInteropAccessor extends Accessor {
+final class HostInteropAccessor extends Accessor {
 
     EngineSupport engine() {
         return engineSupport();
     }
 
-    static final JavaInteropAccessor ACCESSOR = new JavaInteropAccessor();
+    static final HostInteropAccessor ACCESSOR = new HostInteropAccessor();
 
     static boolean isGuestPrimitive(Object obj) {
         return (obj instanceof Boolean ||
@@ -57,36 +57,36 @@ final class JavaInteropAccessor extends Accessor {
         return new JavaInteropSupport() {
             @Override
             public Node createToJavaNode() {
-                return ToJavaNode.create();
+                return ToHostNode.create();
             }
 
             @Override
             public Object toJava(Node javaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext) {
-                ToJavaNode toJavaNode = (ToJavaNode) javaNode;
+                ToHostNode toJavaNode = (ToHostNode) javaNode;
                 return toJavaNode.execute(value, rawType, genericType, polyglotContext);
             }
 
             @Override
             public boolean isHostObject(Object object) {
-                return object instanceof JavaObject;
+                return object instanceof HostObject;
             }
 
             @Override
             public Object asHostObject(Object obj) {
                 assert isHostObject(obj);
-                JavaObject javaObject = (JavaObject) obj;
+                HostObject javaObject = (HostObject) obj;
                 return javaObject.obj;
             }
 
             @Override
             public Object toGuestObject(Object obj, Object languageContext) {
-                return JavaInterop.asTruffleObject(obj, languageContext);
+                return HostInterop.asTruffleObject(obj, languageContext);
             }
 
             @Override
             public Object asBoxedGuestValue(Object hostObject, Object languageContext) {
                 if (isGuestPrimitive(hostObject)) {
-                    return JavaObject.forObject(hostObject, languageContext);
+                    return HostObject.forObject(hostObject, languageContext);
                 } else if (hostObject instanceof TruffleObject) {
                     return hostObject;
                 } else {
@@ -100,7 +100,7 @@ final class JavaInteropAccessor extends Accessor {
                 if (TruffleOptions.AOT) {
                     return false;
                 }
-                return object instanceof JavaFunctionObject;
+                return object instanceof HostFunction;
             }
 
             @Override
@@ -108,17 +108,17 @@ final class JavaInteropAccessor extends Accessor {
                 if (TruffleOptions.AOT) {
                     return "";
                 }
-                return ((JavaFunctionObject) object).getDescription();
+                return ((HostFunction) object).getDescription();
             }
 
             @Override
             public Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext) {
-                return JavaObject.forStaticClass(clazz, hostLanguageContext);
+                return HostObject.forStaticClass(clazz, hostLanguageContext);
             }
 
             @Override
             public boolean isHostSymbol(Object object) {
-                return object instanceof JavaObject && ((JavaObject) object).isStaticClass();
+                return object instanceof HostObject && ((HostObject) object).isStaticClass();
             }
         };
     }

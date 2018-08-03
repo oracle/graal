@@ -918,7 +918,7 @@ public class VirtualizedFileSystemTest {
 
     private static void resetLanguageHomes() {
         try {
-            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.api.vm.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
+            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
             final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
             reset.setAccessible(true);
             reset.invoke(null);

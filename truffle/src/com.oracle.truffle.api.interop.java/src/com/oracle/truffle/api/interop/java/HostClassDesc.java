@@ -41,17 +41,19 @@ import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.java.HostMethodDesc.OverloadedMethod;
+import com.oracle.truffle.api.interop.java.HostMethodDesc.SingleMethod;
 
-final class JavaClassDesc {
-    private static final ClassValue<JavaClassDesc> CACHED_DESCS = new ClassValue<JavaClassDesc>() {
+final class HostClassDesc {
+    private static final ClassValue<HostClassDesc> CACHED_DESCS = new ClassValue<HostClassDesc>() {
         @Override
-        protected JavaClassDesc computeValue(Class<?> type) {
-            return new JavaClassDesc(type);
+        protected HostClassDesc computeValue(Class<?> type) {
+            return new HostClassDesc(type);
         }
     };
 
     @TruffleBoundary
-    static JavaClassDesc forClass(Class<?> clazz) {
+    static HostClassDesc forClass(Class<?> clazz) {
         return CACHED_DESCS.get(clazz);
     }
 
@@ -59,7 +61,7 @@ final class JavaClassDesc {
     private volatile Members members;
     private volatile JNIMembers jniMembers;
 
-    JavaClassDesc(Class<?> type) {
+    HostClassDesc(Class<?> type) {
         this.type = type;
     }
 
@@ -68,27 +70,27 @@ final class JavaClassDesc {
     }
 
     private static class Members {
-        final Map<String, JavaMethodDesc> methods;
-        final Map<String, JavaMethodDesc> staticMethods;
-        final JavaMethodDesc constructor;
-        final Map<String, JavaFieldDesc> fields;
-        final Map<String, JavaFieldDesc> staticFields;
-        final JavaMethodDesc functionalMethod;
+        final Map<String, HostMethodDesc> methods;
+        final Map<String, HostMethodDesc> staticMethods;
+        final HostMethodDesc constructor;
+        final Map<String, HostFieldDesc> fields;
+        final Map<String, HostFieldDesc> staticFields;
+        final HostMethodDesc functionalMethod;
 
-        private static final BiFunction<JavaMethodDesc, JavaMethodDesc, JavaMethodDesc> MERGE = new BiFunction<JavaMethodDesc, JavaMethodDesc, JavaMethodDesc>() {
+        private static final BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc> MERGE = new BiFunction<HostMethodDesc, HostMethodDesc, HostMethodDesc>() {
             @Override
-            public JavaMethodDesc apply(JavaMethodDesc m1, JavaMethodDesc m2) {
+            public HostMethodDesc apply(HostMethodDesc m1, HostMethodDesc m2) {
                 return merge(m1, m2);
             }
         };
 
         Members(Class<?> type) {
-            Map<String, JavaMethodDesc> methodMap = new LinkedHashMap<>();
-            Map<String, JavaMethodDesc> staticMethodMap = new LinkedHashMap<>();
-            Map<String, JavaFieldDesc> fieldMap = new LinkedHashMap<>();
-            Map<String, JavaFieldDesc> staticFieldMap = new LinkedHashMap<>();
-            JavaMethodDesc ctor = null;
-            JavaMethodDesc functionalInterfaceMethod = null;
+            Map<String, HostMethodDesc> methodMap = new LinkedHashMap<>();
+            Map<String, HostMethodDesc> staticMethodMap = new LinkedHashMap<>();
+            Map<String, HostFieldDesc> fieldMap = new LinkedHashMap<>();
+            Map<String, HostFieldDesc> staticFieldMap = new LinkedHashMap<>();
+            HostMethodDesc ctor = null;
+            HostMethodDesc functionalInterfaceMethod = null;
 
             collectPublicMethods(type, methodMap, staticMethodMap);
 
@@ -99,7 +101,7 @@ final class JavaClassDesc {
                     if (!Modifier.isStatic(f.getModifiers())) {
                         if (f.getDeclaringClass() == type) {
                             assert !fieldMap.containsKey(f.getName());
-                            fieldMap.put(f.getName(), SingleFieldDesc.unreflect(f));
+                            fieldMap.put(f.getName(), HostFieldDesc.unreflect(f));
                         } else {
                             if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
                                 inheritedPublicInstanceFields = true;
@@ -110,7 +112,7 @@ final class JavaClassDesc {
                     } else {
                         // do not inherit static fields
                         if (f.getDeclaringClass() == type) {
-                            staticFieldMap.put(f.getName(), SingleFieldDesc.unreflect(f));
+                            staticFieldMap.put(f.getName(), HostFieldDesc.unreflect(f));
                         }
                     }
                 }
@@ -125,7 +127,7 @@ final class JavaClassDesc {
 
             if (Modifier.isPublic(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
-                    SingleMethodDesc overload = SingleMethodDesc.unreflect(c);
+                    SingleMethod overload = SingleMethod.unreflect(c);
                     ctor = ctor == null ? overload : merge(ctor, overload);
                 }
             }
@@ -146,11 +148,11 @@ final class JavaClassDesc {
             this.functionalMethod = functionalInterfaceMethod;
         }
 
-        private static void collectPublicMethods(Class<?> type, Map<String, JavaMethodDesc> methodMap, Map<String, JavaMethodDesc> staticMethodMap) {
+        private static void collectPublicMethods(Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
             collectPublicMethods(type, methodMap, staticMethodMap, new HashSet<>(), type);
         }
 
-        private static void collectPublicMethods(Class<?> type, Map<String, JavaMethodDesc> methodMap, Map<String, JavaMethodDesc> staticMethodMap, Set<Object> visited, Class<?> startType) {
+        private static void collectPublicMethods(Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited, Class<?> startType) {
             boolean isPublicType = Modifier.isPublic(type.getModifiers()) && !Proxy.isProxyClass(type);
             boolean allMethodsPublic = true;
             if (isPublicType) {
@@ -214,25 +216,25 @@ final class JavaClassDesc {
             return new MethodInfo();
         }
 
-        private static void putMethod(Method m, Map<String, JavaMethodDesc> methodMap, Map<String, JavaMethodDesc> staticMethodMap) {
-            SingleMethodDesc method = SingleMethodDesc.unreflect(m);
-            Map<String, JavaMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
+        private static void putMethod(Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
+            SingleMethod method = SingleMethod.unreflect(m);
+            Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
             map.merge(m.getName(), method, MERGE);
         }
 
-        static JavaMethodDesc merge(JavaMethodDesc existing, JavaMethodDesc other) {
-            assert other instanceof SingleMethodDesc;
-            if (existing instanceof SingleMethodDesc) {
-                return new OverloadedMethodDesc(new SingleMethodDesc[]{(SingleMethodDesc) existing, (SingleMethodDesc) other});
+        static HostMethodDesc merge(HostMethodDesc existing, HostMethodDesc other) {
+            assert other instanceof SingleMethod;
+            if (existing instanceof SingleMethod) {
+                return new OverloadedMethod(new SingleMethod[]{(SingleMethod) existing, (SingleMethod) other});
             } else {
-                SingleMethodDesc[] oldOverloads = ((OverloadedMethodDesc) existing).getOverloads();
-                SingleMethodDesc[] newOverloads = Arrays.copyOf(oldOverloads, oldOverloads.length + 1);
-                newOverloads[oldOverloads.length] = (SingleMethodDesc) other;
-                return new OverloadedMethodDesc(newOverloads);
+                SingleMethod[] oldOverloads = ((OverloadedMethod) existing).getOverloads();
+                SingleMethod[] newOverloads = Arrays.copyOf(oldOverloads, oldOverloads.length + 1);
+                newOverloads[oldOverloads.length] = (SingleMethod) other;
+                return new OverloadedMethod(newOverloads);
             }
         }
 
-        private static void collectPublicInstanceFields(Class<?> type, Map<String, JavaFieldDesc> fieldMap, boolean mayHaveInaccessibleFields) {
+        private static void collectPublicInstanceFields(Class<?> type, Map<String, HostFieldDesc> fieldMap, boolean mayHaveInaccessibleFields) {
             Set<String> fieldNames = new HashSet<>();
             for (Class<?> superclass = type; superclass != null && superclass != Object.class; superclass = superclass.getSuperclass()) {
                 boolean inheritedPublicInstanceFields = false;
@@ -251,7 +253,7 @@ final class JavaClassDesc {
                         continue;
                     }
                     if (Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
-                        fieldMap.putIfAbsent(f.getName(), SingleFieldDesc.unreflect(f));
+                        fieldMap.putIfAbsent(f.getName(), HostFieldDesc.unreflect(f));
                     } else {
                         assert mayHaveInaccessibleFields;
                     }
@@ -287,23 +289,23 @@ final class JavaClassDesc {
     }
 
     private static class JNIMembers {
-        final Map<String, JavaMethodDesc> methods;
-        final Map<String, JavaMethodDesc> staticMethods;
+        final Map<String, HostMethodDesc> methods;
+        final Map<String, HostMethodDesc> staticMethods;
 
         JNIMembers(Members members) {
             this.methods = collectJNINamedMethods(members.methods);
             this.staticMethods = collectJNINamedMethods(members.staticMethods);
         }
 
-        private static Map<String, JavaMethodDesc> collectJNINamedMethods(Map<String, JavaMethodDesc> methods) {
-            Map<String, JavaMethodDesc> jniMethods = new LinkedHashMap<>();
-            for (JavaMethodDesc method : methods.values()) {
+        private static Map<String, HostMethodDesc> collectJNINamedMethods(Map<String, HostMethodDesc> methods) {
+            Map<String, HostMethodDesc> jniMethods = new LinkedHashMap<>();
+            for (HostMethodDesc method : methods.values()) {
                 if (method.isConstructor()) {
                     continue;
                 }
-                for (JavaMethodDesc m : method.getOverloads()) {
+                for (HostMethodDesc m : method.getOverloads()) {
                     assert m.isMethod();
-                    jniMethods.put(JavaInteropReflect.jniName((Method) ((SingleMethodDesc) m).getReflectionMethod()), m);
+                    jniMethods.put(HostInteropReflect.jniName((Method) ((SingleMethod) m).getReflectionMethod()), m);
                 }
             }
             return jniMethods;
@@ -344,7 +346,7 @@ final class JavaClassDesc {
      * @param name method name
      * @return method descriptor or {@code null} if there is no such method
      */
-    public JavaMethodDesc lookupMethod(String name) {
+    public HostMethodDesc lookupMethod(String name) {
         return getMembers().methods.get(name);
     }
 
@@ -354,25 +356,25 @@ final class JavaClassDesc {
      * @param name method name
      * @return method descriptor or {@code null} if there is no such method
      */
-    public JavaMethodDesc lookupStaticMethod(String name) {
+    public HostMethodDesc lookupStaticMethod(String name) {
         return getMembers().staticMethods.get(name);
     }
 
-    public JavaMethodDesc lookupMethod(String name, boolean onlyStatic) {
+    public HostMethodDesc lookupMethod(String name, boolean onlyStatic) {
         return onlyStatic ? lookupStaticMethod(name) : lookupMethod(name);
     }
 
-    public JavaMethodDesc lookupMethodByJNIName(String jniName, boolean onlyStatic) {
+    public HostMethodDesc lookupMethodByJNIName(String jniName, boolean onlyStatic) {
         return onlyStatic ? getJNIMembers().staticMethods.get(jniName) : getJNIMembers().methods.get(jniName);
     }
 
     public Collection<String> getMethodNames(boolean onlyStatic, boolean includeInternal) {
-        Map<String, JavaMethodDesc> methods = onlyStatic ? getMembers().staticMethods : getMembers().methods;
+        Map<String, HostMethodDesc> methods = onlyStatic ? getMembers().staticMethods : getMembers().methods;
         if (includeInternal || onlyStatic) {
             return Collections.unmodifiableCollection(methods.keySet());
         } else {
             Collection<String> methodNames = new ArrayList<>(methods.size());
-            for (Map.Entry<String, JavaMethodDesc> entry : methods.entrySet()) {
+            for (Map.Entry<String, HostMethodDesc> entry : methods.entrySet()) {
                 if (!entry.getValue().isInternal()) {
                     methodNames.add(entry.getKey());
                 }
@@ -386,7 +388,7 @@ final class JavaClassDesc {
      *
      * @return method descriptor or {@code null} if there is no public constructor
      */
-    public JavaMethodDesc lookupConstructor() {
+    public HostMethodDesc lookupConstructor() {
         return getMembers().constructor;
     }
 
@@ -396,7 +398,7 @@ final class JavaClassDesc {
      * @param name field name
      * @return field or {@code null} if there is no such field
      */
-    public JavaFieldDesc lookupField(String name) {
+    public HostFieldDesc lookupField(String name) {
         return getMembers().fields.get(name);
     }
 
@@ -406,11 +408,11 @@ final class JavaClassDesc {
      * @param name field name
      * @return field or {@code null} if there is no such field
      */
-    public JavaFieldDesc lookupStaticField(String name) {
+    public HostFieldDesc lookupStaticField(String name) {
         return getMembers().staticFields.get(name);
     }
 
-    public JavaFieldDesc lookupField(String name, boolean onlyStatic) {
+    public HostFieldDesc lookupField(String name, boolean onlyStatic) {
         return onlyStatic ? lookupStaticField(name) : lookupField(name);
     }
 
@@ -418,7 +420,7 @@ final class JavaClassDesc {
         return Collections.unmodifiableCollection((onlyStatic ? getMembers().staticFields : getMembers().fields).keySet());
     }
 
-    public JavaMethodDesc getFunctionalMethod() {
+    public HostMethodDesc getFunctionalMethod() {
         return getMembers().functionalMethod;
     }
 
@@ -426,4 +428,5 @@ final class JavaClassDesc {
     public String toString() {
         return "JavaClass[" + type.getCanonicalName() + "]";
     }
+
 }

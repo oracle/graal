@@ -44,7 +44,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
@@ -59,23 +58,23 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-class TruffleMap<K, V> extends AbstractMap<K, V> {
+class PolyglotMap<K, V> extends AbstractMap<K, V> {
 
     final Object languageContext;
     final TruffleObject guestObject;
-    final TruffleMapCache cache;
+    final Cache cache;
 
-    TruffleMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+    PolyglotMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         this.guestObject = obj;
         this.languageContext = languageContext;
-        this.cache = TruffleMapCache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
+        this.cache = Cache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
     }
 
     static <K, V> Map<K, V> create(Object languageContext, TruffleObject foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         if (implementsFunction) {
-            return new FunctionTruffleMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
+            return new PolyglotMapAndFunction<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         } else {
-            return new TruffleMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
+            return new PolyglotMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         }
     }
 
@@ -110,7 +109,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public String toString() {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         if (engine != null && languageContext != null) {
             try {
                 return engine.toHostValue(guestObject, languageContext).toString();
@@ -188,7 +187,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                 if (hasNext()) {
                     currentIndex = index;
                     Object key = props.get(index++);
-                    return new TruffleEntry((K) (key));
+                    return new EntryImpl((K) (key));
                 } else {
                     throw new NoSuchElementException();
                 }
@@ -232,7 +231,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                     }
                     index++;
                     hasCurrentEntry = true;
-                    return new TruffleEntry((K) cache.keyClass.cast(key));
+                    return new EntryImpl((K) cache.keyClass.cast(key));
                 } else {
                     throw new NoSuchElementException();
                 }
@@ -282,10 +281,10 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
     }
 
-    private final class TruffleEntry implements Entry<K, V> {
+    private final class EntryImpl implements Entry<K, V> {
         private final K key;
 
-        TruffleEntry(K key) {
+        EntryImpl(K key) {
             this.key = key;
         }
 
@@ -305,19 +304,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
     }
 
-    static class FunctionTruffleMap<K, V> extends TruffleMap<K, V> implements Function<Object[], Object> {
-
-        FunctionTruffleMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
-            super(languageContext, obj, keyClass, valueClass, valueType);
-        }
-
-        @Override
-        public final Object apply(Object[] arguments) {
-            return cache.apply.call(languageContext, guestObject, arguments);
-        }
-    }
-
-    static final class TruffleMapCache {
+    static final class Cache {
 
         final Class<?> receiverClass;
         final Class<?> keyClass;
@@ -334,7 +321,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         final CallTarget containsKey;
         final CallTarget apply;
 
-        TruffleMapCache(Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
+        Cache(Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             this.receiverClass = receiverClass;
             this.keyClass = keyClass;
             this.valueClass = valueClass;
@@ -350,16 +337,16 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             this.apply = initializeCall(new Apply(this));
         }
 
-        private static CallTarget initializeCall(TruffleMapNode node) {
+        private static CallTarget initializeCall(PolyglotMapNode node) {
             return HostEntryRootNode.createTarget(node);
         }
 
-        static TruffleMapCache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
-            EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        static Cache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
+            EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
-            TruffleMapCache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, TruffleMapCache.class);
+            Cache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = engine.installJavaInteropCodeCache(languageContext, cacheKey, new TruffleMapCache(receiverClass, keyClass, valueClass, valueType), TruffleMapCache.class);
+                cache = engine.installJavaInteropCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -399,14 +386,14 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
             }
         }
 
-        private abstract static class TruffleMapNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
+        private abstract static class PolyglotMapNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
-            final TruffleMapCache cache;
+            final Cache cache;
             @Child protected Node hasSize = Message.HAS_SIZE.createNode();
             @Child protected Node hasKeys = Message.HAS_KEYS.createNode();
             private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
 
-            TruffleMapNode(TruffleMapCache cache) {
+            PolyglotMapNode(Cache cache) {
                 this.cache = cache;
             }
 
@@ -418,7 +405,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             public final String get() {
-                return "TruffleMap<" + cache.receiverClass + ", " + cache.keyClass + ", " + cache.valueType + ">." + getOperationName();
+                return "PolyglotMap<" + cache.receiverClass + ", " + cache.keyClass + ", " + cache.valueType + ">." + getOperationName();
             }
 
             protected final boolean isValidKey(TruffleObject receiver, Object key) {
@@ -438,12 +425,12 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         }
 
-        private class ContainsKey extends TruffleMapNode {
+        private class ContainsKey extends PolyglotMapNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node getSize = Message.GET_SIZE.createNode();
 
-            ContainsKey(TruffleMapCache cache) {
+            ContainsKey(Cache cache) {
                 super(cache);
             }
 
@@ -463,12 +450,12 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         }
 
-        private static class EntrySet extends TruffleMapNode {
+        private static class EntrySet extends PolyglotMapNode {
 
             @Child private Node getSize = Message.GET_SIZE.createNode();
             @Child private Node keysNode = Message.KEYS.createNode();
 
-            EntrySet(TruffleMapCache cache) {
+            EntrySet(Cache cache) {
                 super(cache);
             }
 
@@ -478,7 +465,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                 List<?> keys = null;
                 int keysSize = 0;
                 int elemSize = 0;
-                TruffleMap<Object, Object> originalMap = (TruffleMap<Object, Object>) args[offset];
+                PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[offset];
 
                 if (cache.memberKey && sendHasKeys(hasKeys, receiver)) {
                     TruffleObject truffleKeys;
@@ -488,7 +475,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                         CompilerDirectives.transferToInterpreter();
                         return Collections.emptySet();
                     }
-                    keys = TruffleList.create(languageContext, truffleKeys, false, String.class, null);
+                    keys = PolyglotList.create(languageContext, truffleKeys, false, String.class, null);
                     keysSize = keys.size();
                 } else if (cache.numberKey && sendHasSize(hasSize, receiver)) {
                     try {
@@ -507,14 +494,14 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         }
 
-        private static class Get extends TruffleMapNode {
+        private static class Get extends PolyglotMapNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node getSize = Message.GET_SIZE.createNode();
             @Child private Node read = Message.READ.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
 
-            Get(TruffleMapCache cache) {
+            Get(Cache cache) {
                 super(cache);
             }
 
@@ -545,16 +532,16 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         }
 
-        private static class Put extends TruffleMapNode {
+        private static class Put extends PolyglotMapNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node getSize = Message.GET_SIZE.createNode();
             @Child private Node read = Message.READ.createNode();
             @Child private Node write = Message.WRITE.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
             private final BiFunction<Object, Object, Object> toGuest = createToGuestValueNode();
 
-            Put(TruffleMapCache cache) {
+            Put(Cache cache) {
                 super(cache);
             }
 
@@ -584,35 +571,35 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                             sendWrite(write, receiver, key, guestValue);
                         } catch (UnknownIdentifierException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
+                            throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
                         } catch (UnsupportedMessageException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
+                            throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
                         } catch (UnsupportedTypeException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.invalidMapValue(languageContext, receiver, cache.keyClass, cache.valueType, key, guestValue);
+                            throw HostInteropErrors.invalidMapValue(languageContext, receiver, cache.keyClass, cache.valueType, key, guestValue);
                         }
                         return cache.valueClass.cast(result);
                     }
                 }
                 CompilerDirectives.transferToInterpreter();
                 if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
-                    throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "put");
                 } else {
-                    throw JavaInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
+                    throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, cache.keyClass, cache.valueType, key);
                 }
             }
 
         }
 
-        private static class Remove extends TruffleMapNode {
+        private static class Remove extends PolyglotMapNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node read = Message.READ.createNode();
             @Child private Node remove = Message.REMOVE.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
 
-            Remove(TruffleMapCache cache) {
+            Remove(Cache cache) {
                 super(cache);
             }
 
@@ -644,13 +631,13 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                         return null;
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
                     }
                     return cache.valueClass.cast(result);
                 }
                 CompilerDirectives.transferToInterpreter();
                 if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
-                    throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
                 } else {
                     return null;
                 }
@@ -658,14 +645,14 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         }
 
-        private static class RemoveBoolean extends TruffleMapNode {
+        private static class RemoveBoolean extends PolyglotMapNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node read = Message.READ.createNode();
             @Child private Node remove = Message.REMOVE.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
 
-            RemoveBoolean(TruffleMapCache cache) {
+            RemoveBoolean(Cache cache) {
                 super(cache);
             }
 
@@ -700,12 +687,12 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
                         return false;
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
                     }
                 }
                 CompilerDirectives.transferToInterpreter();
                 if (cache.keyClass.isInstance(key) && (key instanceof Number || key instanceof String)) {
-                    throw JavaInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
+                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, cache.keyClass, cache.valueType, "remove");
                 } else {
                     return false;
                 }
@@ -713,11 +700,11 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
 
         }
 
-        private static class Apply extends TruffleMapNode {
+        private static class Apply extends PolyglotMapNode {
 
-            @Child private TruffleExecuteNode apply = new TruffleExecuteNode();
+            @Child private PolyglotExecuteNode apply = new PolyglotExecuteNode();
 
-            Apply(TruffleMapCache cache) {
+            Apply(Cache cache) {
                 super(cache);
             }
 

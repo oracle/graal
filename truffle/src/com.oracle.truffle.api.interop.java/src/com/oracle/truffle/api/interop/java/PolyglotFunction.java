@@ -35,13 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-final class TruffleFunction<T, R> implements Function<T, R> {
+final class PolyglotFunction<T, R> implements Function<T, R> {
 
     final TruffleObject guestObject;
     final Object languageContext;
     final CallTarget apply;
 
-    TruffleFunction(Object languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
+    PolyglotFunction(Object languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
         this.guestObject = function;
         this.languageContext = languageContext;
         this.apply = Apply.lookup(languageContext, function.getClass(), returnClass, returnType);
@@ -54,8 +54,8 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof TruffleFunction) {
-            return guestObject.equals(((TruffleFunction<?, ?>) obj).guestObject);
+        if (obj instanceof PolyglotFunction) {
+            return guestObject.equals(((PolyglotFunction<?, ?>) obj).guestObject);
         }
         return false;
     }
@@ -72,7 +72,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
     @Override
     public String toString() {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         if (engine != null && languageContext != null) {
             try {
                 return engine.toHostValue(guestObject, languageContext).toString();
@@ -85,8 +85,8 @@ final class TruffleFunction<T, R> implements Function<T, R> {
     }
 
     @TruffleBoundary
-    public static <T> TruffleFunction<?, ?> create(Object languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
-        return new TruffleFunction<>(languageContext, function, returnClass, returnType);
+    public static <T> PolyglotFunction<?, ?> create(Object languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
+        return new PolyglotFunction<>(languageContext, function, returnClass, returnType);
     }
 
     static final class Apply extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
@@ -95,7 +95,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
         final Class<?> returnClass;
         final Type returnType;
 
-        @Child private TruffleExecuteNode apply;
+        @Child private PolyglotExecuteNode apply;
 
         Apply(Class<?> receiverType, Class<?> returnClass, Type returnType) {
             this.receiverClass = receiverType;
@@ -111,14 +111,14 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
         @Override
         public String get() {
-            return "TruffleFunction<" + receiverClass + ", " + returnType + ">.apply";
+            return "PolyglotFunction<" + receiverClass + ", " + returnType + ">.apply";
         }
 
         @Override
         protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
             if (apply == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                apply = insert(new TruffleExecuteNode());
+                apply = insert(new PolyglotExecuteNode());
             }
             return apply.execute(languageContext, function, args[offset], returnClass, returnType);
         }
@@ -143,7 +143,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
         }
 
         private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
-            EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+            EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
             Apply apply = new Apply(receiverClass, returnClass, returnType);
             CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {

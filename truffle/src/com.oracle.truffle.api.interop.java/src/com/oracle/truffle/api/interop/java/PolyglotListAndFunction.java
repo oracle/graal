@@ -24,33 +24,19 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
+import java.lang.reflect.Type;
+import java.util.function.Function;
 
-abstract class LookupConstructorNode extends Node {
-    static final int LIMIT = 3;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    LookupConstructorNode() {
+class PolyglotListAndFunction<T> extends PolyglotList<T> implements Function<Object, Object> {
+
+    PolyglotListAndFunction(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
+        super(elementClass, elementType, array, languageContext);
     }
 
-    static LookupConstructorNode create() {
-        return LookupConstructorNodeGen.create();
+    public Object apply(Object t) {
+        return cache.apply.call(languageContext, guestObject, t);
     }
 
-    public abstract JavaMethodDesc execute(Class<?> clazz);
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
-    static JavaMethodDesc doCached(Class<?> clazz,
-                    @Cached("clazz") Class<?> cachedClazz,
-                    @Cached("doUncached(clazz)") JavaMethodDesc cachedMethod) {
-        assert cachedMethod == doUncached(clazz);
-        return cachedMethod;
-    }
-
-    @Specialization(replaces = "doCached")
-    static JavaMethodDesc doUncached(Class<?> clazz) {
-        return JavaClassDesc.forClass(clazz).lookupConstructor();
-    }
 }

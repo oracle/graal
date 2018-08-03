@@ -35,7 +35,6 @@ import java.lang.reflect.Type;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
@@ -50,24 +49,24 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-class TruffleList<T> extends AbstractList<T> {
+class PolyglotList<T> extends AbstractList<T> {
 
     final TruffleObject guestObject;
     final Object languageContext;
-    final TruffleListCache cache;
+    final Cache cache;
 
-    TruffleList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
+    PolyglotList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
         this.guestObject = array;
         this.languageContext = languageContext;
-        this.cache = TruffleListCache.lookup(languageContext, array.getClass(), elementClass, elementType);
+        this.cache = Cache.lookup(languageContext, array.getClass(), elementClass, elementType);
     }
 
     @TruffleBoundary
     public static <T> List<T> create(Object languageContext, TruffleObject array, boolean implementFunction, Class<T> elementClass, Type elementType) {
         if (implementFunction) {
-            return new FunctionTruffleList<>(elementClass, elementType, array, languageContext);
+            return new PolyglotListAndFunction<>(elementClass, elementType, array, languageContext);
         } else {
-            return new TruffleList<>(elementClass, elementType, array, languageContext);
+            return new PolyglotList<>(elementClass, elementType, array, languageContext);
         }
     }
 
@@ -97,7 +96,7 @@ class TruffleList<T> extends AbstractList<T> {
 
     @Override
     public String toString() {
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         if (engine != null && languageContext != null) {
             try {
                 return engine.toHostValue(guestObject, languageContext).toString();
@@ -109,19 +108,7 @@ class TruffleList<T> extends AbstractList<T> {
         }
     }
 
-    private static class FunctionTruffleList<T> extends TruffleList<T> implements Function<Object, Object> {
-
-        FunctionTruffleList(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
-            super(elementClass, elementType, array, languageContext);
-        }
-
-        public Object apply(Object t) {
-            return cache.apply.call(languageContext, guestObject, t);
-        }
-
-    }
-
-    private static final class TruffleListCache {
+    static final class Cache {
 
         final Class<?> receiverClass;
         final Class<?> valueClass;
@@ -133,7 +120,7 @@ class TruffleList<T> extends AbstractList<T> {
         final CallTarget size;
         final CallTarget apply;
 
-        TruffleListCache(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+        Cache(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
@@ -144,16 +131,16 @@ class TruffleList<T> extends AbstractList<T> {
             this.apply = initializeCall(new Apply(this));
         }
 
-        private static CallTarget initializeCall(TruffleListNode node) {
+        private static CallTarget initializeCall(PolyglotListNode node) {
             return HostEntryRootNode.createTarget(node);
         }
 
-        static TruffleListCache lookup(Object languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
-            EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        static Cache lookup(Object languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+            EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
-            TruffleListCache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, TruffleListCache.class);
+            Cache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = engine.installJavaInteropCodeCache(languageContext, cacheKey, new TruffleListCache(receiverClass, valueClass, valueType), TruffleListCache.class);
+                cache = engine.installJavaInteropCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
@@ -191,11 +178,11 @@ class TruffleList<T> extends AbstractList<T> {
             }
         }
 
-        private abstract static class TruffleListNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
+        private abstract static class PolyglotListNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
-            final TruffleListCache cache;
+            final Cache cache;
 
-            TruffleListNode(TruffleListCache cache) {
+            PolyglotListNode(Cache cache) {
                 this.cache = cache;
             }
 
@@ -207,19 +194,19 @@ class TruffleList<T> extends AbstractList<T> {
 
             @Override
             public final String get() {
-                return "TruffleList<" + cache.receiverClass + ", " + cache.valueType + ">." + getOperationName();
+                return "PolyglotList<" + cache.receiverClass + ", " + cache.valueType + ">." + getOperationName();
             }
 
             protected abstract String getOperationName();
 
         }
 
-        private static class Size extends TruffleListNode {
+        private static class Size extends PolyglotListNode {
 
             @Child private Node getSize = Message.GET_SIZE.createNode();
             @Child private Node hasSize = Message.HAS_SIZE.createNode();
 
-            Size(TruffleListCache cache) {
+            Size(Cache cache) {
                 super(cache);
             }
 
@@ -243,14 +230,14 @@ class TruffleList<T> extends AbstractList<T> {
 
         }
 
-        private static class Get extends TruffleListNode {
+        private static class Get extends PolyglotListNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node read = Message.READ.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
             @Child private Node hasSize = Message.HAS_SIZE.createNode();
 
-            Get(TruffleListCache cache) {
+            Get(Cache cache) {
                 super(cache);
             }
 
@@ -270,33 +257,33 @@ class TruffleList<T> extends AbstractList<T> {
                             result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
                         } catch (UnknownIdentifierException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                            throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
                         } catch (UnsupportedMessageException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
+                            throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
                         }
                     } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                        throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
                     }
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
+                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
                 }
                 return result;
             }
 
         }
 
-        private static class Set extends TruffleListNode {
+        private static class Set extends PolyglotListNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node write = Message.WRITE.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
             @Child private Node hasSize = Message.HAS_SIZE.createNode();
             private final BiFunction<Object, Object, Object> toGuest = createToGuestValueNode();
 
-            Set(TruffleListCache cache) {
+            Set(Cache cache) {
                 super(cache);
             }
 
@@ -318,32 +305,32 @@ class TruffleList<T> extends AbstractList<T> {
                             sendWrite(write, receiver, key, value);
                         } catch (UnknownIdentifierException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                            throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
                         } catch (UnsupportedMessageException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+                            throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
                         } catch (UnsupportedTypeException e) {
                             CompilerDirectives.transferToInterpreter();
-                            throw JavaInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
+                            throw HostInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
                         }
                         return cache.valueClass.cast(result);
                     } else {
-                        throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+                        throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
                     }
                 }
-                throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+                throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
             }
         }
 
-        private static class Remove extends TruffleListNode {
+        private static class Remove extends PolyglotListNode {
 
             @Child private Node keyInfo = Message.KEY_INFO.createNode();
             @Child private Node read = Message.READ.createNode();
             @Child private Node remove = Message.REMOVE.createNode();
-            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private ToHostNode toHost = ToHostNode.create();
             @Child private Node hasSize = Message.HAS_SIZE.createNode();
 
-            Remove(TruffleListCache cache) {
+            Remove(Cache cache) {
                 super(cache);
             }
 
@@ -369,24 +356,24 @@ class TruffleList<T> extends AbstractList<T> {
                         sendRemove(remove, receiver, key);
                     } catch (UnknownIdentifierException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                        throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
+                        throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
                     }
                     return cache.valueClass.cast(result);
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
+                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
                 }
             }
         }
 
-        private static class Apply extends TruffleListNode {
+        private static class Apply extends PolyglotListNode {
 
-            @Child private TruffleExecuteNode apply = new TruffleExecuteNode();
+            @Child private PolyglotExecuteNode apply = new PolyglotExecuteNode();
 
-            Apply(TruffleListCache cache) {
+            Apply(Cache cache) {
                 super(cache);
             }
 

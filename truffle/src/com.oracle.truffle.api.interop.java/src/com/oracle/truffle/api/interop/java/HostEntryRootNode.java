@@ -56,17 +56,17 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
     protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
 
     protected static CallTarget createTarget(HostEntryRootNode<?> node) {
-        EngineSupport support = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport support = HostInteropAccessor.ACCESSOR.engine();
         return Truffle.getRuntime().createCallTarget(support.wrapHostBoundary(node, node));
     }
 
     protected static BiFunction<Object, Object, Object> createToGuestValueNode() {
-        EngineSupport support = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport support = HostInteropAccessor.ACCESSOR.engine();
         return support.createToGuestValueNode();
     }
 
     protected static BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
-        EngineSupport support = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport support = HostInteropAccessor.ACCESSOR.engine();
         return support.createToGuestValuesNode();
     }
 

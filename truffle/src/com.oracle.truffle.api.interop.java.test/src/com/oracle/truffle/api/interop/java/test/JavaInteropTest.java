@@ -522,7 +522,7 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
     }
 
     private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
-        Method isFunctionaInterface = Class.forName("com.oracle.truffle.api.interop.java.JavaInteropReflect").getDeclaredMethod("isFunctionalInterface", Class.class);
+        Method isFunctionaInterface = Class.forName("com.oracle.truffle.api.interop.java.HostInteropReflect").getDeclaredMethod("isFunctionalInterface", Class.class);
         ReflectionUtils.setAccessible(isFunctionaInterface, true);
         return (boolean) isFunctionaInterface.invoke(null, clazz);
     }

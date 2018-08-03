@@ -32,9 +32,9 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-final class JavaInterop {
+final class HostInterop {
 
-    private JavaInterop() {
+    private HostInterop() {
     }
 
     static TruffleObject asTruffleObject(Object obj, Object languageContext) {
@@ -52,24 +52,24 @@ final class JavaInterop {
             return ((TruffleObject) obj);
         } else if (obj instanceof Class) {
             if (asStaticClass) {
-                return JavaObject.forStaticClass((Class<?>) obj, languageContext);
+                return HostObject.forStaticClass((Class<?>) obj, languageContext);
             } else {
-                return JavaObject.forClass((Class<?>) obj, languageContext);
+                return HostObject.forClass((Class<?>) obj, languageContext);
             }
         } else if (obj == null) {
-            return JavaObject.NULL;
+            return HostObject.NULL;
         } else if (obj.getClass().isArray()) {
-            return JavaObject.forObject(obj, languageContext);
-        } else if (obj instanceof TruffleList) {
-            return ((TruffleList<?>) obj).guestObject;
-        } else if (obj instanceof TruffleMap) {
-            return ((TruffleMap<?, ?>) obj).guestObject;
-        } else if (obj instanceof TruffleFunction) {
-            return ((TruffleFunction<?, ?>) obj).guestObject;
+            return HostObject.forObject(obj, languageContext);
+        } else if (obj instanceof PolyglotList) {
+            return ((PolyglotList<?>) obj).guestObject;
+        } else if (obj instanceof PolyglotMap) {
+            return ((PolyglotMap<?, ?>) obj).guestObject;
+        } else if (obj instanceof PolyglotFunction) {
+            return ((PolyglotFunction<?, ?>) obj).guestObject;
         } else if (TruffleOptions.AOT) {
-            return JavaObject.forObject(obj, languageContext);
+            return HostObject.forObject(obj, languageContext);
         } else {
-            return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
+            return HostInteropReflect.asTruffleViaReflection(obj, languageContext);
         }
     }
 
@@ -96,7 +96,7 @@ final class JavaInterop {
     }
 
     static Value toHostValue(Object obj, Object languageContext) {
-        return JavaInteropAccessor.ACCESSOR.engine().toHostValue(obj, languageContext);
+        return HostInteropAccessor.ACCESSOR.engine().toHostValue(obj, languageContext);
     }
 
     static Object toGuestValue(Object obj, Object languageContext) {
@@ -108,7 +108,7 @@ final class JavaInterop {
 
     static Object toGuestObject(Object obj, Object languageContext) {
         assert !isPrimitive(obj);
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         assert engine != null;
         assert languageContext != null;
         return engine.toGuestValue(obj, languageContext);
@@ -118,7 +118,7 @@ final class JavaInterop {
         if (exception instanceof TruffleException) {
             return exception;
         }
-        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
+        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         return engine.wrapHostException(languageContext, exception);
     }
 
