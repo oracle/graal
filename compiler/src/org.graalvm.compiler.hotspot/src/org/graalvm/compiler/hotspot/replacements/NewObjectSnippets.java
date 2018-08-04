@@ -276,6 +276,8 @@ public class NewObjectSnippets implements Snippets {
                      */
                     return allocateInstanceHelper(layoutHelper, nonNullHub, prototypeMarkWord, fillContents, threadRegister, false, "", options, counters);
                 }
+            } else {
+                DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
             }
         }
         return dynamicNewInstanceStub(type);
