@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -66,7 +67,6 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
 
     @Child private Node foreignNewInstance;
-    @Child private ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
     public LLVMPolyglotNewInstance(LLVMExpressionNode[] args) {
@@ -92,7 +92,8 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     @ExplodeLoop
     protected Object doNew(VirtualFrame frame, LLVMManagedPointer value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef,
-                    @Cached("create()") LLVMGetStackNode getStack) {
+                    @Cached("create()") LLVMGetStackNode getStack,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
         TruffleObject foreign = asForeign.execute(value);
 
         Object[] evaluatedArgs = new Object[args.length];
@@ -124,5 +125,10 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     public Object fallback(Object value) {
         CompilerDirectives.transferToInterpreter();
         throw new LLVMPolyglotException(this, "Non-polyglot value passed to polyglot_new_instance.");
+    }
+
+    @TruffleBoundary
+    protected ForeignToLLVM createForeignToLLVM() {
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
     }
 }

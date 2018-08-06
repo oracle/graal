@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.dsl.Specialization;
 
-abstract class ToVoidLLVM extends ForeignToLLVM {
+public abstract class ToVoidLLVM extends ForeignToLLVM {
 
     @Specialization
     protected int fromInt(int value) {

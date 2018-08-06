@@ -31,17 +31,20 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import java.io.PrintStream;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
@@ -77,6 +80,15 @@ public abstract class LLVMNode extends Node {
 
     public final LLVMLanguage getLLVMLanguage() {
         return getRootNode().getLanguage(LLVMLanguage.class);
+    }
+
+    public final NodeFactory getNodeFactory() {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
+            return rootNode.getLanguage(LLVMLanguage.class).getContextReference().get().getNodeFactory();
+        } else {
+            return LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory();
+        }
     }
 
     public final LLVMMemory getLLVMMemory() {
@@ -137,5 +149,20 @@ public abstract class LLVMNode extends Node {
     protected static boolean isSameObject(Object a, Object b) {
         // used as a workaround for a DSL bug
         return a == b;
+    }
+
+    @TruffleBoundary
+    protected static Node createIsNull() {
+        return Message.IS_NULL.createNode();
+    }
+
+    @TruffleBoundary
+    protected static Node createIsBoxed() {
+        return Message.IS_BOXED.createNode();
+    }
+
+    @TruffleBoundary
+    protected static Node createUnbox() {
+        return Message.UNBOX.createNode();
     }
 }

@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = Dummy.class)
 @NodeChild(type = InteropTypeNode.class)
-abstract class ToPointer extends ForeignToLLVM {
+public abstract class ToPointer extends ForeignToLLVM {
 
     public static ToPointer create() {
         return ToPointerNodeGen.create(null, new InteropTypeNode(null));

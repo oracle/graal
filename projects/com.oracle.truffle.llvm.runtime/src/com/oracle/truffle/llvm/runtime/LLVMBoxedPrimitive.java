@@ -76,7 +76,7 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
         public long asPointer(Object obj) throws InteropException {
             if (toLLVM == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toLLVM = insert(ForeignToLLVM.create(ForeignToLLVMType.I64));
+                toLLVM = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64));
             }
             LLVMBoxedPrimitive boxed = (LLVMBoxedPrimitive) obj;
             return (long) toLLVM.executeWithTarget(boxed.getValue());

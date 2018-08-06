@@ -30,10 +30,11 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -55,19 +56,18 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
-    @Child private ForeignToLLVM toDouble = ForeignToLLVM.create(ForeignToLLVMType.DOUBLE);
-
     @Specialization
-    protected double doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+    protected double doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toDouble) {
         return (double) toDouble.executeWithTarget(from.getValue());
     }
 
-    @Child private Node isNull = Message.IS_NULL.createNode();
-    @Child private Node isBoxed = Message.IS_BOXED.createNode();
-    @Child private Node unbox = Message.UNBOX.createNode();
-
     @Specialization
-    protected double doManaged(LLVMManagedPointer from) {
+    protected double doManaged(LLVMManagedPointer from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toDouble,
+                    @Cached("createIsNull()") Node isNull,
+                    @Cached("createIsBoxed()") Node isBoxed,
+                    @Cached("createUnbox()") Node unbox) {
         TruffleObject base = from.getObject();
         if (ForeignAccess.sendIsNull(isNull, base)) {
             return from.getOffset();
@@ -82,6 +82,11 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Not convertable");
+    }
+
+    @TruffleBoundary
+    protected ForeignToLLVM createForeignToLLVM() {
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE);
     }
 
     public abstract static class LLVMSignedCastToDoubleNode extends LLVMToDoubleNode {
