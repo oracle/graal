@@ -36,7 +36,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class JavaInteropNullTest {
+public class HostInteropNullTest {
 
     @FunctionalInterface
     public interface StringCallback {

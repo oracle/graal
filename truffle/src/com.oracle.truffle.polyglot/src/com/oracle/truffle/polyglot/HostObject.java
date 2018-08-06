@@ -89,8 +89,16 @@ final class HostObject implements TruffleObject {
         return new HostObject(object, languageContext, false);
     }
 
+    static boolean isInstance(Object obj) {
+        return obj instanceof HostObject;
+    }
+
     static boolean isInstance(TruffleObject obj) {
         return obj instanceof HostObject;
+    }
+
+    static boolean isStaticClass(Object object) {
+        return object instanceof HostObject && ((HostObject) object).isStaticClass();
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
@@ -397,7 +405,7 @@ class HostObjectMR {
         @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
 
         public Object access(HostObject object) {
-            return HostInteropAccessor.isGuestPrimitive(object.obj);
+            return HostInterop.isGuestPrimitive(object.obj);
         }
 
     }
@@ -407,7 +415,7 @@ class HostObjectMR {
         @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
 
         public Object access(HostObject object) {
-            if (HostInteropAccessor.isGuestPrimitive(object.obj)) {
+            if (HostInterop.isGuestPrimitive(object.obj)) {
                 return object.obj;
             } else {
                 return UnsupportedMessageException.raise(Message.UNBOX);
@@ -1157,7 +1165,7 @@ class HostObjectMR {
         public abstract Object execute(HostFieldDesc field, HostObject object);
 
         protected static BiFunction<Object, Object, Object> createToGuestValue() {
-            return HostInteropAccessor.ACCESSOR.engine().createToGuestValueNode();
+            return HostInterop.createToGuestValueNode();
         }
 
         @SuppressWarnings("unused")

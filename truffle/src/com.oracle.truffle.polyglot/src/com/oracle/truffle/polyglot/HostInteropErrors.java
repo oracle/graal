@@ -29,7 +29,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 class HostInteropErrors {
@@ -151,42 +150,32 @@ class HostInteropErrors {
     }
 
     static String getValueInfo(Object languageContext, Object value) {
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        if (engine == null) {
-            return value.toString();
-        } else {
-            return engine.getValueInfo(languageContext, value);
-        }
+        return HostInterop.getValueInfo(languageContext, value);
     }
 
     private static RuntimeException newNullPointerException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        return engine != null ? engine.newNullPointerException(message, null) : new NullPointerException(message);
+        throw new PolyglotNullPointerException(message);
     }
 
     private static RuntimeException newUnsupportedOperationException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        return engine != null ? engine.newUnsupportedOperationException(message, null) : new UnsupportedOperationException(message);
+        throw new PolyglotUnsupportedException(message);
     }
 
     private static RuntimeException newClassCastException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        return engine != null ? engine.newClassCastException(message, null) : new ClassCastException(message);
+        throw new PolyglotClassCastException(message);
     }
 
     static final RuntimeException newIllegalArgumentException(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        return engine != null ? engine.newIllegalArgumentException(message, null) : new IllegalArgumentException(message);
+        throw new PolyglotIllegalArgumentException(message);
     }
 
     private static RuntimeException newArrayIndexOutOfBounds(String message) {
         CompilerDirectives.transferToInterpreter();
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        return engine != null ? engine.newArrayIndexOutOfBounds(message, null) : new ArrayIndexOutOfBoundsException(message);
+        throw new PolyglotArrayIndexOutOfBoundsException(message);
     }
 
 }

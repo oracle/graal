@@ -305,14 +305,14 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         TruffleObject arrayClass = asTruffleHostSymbol(Array.class);
         TruffleObject newInstanceMethod = (TruffleObject) ForeignAccess.send(readNode, arrayClass, "newInstance");
         TruffleObject stringArray = (TruffleObject) ForeignAccess.sendExecute(executeNode, newInstanceMethod, asTruffleHostSymbol(String.class), 2);
-        assertTrue(JavaInteropTest.isArray(stringArray));
+        assertTrue(HostInteropTest.isArray(stringArray));
     }
 
     @Test
     public void testArrayOutOfBoundsAccess() throws InteropException {
         Object[] array = new Object[1];
         TruffleObject arrayObject = asTruffleObject(array);
-        assertTrue(JavaInteropTest.isArray(arrayObject));
+        assertTrue(HostInteropTest.isArray(arrayObject));
         ForeignAccess.sendRead(readNode, arrayObject, 0);
         try {
             ForeignAccess.sendRead(readNode, arrayObject, 1);
@@ -359,7 +359,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         TruffleObject clazz = asTruffleHostSymbol(TestConstructorException.class);
         Object testObj = ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test", 42);
         assertTrue(testObj instanceof TruffleObject && env.asHostObject(testObj) instanceof TestConstructorException);
-        JavaInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
+        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
     }
 
     @Test
@@ -384,7 +384,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     @Test
     public void testMethodThrowsIOException() {
-        JavaInteropTest.assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
+        HostInteropTest.assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
     }
 
     private void testForValue(String name, Object value) throws InteropException {

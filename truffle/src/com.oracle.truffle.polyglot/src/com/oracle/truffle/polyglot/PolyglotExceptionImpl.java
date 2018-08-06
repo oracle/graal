@@ -379,13 +379,13 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
         private static final String POLYGLOT_PACKAGE = Engine.class.getName().substring(0, Engine.class.getName().lastIndexOf('.') + 1);
         private static final String PROXY_PACKAGE = PolyglotProxy.class.getName();
-        private static final String JAVA_INTEROP_PACKAGE = "com.oracle.truffle.api.interop.java.";
+        private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
-                        JAVA_INTEROP_PACKAGE + "PolyglotMap",
-                        JAVA_INTEROP_PACKAGE + "PolyglotList",
-                        JAVA_INTEROP_PACKAGE + "PolyglotFunction",
-                        JAVA_INTEROP_PACKAGE + "FunctionProxyHandler",
-                        JAVA_INTEROP_PACKAGE + "ObjectProxyHandler"
+                        HOST_INTEROP_PACKAGE + "PolyglotMap",
+                        HOST_INTEROP_PACKAGE + "PolyglotList",
+                        HOST_INTEROP_PACKAGE + "PolyglotFunction",
+                        HOST_INTEROP_PACKAGE + "FunctionProxyHandler",
+                        HOST_INTEROP_PACKAGE + "ObjectProxyHandler"
         };
 
         final PolyglotExceptionImpl impl;
@@ -521,7 +521,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             }
             if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
                 return true;
-            } else if (element.getClassName().startsWith(JAVA_INTEROP_PACKAGE)) {
+            } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
                 for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
                     if (element.getClassName().equals(hostToGuestClassName)) {
                         return true;
@@ -535,7 +535,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             if (isLazyStackTraceElement(element)) {
                 return false;
             }
-            return element.getClassName().startsWith(PROXY_PACKAGE) || element.getClassName().startsWith(JAVA_INTEROP_PACKAGE);
+            return element.getClassName().startsWith(PROXY_PACKAGE) || element.getClassName().startsWith(HOST_INTEROP_PACKAGE);
         }
 
         private void traceStackTraceElement(StackTraceElement element) {

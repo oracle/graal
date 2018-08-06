@@ -32,7 +32,6 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 final class PolyglotFunction<T, R> implements Function<T, R> {
@@ -72,14 +71,9 @@ final class PolyglotFunction<T, R> implements Function<T, R> {
 
     @Override
     public String toString() {
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        if (engine != null && languageContext != null) {
-            try {
-                return engine.toHostValue(guestObject, languageContext).toString();
-            } catch (UnsupportedOperationException e) {
-                return super.toString();
-            }
-        } else {
+        try {
+            return HostInterop.toHostValue(guestObject, languageContext).toString();
+        } catch (UnsupportedOperationException e) {
             return super.toString();
         }
     }
@@ -143,11 +137,10 @@ final class PolyglotFunction<T, R> implements Function<T, R> {
         }
 
         private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
-            EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
             Apply apply = new Apply(receiverClass, returnClass, returnType);
-            CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, apply, CallTarget.class);
+            CallTarget target = HostInterop.lookupJavaInteropCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {
-                target = engine.installJavaInteropCodeCache(languageContext, apply, createTarget(apply), CallTarget.class);
+                target = HostInterop.installJavaInteropCodeCache(languageContext, apply, createTarget(apply), CallTarget.class);
             }
             return target;
         }

@@ -47,7 +47,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -377,11 +376,10 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
-        CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
+        CallTarget target = HostInterop.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
-            target = engine.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+            target = HostInterop.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
         }
         return target;
     }
@@ -506,11 +504,10 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
         ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
-        CallTarget target = engine.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
+        CallTarget target = HostInterop.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
-            target = engine.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+            target = HostInterop.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
         }
         return target;
     }

@@ -40,7 +40,6 @@ class VMAccessor extends Accessor {
     static final Nodes NODES = SPI.nodes();
     static final SourceSupport SOURCE = SPI.sourceSupport();
     static final InstrumentSupport INSTRUMENT = SPI.instrumentSupport();
-    static final JavaInteropSupport JAVAINTEROP = SPI.javaInteropSupport();
     static final LanguageSupport LANGUAGE = SPI.languageSupport();
 
     static EngineSupport engine() {

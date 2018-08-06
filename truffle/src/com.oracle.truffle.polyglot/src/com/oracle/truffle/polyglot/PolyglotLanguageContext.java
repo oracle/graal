@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
 import java.io.PrintStream;
@@ -35,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
+import java.util.logging.Level;
 
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
-import java.util.logging.Level;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
@@ -572,7 +571,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else if (receiver instanceof Proxy) {
             return PolyglotProxy.toProxyGuestObject(languageContext, (Proxy) receiver);
         } else {
-            return JAVAINTEROP.toGuestObject(receiver, languageContext);
+            return HostInterop.asTruffleObject(receiver, languageContext);
         }
     }
 
@@ -598,7 +597,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (receiver instanceof Proxy) {
             return PolyglotProxy.toProxyGuestObject(PolyglotLanguageContext.this, (Proxy) receiver);
         } else {
-            return (TruffleObject) JAVAINTEROP.toGuestObject(receiver, PolyglotLanguageContext.this);
+            return HostInterop.asTruffleObject(receiver, PolyglotLanguageContext.this);
         }
     }
 

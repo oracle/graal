@@ -116,7 +116,7 @@ public class AsCollectionsTest {
     public void testAsList() {
         List origList = Arrays.asList(new String[]{"a", "b", "c"});
         TruffleObject to = new ListBasedTO(origList);
-        assertTrue(JavaInteropTest.isArray(to));
+        assertTrue(HostInteropTest.isArray(to));
         List interopList = asJavaObject(List.class, to);
         assertEquals(origList.size(), interopList.size());
         assertEquals(origList.toString(), new ArrayList<>(interopList).toString());
@@ -147,7 +147,7 @@ public class AsCollectionsTest {
             origMap.put(Integer.toString(i), Integer.toHexString(i));
         }
         TruffleObject to = new MapBasedTO(origMap);
-        assertFalse(JavaInteropTest.isArray(to));
+        assertFalse(HostInteropTest.isArray(to));
         Map interopMap = asJavaObject(Map.class, to);
         assertEquals(origMap.size(), interopMap.size());
         assertEquals(origMap.toString(), new LinkedHashMap<>(interopMap).toString());
@@ -160,7 +160,7 @@ public class AsCollectionsTest {
         assertNull(old);
         assertEquals("news", interopMap.get("new"));
 
-        TruffleObject badMapObject = new JavaInteropTest.HasKeysObject(false);
+        TruffleObject badMapObject = new HostInteropTest.HasKeysObject(false);
         try {
             interopMap = asJavaObject(Map.class, badMapObject);
             fail();

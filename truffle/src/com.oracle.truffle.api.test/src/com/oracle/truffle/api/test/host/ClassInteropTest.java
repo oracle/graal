@@ -80,7 +80,7 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canReadValueAfterCreatingNewInstance() throws Exception {
-        Object objInst = JavaInteropTest.message(Message.createNew(0), obj);
+        Object objInst = HostInteropTest.message(Message.createNew(0), obj);
         assertTrue("It is truffle object", objInst instanceof TruffleObject);
         XYPlus inst = asJavaObject(XYPlus.class, (TruffleObject) objInst);
         assertEquals("Field read", 42, inst.value());
@@ -88,13 +88,13 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test(expected = UnknownIdentifierException.class)
     public void noNonStaticMethods() {
-        Object res = JavaInteropTest.message(Message.READ, obj, "readCONST");
+        Object res = HostInteropTest.message(Message.READ, obj, "readCONST");
         assertNull("not found", res);
     }
 
     @Test
     public void canAccessStaticMemberTypes() {
-        Object res = JavaInteropTest.message(Message.READ, obj, "XYPlus");
+        Object res = HostInteropTest.message(Message.READ, obj, "XYPlus");
         assertTrue("It is truffle object", res instanceof TruffleObject);
         Class<?> c = asJavaObject(Class.class, (TruffleObject) res);
         assertSame(XYPlus.class, c);
@@ -102,10 +102,10 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canCreateMemberTypeInstances() {
-        Object type = JavaInteropTest.message(Message.READ, obj, "Zed");
+        Object type = HostInteropTest.message(Message.READ, obj, "Zed");
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         TruffleObject truffleType = (TruffleObject) type;
-        Object objInst = JavaInteropTest.message(Message.createNew(1), truffleType, 22);
+        Object objInst = HostInteropTest.message(Message.createNew(1), truffleType, 22);
         assertTrue("Created instance is a truffle object", objInst instanceof TruffleObject);
         Object res = asJavaObject(Object.class, (TruffleObject) objInst);
         assertTrue("Instance is of correct type", res instanceof Zed);
@@ -114,7 +114,7 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canListStaticTypes() {
-        Object type = JavaInteropTest.message(Message.KEYS, obj);
+        Object type = HostInteropTest.message(Message.KEYS, obj);
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         String[] names = asJavaObject(String[].class, (TruffleObject) type);
         int zed = 0;
@@ -145,13 +145,13 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void nonstaticTypeDoesNotExist() {
-        Object type = JavaInteropTest.message(Message.KEY_INFO, obj, "Nonstatic");
+        Object type = HostInteropTest.message(Message.KEY_INFO, obj, "Nonstatic");
         assertEquals(0, type);
     }
 
     @Test
     public void staticInnerTypeIsNotWritable() {
-        Object type = JavaInteropTest.message(Message.KEY_INFO, obj, "Zed");
+        Object type = HostInteropTest.message(Message.KEY_INFO, obj, "Zed");
         int keyInfo = (int) type;
         assertTrue("Key exists", KeyInfo.isExisting(keyInfo));
         assertTrue("Key readable", KeyInfo.isReadable(keyInfo));
@@ -160,15 +160,15 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test(expected = com.oracle.truffle.api.interop.UnknownIdentifierException.class)
     public void nonpublicTypeNotvisible() {
-        Object type = JavaInteropTest.message(Message.KEY_INFO, obj, "NonStaticInterface");
+        Object type = HostInteropTest.message(Message.KEY_INFO, obj, "NonStaticInterface");
         assertEquals("Non-public member type not visible", 0, type);
 
-        type = JavaInteropTest.message(Message.KEYS, obj);
+        type = HostInteropTest.message(Message.KEYS, obj);
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         String[] names = asJavaObject(String[].class, (TruffleObject) type);
         assertEquals("Non-public member type not enumerated", -1, Arrays.asList(names).indexOf("NonStaticInterface"));
 
-        JavaInteropTest.message(Message.READ, obj, "NonStaticInterface");
+        HostInteropTest.message(Message.READ, obj, "NonStaticInterface");
         fail("Cannot read non-static member type");
     }
 

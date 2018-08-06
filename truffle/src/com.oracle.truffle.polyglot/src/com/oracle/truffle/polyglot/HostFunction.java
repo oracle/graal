@@ -47,6 +47,10 @@ final class HostFunction implements TruffleObject {
         return obj instanceof HostFunction;
     }
 
+    public static boolean isInstance(Object obj) {
+        return obj instanceof HostFunction;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return HostFunctionMRForeign.ACCESS;

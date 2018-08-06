@@ -1506,7 +1506,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
-            return AccessAPI.javaAccess().isHostObject(value);
+            return AccessAPI.engineAccess().isHostObject(value);
         }
 
         /**
@@ -1521,7 +1521,7 @@ public abstract class TruffleLanguage<C> {
                 CompilerDirectives.transferToInterpreter();
                 throw new ClassCastException();
             }
-            return AccessAPI.javaAccess().asHostObject(value);
+            return AccessAPI.engineAccess().asHostObject(value);
         }
 
         /**
@@ -1571,7 +1571,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
-            return AccessAPI.javaAccess().isHostFunction(value);
+            return AccessAPI.engineAccess().isHostFunction(value);
         }
 
         /**
@@ -1639,7 +1639,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
-            return AccessAPI.javaAccess().isHostSymbol(guestObject);
+            return AccessAPI.engineAccess().isHostSymbol(guestObject);
         }
 
         /**
@@ -2183,10 +2183,6 @@ public abstract class TruffleLanguage<C> {
 
         static InteropSupport interopAccess() {
             return API.interopSupport();
-        }
-
-        static JavaInteropSupport javaAccess() {
-            return API.javaInteropSupport();
         }
 
         @Override

@@ -48,7 +48,6 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -109,14 +108,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public String toString() {
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        if (engine != null && languageContext != null) {
-            try {
-                return engine.toHostValue(guestObject, languageContext).toString();
-            } catch (UnsupportedOperationException e) {
-                return super.toString();
-            }
-        } else {
+        try {
+            return HostInterop.toHostValue(guestObject, languageContext).toString();
+        } catch (UnsupportedOperationException e) {
             return super.toString();
         }
     }
@@ -342,11 +336,10 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
         }
 
         static Cache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
-            EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
-            Cache cache = engine.lookupJavaInteropCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostInterop.lookupJavaInteropCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = engine.installJavaInteropCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
+                cache = HostInterop.installJavaInteropCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;

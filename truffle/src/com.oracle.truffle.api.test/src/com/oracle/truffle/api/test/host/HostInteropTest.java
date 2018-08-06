@@ -82,7 +82,7 @@ import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
  * Important: This test was migrated to {@link ValueHostInteropTest} and
  * {@link LanguageSPIHostInteropTest}. Please maintain new tests there.
  */
-public class JavaInteropTest extends ProxyLanguageEnvTest {
+public class HostInteropTest extends ProxyLanguageEnvTest {
 
     public class Data {
         public int x;
@@ -522,7 +522,7 @@ public class JavaInteropTest extends ProxyLanguageEnvTest {
     }
 
     private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
-        Method isFunctionaInterface = Class.forName("com.oracle.truffle.api.interop.java.HostInteropReflect").getDeclaredMethod("isFunctionalInterface", Class.class);
+        Method isFunctionaInterface = Class.forName("com.oracle.truffle.polyglot.HostInteropReflect").getDeclaredMethod("isFunctionalInterface", Class.class);
         ReflectionUtils.setAccessible(isFunctionaInterface, true);
         return (boolean) isFunctionaInterface.invoke(null, clazz);
     }

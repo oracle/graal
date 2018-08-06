@@ -47,7 +47,7 @@ public class ObjectTypeTest {
         final Layout layout = Layout.newLayout().build();
         final Shape rootShape = layout.createShape(OBJECT_TYPE);
         final DynamicObject obj = rootShape.newInstance();
-        final boolean is = JavaInteropTest.isBoxed(obj);
+        final boolean is = HostInteropTest.isBoxed(obj);
         assertFalse("It is not boxed", is);
     }
 
@@ -56,7 +56,7 @@ public class ObjectTypeTest {
         final Layout layout = Layout.newLayout().build();
         final Shape rootShape = layout.createShape(OBJECT_TYPE);
         final DynamicObject obj = rootShape.newInstance();
-        final boolean is = JavaInteropTest.isNull(obj);
+        final boolean is = HostInteropTest.isNull(obj);
         assertFalse("It is not null", is);
     }
 
@@ -65,7 +65,7 @@ public class ObjectTypeTest {
         final Layout layout = Layout.newLayout().build();
         final Shape rootShape = layout.createShape(OBJECT_TYPE);
         final DynamicObject obj = rootShape.newInstance();
-        final boolean is = JavaInteropTest.isArray(obj);
+        final boolean is = HostInteropTest.isArray(obj);
         assertFalse("It is not array", is);
     }
 

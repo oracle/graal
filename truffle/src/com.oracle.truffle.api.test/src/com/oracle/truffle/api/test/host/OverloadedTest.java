@@ -104,7 +104,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void threeProperties() {
-        TruffleObject ret = JavaInteropTest.sendKeys(obj);
+        TruffleObject ret = HostInteropTest.sendKeys(obj);
         List<?> list = context.asValue(ret).as(List.class);
         assertEquals("Just one (overloaded) property: " + list, 1, list.size());
         assertEquals("x", list.get(0));
@@ -113,24 +113,24 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void readAndWriteField() {
         data.x = 11;
-        assertEquals(11, JavaInteropTest.message(Message.READ, obj, "x"));
+        assertEquals(11, HostInteropTest.message(Message.READ, obj, "x"));
 
-        JavaInteropTest.message(Message.WRITE, obj, "x", 12);
+        HostInteropTest.message(Message.WRITE, obj, "x", 12);
         assertEquals(12, data.x);
 
-        JavaInteropTest.message(Message.WRITE, obj, "x", new UnboxableToInt(13));
+        HostInteropTest.message(Message.WRITE, obj, "x", new UnboxableToInt(13));
         assertEquals(13, data.x);
     }
 
     @Test
     public void callGetterAndSetter() {
         data.x = 11;
-        assertEquals(22.0, JavaInteropTest.message(Message.createInvoke(0), obj, "x"));
+        assertEquals(22.0, HostInteropTest.message(Message.createInvoke(0), obj, "x"));
 
-        JavaInteropTest.message(Message.createInvoke(1), obj, "x", 10);
+        HostInteropTest.message(Message.createInvoke(1), obj, "x", 10);
         assertEquals(20, data.x);
 
-        JavaInteropTest.message(Message.createInvoke(1), obj, "x", new UnboxableToInt(21));
+        HostInteropTest.message(Message.createInvoke(1), obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
     }
 

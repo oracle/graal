@@ -40,7 +40,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -336,13 +335,7 @@ abstract class ToHostNode extends Node {
     @TruffleBoundary
     private static ClassCastException newInvalidKeyTypeException(Type targetType) {
         String message = "Unsupported Map key type: " + targetType;
-        return newClassCastException(message);
-    }
-
-    @TruffleBoundary
-    private static ClassCastException newClassCastException(String message) {
-        EngineSupport engine = HostInteropAccessor.ACCESSOR.engine();
-        return engine != null ? engine.newClassCastException(message, null) : new ClassCastException(message);
+        return new PolyglotClassCastException(message);
     }
 
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {

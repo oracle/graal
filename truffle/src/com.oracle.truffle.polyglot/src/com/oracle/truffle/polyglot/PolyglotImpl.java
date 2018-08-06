@@ -25,7 +25,6 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.VMAccessor.INSTRUMENT;
-import static com.oracle.truffle.polyglot.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 
@@ -587,13 +586,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (clazz == null) {
                 return null;
             }
-            return VMAccessor.JAVAINTEROP.asStaticClassObject(clazz, context);
+            return HostInterop.asStaticClassObject(clazz, context);
         }
 
         @Override
         public Object asHostSymbol(Object vmObject, Class<?> symbolClass) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            return VMAccessor.JAVAINTEROP.asStaticClassObject(symbolClass, context);
+            return HostInterop.asStaticClassObject(symbolClass, context);
         }
 
         @Override
@@ -671,7 +670,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Object asBoxedGuestValue(Object guestObject, Object vmObject) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
-            return JAVAINTEROP.asBoxedGuestValue(guestObject, languageContext);
+            return HostInterop.asBoxedGuestValue(guestObject, languageContext);
         }
 
         @Override
@@ -959,5 +958,31 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
             return ((PolyglotContextImpl) context).config.logLevels;
         }
+
+        @Override
+        public Object asHostObject(Object obj) {
+            assert isHostObject(obj);
+            HostObject javaObject = (HostObject) obj;
+            return javaObject.obj;
+        }
+
+        @Override
+        public boolean isHostFunction(Object obj) {
+            if (TruffleOptions.AOT) {
+                return false;
+            }
+            return HostFunction.isInstance(obj);
+        }
+
+        @Override
+        public boolean isHostObject(Object obj) {
+            return HostObject.isInstance(obj);
+        }
+
+        @Override
+        public boolean isHostSymbol(Object obj) {
+            return HostObject.isStaticClass(obj);
+        }
+
     }
 }
