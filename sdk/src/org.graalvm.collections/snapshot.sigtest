@@ -1,0 +1,108 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
+meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
+meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public abstract interface org.graalvm.collections.EconomicMap<%0 extends java.lang.Object, %1 extends java.lang.Object>
+intf org.graalvm.collections.UnmodifiableEconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>
+meth public abstract org.graalvm.collections.MapCursor<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}> getEntries()
+meth public abstract void clear()
+meth public abstract void replaceAll(java.util.function.BiFunction<? super {org.graalvm.collections.EconomicMap%0},? super {org.graalvm.collections.EconomicMap%1},? extends {org.graalvm.collections.EconomicMap%1}>)
+meth public abstract {org.graalvm.collections.EconomicMap%1} put({org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1})
+meth public abstract {org.graalvm.collections.EconomicMap%1} removeKey({org.graalvm.collections.EconomicMap%0})
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create()
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(int)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.Equivalence)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.Equivalence,int)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.Equivalence,org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> create(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicMap<{%%0},{%%1}> wrapMap(java.util.Map<{%%0},{%%1}>)
+meth public void putAll(org.graalvm.collections.EconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>)
+meth public void putAll(org.graalvm.collections.UnmodifiableEconomicMap<? extends {org.graalvm.collections.EconomicMap%0},? extends {org.graalvm.collections.EconomicMap%1}>)
+
+CLSS public abstract interface org.graalvm.collections.EconomicSet<%0 extends java.lang.Object>
+intf org.graalvm.collections.UnmodifiableEconomicSet<{org.graalvm.collections.EconomicSet%0}>
+meth public abstract boolean add({org.graalvm.collections.EconomicSet%0})
+meth public abstract void clear()
+meth public abstract void remove({org.graalvm.collections.EconomicSet%0})
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create()
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(int)
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.Equivalence)
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.Equivalence,int)
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.Equivalence,org.graalvm.collections.UnmodifiableEconomicSet<{%%0}>)
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.UnmodifiableEconomicSet<{%%0}>)
+meth public void addAll(java.lang.Iterable<{org.graalvm.collections.EconomicSet%0}>)
+meth public void addAll(java.util.Iterator<{org.graalvm.collections.EconomicSet%0}>)
+meth public void addAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
+meth public void removeAll(java.lang.Iterable<{org.graalvm.collections.EconomicSet%0}>)
+meth public void removeAll(java.util.Iterator<{org.graalvm.collections.EconomicSet%0}>)
+meth public void removeAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
+meth public void retainAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
+
+CLSS public abstract org.graalvm.collections.Equivalence
+cons protected init()
+fld public final static org.graalvm.collections.Equivalence DEFAULT
+fld public final static org.graalvm.collections.Equivalence IDENTITY
+fld public final static org.graalvm.collections.Equivalence IDENTITY_WITH_SYSTEM_HASHCODE
+meth public abstract boolean equals(java.lang.Object,java.lang.Object)
+meth public abstract int hashCode(java.lang.Object)
+supr java.lang.Object
+
+CLSS public abstract interface org.graalvm.collections.MapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
+intf org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.MapCursor%0},{org.graalvm.collections.MapCursor%1}>
+meth public abstract void remove()
+
+CLSS public final org.graalvm.collections.Pair<%0 extends java.lang.Object, %1 extends java.lang.Object>
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
+meth public java.lang.String toString()
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.Pair<{%%0},{%%1}> create({%%0},{%%1})
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.Pair<{%%0},{%%1}> createLeft({%%0})
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.Pair<{%%0},{%%1}> createRight({%%1})
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.Pair<{%%0},{%%1}> empty()
+meth public {org.graalvm.collections.Pair%0} getLeft()
+meth public {org.graalvm.collections.Pair%1} getRight()
+supr java.lang.Object
+hfds EMPTY,left,right
+
+CLSS public abstract interface org.graalvm.collections.UnmodifiableEconomicMap<%0 extends java.lang.Object, %1 extends java.lang.Object>
+meth public abstract boolean containsKey({org.graalvm.collections.UnmodifiableEconomicMap%0})
+meth public abstract boolean isEmpty()
+meth public abstract int size()
+meth public abstract java.lang.Iterable<{org.graalvm.collections.UnmodifiableEconomicMap%0}> getKeys()
+meth public abstract java.lang.Iterable<{org.graalvm.collections.UnmodifiableEconomicMap%1}> getValues()
+meth public abstract org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.UnmodifiableEconomicMap%0},{org.graalvm.collections.UnmodifiableEconomicMap%1}> getEntries()
+meth public abstract {org.graalvm.collections.UnmodifiableEconomicMap%1} get({org.graalvm.collections.UnmodifiableEconomicMap%0})
+meth public {org.graalvm.collections.UnmodifiableEconomicMap%1} get({org.graalvm.collections.UnmodifiableEconomicMap%0},{org.graalvm.collections.UnmodifiableEconomicMap%1})
+
+CLSS public abstract interface org.graalvm.collections.UnmodifiableEconomicSet<%0 extends java.lang.Object>
+intf java.lang.Iterable<{org.graalvm.collections.UnmodifiableEconomicSet%0}>
+meth public abstract boolean contains({org.graalvm.collections.UnmodifiableEconomicSet%0})
+meth public abstract boolean isEmpty()
+meth public abstract int size()
+meth public {org.graalvm.collections.UnmodifiableEconomicSet%0}[] toArray({org.graalvm.collections.UnmodifiableEconomicSet%0}[])
+
+CLSS public abstract interface org.graalvm.collections.UnmodifiableMapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
+meth public abstract boolean advance()
+meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%0} getKey()
+meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%1} getValue()
+
+CLSS abstract interface org.graalvm.collections.package-info
+
