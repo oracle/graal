@@ -32,8 +32,10 @@ package com.oracle.truffle.llvm.runtime.debug.scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 import java.nio.file.InvalidPathException;
@@ -47,8 +49,14 @@ import java.util.Objects;
 
 public abstract class LLVMSourceLocation {
 
+    @FunctionalInterface
+    public interface LazyContext {
+
+        LLVMContext get();
+    }
+
     public abstract static class LazySourceSection {
-        public abstract SourceSection get();
+        public abstract SourceSection get(LazyContext context);
 
         public abstract String getPath();
 
@@ -106,10 +114,26 @@ public abstract class LLVMSourceLocation {
         this.sourceSection = sourceSection;
     }
 
-    public synchronized SourceSection getSourceSection() {
+    public synchronized SourceSection getSourceSection(ContextReference<LLVMContext> ctxRef) {
+        CompilerAsserts.neverPartOfCompilation();
+        return getSourceSection(() -> {
+            try {
+                return ctxRef.get();
+            } catch (Throwable t) {
+                return null;
+            }
+        });
+    }
+
+    public SourceSection getSourceSection(LLVMContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        return getSourceSection(() -> context);
+    }
+
+    private synchronized SourceSection getSourceSection(LazyContext context) {
         CompilerAsserts.neverPartOfCompilation();
         if (sourceSection == null && lazySourceSection != null) {
-            sourceSection = lazySourceSection.get();
+            sourceSection = lazySourceSection.get(context);
         }
         return sourceSection != null ? sourceSection : UNAVAILABLE_SECTION;
     }

@@ -57,7 +57,7 @@ public final class LLSourceBuilder {
         // during function parsing, with this we build the map only on-demand and cache the result
         if (cached == null) {
             final String pathMappings = runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LL_DEBUG_SOURCES);
-            cached = LLScanner.findAndScanLLFile(bcPath, pathMappings);
+            cached = LLScanner.findAndScanLLFile(bcPath, pathMappings, runtime.getContext());
         }
         if (cached != null) {
             LLInstructionMapper.setSourceLocations(cached, function, runtime);

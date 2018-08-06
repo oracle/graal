@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
@@ -51,11 +52,12 @@ import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazyContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySourceSection;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -269,8 +271,8 @@ final class DIScopeBuilder {
         }
 
         @Override
-        public SourceSection get() {
-            Source source = asSource(sources, path);
+        public SourceSection get(LazyContext context) {
+            Source source = asSource(sources, path, context);
             if (source == null) {
                 return null;
             }
@@ -517,7 +519,7 @@ final class DIScopeBuilder {
         return new LazySourceSectionImpl(sources, path, (int) startLine, (int) startCol, needsRange);
     }
 
-    private static Source asSource(Map<String, Source> sources, String path) {
+    private static Source asSource(Map<String, Source> sources, String path, LazyContext lazyContext) {
         if (sources.containsKey(path)) {
             return sources.get(path);
         } else if (path == null) {
@@ -526,12 +528,15 @@ final class DIScopeBuilder {
 
         String mimeType = getMimeType(path);
         Source source = null;
-        try {
-            File file = Paths.get(path).toFile();
-            if (file.exists() && file.canRead()) {
-                source = Source.newBuilder(file).mimeType(mimeType).name(file.getName()).build();
+        LLVMContext context = lazyContext.get();
+        if (context != null) {
+            try {
+                TruffleFile file = context.getEnv().getTruffleFile(path);
+                if (file.exists() && file.isReadable()) {
+                    source = Source.newBuilder("llvm", file).mimeType(mimeType).build();
+                }
+            } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
             }
-        } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
         }
 
         if (source == null) {

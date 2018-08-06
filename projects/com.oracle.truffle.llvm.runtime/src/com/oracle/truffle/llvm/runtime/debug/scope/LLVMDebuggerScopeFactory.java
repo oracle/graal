@@ -145,18 +145,18 @@ public final class LLVMDebuggerScopeFactory {
             return Collections.singleton(new LLVMDebuggerScopeFactory(sourceContext, node).toScope(frame));
         }
 
-        final SourceSection sourceSection = scope.getSourceSection();
+        final SourceSection sourceSection = scope.getSourceSection(context);
 
         LLVMDebuggerScopeFactory baseScope = new LLVMDebuggerScopeFactory(sourceContext, new LinkedList<>(), rootNode);
         LLVMDebuggerScopeFactory staticScope = null;
 
         for (boolean isLocalScope = true; isLocalScope && scope != null; scope = scope.getParent()) {
-            final LLVMDebuggerScopeFactory next = toScope(scope, sourceContext, rootNode, sourceSection);
+            final LLVMDebuggerScopeFactory next = toScope(scope, sourceContext, rootNode, sourceSection, context);
             copySymbols(next, baseScope);
             if (scope.getKind() == LLVMSourceLocation.Kind.FUNCTION) {
                 baseScope.setName(next.getName());
                 if (scope.getCompileUnit() != null) {
-                    staticScope = toScope(scope.getCompileUnit(), sourceContext, null, sourceSection);
+                    staticScope = toScope(scope.getCompileUnit(), sourceContext, null, sourceSection, context);
                 }
                 isLocalScope = false;
             }
@@ -170,7 +170,7 @@ public final class LLVMDebuggerScopeFactory {
             // function's frame. They are still accessible from the calling function's frame, so
             // we can simply ignore this scope here. Also, any variables actually used in the
             // lambda would still be available as the members of the 'this' pointer.
-            final LLVMDebuggerScopeFactory next = toScope(scope, sourceContext, null, sourceSection);
+            final LLVMDebuggerScopeFactory next = toScope(scope, sourceContext, null, sourceSection, context);
             switch (scope.getKind()) {
                 case NAMESPACE:
                 case FILE:
@@ -205,19 +205,19 @@ public final class LLVMDebuggerScopeFactory {
         }
     }
 
-    private static LLVMDebuggerScopeFactory toScope(LLVMSourceLocation scope, LLVMSourceContext context, Node node, SourceSection sourceSection) {
+    private static LLVMDebuggerScopeFactory toScope(LLVMSourceLocation scope, LLVMSourceContext sourceContext, Node node, SourceSection sourceSection, LLVMContext context) {
         if (!scope.hasSymbols()) {
-            final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(context, node);
+            final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(sourceContext, node);
             sourceScope.setName(scope.getName());
             return sourceScope;
         }
 
         final List<LLVMSourceSymbol> symbols = new LinkedList<>();
-        final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(context, symbols, node);
+        final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(sourceContext, symbols, node);
         sourceScope.setName(scope.getName());
 
         for (LLVMSourceSymbol symbol : scope.getSymbols()) {
-            if (symbol.isStatic() || isDeclaredBefore(symbol, sourceSection)) {
+            if (symbol.isStatic() || isDeclaredBefore(symbol, sourceSection, context)) {
                 symbols.add(symbol);
             }
         }
@@ -225,7 +225,7 @@ public final class LLVMDebuggerScopeFactory {
         return sourceScope;
     }
 
-    private static boolean isDeclaredBefore(LLVMSourceSymbol symbol, SourceSection useLoc) {
+    private static boolean isDeclaredBefore(LLVMSourceSymbol symbol, SourceSection useLoc, LLVMContext context) {
         // we want to hide any locals that we definitely know are not in scope, we should display
         // any for which we can't tell
         if (useLoc == null) {
@@ -237,7 +237,7 @@ public final class LLVMDebuggerScopeFactory {
             return true;
         }
 
-        SourceSection declLoc = symbolDecl.getSourceSection();
+        SourceSection declLoc = symbolDecl.getSourceSection(context);
         if (declLoc == null) {
             return true;
         }
