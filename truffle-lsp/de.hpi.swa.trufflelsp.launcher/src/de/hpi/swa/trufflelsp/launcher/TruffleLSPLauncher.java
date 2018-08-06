@@ -134,7 +134,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
         try (Context defaultContext = futureDefaultContext.get()) {
             LSPServerBootstrapper bootstrapper = instrument.lookup(LSPServerBootstrapper.class);
             Future<?> futureStartServer = bootstrapper.startServer();
-            futureStartServer.get();
+            futureStartServer.get(); // blocking until LSP server is shutting down
 
             evaluator.executeWithDefaultContext(() -> defaultContext.leave()).get();
             evaluator.shutdown();

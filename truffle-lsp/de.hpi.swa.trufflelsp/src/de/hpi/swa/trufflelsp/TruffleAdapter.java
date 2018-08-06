@@ -764,8 +764,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return metaObject;
     }
 
-    // TODO(ds) implement a getTypeOfExpression(node) method (use GraalJS annotated stuff)
-
     private static boolean isLineValid(int line, Source source) {
         // line is zero-based, source line is one-based
         return line >= 0 && line < source.getLineCount();
