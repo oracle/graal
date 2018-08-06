@@ -1476,8 +1476,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Consumption of Speculative Data Barrier.
-     * This is a memory barrier that controls speculative execution and data value prediction.
+     * Consumption of Speculative Data Barrier. This is a memory barrier that controls speculative
+     * execution and data value prediction.
      */
     public void csdb() {
         super.hint(SystemHint.CSDB);

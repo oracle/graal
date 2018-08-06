@@ -117,8 +117,8 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
     }
 
     /**
-     * Set this begin node to be a speculation fence.
-     * This will prevent speculative execution of this block.
+     * Set this begin node to be a speculation fence. This will prevent speculative execution of
+     * this block.
      */
     public void setWithSpeculationFence() {
         this.withSpeculationFence = true;
