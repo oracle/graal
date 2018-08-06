@@ -31,10 +31,8 @@ import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -66,15 +64,13 @@ import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
-import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
-import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -155,14 +151,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
-            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine, logHandler)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
         }
         if (impl == null) {
-            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
-                            contextClassLoader, boundEngine, logHandler);
+            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, useSystemProperties, contextClassLoader, boundEngine, logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;
@@ -586,13 +581,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (clazz == null) {
                 return null;
             }
-            return HostInterop.asStaticClassObject(clazz, context);
+            return HostObject.forStaticClass(clazz, context);
         }
 
         @Override
         public Object asHostSymbol(Object vmObject, Class<?> symbolClass) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            return HostInterop.asStaticClassObject(symbolClass, context);
+            return HostObject.forStaticClass(symbolClass, context);
         }
 
         @Override
@@ -614,7 +609,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (value == null) {
                 context.context.polyglotBindings.remove(symbolName);
             } else {
-                context.context.polyglotBindings.put(symbolName, context.toHostValue(value));
+                context.context.polyglotBindings.put(symbolName, context.asValue(value));
             }
         }
 
@@ -653,11 +648,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Value toHostValue(Object obj, Object languageContext) {
-            return ((PolyglotLanguageContext) languageContext).toHostValue(obj);
-        }
-
-        @Override
         public Object toGuestValue(Object obj, Object context) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
             if (obj instanceof Value) {
@@ -670,7 +660,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Object asBoxedGuestValue(Object guestObject, Object vmObject) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
-            return HostInterop.asBoxedGuestValue(guestObject, languageContext);
+            if (isGuestPrimitive(guestObject)) {
+                return HostObject.forObject(guestObject, languageContext);
+            } else if (guestObject instanceof TruffleObject) {
+                return guestObject;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalArgumentException("Provided value not an interop value.");
+            }
         }
 
         @Override
@@ -769,21 +766,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name) {
-            return new PolyglotBoundaryRootNode(name, executableNode);
-        }
-
-        @Override
-        public BiFunction<Object, Object, Object> createToGuestValueNode() {
-            return ToGuestValueNode.create();
-        }
-
-        @Override
-        public BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
-            return ToGuestValuesNode.create();
-        }
-
-        @Override
         public boolean isHostException(Throwable exception) {
             return exception instanceof HostException;
         }
@@ -794,43 +776,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public ClassCastException newClassCastException(String message, Throwable cause) {
-            return cause == null ? new PolyglotClassCastException(message) : new PolyglotClassCastException(message, cause);
-        }
-
-        @Override
-        public NullPointerException newNullPointerException(String message, Throwable cause) {
-            return cause == null ? new PolyglotNullPointerException(message) : new PolyglotNullPointerException(message, cause);
-        }
-
-        @Override
-        public IllegalArgumentException newIllegalArgumentException(String message, Throwable cause) {
-            return cause == null ? new PolyglotIllegalArgumentException(message) : new PolyglotIllegalArgumentException(message, cause);
-        }
-
-        @Override
-        public UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause) {
-            return cause == null ? new PolyglotUnsupportedException(message) : new PolyglotUnsupportedException(message, cause);
-        }
-
-        @Override
-        public ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause) {
-            return cause == null ? new PolyglotArrayIndexOutOfBoundsException(message) : new PolyglotArrayIndexOutOfBoundsException(message, cause);
-        }
-
-        @Override
         public Object getCurrentHostContext() {
             PolyglotContextImpl polyglotContext = PolyglotContextImpl.current();
             return polyglotContext == null ? null : polyglotContext.getHostContext();
-        }
-
-        @Override
-        public String getValueInfo(Object languageContext, Object value) {
-            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
-            if (context == null) {
-                return Objects.toString(value);
-            }
-            return PolyglotValue.getValueInfo(context, value);
         }
 
         @Override

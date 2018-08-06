@@ -33,8 +33,6 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -57,6 +55,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
 final class HostInteropReflect {
     static final Object[] EMPTY = {};
@@ -155,7 +154,7 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
+    static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, PolyglotLanguageContext languageContext) {
         assert isFunctionalInterface(functionalType);
         Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
         final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
@@ -192,7 +191,7 @@ final class HostInteropReflect {
         return found;
     }
 
-    static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
+    static TruffleObject asTruffleViaReflection(Object obj, PolyglotLanguageContext languageContext) {
         if (obj instanceof Proxy) {
             return asTruffleObjectProxy(obj, languageContext);
         }
@@ -200,7 +199,7 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static TruffleObject asTruffleObjectProxy(Object obj, Object languageContext) {
+    private static TruffleObject asTruffleObjectProxy(Object obj, PolyglotLanguageContext languageContext) {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof FunctionProxyHandler) {
@@ -212,7 +211,7 @@ final class HostInteropReflect {
         return HostObject.forObject(obj, languageContext);
     }
 
-    static Object newProxyInstance(Class<?> clazz, TruffleObject obj, Object languageContext) throws IllegalArgumentException {
+    static Object newProxyInstance(Class<?> clazz, TruffleObject obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
         return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext, clazz));
     }
 
@@ -323,7 +322,7 @@ final class HostInteropReflect {
     }
 }
 
-class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
+class FunctionProxyNode extends HostEntryRootNode<TruffleObject> {
 
     final Class<?> receiverClass;
     final Method method;
@@ -343,12 +342,12 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     }
 
     @Override
-    public final String get() {
+    public final String getName() {
         return "FunctionalInterfaceProxy<" + receiverClass + ", " + method + ">";
     }
 
     @Override
-    protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args, int offset) {
         if (executeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.returnClass = HostInteropReflect.getMethodReturnType(method);
@@ -375,11 +374,11 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
         return receiverClass == other.receiverClass && method.equals(other.method);
     }
 
-    static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
+    static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method) {
         FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
-        CallTarget target = HostInterop.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
+        CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
-            target = HostInterop.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+            target = installHostCodeCache(languageContext, node, createTarget(node), CallTarget.class);
         }
         return target;
     }
@@ -387,11 +386,11 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
 
 final class FunctionProxyHandler implements InvocationHandler {
     final TruffleObject functionObj;
-    final Object languageContext;
+    final PolyglotLanguageContext languageContext;
     private final Method functionMethod;
     private final CallTarget target;
 
-    FunctionProxyHandler(TruffleObject obj, Method functionMethod, Object languageContext) {
+    FunctionProxyHandler(TruffleObject obj, Method functionMethod, PolyglotLanguageContext languageContext) {
         this.functionObj = obj;
         this.languageContext = languageContext;
         this.functionMethod = functionMethod;
@@ -450,13 +449,13 @@ final class FunctionProxyHandler implements InvocationHandler {
     }
 }
 
-class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
+class ObjectProxyNode extends HostEntryRootNode<TruffleObject> {
 
     final Class<?> receiverClass;
     final Class<?> interfaceType;
 
     @Child private ProxyInvokeNode proxyInvoke = ProxyInvokeNodeGen.create();
-    @CompilationFinal private BiFunction<Object, Object[], Object[]> toGuests;
+    @CompilationFinal private ToGuestValuesNode toGuests;
 
     ObjectProxyNode(Class<?> receiverType, Class<?> interfaceType) {
         this.receiverClass = receiverType;
@@ -470,15 +469,15 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 
     @Override
-    public final String get() {
+    public final String getName() {
         return "InterfaceProxy<" + receiverClass + ">";
     }
 
     @Override
-    protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
         if (proxyInvoke == null || toGuests == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toGuests = createToGuestValuesNode();
+            toGuests = ToGuestValuesNode.create();
             proxyInvoke = ProxyInvokeNodeGen.create();
         }
         Method method = (Method) args[offset];
@@ -503,11 +502,11 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
         return receiverClass == other.receiverClass && interfaceType == other.interfaceType;
     }
 
-    static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
+    static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
         ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
-        CallTarget target = HostInterop.lookupJavaInteropCodeCache(languageContext, node, CallTarget.class);
+        CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
-            target = HostInterop.installJavaInteropCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+            target = installHostCodeCache(languageContext, node, createTarget(node), CallTarget.class);
         }
         return target;
     }
@@ -516,7 +515,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
 @ImportStatic({Message.class, HostInteropReflect.class})
 abstract class ProxyInvokeNode extends Node {
 
-    public abstract Object execute(Object languageContext, TruffleObject receiver, Method method, Object[] arguments);
+    public abstract Object execute(PolyglotLanguageContext languageContext, TruffleObject receiver, Method method, Object[] arguments);
 
     /*
      * The limit of the proxy node is unbounded. There are only so many methods a Java interface can
@@ -531,7 +530,7 @@ abstract class ProxyInvokeNode extends Node {
      */
     @Specialization(guards = {"cachedMethod.equals(method)"}, limit = "LIMIT")
     @SuppressWarnings("unused")
-    protected Object doCachedMethod(Object languageContext, TruffleObject receiver, Method method, Object[] arguments,
+    protected Object doCachedMethod(PolyglotLanguageContext languageContext, TruffleObject receiver, Method method, Object[] arguments,
                     @Cached("method") Method cachedMethod,
                     @Cached("method.getName()") String name,
                     @Cached("getMethodReturnType(method)") Class<?> returnClass,
@@ -552,7 +551,8 @@ abstract class ProxyInvokeNode extends Node {
         return method.getGenericReturnType().equals(returnType);
     }
 
-    private Object invokeOrExecute(Object polyglotContext, TruffleObject receiver, Object[] arguments, String name, Node invokeNode, Node keyInfoNode, Node readNode, Node isExecutableNode,
+    private Object invokeOrExecute(PolyglotLanguageContext polyglotContext, TruffleObject receiver, Object[] arguments, String name, Node invokeNode, Node keyInfoNode, Node readNode,
+                    Node isExecutableNode,
                     Node executeNode,
                     ConditionProfile invokeOrReadAndExecuteProfile) {
         try {
@@ -609,10 +609,10 @@ abstract class ProxyInvokeNode extends Node {
 final class ObjectProxyHandler implements InvocationHandler {
 
     final TruffleObject obj;
-    final Object languageContext;
+    final PolyglotLanguageContext languageContext;
     final CallTarget invoke;
 
-    ObjectProxyHandler(TruffleObject obj, Object languageContext, Class<?> interfaceClass) {
+    ObjectProxyHandler(TruffleObject obj, PolyglotLanguageContext languageContext, Class<?> interfaceClass) {
         this.obj = obj;
         this.languageContext = languageContext;
         this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass);

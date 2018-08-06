@@ -263,7 +263,7 @@ final class PolyglotProxy {
             if (!(guestValue instanceof TruffleObject) || !ForeignAccess.sendHasSize(hasSize, (TruffleObject) guestValue)) {
                 throw PolyglotImpl.wrapHostException(context, new IllegalStateException(
                                 String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                                context.toHostValue(guestValue).toString())));
+                                                context.asValue(guestValue).toString())));
             }
             return guestValue;
         }
@@ -373,7 +373,7 @@ final class PolyglotProxy {
         @TruffleBoundary
         static void putMember(PolyglotLanguageContext context, ProxyObject object, String key, Object value) {
             try {
-                object.putMember(key, context.toHostValue(value));
+                object.putMember(key, context.asValue(value));
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.raise(Message.WRITE);
             }
@@ -381,7 +381,7 @@ final class PolyglotProxy {
 
         @TruffleBoundary
         static void setArray(PolyglotLanguageContext context, ProxyArray object, Number index, Object value) {
-            Value castValue = context.toHostValue(value);
+            Value castValue = context.asValue(value);
             try {
                 object.set(index.longValue(), castValue);
             } catch (ArrayIndexOutOfBoundsException e) {

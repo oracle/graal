@@ -197,7 +197,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             public Object execute(VirtualFrame frame) {
                 HostContext context = getContextReference().get();
                 Class<?> allTarget = context.findClass(sourceString);
-                return HostInterop.asTruffleObject(allTarget, getContextReference().get().internalContext);
+                return context.internalContext.toGuestValue(allTarget);
             }
         });
     }
@@ -320,22 +320,18 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                 } else {
                     javaType = javaObject.getClass();
                 }
-                return javaClassToGuestObject(javaType, context.internalContext);
+                return context.internalContext.toGuestValue(javaType);
             } else if (PolyglotProxy.isProxyGuestObject(to)) {
                 Proxy proxy = PolyglotProxy.toProxyHostObject(to);
-                return javaClassToGuestObject(proxy.getClass(), context.internalContext);
+                return context.internalContext.toGuestValue(proxy.getClass());
             } else if (HostFunction.isInstance(to)) {
                 return "Bound Method";
             } else {
                 return "Foreign Object";
             }
         } else {
-            return javaClassToGuestObject(value.getClass(), context.internalContext);
+            return context.internalContext.toGuestValue(value.getClass());
         }
-    }
-
-    private static Object javaClassToGuestObject(Class<?> clazz, Object context) {
-        return HostInterop.asTruffleObject(clazz, context);
     }
 
     static final class TopScopeObject implements TruffleObject {

@@ -64,17 +64,17 @@ abstract class ToHostNode extends Node {
     @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
     @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
 
-    public abstract Object execute(Object value, Class<?> targetType, Type genericType, Object languageContext);
+    public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "operand == null")
-    protected Object doNull(Object operand, Class<?> targetType, Type genericType, Object languageContext) {
+    protected Object doNull(Object operand, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         return null;
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"operand != null", "operand.getClass() == cachedOperandType", "targetType == cachedTargetType"}, limit = "LIMIT")
-    protected Object doCached(Object operand, Class<?> targetType, Type genericType, Object languageContext,
+    protected Object doCached(Object operand, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
                     @Cached("targetType") Class<?> cachedTargetType) {
         return convertImpl(cachedOperandType.cast(operand), cachedTargetType, genericType, languageContext);
@@ -82,11 +82,11 @@ abstract class ToHostNode extends Node {
 
     @Specialization(guards = "operand != null", replaces = "doCached")
     @TruffleBoundary
-    protected Object doGeneric(Object operand, Class<?> targetType, Type genericType, Object languageContext) {
+    protected Object doGeneric(Object operand, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         return convertImpl(operand, targetType, genericType, languageContext);
     }
 
-    private Object convertImpl(Object value, Class<?> targetType, Type genericType, Object languageContext) {
+    private Object convertImpl(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         Object convertedValue;
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
             Object unboxed = primitive.unbox(value);
@@ -101,12 +101,12 @@ abstract class ToHostNode extends Node {
                         return (char) v;
                     }
                 }
-            } else if (targetType == String.class && HostInterop.isPrimitive(unboxed)) {
+            } else if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxed)) {
                 return convertToString(unboxed);
             }
         }
         if (targetType == Value.class && languageContext != null) {
-            convertedValue = value instanceof Value ? value : HostInterop.toHostValue(value, languageContext);
+            convertedValue = value instanceof Value ? value : languageContext.asValue(value);
         } else if (value instanceof TruffleObject) {
             convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext);
         } else if (targetType.isAssignableFrom(value.getClass())) {
@@ -147,7 +147,7 @@ abstract class ToHostNode extends Node {
                     return true;
                 }
             }
-        } else if (priority >= COERCE && targetType == String.class && HostInterop.isPrimitive(unboxed)) {
+        } else if (priority >= COERCE && targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxed)) {
             return true;
         }
         return false;
@@ -237,7 +237,7 @@ abstract class ToHostNode extends Node {
         return ForeignAccess.sendIsInstantiable(isInstantiable, object);
     }
 
-    private Object convertToObject(TruffleObject truffleObject, Object languageContext) {
+    private Object convertToObject(TruffleObject truffleObject, PolyglotLanguageContext languageContext) {
         Object primitiveValue = primitive.unbox(truffleObject);
         if (primitiveValue != null) {
             return primitiveValue;
@@ -248,12 +248,12 @@ abstract class ToHostNode extends Node {
         } else if (isExecutable(truffleObject) || isInstantiable(truffleObject)) {
             return asJavaObject(truffleObject, Function.class, null, languageContext);
         } else {
-            return HostInterop.toHostValue(truffleObject, languageContext);
+            return languageContext.asValue(truffleObject);
         }
     }
 
     @TruffleBoundary
-    private <T> T asJavaObject(TruffleObject truffleObject, Class<T> targetType, Type genericType, Object languageContext) {
+    private <T> T asJavaObject(TruffleObject truffleObject, Class<T> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         Objects.requireNonNull(truffleObject);
         Object obj;
         if (primitive.isNull(truffleObject)) {
@@ -366,7 +366,7 @@ abstract class ToHostNode extends Node {
         return genericComponentType;
     }
 
-    private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType, Object languageContext) {
+    private static Object truffleObjectToArray(TruffleObject foreignObject, Class<?> arrayType, Type genericArrayType, PolyglotLanguageContext languageContext) {
         Class<?> componentType = arrayType.getComponentType();
         List<?> list = PolyglotList.create(languageContext, foreignObject, false, componentType, getGenericArrayComponentType(genericArrayType));
         Object array = Array.newInstance(componentType, list.size());

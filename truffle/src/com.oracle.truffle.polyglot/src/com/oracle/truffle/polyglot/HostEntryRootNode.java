@@ -24,16 +24,25 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.RootNode;
 
-abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<String> {
+/*
+ * TODO merge this with PolyglotValue.PolyglotNode
+ */
+abstract class HostEntryRootNode<T> extends RootNode {
+
+    private static final Object UNINITIALIZED_CONTEXT = new Object();
+
+    @CompilationFinal private boolean seenEnter;
+    @CompilationFinal private boolean seenNonEnter;
+
+    @CompilationFinal private Object constantContext = UNINITIALIZED_CONTEXT;
 
     HostEntryRootNode() {
         super(null);
@@ -43,27 +52,75 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        Object[] arguments = frame.getArguments();
-        Object languageContext = arguments[0];
-        T receiver = getReceiverType().cast(arguments[1]);
-        Object result;
-        result = executeImpl(languageContext, receiver, arguments, 2);
-        assert languageContext == null || !(result instanceof TruffleObject);
-        return result;
+        Object[] args = frame.getArguments();
+        PolyglotLanguageContext languageContext = profileContext(args[0]);
+        assert languageContext != null;
+        PolyglotContextImpl context = languageContext.context;
+        boolean needsEnter = languageContext != null && context.needsEnter();
+        Object prev;
+        if (needsEnter) {
+            if (!seenEnter) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                seenEnter = true;
+            }
+            prev = context.enter();
+        } else {
+            if (!seenNonEnter) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                seenNonEnter = true;
+            }
+            prev = null;
+        }
+        try {
+            Object[] arguments = frame.getArguments();
+            T receiver = getReceiverType().cast(arguments[1]);
+            Object result;
+            result = executeImpl(languageContext, receiver, arguments, 2);
+            assert !(result instanceof TruffleObject);
+            return result;
+        } catch (Throwable e) {
+            CompilerDirectives.transferToInterpreter();
+            throw PolyglotImpl.wrapGuestException((languageContext), e);
+        } finally {
+            if (needsEnter) {
+                context.leave(prev);
+            }
+        }
     }
 
-    protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
+    private PolyglotLanguageContext profileContext(Object languageContext) {
+        if (constantContext != null) {
+            if (constantContext == languageContext) {
+                return (PolyglotLanguageContext) constantContext;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (constantContext == UNINITIALIZED_CONTEXT) {
+                    constantContext = languageContext;
+                } else {
+                    constantContext = null;
+                }
+            }
+        }
+        return (PolyglotLanguageContext) languageContext;
+    }
+
+    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, T receiver, Object[] args, int offset);
 
     protected static CallTarget createTarget(HostEntryRootNode<?> node) {
-        return Truffle.getRuntime().createCallTarget(HostInterop.wrapHostBoundary(node, node));
+        return Truffle.getRuntime().createCallTarget(node);
     }
 
-    protected static BiFunction<Object, Object, Object> createToGuestValueNode() {
-        return HostInterop.createToGuestValueNode();
+    static <T> T installHostCodeCache(PolyglotLanguageContext languageContext, Object key, T value, Class<T> expectedType) {
+        T result = expectedType.cast(languageContext.context.engine.javaInteropCodeCache.putIfAbsent(key, value));
+        if (result != null) {
+            return result;
+        } else {
+            return value;
+        }
     }
 
-    protected static BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
-        return HostInterop.createToGuestValuesNode();
+    static <T> T lookupHostCodeCache(PolyglotLanguageContext languageContext, Object key, Class<T> expectedType) {
+        return expectedType.cast(languageContext.context.engine.javaInteropCodeCache.get(key));
     }
 
 }

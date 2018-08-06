@@ -33,11 +33,6 @@ class PolyglotNullPointerException extends NullPointerException {
         initCause(null);
     }
 
-    PolyglotNullPointerException(String message, Throwable cause) {
-        super(message);
-        initCause(cause);
-    }
-
     @Override
     public String toString() {
         // make it look like normal unsupported operation.

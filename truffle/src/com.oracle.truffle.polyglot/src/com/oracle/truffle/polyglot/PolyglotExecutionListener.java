@@ -419,7 +419,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
                     for (int i = 0; i < inputValues.length; i++) {
                         Object guestValue = inputValues[i];
                         if (guestValue != null) {
-                            hostValues[i] = languageContext.toHostValue(inputValues[i]);
+                            hostValues[i] = languageContext.asValue(inputValues[i]);
                         } else {
                             hostValues[i] = null;
                         }
@@ -444,7 +444,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
                 PolyglotLanguageContext languageContext = language.getCurrentLanguageContext();
                 Value returnValue;
                 if (reportResult) {
-                    returnValue = languageContext.toHostValue(result);
+                    returnValue = languageContext.asValue(result);
                 } else {
                     returnValue = null;
                 }

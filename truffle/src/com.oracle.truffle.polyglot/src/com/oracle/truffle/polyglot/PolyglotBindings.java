@@ -222,7 +222,7 @@ final class PolyglotBindings implements TruffleObject {
             Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 String identifier = expectIdentifier(arguments, offset, Message.WRITE);
                 Object value = arguments[offset + 1];
-                map.put(identifier, context.toHostValue(value));
+                map.put(identifier, context.asValue(value));
                 return value;
             }
 

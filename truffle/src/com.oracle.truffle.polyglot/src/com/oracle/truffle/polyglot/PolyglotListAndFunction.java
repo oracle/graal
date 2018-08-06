@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 class PolyglotListAndFunction<T> extends PolyglotList<T> implements Function<Object, Object> {
 
-    PolyglotListAndFunction(Class<T> elementClass, Type elementType, TruffleObject array, Object languageContext) {
+    PolyglotListAndFunction(Class<T> elementClass, Type elementType, TruffleObject array, PolyglotLanguageContext languageContext) {
         super(elementClass, elementType, array, languageContext);
     }
 

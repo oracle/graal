@@ -119,7 +119,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             }
             Object exceptionObject = ((TruffleException) exception).getExceptionObject();
             if (exceptionObject != null && languageContext != null) {
-                this.guestObject = languageContext.toHostValue(exceptionObject);
+                this.guestObject = languageContext.asValue(exceptionObject);
             } else {
                 this.guestObject = null;
             }

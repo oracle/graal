@@ -26,6 +26,7 @@ package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,7 +41,6 @@ import java.util.TreeSet;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import java.io.PrintStream;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {

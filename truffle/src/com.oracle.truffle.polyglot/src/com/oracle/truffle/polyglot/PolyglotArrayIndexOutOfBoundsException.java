@@ -33,11 +33,6 @@ class PolyglotArrayIndexOutOfBoundsException extends ArrayIndexOutOfBoundsExcept
         initCause(null);
     }
 
-    PolyglotArrayIndexOutOfBoundsException(String message, Throwable cause) {
-        super(message);
-        initCause(cause);
-    }
-
     @Override
     public String toString() {
         // make it look like normal unsupported operation.

@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.Option;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.api.Option;
 
 @Option.Group(PolyglotImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {

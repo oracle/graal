@@ -52,11 +52,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -557,7 +557,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (languageContext.isInitialized()) {
                 Object s = LANGUAGE.findExportedSymbol(languageContext.env, name, onlyExplicit);
                 if (s != null) {
-                    return languageContext.toHostValue(s);
+                    return languageContext.asValue(s);
                 }
             }
         }
@@ -703,7 +703,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (source.isInteractive()) {
                 printResult(languageContext, result);
             }
-            return languageContext.toHostValue(result);
+            return languageContext.asValue(result);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
@@ -766,7 +766,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             return (Value) hostValue;
         }
         PolyglotLanguageContext hostContext = getHostContext();
-        return hostContext.toHostValue(hostContext.toGuestValue(hostValue));
+        return hostContext.asValue(hostContext.toGuestValue(hostValue));
     }
 
     void waitForClose() {

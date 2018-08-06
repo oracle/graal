@@ -32,7 +32,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
-import java.util.function.BiFunction;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -41,7 +41,6 @@ import java.util.logging.LogRecord;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CallTarget;
@@ -208,8 +207,6 @@ public abstract class Accessor {
 
         public abstract TruffleContext getPolyglotContext(Object vmObject);
 
-        public abstract Value toHostValue(Object obj, Object languageContext);
-
         public abstract Object toGuestValue(Object obj, Object languageContext);
 
         public abstract Object getVMFromLanguageObject(Object engineObject);
@@ -250,25 +247,9 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Object languageContext, Throwable exception);
 
-        public abstract RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name);
-
-        public abstract BiFunction<Object, Object, Object> createToGuestValueNode();
-
-        public abstract BiFunction<Object, Object[], Object[]> createToGuestValuesNode();
-
         public abstract boolean isHostException(Throwable exception);
 
         public abstract Throwable asHostException(Throwable exception);
-
-        public abstract ClassCastException newClassCastException(String message, Throwable cause);
-
-        public abstract NullPointerException newNullPointerException(String message, Throwable cause);
-
-        public abstract UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause);
-
-        public abstract IllegalArgumentException newIllegalArgumentException(String message, Throwable cause);
-
-        public abstract ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause);
 
         public abstract Object getCurrentHostContext();
 
@@ -279,8 +260,6 @@ public abstract class Accessor {
         public abstract void legacyTckLeave(Object vm, Object prev);
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
-
-        public abstract String getValueInfo(Object languageContext, Object value);
 
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
 

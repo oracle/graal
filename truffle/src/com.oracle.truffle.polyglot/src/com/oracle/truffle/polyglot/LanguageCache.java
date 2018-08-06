@@ -26,6 +26,7 @@ package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -43,11 +44,9 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-
-import java.io.PrintStream;
+import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates

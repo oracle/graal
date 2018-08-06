@@ -43,8 +43,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -56,20 +54,21 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
 class PolyglotMap<K, V> extends AbstractMap<K, V> {
 
-    final Object languageContext;
+    final PolyglotLanguageContext languageContext;
     final TruffleObject guestObject;
     final Cache cache;
 
-    PolyglotMap(Object languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+    PolyglotMap(PolyglotLanguageContext languageContext, TruffleObject obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         this.guestObject = obj;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, obj.getClass(), keyClass, valueClass, valueType);
     }
 
-    static <K, V> Map<K, V> create(Object languageContext, TruffleObject foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
+    static <K, V> Map<K, V> create(PolyglotLanguageContext languageContext, TruffleObject foreignObject, boolean implementsFunction, Class<K> keyClass, Class<V> valueClass, Type valueType) {
         if (implementsFunction) {
             return new PolyglotMapAndFunction<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         } else {
@@ -109,7 +108,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
     @Override
     public String toString() {
         try {
-            return HostInterop.toHostValue(guestObject, languageContext).toString();
+            return languageContext.asValue(guestObject).toString();
         } catch (UnsupportedOperationException e) {
             return super.toString();
         }
@@ -335,11 +334,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             return HostEntryRootNode.createTarget(node);
         }
 
-        static Cache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
+        static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
-            Cache cache = HostInterop.lookupJavaInteropCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostEntryRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostInterop.installJavaInteropCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
+                cache = HostEntryRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -379,7 +378,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
         }
 
-        private abstract static class PolyglotMapNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
+        private abstract static class PolyglotMapNode extends HostEntryRootNode<TruffleObject> {
 
             final Cache cache;
             @Child protected Node hasSize = Message.HAS_SIZE.createNode();
@@ -397,7 +396,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            public final String get() {
+            public final String getName() {
                 return "PolyglotMap<" + cache.receiverClass + ", " + cache.keyClass + ", " + cache.valueType + ">." + getOperationName();
             }
 
@@ -428,7 +427,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
                 Object key = args[offset];
                 if (isValidKey(receiver, key)) {
                     return KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key));
@@ -454,7 +453,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             @SuppressWarnings("unchecked")
-            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
                 List<?> keys = null;
                 int keysSize = 0;
                 int elemSize = 0;
@@ -504,7 +503,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
                 Object key = args[offset];
                 Object result = null;
                 if (isValidKey(receiver, key) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
@@ -532,7 +531,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             @Child private Node read = Message.READ.createNode();
             @Child private Node write = Message.WRITE.createNode();
             @Child private ToHostNode toHost = ToHostNode.create();
-            private final BiFunction<Object, Object, Object> toGuest = createToGuestValueNode();
+            private final ToGuestValueNode toGuest = ToGuestValueNode.create();
 
             Put(Cache cache) {
                 super(cache);
@@ -544,7 +543,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
                 Object key = args[offset];
                 Object result = null;
 
@@ -602,7 +601,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
                 Object key = args[offset];
                 Object result = null;
 
@@ -655,7 +654,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
                 Object key = args[offset];
 
                 if (isValidKey(receiver, key)) {
@@ -707,7 +706,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(Object languageContext, TruffleObject function, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args, int offset) {
                 return apply.execute(languageContext, function, args[offset], Object.class, Object.class);
             }
         }

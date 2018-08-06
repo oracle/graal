@@ -30,7 +30,6 @@ import static com.oracle.truffle.api.interop.ForeignAccess.sendIsInstantiable;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendNew;
 
 import java.lang.reflect.Type;
-import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
@@ -40,6 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
 final class PolyglotExecuteNode extends Node {
 
@@ -49,11 +49,11 @@ final class PolyglotExecuteNode extends Node {
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
     @Child private Node execute = Message.createExecute(0).createNode();
     @Child private Node instantiate = Message.createNew(0).createNode();
-    private final BiFunction<Object, Object[], Object[]> toGuests = HostEntryRootNode.createToGuestValuesNode();
+    private final ToGuestValuesNode toGuests = ToGuestValuesNode.create();
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @Child private ToHostNode toHost = ToHostNode.create();
 
-    public Object execute(Object languageContext, TruffleObject function, Object functionArgsObject,
+    public Object execute(PolyglotLanguageContext languageContext, TruffleObject function, Object functionArgsObject,
                     Class<?> resultClass, Type resultType) {
         Object[] argsArray;
         if (functionArgsObject instanceof Object[]) {

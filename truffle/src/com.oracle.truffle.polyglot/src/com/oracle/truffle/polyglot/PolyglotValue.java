@@ -338,7 +338,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     protected final Value newValue(Object receiver) {
-        return languageContext.toHostValue(receiver);
+        return languageContext.asValue(receiver);
     }
 
     static CallTarget createTarget(PolyglotNode root) {
@@ -404,8 +404,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     abstract static class BaseCache extends PolyglotValue {
 
-        final PolyglotImpl impl;
-
         final CallTarget asClassLiteral;
         final CallTarget asTypeLiteral;
 
@@ -413,7 +411,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         BaseCache(PolyglotLanguageContext context, Class<?> receiverType) {
             super(context);
-            this.impl = context.getEngine().impl;
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
             this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));

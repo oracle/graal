@@ -44,7 +44,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -96,9 +95,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     DispatchOutputStream out;       // effectively final
     DispatchOutputStream err;       // effectively final
     InputStream in;                 // effectively final
-    long timeout;                   // effectively final
-    TimeUnit timeoutUnit;           // effectively final
-    boolean sandbox;                // effectively final
 
     final Map<String, PolyglotLanguage> idToLanguage;
     final Map<String, Language> idToPublicLanguage;
@@ -133,23 +129,21 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
     Map<String, Level> logLevels;    // effectively final
 
-    PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
-                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine, Handler logHandler) {
-        this(impl, out, err, in, options, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine, false, logHandler);
+    PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, ClassLoader contextClassLoader,
+                    boolean boundEngine, Handler logHandler) {
+        this(impl, out, err, in, options, useSystemProperties, contextClassLoader, boundEngine, false, logHandler);
     }
 
-    private PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
-                    boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine, boolean preInitialization, Handler logHandler) {
+    private PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
+                    ClassLoader contextClassLoader,
+                    boolean boundEngine, boolean preInitialization, Handler logHandler) {
         super(impl);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in);
         this.impl = impl;
         this.out = out;
         this.err = err;
         this.in = in;
-        this.timeout = timeout;
-        this.timeoutUnit = timeoutUnit;
         this.contextClassLoader = contextClassLoader;
-        this.sandbox = sandbox;
         this.boundEngine = boundEngine;
         this.logHandler = logHandler;
 
@@ -219,8 +213,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
     }
 
-    boolean patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn, Map<String, String> newOptions, long newTimeout, TimeUnit newTimeoutUnit,
-                    boolean newSandbox, boolean newUseSystemProperties, ClassLoader newContextClassLoader, boolean newBoundEngine, Handler newLogHandler) {
+    boolean patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn, Map<String, String> newOptions, boolean newUseSystemProperties, ClassLoader newContextClassLoader,
+                    boolean newBoundEngine, Handler newLogHandler) {
         CompilerAsserts.neverPartOfCompilation();
         if (this.boundEngine != newBoundEngine) {
             return false;
@@ -228,10 +222,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         this.out = newOut;
         this.err = newErr;
         this.in = newIn;
-        this.timeout = newTimeout;
-        this.timeoutUnit = newTimeoutUnit;
         this.contextClassLoader = newContextClassLoader;
-        this.sandbox = newSandbox;
         this.boundEngine = newBoundEngine;
         this.logHandler = newLogHandler;
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
@@ -793,7 +784,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     static PolyglotEngineImpl preInitialize(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, ClassLoader contextClassLoader, Handler logHandler) {
-        final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), 0, null, false, true, contextClassLoader, true, true, logHandler);
+        final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), true, contextClassLoader, true, true, logHandler);
         synchronized (engine) {
             try {
                 engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);

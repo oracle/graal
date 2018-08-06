@@ -27,7 +27,6 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -59,32 +58,33 @@ import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupMethodNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.MapRemoveNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.ReadFieldNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.WriteFieldNodeGen;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
 final class HostObject implements TruffleObject {
 
     static final HostObject NULL = new HostObject(null, null, false);
 
     final Object obj;
-    final Object languageContext;
+    final PolyglotLanguageContext languageContext;
     private final boolean staticClass;
 
-    private HostObject(Object obj, Object languageContext, boolean staticClass) {
+    private HostObject(Object obj, PolyglotLanguageContext languageContext, boolean staticClass) {
         this.obj = obj;
         this.languageContext = languageContext;
         this.staticClass = staticClass;
     }
 
-    static HostObject forClass(Class<?> clazz, Object languageContext) {
+    static HostObject forClass(Class<?> clazz, PolyglotLanguageContext languageContext) {
         assert clazz != null;
         return new HostObject(clazz, languageContext, false);
     }
 
-    static HostObject forStaticClass(Class<?> clazz, Object languageContext) {
+    static HostObject forStaticClass(Class<?> clazz, PolyglotLanguageContext languageContext) {
         assert clazz != null;
         return new HostObject(clazz, languageContext, true);
     }
 
-    static HostObject forObject(Object object, Object languageContext) {
+    static HostObject forObject(Object object, PolyglotLanguageContext languageContext) {
         assert object != null && !(object instanceof Class<?>);
         return new HostObject(object, languageContext, false);
     }
@@ -108,6 +108,10 @@ final class HostObject implements TruffleObject {
         } else {
             return false;
         }
+    }
+
+    boolean isPrimitive() {
+        return PolyglotImpl.isGuestPrimitive(obj);
     }
 
     static Object valueOf(TruffleObject value) {
@@ -405,7 +409,7 @@ class HostObjectMR {
         @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
 
         public Object access(HostObject object) {
-            return HostInterop.isGuestPrimitive(object.obj);
+            return object.isPrimitive();
         }
 
     }
@@ -415,7 +419,7 @@ class HostObjectMR {
         @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
 
         public Object access(HostObject object) {
-            if (HostInterop.isGuestPrimitive(object.obj)) {
+            if (object.isPrimitive()) {
                 return object.obj;
             } else {
                 return UnsupportedMessageException.raise(Message.UNBOX);
@@ -553,6 +557,7 @@ class HostObjectMR {
         }
 
         @Child private ArrayGet arrayGet = ArrayGetNodeGen.create();
+        private final ToGuestValueNode toGuest = ToGuestValueNode.create();
 
         protected abstract Object executeWithTarget(HostObject receiver, Object index);
 
@@ -576,7 +581,7 @@ class HostObjectMR {
         @Specialization(guards = {"isList(receiver)"})
         protected Object doListIntIndex(HostObject receiver, int index) {
             try {
-                return HostInterop.toGuestValue(((List<?>) receiver.obj).get(index), receiver.languageContext);
+                return toGuest.apply(receiver.languageContext, ((List<?>) receiver.obj).get(index));
             } catch (IndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(String.valueOf(index));
@@ -606,7 +611,8 @@ class HostObjectMR {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(String.valueOf(index));
             }
-            return HostInterop.toGuestValue(val, object.languageContext);
+
+            return toGuest.apply(object.languageContext, val);
         }
 
         static boolean isList(HostObject receiver) {
@@ -1164,22 +1170,18 @@ class HostObjectMR {
 
         public abstract Object execute(HostFieldDesc field, HostObject object);
 
-        protected static BiFunction<Object, Object, Object> createToGuestValue() {
-            return HostInterop.createToGuestValueNode();
-        }
-
         @SuppressWarnings("unused")
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static Object doCached(HostFieldDesc field, HostObject object,
                         @Cached("field") HostFieldDesc cachedField,
-                        @Cached("createToGuestValue()") BiFunction<Object, Object, Object> toGuest) {
+                        @Cached("create()") ToGuestValueNode toGuest) {
             Object val = cachedField.get(object.obj);
             return toGuest.apply(object.languageContext, val);
         }
 
         @Specialization(replaces = "doCached")
         static Object doUncached(HostFieldDesc field, HostObject object,
-                        @Cached("createToGuestValue()") BiFunction<Object, Object, Object> toGuest) {
+                        @Cached("create()") ToGuestValueNode toGuest) {
             Object val = field.get(object.obj);
             return toGuest.apply(object.languageContext, val);
         }

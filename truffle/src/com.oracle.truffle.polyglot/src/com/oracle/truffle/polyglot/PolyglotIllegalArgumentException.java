@@ -33,10 +33,6 @@ class PolyglotIllegalArgumentException extends IllegalArgumentException {
         initCause(null);
     }
 
-    PolyglotIllegalArgumentException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
     @Override
     public String toString() {
         // make it look like normal unsupported operation.

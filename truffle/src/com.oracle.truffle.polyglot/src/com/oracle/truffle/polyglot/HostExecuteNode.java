@@ -51,6 +51,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
 abstract class HostExecuteNode extends Node {
     static final int LIMIT = 3;
@@ -59,11 +60,13 @@ abstract class HostExecuteNode extends Node {
     HostExecuteNode() {
     }
 
+    private final ToGuestValueNode toGuest = ToGuestValueNode.create();
+
     static HostExecuteNode create() {
         return HostExecuteNodeGen.create();
     }
 
-    public final Object execute(HostMethodDesc method, Object obj, Object[] args, Object languageContext) {
+    public final Object execute(HostMethodDesc method, Object obj, Object[] args, PolyglotLanguageContext languageContext) {
         try {
             return executeImpl(method, obj, args, languageContext);
         } catch (ClassCastException | NullPointerException e) {
@@ -72,11 +75,11 @@ abstract class HostExecuteNode extends Node {
         } catch (InteropException e) {
             throw e.raise();
         } catch (Throwable e) {
-            throw HostInteropReflect.rethrow(HostInterop.wrapHostException(languageContext, e));
+            throw HostInteropReflect.rethrow(PolyglotImpl.wrapHostException(languageContext, e));
         }
     }
 
-    protected abstract Object executeImpl(HostMethodDesc method, Object obj, Object[] args, Object languageContext) throws InteropException;
+    protected abstract Object executeImpl(HostMethodDesc method, Object obj, Object[] args, PolyglotLanguageContext languageContext) throws InteropException;
 
     static ToHostNode[] createToHost(int argsLength) {
         ToHostNode[] toJava = new ToHostNode[argsLength];
@@ -89,7 +92,7 @@ abstract class HostExecuteNode extends Node {
     @SuppressWarnings("unused")
     @ExplodeLoop
     @Specialization(guards = {"!method.isVarArgs()", "method == cachedMethod"}, limit = "LIMIT")
-    Object doFixed(SingleMethod method, Object obj, Object[] args, Object languageContext,
+    Object doFixed(SingleMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("method") SingleMethod cachedMethod,
                     @Cached("createToHost(method.getParameterCount())") ToHostNode[] toJavaNodes,
                     @Cached("createClassProfile()") ValueProfile receiverProfile) {
@@ -109,7 +112,7 @@ abstract class HostExecuteNode extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"method.isVarArgs()", "method == cachedMethod"}, limit = "LIMIT")
-    Object doVarArgs(SingleMethod method, Object obj, Object[] args, Object languageContext,
+    Object doVarArgs(SingleMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("method") SingleMethod cachedMethod,
                     @Cached("create()") ToHostNode toJavaNode,
                     @Cached("createClassProfile()") ValueProfile receiverProfile) {
@@ -138,7 +141,7 @@ abstract class HostExecuteNode extends Node {
     }
 
     @Specialization(replaces = {"doFixed", "doVarArgs"})
-    Object doSingleUncached(SingleMethod method, Object obj, Object[] args, Object languageContext,
+    Object doSingleUncached(SingleMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("create()") ToHostNode toJavaNode,
                     @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) {
         int parameterCount = method.getParameterCount();
@@ -154,7 +157,7 @@ abstract class HostExecuteNode extends Node {
     @SuppressWarnings("unused")
     @ExplodeLoop
     @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes, toJavaNode, asVarArgs)"}, limit = "LIMIT")
-    Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, Object languageContext,
+    Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("method") OverloadedMethod cachedMethod,
                     @Cached("create()") ToHostNode toJavaNode,
                     @Cached(value = "createArgTypesArray(args)", dimensions = 1) Type[] cachedArgTypes,
@@ -183,7 +186,7 @@ abstract class HostExecuteNode extends Node {
     }
 
     @Specialization(replaces = "doOverloadedCached")
-    Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, Object languageContext,
+    Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("create()") ToHostNode toJavaNode,
                     @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) {
         SingleMethod overload = selectOverload(method, args, languageContext);
@@ -191,7 +194,7 @@ abstract class HostExecuteNode extends Node {
         return doInvoke(overload, obj, convertedArguments, languageContext);
     }
 
-    private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, Object languageContext, ToHostNode toJavaNode, ConditionProfile isVarArgsProfile) {
+    private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, PolyglotLanguageContext languageContext, ToHostNode toJavaNode, ConditionProfile isVarArgsProfile) {
         Class<?>[] types = method.getParameterTypes();
         Type[] genericTypes = method.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
@@ -700,15 +703,15 @@ abstract class HostExecuteNode extends Node {
         return arguments;
     }
 
-    private static Object doInvoke(SingleMethod method, Object obj, Object[] arguments, Object languageContext) {
+    private Object doInvoke(SingleMethod method, Object obj, Object[] arguments, PolyglotLanguageContext languageContext) {
         assert arguments.length == method.getParameterCount();
         Object ret;
         try {
             ret = method.invoke(obj, arguments);
         } catch (Throwable e) {
-            throw HostInteropReflect.rethrow(HostInterop.wrapHostException(languageContext, e));
+            throw HostInteropReflect.rethrow(PolyglotImpl.wrapHostException(languageContext, e));
         }
-        return HostInterop.toGuestValue(ret, languageContext);
+        return toGuest.apply(languageContext, ret);
     }
 
     private static String arrayToStringWithTypes(Object[] args) {

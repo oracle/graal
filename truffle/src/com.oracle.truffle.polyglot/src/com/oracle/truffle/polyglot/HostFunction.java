@@ -35,9 +35,9 @@ final class HostFunction implements TruffleObject {
 
     final HostMethodDesc method;
     final Object obj;
-    final Object languageContext;
+    final PolyglotLanguageContext languageContext;
 
-    HostFunction(HostMethodDesc method, Object obj, Object languageContext) {
+    HostFunction(HostMethodDesc method, Object obj, PolyglotLanguageContext languageContext) {
         this.method = method;
         this.obj = obj;
         this.languageContext = languageContext;
