@@ -24,8 +24,13 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import jdk.vm.ci.meta.DeoptimizationReason;
-import org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
@@ -43,16 +48,12 @@ import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.memory.Access;
 import org.graalvm.compiler.phases.Phase;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
+import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
- * This phase sets the {@linkplain AbstractBeginNode#setWithSpeculationFence() speculation fence} flag on
- * {@linkplain AbstractBeginNode begin nodes} in order to mitigate speculative execution attacks.
+ * This phase sets the {@linkplain AbstractBeginNode#setWithSpeculationFence() speculation fence}
+ * flag on {@linkplain AbstractBeginNode begin nodes} in order to mitigate speculative execution
+ * attacks.
  */
 public class InsertGuardFencesPhase extends Phase {
     @Override
@@ -83,7 +84,6 @@ public class InsertGuardFencesPhase extends Phase {
         }
     }
 
-
     private static boolean isDeoptGuard(AbstractBeginNode beginNode) {
         if (!(beginNode.predecessor() instanceof IfNode)) {
             return false;
@@ -96,7 +96,11 @@ public class InsertGuardFencesPhase extends Phase {
             assert ifNode.falseSuccessor() == beginNode;
             otherBegin = ifNode.trueSuccessor();
         }
-        return otherBegin.next() instanceof DeoptimizeNode;
+        if (!(otherBegin.next() instanceof DeoptimizeNode)) {
+            return false;
+        }
+        DeoptimizeNode deopt = (DeoptimizeNode) otherBegin.next();
+        return deopt.getAction().doesInvalidateCompilation();
     }
 
     public static final IntegerStamp POSITIVE_ARRAY_INDEX_STAMP = StampFactory.forInteger(32, 0, Integer.MAX_VALUE - 1);
