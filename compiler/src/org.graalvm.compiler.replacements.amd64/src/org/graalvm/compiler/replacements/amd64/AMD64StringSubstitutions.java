@@ -85,7 +85,12 @@ public class AMD64StringSubstitutions {
 
         Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
         Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
-        int result = AMD64StringIndexOfNode.optimizedStringIndexPointer(sourcePointer, sourceCount - fromIndex, targetPointer, targetCount);
+        int result;
+        if (targetCount == 1) {
+            result = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, sourceCount - fromIndex, target[targetOffset], JavaKind.Char);
+        } else {
+            result = AMD64StringIndexOfStringNode.optimizedStringIndexOf(JavaKind.Char, sourcePointer, sourceCount - fromIndex, targetPointer, targetCount);
+        }
         if (result >= 0) {
             return result + totalOffset;
         }

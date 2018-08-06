@@ -264,12 +264,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length);
 
     @SuppressWarnings("unused")
-    default Variable emitStringIndexOf(Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount) {
+    default Variable emitStringIndexOfString(JavaKind kind, Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(JavaKind kind, Value sourcePointer, Value sourceCount, Value charValue) {
+    default Variable emitArrayIndexOf(JavaKind kind, Value sourcePointer, Value sourceCount, Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 

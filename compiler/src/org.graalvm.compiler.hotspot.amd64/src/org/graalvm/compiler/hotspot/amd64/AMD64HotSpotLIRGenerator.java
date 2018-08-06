@@ -678,7 +678,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitArrayIndexOf(JavaKind kind, Value arrayPointer, Value arrayLength, Value charValue) {
-        return emitArrayIndexOf(kind, config.maxVectorSize, arrayPointer, arrayLength, charValue);
+    public Variable emitStringIndexOfString(JavaKind kind, Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount) {
+        return emitStringIndexOfString(kind, sourcePointer, sourceCount, targetPointer, targetCount, constantTargetCount, config.maxVectorSize);
+    }
+
+    @Override
+    public Variable emitArrayIndexOf(JavaKind kind, Value arrayPointer, Value arrayLength, Value... searchValues) {
+        return emitArrayIndexOf(kind, config.maxVectorSize, arrayPointer, arrayLength, searchValues);
     }
 }

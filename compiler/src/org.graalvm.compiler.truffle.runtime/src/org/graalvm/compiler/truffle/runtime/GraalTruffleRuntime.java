@@ -76,6 +76,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
@@ -352,6 +353,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         GraalCompilerDirectives.class,
                         CompilerAsserts.class,
                         ExactMath.class,
+                        ArrayUtils.class,
                         FrameDescriptor.class,
                         FrameSlot.class,
                         FrameSlotKind.class,
