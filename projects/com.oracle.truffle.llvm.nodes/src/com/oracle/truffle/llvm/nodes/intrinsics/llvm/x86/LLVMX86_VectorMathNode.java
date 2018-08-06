@@ -53,4 +53,30 @@ public abstract class LLVMX86_VectorMathNode {
             });
         }
     }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMX86_VectorMaxNode extends LLVMBuiltin { // mm256_max_pd
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMDoubleVector doM256(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            return LLVMDoubleVector.create(new double[]{
+                            Math.max(v1.getValue(0), v2.getValue(0)),
+                            Math.max(v1.getValue(1), v2.getValue(1)),
+                            Math.max(v1.getValue(2), v2.getValue(2)),
+                            Math.max(v1.getValue(3), v2.getValue(3))
+            });
+        }
+    }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMX86_VectorMinNode extends LLVMBuiltin { // mm256_min_pd
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMDoubleVector doM256(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            return LLVMDoubleVector.create(new double[]{
+                            Math.min(v1.getValue(0), v2.getValue(0)),
+                            Math.min(v1.getValue(1), v2.getValue(1)),
+                            Math.min(v1.getValue(2), v2.getValue(2)),
+                            Math.min(v1.getValue(3), v2.getValue(3))
+            });
+        }
+    }
 }
