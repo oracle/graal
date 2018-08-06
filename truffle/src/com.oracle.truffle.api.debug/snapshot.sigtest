@@ -62,7 +62,6 @@ CLSS public final com.oracle.truffle.api.debug.Debugger
 meth public com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public java.util.List<com.oracle.truffle.api.source.Source> getLoadedSources()
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.TruffleLanguage$Env)
-meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.vm.PolyglotEngine)
 supr java.lang.Object
 hfds ACCESSOR,TRACE,env,sourceVM
 hcls AccessorDebug
