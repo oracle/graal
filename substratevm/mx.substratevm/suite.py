@@ -291,7 +291,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
                 "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_DEBUG",
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "1.8",
@@ -486,7 +485,6 @@ suite = {
                 "OBJECTFILE",
                 "POINTSTO",
                 "mx:JUNIT_TOOL",
-                "truffle:TRUFFLE_DEBUG",
                 "truffle:TRUFFLE_NFI",
                 "compiler:GRAAL",
             ]
