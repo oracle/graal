@@ -40,6 +40,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -556,9 +557,11 @@ public final class RegexParser {
         if (curTerm == null) {
             throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
         }
-        final boolean onAssertion = curTerm instanceof RegexASTSubtreeRootNode;
-        if (source.getFlags().isUnicode() && onAssertion) {
-            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
+        if (source.getFlags().isUnicode() && curTerm instanceof LookAheadAssertion) {
+            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+        }
+        if (curTerm instanceof LookBehindAssertion) {
+            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
         }
         assert curTerm == curSequence.getLastTerm();
         if (quantifier.getMin() == -1) {
@@ -573,7 +576,7 @@ public final class RegexParser {
             curSequence.removeLastTerm();
         }
         Term t = curTerm;
-        if (!onAssertion) {
+        if (!(curTerm instanceof LookAroundAssertion)) {
             if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
                 properties.setLargeCountedRepetitions();
                 // avoid tree explosion. note that this will result in an incorrect parse tree!
@@ -635,16 +638,19 @@ public final class RegexParser {
      */
     private enum RegexStackElem {
         Group,
-        LookAroundAssertion
+        LookAheadAssertion,
+        LookBehindAssertion
     }
 
     /**
      * Information about the state of the {@link #curTerm} field. The field can be either null,
-     * point to a lookaround assertion node or to some other non-null node.
+     * point to a lookahead assertion node, to a lookbehind assertion node or to some other non-null
+     * node.
      */
     private enum CurTermState {
         Null,
-        LookAroundAssertion,
+        LookAheadAssertion,
+        LookBehindAssertion,
         Other
     }
 
@@ -676,11 +682,16 @@ public final class RegexParser {
                     curTermState = CurTermState.Other;
                     break;
                 case quantifier:
-                    if (curTermState == CurTermState.Null) {
-                        throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-                    }
-                    if (source.getFlags().isUnicode() && curTermState == CurTermState.LookAroundAssertion) {
-                        throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
+                    switch (curTermState) {
+                        case Null:
+                            throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                        case LookAheadAssertion:
+                            if (source.getFlags().isUnicode()) {
+                                throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                            }
+                            break;
+                        case LookBehindAssertion:
+                            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
                     }
                     curTermState = CurTermState.Other;
                     break;
@@ -693,8 +704,11 @@ public final class RegexParser {
                     curTermState = CurTermState.Null;
                     break;
                 case lookAheadAssertionBegin:
+                    syntaxStack.add(RegexStackElem.LookAheadAssertion);
+                    curTermState = CurTermState.Null;
+                    break;
                 case lookBehindAssertionBegin:
-                    syntaxStack.add(RegexStackElem.LookAroundAssertion);
+                    syntaxStack.add(RegexStackElem.LookBehindAssertion);
                     curTermState = CurTermState.Null;
                     break;
                 case groupEnd:
@@ -702,10 +716,16 @@ public final class RegexParser {
                         throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
                     }
                     RegexStackElem poppedElem = syntaxStack.remove(syntaxStack.size() - 1);
-                    if (poppedElem == RegexStackElem.LookAroundAssertion) {
-                        curTermState = CurTermState.LookAroundAssertion;
-                    } else { // poppedElem == RegexStackElem.Group
-                        curTermState = CurTermState.Other;
+                    switch (poppedElem) {
+                        case LookAheadAssertion:
+                            curTermState = CurTermState.LookAheadAssertion;
+                            break;
+                        case LookBehindAssertion:
+                            curTermState = CurTermState.LookBehindAssertion;
+                            break;
+                        case Group:
+                            curTermState = CurTermState.Other;
+                            break;
                     }
                     break;
             }
