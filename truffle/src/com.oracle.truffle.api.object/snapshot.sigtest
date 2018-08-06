@@ -67,6 +67,8 @@ hfds serialVersionUID
 
 CLSS public final com.oracle.truffle.api.object.HiddenKey
 cons public init(java.lang.String)
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
 meth public java.lang.String getName()
 meth public java.lang.String toString()
 supr java.lang.Object
@@ -283,6 +285,8 @@ meth public abstract java.lang.Object get(com.oracle.truffle.api.object.DynamicO
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
 meth public abstract void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.IncompatibleLocationException
+
+CLSS abstract interface com.oracle.truffle.api.object.package-info
 
 CLSS public abstract interface java.io.Serializable
 

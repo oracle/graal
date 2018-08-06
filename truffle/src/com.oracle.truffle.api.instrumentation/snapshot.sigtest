@@ -1,32 +1,102 @@
 #Signature file v4.1
 #Version 
 
-CLSS public final com.oracle.truffle.api.instrumentation.EventBinding<%0 extends java.lang.Object>
+CLSS public final com.oracle.truffle.api.instrumentation.AllocationEvent
+meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguage()
+meth public java.lang.Object getValue()
+meth public long getNewSize()
+meth public long getOldSize()
+supr java.lang.Object
+hfds language,newSize,oldSize,value
+
+CLSS public final com.oracle.truffle.api.instrumentation.AllocationEventFilter
+fld public final static com.oracle.truffle.api.instrumentation.AllocationEventFilter ANY
+innr public Builder
+meth public static com.oracle.truffle.api.instrumentation.AllocationEventFilter$Builder newBuilder()
+supr java.lang.Object
+hfds languageSet
+
+CLSS public com.oracle.truffle.api.instrumentation.AllocationEventFilter$Builder
+ outer com.oracle.truffle.api.instrumentation.AllocationEventFilter
+meth public !varargs com.oracle.truffle.api.instrumentation.AllocationEventFilter$Builder languages(com.oracle.truffle.api.nodes.LanguageInfo[])
+meth public com.oracle.truffle.api.instrumentation.AllocationEventFilter build()
+supr java.lang.Object
+hfds langs
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.AllocationListener
+meth public abstract void onEnter(com.oracle.truffle.api.instrumentation.AllocationEvent)
+meth public abstract void onReturnValue(com.oracle.truffle.api.instrumentation.AllocationEvent)
+
+CLSS public final com.oracle.truffle.api.instrumentation.AllocationReporter
+fld public final static java.lang.String PROPERTY_ACTIVE = "active"
+fld public final static long SIZE_UNKNOWN = -9223372036854775808
+meth public boolean isActive()
+meth public void addPropertyChangeListener(java.beans.PropertyChangeListener)
+meth public void onEnter(java.lang.Object,long,long)
+meth public void onReturnValue(java.lang.Object,long,long)
+meth public void removePropertyChangeListener(java.beans.PropertyChangeListener)
+supr java.lang.Object
+hfds language,listeners,listenersNotChangedAssumption,propSupport,valueCheck
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.ContextsListener
+meth public abstract void onContextClosed(com.oracle.truffle.api.TruffleContext)
+meth public abstract void onContextCreated(com.oracle.truffle.api.TruffleContext)
+meth public abstract void onLanguageContextCreated(com.oracle.truffle.api.TruffleContext,com.oracle.truffle.api.nodes.LanguageInfo)
+meth public abstract void onLanguageContextDisposed(com.oracle.truffle.api.TruffleContext,com.oracle.truffle.api.nodes.LanguageInfo)
+meth public abstract void onLanguageContextFinalized(com.oracle.truffle.api.TruffleContext,com.oracle.truffle.api.nodes.LanguageInfo)
+meth public abstract void onLanguageContextInitialized(com.oracle.truffle.api.TruffleContext,com.oracle.truffle.api.nodes.LanguageInfo)
+
+CLSS public com.oracle.truffle.api.instrumentation.EventBinding<%0 extends java.lang.Object>
 meth public boolean isDisposed()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter()
+ anno 0 java.lang.Deprecated()
 meth public void dispose()
 meth public {com.oracle.truffle.api.instrumentation.EventBinding%0} getElement()
 supr java.lang.Object
-hfds disposed,element,filter,instrumenter,isExecutionEvent
+hfds disposed,element,instrumenter
+hcls Allocation,Source
 
 CLSS public final com.oracle.truffle.api.instrumentation.EventContext
 meth public !varargs com.oracle.truffle.api.CallTarget parseInContext(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+ anno 0 java.lang.Deprecated()
+meth public boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
+meth public boolean isLanguageContextInitialized()
 meth public com.oracle.truffle.api.instrumentation.ExecutionEventNode lookupExecutionEventNode(com.oracle.truffle.api.instrumentation.EventBinding<? extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory>)
 meth public com.oracle.truffle.api.nodes.Node getInstrumentedNode()
 meth public com.oracle.truffle.api.source.SourceSection getInstrumentedSourceSection()
+meth public java.lang.Object getNodeObject()
 meth public java.lang.String toString()
+meth public java.lang.ThreadDeath createUnwind(java.lang.Object)
+meth public java.lang.ThreadDeath createUnwind(java.lang.Object,com.oracle.truffle.api.instrumentation.EventBinding<?>)
+meth public java.util.Iterator<com.oracle.truffle.api.instrumentation.ExecutionEventNode> lookupExecutionEventNodes(java.util.Collection<com.oracle.truffle.api.instrumentation.EventBinding<? extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory>>)
 supr java.lang.Object
-hfds probeNode,sourceSection
+hfds nodeObject,probeNode,sourceSection
+
+CLSS public final com.oracle.truffle.api.instrumentation.ExecuteSourceEvent
+meth public com.oracle.truffle.api.source.Source getSource()
+supr java.lang.Object
+hfds source
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.ExecuteSourceListener
+meth public abstract void onExecute(com.oracle.truffle.api.instrumentation.ExecuteSourceEvent)
 
 CLSS public abstract interface com.oracle.truffle.api.instrumentation.ExecutionEventListener
 meth public abstract void onEnter(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame)
 meth public abstract void onReturnExceptional(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
 meth public abstract void onReturnValue(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
+meth public java.lang.Object onUnwind(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
+meth public void onInputValue(com.oracle.truffle.api.instrumentation.EventContext,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.instrumentation.EventContext,int,java.lang.Object)
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.ExecutionEventNode
 cons protected init()
+meth protected final com.oracle.truffle.api.instrumentation.EventContext getInputContext(int)
+meth protected final int getInputCount()
+meth protected final java.lang.Object[] getSavedInputValues(com.oracle.truffle.api.frame.VirtualFrame)
+meth protected final void saveInputValue(com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
+meth protected java.lang.Object onUnwind(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth protected void onDispose(com.oracle.truffle.api.frame.VirtualFrame)
 meth protected void onEnter(com.oracle.truffle.api.frame.VirtualFrame)
+meth protected void onInputValue(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.instrumentation.EventContext,int,java.lang.Object)
 meth protected void onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
 meth protected void onReturnValue(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
@@ -34,29 +104,81 @@ supr com.oracle.truffle.api.nodes.Node
 CLSS public abstract interface com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory
 meth public abstract com.oracle.truffle.api.instrumentation.ExecutionEventNode create(com.oracle.truffle.api.instrumentation.EventContext)
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation IncomingConverter
+innr public abstract interface static !annotation OutgoingConverter
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper$IncomingConverter
+ outer com.oracle.truffle.api.instrumentation.GenerateWrapper
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper$OutgoingConverter
+ outer com.oracle.truffle.api.instrumentation.GenerateWrapper
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.Instrumentable
+ anno 0 java.lang.Deprecated()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<? extends com.oracle.truffle.api.instrumentation.InstrumentableFactory<? extends com.oracle.truffle.api.nodes.Node>> factory()
 
 CLSS public abstract interface com.oracle.truffle.api.instrumentation.InstrumentableFactory<%0 extends com.oracle.truffle.api.nodes.Node>
+ anno 0 java.lang.Deprecated()
 innr public abstract interface static WrapperNode
 meth public abstract com.oracle.truffle.api.instrumentation.InstrumentableFactory$WrapperNode createWrapper({com.oracle.truffle.api.instrumentation.InstrumentableFactory%0},com.oracle.truffle.api.instrumentation.ProbeNode)
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.InstrumentableFactory$WrapperNode
  outer com.oracle.truffle.api.instrumentation.InstrumentableFactory
+ anno 0 java.lang.Deprecated()
+meth public abstract com.oracle.truffle.api.instrumentation.ProbeNode getProbeNode()
+meth public abstract com.oracle.truffle.api.nodes.Node getDelegateNode()
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.InstrumentableNode
+innr public abstract interface static WrapperNode
+intf com.oracle.truffle.api.nodes.NodeInterface
+meth public abstract boolean isInstrumentable()
+meth public abstract com.oracle.truffle.api.instrumentation.InstrumentableNode$WrapperNode createWrapper(com.oracle.truffle.api.instrumentation.ProbeNode)
+meth public boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
+meth public com.oracle.truffle.api.instrumentation.InstrumentableNode materializeInstrumentableNodes(java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
+meth public com.oracle.truffle.api.nodes.Node findNearestNodeAt(int,java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
+meth public java.lang.Object getNodeObject()
+
+CLSS public abstract interface static com.oracle.truffle.api.instrumentation.InstrumentableNode$WrapperNode
+ outer com.oracle.truffle.api.instrumentation.InstrumentableNode
+intf com.oracle.truffle.api.instrumentation.InstrumentableFactory$WrapperNode
+intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract com.oracle.truffle.api.instrumentation.ProbeNode getProbeNode()
 meth public abstract com.oracle.truffle.api.nodes.Node getDelegateNode()
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.Instrumenter
-meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
-meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.AllocationListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachAllocationListener(com.oracle.truffle.api.instrumentation.AllocationEventFilter,{%%0})
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ContextsListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachContextsListener({%%0},boolean)
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecuteSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecuteSourceListener(com.oracle.truffle.api.instrumentation.SourceFilter,{%%0},boolean)
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
+ anno 0 java.lang.Deprecated()
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceSectionListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
+meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.ThreadsListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachThreadsListener({%%0},boolean)
 meth public abstract <%0 extends java.io.OutputStream> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachErrConsumer({%%0})
 meth public abstract <%0 extends java.io.OutputStream> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachOutConsumer({%%0})
 meth public abstract java.util.Set<java.lang.Class<?>> queryTags(com.oracle.truffle.api.nodes.Node)
+meth public abstract void visitLoadedSourceSections(com.oracle.truffle.api.instrumentation.SourceSectionFilter,com.oracle.truffle.api.instrumentation.LoadSourceSectionListener)
+meth public final <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+meth public final <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+ anno 0 java.lang.Deprecated()
+meth public final <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachExecutionEventFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+meth public final <%0 extends com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0})
+ anno 0 java.lang.Deprecated()
 meth public final java.util.List<com.oracle.truffle.api.source.SourceSection> querySourceSections(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 supr java.lang.Object
 
@@ -78,13 +200,17 @@ CLSS public abstract interface com.oracle.truffle.api.instrumentation.LoadSource
 meth public abstract void onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent)
 
 CLSS public final com.oracle.truffle.api.instrumentation.ProbeNode
+fld public final static java.lang.Object UNWIND_ACTION_REENTER
+meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.NodeCost getCost()
+meth public java.lang.Object onReturnExceptionalOrUnwind(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable,boolean)
 meth public void onEnter(com.oracle.truffle.api.frame.VirtualFrame)
 meth public void onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
+ anno 0 java.lang.Deprecated()
 meth public void onReturnValue(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
-hfds chain,context,handler,version
-hcls EventChainNode,EventFilterChainNode,EventProviderChainNode
+hfds UNWIND_ACTION_IGNORED,chain,context,handler,seen,unwindHasNext,version
+hcls EventChainNode,EventFilterChainNode,EventProviderChainNode,EventProviderWithInputChainNode,InputChildContextLookup,InputChildIndexLookup,InputValueChainNode,InstrumentableChildVisitor
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.ProvidedTags
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -92,11 +218,29 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentatio
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<?>[] value()
 
+CLSS public final com.oracle.truffle.api.instrumentation.SourceFilter
+fld public final static com.oracle.truffle.api.instrumentation.SourceFilter ANY
+innr public final Builder
+meth public static com.oracle.truffle.api.instrumentation.SourceFilter$Builder newBuilder()
+supr java.lang.Object
+hfds expressions
+
+CLSS public final com.oracle.truffle.api.instrumentation.SourceFilter$Builder
+ outer com.oracle.truffle.api.instrumentation.SourceFilter
+meth public !varargs com.oracle.truffle.api.instrumentation.SourceFilter$Builder languageIs(java.lang.String[])
+meth public !varargs com.oracle.truffle.api.instrumentation.SourceFilter$Builder sourceIs(com.oracle.truffle.api.source.Source[])
+meth public com.oracle.truffle.api.instrumentation.SourceFilter build()
+meth public com.oracle.truffle.api.instrumentation.SourceFilter$Builder includeInternal(boolean)
+meth public com.oracle.truffle.api.instrumentation.SourceFilter$Builder sourceIs(java.util.function.Predicate<com.oracle.truffle.api.source.Source>)
+supr java.lang.Object
+hfds expressions,includeInternal
+
 CLSS public final com.oracle.truffle.api.instrumentation.SourceSectionFilter
 fld public final static com.oracle.truffle.api.instrumentation.SourceSectionFilter ANY
 innr public abstract interface static SourcePredicate
 innr public final Builder
 innr public final static IndexRange
+meth public boolean includes(com.oracle.truffle.api.nodes.Node)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder newBuilder()
 supr java.lang.Object
@@ -105,6 +249,10 @@ hcls EventFilterExpression,Not
 
 CLSS public final com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder
  outer com.oracle.truffle.api.instrumentation.SourceSectionFilter
+meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder columnEndsIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
+meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder columnIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
+meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder columnNotIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
+meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder columnStartsIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
 meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder indexIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
 meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder indexNotIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
 meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder lineEndsIn(com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange[])
@@ -118,12 +266,17 @@ meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$
 meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder tagIs(java.lang.Class<?>[])
 meth public !varargs com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder tagIsNot(java.lang.Class<?>[])
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter build()
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder and(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder columnIn(int,int)
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder includeInternal(boolean)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder indexIn(int,int)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder lineIn(int,int)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder lineIs(int)
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder rootNameIs(java.util.function.Predicate<java.lang.String>)
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder sourceFilter(com.oracle.truffle.api.instrumentation.SourceFilter)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder sourceIs(com.oracle.truffle.api.instrumentation.SourceSectionFilter$SourcePredicate)
 supr java.lang.Object
-hfds expressions
+hfds expressions,includeInternal
 
 CLSS public final static com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange
  outer com.oracle.truffle.api.instrumentation.SourceSectionFilter
@@ -135,58 +288,111 @@ hfds endIndex,startIndex
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.SourceSectionFilter$SourcePredicate
  outer com.oracle.truffle.api.instrumentation.SourceSectionFilter
+intf java.util.function.Predicate<com.oracle.truffle.api.source.Source>
 meth public abstract boolean test(com.oracle.truffle.api.source.Source)
 
 CLSS public final com.oracle.truffle.api.instrumentation.StandardTags
-innr public final CallTag
-innr public final RootTag
-innr public final StatementTag
+innr public final static CallTag
+innr public final static ExpressionTag
+innr public final static RootTag
+innr public final static StatementTag
+innr public final static TryBlockTag
+supr java.lang.Object
+hfds ALL_TAGS
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$CallTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$ExpressionTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$RootTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$StatementTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$TryBlockTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+fld public final static java.lang.String CATCHES = "catches"
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public abstract com.oracle.truffle.api.instrumentation.Tag
+cons protected init()
+innr public abstract interface static !annotation Identifier
+meth public static java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag> findProvidedTag(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.String)
+meth public static java.lang.String getIdentifier(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
 supr java.lang.Object
 
-CLSS public final com.oracle.truffle.api.instrumentation.StandardTags$CallTag
- outer com.oracle.truffle.api.instrumentation.StandardTags
-supr java.lang.Object
+CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.Tag$Identifier
+ outer com.oracle.truffle.api.instrumentation.Tag
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String value()
 
-CLSS public final com.oracle.truffle.api.instrumentation.StandardTags$RootTag
- outer com.oracle.truffle.api.instrumentation.StandardTags
-supr java.lang.Object
-
-CLSS public final com.oracle.truffle.api.instrumentation.StandardTags$StatementTag
- outer com.oracle.truffle.api.instrumentation.StandardTags
-supr java.lang.Object
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.ThreadsListener
+meth public abstract void onThreadDisposed(com.oracle.truffle.api.TruffleContext,java.lang.Thread)
+meth public abstract void onThreadInitialized(com.oracle.truffle.api.TruffleContext,java.lang.Thread)
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument
 cons protected init()
 innr public abstract interface static !annotation Registration
 innr public final static Env
 meth protected abstract void onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
+meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
 meth protected void onDispose(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
+meth protected void onFinalize(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 supr java.lang.Object
 
 CLSS public final static com.oracle.truffle.api.instrumentation.TruffleInstrument$Env
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
 meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
+meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.InstrumentInfo,java.lang.Class<{%%0}>)
+meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
+meth public com.oracle.truffle.api.nodes.ExecutableNode parseInline(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame)
+meth public com.oracle.truffle.api.nodes.LanguageInfo findLanguage(java.lang.Object)
+meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.Node,java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
+meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
+meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes(java.lang.String)
+meth public java.lang.Object findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public java.lang.Object findMetaObject(com.oracle.truffle.api.nodes.Node,java.lang.Object)
+ anno 0 java.lang.Deprecated()
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node,java.lang.Object)
+ anno 0 java.lang.Deprecated()
+meth public java.util.Map<java.lang.String,?> getExportedSymbols()
+meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
+meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getLanguages()
+meth public org.graalvm.options.OptionValues getOptions()
 meth public void registerService(java.lang.Object)
 supr java.lang.Object
-hfds err,in,instrumenter,out,services,vm
+hfds err,in,instrumenter,options,out,services,vmObject
+hcls GuardedExecutableNode
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
+
+CLSS abstract interface com.oracle.truffle.api.instrumentation.package-info
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
@@ -195,11 +401,14 @@ innr public abstract interface static !annotation Children
 intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
 meth protected boolean isTaggedWith(java.lang.Class<?>)
+ anno 0 java.lang.Deprecated()
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
 meth protected final java.lang.Object getAtomicLock()
  anno 0 java.lang.Deprecated()
 meth protected final java.util.concurrent.locks.Lock getLock()
+meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
+meth protected final void reportPolymorphicSpecialize()
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
@@ -222,7 +431,7 @@ meth public java.lang.String getLanguage()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds ACCESSOR,GIL,GIL_LOCK,nodeClass,parent
+hfds ACCESSOR,GIL,GIL_LOCK,parent
 hcls AccessorNodes
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
@@ -238,6 +447,18 @@ meth public abstract !hasdefault java.lang.String shortName()
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public abstract interface java.lang.Cloneable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.FunctionalInterface
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public java.lang.Object
 cons public init()
@@ -284,4 +505,12 @@ CLSS public abstract interface !annotation java.lang.annotation.Target
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public abstract interface java.util.function.Predicate<%0 extends java.lang.Object>
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract boolean test({java.util.function.Predicate%0})
+meth public java.util.function.Predicate<{java.util.function.Predicate%0}> and(java.util.function.Predicate<? super {java.util.function.Predicate%0}>)
+meth public java.util.function.Predicate<{java.util.function.Predicate%0}> negate()
+meth public java.util.function.Predicate<{java.util.function.Predicate%0}> or(java.util.function.Predicate<? super {java.util.function.Predicate%0}>)
+meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> isEqual(java.lang.Object)
 

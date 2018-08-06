@@ -3,20 +3,77 @@
 
 CLSS public final com.oracle.truffle.tck.DebuggerTester
 cons public init()
+cons public init(org.graalvm.polyglot.Context$Builder)
 intf java.lang.AutoCloseable
+meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SourceElement[])
+meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public com.oracle.truffle.api.debug.DebuggerSession startSession()
 meth public java.lang.String expectDone()
 meth public java.lang.String getErr()
 meth public java.lang.String getOut()
 meth public java.lang.Thread getEvalThread()
 meth public java.lang.Throwable expectThrowable()
+meth public static com.oracle.truffle.api.source.Source getSourceImpl(org.graalvm.polyglot.Source)
+meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source)
+meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
+meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
 meth public void close()
+meth public void closeEngine()
 meth public void expectKilled()
 meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public void startEval(com.oracle.truffle.api.source.Source)
+ anno 0 java.lang.Deprecated()
+meth public void startEval(org.graalvm.polyglot.Source)
 supr java.lang.Object
-hfds TRACE,closed,engine,err,evalThread,executing,executingLoop,handler,initialized,newEvent,out,source
+hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
 hcls ExecutingLoop,ExecutingSource
+
+CLSS public final com.oracle.truffle.tck.TruffleRunner
+cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+innr public abstract interface static !annotation Inject
+innr public abstract interface static !annotation Warmup
+innr public final static ParametersFactory
+innr public final static RunWithPolyglotRule
+meth protected org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
+meth protected org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
+meth protected void validateTestMethods(java.util.List<java.lang.Throwable>)
+supr org.junit.runners.BlockJUnit4ClassRunner
+hfds truffleTestInvoker
+hcls ParameterizedRunner
+
+CLSS public abstract interface static !annotation com.oracle.truffle.tck.TruffleRunner$Inject
+ outer com.oracle.truffle.tck.TruffleRunner
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends com.oracle.truffle.api.nodes.RootNode> value()
+
+CLSS public final static com.oracle.truffle.tck.TruffleRunner$ParametersFactory
+ outer com.oracle.truffle.tck.TruffleRunner
+cons public init()
+intf org.junit.runners.parameterized.ParametersRunnerFactory
+meth public org.junit.runner.Runner createRunnerForTestWithParameters(org.junit.runners.parameterized.TestWithParameters) throws org.junit.runners.model.InitializationError
+supr java.lang.Object
+
+CLSS public final static com.oracle.truffle.tck.TruffleRunner$RunWithPolyglotRule
+ outer com.oracle.truffle.tck.TruffleRunner
+cons public init()
+cons public init(org.graalvm.polyglot.Context$Builder)
+intf org.junit.rules.TestRule
+meth public com.oracle.truffle.api.TruffleLanguage$Env getTruffleTestEnv()
+meth public org.graalvm.polyglot.Context getPolyglotContext()
+meth public org.junit.runners.model.Statement apply(org.junit.runners.model.Statement,org.junit.runner.Description)
+supr java.lang.Object
+hfds context,contextBuilder,testEnv
+
+CLSS public abstract interface static !annotation com.oracle.truffle.tck.TruffleRunner$Warmup
+ outer com.oracle.truffle.tck.TruffleRunner
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract int value()
+
+CLSS abstract interface com.oracle.truffle.tck.package-info
 
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception
@@ -34,4 +91,111 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public abstract interface org.junit.rules.TestRule
+meth public abstract org.junit.runners.model.Statement apply(org.junit.runners.model.Statement,org.junit.runner.Description)
+
+CLSS public abstract interface org.junit.runner.Describable
+meth public abstract org.junit.runner.Description getDescription()
+
+CLSS public abstract org.junit.runner.Runner
+cons public init()
+intf org.junit.runner.Describable
+meth public abstract org.junit.runner.Description getDescription()
+meth public abstract void run(org.junit.runner.notification.RunNotifier)
+meth public int testCount()
+supr java.lang.Object
+
+CLSS public abstract interface org.junit.runner.manipulation.Filterable
+meth public abstract void filter(org.junit.runner.manipulation.Filter) throws org.junit.runner.manipulation.NoTestsRemainException
+
+CLSS public abstract interface org.junit.runner.manipulation.Sortable
+meth public abstract void sort(org.junit.runner.manipulation.Sorter)
+
+CLSS public org.junit.runners.BlockJUnit4ClassRunner
+cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+meth protected boolean isIgnored(org.junit.runners.model.FrameworkMethod)
+meth protected java.lang.Object createTest() throws java.lang.Exception
+meth protected java.lang.String testName(org.junit.runners.model.FrameworkMethod)
+meth protected java.util.List<org.junit.rules.MethodRule> rules(java.lang.Object)
+meth protected java.util.List<org.junit.rules.TestRule> getTestRules(java.lang.Object)
+meth protected java.util.List<org.junit.runners.model.FrameworkMethod> computeTestMethods()
+meth protected java.util.List<org.junit.runners.model.FrameworkMethod> getChildren()
+meth protected org.junit.runner.Description describeChild(org.junit.runners.model.FrameworkMethod)
+meth protected org.junit.runners.model.Statement methodBlock(org.junit.runners.model.FrameworkMethod)
+meth protected org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
+meth protected org.junit.runners.model.Statement possiblyExpectingExceptions(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withAfters(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withBefores(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withPotentialTimeout(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+ anno 0 java.lang.Deprecated()
+meth protected void collectInitializationErrors(java.util.List<java.lang.Throwable>)
+meth protected void runChild(org.junit.runners.model.FrameworkMethod,org.junit.runner.notification.RunNotifier)
+meth protected void validateConstructor(java.util.List<java.lang.Throwable>)
+meth protected void validateFields(java.util.List<java.lang.Throwable>)
+meth protected void validateInstanceMethods(java.util.List<java.lang.Throwable>)
+ anno 0 java.lang.Deprecated()
+meth protected void validateNoNonStaticInnerClass(java.util.List<java.lang.Throwable>)
+meth protected void validateOnlyOneConstructor(java.util.List<java.lang.Throwable>)
+meth protected void validateTestMethods(java.util.List<java.lang.Throwable>)
+meth protected void validateZeroArgConstructor(java.util.List<java.lang.Throwable>)
+supr org.junit.runners.ParentRunner<org.junit.runners.model.FrameworkMethod>
+hfds methodDescriptions
+
+CLSS public abstract org.junit.runners.ParentRunner<%0 extends java.lang.Object>
+cons protected init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+intf org.junit.runner.manipulation.Filterable
+intf org.junit.runner.manipulation.Sortable
+meth protected abstract java.util.List<{org.junit.runners.ParentRunner%0}> getChildren()
+meth protected abstract org.junit.runner.Description describeChild({org.junit.runners.ParentRunner%0})
+meth protected abstract void runChild({org.junit.runners.ParentRunner%0},org.junit.runner.notification.RunNotifier)
+meth protected boolean isIgnored({org.junit.runners.ParentRunner%0})
+meth protected final void runLeaf(org.junit.runners.model.Statement,org.junit.runner.Description,org.junit.runner.notification.RunNotifier)
+meth protected java.lang.String getName()
+meth protected java.lang.annotation.Annotation[] getRunnerAnnotations()
+meth protected java.util.List<org.junit.rules.TestRule> classRules()
+meth protected org.junit.runners.model.Statement childrenInvoker(org.junit.runner.notification.RunNotifier)
+meth protected org.junit.runners.model.Statement classBlock(org.junit.runner.notification.RunNotifier)
+meth protected org.junit.runners.model.Statement withAfterClasses(org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withBeforeClasses(org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
+meth protected void collectInitializationErrors(java.util.List<java.lang.Throwable>)
+meth protected void validatePublicVoidNoArgMethods(java.lang.Class<? extends java.lang.annotation.Annotation>,boolean,java.util.List<java.lang.Throwable>)
+meth public final org.junit.runners.model.TestClass getTestClass()
+meth public org.junit.runner.Description getDescription()
+meth public void filter(org.junit.runner.manipulation.Filter) throws org.junit.runner.manipulation.NoTestsRemainException
+meth public void run(org.junit.runner.notification.RunNotifier)
+meth public void setScheduler(org.junit.runners.model.RunnerScheduler)
+meth public void sort(org.junit.runner.manipulation.Sorter)
+supr org.junit.runner.Runner
+hfds VALIDATORS,childrenLock,filteredChildren,scheduler,testClass
+
+CLSS public abstract interface org.junit.runners.parameterized.ParametersRunnerFactory
+meth public abstract org.junit.runner.Runner createRunnerForTestWithParameters(org.junit.runners.parameterized.TestWithParameters) throws org.junit.runners.model.InitializationError
 
