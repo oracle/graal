@@ -61,7 +61,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * NOTE: This profiler is still experimental with limited capabilities.
  * <p>
- * Usage example: {@link MemoryTracerSnippets#example}
+ * Usage example: {@codesnippet MemoryTracerSnippets#example}
  * </p>
  *
  * @since 0.30

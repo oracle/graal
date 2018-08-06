@@ -59,7 +59,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain ProfilerNode
  * nodes}, which represent the profile of the execution.
  * <p>
- * Usage example: {@link CPUSamplerSnippets#example}
+ * Usage example: {@codesnippet CPUSamplerSnippets#example}
  *
  * @since 0.30
  */
