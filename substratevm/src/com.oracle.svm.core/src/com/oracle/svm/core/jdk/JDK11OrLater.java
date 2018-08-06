@@ -32,7 +32,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 public class JDK11OrLater implements BooleanSupplier, Predicate<Class<?>> {
     @Override
     public boolean getAsBoolean() {
-        return GraalServices.Java11OrLater;
+        return GraalServices.JAVA_SPECIFICATION_VERSION >= 11;
     }
 
     @Override

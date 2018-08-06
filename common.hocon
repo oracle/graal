@@ -20,7 +20,7 @@ jdks: {
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: "019db8f36cba7d5b2703f38f05e23eb1a7d7e11b"
   }
 }
 
@@ -29,7 +29,7 @@ labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HO
 
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
 
 common : ${mx} {
   timelimit : "30:00"

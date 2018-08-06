@@ -22,21 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.zipfile;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import sun.misc.JavaUtilZipFileAccess;
+import sun.misc.PerfCounter;
+import sun.misc.SharedSecrets;
 
-public class JDK10OrEarlier implements BooleanSupplier, Predicate<Class<?>> {
-    @Override
-    public boolean getAsBoolean() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION <= 10;
+final class ZipFileUtil {
+
+    static void setJavaUtilZipFileAccess() {
+        SharedSecrets.setJavaUtilZipFileAccess(
+                        // SVM start
+                        new JavaUtilZipFileAccess() {
+                            @Override
+                            public boolean startsWithLocHeader(java.util.zip.ZipFile zip) {
+                                return KnownIntrinsics.unsafeCast(zip, ZipFile.class).zsrc.startsWithLoc;
+                            }
+                            // public String[] getMetaInfEntryNames(ZipFile zip) {
+                            // return zip.getMetaInfEntryNames();
+                            // }
+                        });
     }
 
-    @Override
-    public boolean test(Class<?> originalClass) {
-        return getAsBoolean();
+    static void updateZipFileCounters(long startZipFileOpen) {
+        PerfCounter.getZipFileOpenTime().addElapsedTimeFrom(startZipFileOpen);
+        PerfCounter.getZipFileCount().increment();
     }
 }

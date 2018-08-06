@@ -22,21 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.zipfile;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
+final class ZipFileUtil {
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
-
-public class JDK10OrEarlier implements BooleanSupplier, Predicate<Class<?>> {
-    @Override
-    public boolean getAsBoolean() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION <= 10;
+    /**
+     * Calls {@code SharedSecrets.setJavaUtilZipFileAccess}.
+     */
+    static void setJavaUtilZipFileAccess() {
+        throw new InternalError("missing overlay");
     }
 
-    @Override
-    public boolean test(Class<?> originalClass) {
-        return getAsBoolean();
+    /**
+     * Adds the elapsed time between {@code startZipFileOpen} and now to the counter accumulating
+     * time spent opening zip files and increments the counter for number of zip files opened.
+     *
+     * @param startZipFileOpen
+     */
+    static void updateZipFileCounters(long startZipFileOpen) {
+        throw new InternalError("missing overlay");
     }
 }

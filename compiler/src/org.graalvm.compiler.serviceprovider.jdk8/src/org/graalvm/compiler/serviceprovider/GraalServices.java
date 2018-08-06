@@ -31,14 +31,13 @@ import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
 /**
- * Interface to functionality that abstracts over which JDK version Graal is running on.
+ * JDK 8 version of {@link GraalServices}.
  */
 public final class GraalServices {
 
@@ -72,50 +71,7 @@ public final class GraalServices {
      */
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        Iterable<S> iterable = ServiceLoader.load(service);
-        return new Iterable<>() {
-            @Override
-            public Iterator<S> iterator() {
-                Iterator<S> iterator = iterable.iterator();
-                return new Iterator<>() {
-                    @Override
-                    public boolean hasNext() {
-                        return iterator.hasNext();
-                    }
-
-                    @Override
-                    public S next() {
-                        S provider = iterator.next();
-                        // Allow Graal extensions to access JVMCI
-                        openJVMCITo(provider.getClass());
-                        return provider;
-                    }
-
-                    @Override
-                    public void remove() {
-                        iterator.remove();
-                    }
-                };
-            }
-        };
-    }
-
-    /**
-     * Opens all JVMCI packages to the module of a given class. This relies on JVMCI already having
-     * opened all its packages to the module defining {@link GraalServices}.
-     *
-     * @param other all JVMCI packages will be opened to the module defining this class
-     */
-    static void openJVMCITo(Class<?> other) {
-        Module jvmciModule = JVMCI_MODULE;
-        Module otherModule = other.getModule();
-        if (jvmciModule != otherModule) {
-            for (String pkg : jvmciModule.getPackages()) {
-                if (!jvmciModule.isOpen(pkg, otherModule)) {
-                    jvmciModule.addOpens(pkg, otherModule);
-                }
-            }
-        }
+        return Services.load(service);
     }
 
     /**
@@ -154,19 +110,20 @@ public final class GraalServices {
     /**
      * Gets the class file bytes for {@code c}.
      */
+    @SuppressWarnings("unused")
     public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
         String classfilePath = c.getName().replace('.', '/') + ".class";
-        return c.getModule().getResourceAsStream(classfilePath);
+        ClassLoader cl = c.getClassLoader();
+        if (cl == null) {
+            return ClassLoader.getSystemResourceAsStream(classfilePath);
+        }
+        return cl.getResourceAsStream(classfilePath);
     }
 
-    private static final Module JVMCI_MODULE = Services.class.getModule();
-
-    /**
-     * A JVMCI package dynamically exported to trusted modules.
-     */
-    private static final String JVMCI_RUNTIME_PACKAGE = "jdk.vm.ci.runtime";
+    private static final ClassLoader JVMCI_LOADER = GraalServices.class.getClassLoader();
+    private static final ClassLoader JVMCI_PARENT_LOADER = JVMCI_LOADER == null ? null : JVMCI_LOADER.getParent();
     static {
-        assert JVMCI_MODULE.getPackages().contains(JVMCI_RUNTIME_PACKAGE);
+        assert JVMCI_PARENT_LOADER == null || JVMCI_PARENT_LOADER.getParent() == null;
     }
 
     /**
@@ -174,14 +131,8 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        Module module = c.getModule();
-        Module jvmciModule = JVMCI_MODULE;
-        assert jvmciModule.getPackages().contains("jdk.vm.ci.runtime");
-        if (module == jvmciModule || jvmciModule.isOpen(JVMCI_RUNTIME_PACKAGE, module)) {
-            // Can access non-statically-exported package in JVMCI
-            return true;
-        }
-        return false;
+        ClassLoader cl = c.getClassLoader();
+        return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
     }
 
     /**
@@ -189,7 +140,20 @@ public final class GraalServices {
      * {@linkplain #getGlobalTimeStamp() fixed timestamp}.
      */
     public static String getExecutionID() {
-        return Long.toString(ProcessHandle.current().pid());
+        try {
+            String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            try {
+                int index = runtimeName.indexOf('@');
+                if (index != -1) {
+                    long pid = Long.parseLong(runtimeName.substring(0, index));
+                    return Long.toString(pid);
+                }
+            } catch (NumberFormatException e) {
+            }
+            return runtimeName;
+        } catch (LinkageError err) {
+            return String.valueOf(getGlobalTimeStamp());
+        }
     }
 
     private static final AtomicLong globalTimeStamp = new AtomicLong();
@@ -203,6 +167,13 @@ public final class GraalServices {
             globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
         }
         return globalTimeStamp.get();
+    }
+
+    /**
+     * Lazy initialization of Java Management Extensions (JMX).
+     */
+    static class Lazy {
+        static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
     }
 
     /**
@@ -230,11 +201,7 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
-        JMXService jmx = JMXService.instance;
-        if (jmx == null) {
-            throw new UnsupportedOperationException();
-        }
-        return jmx.getThreadAllocatedBytes(id);
+        return Lazy.threadMXBean.getThreadAllocatedBytes(id);
     }
 
     /**
@@ -242,7 +209,7 @@ public final class GraalServices {
      * current thread.
      */
     public static long getCurrentThreadAllocatedBytes() {
-        return getThreadAllocatedBytes(currentThread().getId());
+        return Lazy.threadMXBean.getThreadAllocatedBytes(currentThread().getId());
     }
 
     /**
@@ -259,11 +226,7 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
-        JMXService jmx = JMXService.instance;
-        if (jmx == null) {
-            throw new UnsupportedOperationException();
-        }
-        return jmx.getCurrentThreadCpuTime();
+        return Lazy.threadMXBean.getCurrentThreadCpuTime();
     }
 
     /**
@@ -271,22 +234,14 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
-        JMXService jmx = JMXService.instance;
-        if (jmx == null) {
-            return false;
-        }
-        return jmx.isThreadAllocatedMemorySupported();
+        return Lazy.threadMXBean.isThreadAllocatedMemorySupported();
     }
 
     /**
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
-        JMXService jmx = JMXService.instance;
-        if (jmx == null) {
-            return false;
-        }
-        return jmx.isCurrentThreadCpuTimeSupported();
+        return Lazy.threadMXBean.isCurrentThreadCpuTimeSupported();
     }
 
     /**
@@ -304,10 +259,6 @@ public final class GraalServices {
      * @return the input arguments to the JVM or {@code null} if they are unavailable
      */
     public static List<String> getInputArguments() {
-        JMXService jmx = JMXService.instance;
-        if (jmx == null) {
-            return null;
-        }
-        return jmx.getInputArguments();
+        return java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments();
     }
 }

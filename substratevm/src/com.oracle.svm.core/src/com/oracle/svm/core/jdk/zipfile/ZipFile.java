@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 import java.net.URL;
 import java.util.jar.JarFile;
@@ -44,11 +45,14 @@ import java.util.zip.ZipException;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import sun.misc.PerfCounter;
-import sun.misc.SharedSecrets;
-import sun.misc.JavaUtilZipFileAccess;
-import sun.misc.VM;
+
+import jdk.vm.ci.services.Services;
+//import sun.misc.PerfCounter;
+//import sun.misc.SharedSecrets;
+//import sun.misc.JavaUtilZipFileAccess;
+//import sun.misc.VM;
 // SVM end
 
 import java.io.Closeable;
@@ -75,6 +79,7 @@ import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.WeakHashMap;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -108,7 +113,7 @@ public final class ZipFile implements ZipConstants, Closeable {
     private final String name;     // zip file name
     @Substitute
     private volatile boolean closeRequested;
-    private Source zsrc;
+    /*private*/ Source zsrc;
     @Substitute
     private ZipCoder zc;
 
@@ -254,8 +259,7 @@ public final class ZipFile implements ZipConstants, Closeable {
         this.name = name;
         long t0 = System.nanoTime();
         this.zsrc = Source.get(file, (mode & OPEN_DELETE) != 0);
-        PerfCounter.getZipFileOpenTime().addElapsedTimeFrom(t0);
-        PerfCounter.getZipFileCount().increment();
+        ZipFileUtil.updateZipFileCounters(t0);
     }
 
     /**
@@ -340,13 +344,23 @@ public final class ZipFile implements ZipConstants, Closeable {
      */
     @Substitute
     public ZipEntry getEntry(String name) {
+        return getEntry0(name, java.util.zip.ZipEntry::new);
+    }
+
+    @Substitute
+    @TargetElement(name = "getEntry", onlyWith = JDK9OrLater.class)
+    ZipEntry getEntryJDK9OrLater(String name, Function<String, ? extends java.util.zip.ZipEntry> func) {
+        return getEntry0(name, func);
+    }
+
+    ZipEntry getEntry0(String name, Function<String, ? extends java.util.zip.ZipEntry> func) {
         Objects.requireNonNull(name, "name");
         synchronized (this) {
             ensureOpen();
             byte[] bname = zc.getBytes(name);
             int pos = zsrc.getEntryPos(bname, true);
             if (pos != -1) {
-                return getZipEntry(name, bname, pos);
+                return getZipEntry(name, bname, pos, func);
             }
         }
         return null;
@@ -550,7 +564,7 @@ public final class ZipFile implements ZipConstants, Closeable {
                     throw new NoSuchElementException();
                 }
                 // each "entry" has 3 ints in table entries
-                return getZipEntry(null, null, zsrc.getEntryPos(i++ * 3));
+                return getZipEntry(null, null, zsrc.getEntryPos(i++ * 3), null);
             }
         }
 
@@ -590,7 +604,7 @@ public final class ZipFile implements ZipConstants, Closeable {
     private int lastEntryPos;
 
     /* Checks ensureOpen() before invoke this method */
-    private ZipEntry getZipEntry(String name, byte[] bname, int pos) {
+    private ZipEntry getZipEntry(String name, byte[] bname, int pos, Function<String, ? extends java.util.zip.ZipEntry> func) {
         byte[] cen = zsrc.cen;
         int nlen = CENNAM(cen, pos);
         int elen = CENEXT(cen, pos);
@@ -607,7 +621,7 @@ public final class ZipFile implements ZipConstants, Closeable {
                 name = zc.toString(cen, pos + CENHDR, nlen);
             }
         }
-        ZipEntry e = new ZipEntry(name);
+        ZipEntry e = func == null? new ZipEntry(name) : KnownIntrinsics.unsafeCast(func.apply(name), ZipEntry.class);
         e.flag = flag;
         e.xdostime = CENTIM(cen, pos);
         e.crc = CENCRC(cen, pos);
@@ -897,7 +911,7 @@ public final class ZipFile implements ZipConstants, Closeable {
      * SharedSecrets, as an optimization when looking up manifest and
      * signature file entries. Returns null if no entries were found.
      */
-    private String[] getMetaInfEntryNames() {
+    String[] getMetaInfEntryNames() {
         synchronized (this) {
             ensureOpen();
             if (zsrc.metanames == null) {
@@ -916,22 +930,13 @@ public final class ZipFile implements ZipConstants, Closeable {
 
     private static boolean isWindows;
     static {
-        SharedSecrets.setJavaUtilZipFileAccess(
-            // SVM start
-            new JavaUtilZipFileAccess() {
-                public boolean startsWithLocHeader(java.util.zip.ZipFile zip) {
-                    return KnownIntrinsics.unsafeCast(zip, ZipFile.class).zsrc.startsWithLoc;
-                }
-                //public String[] getMetaInfEntryNames(ZipFile zip) {
-                //    return zip.getMetaInfEntryNames();
-                //}
-             }
-             // SVM end
-        );
-        isWindows = VM.getSavedProperty("os.name").contains("Windows");
+        // SVM start
+        ZipFileUtil.setJavaUtilZipFileAccess();
+        isWindows = Services.getSavedProperties().get("os.name").contains("Windows");
+        // SVM end
     }
 
-    private static class Source {
+     static class Source {
         private final Key key;               // the key in files
         private int refs = 1;
 
@@ -941,7 +946,7 @@ public final class ZipFile implements ZipConstants, Closeable {
         private byte[] comment;              // zip file comment
                                              // list of meta entries in META-INF dir
         private int[] metanames;
-        private final boolean startsWithLoc; // true, if zip file starts with LOCSIG (usually true)
+        /*private*/ final boolean startsWithLoc; // true, if zip file starts with LOCSIG (usually true)
 
         // A Hashmap for all entries.
         //

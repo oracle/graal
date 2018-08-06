@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,34 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
+import com.oracle.svm.core.UnsafeAccess;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import sun.text.normalizer.UBiDiProps;
 
-public class JDK10OrEarlier implements BooleanSupplier, Predicate<Class<?>> {
-    @Override
-    public boolean getAsBoolean() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION <= 10;
+@TargetClass(className = "sun.text.normalizer.UCharacterProperty")
+final class Target_sun_text_normalizer_UCharacterProperty {
+
+    @Alias //
+    public static /* final */ Target_sun_text_normalizer_UCharacterProperty INSTANCE;
+}
+
+@TargetClass(sun.text.normalizer.UBiDiProps.class)
+final class Target_sun_text_normalizer_UBiDiProps {
+
+    @Substitute
+    private static UBiDiProps getSingleton() {
+        return Util_sun_text_normalizer_UBiDiProps.singleton;
     }
+}
 
-    @Override
-    public boolean test(Class<?> originalClass) {
-        return getAsBoolean();
+final class Util_sun_text_normalizer_UBiDiProps {
+
+    static final UBiDiProps singleton = UBiDiProps.INSTANCE;
+
+    static {
+        UnsafeAccess.UNSAFE.ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
     }
 }

@@ -22,21 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package org.graalvm.compiler.serviceprovider;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
+import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+/**
+ * Access to thread specific information made available via Java Management Extensions (JMX). Using
+ * this abstraction enables avoiding a dependency to the {@code java.management} and
+ * {@code jdk.management} modules on JDK 9 and later.
+ */
+public abstract class JMXService {
+    protected abstract long getThreadAllocatedBytes(long id);
 
-public class JDK10OrEarlier implements BooleanSupplier, Predicate<Class<?>> {
-    @Override
-    public boolean getAsBoolean() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION <= 10;
-    }
+    protected abstract long getCurrentThreadCpuTime();
 
-    @Override
-    public boolean test(Class<?> originalClass) {
-        return getAsBoolean();
-    }
+    protected abstract boolean isThreadAllocatedMemorySupported();
+
+    protected abstract boolean isCurrentThreadCpuTimeSupported();
+
+    protected abstract List<String> getInputArguments();
+
+    // Placing this static field in JMXService (instead of GraalServices)
+    // allows for lazy initialization.
+    static final JMXService instance = GraalServices.loadSingle(JMXService.class, false);
 }
