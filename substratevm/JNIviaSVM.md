@@ -1,15 +1,15 @@
 # JNI via Substrate VM
 
-Substrate VM can be used to implement low-level system operations and
-make them available via [JNI](JNI.md) to regular Java HotSpot JVM. As
+Substrate VM can be used to implement low-level system operations in Java and
+make them available via [JNI](JNI.md) to Java code executing on a standard JVM. As
 a result one can use the same language to write the application logic
 as well as the system calls.
 
 ## Create a Shared Library
 
-First of all one has to use the `native-image` command to generate shared library
-with few [entry points](README.md#images-and-entry-points). Let's start with
-the Java code:
+First of all one has to use the `native-image` command to generate a shared library
+with some [JNI](JNI.md)-compatible [entry points](README.md#images-and-entry-points).
+Let's start with the Java code:
 ```java
 package org.pkg.implnative;
 
@@ -18,17 +18,17 @@ import org.graalvm.word.Pointer;
 
 public final class NativeImpl {
     @CEntryPoint(name = "Java_org_pkg_apinative_Native_add")
-    public static int add(Pointer jvm, Pointer clazz, @CEntryPoint.IsolateContext long isolateId, int a, int b) {
+    public static int add(Pointer jniEnv, Pointer clazz, @CEntryPoint.IsolateContext long isolateId, int a, int b) {
         return a + b;
     }
 }
 ```
 After being processed by the `native-image` command the code
 [exposes a C function](C-API.md) `Java_org_pkg_apinative_Native_add`
-(the name follows conventions of [JNI](JNI.md) that will be handful later) and
-SubstrateVM signature typical for [JNI](JNI.md) methods. The first parameter
-is a reference to JVM `Env*` environment, the second parameter is a reference
-to the JVM class object that contains the method. The third parameter is a
+(the name follows conventions of [JNI](JNI.md) that will be handy later) and
+a SubstrateVM signature typical for [JNI](JNI.md) methods. The first parameter
+is a reference to `JNIEnv*` value, the second parameter is a reference
+to the `jclass` value for the class declaring the method. The third parameter is a
 portable (e.g. `long`) identifier of the [SubstrateVM isolate](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add`
 method described in the next section. Compile the code with shared option on:
@@ -44,14 +44,14 @@ Now we need another Java class to use the native library generated in the previo
 package org.pkg.apinative;
 
 public final class Native {
-    private static native int add(@CEntryPoint.IsolateContext long isolateId, int a, int b);
+    private static native int add(long isolateId, int a, int b);
 }
 ```
 the package name of the class as well as name of the method has to correspond
 (after the [JNI mangling](https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/design.html))
-to the name of the `@CEntryPoint` introduced previously. The first argument shall
-be a portable (e.g. `long`) identifier of the SubstrateVM isolate. The rest of the arguments
-shall match the parameters of the entry point.
+to the name of the `@CEntryPoint` introduced previously. The first argument is
+a portable (e.g. `long`) identifier of the SubstrateVM isolate. The rest of the arguments
+matches the parameters of the entry point.
 
 ## Loading the Native Library
 
@@ -70,7 +70,7 @@ or `java.library.path` Java property are properly set.
 ## Initializing the Substrate VM
 
 Before making calls to the `Native.add` method, we need to create a Substrate VM
-isolate. Substrate VM provides special buildin to allow that:
+isolate. Substrate VM provides special built-in to allow that:
 `CEntryPoint.Builtin.CreateIsolate`. Define another method along your other
 existing `@CEntryPoint` methods. Let it return `long` and take no parameters:
 ```java
@@ -83,7 +83,7 @@ SubstrateVM then generates default native implementation of the
 method into the final `.so` library.
 The method initializes the Substrate VM runtime and
 returns a portable identification - e.g. `long` to hold
-an instance of [Substrate VM isolate](C-API.md). Such isolate can then be used for
+an instance of a [Substrate VM isolate](C-API.md). The isolate can then be used for
 multiple invocations of our **JNI** code:
 ```java
 package org.pkg.apinative;
@@ -103,6 +103,6 @@ public final class Native {
     private static native long createIsolate();
 }
 ```
-The classical JVM is started. It initializes a Substrate VM isolate and
+The standard JVM is started. It initializes a Substrate VM isolate and
 the universal answer `42` is then computed three times inside of
 the isolate.
