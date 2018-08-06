@@ -102,9 +102,9 @@ public class FrameDescriptorTest {
         s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
 
         assertEquals(2, d.getSize());
-        assertEquals(d.getSlots().get(1).getInfo(), "i2");
-        assertEquals(d.getFrameSlotKind(d.getSlots().get(1)), FrameSlotKind.Float);
-        assertEquals(d.getSlots().get(1).getIndex(), 1);
+        assertEquals("i2", d.getSlots().get(1).getInfo());
+        assertEquals(FrameSlotKind.Float, d.getFrameSlotKind(d.getSlots().get(1)));
+        assertEquals(1, d.getSlots().get(1).getIndex());
 
         FrameDescriptor copy = d.copy();
         assertEquals(2, copy.getSize());
