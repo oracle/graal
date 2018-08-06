@@ -98,7 +98,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
 
         assert SubstrateObjectConstant.asObject(base) != null;
         try {
-            return SubstrateMemoryAccessProviderImpl.SINGLETON.readUnsafeConstant(field.type.getStorageKind(), base, field.location);
+            return SubstrateMemoryAccessProviderImpl.SINGLETON.readUnsafeConstant(field.type.getStorageKind(), base, field.location, field.isVolatile());
         } catch (IllegalArgumentException e) {
             return null;
         }
