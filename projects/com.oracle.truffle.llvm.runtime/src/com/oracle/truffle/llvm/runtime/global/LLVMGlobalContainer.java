@@ -249,6 +249,12 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         }
     }
 
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return String.format("LLVMGlobalContainer (address = 0x%x, contents = %s)", address, contents);
+    }
+
     static class LLVMGlobalContainerWriteNode extends LLVMObjectWriteNode {
 
         private final ForeignToLLVMType type;

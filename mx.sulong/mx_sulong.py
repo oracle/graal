@@ -163,6 +163,8 @@ def _sulong_gate_runner(args, tasks):
             if t: mx_unittest.unittest(['com.oracle.truffle.llvm.test.interop'])
         with Task("TestDebug", tasks, tags=['debug', 'sulongBasic']) as t:
             if t: mx_unittest.unittest(['LLVMDebugTest'])
+        with Task("TestIRDebug", tasks, tags=['irdebug', 'sulongBasic']) as t:
+            if t: mx_unittest.unittest(['LLVMIRDebugTest'])
         with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
             if t: mx_testsuites.runSuite('assembly')
         with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:

@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
 import java.util.ArrayList;
@@ -39,20 +38,22 @@ import java.util.Map;
 
 public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
 
-    private final Map<String, LLVMDebugObject> entries;
+    static final LLVMDebuggerScopeEntries EMPTY_SCOPE = new LLVMDebuggerScopeEntries();
+
+    private final Map<String, Object> entries;
 
     LLVMDebuggerScopeEntries() {
         this.entries = new HashMap<>();
     }
 
     @TruffleBoundary
-    void add(LLVMSourceSymbol symbol, LLVMDebugObject value) {
-        entries.put(symbol.getName(), value);
+    void add(String name, Object value) {
+        entries.put(name, value);
     }
 
     @TruffleBoundary
-    boolean contains(LLVMSourceSymbol symbol) {
-        return entries.containsKey(symbol.getName());
+    boolean contains(String name) {
+        return entries.containsKey(name);
     }
 
     @Override
@@ -68,7 +69,7 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
         if (count == 0) {
             return NO_KEYS;
         }
-        return new ArrayList<>(entries.keySet()).toArray(new String[count]);
+        return new ArrayList<>(entries.keySet()).toArray(NO_KEYS);
     }
 
     @Override

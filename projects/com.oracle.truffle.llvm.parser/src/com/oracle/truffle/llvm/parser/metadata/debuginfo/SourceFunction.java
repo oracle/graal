@@ -51,7 +51,7 @@ public final class SourceFunction {
 
     private final LLVMSourceFunctionType sourceType;
 
-    SourceFunction(LLVMSourceLocation lexicalScope, LLVMSourceFunctionType sourceType) {
+    public SourceFunction(LLVMSourceLocation lexicalScope, LLVMSourceFunctionType sourceType) {
         this.lexicalScope = lexicalScope;
         this.sourceType = sourceType;
     }

@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -68,11 +69,14 @@ public final class Module implements ParserListener {
 
     private final LinkedList<FunctionDefinition> functionQueue;
 
-    Module(ModelModule module, StringTable stringTable, IRScope scope) {
+    private final LLSourceBuilder llSource;
+
+    Module(ModelModule module, StringTable stringTable, IRScope scope, LLSourceBuilder llSource) {
         this.module = module;
         this.stringTable = stringTable;
         types = new Types(module);
         this.scope = scope;
+        this.llSource = llSource;
         functionQueue = new LinkedList<>();
     }
 
@@ -248,7 +252,7 @@ public final class Module implements ParserListener {
             }
             final FunctionDefinition definition = functionQueue.removeFirst();
             final Function parser = new Function(scope, types, definition, mode, paramAttributes);
-            module.addFunctionParser(definition, new LazyFunctionParser(lazyScanner, parser));
+            module.addFunctionParser(definition, new LazyFunctionParser(lazyScanner, parser, llSource));
 
         } else {
             ParserListener.super.skip(block, lazyScanner);

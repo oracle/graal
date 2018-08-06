@@ -1,0 +1,7 @@
+This testsuite exercise the IR-level debugger. To ensure the consistency of the tests' instruction sequences on user systems we provide the *.ll files for the tests directly. These need to be compiled with LLVM 3.8 to ensure that regardless of the version of LLVM available on the user system (provided it is supported by Sulong) the contained llvm-as can parse the files. For the same reason we omit compiling the tests with debug information as the textual representation of it is incompatible between versions 3.8 and 6.0.
+
+To compile the tests in the src directory to *.ll files you can use the following command:
+
+    for f in $(ls *.c) ; do clang -O0 -S -emit-llvm -o ../irdebug/${f::-2}.ll $f ; opt -mem2reg -S -o ../irdebug/${f::-2}-mem2reg.ll ../irdebug/${f::-2}.ll done
+
+Please note that clang and opt must be version 3.8. Also, when adding new tests you may want to compile them individually to avoid overwriting existing ones.

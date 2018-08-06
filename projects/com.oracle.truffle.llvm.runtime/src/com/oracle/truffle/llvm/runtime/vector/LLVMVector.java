@@ -29,12 +29,39 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * Vectors are immutable value types.
  */
 @ValueType
 public abstract class LLVMVector {
+
     public abstract int getLength();
+
+    public abstract Type getElementType();
+
+    public abstract Object getElement(int index);
+
+    @TruffleBoundary
+    private String getTypedElementString(int index) {
+        return String.format("%s %s", getElementType(), getElement(index));
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("< ").append(getLength()).append(" x ").append(getElementType()).append(" > < ");
+        if (getLength() > 0) {
+            builder.append(getTypedElementString(0));
+        }
+        for (int i = 1; i < getLength(); i++) {
+            builder.append(", ").append(getTypedElementString(i));
+        }
+        builder.append(" >");
+        return builder.toString();
+    }
 }

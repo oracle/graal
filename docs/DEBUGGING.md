@@ -180,3 +180,30 @@ You can also use a Sulong-specific format as filename to make the paths pseudo-r
 
 Sulong will use the system property `property`, which you can set dynamically, to resolve
 `relative path/filename` against.
+
+### Can I also debug my program on LLVM-IR level?
+
+Sulong also contains preliminary support for debugging program on the level of LLVM IR.
+This feature is only in the early stages and may contain bugs. To use it, you need to
+replace the option `-Dpolyglot.llvm.enableLVI=true` with `-Dpolyglot.llvm.llDebug=true`.
+Please note that both `enableLVI` and `llDebug` cannot be used together. Also, to
+debug on LLVM-IR level you need to use `llvm-dis` to disassemble the `*.bc` files
+that you want to execute. Sulong expects an equally named `*.ll` file in the same
+directory as the `*.bc` files it executes. To disassemble all `*.bc` files in a
+directory you can use this command:
+
+    for f in $(find . -type f -name *.bc) ; do llvm-dis -o ${f::-3}.ll $f ; done
+
+If you run this command on Sulong's `mxbuild` directory you may notice several
+warnings about files with incompatible debug information. These are bitcode files
+that were compiled using DragonEgg, which emits a version of LLVM debug information
+that is incompatible with modern LLVM releases. You can safely ignore those warnings.
+Sulong does not require any debug information to be present in either `*.bc` or `*.ll`
+files to debug on the level of LLVM-IR.
+
+You can also specify a separate location for the `*.ll` file corresponding to a `*.bc`
+file using the `llDebug.Sources` argument. When using this option you need to specify
+the path of both the `*.ll` and the `*.bc` file which it describes. While the option
+itself can only be specified once, you can pass it an arbitrary number of path mappings.
+
+    -Dpolyglot.llvm.llDebug.Sources=<path to *.bc file>=<path to *.ll file>[:<path to *.bc file>=<path to *.ll file>]*

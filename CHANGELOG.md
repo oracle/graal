@@ -1,3 +1,9 @@
+# Version 1.0.0 RC6
+
+New features:
+
+* Support for IR-level debugging
+
 # Version 1.0.0 RC5
 
 New features:

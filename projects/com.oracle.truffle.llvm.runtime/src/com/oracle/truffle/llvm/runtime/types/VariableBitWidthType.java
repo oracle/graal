@@ -133,6 +133,10 @@ public final class VariableBitWidthType extends Type {
     @Override
     @TruffleBoundary
     public String toString() {
-        return String.format("i%d %s", getBitSize(), getConstant());
+        if (getConstant() != null) {
+            return String.format("i%d %s", getBitSize(), getConstant());
+        } else {
+            return String.format("i%d", getBitSize());
+        }
     }
 }

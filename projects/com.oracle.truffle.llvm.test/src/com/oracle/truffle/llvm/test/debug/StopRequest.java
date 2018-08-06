@@ -71,6 +71,18 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
         scopes.add(scope);
     }
 
+    StopRequest updateLines(int from, int offset) {
+        if (expectLine < from) {
+            return this;
+        }
+
+        final StopRequest newRequest = new StopRequest(nextAction, functionName, expectLine + offset, needsBreakPoint);
+        for (Scope scope : scopes) {
+            newRequest.addScope(scope);
+        }
+        return newRequest;
+    }
+
     @Override
     public Iterator<Scope> iterator() {
 
@@ -94,10 +106,12 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
 
         private final Map<String, LLVMDebugValue> expectLocals;
         private final String scopeName;
+        private final boolean isPartial;
 
-        Scope(String scopeName) {
+        Scope(String scopeName, boolean isPartial) {
             this.scopeName = scopeName;
-            expectLocals = new HashMap<>();
+            this.isPartial = isPartial;
+            this.expectLocals = new HashMap<>();
         }
 
         void addMember(String name, LLVMDebugValue value) {
@@ -106,6 +120,10 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
 
         Map<String, LLVMDebugValue> getLocals() {
             return expectLocals;
+        }
+
+        boolean isPartial() {
+            return isPartial;
         }
 
         String getName() {

@@ -31,11 +31,13 @@ package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.List;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
 import com.oracle.truffle.llvm.parser.util.SymbolNameMangling;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
@@ -45,18 +47,20 @@ public final class BCFileRoot implements ParserListener {
     private final ModelModule module;
     private final StringTable stringTable;
     private final IRScope scope;
+    private final LLSourceBuilder llSource;
 
-    public BCFileRoot(ModelModule module) {
+    public BCFileRoot(ModelModule module, Source bcSource) {
         this.module = module;
         this.stringTable = new StringTable();
         this.scope = new IRScope();
+        this.llSource = LLSourceBuilder.create(bcSource);
     }
 
     @Override
     public ParserListener enter(Block block) {
         switch (block) {
             case MODULE:
-                return new Module(module, stringTable, scope);
+                return new Module(module, stringTable, scope, llSource);
 
             case STRTAB:
                 return stringTable;

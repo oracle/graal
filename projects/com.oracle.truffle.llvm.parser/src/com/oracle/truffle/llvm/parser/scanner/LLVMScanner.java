@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
@@ -87,7 +88,7 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(ByteBuffer bytes, LLVMContext context) {
+    public static ModelModule parse(ByteBuffer bytes, Source bcSource, LLVMContext context) {
         assert bytes != null;
         if (!isSupportedFile(bytes)) {
             return null;
@@ -134,7 +135,7 @@ public final class LLVMScanner {
             throw new LLVMParserException("Not a valid input file!");
         }
 
-        parseBitcodeBlock(bitcode, model, context);
+        parseBitcodeBlock(bitcode, model, bcSource, context);
 
         return model;
     }
@@ -146,9 +147,9 @@ public final class LLVMScanner {
         return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
     }
 
-    private static void parseBitcodeBlock(ByteBuffer bitcode, ModelModule model, LLVMContext context) {
+    private static void parseBitcodeBlock(ByteBuffer bitcode, ModelModule model, Source bcSource, LLVMContext context) {
         final BitStream bitstream = BitStream.create(bitcode);
-        final BCFileRoot fileParser = new BCFileRoot(model);
+        final BCFileRoot fileParser = new BCFileRoot(model, bcSource);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
         final long actualMagicWord = scanner.read(Integer.SIZE);
         if (actualMagicWord != BC_MAGIC_WORD) {
