@@ -232,6 +232,7 @@ final class TRegexCompilationRequest {
         FrameSlot captureGroupResultFS = frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object);
         FrameSlot lastTransitionFS = frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int);
         FrameSlot cgDataFS = frameDescriptor.addFrameSlot("cgData", FrameSlotKind.Object);
+        FrameSlot inputIsCompactStringFS = frameDescriptor.addFrameSlot("inputIsCompactString", FrameSlotKind.Boolean);
         return new TRegexDFAExecutorProperties(
                         frameDescriptor,
                         inputFS,
@@ -244,6 +245,7 @@ final class TRegexCompilationRequest {
                         captureGroupResultFS,
                         lastTransitionFS,
                         cgDataFS,
+                        inputIsCompactStringFS,
                         forward,
                         searching,
                         trackCaptureGroups,

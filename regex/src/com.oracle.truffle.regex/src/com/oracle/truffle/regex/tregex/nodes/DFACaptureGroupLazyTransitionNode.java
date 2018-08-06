@@ -79,5 +79,4 @@ public final class DFACaptureGroupLazyTransitionNode extends Node implements Jso
         }
         return json;
     }
-
 }

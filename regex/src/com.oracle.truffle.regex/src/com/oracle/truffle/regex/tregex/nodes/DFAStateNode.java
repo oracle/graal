@@ -30,8 +30,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -42,41 +42,55 @@ import java.util.Arrays;
 
 public class DFAStateNode extends DFAAbstractStateNode {
 
+    public static class LoopOptimizationNode extends Node {
+
+        private final short loopTransitionIndex;
+        @CompilationFinal(dimensions = 1) private final char[] indexOfChars;
+        @Child private InputIndexOfNode indexOfNode;
+
+        public LoopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
+            this.loopTransitionIndex = loopTransitionIndex;
+            this.indexOfChars = indexOfChars;
+        }
+
+        private LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
+        }
+
+        private InputIndexOfNode getIndexOfNode() {
+            if (indexOfNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                indexOfNode = insert(InputIndexOfNode.create());
+            }
+            return indexOfNode;
+        }
+    }
+
     private static final byte FLAG_FINAL_STATE = 1;
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
     private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
-    private static final byte FLAG_FIND_SINGLE_CHAR = 1 << 3;
 
     private final short id;
     private final byte flags;
-    final short loopToSelf;
+    @Child private LoopOptimizationNode loopOptimizationNode;
     @CompilationFinal(dimensions = 1) protected final CharMatcher[] matchers;
-    @Child private InputIndexOfNode indexOfNode;
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopToSelf,
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
                         Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
                         nodeSplitCopy.getMatchers());
     }
 
-    public DFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers) {
+    public DFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers) {
         super(successors);
         assert id > 0;
         this.id = id;
         this.flags = flags;
-        this.loopToSelf = loopToSelf;
+        this.loopOptimizationNode = loopOptimizationNode;
         this.matchers = matchers;
     }
 
-    private InputIndexOfNode getIndexOfNode() {
-        if (indexOfNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            indexOfNode = insert(InputIndexOfNode.create());
-        }
-        return indexOfNode;
-    }
-
-    public static byte flags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean findSingleChar) {
+    public static byte flags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
         byte flags = 0;
         if (finalState) {
             flags |= FLAG_FINAL_STATE;
@@ -87,10 +101,11 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (hasBackwardPrefixState) {
             flags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
         }
-        if (findSingleChar) {
-            flags |= FLAG_FIND_SINGLE_CHAR;
-        }
         return flags;
+    }
+
+    public static LoopOptimizationNode loopOptimizationNode(short loopTransitionIndex, char[] indexOfChars) {
+        return new LoopOptimizationNode(loopTransitionIndex, indexOfChars);
     }
 
     @Override
@@ -119,20 +134,21 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
     }
 
-    public boolean isFindSingleChar() {
-        return flagIsSet(FLAG_FIND_SINGLE_CHAR);
-    }
-
     private boolean flagIsSet(byte flag) {
         return (flags & flag) != 0;
     }
 
     public boolean hasLoopToSelf() {
-        return loopToSelf != -1;
+        return loopOptimizationNode != null;
     }
 
-    protected boolean isLoopToSelf(int transitionIndex) {
-        return transitionIndex == loopToSelf;
+    boolean isLoopToSelf(int transitionIndex) {
+        return hasLoopToSelf() && transitionIndex == getLoopToSelf();
+    }
+
+    short getLoopToSelf() {
+        assert hasLoopToSelf();
+        return loopOptimizationNode.loopTransitionIndex;
     }
 
     private boolean treeTransitionMatching() {
@@ -183,24 +199,26 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 return;
             }
             final int preLoopIndex = executor.getIndex(frame);
-            if (executor.isForward() && isFindSingleChar()) {
-                assert successors.length == 2;
-                int singleCharSuccessor = (loopToSelf + 1) % 2;
-                assert matchers[singleCharSuccessor] instanceof SingleCharMatcher : this;
-                CompilerAsserts.partialEvaluationConstant(singleCharSuccessor);
-                int i = getIndexOfNode().execute(executor.getInput(frame),
-                                ((SingleCharMatcher) matchers[singleCharSuccessor]).getChar(),
+            if (executor.isForward() && hasLoopToSelf() && loopOptimizationNode.indexOfChars != null) {
+                int indexOfResult = loopOptimizationNode.getIndexOfNode().execute(executor.getInput(frame),
                                 preLoopIndex,
-                                executor.getCurMaxIndex(frame));
-                if (i < 0) {
+                                executor.getCurMaxIndex(frame),
+                                loopOptimizationNode.indexOfChars);
+                if (indexOfResult < 0) {
                     executor.setIndex(frame, executor.getCurMaxIndex(frame));
                     executor.setSuccessorIndex(frame, atEnd3(frame, executor, preLoopIndex));
                     return;
                 } else {
-                    executor.setIndex(frame, i + 1);
-                    executor.setSuccessorIndex(frame, singleCharSuccessor);
-                    successorFound3(frame, executor, singleCharSuccessor, preLoopIndex);
-                    return;
+                    if (successors.length == 2) {
+                        int successor = (getLoopToSelf() + 1) % 2;
+                        CompilerAsserts.partialEvaluationConstant(successor);
+                        executor.setIndex(frame, indexOfResult + 1);
+                        executor.setSuccessorIndex(frame, successor);
+                        successorFound3(frame, executor, successor, preLoopIndex);
+                        return;
+                    } else {
+                        executor.setIndex(frame, indexOfResult);
+                    }
                 }
             }
             while (executor.hasNext(frame)) {
@@ -232,17 +250,14 @@ public class DFAStateNode extends DFAAbstractStateNode {
             int successor = getTreeMatcher().checkMatchTree1(frame, executor, this, c);
             assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
             executor.setSuccessorIndex(frame, successor);
-            return hasLoopToSelf() && isLoopToSelf(successor);
+            return isLoopToSelf(successor);
         } else {
             for (int i = 0; i < matchers.length; i++) {
                 if (matchers[i].match(c)) {
-                    if (executor.recordExecution()) {
-                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
-                    }
                     CompilerAsserts.partialEvaluationConstant(i);
                     successorFound1(frame, executor, i);
                     executor.setSuccessorIndex(frame, i);
-                    return hasLoopToSelf() && isLoopToSelf(i);
+                    return isLoopToSelf(i);
                 }
             }
             executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
@@ -253,12 +268,13 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Finds the first matching transition. This method is called only if the transition found by
      * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} was a loop back to this state
-     * (indicated by {@link #loopToSelf}). If a transition <i>other than</i> the looping transition
-     * matches, {@link #successorFound2(VirtualFrame, TRegexDFAExecutorNode, int)} is called. The
-     * index of the element of {@link #getMatchers()} that matched the current input character (
-     * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
-     * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no
-     * transition matches, {@link #noSuccessor2(VirtualFrame, TRegexDFAExecutorNode)} is called.
+     * (indicated by {@link #isLoopToSelf(int)}). If a transition <i>other than</i> the looping
+     * transition matches, {@link #successorFound2(VirtualFrame, TRegexDFAExecutorNode, int)} is
+     * called. The index of the element of {@link #getMatchers()} that matched the current input
+     * character ( {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
+     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
+     * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no transition matches,
+     * {@link #noSuccessor2(VirtualFrame, TRegexDFAExecutorNode)} is called.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -277,9 +293,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
         } else {
             for (int i = 0; i < matchers.length; i++) {
                 if (matchers[i].match(c)) {
-                    if (executor.recordExecution()) {
-                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
-                    }
                     executor.setSuccessorIndex(frame, i);
                     if (!isLoopToSelf(i)) {
                         CompilerAsserts.partialEvaluationConstant(i);
@@ -299,8 +312,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * Finds the first matching transition. This method is called only if the transitions found by
      * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} AND
      * {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} both were a loop back to this state
-     * (indicated by {@link #loopToSelf}), and will be called in a loop until a transition other
-     * than the loop back transition matches. If a transition <i>other than</i> the looping
+     * (indicated by {@link #isLoopToSelf(int)}), and will be called in a loop until a transition
+     * other than the loop back transition matches. If a transition <i>other than</i> the looping
      * transition matches, {@link #successorFound3(VirtualFrame, TRegexDFAExecutorNode, int, int)}
      * is called. The index of the element of {@link #getMatchers()} that matched the current input
      * character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
@@ -328,9 +341,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
         } else {
             for (int i = 0; i < matchers.length; i++) {
                 if (matchers[i].match(c)) {
-                    if (executor.recordExecution()) {
-                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
-                    }
                     executor.setSuccessorIndex(frame, i);
                     if (!isLoopToSelf(i)) {
                         CompilerAsserts.partialEvaluationConstant(i);
@@ -393,7 +403,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called when {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} finds a successor
-     * <i>other than</i> the looping transition indicated by {@link #loopToSelf}.
+     * <i>other than</i> the looping transition indicated by {@link #isLoopToSelf(int)}.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -443,7 +453,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called when {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} finds a successor
-     * <i>other than</i> the looping transition indicated by {@link #loopToSelf}.
+     * <i>other than</i> the looping transition indicated by {@link #isLoopToSelf(int)}.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -503,8 +513,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
-    @SuppressWarnings("unused")
-    protected void storeResult(VirtualFrame frame, TRegexDFAExecutorNode executor, int index, boolean anchored) {
+    protected void storeResult(VirtualFrame frame, TRegexDFAExecutorNode executor, int index, @SuppressWarnings("unused") boolean anchored) {
         CompilerAsserts.partialEvaluationConstant(this);
         executor.setResultInt(frame, index);
     }
