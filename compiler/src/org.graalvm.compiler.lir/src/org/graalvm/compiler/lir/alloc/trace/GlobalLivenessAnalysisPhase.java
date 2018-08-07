@@ -65,7 +65,7 @@ public final class GlobalLivenessAnalysisPhase extends AllocationPhase {
         context.contextAdd(livenessInfo);
     }
 
-    private final class Analyser {
+    private final static class Analyser {
 
         private static final int LOG_LEVEL = DebugContext.INFO_LEVEL;
 
