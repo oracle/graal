@@ -61,8 +61,7 @@ import org.graalvm.collections.EconomicMap;
 
 /**
  * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
- * descriptor. The FrameDescriptor is not thread-safe until it's given to a first RootNode's
- * constructor. After that it has thread-safe properties.
+ * descriptor. The FrameDescriptor is thread-safe.
  *
  * @since 0.8 or earlier
  */
