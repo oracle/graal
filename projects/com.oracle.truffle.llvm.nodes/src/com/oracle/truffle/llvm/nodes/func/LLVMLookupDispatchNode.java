@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -176,14 +177,17 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
             return args;
         }
 
+        @TruffleBoundary
         protected static Node createCrossLanguageCallNode(Object[] arguments) {
             return Message.createExecute(arguments.length).createNode();
         }
 
+        @TruffleBoundary
         protected ForeignToLLVM createToLLVMNode() {
-            return ForeignToLLVM.create(type.getReturnType());
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVM.convert(type.getReturnType()));
         }
 
+        @TruffleBoundary
         protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
             LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
             for (int i = 0; i < type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET; i++) {

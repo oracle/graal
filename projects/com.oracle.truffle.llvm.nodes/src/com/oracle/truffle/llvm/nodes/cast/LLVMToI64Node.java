@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -65,7 +66,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @Specialization
     protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
-                    @Cached("createForeignToI64()") ForeignToLLVM convert) {
+                    @Cached("createForeignToLLVM()") ForeignToLLVM convert) {
         return (long) convert.executeWithTarget(from.getValue());
     }
 
@@ -74,8 +75,18 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         return from.asNative();
     }
 
-    protected static ForeignToLLVM createForeignToI64() {
-        return ForeignToLLVM.create(ForeignToLLVMType.I64);
+    @TruffleBoundary
+    protected ForeignToLLVM createForeignToLLVM() {
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
+    }
+
+    @TruffleBoundary
+    private LLVMToNativeNode getToNative() {
+        if (toNative == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
+        }
+        return toNative;
     }
 
     // these methods are only on the base class as a workaround for a DSL issue
@@ -85,14 +96,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     protected static boolean fitsIntoSignedLong(double from) {
         return from < MAX_LONG_AS_DOUBLE;
-    }
-
-    private LLVMToNativeNode getToNative() {
-        if (toNative == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
-        }
-        return toNative;
     }
 
     public abstract static class LLVMSignedCastToI64Node extends LLVMToI64Node {

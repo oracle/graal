@@ -122,12 +122,17 @@ public abstract class ToComparableValue extends LLVMNode {
 
         @Specialization
         protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive address,
-                        @Cached("create(I64)") ForeignToLLVM toLLVM) {
+                        @Cached("createForeignToI64()") ForeignToLLVM toLLVM) {
             return (long) toLLVM.executeWithTarget(address.getValue());
         }
 
         public static ManagedToComparableValue create() {
             return ManagedToComparableValueNodeGen.create();
+        }
+
+        @TruffleBoundary
+        protected ForeignToLLVM createForeignToI64() {
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
         }
     }
 

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -89,7 +90,7 @@ public abstract class LLVMForeignAccessNode {
         void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
                         @Cached("type.getKind()") @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
                         @Cached("createStoreNode(cachedKind)") LLVMStoreNode store,
-                        @Cached("create(type)") ForeignToLLVM toLLVM) {
+                        @Cached("createForeignToLLVM(type)") ForeignToLLVM toLLVM) {
             // since we only cache type.getKind(), not type, we have to use executeWithType
             Object llvmValue = toLLVM.executeWithType(value, type.getBaseType());
             store.executeWithTarget(ptr, llvmValue);
@@ -99,6 +100,11 @@ public abstract class LLVMForeignAccessNode {
             CompilerAsserts.neverPartOfCompilation();
             ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
             return ctxRef.get().getNodeFactory().createStoreNode(kind);
+        }
+
+        @TruffleBoundary
+        protected ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type) {
+            return getNodeFactory().createForeignToLLVM(type);
         }
     }
 }

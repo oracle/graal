@@ -38,9 +38,9 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-abstract class ToI8 extends ForeignToLLVM {
+public abstract class ToI8 extends ForeignToLLVM {
 
-    @Child private ToI8 toI8;
+    @Child private ForeignToLLVM toI8;
 
     @Specialization
     protected byte fromInt(int value) {
@@ -100,7 +100,7 @@ abstract class ToI8 extends ForeignToLLVM {
     private byte recursiveConvert(Object o) {
         if (toI8 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI8 = insert(ToI8NodeGen.create());
+            toI8 = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8));
         }
         return (byte) toI8.executeWithTarget(o);
     }

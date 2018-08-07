@@ -41,6 +41,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
@@ -58,16 +59,16 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
 
     @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNode.create();
 
-    public static class PackForeignArgumentsNode extends LLVMNode {
+    static class PackForeignArgumentsNode extends LLVMNode {
         @Children private final ForeignToLLVM[] toLLVM;
 
-        PackForeignArgumentsNode(Type[] parameterTypes, int argumentsLength) {
+        PackForeignArgumentsNode(NodeFactory nodeFactory, Type[] parameterTypes, int argumentsLength) {
             this.toLLVM = new ForeignToLLVM[argumentsLength];
             for (int i = 0; i < parameterTypes.length; i++) {
-                toLLVM[i] = ForeignToLLVM.create(parameterTypes[i]);
+                toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
             }
             for (int i = parameterTypes.length; i < argumentsLength; i++) {
-                toLLVM[i] = ForeignToLLVM.create(ForeignToLLVMType.ANY);
+                toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
             }
         }
 
@@ -87,9 +88,9 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         return LLVMForeignCallNodeGen.create();
     }
 
-    public static PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
+    protected PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
         checkArgLength(descriptor.getType().getArgumentTypes().length, length);
-        return new PackForeignArgumentsNode(descriptor.getType().getArgumentTypes(), length);
+        return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), length);
     }
 
     protected static class SlowPackForeignArgumentsNode extends LLVMNode {

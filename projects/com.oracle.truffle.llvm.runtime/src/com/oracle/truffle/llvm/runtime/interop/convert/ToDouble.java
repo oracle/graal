@@ -37,9 +37,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-abstract class ToDouble extends ForeignToLLVM {
+public abstract class ToDouble extends ForeignToLLVM {
 
-    @Child private ToDouble toDouble;
+    @Child private ForeignToLLVM toDouble;
 
     @Specialization
     protected double fromInt(int value) {
@@ -99,7 +99,7 @@ abstract class ToDouble extends ForeignToLLVM {
     private double recursiveConvert(Object o) {
         if (toDouble == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toDouble = insert(ToDoubleNodeGen.create());
+            toDouble = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE));
         }
         return (double) toDouble.executeWithTarget(o);
     }
