@@ -871,6 +871,7 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
+        "ANTLR4",
       ],
       "distDependencies" : [
           "TRUFFLE_API",
