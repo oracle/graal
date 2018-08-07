@@ -141,6 +141,7 @@ final class PolyglotLogHandler extends Handler {
             throw new UnsupportedOperationException("Setting Messag is not supported.");
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void setMillis(long millis) {
             throw new UnsupportedOperationException("Setting Millis is not supported.");

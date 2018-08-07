@@ -481,7 +481,7 @@ public final class ZipFile implements ZipConstants, Closeable {
                     Integer.MAX_VALUE : (int) avail);
         }
 
-        //@SuppressWarnings("deprecation")
+        @SuppressWarnings("deprecation")
         protected void finalize() throws Throwable {
             close();
         }
@@ -899,7 +899,7 @@ public final class ZipFile implements ZipConstants, Closeable {
             }
         }
 
-        //@SuppressWarnings("deprecation")
+        @SuppressWarnings("deprecation")
         protected void finalize() {
             close();
         }

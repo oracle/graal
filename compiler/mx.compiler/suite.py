@@ -188,6 +188,7 @@ suite = {
       "overlayTarget" : "org.graalvm.compiler.serviceprovider",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8",
+      "checkPackagePrefix" : "false",
       "workingSets" : "API,Graal",
     },
 
@@ -198,6 +199,7 @@ suite = {
       "uses" : ["org.graalvm.compiler.serviceprovider.JMXService"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "9+",
+      "checkPackagePrefix" : "false",
       "multiReleaseJarVersion" : "9",
       "workingSets" : "API,Graal",
     },

@@ -584,6 +584,7 @@ public class GraphPrintVisitor implements Closeable {
         return this;
     }
 
+    @SuppressWarnings("deprecation")
     private static GraphPrintHandler createGraphPrintHandlerFromClass(Class<? extends GraphPrintHandler> customHandlerClass) {
         try {
             return customHandlerClass.newInstance();

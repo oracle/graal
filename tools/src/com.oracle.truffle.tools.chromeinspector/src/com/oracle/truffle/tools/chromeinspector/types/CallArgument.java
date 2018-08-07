@@ -31,7 +31,7 @@ public final class CallArgument {
     private static final String POSITIVE_INFINITY_STR = Double.toString(Double.POSITIVE_INFINITY);
     private static final String NEGATIVE_INFINITY_STR = Double.toString(Double.NEGATIVE_INFINITY);
     private static final String NAN_STR = Double.toString(Double.NaN);
-    private static final Double NEGATIVE_ZERO = new Double("-0");
+    private static final Double NEGATIVE_ZERO = Double.valueOf("-0");
 
     private final Object value;
     private final String objectId;

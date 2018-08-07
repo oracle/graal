@@ -363,8 +363,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      * regex: /(?<=ab)/
      *  -> prefix length: 2
      *  -> result: /(?:[_any_][_any_](?:|[_any_](?:|[_any_])))(?<=ab)/
-     *      -> the non-optional [_any_] - matchers will be used if fromIndex > 0, the optional matchers
-     *         will always be used
+     *      -> the non-optional [_any_] - matchers will be used if fromIndex > 0,
+     *                                    the optional matchers will always be used
      * }
      */
     public void createPrefix() {

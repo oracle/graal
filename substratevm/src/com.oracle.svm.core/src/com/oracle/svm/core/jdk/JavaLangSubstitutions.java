@@ -525,6 +525,7 @@ final class Target_java_lang_ClassValue {
     }
 }
 
+@SuppressWarnings("deprecation")
 @TargetClass(java.lang.Compiler.class)
 final class Target_java_lang_Compiler {
     @Substitute

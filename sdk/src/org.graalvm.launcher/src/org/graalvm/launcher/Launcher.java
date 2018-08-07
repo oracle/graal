@@ -1360,6 +1360,7 @@ public abstract class Launcher {
         /**
          * @return the absolute resolved path to the current executable.
          */
+        @SuppressWarnings("deprecation")
         private Path getCurrentExecutablePath() {
             return Paths.get((String) Compiler.command(new String[]{"com.oracle.svm.core.posix.GetExecutableName"}));
         }

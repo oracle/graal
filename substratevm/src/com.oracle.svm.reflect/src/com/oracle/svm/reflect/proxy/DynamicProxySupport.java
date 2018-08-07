@@ -90,7 +90,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
          */
         final Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
-        Class<?> proxyClass = proxyCache.computeIfAbsent(key, (k) -> java.lang.reflect.Proxy.getProxyClass(classLoader, intfs));
+        Class<?> proxyClass = proxyCache.computeIfAbsent(key, (k) -> DynamicProxyRegistry.getProxyClass(classLoader, intfs));
         try {
             /*
              * The constructor of the generated dynamic proxy class that takes a

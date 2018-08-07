@@ -264,7 +264,7 @@ suite = {
             "annotationProcessors": [
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
-            "javaCompliance": "1.8",
+            "javaCompliance": "8+",
             "findbugs": "false",
         },
 
