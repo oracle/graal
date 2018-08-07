@@ -26,10 +26,13 @@ package com.oracle.svm.reflect.target;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "Reflection", onlyWith = ReflectionFeature.IsEnabled.class)
-public final class Target_sun_reflect_Reflection {
+public final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute
     public static Class<?> getCallerClass() {
@@ -39,5 +42,12 @@ public final class Target_sun_reflect_Reflection {
     @Substitute
     public static int getClassAccessFlags(Class<?> cls) {
         return cls.getModifiers();
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    public static /* native */ boolean areNestMates(Class<?> currentClass, Class<?> memberClass) {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_jdk_internal_reflect_Reflection.areNestMates");
     }
 }

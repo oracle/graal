@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package com.oracle.svm.test;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.nativeimage.ImageInfo;
+import org.junit.Assert;
+import org.junit.Test;
 
-@NodeInfo
-public abstract class FixedNode extends ValueNode implements FixedNodeInterface {
-    public static final NodeClass<FixedNode> TYPE = NodeClass.create(FixedNode.class);
-
-    protected FixedNode(NodeClass<? extends FixedNode> c, Stamp stamp) {
-        super(c, stamp);
+public class ImageInfoTest {
+    static {
+        Assert.assertTrue(ImageInfo.inImageCode());
+        Assert.assertTrue(ImageInfo.inImageBuildtimeCode());
+        Assert.assertFalse(ImageInfo.inImageRuntimeCode());
     }
 
-    @Override
-    public boolean verify() {
-        assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float: %s", this);
-        return super.verify();
-    }
-
-    @Override
-    public FixedNode asNode() {
-        return this;
+    @Test
+    public void testImageCodeMethods() {
+        Assert.assertTrue(ImageInfo.inImageCode());
+        Assert.assertTrue(ImageInfo.inImageRuntimeCode());
+        Assert.assertFalse(ImageInfo.inImageBuildtimeCode());
     }
 }

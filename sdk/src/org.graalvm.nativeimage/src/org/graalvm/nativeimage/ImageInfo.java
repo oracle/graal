@@ -68,6 +68,32 @@ public final class ImageInfo {
     public static final String PROPERTY_IMAGE_CODE_VALUE_RUNTIME = "runtime";
 
     /**
+     * Name of the system property that holds if this image is built as a shared library or an
+     * executable. If the property is {@link #PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE} the image is
+     * built as an executable. If the property is {@link #PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY}
+     * the image is built as a shared library.
+     *
+     * @since 1.0
+     */
+    public static final String PROPERTY_IMAGE_KIND_KEY = "org.graalvm.nativeimage.kind";
+
+    /**
+     * Holds the string that will be returned by the system property for
+     * {@link ImageInfo#PROPERTY_IMAGE_KIND_KEY} if image is a shared library.
+     *
+     * @since 1.0
+     */
+    public static final String PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY = "shared";
+
+    /**
+     * Holds the string that will be returned by the system property for
+     * {@link ImageInfo#PROPERTY_IMAGE_KIND_KEY} if image is an executable.
+     *
+     * @since 1.0
+     */
+    public static final String PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE = "executable";
+
+    /**
      * Returns true if (at the time of the call) code is executing in the context of image building
      * or during image runtime, else false. This method will be const-folded so that it can be used
      * to hide parts of an application that only work when running on the JVM. For example:
@@ -98,5 +124,23 @@ public final class ImageInfo {
      */
     public static boolean inImageBuildtimeCode() {
         return PROPERTY_IMAGE_CODE_VALUE_BUILDTIME.equals(System.getProperty(PROPERTY_IMAGE_CODE_KEY));
+    }
+
+    /**
+     * Returns true if the image is build as an executable.
+     *
+     * @since 1.0
+     */
+    public static boolean isExecutable() {
+        return PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
+    }
+
+    /**
+     * Returns true if the image is build as a shared library.
+     *
+     * @since 1.0
+     */
+    public static boolean isSharedLibrary() {
+        return PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
     }
 }

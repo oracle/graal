@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
+import java.util.function.Function;
 
-@NodeInfo
-public abstract class FixedNode extends ValueNode implements FixedNodeInterface {
-    public static final NodeClass<FixedNode> TYPE = NodeClass.create(FixedNode.class);
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    protected FixedNode(NodeClass<? extends FixedNode> c, Stamp stamp) {
-        super(c, stamp);
-    }
+import com.oracle.svm.core.annotate.TargetClass;
 
-    @Override
-    public boolean verify() {
-        assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float: %s", this);
-        return super.verify();
-    }
+@Platforms(Platform.HOSTED_ONLY.class)
+public class Package_jdk_internal_misc implements Function<TargetClass, String> {
 
     @Override
-    public FixedNode asNode() {
-        return this;
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.misc." + annotation.className();
+        }
     }
 }

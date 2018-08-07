@@ -68,6 +68,7 @@ import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.jdk.StackTraceBuilder;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
@@ -1010,9 +1011,9 @@ final class SleepSupport {
     }
 }
 
-@TargetClass(sun.misc.Unsafe.class)
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-final class Target_sun_misc_Unsafe {
+final class Target_jdk_internal_misc_Unsafe {
 
     /**
      * Block current thread, returning when a balancing <tt>unpark</tt> occurs, or a balancing

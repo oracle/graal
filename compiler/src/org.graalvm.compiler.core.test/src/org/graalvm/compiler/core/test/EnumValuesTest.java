@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package org.graalvm.compiler.core.test;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.junit.Test;
 
-@NodeInfo
-public abstract class FixedNode extends ValueNode implements FixedNodeInterface {
-    public static final NodeClass<FixedNode> TYPE = NodeClass.create(FixedNode.class);
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
-    protected FixedNode(NodeClass<? extends FixedNode> c, Stamp stamp) {
-        super(c, stamp);
+public class EnumValuesTest extends GraalCompilerTest {
+
+    private static final int NANOS_INDEX = Arrays.asList(TimeUnit.values()).indexOf(TimeUnit.NANOSECONDS);
+
+    @SuppressWarnings("unused")
+    public static void iterateUnits() {
+        for (TimeUnit unit : TimeUnit.values()) {
+            // nop
+        }
     }
 
-    @Override
-    public boolean verify() {
-        assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float: %s", this);
-        return super.verify();
+    public static void empty() {
     }
 
-    @Override
-    public FixedNode asNode() {
-        return this;
+    @Test
+    public void test0() {
+        assertEquals(getFinalGraph("empty"), getFinalGraph("iterateUnits"));
+    }
+
+    public static TimeUnit getNanosValues() {
+        return TimeUnit.values()[NANOS_INDEX];
+    }
+
+    public static TimeUnit getNanos() {
+        return TimeUnit.NANOSECONDS;
+    }
+
+    @Test
+    public void test1() {
+        assertEquals(getFinalGraph("getNanos"), getFinalGraph("getNanosValues"));
     }
 }

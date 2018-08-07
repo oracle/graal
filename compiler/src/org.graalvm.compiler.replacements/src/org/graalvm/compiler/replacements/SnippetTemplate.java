@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -515,7 +516,7 @@ public class SnippetTemplate {
         }
 
         @Override
-        public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
+        public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
             return ConstantNode.forInt(varargs.length);
         }
     }

@@ -26,7 +26,6 @@ package com.oracle.svm.core.option;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -34,7 +33,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.CompilationWrapper;
@@ -240,7 +238,17 @@ public class SubstrateOptionsParser {
                         selectedOptionTypes.add(OptionType.valueOf(enumString));
                     }
                 } catch (IllegalArgumentException e) {
-                    String possibleValues = Arrays.stream(OptionType.values()).map(OptionType::name).collect(Collectors.joining(", ", "", ""));
+                    StringBuilder sb = new StringBuilder();
+                    boolean firstValue = true;
+                    for (OptionType ot : OptionType.values()) {
+                        if (firstValue) {
+                            firstValue = false;
+                        } else {
+                            sb.append(", ");
+                        }
+                        sb.append(ot.name());
+                    }
+                    String possibleValues = sb.toString();
                     return OptionParseResult.error("Invalid value for option '" + optionName + ". " + enumString + "' is not one of: " + possibleValues);
                 }
             }

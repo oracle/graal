@@ -44,6 +44,7 @@ import collections
 import itertools
 import glob
 from xml.dom.minidom import parse
+from argparse import ArgumentParser
 
 import mx
 import mx_compiler
@@ -495,6 +496,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'test',
     'maven',
     'js',
     'python',
@@ -568,6 +570,10 @@ def svm_gate_body(args, tasks):
                 helloworld(native_image)
                 cinterfacetutorial(native_image)
 
+        with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
+            if t:
+                native_junit(native_image)
+
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
                 js = build_js(native_image, debug_gr_8964=debug_gr_8964)
@@ -583,9 +589,10 @@ def svm_gate_body(args, tasks):
         if t:
             maven_plugin_install([])
 
-def native_junit(native_image, unittest_args, build_args=None, run_args=None):
+def native_junit(native_image, unittest_args=None, build_args=None, run_args=None):
+    unittest_args = unittest_args or ['com.oracle.svm.test']
     build_args = build_args or []
-    run_args = run_args or []
+    run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
@@ -595,11 +602,32 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
             unittest_deps.extend(test_deps)
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
+        if not exists(unittest_file):
+            mx.abort('No matching unit tests found. Skip image build and execution.')
+        with open(unittest_file, 'r') as f:
+            mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
         unittest_image = native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         mx.run([unittest_image] + run_args)
     finally:
         remove_tree(junit_tmp_dir)
+
+def native_unittest(native_image, cmdline_args):
+    parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
+    mask_str = '#'
+    def mask(arg):
+        if arg in ['--', '--build-args', '--run-args']:
+            return arg
+        else:
+            return arg.replace('-', mask_str)
+    cmdline_args = [mask(arg) for arg in cmdline_args]
+    parser.add_argument('--build-args', metavar='ARG', nargs='*', default=[])
+    parser.add_argument('--run-args', metavar='ARG', nargs='*', default=[])
+    parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
+    pargs = parser.parse_args(cmdline_args)
+    def unmask(args):
+        return [arg.replace(mask_str, '-') for arg in args]
+    native_junit(native_image, unmask(pargs.unittest_args), unmask(pargs.build_args), unmask(pargs.run_args))
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
@@ -905,4 +933,5 @@ mx.update_commands(suite, {
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
     'maven-plugin-install': [maven_plugin_install, ''],
+    'native-unittest' : [lambda args: native_image_context_run(native_unittest, args), ''],
 })
