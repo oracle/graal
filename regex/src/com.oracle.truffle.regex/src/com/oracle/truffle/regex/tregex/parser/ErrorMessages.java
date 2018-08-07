@@ -41,7 +41,8 @@ interface ErrorMessages {
     String MISSING_GROUP_FOR_BACKREFERENCE = "Missing capture group for backreference";
     String MISSING_GROUP_NAME = "Missing group name in named capture group reference";
     String MULTIPLE_GROUPS_SAME_NAME = "Multiple named capture groups with the same name";
-    String QUANTIFIER_ON_LOOKAROUND_ASSERTION = "Quantifier on lookaround assertion";
+    String QUANTIFIER_ON_LOOKAHEAD_ASSERTION = "Quantifier on lookahead assertion";
+    String QUANTIFIER_ON_LOOKBEHIND_ASSERTION = "Quantifier on lookbehind assertion";
     String QUANTIFIER_ON_QUANTIFIER = "Quantifier on quantifier";
     String QUANTIFIER_OUT_OF_ORDER = "Numbers out of order in {} quantifier";
     String QUANTIFIER_WITHOUT_TARGET = "Quantifier without target";
