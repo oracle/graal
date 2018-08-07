@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes.arithmetic;
+package org.graalvm.compiler.java;
 
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.extended.AnchoringNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-public interface IntegerExactArithmeticNode extends Lowerable {
+public final class IntegerExactOpSpeculation implements SpeculationReason {
 
-    IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt);
+    public enum IntegerExactOp {
+        INTEGER_ADD_EXACT,
+        INTEGER_INCREMENT_EXACT,
+        INTEGER_SUBTRACT_EXACT,
+        INTEGER_DECREMENT_EXACT,
+        INTEGER_MULTIPLY_EXACT
+    }
 
-    SpeculationReason getSpeculation();
+    protected final String methodDescriptor;
+    protected final IntegerExactOp op;
 
-    AnchoringNode getAnchor();
+    public IntegerExactOpSpeculation(ResolvedJavaMethod method, IntegerExactOp op) {
+        this.methodDescriptor = method.format("%H.%n(%p)%R");
+        this.op = op;
+    }
 
-    void setAnchor(AnchoringNode x);
+    @Override
+    public int hashCode() {
+        return methodDescriptor.hashCode() * 31 + op.ordinal();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof IntegerExactOpSpeculation) {
+            IntegerExactOpSpeculation other = (IntegerExactOpSpeculation) obj;
+            return op.equals(other.op) && methodDescriptor.equals(other.methodDescriptor);
+        }
+        return false;
+    }
 
 }
