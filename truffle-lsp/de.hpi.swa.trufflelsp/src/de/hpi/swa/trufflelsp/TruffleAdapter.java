@@ -933,9 +933,11 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             TextDocumentSurrogate surrogateOfTestFile = this.uri2TextDocumentSurrogate.computeIfAbsent(coverageUri, (_uri) -> new TextDocumentSurrogate(_uri, surrogateOfOpendFile.getLangId()));
 
             final CallTarget callTarget = parse(surrogateOfTestFile);
+            final String langId = surrogateOfTestFile.getLangId();
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
 // SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
-                            SourceSectionFilter.ANY,
+// SourceSectionFilter.ANY,
+                            SourceSectionFilter.newBuilder().sourceIs(s -> langId.equals(s.getLanguage())).build(),
                             new ExecutionEventNodeFactory() {
 
                                 public ExecutionEventNode create(final EventContext eventContext) {
