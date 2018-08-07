@@ -37,9 +37,9 @@ public enum SpeculativeExecutionAttacksMitigations {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Select a strategy to mitigate speculative execution attacks (e.g., SPECTRE)", type = OptionType.Expert)
+        @Option(help = "Select a strategy to mitigate speculative execution attacks (e.g., SPECTRE)", type = OptionType.User)
         public static final EnumOptionKey<SpeculativeExecutionAttacksMitigations> MitigateSpeculativeExecutionAttacks = new EnumOptionKey<>(None);
-        @Option(help = "", type = OptionType.Expert)
+        @Option(help = "Use index masking after bounds check to mitigate speculative execution attacks", type = OptionType.User)
         public static final OptionKey<Boolean> UseIndexMasking = new OptionKey<>(false);
         // @formatter:on
     }
