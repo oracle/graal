@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.ValueKind;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignAccessNodeFactory.ReadNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignAccessNodeFactory.WriteNodeGen;
@@ -58,6 +59,8 @@ public abstract class LLVMForeignAccessNode {
 
     public abstract static class Read extends LLVMNode {
 
+        static final int VALUE_KIND_COUNT = ValueKind.values().length;
+
         public abstract Object execute(LLVMPointer ptr, LLVMInteropType type);
 
         @Specialization
@@ -66,7 +69,7 @@ public abstract class LLVMForeignAccessNode {
             return ptr;
         }
 
-        @Specialization(guards = "type.getKind() == cachedKind")
+        @Specialization(guards = "type.getKind() == cachedKind", limit = "VALUE_KIND_COUNT")
         Object doValue(LLVMPointer ptr, LLVMInteropType.Value type,
                         @Cached("type.getKind()") @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
                         @Cached("createLoadNode(cachedKind)") LLVMLoadNode load,

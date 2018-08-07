@@ -29,9 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -69,5 +71,11 @@ public abstract class LLVMPolyglotFromTyped extends LLVMIntrinsic {
     @Specialization
     LLVMPointer doPointer(LLVMPointer address, LLVMInteropType.Structured type) {
         return address.export(type);
+    }
+
+    @Specialization
+    LLVMPointer doError(@SuppressWarnings("unused") LLVMPointer address, LLVMInteropType.Value type) {
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMPolyglotException(this, "polyglot_from_typed can not be used with primitive type (%s).", type.getKind());
     }
 }

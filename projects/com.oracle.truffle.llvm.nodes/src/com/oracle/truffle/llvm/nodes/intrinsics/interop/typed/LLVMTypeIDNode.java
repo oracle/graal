@@ -65,13 +65,10 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    LLVMInteropType.Structured doGlobal(LLVMPointer pointer) {
+    LLVMInteropType doGlobal(LLVMPointer pointer) {
         LLVMInteropType type = getType(pointer);
         if (type instanceof LLVMInteropType.Array) {
-            type = ((LLVMInteropType.Array) type).getElementType();
-            if (type instanceof LLVMInteropType.Structured) {
-                return (LLVMInteropType.Structured) type;
-            }
+            return ((LLVMInteropType.Array) type).getElementType();
         }
 
         CompilerDirectives.transferToInterpreter();

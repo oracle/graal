@@ -3,6 +3,7 @@
 New features:
 
 * Support for IR-level debugging
+* New polyglot cast functions for primitive array types.
 
 # Version 1.0.0 RC5
 
