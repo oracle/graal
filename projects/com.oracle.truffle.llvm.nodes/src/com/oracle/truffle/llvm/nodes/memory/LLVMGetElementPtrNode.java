@@ -100,6 +100,8 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int incr) {
             if (addr.getValue() instanceof Long) {
                 return LLVMNativePointer.create((long) addr.getValue() + incr);
+            } else if (addr.getValue() instanceof Integer) {
+                return LLVMNativePointer.create((int) addr.getValue() + incr);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
@@ -115,6 +117,8 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long incr) {
             if (addr.getValue() instanceof Long) {
                 return LLVMNativePointer.create((long) addr.getValue() + incr);
+            } else if (addr.getValue() instanceof Integer) {
+                return LLVMNativePointer.create((int) addr.getValue() + incr);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
