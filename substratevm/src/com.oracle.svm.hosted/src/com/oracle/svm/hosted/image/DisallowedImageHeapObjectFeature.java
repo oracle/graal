@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.image;
 
 import java.io.FileDescriptor;
+import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.Feature;
 
@@ -45,17 +46,18 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     }
 
     private static Object replacer(Object original) {
-        String message = "This is not supported. The object was probaby created by a class initializer and is reachable from a static field. " +
+        String message = "The object was probably created by a class initializer and is reachable from a static field. " +
                         "By default, all class initialization is done during native image building." +
-                        "You can manually delay class initialization to runtime by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.DelayClassInitialization, "<class-name>") + "." +
+                        "You can manually delay class initialization to image run time by using the option " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.DelayClassInitialization, "<class-name>") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.";
 
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
             if (asThread.getState() != Thread.State.NEW) {
-                throw new UnsupportedFeatureException("Detected a started Thread in the image heap. " + message);
+                throw new UnsupportedFeatureException("Detected a started Thread in the image heap. " +
+                                "Threads running in the image generator are no longer running at image run time. " + message);
             }
         }
         /* FileDescriptors can not be in the image heap. */
@@ -63,13 +65,23 @@ public class DisallowedImageHeapObjectFeature implements Feature {
             final FileDescriptor asFileDescriptor = (FileDescriptor) original;
             /* Except for a few well-known FileDescriptors. */
             if (!((asFileDescriptor == FileDescriptor.in) || (asFileDescriptor == FileDescriptor.out) || (asFileDescriptor == FileDescriptor.err) || (!asFileDescriptor.valid()))) {
-                throw new UnsupportedFeatureException("Detected a FileDescriptor in the image heap. " + message);
+                throw new UnsupportedFeatureException("Detected a FileDescriptor in the image heap. " +
+                                "File descriptors opened during image generation are no longer open at image run time, and the files might not even be present anymore at image run time. " + message);
+            }
+        }
+        /* Direct ByteBuffers can not be in the image heap. */
+        if (original instanceof ByteBuffer) {
+            final ByteBuffer asByteBuffer = (ByteBuffer) original;
+            if (asByteBuffer.isDirect()) {
+                throw new UnsupportedFeatureException("Detected a direct ByteBuffer in the image heap. " +
+                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time. " + message);
             }
         }
 
         /* ZipFiles can not be in the image heap. */
         if (original instanceof java.util.zip.ZipFile) {
-            throw new UnsupportedFeatureException("Detected a ZipFile object in the image heap. " + message);
+            throw new UnsupportedFeatureException("Detected a ZipFile object in the image heap. " +
+                            "A ZipFile object contains pointers to unmanaged C memory and file descriptors, and these resources are no longer available at image run time. " + message);
         }
 
         return original;
