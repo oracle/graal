@@ -29,7 +29,7 @@ public class EvaluationResult {
         return unknownEcutionTarget;
     }
 
-    public static EvaluationResult createError(Exception e) {
+    public static EvaluationResult createError(Object e) {
         return new EvaluationResult(e, true, true, false);
     }
 

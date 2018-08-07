@@ -574,7 +574,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         try {
             callTarget.call();
         } catch (EvaluationResultException e) {
-            return e.isError() ? EvaluationResult.createError((Exception) e.getResult()) : EvaluationResult.createResult(e.getResult());
+            return e.isError() ? EvaluationResult.createError(e.getResult()) : EvaluationResult.createResult(e.getResult());
         } catch (InlineParsingNotSupportedException e) {
             err.println("Inline parsing not supported for language " + surrogate.getLangId());
             return EvaluationResult.createEvaluationSectionNotReached();
