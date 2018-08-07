@@ -129,8 +129,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64VAStartNodeGe
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorCmpNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorPackNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorSquareRootNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVM80BitFloatLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMDoubleLiteralNode;
@@ -1782,6 +1784,11 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMX86_VectorMaxNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.x86.sse2.min.pd":
                 return LLVMX86_VectorMinNodeGen.create(args[1], args[2], sourceSection);
+            case "@llvm.x86.sse2.cmp.sd":
+                return LLVMX86_VectorCmpNodeGen.create(args[1], args[2], args[3], sourceSection);
+            case "@llvm.x86.sse2.packssdw.128":
+            case "@llvm.x86.sse2.packsswb.128":
+                return LLVMX86_VectorPackNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.x86.sse2.pmovmskb.128":
                 return LLVMX86_Pmovmskb128NodeGen.create(args[1], sourceSection);
 
