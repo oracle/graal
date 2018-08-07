@@ -218,14 +218,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
                      * call `URI.toASCIIString()` all reserved and non-ASCII characters are
                      * percent-quoted.
                      */
-                    Path path;
                     try {
+                        Path path;
                         path = Paths.get(((JarURLConnection) connection).getJarFileURL().toURI());
+                        languageHome = path.getParent().toString();
                     } catch (URISyntaxException e) {
-                        throw new RuntimeException(e);
+                        assert false : "Could not resolve path.";
                     }
-
-                    languageHome = path.getParent().toString();
                 }
                 list.add(new LanguageCache(id, prefix, p, loader, languageHome));
             }
