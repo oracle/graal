@@ -1792,7 +1792,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "mx:JMH_1_18",
+        "mx:JMH_1_21",
         "org.graalvm.compiler.truffle.compiler",
         "org.graalvm.compiler.truffle.pelang",
         "org.graalvm.compiler.truffle.runtime",
@@ -1800,7 +1800,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "checkPackagePrefix" : "false",
-      "annotationProcessors" : ["mx:JMH_1_18"],
+      "annotationProcessors" : ["mx:JMH_1_21"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle,Bench",
       "testProject" : True,
