@@ -142,7 +142,10 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
 
         protected String createGroupName() {
             if (Options.LIRDynMoveProfileMethod.getValue(lirGenRes.getLIR().getOptions())) {
-                return new StringBuilder('"').append(MOVE_OPERATIONS).append(':').append(lirGenRes.getCompilationUnitName()).append('"').toString();
+                return new StringBuilder("\"").append(MOVE_OPERATIONS)
+                                              .append(':')
+                                              .append(lirGenRes.getCompilationUnitName())
+                                              .append('"').toString();
             }
             return MOVE_OPERATIONS;
         }
