@@ -31,6 +31,7 @@ import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.MarkedString;
+import org.eclipse.lsp4j.MarkupContent;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SignatureHelp;
@@ -647,8 +648,8 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
                 completion.setDetail(createCompletionDetail(entry.getKey(), object, langId));
-                String docu = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, object), langId);
-                completion.setDocumentation("in " + scopeEntry.getKey() + (docu != null ? "\n" + docu : ""));
+                completion.setDocumentation(createDocumentation(object, langId, "in " + scopeEntry.getKey()));
+
                 completions.getItems().add(completion);
             }
         }
@@ -703,17 +704,33 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(entry.getKey(), value, langId));
+            completion.setDocumentation(createDocumentation(value, langId, "of meta object: `" + metaObject.toString() + "`"));
+
             completions.getItems().add(completion);
-
-            String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
-
-            if (documentation == null) {
-                documentation = "of meta object: " + metaObject.toString();
-            }
-            completion.setDocumentation(documentation);
         }
 
         return !map.isEmpty();
+    }
+
+    private MarkupContent createDocumentation(Object value, String langId, String scopeInformation) {
+        String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
+
+        if (documentation == null) {
+            documentation = scopeInformation;
+        }
+
+        SourceSection section = findSourceLocation(langId, value);
+        if (section != null) {
+            String code = section.getCharacters().toString();
+            if (!code.isEmpty()) {
+                documentation += "\n\n```\n" + section.getCharacters().toString() + "\n```";
+            }
+        }
+
+        MarkupContent markup = new MarkupContent();
+        markup.setValue(documentation);
+        markup.setKind("markdown");
+        return markup;
     }
 
     private String createCompletionDetail(Object key, Object obj, String langId) {
@@ -975,14 +992,17 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return locations;
     }
 
-    protected SourceSection findSourceLocation(TruffleObject obj) {
-        LanguageInfo lang = env.findLanguage(obj);
-
-        if (lang != null) {
-            return env.findSourceLocation(lang, obj);
+    protected SourceSection findSourceLocation(String langId, Object object) {
+        LanguageInfo languageInfo = env.findLanguage(object);
+        if (languageInfo == null) {
+            languageInfo = env.getLanguages().get(langId);
         }
 
-        return null;
+        SourceSection sourceSection = null;
+        if (languageInfo != null) {
+            sourceSection = env.findSourceLocation(languageInfo, object);
+        }
+        return sourceSection;
     }
 
     public Future<Hover> getHover(URI uri, int line, int column) {
