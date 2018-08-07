@@ -37,7 +37,7 @@ public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
         if (value == null) {
             throw new IllegalArgumentException("Value must not be null");
         }
-        this.enumClass = (Class<T>) value.getDeclaringClass();
+        this.enumClass = value.getDeclaringClass();
     }
 
     /**
