@@ -41,6 +41,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Modifier;
@@ -178,7 +179,15 @@ public class ValueAssert {
                     if (value.isHostObject() && value.asHostObject() instanceof Map) {
                         expectedValues = value.asHostObject();
                     } else {
-                        assertEquals(expectedValues, value.as(STRING_OBJECT_MAP));
+                        Map<String, Object> stringMap = value.as(STRING_OBJECT_MAP);
+                        assertTrue(expectedValues.equals(expectedValues));
+                        assertTrue(stringMap.equals(stringMap));
+                        assertFalse(value.as(STRING_OBJECT_MAP).equals(expectedValues));
+                        assertTrue(value.as(STRING_OBJECT_MAP).equals(value.as(STRING_OBJECT_MAP)));
+                        assertNotEquals(0, value.as(STRING_OBJECT_MAP).hashCode());
+                        assertNotNull(value.as(STRING_OBJECT_MAP).toString());
+
+                        assertContentEquals(expectedValues, value.as(STRING_OBJECT_MAP));
 
                         Set<String> keySet = value.as(Map.class).keySet();
                         assertEquals(value.getMemberKeys(), keySet);
@@ -186,7 +195,7 @@ public class ValueAssert {
                             assertTrue(value.hasMember(key));
                         }
                     }
-                    assertEquals(expectedValues, value.as(Map.class));
+                    assertContentEquals(expectedValues, value.as(Map.class));
                     assertEquals(value.toString(), value.as(Map.class).toString());
 
                     break;
@@ -198,7 +207,18 @@ public class ValueAssert {
         }
 
         assertUnsupported(value, expectedTypes);
+    }
 
+    private static void assertContentEquals(Map<? extends Object, ? extends Object> map1, Map<? extends Object, ? extends Object> map2) {
+        assertEquals(convertMap(map1), convertMap(map2));
+    }
+
+    private static Map<? extends Object, ? extends Object> convertMap(Map<? extends Object, ? extends Object> map) {
+        if (map instanceof HashMap) {
+            return map;
+        } else {
+            return new HashMap<>(map);
+        }
     }
 
     static void assertUnsupported(Value value, Trait... supported) {
@@ -410,6 +430,14 @@ public class ValueAssert {
         List<Object> objectList1 = value.as(OBJECT_LIST);
         List<Object> objectList2 = Arrays.asList(value.as(Object[].class));
 
+        if (!value.isHostObject() || !(value.asHostObject() instanceof List<?>)) {
+            assertFalse(objectList1.equals(objectList2));
+        }
+        assertTrue(objectList1.equals(objectList1));
+        assertTrue(value.as(OBJECT_LIST).equals(value.as(OBJECT_LIST)));
+        assertNotEquals(0, objectList1.hashCode());
+        assertNotNull(objectList1.toString());
+
         assertEquals(receivedObjects, objectList1);
         assertEquals(receivedObjects, objectList2);
 
@@ -584,6 +612,12 @@ public class ValueAssert {
                 assertFails(() -> value.as(EmptyInterface.class), ClassCastException.class);
             }
         }
+        Function<Object, Object> f = (Function<Object, Object>) value.as(Function.class);
+        assertEquals(f, f);
+        assertEquals(value.as(Function.class), value.as(Function.class));
+        assertNotEquals(value.as(Function.class), (Function<Object, Object>) (e) -> e);
+        assertNotNull(value.as(Function.class).toString());
+        assertNotEquals(0, value.as(Function.class).hashCode());
 
         if (value.hasMembers() && !value.hasMember("foobarbaz")) {
             assertFails(() -> value.as(NonFunctionalInterface.class).foobarbaz(), UnsupportedOperationException.class);

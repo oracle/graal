@@ -114,6 +114,39 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
         }
     }
 
+    @Override
+    public int hashCode() {
+        try {
+            return guestObject.hashCode();
+        } catch (Throwable e) {
+            assert rethrow(e);
+            // not allowed to propagate exceptions
+            return super.hashCode();
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        try {
+            if (o == this) {
+                return true;
+            } else if (o instanceof TruffleMap) {
+                return languageContext == ((TruffleMap<?, ?>) o).languageContext && guestObject.equals(((TruffleMap<?, ?>) o).guestObject);
+            } else {
+                return false;
+            }
+        } catch (Throwable e) {
+            assert rethrow(e);
+            // not allowed to propagate exceptions
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T extends Throwable> boolean rethrow(Throwable e) throws T {
+        throw (T) e;
+    }
+
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
 
         private final List<?> props;
@@ -295,6 +328,12 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
         public V setValue(V value) {
             return put(key, value);
         }
+
+        @Override
+        public String toString() {
+            return "Entry[key=" + key + ", value=" + get(key) + "]";
+        }
+
     }
 
     static final class Cache {

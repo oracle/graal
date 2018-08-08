@@ -202,7 +202,6 @@ public class ValueAPITest {
             } else {
                 assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT);
             }
-
         }
     }
 
