@@ -49,7 +49,7 @@ public final class WeakCounterNode extends DynamicCounterNode implements Simplif
     @Input ValueNode checkedValue;
 
     public WeakCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
-        super(TYPE, name, group, increment, addContext);
+        super(TYPE, group, name, increment, addContext);
         this.checkedValue = checkedValue;
     }
 
