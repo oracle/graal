@@ -36,6 +36,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class ToI64 extends ForeignToLLVM {
 
@@ -89,6 +90,11 @@ public abstract class ToI64 extends ForeignToLLVM {
     @Specialization(guards = "notLLVM(obj)")
     protected Object fromTruffleObject(TruffleObject obj) {
         return recursiveConvert(fromForeign(obj));
+    }
+
+    @Specialization
+    protected Object fromPointer(LLVMPointer boxed) {
+        return fromTruffleObject(boxed);
     }
 
     @Specialization
