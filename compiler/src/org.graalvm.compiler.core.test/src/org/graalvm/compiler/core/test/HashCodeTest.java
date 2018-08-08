@@ -36,7 +36,9 @@ import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class HashCodeTest extends GraalCompilerTest {
@@ -141,6 +143,9 @@ public class HashCodeTest extends GraalCompilerTest {
 
     @Test
     public void test08() {
+        // This test requires profiling information which does not work reliable across platforms
+        // when running with -Xcomp
+        Assume.assumeFalse(SubprocessUtil.getVMCommandLine().contains("-Xcomp"));
         initialize(Appendable.class);
         checkForGuardedIntrinsicPattern("hashCodeInterface");
 
