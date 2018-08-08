@@ -37,9 +37,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-abstract class ToI16 extends ForeignToLLVM {
+public abstract class ToI16 extends ForeignToLLVM {
 
-    @Child private ToI16 toI16;
+    @Child private ForeignToLLVM toI16;
 
     @Specialization
     protected short fromInt(int value) {
@@ -99,7 +99,7 @@ abstract class ToI16 extends ForeignToLLVM {
     private short recursiveConvert(Object o) {
         if (toI16 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toI16 = insert(ToI16NodeGen.create());
+            toI16 = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16));
         }
         return (short) toI16.executeWithTarget(o);
     }

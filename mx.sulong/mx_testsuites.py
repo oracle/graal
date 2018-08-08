@@ -308,7 +308,7 @@ class SulongTestSuite(mx.NativeProject):
                     absPath = os.path.join(path, f)
                     relPath = os.path.relpath(absPath, root)
                     test, ext = os.path.splitext(relPath)
-                    if ext in ['.c', '.cpp']:
+                    if ext in ['.c', '.cpp', '.ll']:
                         self._tests.append(test)
         return self._tests
 

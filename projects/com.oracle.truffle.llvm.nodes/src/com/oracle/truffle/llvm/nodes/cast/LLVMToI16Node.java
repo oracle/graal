@@ -30,10 +30,11 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -58,19 +59,18 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         return (short) from.asNative();
     }
 
-    @Child private Node isNull = Message.IS_NULL.createNode();
-    @Child private Node isBoxed = Message.IS_BOXED.createNode();
-    @Child private Node unbox = Message.UNBOX.createNode();
-    @Child private ForeignToLLVM toShort = ForeignToLLVM.create(ForeignToLLVMType.I16);
-
     @Specialization
-    protected short doForeign(LLVMManagedPointer from) {
+    protected short doForeign(LLVMManagedPointer from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
+                    @Cached("createIsNull()") Node isNull,
+                    @Cached("createIsBoxed()") Node isBoxed,
+                    @Cached("createUnbox()") Node unbox) {
         TruffleObject base = from.getObject();
         if (ForeignAccess.sendIsNull(isNull, base)) {
             return (short) from.getOffset();
         } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
             try {
-                short ptr = (short) toShort.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
+                short ptr = (short) toLLVM.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
                 return (short) (ptr + from.getOffset());
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -82,8 +82,14 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected short doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return (short) toShort.executeWithTarget(from.getValue());
+    protected short doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
+        return (short) toLLVM.executeWithTarget(from.getValue());
+    }
+
+    @TruffleBoundary
+    protected ForeignToLLVM createForeignToLLVM() {
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16);
     }
 
     public abstract static class LLVMSignedCastToI16Node extends LLVMToI16Node {

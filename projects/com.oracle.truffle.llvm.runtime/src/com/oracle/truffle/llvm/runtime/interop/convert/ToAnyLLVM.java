@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-abstract class ToAnyLLVM extends ForeignToLLVM {
+public abstract class ToAnyLLVM extends ForeignToLLVM {
 
     @Specialization
     protected int fromInt(int value) {

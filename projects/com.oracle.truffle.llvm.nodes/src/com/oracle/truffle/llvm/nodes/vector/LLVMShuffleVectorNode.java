@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
@@ -54,6 +55,21 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
     protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
 
     protected abstract int getVectorLength();
+
+    public abstract static class LLVMShuffleI1VectorNode extends LLVMShuffleVectorNode {
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector leftVector, LLVMI1Vector rightVector, LLVMI32Vector maskVector) {
+            assert maskVector.getLength() == getVectorLength();
+            boolean[] newValues = new boolean[getVectorLength()];
+            int leftVectorLength = leftVector.getLength();
+            for (int i = 0; i < getVectorLength(); i++) {
+                int element = maskVector.getValue(i);
+                newValues[i] = conditionProfile.profile(element < leftVectorLength) ? leftVector.getValue(element) : rightVector.getValue(element - leftVectorLength);
+            }
+            return LLVMI1Vector.create(newValues);
+        }
+    }
 
     public abstract static class LLVMShuffleI8VectorNode extends LLVMShuffleVectorNode {
         @Specialization

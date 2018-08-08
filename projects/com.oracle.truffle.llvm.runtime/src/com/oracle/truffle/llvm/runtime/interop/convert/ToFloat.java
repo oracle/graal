@@ -37,9 +37,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-abstract class ToFloat extends ForeignToLLVM {
+public abstract class ToFloat extends ForeignToLLVM {
 
-    @Child private ToFloat toFloat;
+    @Child private ForeignToLLVM toFloat;
 
     @Specialization
     protected float fromInt(int value) {
@@ -99,7 +99,7 @@ abstract class ToFloat extends ForeignToLLVM {
     private float recursiveConvert(Object o) {
         if (toFloat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toFloat = insert(ToFloatNodeGen.create());
+            toFloat = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT));
         }
         return (float) toFloat.executeWithTarget(o);
     }

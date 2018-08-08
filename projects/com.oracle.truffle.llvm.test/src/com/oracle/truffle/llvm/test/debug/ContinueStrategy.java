@@ -53,4 +53,9 @@ enum ContinueStrategy {
     void prepareInEvent(SuspendedEvent event, DebugStackFrame frame) {
         preparator.accept(event, frame);
     }
+
+    @Override
+    public String toString() {
+        return name().toUpperCase();
+    }
 }

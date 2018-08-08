@@ -44,7 +44,7 @@ public abstract class LLVMIntrinsic extends LLVMExpressionNode {
     }
 
     protected ForeignToLLVM createToByteNode() {
-        return ForeignToLLVM.create(ForeignToLLVMType.I8);
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8);
     }
 
     protected Node createForeignReadNode() {

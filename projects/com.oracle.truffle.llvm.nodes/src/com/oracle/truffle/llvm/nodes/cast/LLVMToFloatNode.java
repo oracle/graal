@@ -30,10 +30,11 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -53,25 +54,24 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
-    @Child private ForeignToLLVM toFloat = ForeignToLLVM.create(ForeignToLLVMType.FLOAT);
-
     @Specialization
-    protected float doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return (float) toFloat.executeWithTarget(from.getValue());
+    protected float doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
+        return (float) toLLVM.executeWithTarget(from.getValue());
     }
 
-    @Child private Node isNull = Message.IS_NULL.createNode();
-    @Child private Node isBoxed = Message.IS_BOXED.createNode();
-    @Child private Node unbox = Message.UNBOX.createNode();
-
     @Specialization
-    protected float doManaged(LLVMManagedPointer from) {
+    protected float doManaged(LLVMManagedPointer from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
+                    @Cached("createIsNull()") Node isNull,
+                    @Cached("createIsBoxed()") Node isBoxed,
+                    @Cached("createUnbox()") Node unbox) {
         TruffleObject base = from.getObject();
         if (ForeignAccess.sendIsNull(isNull, base)) {
             return from.getOffset();
         } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
             try {
-                float ptr = (float) toFloat.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
+                float ptr = (float) toLLVM.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
                 return ptr + from.getOffset();
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -80,6 +80,11 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         }
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Not convertable");
+    }
+
+    @TruffleBoundary
+    protected ForeignToLLVM createForeignToLLVM() {
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT);
     }
 
     public abstract static class LLVMSignedCastToFloatNode extends LLVMToFloatNode {

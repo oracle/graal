@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -52,8 +53,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
 
     @Child LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
-    @Child ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
     @Child Node read = Message.READ.createNode();
+    @Child ForeignToLLVM toLLVM;
 
     @Specialization(rewriteOn = UnknownIdentifierException.class)
     protected Object doImportExisting(Object name,
@@ -63,7 +64,7 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
         LLVMContext ctx = ctxRef.get();
         try {
             Object ret = ForeignAccess.sendRead(read, (TruffleObject) ctx.getEnv().getPolyglotBindings(), symbolName);
-            return toLLVM.executeWithTarget(ret);
+            return getToLLVM().executeWithTarget(ret);
         } catch (UnsupportedMessageException ex) {
             throw ex.raise();
         }
@@ -80,13 +81,21 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
         if (KeyInfo.isReadable(info)) {
             try {
                 Object ret = ForeignAccess.sendRead(read, bindings, symbolName);
-                return toLLVM.executeWithTarget(ret);
+                return getToLLVM().executeWithTarget(ret);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
         } else {
             return LLVMNativePointer.createNull();
         }
+    }
+
+    private ForeignToLLVM getToLLVM() {
+        if (toLLVM == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toLLVM = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER));
+        }
+        return toLLVM;
     }
 
     protected Node createKeyInfo() {

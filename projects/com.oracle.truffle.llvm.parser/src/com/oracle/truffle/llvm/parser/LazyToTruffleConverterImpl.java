@@ -87,7 +87,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         CompilerAsserts.neverPartOfCompilation();
 
         // parse the function block
-        parser.parse(diProcessor, source, runtime.getContext());
+        parser.parse(diProcessor, source, runtime);
 
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);

@@ -29,17 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "ptr", type = LLVMExpressionNode.class)
 @NodeChild(value = "typeid", type = LLVMExpressionNode.class)
@@ -76,5 +79,11 @@ public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
                     @Cached("create()") LLVMAsForeignNode asForeign) {
         TruffleObject foreign = asForeign.execute(object);
         return LLVMManagedPointer.create(LLVMTypedForeignObject.create(foreign, type));
+    }
+
+    @Specialization
+    LLVMManagedPointer doError(@SuppressWarnings("unused") LLVMPointer object, LLVMInteropType.Value type) {
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMPolyglotException(this, "polyglot_as_typed can not be used with primitive type (%s).", type.getKind());
     }
 }

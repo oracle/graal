@@ -158,7 +158,6 @@ import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -593,7 +592,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.POINTER), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         };
         add("@polyglot_get_member", polyglotGetMember);
@@ -603,42 +602,42 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_l", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_c", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_f", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_d", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_b", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
 
@@ -646,7 +645,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.POINTER), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         };
         add("@polyglot_get_array_element", polyglotGetArrayElement);
@@ -656,42 +655,42 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_idx_l", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_idx_c", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_idx_f", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_idx_d", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
         add("@truffle_read_idx_b", new LLVMIntrinsicFactory(true, true) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
 
@@ -715,7 +714,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_i8", polyglotAsI8);
@@ -725,7 +724,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I16), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_i16", polyglotAsI16);
@@ -734,7 +733,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_i32", polyglotAsI32);
@@ -744,7 +743,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_i64", polyglotAsI64);
@@ -754,7 +753,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_float", polyglotAsFloat);
@@ -764,7 +763,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_double", polyglotAsDouble);
@@ -774,7 +773,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1));
+                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1));
             }
         };
         add("@polyglot_as_boolean", polyglotAsBoolean);
@@ -794,7 +793,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.POINTER), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         };
@@ -805,7 +805,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I32), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         });
@@ -814,7 +815,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I64), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         });
@@ -823,7 +825,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I8), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         });
@@ -832,7 +835,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.FLOAT), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         });
@@ -841,7 +845,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.DOUBLE), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         });
@@ -850,7 +855,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I1), argumentsArray(3, type.getArgumentTypes().length - 3), LLVMArgNodeGen.create(1),
+                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), argumentsArray(3, type.getArgumentTypes().length - 3),
+                                LLVMArgNodeGen.create(1),
                                 LLVMArgNodeGen.create(2));
             }
         });
@@ -861,7 +867,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.POINTER), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 
@@ -869,7 +876,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I32), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 
@@ -877,7 +885,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I64), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 
@@ -885,7 +894,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I8), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 
@@ -893,7 +903,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.FLOAT), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 
@@ -901,7 +912,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.DOUBLE), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 
@@ -909,7 +921,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I1), argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), argumentsArray(2, type.getArgumentTypes().length - 2),
+                                LLVMArgNodeGen.create(1));
             }
         });
 

@@ -149,12 +149,12 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     protected static AssertionError fail(String testName, AssertionError error) {
         failingTests.add(Paths.get(testName));
-        throw error;
+        return error;
     }
 
     protected static RuntimeException fail(String testName, Exception e) {
         failingTests.add(Paths.get(testName));
-        throw new RuntimeException(e);
+        return new RuntimeException(e);
     }
 
     protected static void pass(String testName) {

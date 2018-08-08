@@ -55,11 +55,12 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
     @Child ForeignToLLVM foreignToLLVM;
 
     private final int elementAccessSize;
+    private final ForeignToLLVMType llvmType;
 
-    protected LLVMInteropReadNode(ForeignToLLVMType type) {
+    protected LLVMInteropReadNode(ForeignToLLVMType llvmType) {
         this.read = Message.READ.createNode();
-        this.foreignToLLVM = ForeignToLLVM.create(type);
-        this.elementAccessSize = type.getSizeInBytes();
+        this.elementAccessSize = llvmType.getSizeInBytes();
+        this.llvmType = llvmType;
     }
 
     public abstract Object execute(LLVMInteropType.Structured type, TruffleObject foreign, long offset);
@@ -89,6 +90,14 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Can not read member '%s'.", location.identifier);
         }
-        return foreignToLLVM.executeWithType(ret, location.type);
+        return getForeignToLLVM().executeWithType(ret, location.type);
+    }
+
+    private ForeignToLLVM getForeignToLLVM() {
+        if (foreignToLLVM == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            foreignToLLVM = insert(getNodeFactory().createForeignToLLVM(llvmType));
+        }
+        return foreignToLLVM;
     }
 }

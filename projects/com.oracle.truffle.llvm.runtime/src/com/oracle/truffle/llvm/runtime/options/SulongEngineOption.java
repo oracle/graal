@@ -94,6 +94,14 @@ public final class SulongEngineOption {
     public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
     public static final String LAZY_PARSING_INFO = "Enable lazy parsing of LLVM bitcode files.";
 
+    public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
+    public static final String LL_DEBUG_NAME = "llvm.llDebug";
+    public static final String LL_DEBUG_INFO = "Enable IR-level debugging of LLVM bitcode files.";
+
+    public static final OptionKey<String> LL_DEBUG_SOURCES = new OptionKey<>("");
+    public static final String LL_DEBUG_SOURCES_NAME = "llvm.llDebug.sources";
+    public static final String LL_DEBUG_SOURCES_INFO = "Provide the locations of *.ll files for debugging. The expected format is <bc-path>=<ll-path>{:<bc-path>=<ll-path>}.";
+
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
     public static final String STACKTRACE_ON_ABORT_NAME = "llvm.printStackTraceOnAbort";
     public static final String STACKTRACE_ON_ABORT_INFO = "Prints a C stack trace when abort() is called.";
@@ -111,6 +119,8 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).help(PARSE_ONLY_INFO).category(OptionCategory.EXPERT).build());
         options.add(OptionDescriptor.newBuilder(ENABLE_LVI, ENABLE_LVI_NAME).help(ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
         options.add(OptionDescriptor.newBuilder(LAZY_PARSING, LAZY_PARSING_NAME).help(LAZY_PARSING_INFO).category(OptionCategory.EXPERT).build());
+        options.add(OptionDescriptor.newBuilder(LL_DEBUG, LL_DEBUG_NAME).help(LL_DEBUG_INFO).category(OptionCategory.DEBUG).build());
+        options.add(OptionDescriptor.newBuilder(LL_DEBUG_SOURCES, LL_DEBUG_SOURCES_NAME).help(LL_DEBUG_SOURCES_INFO).category(OptionCategory.DEBUG).build());
         options.add(OptionDescriptor.newBuilder(STACKTRACE_ON_ABORT, STACKTRACE_ON_ABORT_NAME).help(STACKTRACE_ON_ABORT_INFO).category(OptionCategory.DEBUG).build());
         return options;
     }

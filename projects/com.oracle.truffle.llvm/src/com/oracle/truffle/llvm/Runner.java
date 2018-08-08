@@ -629,7 +629,7 @@ public final class Runner {
 
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
                     ExternalLibrary library, ByteBuffer bytes) {
-        ModelModule module = LLVMScanner.parse(bytes, context);
+        ModelModule module = LLVMScanner.parse(bytes, source, context);
         if (module != null) {
             library.setIsNative(false);
             context.addLibraryPaths(module.getLibraryPaths());

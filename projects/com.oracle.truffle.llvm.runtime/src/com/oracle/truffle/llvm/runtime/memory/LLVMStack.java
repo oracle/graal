@@ -102,6 +102,12 @@ public final class LLVMStack {
         public StackPointer newFrame() {
             return new StackPointer(stackPointer, uniquesRegionPointer);
         }
+
+        @TruffleBoundary
+        @Override
+        public String toString() {
+            return String.format("StackPointer 0x%x (Bounds: 0x%x - 0x%x%s)", stackPointer, lowerBounds, upperBounds, isAllocated ? "" : " not allocated");
+        }
     }
 
     /**

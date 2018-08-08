@@ -46,6 +46,10 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
 
     protected abstract Object getElementForDebugger(String key);
 
+    public Object getMetaObject() {
+        return null;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return LLVMDebuggerValueMessageResolutionForeign.ACCESS;
