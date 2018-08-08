@@ -45,8 +45,6 @@ import java.util.zip.ZipEntry;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.MissingMIMETypeException;
-import com.oracle.truffle.api.source.MissingNameException;
 import com.oracle.truffle.api.source.Source;
 
 /*
@@ -57,7 +55,7 @@ import com.oracle.truffle.api.source.Source;
 public class SourceBuilderLegacyTest {
     @Test
     public void assignMimeTypeAndIdentity() {
-        Source.Builder<RuntimeException, MissingMIMETypeException, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");
+        Source.Builder<RuntimeException, com.oracle.truffle.api.source.MissingMIMETypeException, RuntimeException> builder = Source.newBuilder("// a comment\n").name("Empty comment");
         Source s1 = builder.mimeType("content/unknown").build();
         assertEquals("No mime type assigned", "content/unknown", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -71,7 +69,7 @@ public class SourceBuilderLegacyTest {
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";
-        Source.Builder<IOException, MissingMIMETypeException, RuntimeException> builder = Source.newBuilder(new StringReader(text)).name("test.txt");
+        Source.Builder<IOException, com.oracle.truffle.api.source.MissingMIMETypeException, RuntimeException> builder = Source.newBuilder(new StringReader(text)).name("test.txt");
         Source s1 = builder.name("Hello").mimeType("text/plain").build();
         assertEquals("Base type assigned", "text/plain", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -458,7 +456,7 @@ public class SourceBuilderLegacyTest {
     public void throwsErrorIfNameIsNull() {
         try {
             Source.newBuilder("Hi").mimeType("content/unknown").build();
-        } catch (MissingNameException ex) {
+        } catch (com.oracle.truffle.api.source.MissingNameException ex) {
             // OK
             return;
         }
@@ -469,7 +467,7 @@ public class SourceBuilderLegacyTest {
     public void throwsErrorIfMIMETypeIsNull() {
         try {
             Source.newBuilder("Hi").name("unknown.txt").build();
-        } catch (MissingMIMETypeException ex) {
+        } catch (com.oracle.truffle.api.source.MissingMIMETypeException ex) {
             // OK
             return;
         }
