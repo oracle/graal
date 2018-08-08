@@ -105,3 +105,11 @@ the path of both the `*.ll` and the `*.bc` file which it describes. While the op
 itself can only be specified once, you can pass it an arbitrary number of path mappings.
 
     -Dpolyglot.llvm.llDebug.Sources=<path to *.bc file>=<path to *.ll file>[:<path to *.bc file>=<path to *.ll file>]*
+
+### I am calling Sulong from Java. Can I debug both my Java code and the program running on Sulong at the same time?
+
+You cannot yet debug Java code using the Chrome inspector. However, you can launch the
+Chrome inspector from within your Java code. Please refer to the
+[documentation of the GraalVM Tools](http://www.graalvm.org/docs/reference-manual/tools/)
+for details on how to do that. This enables you to debug your Java code using your Java
+debugger of choice while debugging the code executed by Sulong in the Chrome inspector.
