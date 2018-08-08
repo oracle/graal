@@ -3,7 +3,10 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 1.0.0 RC6
+
 * Added `TruffleFile.normalize` to allow explicit normalization of `TruffleFile` paths. `TruffleFile` is no longer normalized by default.
+* Added `Message#EXECUTE`, `Message#INVOKE`, `Message#NEW`.
+* Deprecated `Message#createExecute(int)`, `Message#createInvoke(int)`, `Message#createNew(int)` as the arity argument is no longer needed. Jackpot rules available (run `mx jackpot --apply`).
 
 ## Version 1.0.0 RC5
 
