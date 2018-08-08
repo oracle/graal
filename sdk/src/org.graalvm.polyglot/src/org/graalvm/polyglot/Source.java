@@ -545,7 +545,7 @@ public final class Source {
     }
 
     /**
-     * Returns the is of the first language that supports evaluating the probed mime type of a given
+     * Returns the id of the first language that supports evaluating the probed mime type of a given
      * {@link File file}. This method is a shortcut for:
      *
      * <code>
