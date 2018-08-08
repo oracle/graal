@@ -130,7 +130,7 @@ public interface ByteSequence {
      * @since 1.0
      */
     default IntStream bytes() {
-        class CharIterator implements PrimitiveIterator.OfInt {
+        class ByteIterator implements PrimitiveIterator.OfInt {
             int cur = 0;
 
             public boolean hasNext() {
@@ -153,7 +153,7 @@ public interface ByteSequence {
             }
         }
         return StreamSupport.intStream(() -> Spliterators.spliterator(
-                        new CharIterator(),
+                        new ByteIterator(),
                         length(),
                         Spliterator.ORDERED),
                         Spliterator.SUBSIZED | Spliterator.SIZED | Spliterator.ORDERED,

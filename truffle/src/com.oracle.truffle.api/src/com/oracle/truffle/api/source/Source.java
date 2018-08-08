@@ -255,8 +255,8 @@ public abstract class Source {
      * @param length the number of characters in the sub-range
      * @return a new instance representing a sub-range of another Source
      * @throws IllegalArgumentException if the specified sub-range is not contained in the base
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() character}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 0.15
      */
     public Source subSource(int baseCharIndex, int length) {
@@ -270,8 +270,8 @@ public abstract class Source {
     /**
      * Returns all characters of the source.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 0.28
      */
     public abstract CharSequence getCharacters();
@@ -312,7 +312,7 @@ public abstract class Source {
     /**
      * Returns the bytes of the source if it is a {@link #hasBytes() byte based source}.
      *
-     * @throws UnsupportedOperationException if this source does not contain any {@link #hasBytes()
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasBytes()
      *             bytes}.
      * @see #hasBytes()
      * @since 1.0
@@ -408,8 +408,8 @@ public abstract class Source {
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 0.28
      */
     public final CharSequence getCharacters(int lineNumber) {
@@ -423,8 +423,8 @@ public abstract class Source {
      * source without a terminating newline count as a line. Causes the contents of this source to
      * be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 0.8 or earlier
      */
     public final int getLineCount() {
@@ -435,8 +435,8 @@ public abstract class Source {
      * Given a 0-based character offset, return the 1-based number of the line that includes the
      * position. Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if the offset is outside the text contents
      * @since 0.8 or earlier
      */
@@ -448,8 +448,8 @@ public abstract class Source {
      * Given a 0-based character offset, return the 1-based number of the column at the position.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if the offset is outside the text contents
      * @since 0.8 or earlier
      */
@@ -460,8 +460,8 @@ public abstract class Source {
     /**
      * Given a 1-based line number, return the 0-based offset of the first character in the line.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if there is no such line in the text
      * @since 0.8 or earlier
      */
@@ -473,8 +473,8 @@ public abstract class Source {
      * The number of characters (not counting a possible terminating newline) in a (1-based)
      * numbered line. Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if there is no such line in the text
      * @since 0.8 or earlier
      */
@@ -503,8 +503,8 @@ public abstract class Source {
      *
      * @param lineNumber 1-based line number of the first character in the section
      * @return newly created object representing the specified line
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if the given lineNumber does not exist the source
      * @since 0.17
      */
@@ -532,8 +532,8 @@ public abstract class Source {
      * @param charIndex 0-based position of the first character in the section
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if charIndex < 0 or length < 0; in case assertions are
      *             enabled also if the given bounds are out of the source bounds.
      * @since 0.17
@@ -562,8 +562,8 @@ public abstract class Source {
      * @param startColumn 1-based column number of the first character in the section
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if arguments are outside the text of the source bounds
      * @see #createSection(int, int)
      * @since 0.17

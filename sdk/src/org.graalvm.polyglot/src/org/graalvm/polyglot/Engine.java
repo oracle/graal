@@ -811,20 +811,17 @@ public final class Engine implements AutoCloseable {
 
             @Override
             public ByteSequence getBytes(Object impl) {
-                // TODO Auto-generated method stub
-                return null;
+                throw new UnsupportedOperationException();
             }
 
             @Override
             public boolean hasCharacters(Object impl) {
-                // TODO Auto-generated method stub
-                return false;
+                throw new UnsupportedOperationException();
             }
 
             @Override
             public boolean hasBytes(Object impl) {
-                // TODO Auto-generated method stub
-                return false;
+                throw new UnsupportedOperationException();
             }
 
         }

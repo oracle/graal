@@ -18,7 +18,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated `TruffleLanguage.Env.newSourceBuilder(String, TruffleFile)`. Use  `Source.newBuilder(String, TruffleFile)` instead.
 * Added `Source.findLanguage` and `Source.findMimeType` to resolve languages and MIME types.
 * The method `Source.getMimeType()` might now return `null`. Source builders now support `null` values for `mimeType(String)`.
-* A `null` Source names will no longer lead to an error but will be translated to `Unnamed`. 
+* A `null` source name will no longer lead to an error but will be translated to `Unnamed`. 
 
 ## Version 1.0.0 RC5
 

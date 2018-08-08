@@ -7,7 +7,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Added support for byte based sources:
 	* Byte based sources may be constructed using a `ByteSequence` or from a `File` or `URL`. Whether sources are interpreted as character or byte based sources depends on the specified language.
 	* `Source.hasBytes()` and `Source.hasCharacters()` may be used to find out whether a source is character or byte based.
-	* Character based sources throw an `UnsupportedOperationException` if methods that access characters, line numbers or column numbers are used.
+	* Byte based sources throw an `UnsupportedOperationException` if methods that access characters, line numbers or column numbers.
 	* Added `Source.getBytes()` to access the contents of byte based sources. 
 * Added support for MIME types to sources: 
 	* MIME types can now be assigned using `Source.Builder.mimeType(String)` to sources in addition to the target language.

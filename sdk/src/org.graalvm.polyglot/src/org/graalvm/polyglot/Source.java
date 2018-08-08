@@ -230,8 +230,8 @@ public final class Source {
      * Returns a new reader that reads from the {@link #getCharacters() characters} provided by this
      * source.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() character}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 1.0
      */
     public Reader getReader() {
@@ -261,8 +261,8 @@ public final class Source {
     /**
      * Returns all characters of the source.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 1.0
      */
     public CharSequence getCharacters() {
@@ -297,8 +297,8 @@ public final class Source {
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @see #hasCharacters()
      * @since 1.0
      */
@@ -309,7 +309,7 @@ public final class Source {
     /**
      * Returns the bytes of the source if it is a {@link #hasBytes() byte based source}.
      *
-     * @throws UnsupportedOperationException if this source does not contain any {@link #hasBytes()
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasBytes()
      *             bytes}.
      * @see #hasBytes()
      * @since 1.0
@@ -360,7 +360,8 @@ public final class Source {
      * the end of the source without a terminating newline count as a line. Causes the contents of
      * this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @since 1.0
      */
     public int getLineCount() {
@@ -371,8 +372,8 @@ public final class Source {
      * Given a 0-based character offset, return the 1-based number of the line that includes the
      * position. Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if the offset is outside the text contents
      * @since 1.0
      */
@@ -384,8 +385,8 @@ public final class Source {
      * Given a 0-based character offset, return the 1-based number of the column at the position.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if the offset is outside the text contents
      * @since 1.0
      */
@@ -396,8 +397,8 @@ public final class Source {
     /**
      * Given a 1-based line number, return the 0-based offset of the first character in the line.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if there is no such line in the text
      * @since 1.0
      */
@@ -409,8 +410,8 @@ public final class Source {
      * The number of characters (not counting a possible terminating newline) in a (1-based)
      * numbered line. Causes the contents of this source to be loaded if they are loaded lazily.
      *
-     * @throws UnsupportedOperationException if this source does not contain any
-     *             {@link #hasCharacters() characters}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     *             characters}.
      * @throws IllegalArgumentException if there is no such line in the text
      * @since 1.0
      */
