@@ -60,7 +60,7 @@ public class HeapPolicyOptions {
     public static final HostedOptionKey<Boolean> ZapConsumedHeapChunks = new HostedOptionKey<>(false);
 
     /* Should heap chunks be traced during collections? */
-    @Option(help = "Trace heap chunks during collections") //
+    @Option(help = "Trace heap chunks during collections, if +VerboseGC and +PrintHeapShape.") //
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
     @Option(help = "Policy used when users request garbage collection.")//
