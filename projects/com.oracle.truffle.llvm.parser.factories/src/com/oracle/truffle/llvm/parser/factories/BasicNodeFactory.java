@@ -128,6 +128,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64VAStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_MovmskpdNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorCmpNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxNodeGen;
@@ -1791,7 +1792,8 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMX86_VectorPackNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.x86.sse2.pmovmskb.128":
                 return LLVMX86_Pmovmskb128NodeGen.create(args[1], sourceSection);
-
+            case "@llvm.x86.sse2.movmsk.pd":
+                return LLVMX86_MovmskpdNodeGen.create(args[1], sourceSection);
             default:
                 throw new IllegalStateException("Missing LLVM builtin: " + declaration.getName());
         }
