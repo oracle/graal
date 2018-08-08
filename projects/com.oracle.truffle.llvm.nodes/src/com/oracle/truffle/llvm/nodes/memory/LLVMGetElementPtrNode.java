@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -47,29 +46,24 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeField(type = long.class, name = "typeWidth")
 public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 
+    @Child private LLVMIncrementPointerNode incrementNode = LLVMIncrementPointerNodeGen.create();
+
     public abstract long getTypeWidth();
 
-    protected LLVMIncrementPointerNode getIncrementPointerNode() {
-        return LLVMIncrementPointerNodeGen.create();
-    }
-
     @Specialization
-    protected Object longIncrement(Object addr, long val,
-                    @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
+    protected Object longIncrement(Object addr, long val) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(addr, incr);
     }
 
     @Specialization
-    protected Object longIncrement(Object addr, LLVMNativePointer val,
-                    @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
+    protected Object longIncrement(Object addr, LLVMNativePointer val) {
         long incr = getTypeWidth() * val.asNative();
         return incrementNode.executeWithTarget(addr, incr);
     }
 
     @Specialization
-    protected Object intIncrement(Object addr, int val,
-                    @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
+    protected Object intIncrement(Object addr, int val) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(addr, incr);
     }
