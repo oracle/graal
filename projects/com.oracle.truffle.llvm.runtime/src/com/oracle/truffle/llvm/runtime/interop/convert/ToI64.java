@@ -87,14 +87,14 @@ public abstract class ToI64 extends ForeignToLLVM {
         return recursiveConvert(boxed.getValue());
     }
 
-    @Specialization
-    protected Object fromForeignPrimitive(LLVMPointer boxed) {
-        return fromTruffleObject(boxed);
-    }
-
     @Specialization(guards = "notLLVM(obj)")
     protected Object fromTruffleObject(TruffleObject obj) {
         return recursiveConvert(fromForeign(obj));
+    }
+
+    @Specialization
+    protected Object fromPointer(LLVMPointer boxed) {
+        return fromTruffleObject(boxed);
     }
 
     @Specialization
