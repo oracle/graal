@@ -119,7 +119,7 @@ public abstract class LLVMX86_VectorMathNode {
     public abstract static class LLVMX86_VectorCmpNode extends LLVMBuiltin { // mm_cmp_sd
         private static double mask = Double.longBitsToDouble(0xffffffffffffffffL);
 
-        protected static enum Comparator {
+        protected enum Comparator {
             _CMP_EQ_OQ(0x00, cmp -> cmp == 0, true, false),
             _CMP_LT_OS(0x01, cmp -> cmp < 0, true, true),
             _CMP_LE_OS(0x02, cmp -> cmp <= 0, true, true),
