@@ -90,12 +90,11 @@ public interface ByteSequence {
         if (l < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(l));
         }
-        final int realStartIndex = startIndex + startIndex;
-        if (realStartIndex < 0) {
+        if (startIndex < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(startIndex));
         }
-        if (realStartIndex + l >= length()) {
-            throw new IndexOutOfBoundsException(String.valueOf(realStartIndex + l));
+        if (startIndex + l > length()) {
+            throw new IndexOutOfBoundsException(String.valueOf(startIndex + l));
         }
         return new ByteSequence() {
             public int length() {
@@ -103,7 +102,7 @@ public interface ByteSequence {
             }
 
             public byte byteAt(int index) {
-                return ByteSequence.this.byteAt(realStartIndex + index);
+                return ByteSequence.this.byteAt(startIndex + index);
             }
         };
     }
