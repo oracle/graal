@@ -217,6 +217,30 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
+    public void testListNonNormalized() {
+        final Context ctx = cfg.getContext();
+        final Path path = cfg.getPath();
+        final boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            final Path folderExisting = path.resolve(FOLDER_EXISTING);
+            TruffleFile file = cfg.needsURI() ? env.getTruffleFile(folderExisting.toUri()) : env.getTruffleFile(folderExisting.toString());
+            file = file.resolve("lib/../.");
+            try {
+                final String expected = path.resolve(FOLDER_EXISTING).resolve("lib/../.").resolve(FILE_EXISTING).toString();
+                final Collection<? extends TruffleFile> children = file.list();
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                final Optional<String> expectedFile = children.stream().map(TruffleFile::getAbsoluteFile).map(TruffleFile::getPath).filter(expected::equals).findAny();
+                Assert.assertTrue(cfg.formatErrorMessage("Expected child"), expectedFile.isPresent());
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
     public void testReadUsingChannel() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
@@ -636,6 +660,31 @@ public class VirtualizedFileSystemTest {
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
+    public void testNormalize() {
+        final Context ctx = cfg.getContext();
+        final boolean allowsUserDir = cfg.allowsUserDir();
+        languageAction = (Env env) -> {
+            TruffleFile fileNormalized = env.getTruffleFile(FOLDER_EXISTING);
+            Assert.assertEquals(fileNormalized, fileNormalized.normalize());
+            Assert.assertSame(fileNormalized, fileNormalized.normalize());
+            TruffleFile fileNonNormalized = env.getTruffleFile(FOLDER_EXISTING + "/lib/../.");
+            Assert.assertEquals(fileNormalized.getPath() + "/lib/../.", fileNonNormalized.getPath());
+            Assert.assertEquals(fileNormalized.getPath(), fileNonNormalized.normalize().getPath());
+            Assert.assertEquals(fileNormalized, fileNonNormalized.normalize());
+            try {
+                Assert.assertEquals(fileNormalized.getAbsoluteFile().getPath() + "/lib/../.", fileNonNormalized.getAbsoluteFile().getPath());
+                Assert.assertEquals(fileNormalized.getAbsoluteFile().getPath(), fileNonNormalized.normalize().getAbsoluteFile().getPath());
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
+            }
+            Assert.assertEquals(".", fileNonNormalized.getName());
+            Assert.assertEquals("..", fileNonNormalized.getParent().getName());
+            Assert.assertEquals("lib", fileNonNormalized.getParent().getParent().getName());
         };
         ctx.eval(LANGAUGE_ID, "");
     }
