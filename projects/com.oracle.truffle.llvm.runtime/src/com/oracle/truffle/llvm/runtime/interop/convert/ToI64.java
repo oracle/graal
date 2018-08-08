@@ -88,7 +88,7 @@ public abstract class ToI64 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected long fromForeignPrimitive(LLVMPointer boxed) {
+    protected Object fromForeignPrimitive(LLVMPointer boxed) {
         return fromTruffleObject(boxed);
     }
 
