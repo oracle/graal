@@ -40,6 +40,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1202,6 +1203,53 @@ public class ValueAPITest {
 
         assertTrue(v.removeArrayElement(0));
         assertTrue(v.getArraySize() == 0);
+    }
+
+    @Test
+    public void testRecursiveList() {
+        Object[] o1 = new Object[1];
+        Object[] o2 = new Object[]{o1};
+        o1[0] = o2;
+
+        Value v1 = context.asValue(o1);
+        Value v2 = context.asValue(o2);
+
+        assertEquals(v1.as(List.class), v1.as(List.class));
+        assertEquals(v2.as(List.class), v2.as(List.class));
+        assertNotEquals(v1.as(List.class), (v2.as(List.class)));
+        assertNotEquals(v1, v2);
+        assertEquals(v1, v1);
+        assertEquals(v2, v2);
+
+        ValueAssert.assertValue(context, v1);
+        ValueAssert.assertValue(context, v2);
+    }
+
+    public static class RecursiveObject {
+
+        public RecursiveObject rec;
+
+    }
+
+    @Test
+    public void testRecursiveObject() {
+        RecursiveObject o1 = new RecursiveObject();
+        RecursiveObject o2 = new RecursiveObject();
+        o1.rec = o2;
+        o2.rec = o1;
+
+        Value v1 = context.asValue(o1);
+        Value v2 = context.asValue(o2);
+
+        assertEquals(v1.as(Map.class), v1.as(Map.class));
+        assertEquals(v2.as(Map.class), v2.as(Map.class));
+        assertNotEquals(v1.as(Map.class), v2.as(Map.class));
+        assertNotEquals(v1, v2);
+        assertEquals(v1, v1);
+        assertEquals(v2, v2);
+
+        ValueAssert.assertValue(context, v1);
+        ValueAssert.assertValue(context, v2);
     }
 
 }
