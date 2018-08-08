@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64SyscallRtSigactionNode extends LLVMSyscallOperationNode {
 
@@ -42,7 +43,7 @@ public abstract class LLVMAMD64SyscallRtSigactionNode extends LLVMSyscallOperati
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long doI64(long signum, LLVMNativePointer act, LLVMNativePointer oldact) {
+    protected long doI64(long signum, LLVMPointer act, LLVMPointer oldact) {
         return -LLVMAMD64Error.ENOSYS;
     }
 

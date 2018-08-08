@@ -80,7 +80,10 @@ public class LLVMAMD64Syscall {
     public static final int SYS_rmdir = 84;
     public static final int SYS_unlink = 87;
     public static final int SYS_chmod = 90;
+    public static final int SYS_fchmod = 91;
     public static final int SYS_chown = 92;
+    public static final int SYS_fchown = 93;
+    public static final int SYS_lchown = 94;
     public static final int SYS_getuid = 102;
     public static final int SYS_syslog = 103;
     public static final int SYS_getgid = 104;
@@ -91,6 +94,7 @@ public class LLVMAMD64Syscall {
     public static final int SYS_getppid = 110;
     public static final int SYS_getgroups = 115;
     public static final int SYS_getpgid = 121;
+    public static final int SYS_capget = 125;
     public static final int SYS_statfs = 137;
     public static final int SYS_fstatfs = 138;
     public static final int SYS_arch_prctl = 158;
