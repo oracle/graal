@@ -27,7 +27,6 @@
 # ----------------------------------------------------------------------------------------------------
 import os
 import shutil
-import subprocess
 import tempfile
 from argparse import ArgumentParser, ZERO_OR_MORE
 
@@ -231,10 +230,9 @@ def check_aot(classpath, main_class, common_opts, expected_output, lib_module, p
 
     # Check AOT library is loaded.
     out = mx.OutputCapture()
-    mx_compiler.run_vm(common_opts + aot_opts + ['-XX:+PrintAOT', '-version'], out=out, err=subprocess.STDOUT)
+    mx_compiler.run_vm(common_opts + aot_opts + ['-XX:+PrintAOT', '-version'], out=out, err=out, nonZeroIsFatal=False)
     if 'aot library' not in out.data:
-        mx.logv(out.data)
-        mx.abort("Missing expected 'aot library' in -XX:+PrintAOT -version output")
+        mx.abort("Missing expected 'aot library' in -XX:+PrintAOT -version output. VM Output:\n" + str(out.data))
 
     # Run main_class+AOT modules and check output.
     aot_out = mx.OutputCapture()
