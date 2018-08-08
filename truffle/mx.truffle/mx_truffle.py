@@ -176,7 +176,7 @@ def _truffle_gate_runner(args, tasks):
         if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
-            if t: javadoc()
+            if t: javadoc([])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:
