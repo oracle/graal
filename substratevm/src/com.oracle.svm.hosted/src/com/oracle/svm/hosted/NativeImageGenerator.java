@@ -732,6 +732,7 @@ public class NativeImageGenerator {
 
                     /* report the unsupported features by throwing UnsupportedFeatureException */
                     bigbang.getUnsupportedFeatures().report(bigbang);
+                    bigbang.checkUserLimitations();
                 } catch (UnsupportedFeatureException ufe) {
                     if (NativeImageOptions.ReportUnsupportedFeaturesCause.getValue() && ufe.getCause() != null) {
                         System.err.println("Original exception: ");
