@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api.interop;
 
-final class Execute extends UnaryMessage {
-    public static final int HASH = 423430;
-    static final Message INSTANCE = new Execute();
+final class New extends UnaryMessage {
+    public static final int HASH = 423428;
+    static final Message INSTANCE = new New();
 
     @Override
     public int hashCode() {

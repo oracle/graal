@@ -1293,12 +1293,12 @@ public final class ForeignAccess {
         private static CallTarget accessMessage(StandardFactory factory, Message msg) {
             if (msg instanceof KnownMessage) {
                 switch (msg.hashCode()) {
-                    case Execute.EXECUTE:
-                        return factory.accessExecute(((Execute) msg).getArity());
-                    case Execute.INVOKE:
-                        return factory.accessInvoke(((Execute) msg).getArity());
-                    case Execute.NEW:
-                        return factory.accessNew(((Execute) msg).getArity());
+                    case Execute.HASH:
+                        return factory.accessExecute(0);
+                    case Invoke.HASH:
+                        return factory.accessInvoke(0);
+                    case New.HASH:
+                        return factory.accessNew(0);
                     case GetSize.HASH:
                         return factory.accessGetSize();
                     case HasKeys.HASH:
@@ -1362,12 +1362,12 @@ public final class ForeignAccess {
         private static CallTarget accessMessage(Factory26 factory, Message msg) {
             if (msg instanceof KnownMessage) {
                 switch (msg.hashCode()) {
-                    case Execute.EXECUTE:
-                        return factory.accessExecute(((Execute) msg).getArity());
-                    case Execute.INVOKE:
-                        return factory.accessInvoke(((Execute) msg).getArity());
-                    case Execute.NEW:
-                        return factory.accessNew(((Execute) msg).getArity());
+                    case Execute.HASH:
+                        return factory.accessExecute(0);
+                    case Invoke.HASH:
+                        return factory.accessInvoke(0);
+                    case New.HASH:
+                        return factory.accessNew(0);
                     case GetSize.HASH:
                         return factory.accessGetSize();
                     case HasSize.HASH:
