@@ -104,7 +104,7 @@ public abstract class LLVMX86_ConversionNode {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("expected a <2 x double> vector");
             }
-            return ((vector.getValue(0) < 0 ? 1 : 0) << 1) | (vector.getValue(1) < 0 ? 1 : 0);
+            return ((vector.getValue(1) < 0 ? 1 : 0) << 1) | (vector.getValue(0) < 0 ? 1 : 0);
         }
     }
 }
