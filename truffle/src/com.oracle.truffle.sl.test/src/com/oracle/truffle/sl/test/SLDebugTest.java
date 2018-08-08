@@ -342,7 +342,7 @@ public class SLDebugTest {
                     }
                 }).suspendNextExecution();
             }
-        }, 1000);
+        }, 0, 10);
 
         context.eval(endlessLoop);
     }

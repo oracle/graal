@@ -163,26 +163,6 @@ public class PrimitiveValueProfileTest {
     }
 
     @Theory
-    public void testProfileThreeObject(Object value0, Object value1, Object value2) {
-        Object result0 = profile.profile(value0);
-        Object result1 = profile.profile(value1);
-        Object result2 = profile.profile(value2);
-
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(result2, is(value2));
-
-        if (primitiveEquals(value0, value1) && primitiveEquals(value1, value2)) {
-            assertThat(getCachedValue(profile), is(value0));
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
-        }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
-    }
-
-    @Theory
     public void testProfileOneByte(byte value) {
         byte result = profile.profile(value);
 
