@@ -309,8 +309,8 @@ public final class Source {
     /**
      * Returns the bytes of the source if it is a {@link #hasBytes() byte based source}.
      *
-     * @throws UnsupportedOperationException if this source cannot contain {@link #hasBytes()
-     *             bytes}.
+     * @throws UnsupportedOperationException if this source cannot contain {@link #hasBytes() bytes}
+     *             .
      * @see #hasBytes()
      * @since 1.0
      */
