@@ -71,7 +71,7 @@ public class NullNFITest extends NFITest {
     public class TestNullRetNode extends SendExecuteNode {
 
         public TestNullRetNode() {
-            super("return_null", String.format("() : %s", type), 0);
+            super("return_null", String.format("() : %s", type));
         }
     }
 
@@ -102,7 +102,7 @@ public class NullNFITest extends NFITest {
     public class TestNullArgNode extends SendExecuteNode {
 
         public TestNullArgNode() {
-            super("null_arg", String.format("(%s) : string", type), 1);
+            super("null_arg", String.format("(%s) : string", type));
         }
     }
 
@@ -121,7 +121,7 @@ public class NullNFITest extends NFITest {
     public class TestNullCallbackArgNode extends SendExecuteNode {
 
         public TestNullCallbackArgNode() {
-            super("callback_null_arg", String.format("((%s):void) : void", type), 1);
+            super("callback_null_arg", String.format("((%s):void) : void", type));
         }
     }
 
@@ -139,7 +139,7 @@ public class NullNFITest extends NFITest {
     public class TestNullCallbackRetNode extends SendExecuteNode {
 
         public TestNullCallbackRetNode() {
-            super("callback_null_ret", String.format("(():%s) : string", type), 1);
+            super("callback_null_ret", String.format("(():%s) : string", type));
         }
     }
 

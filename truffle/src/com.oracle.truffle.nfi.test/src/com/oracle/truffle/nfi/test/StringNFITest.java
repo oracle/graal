@@ -50,7 +50,7 @@ public class StringNFITest extends NFITest {
     public static class StringArgNode extends SendExecuteNode {
 
         public StringArgNode() {
-            super("string_arg", "(string):sint32", 1);
+            super("string_arg", "(string):sint32");
         }
     }
 
@@ -97,7 +97,7 @@ public class StringNFITest extends NFITest {
     public static class StringRetConstNode extends SendExecuteNode {
 
         public StringRetConstNode() {
-            super("string_ret_const", "():string", 0);
+            super("string_ret_const", "():string");
         }
     }
 
@@ -155,7 +155,7 @@ public class StringNFITest extends NFITest {
     public static class StringCallbackNode extends SendExecuteNode {
 
         public StringCallbackNode() {
-            super("string_callback", "( (string):sint32, ():string ) : sint32", 2);
+            super("string_callback", "( (string):sint32, ():string ) : sint32");
         }
     }
 

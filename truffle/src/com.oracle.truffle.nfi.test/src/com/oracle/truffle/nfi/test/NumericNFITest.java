@@ -137,7 +137,7 @@ public class NumericNFITest extends NFITest {
     public class TestIncrementNode extends SendExecuteNode {
 
         public TestIncrementNode() {
-            super("increment_" + type, String.format("(%s):%s", type, type), 1);
+            super("increment_" + type, String.format("(%s):%s", type, type));
         }
     }
 
@@ -165,7 +165,7 @@ public class NumericNFITest extends NFITest {
     public class TestCallbackNode extends SendExecuteNode {
 
         public TestCallbackNode() {
-            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type), 2);
+            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
         }
     }
 
@@ -220,7 +220,7 @@ public class NumericNFITest extends NFITest {
     public class TestPingPongNode extends SendExecuteNode {
 
         public TestPingPongNode() {
-            super("pingpong_" + type, getPingPongSignature(), 2);
+            super("pingpong_" + type, getPingPongSignature());
         }
     }
 

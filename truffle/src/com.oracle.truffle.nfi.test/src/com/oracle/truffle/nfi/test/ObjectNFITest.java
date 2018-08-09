@@ -124,7 +124,7 @@ public class ObjectNFITest extends NFITest {
     public static class CopyAndIncrementNode extends SendExecuteNode {
 
         public CopyAndIncrementNode() {
-            super("copy_and_increment", "(env, pointer, object) : object", 2);
+            super("copy_and_increment", "(env, pointer, object) : object");
         }
     }
 

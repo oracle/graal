@@ -79,7 +79,7 @@ public class ErrnoNFITest extends NFITest {
     public static class TestErrnoCallback extends SendExecuteNode {
 
         public TestErrnoCallback() {
-            super("errnoCallback", "(sint32, ():void):sint32", 2);
+            super("errnoCallback", "(sint32, ():void):sint32");
         }
     }
 
