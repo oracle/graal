@@ -112,6 +112,8 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER) static final OptionKey<Boolean> SUMMARISE_THREADS = new OptionKey<>(false);
 
+    @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         PrintStream out = new PrintStream(env.out());
         if (sampler.hasStackOverflowed()) {
