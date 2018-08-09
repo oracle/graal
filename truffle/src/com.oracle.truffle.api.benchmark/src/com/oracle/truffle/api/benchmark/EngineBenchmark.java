@@ -268,7 +268,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Context context = Context.create(TEST_LANGUAGE);
         final Value hostValue = context.getBindings(TEST_LANGUAGE).getMember("context");
         final BenchmarkContext internalContext = hostValue.asHostObject();
-        final Node executeNode = Message.createExecute(0).createNode();
+        final Node executeNode = Message.EXECUTE.createNode();
         final Integer intValue = 42;
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
 

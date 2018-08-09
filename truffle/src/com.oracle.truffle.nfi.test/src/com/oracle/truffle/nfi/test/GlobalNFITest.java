@@ -60,7 +60,7 @@ public class GlobalNFITest extends NFITest {
         testGlobalCallback = lookupAndBind("testGlobalCallback", "(double):double");
         TruffleObject initializeGlobalContext = lookupAndBind("initializeGlobalContext", "(env):void");
         try {
-            ForeignAccess.sendExecute(Message.createExecute(0).createNode(), initializeGlobalContext);
+            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeGlobalContext);
         } catch (InteropException ex) {
             throw new AssertionError(ex);
         }
@@ -88,8 +88,8 @@ public class GlobalNFITest extends NFITest {
         private final TruffleObject register = registerGlobalCallback;
         private final TruffleObject test = testGlobalCallback;
 
-        @Child Node executeRegister = Message.createExecute(1).createNode();
-        @Child Node executeTest = Message.createExecute(1).createNode();
+        @Child Node executeRegister = Message.EXECUTE.createNode();
+        @Child Node executeTest = Message.EXECUTE.createNode();
 
         TruffleObject handle; // to keep the native callback alive
 

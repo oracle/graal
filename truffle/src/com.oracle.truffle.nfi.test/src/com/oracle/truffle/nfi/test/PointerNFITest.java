@@ -160,7 +160,7 @@ public class PointerNFITest extends NFITest {
 
     public static class TestSlowPath extends NFITestRootNode {
 
-        @Child Node execute = Message.createExecute(1).createNode();
+        @Child Node execute = Message.EXECUTE.createNode();
 
         @Child Node isPointer = Message.IS_POINTER.createNode();
         @Child Node isBoxed = Message.IS_BOXED.createNode();

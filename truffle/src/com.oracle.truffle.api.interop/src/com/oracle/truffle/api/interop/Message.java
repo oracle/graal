@@ -791,11 +791,11 @@ public abstract class Message {
             case "TO_NATIVE":
                 return Message.TO_NATIVE;
             case "EXECUTE":
-                return Message.createExecute(0);
+                return Message.EXECUTE;
             case "NEW":
-                return Message.createNew(0);
+                return Message.NEW;
             case "INVOKE":
-                return Message.createInvoke(0);
+                return Message.INVOKE;
         }
         if (!TruffleOptions.AOT) {
             initializeMessageClass(messageId);

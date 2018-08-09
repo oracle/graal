@@ -74,9 +74,9 @@ public class StringNFITest extends NFITest {
         final TruffleObject strdup = lookupAndBind(defaultLibrary, "strdup", "(string):string");
         final TruffleObject free = lookupAndBind(defaultLibrary, "free", "(pointer):void");
 
-        @Child Node executeFunction = Message.createExecute(1).createNode();
-        @Child Node executeStrdup = Message.createExecute(1).createNode();
-        @Child Node executeFree = Message.createExecute(1).createNode();
+        @Child Node executeFunction = Message.EXECUTE.createNode();
+        @Child Node executeStrdup = Message.EXECUTE.createNode();
+        @Child Node executeFree = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -117,8 +117,8 @@ public class StringNFITest extends NFITest {
         final TruffleObject function = lookupAndBind("string_ret_dynamic", "(sint32):string");
         final TruffleObject free = lookupAndBind("free_dynamic_string", "(pointer):sint32");
 
-        @Child Node executeFunction = Message.createExecute(1).createNode();
-        @Child Node executeFree = Message.createExecute(1).createNode();
+        @Child Node executeFunction = Message.EXECUTE.createNode();
+        @Child Node executeFree = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -189,8 +189,8 @@ public class StringNFITest extends NFITest {
         final TruffleObject stringRetConst = lookupAndBind("string_ret_const", "():string");
         final TruffleObject nativeStringCallback = lookupAndBind("native_string_callback", "(():string) : string");
 
-        @Child Node executeStringRetConst = Message.createExecute(0).createNode();
-        @Child Node executeNativeStringCallback = Message.createExecute(1).createNode();
+        @Child Node executeStringRetConst = Message.EXECUTE.createNode();
+        @Child Node executeNativeStringCallback = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {

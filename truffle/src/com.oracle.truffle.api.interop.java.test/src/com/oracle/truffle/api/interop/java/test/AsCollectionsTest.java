@@ -223,7 +223,7 @@ public class AsCollectionsTest {
     public void testInvokeMap() throws InteropException {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateMap", mapTO, mapTO));
+        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "validateMap", mapTO, mapTO));
     }
 
     @Test
@@ -231,7 +231,7 @@ public class AsCollectionsTest {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateArrayOfMap", listOfMapTO, listOfMapTO));
+        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "validateArrayOfMap", listOfMapTO, listOfMapTO));
     }
 
     @Test
@@ -239,7 +239,7 @@ public class AsCollectionsTest {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "validateListOfMap", listOfMapTO, listOfMapTO));
+        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "validateListOfMap", listOfMapTO, listOfMapTO));
     }
 
     public interface ProxyValidator {
@@ -259,7 +259,7 @@ public class AsCollectionsTest {
                         }));
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), validator, "test", listOfMapTO));
+        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "test", listOfMapTO));
     }
 
     static final class ListBasedTO implements TruffleObject {

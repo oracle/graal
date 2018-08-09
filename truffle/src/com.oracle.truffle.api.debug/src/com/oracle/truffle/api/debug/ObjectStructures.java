@@ -272,7 +272,7 @@ final class ObjectStructures {
             isBoxed = Message.IS_BOXED.createNode();
             unbox = Message.UNBOX.createNode();
             isExecutable = Message.IS_EXECUTABLE.createNode();
-            invoke1 = Message.createInvoke(1).createNode();
+            invoke1 = Message.INVOKE.createNode();
         }
     }
 }

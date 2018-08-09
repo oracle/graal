@@ -195,7 +195,7 @@ abstract class PolyglotRootNode extends RootNode {
             try {
                 if (executeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    executeNode = insert(Message.createExecute(0).createNode());
+                    executeNode = insert(Message.EXECUTE.createNode());
                 }
                 Object tmp = ForeignAccess.sendExecute(executeNode, function, args);
                 if (tmp == null) {

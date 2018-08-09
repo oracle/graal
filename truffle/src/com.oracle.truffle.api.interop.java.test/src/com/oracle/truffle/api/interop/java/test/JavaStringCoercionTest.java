@@ -142,7 +142,7 @@ public class JavaStringCoercionTest {
         assertEquals("42", call(api, new UnboxableToInt(42)));
 
         try {
-            ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), api, "call", new NotCoercibleObject());
+            ForeignAccess.sendInvoke(Message.INVOKE.createNode(), api, "call", new NotCoercibleObject());
             fail("Expected String coercion to fail");
         } catch (UnsupportedTypeException e) {
         }
@@ -150,7 +150,7 @@ public class JavaStringCoercionTest {
 
     private static Object call(TruffleObject obj, Object value) throws InteropException {
         try {
-            return ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "call", value);
+            return ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "call", value);
         } catch (UnsupportedTypeException e) {
             throw new AssertionError("String coercion failed for: " + value + " (" + (value == null ? null : value.getClass().getName()) + ")", e);
         }

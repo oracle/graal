@@ -186,8 +186,8 @@ public class NumericNFITest extends NFITest {
 
         final TruffleObject getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
 
-        @Child Node executeGetIncrement = Message.createExecute(0).createNode();
-        @Child Node executeClosure = Message.createExecute(1).createNode();
+        @Child Node executeGetIncrement = Message.EXECUTE.createNode();
+        @Child Node executeClosure = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -233,7 +233,7 @@ public class NumericNFITest extends NFITest {
             TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
                 checkExpectedArg(6, innerArgs[0]);
                 try {
-                    return ForeignAccess.sendExecute(Message.createExecute(1).createNode(), fn, unboxNumber(innerArgs[0]) * 3);
+                    return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), fn, unboxNumber(innerArgs[0]) * 3);
                 } catch (InteropException ex) {
                     throw new AssertionError(ex);
                 }

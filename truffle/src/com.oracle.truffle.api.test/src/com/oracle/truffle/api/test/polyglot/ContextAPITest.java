@@ -483,7 +483,7 @@ public class ContextAPITest {
                     public Object execute(VirtualFrame frame) {
                         try {
                             TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), o);
+                            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
