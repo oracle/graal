@@ -94,28 +94,16 @@ class PolyglotList<T> extends AbstractList<T> {
 
     @Override
     public int hashCode() {
-        try {
-            return guestObject.hashCode();
-        } catch (Throwable e) {
-            assert TruffleMap.rethrow(e);
-            // not allowed to propagate exceptions
-            return super.hashCode();
-        }
+        return guestObject.hashCode();
     }
 
     @Override
     public boolean equals(Object o) {
-        try {
-            if (o == this) {
-                return true;
-            } else if (o instanceof TruffleList) {
-                return languageContext == ((TruffleList<?>) o).languageContext && guestObject.equals(((TruffleList<?>) o).guestObject);
-            } else {
-                return false;
-            }
-        } catch (Throwable e) {
-            assert TruffleMap.rethrow(e);
-            // not allowed to propagate exceptions
+        if (o == this) {
+            return true;
+        } else if (o instanceof TruffleList) {
+            return languageContext == ((TruffleList<?>) o).languageContext && guestObject.equals(((TruffleList<?>) o).guestObject);
+        } else {
             return false;
         }
     }
