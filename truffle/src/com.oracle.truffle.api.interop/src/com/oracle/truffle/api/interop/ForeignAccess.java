@@ -972,9 +972,9 @@ public final class ForeignAccess {
         }
 
         /**
-         * Handles {@link Message#createExecute(int)} messages.
+         * Handles {@link Message#EXECUTE} messages.
          *
-         * @param argumentsLength number of parameters the messages has been created for
+         * @param argumentsLength do not use, always 0
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.30
@@ -984,9 +984,9 @@ public final class ForeignAccess {
         }
 
         /**
-         * Handles {@link Message#createInvoke(int)} messages.
+         * Handles {@link Message#INVOKE} messages.
          *
-         * @param argumentsLength number of parameters the messages has been created for
+         * @param argumentsLength do not use, always 0
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.30
@@ -996,9 +996,9 @@ public final class ForeignAccess {
         }
 
         /**
-         * Handles {@link Message#createNew(int)} messages.
+         * Handles {@link Message#NEW} messages.
          *
-         * @param argumentsLength number of parameters the messages has been created for
+         * @param argumentsLength do not use, always 0
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.30
@@ -1173,9 +1173,9 @@ public final class ForeignAccess {
         CallTarget accessWrite();
 
         /**
-         * Handles {@link Message#createExecute(int)} messages.
+         * Handles {@link Message#EXECUTE} messages.
          *
-         * @param argumentsLength number of parameters the messages has been created for
+         * @param argumentsLength do not use, always 0
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.26
@@ -1183,9 +1183,9 @@ public final class ForeignAccess {
         CallTarget accessExecute(int argumentsLength);
 
         /**
-         * Handles {@link Message#createInvoke(int)} messages.
+         * Handles {@link Message#INVOKE} messages.
          *
-         * @param argumentsLength number of parameters the messages has been created for
+         * @param argumentsLength do not use, always 0
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.26
@@ -1193,9 +1193,9 @@ public final class ForeignAccess {
         CallTarget accessInvoke(int argumentsLength);
 
         /**
-         * Handles {@link Message#createNew(int)} messages.
+         * Handles {@link Message#NEW} messages.
          *
-         * @param argumentsLength number of parameters the messages has been created for
+         * @param argumentsLength do not use, always 0
          * @return call target to handle the message or <code>null</code> if this message is not
          *         supported
          * @since 0.26
