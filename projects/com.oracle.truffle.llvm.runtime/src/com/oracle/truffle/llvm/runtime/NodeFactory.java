@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
@@ -235,7 +235,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createBitcastToI64(LLVMExpressionNode fromNode);
 
-    ForeignToLLVM createForeignToLLVM(Value type);
+    ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type);
 
     ForeignToLLVM createForeignToLLVM(ForeignToLLVMType type);
 }
