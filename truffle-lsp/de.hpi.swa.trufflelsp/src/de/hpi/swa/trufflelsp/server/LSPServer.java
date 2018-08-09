@@ -320,7 +320,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         truffleAdapter.didOpen(uri, params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
 
         Future<Void> future = truffleAdapter.parse(params.getTextDocument().getText(), params.getTextDocument().getLanguageId(), URI.create(params.getTextDocument().getUri()));
-        waitForResultAndHandleExceptions(future);
+        CompletableFuture.runAsync(() -> waitForResultAndHandleExceptions(future));
     }
 
     private <T> T waitForResultAndHandleExceptions(Future<T> future) {
@@ -363,7 +363,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             throw new IllegalStateException("Unknown TextDocumentSyncKind: " + TEXT_DOCUMENT_SYNC_KIND);
         }
 
-        waitForResultAndHandleExceptions(future);
+        CompletableFuture.runAsync(() -> waitForResultAndHandleExceptions(future));
     }
 
     @Override
