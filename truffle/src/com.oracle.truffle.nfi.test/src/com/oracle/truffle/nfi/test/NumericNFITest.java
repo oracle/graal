@@ -137,7 +137,7 @@ public class NumericNFITest extends NFITest {
     public class TestIncrementNode extends SendExecuteNode {
 
         public TestIncrementNode() {
-            super("increment_" + type, String.format("(%s):%s", type, type), 1);
+            super("increment_" + type, String.format("(%s):%s", type, type));
         }
     }
 
@@ -165,7 +165,7 @@ public class NumericNFITest extends NFITest {
     public class TestCallbackNode extends SendExecuteNode {
 
         public TestCallbackNode() {
-            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type), 2);
+            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
         }
     }
 
@@ -186,8 +186,8 @@ public class NumericNFITest extends NFITest {
 
         final TruffleObject getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
 
-        @Child Node executeGetIncrement = Message.createExecute(0).createNode();
-        @Child Node executeClosure = Message.createExecute(1).createNode();
+        @Child Node executeGetIncrement = Message.EXECUTE.createNode();
+        @Child Node executeClosure = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -220,7 +220,7 @@ public class NumericNFITest extends NFITest {
     public class TestPingPongNode extends SendExecuteNode {
 
         public TestPingPongNode() {
-            super("pingpong_" + type, getPingPongSignature(), 2);
+            super("pingpong_" + type, getPingPongSignature());
         }
     }
 
@@ -233,7 +233,7 @@ public class NumericNFITest extends NFITest {
             TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
                 checkExpectedArg(6, innerArgs[0]);
                 try {
-                    return ForeignAccess.sendExecute(Message.createExecute(1).createNode(), fn, unboxNumber(innerArgs[0]) * 3);
+                    return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), fn, unboxNumber(innerArgs[0]) * 3);
                 } catch (InteropException ex) {
                     throw new AssertionError(ex);
                 }

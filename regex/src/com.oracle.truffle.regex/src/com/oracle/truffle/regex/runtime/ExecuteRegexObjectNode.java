@@ -35,7 +35,7 @@ import com.oracle.truffle.regex.RegexObject;
 
 public abstract class ExecuteRegexObjectNode extends Node {
 
-    @Child private Node executeNode = Message.createExecute(3).createNode();
+    @Child private Node executeNode = Message.EXECUTE.createNode();
 
     public static ExecuteRegexObjectNode create() {
         return ExecuteRegexObjectNodeGen.create();

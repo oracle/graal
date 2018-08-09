@@ -49,7 +49,7 @@ class NFIRootNode extends RootNode {
             this.name = name;
             this.signature = signature;
             this.read = Message.READ.createNode();
-            this.bind = Message.createInvoke(1).createNode();
+            this.bind = Message.INVOKE.createNode();
         }
 
         TruffleObject execute(TruffleObject library) {

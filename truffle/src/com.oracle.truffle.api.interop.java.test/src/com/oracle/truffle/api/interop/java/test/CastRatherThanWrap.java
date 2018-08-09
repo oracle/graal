@@ -82,7 +82,7 @@ public class CastRatherThanWrap {
         ExecutableObject execObj = new ExecutableObject();
         TruffleObject thiz = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(this);
 
-        ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), thiz, "acceptRunnable", execObj);
+        ForeignAccess.sendInvoke(Message.INVOKE.createNode(), thiz, "acceptRunnable", execObj);
 
         assertEquals("ExecutableObject was passed as Runnable unwrapped", execObj, this.exec);
     }

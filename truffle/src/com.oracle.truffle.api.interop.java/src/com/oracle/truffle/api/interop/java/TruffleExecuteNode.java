@@ -47,8 +47,8 @@ final class TruffleExecuteNode extends Node {
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
-    @Child private Node execute = Message.createExecute(0).createNode();
-    @Child private Node instantiate = Message.createNew(0).createNode();
+    @Child private Node execute = Message.EXECUTE.createNode();
+    @Child private Node instantiate = Message.NEW.createNode();
     private final BiFunction<Object, Object[], Object[]> toGuests = HostEntryRootNode.createToGuestValuesNode();
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @Child private ToJavaNode toHost = ToJavaNode.create();

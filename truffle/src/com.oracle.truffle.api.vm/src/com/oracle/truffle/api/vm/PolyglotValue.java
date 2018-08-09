@@ -2155,7 +2155,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private abstract static class AbstractExecuteNode extends PolyglotNode {
 
-            @Child private Node executeNode = Message.createExecute(0).createNode();
+            @Child private Node executeNode = Message.EXECUTE.createNode();
             private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
 
             protected AbstractExecuteNode(Interop interop) {
@@ -2282,7 +2282,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private static class NewInstanceNode extends PolyglotNode {
 
-            @Child private Node newInstanceNode = Message.createNew(0).createNode();
+            @Child private Node newInstanceNode = Message.NEW.createNode();
             private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 

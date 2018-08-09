@@ -57,10 +57,10 @@ public class ErrnoNFITest extends NFITest {
     public static class TestVirtualErrno extends NFITestRootNode {
 
         private final TruffleObject setErrno = lookupAndBind("setErrno", "(sint32):void");
-        @Child private Node executeSetErrno = Message.createExecute(1).createNode();
+        @Child private Node executeSetErrno = Message.EXECUTE.createNode();
 
         private final TruffleObject getErrno = lookupAndBind("getErrno", "():sint32");
-        @Child private Node executeGetErrno = Message.createExecute(0).createNode();
+        @Child private Node executeGetErrno = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -79,7 +79,7 @@ public class ErrnoNFITest extends NFITest {
     public static class TestErrnoCallback extends SendExecuteNode {
 
         public TestErrnoCallback() {
-            super("errnoCallback", "(sint32, ():void):sint32", 2);
+            super("errnoCallback", "(sint32, ():void):sint32");
         }
     }
 

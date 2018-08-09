@@ -83,7 +83,7 @@ public class RegisterPackageNFITest extends NFITest {
         @Resolve(message = "EXECUTE")
         abstract static class ExecuteFunctionRegistry extends Node {
 
-            @Child Node bind = Message.createInvoke(1).createNode();
+            @Child Node bind = Message.INVOKE.createNode();
 
             private void register(FunctionRegistry receiver, String name, String signature, TruffleObject symbol) {
                 try {
@@ -122,7 +122,7 @@ public class RegisterPackageNFITest extends NFITest {
     static class LoadPackageNode extends Node {
 
         private final TruffleObject initializePackage = lookupAndBind("initialize_package", "((string,string,pointer):void):void");
-        @Child Node execute = Message.createExecute(1).createNode();
+        @Child Node execute = Message.EXECUTE.createNode();
 
         FunctionRegistry loadPackage() {
             FunctionRegistry registry = new FunctionRegistry();
@@ -140,8 +140,8 @@ public class RegisterPackageNFITest extends NFITest {
 
         @Child LoadPackageNode loadPackage = new LoadPackageNode();
 
-        @Child Node unary = Message.createExecute(1).createNode();
-        @Child Node binary = Message.createExecute(2).createNode();
+        @Child Node unary = Message.EXECUTE.createNode();
+        @Child Node binary = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {

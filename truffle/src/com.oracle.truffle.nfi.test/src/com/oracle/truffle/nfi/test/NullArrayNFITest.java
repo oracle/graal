@@ -69,7 +69,7 @@ public class NullArrayNFITest extends NFITest {
     public class NullArrayNode extends SendExecuteNode {
 
         public NullArrayNode() {
-            super("null_array_" + nativeType, String.format("([%s]):string", nativeType), 1);
+            super("null_array_" + nativeType, String.format("([%s]):string", nativeType));
         }
     }
 

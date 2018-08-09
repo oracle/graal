@@ -571,11 +571,11 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("method.getName()") String name,
                     @Cached("getMethodReturnType(method)") Class<?> returnClass,
                     @Cached("getMethodGenericReturnType(method)") Type returnType,
-                    @Cached("createInvoke(0).createNode()") Node invokeNode,
+                    @Cached("INVOKE.createNode()") Node invokeNode,
                     @Cached("KEY_INFO.createNode()") Node keyInfoNode,
                     @Cached("READ.createNode()") Node readNode,
                     @Cached("IS_EXECUTABLE.createNode()") Node isExecutableNode,
-                    @Cached("createExecute(0).createNode()") Node executeNode,
+                    @Cached("EXECUTE.createNode()") Node executeNode,
                     @Cached("createBinaryProfile()") ConditionProfile branchProfile,
                     @Cached("create()") ToJavaNode toJava,
                     @Cached("findMessage(method)") Message message,
@@ -623,15 +623,15 @@ abstract class ProxyInvokeNode extends Node {
             return ForeignAccess.sendUnbox(messageNode, obj);
         }
 
-        if (Message.createExecute(0).equals(message)) {
+        if (Message.EXECUTE.equals(message)) {
             return ForeignAccess.sendExecute(messageNode, obj, args);
         }
 
-        if (Message.createInvoke(0).equals(message)) {
+        if (Message.INVOKE.equals(message)) {
             return ForeignAccess.sendInvoke(messageNode, obj, name, args);
         }
 
-        if (Message.createNew(0).equals(message)) {
+        if (Message.NEW.equals(message)) {
             return ForeignAccess.sendNew(messageNode, obj, args);
         }
 

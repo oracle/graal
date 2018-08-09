@@ -44,12 +44,12 @@ public class CallerSensitiveTest extends ProxyLanguageEnvTest {
         TruffleObject logger;
 
         TruffleObject getLogger = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), loggerClass, "getLogger");
-        logger = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(1).createNode(), getLogger, loggerName);
+        logger = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), getLogger, loggerName);
         assertTrue(env.isHostObject(logger));
         assertTrue(env.asHostObject(logger) instanceof Logger);
         assertEquals(loggerName, asJavaObject(Logger.class, logger).getName());
 
-        logger = (TruffleObject) ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), loggerClass, "getLogger", loggerName);
+        logger = (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), loggerClass, "getLogger", loggerName);
         assertTrue(env.isHostObject(logger));
         assertTrue(env.asHostObject(logger) instanceof Logger);
         assertEquals(loggerName, asJavaObject(Logger.class, logger).getName());

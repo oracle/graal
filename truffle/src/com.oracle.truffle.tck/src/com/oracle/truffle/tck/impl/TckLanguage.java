@@ -111,7 +111,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         public CallTarget accessMessage(Message tree) {
             if (tree == Message.IS_EXECUTABLE) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.TRUE));
-            } else if (Message.createExecute(2).equals(tree)) {
+            } else if (Message.EXECUTE.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(this);
             } else {
                 throw UnsupportedMessageException.raise(tree);
