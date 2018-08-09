@@ -2,7 +2,6 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-
 ## Version 1.0.0 RC6
 * Added support for byte based sources:
 	* Byte based sources may be constructed using a `ByteSequence` or from a `TruffleFile` or `URL`. Whether sources are interpreted as character or byte based sources depends on the specified language.
@@ -19,6 +18,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `Source.findLanguage` and `Source.findMimeType` to resolve languages and MIME types.
 * The method `Source.getMimeType()` might now return `null`. Source builders now support `null` values for `mimeType(String)`.
 * A `null` source name will no longer lead to an error but will be translated to `Unnamed`. 
+* Added `TruffleFile.normalize` to allow explicit normalization of `TruffleFile` paths. `TruffleFile` is no longer normalized by default.
 
 ## Version 1.0.0 RC5
 

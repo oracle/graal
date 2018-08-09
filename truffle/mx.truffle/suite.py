@@ -867,10 +867,10 @@ suite = {
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.sl",
-        "ANTLR4",
       ],
       "exclude" : [
         "mx:JUNIT",
+        "ANTLR4",
       ],
       "distDependencies" : [
           "TRUFFLE_API",

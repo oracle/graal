@@ -1,5 +1,5 @@
 # overlay version
-overlay = d9ea3a957dcf5781d00e92e087e78db55e798461
+overlay = 0b7edfaa83017fcf38687f2615533dbdbe21dab1
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
@@ -9,10 +9,10 @@ jdks: {
   labsjdk8:      {name : labsjdk,   version : "8u172-jvmci-0.46", platformspecific: true}
   openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.46", platformspecific: true}
   labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.46-fastdebug", platformspecific: true}
-  oraclejdk11:   {name : oraclejdk, version : "11+24", platformspecific: true}
+  oraclejdk11:   {name : oraclejdk, version : "11+25", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180629-011203", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180808-073750", platformspecific: true}
 
 }
 

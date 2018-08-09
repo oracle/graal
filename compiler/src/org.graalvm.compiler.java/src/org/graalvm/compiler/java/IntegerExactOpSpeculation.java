@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.options;
+package org.graalvm.compiler.java;
 
-import java.util.EnumSet;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-import org.graalvm.collections.EconomicMap;
+public final class IntegerExactOpSpeculation implements SpeculationReason {
 
-public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
-    final Class<T> enumClass;
-
-    public EnumOptionKey(T value) {
-        super(value);
-        if (value == null) {
-            throw new IllegalArgumentException("Value must not be null");
-        }
-        this.enumClass = value.getDeclaringClass();
+    public enum IntegerExactOp {
+        INTEGER_ADD_EXACT,
+        INTEGER_INCREMENT_EXACT,
+        INTEGER_SUBTRACT_EXACT,
+        INTEGER_DECREMENT_EXACT,
+        INTEGER_MULTIPLY_EXACT
     }
 
-    /**
-     * @return the set of possible values for this option.
-     */
-    public EnumSet<T> getAllValues() {
-        return EnumSet.allOf(enumClass);
-    }
+    protected final String methodDescriptor;
+    protected final IntegerExactOp op;
 
-    public Object valueOf(String name) {
-        try {
-            return Enum.valueOf(enumClass, name);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("\"" + name + "\" is not a valid option for " + getName() + ". Valid values are " + getAllValues());
-        }
+    public IntegerExactOpSpeculation(ResolvedJavaMethod method, IntegerExactOp op) {
+        this.methodDescriptor = method.format("%H.%n(%p)%R");
+        this.op = op;
     }
 
     @Override
-    protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
-        assert enumClass.isInstance(newValue) : newValue + " is not a valid value for " + getName();
+    public int hashCode() {
+        return methodDescriptor.hashCode() * 31 + op.ordinal();
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof IntegerExactOpSpeculation) {
+            IntegerExactOpSpeculation other = (IntegerExactOpSpeculation) obj;
+            return op.equals(other.op) && methodDescriptor.equals(other.methodDescriptor);
+        }
+        return false;
+    }
+
 }

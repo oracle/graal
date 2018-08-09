@@ -48,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
@@ -177,6 +178,8 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
 
     @Test
     public void testSourceInterning() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+
         byte[] bytes = new byte[16 * 1024 * 1024];
         byte byteValue = (byte) 'a';
         Arrays.fill(bytes, byteValue);
@@ -184,7 +187,7 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
 
         ReferenceQueue<Object> queue = new ReferenceQueue<>();
         List<WeakReference<Object>> sources = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 5; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
             System.gc();
         }

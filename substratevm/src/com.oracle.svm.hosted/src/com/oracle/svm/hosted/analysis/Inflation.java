@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import static com.oracle.graal.pointsto.reports.AnalysisReportsOptions.PrintAnalysisCallTree;
+import static com.oracle.svm.hosted.NativeImageOptions.MaxReachableTypes;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
@@ -59,6 +61,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
@@ -66,6 +69,7 @@ import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
@@ -210,6 +214,22 @@ public class Inflation extends BigBang {
     public boolean isValidClassLoader(Object valueObj) {
         return valueObj.getClass().getClassLoader() == null || // boot class loader
                         !(valueObj.getClass().getClassLoader() instanceof NativeImageClassLoader) || valueObj.getClass().getClassLoader() == Thread.currentThread().getContextClassLoader();
+    }
+
+    @Override
+    public void checkUserLimitations() {
+        int maxReachableTypes = MaxReachableTypes.getValue();
+        if (maxReachableTypes >= 0) {
+            CallTreePrinter callTreePrinter = new CallTreePrinter(this);
+            callTreePrinter.buildCallTree();
+            int numberOfTypes = callTreePrinter.classesSet(false).size();
+            if (numberOfTypes > maxReachableTypes) {
+                throw UserError.abort("Reachable " + numberOfTypes + " types but only " + maxReachableTypes + " allowed (because the " + MaxReachableTypes.getName() +
+                                " option is set). To see all reachable types use " + PrintAnalysisCallTree.getName() + "; to change the maximum number of allowed types use " +
+                                MaxReachableTypes.getName() +
+                                ".");
+            }
+        }
     }
 
     class GenericInterfacesEncodingKey {
