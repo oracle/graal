@@ -183,10 +183,17 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         if (object instanceof TruffleObject) {
-            return PolyglotProxy.isProxyGuestObject((TruffleObject) object) || HostObject.isInstance(object) || HostFunction.isInstance(object);
+            return PolyglotProxy.isProxyGuestObject((TruffleObject) object) || HostObject.isInstance(object) || isHostFunction(object);
         } else {
             return false;
         }
+    }
+
+    private static boolean isHostFunction(Object object) {
+        if (TruffleOptions.AOT) {
+            return false;
+        }
+        return HostFunction.isInstance(object);
     }
 
     @Override
@@ -295,7 +302,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                 } catch (Throwable t) {
                     throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
-            } else if (HostFunction.isInstance(value)) {
+            } else if (isHostFunction(value)) {
                 if (TruffleOptions.AOT) {
                     return "";
                 }
@@ -324,7 +331,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             } else if (PolyglotProxy.isProxyGuestObject(to)) {
                 Proxy proxy = PolyglotProxy.toProxyHostObject(to);
                 return context.internalContext.toGuestValue(proxy.getClass());
-            } else if (HostFunction.isInstance(to)) {
+            } else if (isHostFunction(to)) {
                 return "Bound Method";
             } else {
                 return "Foreign Object";
