@@ -726,7 +726,7 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
 // Checkstyle: stop
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl {
+final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
 
     /**
      * Truffle code can run during image generation, i.e., one or many contexts can be used during
@@ -737,11 +737,11 @@ final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl {
      * recompute a single static field to a new SingleContextState instance.
      */
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", isFinal = true) //
-    static Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState singleContextState;
+    static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState {
+final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
 }
 
 /*
