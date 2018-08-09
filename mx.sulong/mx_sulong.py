@@ -115,24 +115,30 @@ def _unittest_config_participant(config):
 
 add_config_participant(_unittest_config_participant)
 
+
+# Temporary set environment variables. By default LC_ALL, LANGUAGE, and LANG are set.
 class TemporaryEnv(object):
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-        self.old_value = None
+    def __init__(self, **kwargs):
+        self.old_env = None
+        self.extra_env = dict(
+            LC_ALL='C',
+            LANGUAGE='en_US:en',
+            LANG='en_US.UTF-8',
+        )
+        self.extra_env.update(kwargs)
 
     def __enter__(self):
-        self.old_value = os.environ.get(self.key)
-        os.environ[self.key] = self.value
+        self.old_env = os.environ.copy()
+        os.environ.update(self.extra_env)
 
     def __exit__(self, ex_type, value, traceback):
-        if self.old_value is None:
-            del os.environ[self.key]
-        else:
-            os.environ[self.key] = self.old_value
+        os.environ.clear()
+        os.environ.update(self.old_env)
+        self.old_env = None
+
 
 def _sulong_gate_runner(args, tasks):
-    with TemporaryEnv('LC_ALL', 'C'):
+    with TemporaryEnv():
         with Task('CheckCopyright', tasks, tags=['style']) as t:
             if t:
                 if mx.checkcopyrights(['--primary']) != 0:
