@@ -52,7 +52,8 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     enum Output {
         HISTOGRAM,
-        CALLTREE
+        CALLTREE,
+        JSON,
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
@@ -95,7 +96,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER) static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
+    @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
                     Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
@@ -129,7 +130,60 @@ class CPUSamplerCLI extends ProfilerCLI {
             case CALLTREE:
                 printSamplingCallTree(out, sampler, summariseThreads);
                 break;
+            case JSON:
+                printSamplingJson(out, sampler);
         }
+    }
+
+    private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
+        printSamplingJsonRec(out, sampler.getRootNodes());
+    }
+
+    private static void printSamplingJsonRec(PrintStream out, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
+        out.print('[');
+        int i = 0;
+        for (ProfilerNode<CPUSampler.Payload> node : nodes) {
+            out.print('{');
+            out.print(jsonEntry("root name", node.getRootName()));
+            out.print(jsonEntry("source section", getShortDescription(node.getSourceSection())));
+
+            CPUSampler.Payload payload = node.getPayload();
+
+            out.print(jsonEntry("hit count", String.valueOf(payload.getHitCount())));
+            out.print(jsonEntry("interpreted hit count", String.valueOf(payload.getInterpretedHitCount())));
+            out.print(jsonEntry("compiled hit count", String.valueOf(payload.getCompiledHitCount())));
+
+            out.print(jsonEntry("self hit count", String.valueOf(payload.getSelfHitCount())));
+            out.print(jsonEntry("self interpreted hit count", String.valueOf(payload.getSelfInterpretedHitCount())));
+            out.print(jsonEntry("self compiled hit count", String.valueOf(payload.getSelfCompiledHitCount())));
+
+            printSelfHitTimesArray(out, payload.getSelfHitTimes());
+
+            out.print("\"children\" : ");
+            printSamplingJsonRec(out, node.getChildren());
+            out.print("}");
+            if (i++ < nodes.size() - 1) {
+                out.print(',');
+            }
+        }
+        out.print(']');
+    }
+
+    private static void printSelfHitTimesArray(PrintStream out, List<Long> times) {
+        out.print("\"self hit times\" : ");
+        out.print('[');
+        int i = 0;
+        for (Long time : times) {
+            out.print(time);
+            if (i++ < times.size() - 1) {
+                out.print(',');
+            }
+        }
+        out.print("],");
+    }
+
+    private static String jsonEntry(String key, String value) {
+        return "\"" + key + "\":\"" + value + "\",";
     }
 
     private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
