@@ -1,6 +1,7 @@
 package de.hpi.swa.trufflelsp;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -10,6 +11,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
@@ -37,7 +39,24 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
                         result = fragment.execute(frame);
                     } catch (Exception e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw new EvaluationResultException(e, true);
+                        Object resultException = e;
+                        if (e instanceof TruffleException) {
+                            // We need to translate the source section of the error back to the
+                            // original Source so that the error will be displayed correctly in the
+                            // LSP client
+                            resultException = new TruffleException() {
+
+                                public Node getLocation() {
+                                    return eventContext.getInstrumentedNode();
+                                }
+
+                                @Override
+                                public String toString() {
+                                    return e.getMessage();
+                                }
+                            };
+                        }
+                        throw new EvaluationResultException(resultException, true);
                     }
                     CompilerDirectives.transferToInterpreter();
                     throw new EvaluationResultException(result);

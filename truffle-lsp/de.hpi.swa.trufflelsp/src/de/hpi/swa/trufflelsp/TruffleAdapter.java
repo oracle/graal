@@ -31,6 +31,7 @@ import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.MarkedString;
+import org.eclipse.lsp4j.MarkupContent;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SignatureHelp;
@@ -77,6 +78,7 @@ import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InlineParsingNotSupportedException;
 import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
+import de.hpi.swa.trufflelsp.message.BoxPrimitiveType;
 import de.hpi.swa.trufflelsp.message.GetSignature;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
@@ -89,6 +91,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
+    private static final Node BOX_PRIMITIVE_TYPE = BoxPrimitiveType.INSTANCE.createNode();
 
     protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
 
@@ -614,7 +617,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         try {
             callTarget.call();
         } catch (EvaluationResultException e) {
-            return e.isError() ? EvaluationResult.createError((Exception) e.getResult()) : EvaluationResult.createResult(e.getResult());
+            return e.isError() ? EvaluationResult.createError(e.getResult()) : EvaluationResult.createResult(e.getResult());
         } catch (InlineParsingNotSupportedException e) {
             err.println("Inline parsing not supported for language " + surrogate.getLangId());
             return EvaluationResult.createEvaluationSectionNotReached();
@@ -685,8 +688,8 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
                 completion.setDetail(createCompletionDetail(entry.getKey(), object, langId));
-                String docu = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, object), langId);
-                completion.setDocumentation("in " + scopeEntry.getKey() + (docu != null ? "\n" + docu : ""));
+                completion.setDocumentation(createDocumentation(object, langId, "in " + scopeEntry.getKey()));
+
                 completions.getItems().add(completion);
             }
         }
@@ -717,7 +720,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         if (object instanceof TruffleObject) {
             map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) object);
         } else {
-            Object boxedObject = LanguageSpecificHacks.getBoxedObject(object, langId);
+            Object boxedObject = boxPrimitiveType(object, langId);
             if (boxedObject instanceof TruffleObject) {
                 map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) boxedObject);
             } else {
@@ -741,17 +744,33 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(entry.getKey(), value, langId));
+            completion.setDocumentation(createDocumentation(value, langId, "of meta object: `" + metaObject.toString() + "`"));
+
             completions.getItems().add(completion);
-
-            String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
-
-            if (documentation == null) {
-                documentation = "of meta object: " + metaObject.toString();
-            }
-            completion.setDocumentation(documentation);
         }
 
         return !map.isEmpty();
+    }
+
+    private MarkupContent createDocumentation(Object value, String langId, String scopeInformation) {
+        String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
+
+        if (documentation == null) {
+            documentation = scopeInformation;
+        }
+
+        SourceSection section = findSourceLocation(langId, value);
+        if (section != null) {
+            String code = section.getCharacters().toString();
+            if (!code.isEmpty()) {
+                documentation += "\n\n```\n" + section.getCharacters().toString() + "\n```";
+            }
+        }
+
+        MarkupContent markup = new MarkupContent();
+        markup.setValue(documentation);
+        markup.setKind("markdown");
+        return markup;
     }
 
     private String createCompletionDetail(Object key, Object obj, String langId) {
@@ -761,7 +780,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         if (obj instanceof TruffleObject) {
             truffleObj = (TruffleObject) obj;
         } else {
-            truffleObj = (TruffleObject) LanguageSpecificHacks.getBoxedObject(obj, langId);
+            truffleObj = boxPrimitiveType(obj, langId);
         }
 
         if (truffleObj != null && key != null) {
@@ -789,6 +808,27 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         detailText += metaObjectString;
 
         return detailText;
+    }
+
+    private TruffleObject boxPrimitiveType(Object obj, String langId) {
+        TruffleObject boxedObject = null;
+        Object metaObject = getMetaObject(langId, obj);
+        if (metaObject instanceof TruffleObject) {
+            try {
+                Object boxed = ForeignAccess.send(BOX_PRIMITIVE_TYPE, (TruffleObject) metaObject, obj);
+                if (boxed instanceof TruffleObject) {
+                    boxedObject = (TruffleObject) boxed;
+                }
+            } catch (InteropException e) {
+                if (!(e instanceof UnsupportedMessageException)) {
+                    e.printStackTrace(err);
+                }
+            }
+        }
+        if (boxedObject == null) {
+            boxedObject = (TruffleObject) LanguageSpecificHacks.getBoxedObject(obj, langId);
+        }
+        return boxedObject;
     }
 
     protected Object getMetaObject(String langId, Object object) {
@@ -933,9 +973,11 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             TextDocumentSurrogate surrogateOfTestFile = this.uri2TextDocumentSurrogate.computeIfAbsent(coverageUri, (_uri) -> new TextDocumentSurrogate(_uri, surrogateOfOpendFile.getLangId()));
 
             final CallTarget callTarget = parse(surrogateOfTestFile);
+            final String langId = surrogateOfTestFile.getLangId();
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
 // SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
-                            SourceSectionFilter.ANY,
+// SourceSectionFilter.ANY,
+                            SourceSectionFilter.newBuilder().sourceIs(s -> langId.equals(s.getLanguage())).build(),
                             new ExecutionEventNodeFactory() {
 
                                 public ExecutionEventNode create(final EventContext eventContext) {
@@ -992,14 +1034,17 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return locations;
     }
 
-    protected SourceSection findSourceLocation(TruffleObject obj) {
-        LanguageInfo lang = env.findLanguage(obj);
-
-        if (lang != null) {
-            return env.findSourceLocation(lang, obj);
+    protected SourceSection findSourceLocation(String langId, Object object) {
+        LanguageInfo languageInfo = env.findLanguage(object);
+        if (languageInfo == null) {
+            languageInfo = env.getLanguages().get(langId);
         }
 
-        return null;
+        SourceSection sourceSection = null;
+        if (languageInfo != null) {
+            sourceSection = env.findSourceLocation(languageInfo, object);
+        }
+        return sourceSection;
     }
 
     public Future<Hover> getHover(URI uri, int line, int column) {
