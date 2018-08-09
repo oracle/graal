@@ -319,8 +319,8 @@ public abstract class Message {
      * sending message to - only the set of supported messages is known. As a result it is
      * recommended for object oriented languages to support the {@link #INVOKE} message and handle
      * the semantics the way it is natural to them. Languages like <em>C</em> shouldn't implement
-     * {@link #INVOKE} and just support primitive operations like {@link #EXECUTE} and
-     * {@link #READ}.
+     * {@link #INVOKE} and just support primitive operations like {@link #EXECUTE} and {@link #READ}
+     * .
      * <p>
      * When accessing a method of an object in an object oriented manner, one is supposed to send
      * the {@link #INVOKE} message first. Only when that fails, fallback to non-object oriented
