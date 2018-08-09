@@ -147,19 +147,29 @@ class CPUSamplerCLI extends ProfilerCLI {
         for (ProfilerNode<CPUSampler.Payload> node : nodes) {
             out.print('{');
             out.print(jsonEntry("root name", node.getRootName()));
+            out.print(',');
             out.print(jsonEntry("source section", getShortDescription(node.getSourceSection())));
+            out.print(',');
 
             CPUSampler.Payload payload = node.getPayload();
 
             out.print(jsonEntry("hit count", String.valueOf(payload.getHitCount())));
+            out.print(',');
             out.print(jsonEntry("interpreted hit count", String.valueOf(payload.getInterpretedHitCount())));
+            out.print(',');
             out.print(jsonEntry("compiled hit count", String.valueOf(payload.getCompiledHitCount())));
+            out.print(',');
 
             out.print(jsonEntry("self hit count", String.valueOf(payload.getSelfHitCount())));
+            out.print(',');
             out.print(jsonEntry("self interpreted hit count", String.valueOf(payload.getSelfInterpretedHitCount())));
+            out.print(',');
             out.print(jsonEntry("self compiled hit count", String.valueOf(payload.getSelfCompiledHitCount())));
+            out.print(',');
 
-            printSelfHitTimesArray(out, payload.getSelfHitTimes());
+            out.print("\"self hit times\" : ");
+            printTimeStampArray(out, payload.getSelfHitTimes());
+            out.print(',');
 
             out.print("\"children\" : ");
             printSamplingJsonRec(out, node.getChildren());

@@ -25,18 +25,39 @@
 package com.oracle.truffle.tools.profiler.impl;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
 @Option.Group(CPUTracerInstrument.ID)
 class CPUTracerCLI extends ProfilerCLI {
+
+    enum Output {
+        HISTOGRAM,
+        JSON,
+    }
+
+    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
+                    Output.HISTOGRAM,
+                    new Function<String, Output>() {
+                        @Override
+                        public Output apply(String s) {
+                            try {
+                                return Output.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Output can be: histogram or calltree");
+                            }
+                        }
+                    });
 
     @Option(name = "", help = "Enable the CPU tracer (default: false).", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
@@ -57,6 +78,44 @@ class CPUTracerCLI extends ProfilerCLI {
 
     @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
                     "");
+
+    @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
+                    Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+
+    public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
+        PrintStream out = new PrintStream(env.out());
+        switch (env.getOptions().get(OUTPUT)) {
+            case HISTOGRAM:
+                printTracerHistogram(out, tracer);
+                break;
+            case JSON:
+                printTracerJson(out, tracer);
+                break;
+        }
+    }
+
+    private static void printTracerJson(PrintStream out, CPUTracer tracer) {
+        List<CPUTracer.Payload> payloads = new ArrayList<>(tracer.getPayloads());
+        out.print("[");
+        int i = 0;
+        for (CPUTracer.Payload payload : payloads) {
+            out.print("{");
+            out.print(jsonEntry("root name", payload.getRootName()));
+            out.print(',');
+            out.print(jsonEntry("source section", getShortDescription(payload.getSourceSection())));
+            out.print(',');
+            out.print(jsonEntry("count", String.valueOf(payload.getCount())));
+            out.print(',');
+            out.print(jsonEntry("interpreted count", String.valueOf(payload.getCountInterpreted())));
+            out.print(',');
+            out.print(jsonEntry("compiled count", String.valueOf(payload.getCountCompiled())));
+            out.print("}");
+            if (i++ < payloads.size() - 1) {
+                out.print(',');
+            }
+        }
+        out.print("]");
+    }
 
     static void printTracerHistogram(PrintStream out, CPUTracer tracer) {
         List<CPUTracer.Payload> payloads = new ArrayList<>(tracer.getPayloads());

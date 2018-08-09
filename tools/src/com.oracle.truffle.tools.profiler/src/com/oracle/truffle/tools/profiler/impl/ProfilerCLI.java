@@ -31,6 +31,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.options.OptionType;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -225,6 +226,22 @@ abstract class ProfilerCLI {
         }
         s.append('$');
         return s.toString();
+    }
+
+    protected static String jsonEntry(String key, String value) {
+        return "\"" + key + "\":\"" + value + "\"";
+    }
+
+    protected static void printTimeStampArray(PrintStream out, List<Long> times) {
+        out.print('[');
+        int i = 0;
+        for (Long time : times) {
+            out.print(time);
+            if (i++ < times.size() - 1) {
+                out.print(',');
+            }
+        }
+        out.print("]");
     }
 
     static class SourceLocation {

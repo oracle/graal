@@ -150,7 +150,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (env.getOptions().get(CPUTracerCLI.ENABLED)) {
-            CPUTracerCLI.printTracerHistogram(new PrintStream(env.out()), tracer);
+            CPUTracerCLI.handleOutput(env, tracer);
             tracer.close();
         }
     }
