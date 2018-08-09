@@ -72,7 +72,7 @@ public class WrappedPrimitiveNFITest extends NFITest {
     public static class PassObjectNode extends SendExecuteNode {
 
         public PassObjectNode() {
-            super("pass_object", "(object, ():object, (object, object):object) : object", 3);
+            super("pass_object", "(object, ():object, (object, object):object) : object");
         }
     }
 

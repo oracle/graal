@@ -115,7 +115,7 @@ final class PolyglotProxy {
             if (proxy instanceof ProxyInstantiable) {
                 return context.toGuestValue(((ProxyInstantiable) proxy).newInstance(context.toHostValues(arguments, 1)));
             } else {
-                throw UnsupportedMessageException.raise(Message.createNew(0));
+                throw UnsupportedMessageException.raise(Message.NEW);
             }
         }
     }
@@ -136,7 +136,7 @@ final class PolyglotProxy {
             if (proxy instanceof ProxyExecutable) {
                 return context.toGuestValue(((ProxyExecutable) proxy).execute(context.toHostValues(arguments, 1)));
             } else {
-                throw UnsupportedMessageException.raise(Message.createExecute(0));
+                throw UnsupportedMessageException.raise(Message.EXECUTE);
             }
         }
     }
@@ -318,11 +318,11 @@ final class PolyglotProxy {
                 }
             }
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(Message.createInvoke(0));
+            throw UnsupportedMessageException.raise(Message.INVOKE);
         }
 
         @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-        @Child private Node executeNode = Message.createExecute(0).createNode();
+        @Child private Node executeNode = Message.EXECUTE.createNode();
 
         @TruffleBoundary
         Object invoke(PolyglotLanguageContext context, ProxyObject object, String key, Object[] arguments) {

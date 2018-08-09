@@ -171,7 +171,7 @@ public class PolyglotExceptionTest {
         public CallTarget accessExecute(int argumentsLength) {
             return Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
-                @Child private Node execute = Message.createExecute(0).createNode();
+                @Child private Node execute = Message.EXECUTE.createNode();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -204,7 +204,7 @@ public class PolyglotExceptionTest {
         public CallTarget accessExecute(int argumentsLength) {
             return Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
-                @Child private Node execute = Message.createExecute(0).createNode();
+                @Child private Node execute = Message.EXECUTE.createNode();
 
                 @Override
                 public Object execute(VirtualFrame frame) {

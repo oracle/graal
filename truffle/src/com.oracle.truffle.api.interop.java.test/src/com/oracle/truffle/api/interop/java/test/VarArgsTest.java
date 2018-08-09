@@ -47,7 +47,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         TruffleObject join = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), strClass, "join");
         TruffleObject delimiter = asTruffleObject(" ");
         TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
-        Object result = ForeignAccess.sendExecute(Message.createExecute(2).createNode(), join, new Object[]{delimiter, elements});
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), join, new Object[]{delimiter, elements});
         Assert.assertEquals("Hello World", result);
     }
 
@@ -59,7 +59,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         TruffleObject delimiter = asTruffleObject(" ");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
-        Object result = ForeignAccess.sendExecute(Message.createExecute(3).createNode(), join, new Object[]{delimiter, element1, element2});
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), join, new Object[]{delimiter, element1, element2});
         Assert.assertEquals("Hello World", result);
     }
 
@@ -70,11 +70,11 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         TruffleObject ellipsis = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), mainClass, "stringEllipsis");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
-        Object result = ForeignAccess.sendExecute(Message.createExecute(2).createNode(), ellipsis, new Object[]{element1, element2});
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), ellipsis, new Object[]{element1, element2});
         Assert.assertEquals("Hello World", result);
 
         TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
-        result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), ellipsis, elements);
+        result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), ellipsis, elements);
         Assert.assertEquals("Hello World", result);
     }
 
@@ -85,17 +85,17 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         TruffleObject ellipsis = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), mainClass, "charSequenceEllipsis");
         TruffleObject element1 = asTruffleObject("Hello");
         TruffleObject element2 = asTruffleObject("World");
-        Object result = ForeignAccess.sendExecute(Message.createExecute(2).createNode(), ellipsis, new Object[]{element1, element2});
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), ellipsis, new Object[]{element1, element2});
         Assert.assertEquals("Hello World", result);
 
         TruffleObject elements = asTruffleObject(new String[]{"Hello", "World"});
-        result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), ellipsis, elements);
+        result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), ellipsis, elements);
         Assert.assertEquals("Hello World", result);
     }
 
     @Test
     public void testPathsGet() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         TruffleObject paths = asTruffleHostSymbol(Paths.class);
         TruffleObject result;
         result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir");
@@ -110,7 +110,7 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testOverloadedVarArgsPrimitive() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         TruffleObject paths = asTruffleHostSymbol(Sum.class);
         Object result;
         result = ForeignAccess.sendInvoke(n, paths, "sum", 10);

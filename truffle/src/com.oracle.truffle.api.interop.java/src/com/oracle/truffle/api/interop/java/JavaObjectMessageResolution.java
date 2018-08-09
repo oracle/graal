@@ -78,7 +78,7 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "INVOKE")
     abstract static class InvokeNode extends Node {
-        private static final Message INVOKE = Message.createInvoke(0);
+        private static final Message INVOKE = Message.INVOKE;
         @Child private LookupMethodNode lookupMethod;
         @Child private ExecuteMethodNode executeMethod;
         @Child private LookupFieldNode lookupField;
@@ -114,7 +114,7 @@ class JavaObjectMessageResolution {
                     if (isExecutable) {
                         if (sendExecuteNode == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            sendExecuteNode = insert(Message.createExecute(args.length).createNode());
+                            sendExecuteNode = insert(Message.EXECUTE.createNode());
                         }
                         try {
                             return ForeignAccess.sendExecute(sendExecuteNode, fieldObject, args);
@@ -183,7 +183,7 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
-        private static final Message NEW = Message.createNew(0);
+        private static final Message NEW = Message.NEW;
         @Child private LookupConstructorNode lookupConstructor;
         @Child private ExecuteMethodNode executeMethod;
         @Child private ToJavaNode toJava;
@@ -528,7 +528,7 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteObjectNode extends Node {
-        private static final Message EXECUTE = Message.createExecute(0);
+        private static final Message EXECUTE = Message.EXECUTE;
         @Child private LookupFunctionalMethodNode lookupMethod;
         @Child private ExecuteMethodNode doExecute;
 

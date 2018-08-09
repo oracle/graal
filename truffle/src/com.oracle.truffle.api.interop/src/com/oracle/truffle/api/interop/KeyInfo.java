@@ -33,8 +33,7 @@ package com.oracle.truffle.api.interop;
  * <li>{@link #READABLE}: if {@link Message#READ reading} an existing key is supported.
  * <li>{@link #MODIFIABLE}: if {@link Message#WRITE writing} an existing key is supported.
  * <li>{@link #INSERTABLE} if {@link Message#WRITE writing} a new key is supported.
- * <li>{@link #INVOCABLE}: if {@link Message#createInvoke(int) invoking} an existing key is
- * supported.
+ * <li>{@link #INVOCABLE}: if {@link Message#INVOKE invoking} an existing key is supported.
  * <li>{@link #REMOVABLE} if {@link Message#REMOVE removing} an existing key is supported.
  * <li>{@link #INTERNAL} if an existing key is internal.
  * <p>
@@ -43,8 +42,8 @@ package com.oracle.truffle.api.interop;
  * {@link Message#WRITE} message will succeed. Read or write can fail due to some momentary bad
  * state. An object field is expected not to be readable resp. writable when it's known that the
  * field can not be read (e.g. a bean property without a getter) resp. can not be written to (e.g. a
- * bean property without a setter). The same applies to invocable flag and
- * {@link Message#createInvoke(int) invoke} message.
+ * bean property without a setter). The same applies to invocable flag and {@link Message#INVOKE}
+ * message.
  * <p>
  *
  * @since 0.26
@@ -73,8 +72,7 @@ public final class KeyInfo {
     public static final int MODIFIABLE = 1 << 2;
 
     /**
-     * Single bit that is set if {@link Message#createInvoke(int) invoking} an existing key is
-     * supported.
+     * Single bit that is set if {@link Message#INVOKE invoking} an existing key is supported.
      *
      * @since 0.33
      */
@@ -136,7 +134,7 @@ public final class KeyInfo {
     }
 
     /**
-     * Test if {@link Message#createInvoke(int) invoking} an existing key is supported.
+     * Test if {@link Message#INVOKE invoking} an existing key is supported.
      *
      * @since 0.26
      */

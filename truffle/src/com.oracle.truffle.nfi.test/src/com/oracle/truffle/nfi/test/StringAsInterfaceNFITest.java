@@ -97,9 +97,9 @@ public class StringAsInterfaceNFITest {
     public void testAllocAndReleaseWithInvoke() throws Exception {
         Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
         TruffleObject rawStdLib = JavaInterop.asTruffleObject(stdlib);
-        Object mem = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), rawStdLib, "malloc", 512);
+        Object mem = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "malloc", 512);
         assertNotNull("some memory allocated", mem);
-        ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), rawStdLib, "free", mem);
+        ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "free", mem);
     }
 
     @Test

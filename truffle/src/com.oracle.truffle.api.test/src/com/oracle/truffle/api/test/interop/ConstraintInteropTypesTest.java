@@ -104,7 +104,7 @@ public class ConstraintInteropTypesTest {
     public void forbidNonPrimitiveObjectParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = this;
-        Object result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), obj, param);
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
@@ -112,7 +112,7 @@ public class ConstraintInteropTypesTest {
     public void forbidNullParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = null;
-        Object result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), obj, param);
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
@@ -120,7 +120,7 @@ public class ConstraintInteropTypesTest {
     public void forbidStringBuilderParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = new StringBuilder("I am string builder!");
-        Object result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), obj, param);
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
@@ -128,14 +128,14 @@ public class ConstraintInteropTypesTest {
     public void forbidBigIntegerParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = new BigInteger("30");
-        Object result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), obj, param);
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
     public void allowStringReturnWithParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = "30";
-        Object result = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), obj, param);
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
         Assert.assertEquals("30", result);
     }
 

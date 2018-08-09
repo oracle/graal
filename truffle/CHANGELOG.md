@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 1.0.0 RC6
+
 * Added support for byte based sources:
 	* Byte based sources may be constructed using a `ByteSequence` or from a `TruffleFile` or `URL`. Whether sources are interpreted as character or byte based sources depends on the specified language.
 	* `Source.hasBytes()` and `Source.hasCharacters()` may be used to find out whether a source is character or byte based.
@@ -17,8 +18,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated `TruffleLanguage.Env.newSourceBuilder(String, TruffleFile)`. Use  `Source.newBuilder(String, TruffleFile)` instead.
 * Added `Source.findLanguage` and `Source.findMimeType` to resolve languages and MIME types.
 * The method `Source.getMimeType()` might now return `null`. Source builders now support `null` values for `mimeType(String)`.
-* A `null` source name will no longer lead to an error but will be translated to `Unnamed`. 
+* A `null` source name will no longer lead to an error but will be translated to `Unnamed`.
 * Added `TruffleFile.normalize` to allow explicit normalization of `TruffleFile` paths. `TruffleFile` is no longer normalized by default.
+* Added `Message#EXECUTE`, `Message#INVOKE`, `Message#NEW`.
+* Deprecated `Message#createExecute(int)`, `Message#createInvoke(int)`, `Message#createNew(int)` as the arity argument is no longer needed. Jackpot rules available (run `mx jackpot --apply`).
 
 ## Version 1.0.0 RC5
 

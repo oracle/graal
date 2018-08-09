@@ -52,8 +52,8 @@ public class VarargsNFITest extends NFITest {
 
     private static class FormatNode extends Node {
 
-        @Child Node bind = Message.createInvoke(1).createNode();
-        @Child Node execute = Message.createExecute(0).createNode();
+        @Child Node bind = Message.INVOKE.createNode();
+        @Child Node execute = Message.EXECUTE.createNode();
 
         private String execute(TruffleObject formatString, Object... args) {
             assert args[0] == null && args[1] == null;
