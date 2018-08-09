@@ -588,8 +588,7 @@ final class NativeImageServer extends NativeImage {
         });
         if (childPid >= 0) {
             Server server = null;
-            long timeout = System.currentTimeMillis() + 8_000;
-            while (timeout > System.currentTimeMillis()) {
+            while (Signal.kill(childPid, 0) == 0) {
                 try {
                     /* Wait for server.properties to appear in serverDir */
                     if (server == null) {
