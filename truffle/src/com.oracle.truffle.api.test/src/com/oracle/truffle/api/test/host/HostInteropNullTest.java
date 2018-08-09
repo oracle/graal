@@ -47,7 +47,7 @@ public class HostInteropNullTest {
     class TestRootNode extends RootNode {
 
         private final TruffleObject receiver;
-        @Child Node execute = Message.createExecute(1).createNode();
+        @Child Node execute = Message.EXECUTE.createNode();
 
         TestRootNode(TruffleObject receiver) {
             super(null);

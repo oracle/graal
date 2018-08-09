@@ -47,8 +47,8 @@ final class PolyglotExecuteNode extends Node {
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
-    @Child private Node execute = Message.createExecute(0).createNode();
-    @Child private Node instantiate = Message.createNew(0).createNode();
+    @Child private Node execute = Message.EXECUTE.createNode();
+    @Child private Node instantiate = Message.NEW.createNode();
     private final ToGuestValuesNode toGuests = ToGuestValuesNode.create();
     private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
     @Child private ToHostNode toHost = ToHostNode.create();

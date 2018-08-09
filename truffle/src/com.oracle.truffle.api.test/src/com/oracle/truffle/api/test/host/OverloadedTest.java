@@ -125,18 +125,18 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void callGetterAndSetter() {
         data.x = 11;
-        assertEquals(22.0, HostInteropTest.message(Message.createInvoke(0), obj, "x"));
+        assertEquals(22.0, HostInteropTest.message(Message.INVOKE, obj, "x"));
 
-        HostInteropTest.message(Message.createInvoke(1), obj, "x", 10);
+        HostInteropTest.message(Message.INVOKE, obj, "x", 10);
         assertEquals(20, data.x);
 
-        HostInteropTest.message(Message.createInvoke(1), obj, "x", new UnboxableToInt(21));
+        HostInteropTest.message(Message.INVOKE, obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
     }
 
     @Test
     public void testOverloadingTruffleObjectArg() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         ForeignAccess.sendInvoke(n, obj, "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
         ForeignAccess.sendInvoke(n, obj, "x", env.asBoxedGuestValue(10));
@@ -147,7 +147,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testOverloadingNumber() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
         ForeignAccess.sendInvoke(n, numobj, "x", new UnboxableToInt(21));
@@ -161,9 +161,9 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void testVarArgs() throws InteropException {
         TruffleObject stringClass = asTruffleHostSymbol(String.class);
-        assertEquals("bla", ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), stringClass, "format", "bla"));
-        assertEquals("42", ForeignAccess.sendInvoke(Message.createInvoke(2).createNode(), stringClass, "format", "%d", 42));
-        assertEquals("1337", ForeignAccess.sendInvoke(Message.createInvoke(3).createNode(), stringClass, "format", "%d%d", 13, 37));
+        assertEquals("bla", ForeignAccess.sendInvoke(Message.INVOKE.createNode(), stringClass, "format", "bla"));
+        assertEquals("42", ForeignAccess.sendInvoke(Message.INVOKE.createNode(), stringClass, "format", "%d", 42));
+        assertEquals("1337", ForeignAccess.sendInvoke(Message.INVOKE.createNode(), stringClass, "format", "%d%d", 13, 37));
     }
 
     public interface Identity<T> {
@@ -187,12 +187,12 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void testGenericReturnTypeBridgeMethod() throws InteropException {
         TruffleObject thing = asTruffleObject(new ActualRealThingWithIdentity());
-        assertEquals(42, ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), thing, "getId"));
+        assertEquals(42, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), thing, "getId"));
     }
 
     @Test
     public void testWidening() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
         ForeignAccess.sendInvoke(n, numobj, "d", (byte) 42);
@@ -218,7 +218,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testNarrowing() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
         ForeignAccess.sendInvoke(n, numobj, "f", 42.5f);
@@ -229,7 +229,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testPrimitive() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         TruffleObject sample = asTruffleObject(new Sample());
         for (int i = 0; i < 2; i++) {
             assertEquals("int,boolean", ForeignAccess.sendInvoke(n, sample, "m1", 42, true));
@@ -262,7 +262,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testClassVsInterface() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject concrete = asTruffleObject(new Concrete());
         TruffleObject handler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
@@ -272,7 +272,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testClassVsInterface2() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
         TruffleObject chandler = asTruffleObject(new CHander());
@@ -283,7 +283,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
     @Test
     public void testClassVsInterface3() throws InteropException {
-        Node n = Message.createInvoke(1).createNode();
+        Node n = Message.INVOKE.createNode();
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
         TruffleObject chandler = asTruffleObject(new CHander());

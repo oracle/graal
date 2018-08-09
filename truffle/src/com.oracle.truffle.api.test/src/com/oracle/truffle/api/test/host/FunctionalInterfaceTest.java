@@ -73,21 +73,21 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     @Test
     public void testFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        Object result = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), server, "requestHandler", new TestExecutable());
+        Object result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), server, "requestHandler", new TestExecutable());
         assertEquals(EXPECTED_RESULT, result);
     }
 
     @Test
     public void testLegacyFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        Object result = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), server, "requestHandler2", new TestExecutable());
+        Object result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), server, "requestHandler2", new TestExecutable());
         assertEquals(EXPECTED_RESULT, result);
     }
 
     @Test
     public void testThread() throws InteropException {
         TruffleObject threadClass = (TruffleObject) env.lookupHostSymbol("java.lang.Thread");
-        Object result = ForeignAccess.sendNew(Message.createNew(1).createNode(), threadClass, new TestExecutable());
+        Object result = ForeignAccess.sendNew(Message.NEW.createNode(), threadClass, new TestExecutable());
         assertTrue(env.isHostObject(result));
         Object thread = env.asHostObject(result);
         assertTrue(thread instanceof Thread);
@@ -96,7 +96,7 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     @Test(expected = UnsupportedTypeException.class)
     public void testNonFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), server, "unsupported", new TestExecutable());
+        ForeignAccess.sendInvoke(Message.INVOKE.createNode(), server, "unsupported", new TestExecutable());
     }
 
     @Test

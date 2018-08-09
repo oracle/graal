@@ -246,15 +246,15 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void invokeJavaLangObjectFields() throws InteropException {
-        Object string = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "toString");
+        Object string = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
-        Object clazz = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "getClass");
+        Object clazz = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "getClass");
         assertTrue(clazz instanceof TruffleObject && env.asHostObject(clazz) == Data.class);
-        assertEquals(true, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "equals", obj));
-        assertTrue(ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "hashCode") instanceof Integer);
+        assertEquals(true, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "equals", obj));
+        assertTrue(ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "hashCode") instanceof Integer);
 
         for (String m : new String[]{"notify", "notifyAll", "wait"}) {
-            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, m), IllegalMonitorStateException.class);
+            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, m), IllegalMonitorStateException.class);
         }
     }
 
@@ -339,7 +339,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         assertTrue("Method can be executed " + readX, isExecutable);
 
         orig.writeX(10);
-        final Object value = message(Message.createExecute(0), readX);
+        final Object value = message(Message.EXECUTE, readX);
         assertEquals(10, value);
     }
 
@@ -355,7 +355,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void javaObjectsWrappedForTruffle() {
-        Object ret = message(Message.createInvoke(1), obj, "assertThis", obj);
+        Object ret = message(Message.INVOKE, obj, "assertThis", obj);
         assertTrue("Expecting truffle wrapper: " + ret, ret instanceof TruffleObject);
         assertEquals("Same as this obj", ret, obj);
     }
@@ -548,7 +548,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         TruffleObject keysObject = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
         List<?> keyList = asJavaObject(List.class, keysObject);
         assertArrayEquals(new Object[]{"call"}, keyList.toArray());
-        assertEquals(42, ForeignAccess.sendExecute(Message.createExecute(1).createNode(), object, 42));
+        assertEquals(42, ForeignAccess.sendExecute(Message.EXECUTE.createNode(), object, 42));
     }
 
     @FunctionalInterface
@@ -803,14 +803,14 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testSystemMethod() throws InteropException {
         TruffleObject system = asTruffleHostSymbol(System.class);
-        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
+        Object value = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
 
         Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
         assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
-        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
+        value = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) getProperty, "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
     }
@@ -818,14 +818,14 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testExecuteClass() {
         TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendExecute(Message.createExecute(0).createNode(), hashMapClass), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendExecute(Message.EXECUTE.createNode(), hashMapClass), UnsupportedMessageException.class);
         assertFalse("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), hashMapClass));
     }
 
     @Test
     public void testNewClass() throws InteropException {
         TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
-        Object hashMap = ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass);
+        Object hashMap = ForeignAccess.sendNew(Message.NEW.createNode(), hashMapClass);
         assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(isJavaObject(HashMap.class, (TruffleObject) hashMap));
     }
@@ -833,7 +833,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testNewObject() throws InteropException {
         TruffleObject objectClass = asTruffleHostSymbol(Object.class);
-        Object object = ForeignAccess.sendNew(Message.createNew(0).createNode(), objectClass);
+        Object object = ForeignAccess.sendNew(Message.NEW.createNode(), objectClass);
         assertThat(object, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(isJavaObject(Object.class, (TruffleObject) object));
     }
@@ -841,7 +841,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testNewArray() throws InteropException {
         TruffleObject longArrayClass = asTruffleHostSymbol(long[].class);
-        Object longArray = ForeignAccess.sendNew(Message.createNew(1).createNode(), longArrayClass, 4);
+        Object longArray = ForeignAccess.sendNew(Message.NEW.createNode(), longArrayClass, 4);
         assertThat(longArray, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(isJavaObject(long[].class, (TruffleObject) longArray));
         assertEquals(4, message(Message.GET_SIZE, (TruffleObject) longArray));
@@ -851,7 +851,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void testException() throws InteropException {
         TruffleObject iterator = asTruffleObject(Collections.emptyList().iterator());
         try {
-            ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), iterator, "next");
+            ForeignAccess.sendInvoke(Message.INVOKE.createNode(), iterator, "next");
             fail("expected an exception but none was thrown");
         } catch (InteropException ex) {
             throw ex;
@@ -865,7 +865,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void testException2() throws InteropException {
         TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
         try {
-            ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass, -1);
+            ForeignAccess.sendNew(Message.NEW.createNode(), hashMapClass, -1);
             fail("expected an exception but none was thrown");
         } catch (InteropException ex) {
             throw ex;
@@ -875,7 +875,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
 
         try {
-            ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass, "");
+            ForeignAccess.sendNew(Message.NEW.createNode(), hashMapClass, "");
             fail("expected an exception but none was thrown");
         } catch (UnsupportedTypeException ex) {
         }

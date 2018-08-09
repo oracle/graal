@@ -52,8 +52,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 public class TestMemberAccess extends ProxyLanguageEnvTest {
 
-    private final Node newNode = Message.createNew(0).createNode();
-    private final Node executeNode = Message.createExecute(0).createNode();
+    private final Node newNode = Message.NEW.createNode();
+    private final Node executeNode = Message.EXECUTE.createNode();
     private final Node unboxNode = Message.UNBOX.createNode();
     private final Node isBoxedNode = Message.IS_BOXED.createNode();
     private final Node isNullNode = Message.IS_NULL.createNode();
@@ -357,9 +357,9 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
     @Test
     public void testOverloadedConstructor3() throws InteropException {
         TruffleObject clazz = asTruffleHostSymbol(TestConstructorException.class);
-        Object testObj = ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test", 42);
+        Object testObj = ForeignAccess.sendNew(Message.NEW.createNode(), clazz, "test", 42);
         assertTrue(testObj instanceof TruffleObject && env.asHostObject(testObj) instanceof TestConstructorException);
-        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.createNew(0).createNode(), clazz, "test"), IOException.class);
+        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.NEW.createNode(), clazz, "test"), IOException.class);
     }
 
     @Test

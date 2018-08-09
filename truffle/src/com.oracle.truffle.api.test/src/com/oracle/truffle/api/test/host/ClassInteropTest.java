@@ -80,7 +80,7 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canReadValueAfterCreatingNewInstance() throws Exception {
-        Object objInst = HostInteropTest.message(Message.createNew(0), obj);
+        Object objInst = HostInteropTest.message(Message.NEW, obj);
         assertTrue("It is truffle object", objInst instanceof TruffleObject);
         XYPlus inst = asJavaObject(XYPlus.class, (TruffleObject) objInst);
         assertEquals("Field read", 42, inst.value());
@@ -105,7 +105,7 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
         Object type = HostInteropTest.message(Message.READ, obj, "Zed");
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         TruffleObject truffleType = (TruffleObject) type;
-        Object objInst = HostInteropTest.message(Message.createNew(1), truffleType, 22);
+        Object objInst = HostInteropTest.message(Message.NEW, truffleType, 22);
         assertTrue("Created instance is a truffle object", objInst instanceof TruffleObject);
         Object res = asJavaObject(Object.class, (TruffleObject) objInst);
         assertTrue("Instance is of correct type", res instanceof Zed);

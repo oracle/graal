@@ -535,11 +535,11 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("method.getName()") String name,
                     @Cached("getMethodReturnType(method)") Class<?> returnClass,
                     @Cached("getMethodGenericReturnType(method)") Type returnType,
-                    @Cached("createInvoke(0).createNode()") Node invokeNode,
+                    @Cached("INVOKE.createNode()") Node invokeNode,
                     @Cached("KEY_INFO.createNode()") Node keyInfoNode,
                     @Cached("READ.createNode()") Node readNode,
                     @Cached("IS_EXECUTABLE.createNode()") Node isExecutableNode,
-                    @Cached("createExecute(0).createNode()") Node executeNode,
+                    @Cached("EXECUTE.createNode()") Node executeNode,
                     @Cached("createBinaryProfile()") ConditionProfile branchProfile,
                     @Cached("create()") ToHostNode toJava) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, invokeNode, keyInfoNode, readNode, isExecutableNode, executeNode, branchProfile);

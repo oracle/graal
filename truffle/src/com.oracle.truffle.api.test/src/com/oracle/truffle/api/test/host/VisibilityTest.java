@@ -254,7 +254,7 @@ public class VisibilityTest extends ProxyLanguageEnvTest {
     private Object invokeRun(Object obj, Class<?> methodClass, Object... args) throws InteropException {
         TruffleObject receiver = asTruffleObject(obj);
         try {
-            Object result = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), receiver, "run", args);
+            Object result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), receiver, "run", args);
             Assert.assertSame(methodClass, run);
             return result;
         } catch (UnknownIdentifierException uie) {
