@@ -185,10 +185,10 @@ public class SLInspectProfileTest {
         tester.eval(source).get();
         tester.sendMessage("{\"id\":5,\"method\":\"Profiler.takeTypeProfile\"}");
         assertEquals("{\"result\":{\"result\":[{\"scriptId\":\"1\",\"entries\":["
+                + "{\"types\":[{\"name\":\"Number\"}],\"offset\":14},"
                 + "{\"types\":[{\"name\":\"Number\"},{\"name\":\"String\"}],\"offset\":17},"
-                + "{\"types\":[{\"name\":\"Null\"}],\"offset\":93},"
                 + "{\"types\":[{\"name\":\"Number\"},{\"name\":\"String\"}],\"offset\":37},"
-                + "{\"types\":[{\"name\":\"Number\"}],\"offset\":14}],"
+                + "{\"types\":[{\"name\":\"Null\"}],\"offset\":93}],"
                 + "\"url\":\"" + slTestURI + "\"}]},\"id\":5}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":6,\"method\":\"Profiler.takeTypeProfile\"}");
         assertEquals("{\"result\":{\"result\":[]},\"id\":6}", tester.getMessages(true).trim());
