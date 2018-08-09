@@ -27,6 +27,7 @@ package com.oracle.truffle.api.vm;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.JarURLConnection;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
@@ -198,10 +199,32 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
                 String languageHome = System.getProperty(id + ".home");
                 if (languageHome == null && connection instanceof JarURLConnection) {
-                    // (tfel): This seems a bit brittle, but is actually the best API
-                    // for this I could find.
-                    Path path = Paths.get(((JarURLConnection) connection).getJarFileURL().getPath());
-                    languageHome = path.getParent().toString();
+
+                    /*
+                     * The previous implementation used a `URL.getPath()`, but OS Windows is
+                     * offended by leading slash and maybe other irrelevant characters. Therefore,
+                     * for JDK 1.7+ a preferred way to go is URL -> URI -> Path.
+                     * 
+                     * Also, Paths are more strict than Files and URLs, so we can't create an
+                     * invalid Path from a random string like "/C:/". This leads us to the
+                     * `URISyntaxException` for URL -> URI conversion and
+                     * `java.nio.file.InvalidPathException` for URI -> Path conversion.
+                     * 
+                     * For fixing further bugs at this point, please read
+                     * http://tools.ietf.org/html/rfc1738 http://tools.ietf.org/html/rfc2396
+                     * (supersedes rfc1738) http://tools.ietf.org/html/rfc3986 (supersedes rfc2396)
+                     * 
+                     * http://url.spec.whatwg.org/ does not contain URI interpretation. When you
+                     * call `URI.toASCIIString()` all reserved and non-ASCII characters are
+                     * percent-quoted.
+                     */
+                    try {
+                        Path path;
+                        path = Paths.get(((JarURLConnection) connection).getJarFileURL().toURI());
+                        languageHome = path.getParent().toString();
+                    } catch (URISyntaxException e) {
+                        assert false : "Could not resolve path.";
+                    }
                 }
                 list.add(new LanguageCache(id, prefix, p, loader, languageHome));
             }
