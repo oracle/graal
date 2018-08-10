@@ -165,7 +165,7 @@ public class SLExceptionTest {
             String source = "function bar() { x = 1 / \"asdf\"; }\n" +
                             "function foo() { return bar(); }\n" +
                             "function main() { foo(); }";
-            ctx.eval(Source.newBuilder("sl", source, "script.sl").build());
+            ctx.eval(Source.newBuilder("sl", source, "script.sl").buildLiteral());
             fail();
         } catch (PolyglotException e) {
             assertTrue(e.isGuestException());

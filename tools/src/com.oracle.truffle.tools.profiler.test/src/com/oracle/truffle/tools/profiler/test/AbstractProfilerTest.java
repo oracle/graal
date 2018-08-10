@@ -57,7 +57,7 @@ public abstract class AbstractProfilerTest {
             ")");
 
     protected Source makeSource(String s) {
-        return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").build();
+        return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
     }
 
     protected static final SourceSectionFilter NO_INTERNAL_ROOT_TAG_FILTER = SourceSectionFilter.

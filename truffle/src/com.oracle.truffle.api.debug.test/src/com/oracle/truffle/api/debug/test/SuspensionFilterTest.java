@@ -49,7 +49,7 @@ public class SuspensionFilterTest extends AbstractDebugTest {
 
     @Test
     public void testSuspendInInitialization() {
-        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").build();
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
         InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         final Source source = testSource("ROOT(\n" +
                         "  DEFINE(foo, \n" +
@@ -75,7 +75,7 @@ public class SuspensionFilterTest extends AbstractDebugTest {
 
     @Test
     public void testSuspendAfterInitialization() {
-        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").build();
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
         InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
@@ -99,7 +99,7 @@ public class SuspensionFilterTest extends AbstractDebugTest {
     public void testSuspendAfterInitialization2() {
         // Suspend after initialization code finishes,
         // but can step into the same code that was executed during initialization, later on.
-        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").build();
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
         InstrumentationTestLanguage.envConfig = new HashMap<>();
         InstrumentationTestLanguage.envConfig.put("initSource", initSource);
         InstrumentationTestLanguage.envConfig.put("runInitAfterExec", true);
@@ -143,7 +143,7 @@ public class SuspensionFilterTest extends AbstractDebugTest {
                         "  ), \n" +
                         "  STATEMENT(CALL(initFoo))\n" +
                         ")\n";
-        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, initCode, "<init>").build();
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, initCode, "<init>").buildLiteral();
         InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
@@ -300,11 +300,11 @@ public class SuspensionFilterTest extends AbstractDebugTest {
         final Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  DEFINE(foo1,\n" +
                         "    STATEMENT(CONSTANT(43))\n" +
-                        "  ))\n", "Source1").build();
+                        "  ))\n", "Source1").buildLiteral();
         final Source source2 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  DEFINE(foo2,\n" +
                         "    STATEMENT(CONSTANT(44))\n" +
-                        "  ))\n", "Source2").build();
+                        "  ))\n", "Source2").buildLiteral();
         final Source source3 = testSource("ROOT(\n" +
                         "  CALL(foo1),\n" +
                         "  CALL(foo2),\n" +

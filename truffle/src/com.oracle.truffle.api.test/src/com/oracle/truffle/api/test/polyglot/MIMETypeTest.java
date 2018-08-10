@@ -213,7 +213,7 @@ public class MIMETypeTest {
     public void testDefaultMimeCharacters2() {
         Context context = Context.create();
 
-        Source source = Source.newBuilder("MIMETypeLanguage7", ByteSequence.create(new byte[]{1, 2, 3, 4}), "").build();
+        Source source = Source.newBuilder("MIMETypeLanguage7", ByteSequence.create(new byte[]{1, 2, 3, 4}), "").buildLiteral();
         try {
             context.eval(source);
             fail();
@@ -240,7 +240,7 @@ public class MIMETypeTest {
     public void testDefaultMimeBytes2() {
         Context context = Context.create();
 
-        Source source = Source.newBuilder("MIMETypeLanguage8", "", "").build();
+        Source source = Source.newBuilder("MIMETypeLanguage8", "", "").buildLiteral();
         try {
             context.eval(source);
             fail();

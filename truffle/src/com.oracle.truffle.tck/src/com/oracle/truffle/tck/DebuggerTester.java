@@ -475,7 +475,7 @@ public final class DebuggerTester implements AutoCloseable {
         if (TRACE) {
             trace("sourceString = '" + sourceString + "'");
         }
-        final Source source = Source.newBuilder(language, sourceString, "testMisplacedLineBreakpoint." + language).build();
+        final Source source = Source.newBuilder(language, sourceString, "testMisplacedLineBreakpoint." + language).buildLiteral();
         com.oracle.truffle.api.source.Source tsource = DebuggerTester.getSourceImpl(source);
         for (int l = 1; l < source.getLineCount(); l++) {
             if (!bps.containsKey(l)) {
@@ -585,7 +585,7 @@ public final class DebuggerTester implements AutoCloseable {
         if (TRACE) {
             trace("sourceString = '" + sourceString + "'");
         }
-        final Source source = Source.newBuilder(language, sourceString, "testMisplacedColumnBreakpoint." + language).build();
+        final Source source = Source.newBuilder(language, sourceString, "testMisplacedColumnBreakpoint." + language).buildLiteral();
 
         for (Map.Entry<Integer, int[]> bentry : bps.entrySet()) {
             int bpId = bentry.getKey();

@@ -65,8 +65,8 @@ public class SLLoggerTest {
     private static final Source ADD_SL;
     private static final Source MUL_SL;
     static {
-        ADD_SL = Source.newBuilder("sl", "function add(a,b) {return a + b;} function main() {return add(1,1);}", "add.sl").build();
-        MUL_SL = Source.newBuilder("sl", "function mul(a,b) {return a * b;} function main() {return mul(1,1);}", "mul.sl").build();
+        ADD_SL = Source.newBuilder("sl", "function add(a,b) {return a + b;} function main() {return add(1,1);}", "add.sl").buildLiteral();
+        MUL_SL = Source.newBuilder("sl", "function mul(a,b) {return a * b;} function main() {return mul(1,1);}", "mul.sl").buildLiteral();
     }
 
     private TestHandler testHandler;

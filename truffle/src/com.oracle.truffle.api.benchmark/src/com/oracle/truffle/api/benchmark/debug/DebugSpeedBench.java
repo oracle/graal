@@ -73,7 +73,7 @@ public class DebugSpeedBench implements SuspendedCallback {
 
     @Setup
     public void beforeTesting() {
-        source = Source.newBuilder("instrumentation-test-language", CODE_STEP, "StepTest.instr").build();
+        source = Source.newBuilder("instrumentation-test-language", CODE_STEP, "StepTest.instr").buildLiteral();
         context = Context.create();
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
         session = debugger.startSession(this);

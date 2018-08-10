@@ -49,7 +49,7 @@ import java.util.zip.ZipEntry;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Source.LiteralBuilder;
+import org.graalvm.polyglot.Source.Builder;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
@@ -124,7 +124,7 @@ public class SourceAPITest {
     @Test
     public void testBinarySources() {
         ByteSequence sequence = ByteSequence.create(new byte[]{1, 2, 3, 4});
-        Source source = Source.newBuilder("", sequence, null).build();
+        Source source = Source.newBuilder("", sequence, null).buildLiteral();
 
         assertTrue(source.hasBytes());
         assertFalse(source.hasCharacters());
@@ -149,15 +149,15 @@ public class SourceAPITest {
     @Test
     public void testMimeTypes() {
         ByteSequence bytes = ByteSequence.create(new byte[8]);
-        assertNotNull(Source.newBuilder("", "", "").mimeType(null).build());
+        assertNotNull(Source.newBuilder("", "", "").mimeType(null).buildLiteral());
 
         assertFails(() -> Source.newBuilder("", "", "").mimeType(""), IllegalArgumentException.class);
         assertFails(() -> Source.newBuilder("", "", "").mimeType("/"), IllegalArgumentException.class);
         assertFails(() -> Source.newBuilder("", "", "").mimeType("a/"), IllegalArgumentException.class);
         assertFails(() -> Source.newBuilder("", "", "").mimeType("/a"), IllegalArgumentException.class);
 
-        assertEquals("text/a", Source.newBuilder("", "", "").mimeType("text/a").build().getMimeType());
-        assertEquals("application/a", Source.newBuilder("", bytes, "").mimeType("application/a").build().getMimeType());
+        assertEquals("text/a", Source.newBuilder("", "", "").mimeType("text/a").buildLiteral().getMimeType());
+        assertEquals("application/a", Source.newBuilder("", bytes, "").mimeType("application/a").buildLiteral().getMimeType());
     }
 
     @Test
@@ -205,10 +205,10 @@ public class SourceAPITest {
 
     @Test
     public void assignMimeTypeAndIdentity() {
-        LiteralBuilder builder = Source.newBuilder("lang", "// a comment\n", "Empty comment");
-        Source s1 = builder.mimeType("text/unknown").build();
+        Builder builder = Source.newBuilder("lang", "// a comment\n", "Empty comment");
+        Source s1 = builder.mimeType("text/unknown").buildLiteral();
         assertEquals("No mime type assigned", "text/unknown", s1.getMimeType());
-        Source s2 = builder.mimeType("text/x-c").build();
+        Source s2 = builder.mimeType("text/x-c").buildLiteral();
         assertEquals("They have the same content", s1.getCharacters(), s2.getCharacters());
         assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
         assertNotEquals("So they are different", s1, s2);
@@ -359,7 +359,7 @@ public class SourceAPITest {
 
         String text = "// Hello";
 
-        Source source = Source.newBuilder("lang", file).content(text).mimeType("text/javascript").build();
+        Source source = Source.newBuilder("lang", file).content(text).mimeType("text/javascript").buildLiteral();
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNotNull("Mime type specified", source.getMimeType());
         assertTrue("Recognized as JavaScript", source.getMimeType().equals("text/javascript"));
@@ -372,7 +372,7 @@ public class SourceAPITest {
 
         String text = "// Hello";
 
-        Source source = Source.newBuilder("lang", text, "another.js").uri(file.toURI()).build();
+        Source source = Source.newBuilder("lang", text, "another.js").uri(file.toURI()).buildLiteral();
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNull("Mime type not specified", source.getMimeType());
         assertNull("Null MIME type", source.getMimeType());
@@ -426,10 +426,10 @@ public class SourceAPITest {
         final String code2 = "test\ntest\nlonger\ntest";
         final File truffleFile = new File(path);
 
-        final Source source1 = Source.newBuilder("lang", truffleFile).content(code1).build();
+        final Source source1 = Source.newBuilder("lang", truffleFile).content(code1).buildLiteral();
         assertEquals(source1.getCharacters(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
-        final Source source2 = Source.newBuilder("lang", truffleFile).content(code2).build();
+        final Source source2 = Source.newBuilder("lang", truffleFile).content(code2).buildLiteral();
         assertEquals(source2.getCharacters(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File(path).toURI(), source1.getURI());
@@ -443,10 +443,10 @@ public class SourceAPITest {
         final String code2 = "test\ntest\nlonger\ntest";
         final File file = new File(path);
 
-        final Source source1 = Source.newBuilder("lang", file).content(code1).build();
+        final Source source1 = Source.newBuilder("lang", file).content(code1).buildLiteral();
         assertEquals(source1.getCharacters(), code1);
         assertEquals(source1.getLineNumber(code1.length() - 1), 2);
-        final Source source2 = Source.newBuilder("lang", file).content(code2).build();
+        final Source source2 = Source.newBuilder("lang", file).content(code2).buildLiteral();
         assertEquals(source2.getCharacters(), code2);
         assertEquals(source2.getLineNumber(code2.length() - 1), 4);
         assertEquals("File URI", new File("test.input").getAbsoluteFile().toURI(), source1.getURI());
@@ -519,7 +519,7 @@ public class SourceAPITest {
 
     @Test
     public void normalSourceIsNotInter() {
-        Source source = Source.newBuilder("lang", "anything", "name").build();
+        Source source = Source.newBuilder("lang", "anything", "name").buildLiteral();
 
         assertFalse("Not internal", source.isInternal());
         assertFalse("Not interactive", source.isInteractive());
@@ -527,21 +527,21 @@ public class SourceAPITest {
 
     @Test
     public void markSourceAsInternal() {
-        Source source = Source.newBuilder("lang", "anything", "name").internal(true).build();
+        Source source = Source.newBuilder("lang", "anything", "name").internal(true).buildLiteral();
 
         assertTrue("This source is internal", source.isInternal());
     }
 
     @Test
     public void markSourceAsInteractive() {
-        Source source = Source.newBuilder("lang", "anything", "name").interactive(true).build();
+        Source source = Source.newBuilder("lang", "anything", "name").interactive(true).buildLiteral();
 
         assertTrue("This source is interactive", source.isInteractive());
     }
 
     @Test
     public void throwsErrorNameCannotBeNull() {
-        assertEquals("Unnamed", Source.newBuilder("lang", "Hi", null).build().getName());
+        assertEquals("Unnamed", Source.newBuilder("lang", "Hi", null).buildLiteral().getName());
     }
 
     @Test

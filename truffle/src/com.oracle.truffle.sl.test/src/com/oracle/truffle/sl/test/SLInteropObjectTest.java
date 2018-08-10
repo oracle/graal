@@ -64,7 +64,7 @@ public class SLInteropObjectTest {
 
     @Test
     public void testObject() {
-        final Source src = Source.newBuilder("sl", "function main() {o = new(); o.a = 10; o.b = \"B\"; return o;}", "testObject.sl").build();
+        final Source src = Source.newBuilder("sl", "function main() {o = new(); o.a = 10; o.b = \"B\"; return o;}", "testObject.sl").buildLiteral();
         final Value obj = context.eval(src);
         Assert.assertTrue(obj.hasMembers());
 

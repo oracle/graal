@@ -124,7 +124,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
     }
 
     private SourceSection[] sections(String code, String... match) {
-        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "sourceSectionTest").build();
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "sourceSectionTest").buildLiteral();
 
         List<SourceSection> sections = new ArrayList<>();
         sections.add(createSection(source, 0, code.length()));

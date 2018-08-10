@@ -407,7 +407,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCorrectInitShadowStackStatements() {
         sampler.setMode(CPUSampler.Mode.STATEMENTS);
         sampler.setFilter(NO_INTERNAL_STATEMENT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").build();
+        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").buildLiteral();
         context.eval(test);
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
@@ -435,7 +435,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCorrectInitShadowStackRoots() {
         sampler.setMode(CPUSampler.Mode.ROOTS);
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").build();
+        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").buildLiteral();
         context.eval(test);
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 

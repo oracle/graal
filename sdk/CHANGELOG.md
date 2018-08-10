@@ -15,7 +15,6 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 	* `Language` instances allow access to the default and supported MIME types using `Language.getMimeTypes()` and `Language.getDefaultMimeType()`.
 	* MIME types are automatically detected if the source is constructed from a `File` or `URL` if it is not specified explicitly. 
 	* Deprecated `Source.getInputStream()`. Use `Source.getCharacters()` or `Source.getBytes()` instead.
-* Deprecated `Source.Builder.buildLiteral()` and introduced `Source.LiteralBuilder` that is returned for literal sources and does not throw an `IOException` when `build() ` is invoked. Uses of `buildLiteral()` can typically just invoke `build()` instead.
 * Context methods now consistently throw `IllegalArgumentException` instead of `IllegalStateException` for unsupported sources or missing / inaccessible languages.
 
 
