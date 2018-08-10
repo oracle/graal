@@ -173,6 +173,17 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
          */
         wrapped.getEnclosingType();
 
+        /*
+         * Eagerly resolve the instance fields. The wrapped type caches the result, so when
+         * AnalysisType.getInstanceFields(boolean) is called it will use that cached result. We
+         * cannot call AnalysisType.getInstanceFields(boolean), and create the corresponding
+         * AnalysisField objects, directly here because that could lead to a deadlock.
+         */
+        for (ResolvedJavaField field : wrapped.getInstanceFields(false)) {
+            /* Eagerly resolve the field declared type. */
+            field.getType();
+        }
+
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         getSuperclass();
         interfaces = convertTypes(wrapped.getInterfaces());

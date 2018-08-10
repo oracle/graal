@@ -256,25 +256,25 @@ public class AlignedHeapChunk extends HeapChunk {
      *
      * This has to be fast, because it is used by the post-write barrier.
      */
-    public static void dirtyCardForObjectOfAlignedHeapChunk(Object obj) {
-        final AlignedHeader chunk = getEnclosingAlignedHeapChunk(obj);
+    public static void dirtyCardForObjectOfAlignedHeapChunk(Object object) {
+        final Pointer objectPointer = Word.objectToUntrackedPointer(object);
+        final AlignedHeader chunk = getEnclosingAlignedHeapChunkFromPointer(objectPointer);
         final Pointer cardTableStart = getCardTableStart(chunk);
-        final UnsignedWord index = getObjectIndex(chunk, obj);
+        final UnsignedWord index = getObjectIndex(chunk, objectPointer);
         CardTable.dirtyEntryAtIndex(cardTableStart, index);
     }
 
     /** Return the offset of an object within the objects part of a chunk. */
-    private static UnsignedWord getObjectOffset(AlignedHeader that, Object obj) {
+    private static UnsignedWord getObjectOffset(AlignedHeader that, Pointer objectPointer) {
         final Pointer objectsStart = getObjectsStart(that);
-        final Pointer objectPointer = Word.objectToUntrackedPointer(obj);
         assert objectsStart.belowOrEqual(objectPointer);
         assert objectPointer.belowOrEqual(that.getEnd());
         return objectPointer.subtract(objectsStart);
     }
 
     /** Return the index of an object within the tables of a chunk. */
-    private static UnsignedWord getObjectIndex(AlignedHeader that, Object obj) {
-        final UnsignedWord offset = getObjectOffset(that, obj);
+    private static UnsignedWord getObjectIndex(AlignedHeader that, Pointer objectPointer) {
+        final UnsignedWord offset = getObjectOffset(that, objectPointer);
         return CardTable.memoryOffsetToIndex(offset);
     }
 
