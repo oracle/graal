@@ -618,7 +618,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
         # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.api.metadata,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm'], quietForNoPackages=True)
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),

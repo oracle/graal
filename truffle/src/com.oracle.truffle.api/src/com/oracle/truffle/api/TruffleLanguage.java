@@ -1506,7 +1506,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
-            return AccessAPI.javaAccess().isHostObject(value);
+            return AccessAPI.engineAccess().isHostObject(value);
         }
 
         /**
@@ -1521,7 +1521,7 @@ public abstract class TruffleLanguage<C> {
                 CompilerDirectives.transferToInterpreter();
                 throw new ClassCastException();
             }
-            return AccessAPI.javaAccess().asHostObject(value);
+            return AccessAPI.engineAccess().asHostObject(value);
         }
 
         /**
@@ -1571,7 +1571,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
-            return AccessAPI.javaAccess().isHostFunction(value);
+            return AccessAPI.engineAccess().isHostFunction(value);
         }
 
         /**
@@ -1639,7 +1639,7 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
-            return AccessAPI.javaAccess().isHostSymbol(guestObject);
+            return AccessAPI.engineAccess().isHostSymbol(guestObject);
         }
 
         /**
@@ -1935,8 +1935,7 @@ public abstract class TruffleLanguage<C> {
         Object findMetaObjectImpl(Object obj) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
-                final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
-                return getSpi().findMetaObject(c, rawValue);
+                return getSpi().findMetaObject(c, obj);
             } else {
                 return null;
             }
@@ -1945,16 +1944,14 @@ public abstract class TruffleLanguage<C> {
         SourceSection findSourceLocation(Object obj) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
-                final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
-                return getSpi().findSourceLocation(c, rawValue);
+                return getSpi().findSourceLocation(c, obj);
             } else {
                 return null;
             }
         }
 
         boolean isObjectOfLanguage(Object obj) {
-            final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
-            return getSpi().isObjectOfLanguage(rawValue);
+            return getSpi().isObjectOfLanguage(obj);
         }
 
         Iterable<Scope> findLocalScopes(Node node, Frame frame) {
@@ -2186,10 +2183,6 @@ public abstract class TruffleLanguage<C> {
 
         static InteropSupport interopAccess() {
             return API.interopSupport();
-        }
-
-        static JavaInteropSupport javaAccess() {
-            return API.javaInteropSupport();
         }
 
         @Override

@@ -205,17 +205,17 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
-        invokeStaticMethod("com.oracle.truffle.api.vm.LanguageCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
-        invokeStaticMethod("com.oracle.truffle.api.vm.InstrumentCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
+        invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
+        invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "initializeNativeImageState", Collections.emptyList());
     }
 
     public static void removeTruffleLanguage(String mimeType) {
-        invokeStaticMethod("com.oracle.truffle.api.vm.LanguageCache", "removeLanguageFromNativeImage", Collections.singletonList(String.class), mimeType);
+        invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "removeLanguageFromNativeImage", Collections.singletonList(String.class), mimeType);
     }
 
     private static Collection<Class<?>> getLanguageClasses() {
-        return invokeStaticMethod("com.oracle.truffle.api.vm.LanguageCache", "getLanguageClasses", Collections.emptyList());
+        return invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getLanguageClasses", Collections.emptyList());
     }
 
     @SuppressWarnings("unchecked")
@@ -281,9 +281,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         // clean up the language cache
-        invokeStaticMethod("com.oracle.truffle.api.vm.LanguageCache", "resetNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.vm.InstrumentCache", "resetNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.vm.PolyglotRootNode", "resetNativeImageState", Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "resetNativeImageState", Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.interop.Message", "resetNativeImageState", Collections.emptyList());
@@ -726,8 +725,8 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
 
 // Checkstyle: stop
 
-@TargetClass(className = "com.oracle.truffle.api.vm.PolyglotContextImpl", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl {
+@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
 
     /**
      * Truffle code can run during image generation, i.e., one or many contexts can be used during
@@ -737,12 +736,12 @@ final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl {
      * stores context information is abstracted in the SingleContextState class, and it is enough to
      * recompute a single static field to a new SingleContextState instance.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.api.vm.PolyglotContextImpl$SingleContextState", isFinal = true) //
-    static Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState singleContextState;
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", isFinal = true) //
+    static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
 }
 
-@TargetClass(className = "com.oracle.truffle.api.vm.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState {
+@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
 }
 
 /*
@@ -751,21 +750,21 @@ final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextSt
  */
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaFunctionObject", onlyWith = TruffleFeature.IsEnabled.class)
+@TargetClass(className = "com.oracle.truffle.polyglot.HostFunction", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_interop_java_JavaFunctionObject {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.JavaInteropReflect", onlyWith = TruffleFeature.IsEnabled.class)
+@TargetClass(className = "com.oracle.truffle.polyglot.HostInteropReflect", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflect {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.FunctionProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
+@TargetClass(className = "com.oracle.truffle.polyglot.FunctionProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_interop_java_FunctionProxyHandler {
 }
 
 @Delete
-@TargetClass(className = "com.oracle.truffle.api.interop.java.ObjectProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
+@TargetClass(className = "com.oracle.truffle.polyglot.ObjectProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandler {
 }

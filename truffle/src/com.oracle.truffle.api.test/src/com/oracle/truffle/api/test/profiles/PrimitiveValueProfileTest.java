@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import com.oracle.truffle.api.interop.java.*;
 import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
@@ -38,6 +37,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeThat;
+
+import java.util.Objects;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -137,11 +138,7 @@ public class PrimitiveValueProfileTest {
     }
 
     private static boolean primitiveEquals(Object value0, Object value1) {
-        if (JavaInterop.isPrimitive(value0)) {
-            return value0.equals(value1);
-        } else {
-            return value0 == value1;
-        }
+        return Objects.equals(value0, value1);
     }
 
     @Theory

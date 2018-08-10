@@ -84,24 +84,6 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
      * {@link CPUSampler}.
      *
-     * @since 0.30
-     * @deprecated use {@link #getSampler(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static CPUSampler getSampler(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
-        if (instrument == null) {
-            throw new IllegalStateException("Sampler is not installed.");
-        }
-        instrument.setEnabled(true);
-        return instrument.lookup(CPUSampler.class);
-    }
-
-    /**
-     * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link CPUSampler}.
-     *
      * @since 0.33
      */
     public static CPUSampler getSampler(Engine engine) {

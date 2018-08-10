@@ -1,0 +1,115 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface java.io.Serializable
+
+CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
+meth public abstract int compareTo({java.lang.Comparable%0})
+
+CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
+cons protected init(java.lang.String,int)
+intf java.io.Serializable
+intf java.lang.Comparable<{java.lang.Enum%0}>
+meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected final void finalize()
+meth public final boolean equals(java.lang.Object)
+meth public final int compareTo({java.lang.Enum%0})
+meth public final int hashCode()
+meth public final int ordinal()
+meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
+meth public final java.lang.String name()
+meth public java.lang.String toString()
+meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
+supr java.lang.Object
+hfds name,ordinal
+
+CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
+meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
+meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public final !enum org.graalvm.options.OptionCategory
+fld public final static org.graalvm.options.OptionCategory DEBUG
+fld public final static org.graalvm.options.OptionCategory EXPERT
+fld public final static org.graalvm.options.OptionCategory USER
+meth public static org.graalvm.options.OptionCategory valueOf(java.lang.String)
+meth public static org.graalvm.options.OptionCategory[] values()
+supr java.lang.Enum<org.graalvm.options.OptionCategory>
+
+CLSS public final org.graalvm.options.OptionDescriptor
+innr public final Builder
+meth public boolean equals(java.lang.Object)
+meth public boolean isDeprecated()
+meth public int hashCode()
+meth public java.lang.String getHelp()
+meth public java.lang.String getName()
+meth public java.lang.String toString()
+meth public org.graalvm.options.OptionCategory getCategory()
+meth public org.graalvm.options.OptionKey<?> getKey()
+meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionDescriptor$Builder newBuilder(org.graalvm.options.OptionKey<{%%0}>,java.lang.String)
+supr java.lang.Object
+hfds EMPTY,deprecated,help,key,kind,name
+
+CLSS public final org.graalvm.options.OptionDescriptor$Builder
+ outer org.graalvm.options.OptionDescriptor
+meth public org.graalvm.options.OptionDescriptor build()
+meth public org.graalvm.options.OptionDescriptor$Builder category(org.graalvm.options.OptionCategory)
+meth public org.graalvm.options.OptionDescriptor$Builder deprecated(boolean)
+meth public org.graalvm.options.OptionDescriptor$Builder help(java.lang.String)
+supr java.lang.Object
+hfds category,deprecated,help,key,name
+
+CLSS public abstract interface org.graalvm.options.OptionDescriptors
+fld public final static org.graalvm.options.OptionDescriptors EMPTY
+intf java.lang.Iterable<org.graalvm.options.OptionDescriptor>
+meth public !varargs static org.graalvm.options.OptionDescriptors createUnion(org.graalvm.options.OptionDescriptors[])
+meth public abstract java.util.Iterator<org.graalvm.options.OptionDescriptor> iterator()
+meth public abstract org.graalvm.options.OptionDescriptor get(java.lang.String)
+meth public static org.graalvm.options.OptionDescriptors create(java.util.List<org.graalvm.options.OptionDescriptor>)
+
+CLSS public final org.graalvm.options.OptionKey<%0 extends java.lang.Object>
+cons public init({org.graalvm.options.OptionKey%0})
+cons public init({org.graalvm.options.OptionKey%0},org.graalvm.options.OptionType<{org.graalvm.options.OptionKey%0}>)
+meth public boolean hasBeenSet(org.graalvm.options.OptionValues)
+meth public org.graalvm.options.OptionType<{org.graalvm.options.OptionKey%0}> getType()
+meth public {org.graalvm.options.OptionKey%0} getDefaultValue()
+meth public {org.graalvm.options.OptionKey%0} getValue(org.graalvm.options.OptionValues)
+supr java.lang.Object
+hfds defaultValue,type
+
+CLSS public final org.graalvm.options.OptionType<%0 extends java.lang.Object>
+cons public init(java.lang.String,{org.graalvm.options.OptionType%0},java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>)
+cons public init(java.lang.String,{org.graalvm.options.OptionType%0},java.util.function.Function<java.lang.String,{org.graalvm.options.OptionType%0}>,java.util.function.Consumer<{org.graalvm.options.OptionType%0}>)
+meth public java.lang.String getName()
+meth public java.lang.String toString()
+meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionType<{%%0}> defaultType(java.lang.Class<{%%0}>)
+meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionType<{%%0}> defaultType({%%0})
+meth public void validate({org.graalvm.options.OptionType%0})
+meth public {org.graalvm.options.OptionType%0} convert(java.lang.String)
+meth public {org.graalvm.options.OptionType%0} getDefaultValue()
+supr java.lang.Object
+hfds DEFAULTTYPES,defaultValue,name,stringConverter,validator
+
+CLSS public abstract interface org.graalvm.options.OptionValues
+meth public abstract <%0 extends java.lang.Object> void set(org.graalvm.options.OptionKey<{%%0}>,{%%0})
+meth public abstract <%0 extends java.lang.Object> {%%0} get(org.graalvm.options.OptionKey<{%%0}>)
+meth public abstract boolean hasBeenSet(org.graalvm.options.OptionKey<?>)
+meth public abstract org.graalvm.options.OptionDescriptors getDescriptors()
+meth public boolean hasSetOptions()
+
+CLSS abstract interface org.graalvm.options.package-info
+
