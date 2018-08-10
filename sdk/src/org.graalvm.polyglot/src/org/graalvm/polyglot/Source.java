@@ -101,8 +101,8 @@ import org.graalvm.polyglot.io.ByteSequence;
  * determine whether bytes or characters should be loaded. The behavior can be customized by
  * specifying a {@link Builder#mimeType(String) MIME type} or {@link Builder#content(ByteSequence)
  * content} explicitly. If the specified or inferred MIME type starts with <code>'text/</code> or
- * the MIME typs is <code>null</code> then it will be interpreted as character based, otherwise byte
- * based.
+ * the MIME types is <code>null</code> then it will be interpreted as character based, otherwise
+ * byte based.
  *
  * @see Context#eval(Source) To evaluate sources.
  * @see Source#findLanguage(File) To detect a language using a File

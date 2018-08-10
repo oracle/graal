@@ -119,7 +119,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  * to determine whether bytes or characters should be loaded. The behavior can be customized by
  * specifying a {@link SourceBuilder#mimeType(String) MIME type} or
  * {@link SourceBuilder#content(ByteSequence) content} explicitly. If the specified or inferred MIME
- * type starts with <code>'text/</code> or the MIME typs is <code>null</code> then it will be
+ * type starts with <code>'text/</code> or the MIME types is <code>null</code> then it will be
  * interpreted as character based, otherwise byte based.
  *
  * @since 0.8 or earlier
