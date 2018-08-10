@@ -24,30 +24,30 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.CallTarget;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+
+import org.graalvm.polyglot.Context;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Context;
 
 /**
  * This test is to be removed with the PolyglotEngine. Truffle NFI is currently no longer accessible
  * from the embedder API.
  */
-@SuppressWarnings("deprecation")
 public class StringAsInterfaceNFITest {
     private static StdLib stdlib;
+    private static TruffleObject rawStdLib;
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true));
 
@@ -64,7 +64,8 @@ public class StringAsInterfaceNFITest {
                         "  free(pointer):void;\n" + //
                         "}" //
         ).name("(load default)").language("nfi").build());
-        stdlib = JavaInterop.asJavaObject(StdLib.class, (TruffleObject) load.call());
+        rawStdLib = (TruffleObject) load.call();
+        stdlib = runWithPolyglot.getPolyglotContext().asValue(rawStdLib).as(StdLib.class);
     }
 
     interface StdLib {
@@ -96,7 +97,6 @@ public class StringAsInterfaceNFITest {
     @Test
     public void testAllocAndReleaseWithInvoke() throws Exception {
         Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
-        TruffleObject rawStdLib = JavaInterop.asTruffleObject(stdlib);
         Object mem = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "malloc", 512);
         assertNotNull("some memory allocated", mem);
         ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "free", mem);
@@ -109,7 +109,7 @@ public class StringAsInterfaceNFITest {
                         "  strndup(string, UINT32):string;\n" + //
                         "}" //
         ).name("(load default)").language("nfi").build());
-        Strndup second = JavaInterop.asJavaObject(Strndup.class, (TruffleObject) load.call());
+        Strndup second = runWithPolyglot.getPolyglotContext().asValue(load.call()).as(Strndup.class);
 
         String copy = stdlib.strdup("Hello World!");
         String hello = second.strndup(copy, 5);

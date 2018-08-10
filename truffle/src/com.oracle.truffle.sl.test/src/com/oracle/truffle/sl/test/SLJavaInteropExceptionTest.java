@@ -126,10 +126,8 @@ public class SLJavaInteropExceptionTest {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static void assertNoJavaInteropStackFrames(PolyglotException ex) {
-        String javaInteropPackageName = com.oracle.truffle.api.interop.java.JavaInterop.class.getName().substring(0,
-                        com.oracle.truffle.api.interop.java.JavaInterop.class.getName().lastIndexOf('.') + 1);
+        String javaInteropPackageName = "com.oracle.truffle.api.interop.java";
         assertFalse("expected no java interop stack trace elements", Arrays.stream(ex.getStackTrace()).anyMatch(ste -> ste.getClassName().startsWith(javaInteropPackageName)));
     }
 

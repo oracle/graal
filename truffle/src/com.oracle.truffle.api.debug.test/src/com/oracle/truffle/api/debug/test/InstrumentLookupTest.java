@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 
@@ -39,18 +38,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
  * Test that debugger is accessible to instruments.
  */
 public class InstrumentLookupTest {
-
-    @Test
-    @SuppressWarnings("deprecation")
-    public void testCanAccessDebugger() {
-        com.oracle.truffle.api.vm.PolyglotRuntime runtime = com.oracle.truffle.api.vm.PolyglotRuntime.newBuilder().build();
-        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument debuggerInstrument = runtime.getInstruments().get("debugger");
-        assertNotNull(debuggerInstrument);
-        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument accessDebuggerInstrument = runtime.getInstruments().get("testAccessInstrument");
-        Debugger debugger = accessDebuggerInstrument.lookup(DebuggerProvider.class).getDebugger();
-        assertNotNull(debugger);
-        assertEquals(debugger, debuggerInstrument.lookup(Debugger.class));
-    }
 
     @Test
     public void testCanAccessDebuggerPolyglot() {

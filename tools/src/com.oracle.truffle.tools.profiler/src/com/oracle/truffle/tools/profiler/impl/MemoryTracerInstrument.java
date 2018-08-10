@@ -85,24 +85,6 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
      * {@link CPUTracer}.
      *
-     * @since 0.30
-     * @deprecated use {@link #getTracer(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static MemoryTracer getTracer(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
-        if (instrument == null) {
-            throw new IllegalStateException("Memory Tracer is not installed.");
-        }
-        instrument.setEnabled(true);
-        return instrument.lookup(MemoryTracer.class);
-    }
-
-    /**
-     * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link CPUTracer}.
-     *
      * @since 0.33
      */
     public static MemoryTracer getTracer(Engine engine) {

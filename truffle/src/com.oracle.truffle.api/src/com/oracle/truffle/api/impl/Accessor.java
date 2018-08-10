@@ -34,13 +34,14 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CallTarget;
@@ -64,9 +65,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -152,29 +150,6 @@ public abstract class Accessor {
         public abstract boolean isValidNodeObject(Object obj);
     }
 
-    public abstract static class JavaInteropSupport {
-
-        public abstract Node createToJavaNode();
-
-        public abstract Object toJava(Node toJavaNode, Class<?> rawType, Type genericType, Object guestObject, Object polyglotContext);
-
-        public abstract Object asHostObject(Object guestObject);
-
-        public abstract Object toGuestObject(Object hostObject, Object languageContext);
-
-        public abstract Object asBoxedGuestValue(Object hostObject, Object languageContext);
-
-        public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
-
-        public abstract boolean isHostObject(Object guestObject);
-
-        public abstract boolean isHostFunction(Object guestObject);
-
-        public abstract String javaGuestFunctionToString(Object object);
-
-        public abstract boolean isHostSymbol(Object guestObject);
-    }
-
     public abstract static class EngineSupport {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
@@ -195,8 +170,6 @@ public abstract class Accessor {
         public abstract void registerDebugger(Object vm, Object debugger);
 
         public abstract boolean isEvalRoot(RootNode target);
-
-        public abstract Object findOriginalObject(Object truffleObject);
 
         public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
 
@@ -244,8 +217,6 @@ public abstract class Accessor {
 
         public abstract TruffleContext getPolyglotContext(Object vmObject);
 
-        public abstract Value toHostValue(Object obj, Object languageContext);
-
         public abstract Object toGuestValue(Object obj, Object languageContext);
 
         public abstract Object getVMFromLanguageObject(Object engineObject);
@@ -286,25 +257,9 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Object languageContext, Throwable exception);
 
-        public abstract RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name);
-
-        public abstract BiFunction<Object, Object, Object> createToGuestValueNode();
-
-        public abstract BiFunction<Object, Object[], Object[]> createToGuestValuesNode();
-
         public abstract boolean isHostException(Throwable exception);
 
         public abstract Throwable asHostException(Throwable exception);
-
-        public abstract ClassCastException newClassCastException(String message, Throwable cause);
-
-        public abstract NullPointerException newNullPointerException(String message, Throwable cause);
-
-        public abstract UnsupportedOperationException newUnsupportedOperationException(String message, Throwable cause);
-
-        public abstract IllegalArgumentException newIllegalArgumentException(String message, Throwable cause);
-
-        public abstract ArrayIndexOutOfBoundsException newArrayIndexOutOfBounds(String message, Throwable cause);
 
         public abstract Object getCurrentHostContext();
 
@@ -315,8 +270,6 @@ public abstract class Accessor {
         public abstract void legacyTckLeave(Object vm, Object prev);
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
-
-        public abstract String getValueInfo(Object languageContext, Object value);
 
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
 
@@ -347,6 +300,14 @@ public abstract class Accessor {
         public abstract boolean isCharacterBasedSource(String language, String mimeType);
 
         public abstract Set<String> getValidMimeTypes(String language);
+
+        public abstract Object asHostObject(Object value);
+
+        public abstract boolean isHostObject(Object value);
+
+        public abstract boolean isHostFunction(Object value);
+
+        public abstract boolean isHostSymbol(Object guestObject);
 
     }
 
@@ -526,7 +487,6 @@ public abstract class Accessor {
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DumpSupport DUMP;
     private static Accessor.InteropSupport INTEROP;
-    private static Accessor.JavaInteropSupport JAVAINTEROP;
     private static Accessor.Frames FRAMES;
     private static Accessor.SourceSupport SOURCE;
 
@@ -550,7 +510,6 @@ public abstract class Accessor {
 
         conditionallyInitDebugger();
         conditionallyInitInterop();
-        conditionallyInitJavaInterop();
         conditionallyInitInstrumentation();
         conditionallyInitSourceAccessor();
         if (TruffleOptions.TraceASTJSON) {
@@ -614,21 +573,8 @@ public abstract class Accessor {
         }
     }
 
-    @SuppressWarnings("all")
-    private static void conditionallyInitJavaInterop() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.interop.java.JavaInteropAccessor", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
     protected Accessor() {
-        if (!this.getClass().getName().startsWith("com.oracle.truffle.api") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
+        if (!this.getClass().getName().startsWith("com.oracle.truffle") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
             throw new IllegalStateException();
         }
         String simpleName = this.getClass().getSimpleName();
@@ -656,8 +602,6 @@ public abstract class Accessor {
             SOURCE = this.sourceSupport();
         } else if (simpleName.endsWith("DumpAccessor")) {
             DUMP = this.dumpSupport();
-        } else if (simpleName.endsWith("JavaInteropAccessor")) {
-            JAVAINTEROP = this.javaInteropSupport();
         } else if (simpleName.endsWith("InteropAccessor")) {
             INTEROP = this.interopSupport();
         } else if (simpleName.endsWith("ScopeAccessor")) {
@@ -696,10 +640,6 @@ public abstract class Accessor {
 
     protected InteropSupport interopSupport() {
         return INTEROP;
-    }
-
-    protected JavaInteropSupport javaInteropSupport() {
-        return JAVAINTEROP;
     }
 
     protected SourceSupport sourceSupport() {

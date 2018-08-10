@@ -24,13 +24,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Closeable;
@@ -68,16 +61,24 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.graalvm.polyglot.io.FileSystem;
-import org.junit.Before;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
@@ -182,10 +183,6 @@ public class VirtualizedFileSystemTest {
     public void setUp() {
         Optional.ofNullable(this.cfg.getBeforeAction()).ifPresent(Runnable::run);
         resetLanguageHomes();
-        // JUnit mixes test executions from different classes. There are still tests using the
-        // deprecated PolyglotEngine. For tests executed by Parametrized runner
-        // creating Context as a test parameter we need to ensure that correct SPI is used.
-        Engine.create().close();
     }
 
     @After
@@ -921,7 +918,7 @@ public class VirtualizedFileSystemTest {
 
     private static void resetLanguageHomes() {
         try {
-            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.api.vm.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
+            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
             final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
             reset.setAccessible(true);
             reset.invoke(null);

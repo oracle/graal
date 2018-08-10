@@ -297,17 +297,6 @@ public final class Debugger {
     }
 
     /**
-     * @since 0.9
-     * @deprecated use {@link #find(TruffleInstrument.Env)}, {@link #find(TruffleLanguage.Env)} or
-     *             {@link #find(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("all")
-    public static Debugger find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return DebuggerInstrument.getDebugger(engine);
-    }
-
-    /**
      * Finds the debugger associated with a given instrument environment.
      *
      * @param env the instrument environment to find debugger for

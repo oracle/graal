@@ -22,6 +22,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleFile.normalize` to allow explicit normalization of `TruffleFile` paths. `TruffleFile` is no longer normalized by default.
 * Added `Message#EXECUTE`, `Message#INVOKE`, `Message#NEW`.
 * Deprecated `Message#createExecute(int)`, `Message#createInvoke(int)`, `Message#createNew(int)` as the arity argument is no longer needed. Jackpot rules available (run `mx jackpot --apply`).
+* Removed APIs for deprecated packages: `com.oracle.truffle.api.vm`, `com.oracle.truffle.api.metadata`, `com.oracle.truffle.api.interop.java`
+* Removed deprecated class `TruffleTCK`.
 
 ## Version 1.0.0 RC5
 
@@ -43,7 +45,6 @@ using the [context policy](http://www.graalvm.org/truffle/javadoc/com/oracle/tru
   * The set returned by [FrameDescriptor#getIdentifiers](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getIdentifiers--) no longer reflects future changes in the FrameDescriptor. This is an incompatible change.
 * Added [LanguageInfo#isInteractive](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/LanguageInfo.html#isInteractive--)
 * Added [DebugStackFrame#getLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html#getLanguage--)
-* Added [isHostSymbol](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isHostSymbol-java.lang.Object-) and [asHostSymbol](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asHostSymbol-java.lang.Class-) to allow lookup of the host symbol from an existing class and not just class names.
 
 ## Version 1.0.0 RC3
 
