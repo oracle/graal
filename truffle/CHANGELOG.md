@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 1.0.0 RC8
 
 * Added `SuspendedEvent.setReturnValue` to change the return value of the currently executed source location.
+* Deprecated `FrameSlot#getIndex` without replacement.
 
 ## Version 1.0.0 RC7
 * Made all Truffle DSL annotations retention policy CLASS instead of RUNTIME. Reflecting DSL annotations at runtime is no longer possible. It is recommended to use `@Introspectable` instead. 

@@ -354,9 +354,8 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Returns the size of an array which is needed for storing all the slots in it using their
-     * {@link FrameSlot#getIndex()} as a position in the array. (The number may be bigger than the
-     * number of slots, if some slots are removed.)
+     * Returns the size of an array which is needed for storing all the frame slots. (The number may
+     * be bigger than the number of slots, if some slots are removed.)
      *
      * @return the size of the frame
      * @since 0.8 or earlier
@@ -574,7 +573,7 @@ public final class FrameDescriptor implements Cloneable {
                 } else {
                     comma = true;
                 }
-                sb.append(slot.getIndex()).append(":").append(slot.getIdentifier());
+                sb.append(slot.index).append(":").append(slot.getIdentifier());
             }
             sb.append("}");
             return sb.toString();
