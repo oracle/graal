@@ -124,7 +124,7 @@ public class SourceAPITest {
     @Test
     public void testBinarySources() {
         ByteSequence sequence = ByteSequence.create(new byte[]{1, 2, 3, 4});
-        Source source = Source.newBuilder("", sequence, null).buildLiteral();
+        Source source = Source.newBuilder("", sequence, null).cached(false).buildLiteral();
 
         assertTrue(source.hasBytes());
         assertFalse(source.hasCharacters());

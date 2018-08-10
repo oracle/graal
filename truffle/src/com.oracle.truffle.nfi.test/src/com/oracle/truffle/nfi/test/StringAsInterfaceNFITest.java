@@ -58,12 +58,12 @@ public class StringAsInterfaceNFITest {
             return;
         }
 
-        CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("default {\n" + //
+        CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("nfi", "default {\n" + //
                         "  strdup(string):string;\n" + //
                         "  malloc(UINT32):pointer;\n" + //
                         "  free(pointer):void;\n" + //
-                        "}" //
-        ).name("(load default)").language("nfi").build());
+                        "}", "(load default)" //
+        ).build());
         rawStdLib = (TruffleObject) load.call();
         stdlib = runWithPolyglot.getPolyglotContext().asValue(rawStdLib).as(StdLib.class);
     }
@@ -105,10 +105,10 @@ public class StringAsInterfaceNFITest {
     @Test
     public void canViewDefaultLibraryAsAnotherInterface() {
         Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
-        CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("default {\n" + //
+        CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("nfi", "default {\n" + //
                         "  strndup(string, UINT32):string;\n" + //
-                        "}" //
-        ).name("(load default)").language("nfi").build());
+                        "}", "(load default)" //
+        ).build());
         Strndup second = runWithPolyglot.getPolyglotContext().asValue(load.call()).as(Strndup.class);
 
         String copy = stdlib.strdup("Hello World!");

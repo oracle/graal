@@ -32,7 +32,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -938,6 +937,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 return true;
             }
             return cache.isCharacterMimeType(useMimeType);
+        }
 
         @Override
         public Object asHostObject(Object obj) {
