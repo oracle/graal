@@ -152,7 +152,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         @Specialization
         protected Object doForeign(LLVMManagedPointer function, Object[] arguments,
                         @Cached("create()") LLVMAsForeignNode asForeign,
-                        @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
+                        @Cached("createCrossLanguageCallNode()") Node crossLanguageCallNode,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                         @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
             try {
@@ -178,8 +178,8 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         }
 
         @TruffleBoundary
-        protected static Node createCrossLanguageCallNode(Object[] arguments) {
-            return Message.createExecute(arguments.length).createNode();
+        protected static Node createCrossLanguageCallNode() {
+            return Message.EXECUTE.createNode();
         }
 
         @TruffleBoundary

@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallAcceptNode extends LLVMSyscallOperationNod
     @Child private LLVMAMD64PosixCallNode accept;
 
     public LLVMAMD64SyscallAcceptNode() {
-        accept = LLVMAMD64PosixCallNodeGen.create("accept", "(SINT32,UINT64,UINT64):SINT32", 3);
+        accept = LLVMAMD64PosixCallNodeGen.create("accept", "(SINT32,UINT64,UINT64):SINT32");
     }
 
     @Override

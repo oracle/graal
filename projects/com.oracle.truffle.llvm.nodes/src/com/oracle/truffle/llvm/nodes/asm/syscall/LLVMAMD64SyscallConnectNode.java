@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallConnectNode extends LLVMSyscallOperationNo
     @Child private LLVMAMD64PosixCallNode connect;
 
     public LLVMAMD64SyscallConnectNode() {
-        connect = LLVMAMD64PosixCallNodeGen.create("connect", "(SINT32,UINT64,SINT32):SINT32", 3);
+        connect = LLVMAMD64PosixCallNodeGen.create("connect", "(SINT32,UINT64,SINT32):SINT32");
     }
 
     @Override

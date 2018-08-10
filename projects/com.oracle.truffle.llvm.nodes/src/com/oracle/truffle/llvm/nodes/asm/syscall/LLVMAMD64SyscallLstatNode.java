@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallLstatNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode lstat;
 
     public LLVMAMD64SyscallLstatNode() {
-        lstat = LLVMAMD64PosixCallNodeGen.create("lstat", "(POINTER,POINTER):SINT32", 2);
+        lstat = LLVMAMD64PosixCallNodeGen.create("lstat", "(POINTER,POINTER):SINT32");
     }
 
     @Override

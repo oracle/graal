@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallChownNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode chown;
 
     public LLVMAMD64SyscallChownNode() {
-        chown = LLVMAMD64PosixCallNodeGen.create("chown", "(POINTER,SINT32,SINT32):SINT32", 1);
+        chown = LLVMAMD64PosixCallNodeGen.create("chown", "(POINTER,SINT32,SINT32):SINT32");
     }
 
     @Override

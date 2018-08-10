@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallSendtoNode extends LLVMSyscallOperationNod
     @Child private LLVMAMD64PosixCallNode sendto;
 
     public LLVMAMD64SyscallSendtoNode() {
-        sendto = LLVMAMD64PosixCallNodeGen.create("sendto", "(SINT32,UINT64,UINT64,SINT32,UINT64,SINT32):SINT64", 6);
+        sendto = LLVMAMD64PosixCallNodeGen.create("sendto", "(SINT32,UINT64,UINT64,SINT32,UINT64,SINT32):SINT64");
     }
 
     @Override

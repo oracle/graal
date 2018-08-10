@@ -57,42 +57,42 @@ public class DerefHandleTest extends InteropTestBase {
     public class TestAllocateDerefHandleNode extends SulongTestNode {
 
         public TestAllocateDerefHandleNode() {
-            super(testLibrary, "test_allocate_deref_handle", 1);
+            super(testLibrary, "test_allocate_deref_handle");
         }
     }
 
     public class TestReadFromDerefHandleNode extends SulongTestNode {
 
         public TestReadFromDerefHandleNode() {
-            super(testLibrary, "test_read_from_deref_handle", 1);
+            super(testLibrary, "test_read_from_deref_handle");
         }
     }
 
     public class TestWriteToDerefHandleNode extends SulongTestNode {
 
         public TestWriteToDerefHandleNode() {
-            super(testLibrary, "test_write_to_deref_handle", 2);
+            super(testLibrary, "test_write_to_deref_handle");
         }
     }
 
     public class TestCallDerefHandleNode extends SulongTestNode {
 
         public TestCallDerefHandleNode() {
-            super(testLibrary, "test_call_deref_handle", 3);
+            super(testLibrary, "test_call_deref_handle");
         }
     }
 
     public class TestDerefHandlePointerArithNode extends SulongTestNode {
 
         public TestDerefHandlePointerArithNode() {
-            super(testLibrary, "test_deref_handle_pointer_arith", 1);
+            super(testLibrary, "test_deref_handle_pointer_arith");
         }
     }
 
     public class TestCallDerefHandlemMemberNode extends SulongTestNode {
 
         public TestCallDerefHandlemMemberNode() {
-            super(testLibrary, "test_call_deref_handle_member", 3);
+            super(testLibrary, "test_call_deref_handle_member");
         }
     }
 

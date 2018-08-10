@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallGetpgidNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode getpgid;
 
     public LLVMAMD64SyscallGetpgidNode() {
-        getpgid = LLVMAMD64PosixCallNodeGen.create("getpgid", "(SINT32):SINT32", 1);
+        getpgid = LLVMAMD64PosixCallNodeGen.create("getpgid", "(SINT32):SINT32");
     }
 
     @Override

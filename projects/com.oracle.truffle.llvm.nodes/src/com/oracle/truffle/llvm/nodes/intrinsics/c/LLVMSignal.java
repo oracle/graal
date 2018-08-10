@@ -210,7 +210,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                         TruffleContext truffleContext = context.getEnv().getContext();
                         Object p = truffleContext.enter();
                         try {
-                            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), handler, signal.getNumber());
+                            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), handler, signal.getNumber());
                         } finally {
                             truffleContext.leave(p);
                         }

@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallReadvNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode readv;
 
     public LLVMAMD64SyscallReadvNode() {
-        readv = LLVMAMD64PosixCallNodeGen.create("readv", "(SINT32,POINTER,SINT32):SINT64", 3);
+        readv = LLVMAMD64PosixCallNodeGen.create("readv", "(SINT32,POINTER,SINT32):SINT64");
     }
 
     @Override

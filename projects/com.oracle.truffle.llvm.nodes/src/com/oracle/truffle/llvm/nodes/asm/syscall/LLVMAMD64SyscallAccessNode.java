@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallAccessNode extends LLVMSyscallOperationNod
     @Child private LLVMAMD64PosixCallNode access;
 
     public LLVMAMD64SyscallAccessNode() {
-        access = LLVMAMD64PosixCallNodeGen.create("access", "(UINT64,SINT32):SINT32", 2);
+        access = LLVMAMD64PosixCallNodeGen.create("access", "(UINT64,SINT32):SINT32");
     }
 
     @Override

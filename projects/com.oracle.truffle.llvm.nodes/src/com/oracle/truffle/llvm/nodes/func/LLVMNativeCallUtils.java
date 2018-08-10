@@ -47,7 +47,7 @@ public final class LLVMNativeCallUtils {
 
     static Node getBindNode() {
         CompilerAsserts.neverPartOfCompilation();
-        return Message.createInvoke(1).createNode();
+        return Message.INVOKE.createNode();
     }
 
     static TruffleObject bindNativeSymbol(Node bindNode, TruffleObject symbol, String signature) {

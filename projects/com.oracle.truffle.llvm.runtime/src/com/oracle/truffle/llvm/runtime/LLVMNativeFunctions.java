@@ -63,9 +63,9 @@ public final class LLVMNativeFunctions {
         private final TruffleObject function;
         @Child private Node nativeExecute;
 
-        protected HeapFunctionNode(TruffleObject function, int argCount) {
+        protected HeapFunctionNode(TruffleObject function) {
             this.function = function;
-            this.nativeExecute = Message.createExecute(argCount).createNode();
+            this.nativeExecute = Message.EXECUTE.createNode();
         }
 
         protected Object execute(Object... args) {
@@ -80,7 +80,7 @@ public final class LLVMNativeFunctions {
     public static final class NullPointerNode extends HeapFunctionNode {
 
         private NullPointerNode(TruffleObject function) {
-            super(function, 0);
+            super(function);
         }
 
         public TruffleObject getNullPointer() {

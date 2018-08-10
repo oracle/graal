@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallUtimensatNode extends LLVMSyscallOperation
     @Child private LLVMAMD64PosixCallNode utimensat;
 
     public LLVMAMD64SyscallUtimensatNode() {
-        utimensat = LLVMAMD64PosixCallNodeGen.create("utimensat", "(SINT32,POINTER,POINTER,SINT32):SINT32", 1);
+        utimensat = LLVMAMD64PosixCallNodeGen.create("utimensat", "(SINT32,POINTER,POINTER,SINT32):SINT32");
     }
 
     @Override

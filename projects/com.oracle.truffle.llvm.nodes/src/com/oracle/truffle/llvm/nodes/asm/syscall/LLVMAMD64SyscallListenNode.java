@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallListenNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode listen;
 
     public LLVMAMD64SyscallListenNode() {
-        listen = LLVMAMD64PosixCallNodeGen.create("listen", "(SINT32,SINT32):SINT32", 2);
+        listen = LLVMAMD64PosixCallNodeGen.create("listen", "(SINT32,SINT32):SINT32");
     }
 
     @Override

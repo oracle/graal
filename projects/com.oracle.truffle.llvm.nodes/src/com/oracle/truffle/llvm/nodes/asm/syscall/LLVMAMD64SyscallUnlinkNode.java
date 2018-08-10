@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallUnlinkNode extends LLVMSyscallOperationNod
     @Child private LLVMAMD64PosixCallNode unlink;
 
     public LLVMAMD64SyscallUnlinkNode() {
-        unlink = LLVMAMD64PosixCallNodeGen.create("unlink", "(UINT64):SINT32", 1);
+        unlink = LLVMAMD64PosixCallNodeGen.create("unlink", "(UINT64):SINT32");
     }
 
     @Override

@@ -40,7 +40,7 @@ public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
 
     public LLVMAMD64UnknownSyscallNode(long nr) {
         this.nr = nr;
-        this.syscall = LLVMAMD64PosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64", 1);
+        this.syscall = LLVMAMD64PosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64");
     }
 
     @Override

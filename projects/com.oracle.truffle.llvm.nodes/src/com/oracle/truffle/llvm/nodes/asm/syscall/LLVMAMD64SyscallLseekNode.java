@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallLseekNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode lseek;
 
     public LLVMAMD64SyscallLseekNode() {
-        lseek = LLVMAMD64PosixCallNodeGen.create("lseek", "(SINT32,SINT64,SINT32):SINT64", 3);
+        lseek = LLVMAMD64PosixCallNodeGen.create("lseek", "(SINT32,SINT64,SINT32):SINT64");
     }
 
     @Override

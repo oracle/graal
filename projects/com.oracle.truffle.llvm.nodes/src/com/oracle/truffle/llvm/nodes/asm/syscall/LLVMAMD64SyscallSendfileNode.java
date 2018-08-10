@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallSendfileNode extends LLVMSyscallOperationN
     @Child private LLVMAMD64PosixCallNode sendfile;
 
     public LLVMAMD64SyscallSendfileNode() {
-        sendfile = LLVMAMD64PosixCallNodeGen.create("sendfile", "(SINT32,SINT32,POINTER,UINT64):SINT64", 4);
+        sendfile = LLVMAMD64PosixCallNodeGen.create("sendfile", "(SINT32,SINT32,POINTER,UINT64):SINT64");
     }
 
     @Override

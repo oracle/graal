@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallSetsockoptNode extends LLVMSyscallOperatio
     @Child private LLVMAMD64PosixCallNode setsockopt;
 
     public LLVMAMD64SyscallSetsockoptNode() {
-        setsockopt = LLVMAMD64PosixCallNodeGen.create("setsockopt", "(SINT32,SINT32,SINT32,UINT64,UINT64):SINT32", 5);
+        setsockopt = LLVMAMD64PosixCallNodeGen.create("setsockopt", "(SINT32,SINT32,SINT32,UINT64,UINT64):SINT32");
     }
 
     @Override

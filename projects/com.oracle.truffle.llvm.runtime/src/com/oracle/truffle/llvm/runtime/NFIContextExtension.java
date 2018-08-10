@@ -113,7 +113,7 @@ public final class NFIContextExtension implements ContextExtension {
             String signature = getNativeSignature(descriptor.getType(), 0);
             TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "@createNativeWrapper", String.format("(env, %s):object", signature));
             try {
-                wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(1).createNode(), createNativeWrapper, new LLVMNativeWrapper(descriptor));
+                wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), createNativeWrapper, new LLVMNativeWrapper(descriptor));
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
@@ -338,7 +338,7 @@ public final class NFIContextExtension implements ContextExtension {
     private static TruffleObject bindNativeFunction(TruffleObject symbol, String signature) {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            return (TruffleObject) ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), symbol, "bind", signature);
+            return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), symbol, "bind", signature);
         } catch (InteropException ex) {
             throw new IllegalStateException(ex);
         }

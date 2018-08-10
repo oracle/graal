@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallGetsocknameNode extends LLVMSyscallOperati
     @Child private LLVMAMD64PosixCallNode getsockname;
 
     public LLVMAMD64SyscallGetsocknameNode() {
-        getsockname = LLVMAMD64PosixCallNodeGen.create("getsockname", "(SINT32,UINT64,UINT64):SINT32", 3);
+        getsockname = LLVMAMD64PosixCallNodeGen.create("getsockname", "(SINT32,UINT64,UINT64):SINT32");
     }
 
     @Override

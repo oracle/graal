@@ -391,8 +391,8 @@ public class LLVMPointerMessageResolution {
 
         @Fallback
         @TruffleBoundary
-        Object doFallback(@SuppressWarnings("unused") LLVMPointer value, Object[] args) {
-            throw UnsupportedMessageException.raise(Message.createExecute(args.length));
+        Object doFallback(@SuppressWarnings("unused") LLVMPointer value, @SuppressWarnings("unused") Object[] args) {
+            throw UnsupportedMessageException.raise(Message.EXECUTE);
         }
 
         protected LLVMFunctionDescriptor getDescriptor(LLVMNativePointer value) {

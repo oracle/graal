@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallGetuidNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode getuid;
 
     public LLVMAMD64SyscallGetuidNode() {
-        getuid = LLVMAMD64PosixCallNodeGen.create("getuid", "():SINT32", 0);
+        getuid = LLVMAMD64PosixCallNodeGen.create("getuid", "():SINT32");
     }
 
     @Override

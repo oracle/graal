@@ -195,8 +195,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected Node createNativeCallNode() {
         CompilerAsserts.neverPartOfCompilation();
-        int argCount = type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET;
-        return Message.createExecute(argCount).createNode();
+        return Message.EXECUTE.createNode();
     }
 
     @ExplodeLoop

@@ -55,12 +55,12 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     private final FunctionType type;
-    @Child private Node identityExecuteNode = Message.createExecute(1).createNode();
+    @Child private Node identityExecuteNode = Message.EXECUTE.createNode();
     @Child private Node nativeCallNode;
 
     protected LLVMNativeDispatchNode(FunctionType type) {
         this.type = type;
-        this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length).createNode();
+        this.nativeCallNode = Message.EXECUTE.createNode();
     }
 
     public abstract Object executeDispatch(Object function, Object[] arguments);

@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallSetgidNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode setgid;
 
     public LLVMAMD64SyscallSetgidNode() {
-        setgid = LLVMAMD64PosixCallNodeGen.create("setgid", "(SINT32):SINT32", 1);
+        setgid = LLVMAMD64PosixCallNodeGen.create("setgid", "(SINT32):SINT32");
     }
 
     @Override

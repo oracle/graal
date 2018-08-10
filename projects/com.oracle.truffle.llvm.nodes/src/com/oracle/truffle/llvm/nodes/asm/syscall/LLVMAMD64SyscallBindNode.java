@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallBindNode extends LLVMSyscallOperationNode 
     @Child private LLVMAMD64PosixCallNode bind;
 
     public LLVMAMD64SyscallBindNode() {
-        bind = LLVMAMD64PosixCallNodeGen.create("bind", "(SINT32,UINT64,SINT32):SINT32", 3);
+        bind = LLVMAMD64PosixCallNodeGen.create("bind", "(SINT32,UINT64,SINT32):SINT32");
     }
 
     @Override

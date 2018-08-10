@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallFcntlNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode fcntl;
 
     public LLVMAMD64SyscallFcntlNode() {
-        fcntl = LLVMAMD64PosixCallNodeGen.create("fcntl", "(SINT32,SINT32,SINT64):SINT32", 3);
+        fcntl = LLVMAMD64PosixCallNodeGen.create("fcntl", "(SINT32,SINT32,SINT64):SINT32");
     }
 
     @Override

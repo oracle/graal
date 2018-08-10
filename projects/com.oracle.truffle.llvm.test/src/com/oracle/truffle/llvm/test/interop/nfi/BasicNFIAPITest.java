@@ -49,7 +49,7 @@ public class BasicNFIAPITest extends NFIAPITest {
 
     public static class SulongCallReturnIntNode extends SendExecuteNode {
         public SulongCallReturnIntNode() {
-            super(sulongObject, "returnInt", "():sint32", 0);
+            super(sulongObject, "returnInt", "():sint32");
         }
     }
 
@@ -60,7 +60,7 @@ public class BasicNFIAPITest extends NFIAPITest {
 
     public static class SulongCallAddNode extends SendExecuteNode {
         public SulongCallAddNode() {
-            super(sulongObject, "add", "(sint32,sint32):sint32", 0);
+            super(sulongObject, "add", "(sint32,sint32):sint32");
         }
     }
 
@@ -77,7 +77,7 @@ public class BasicNFIAPITest extends NFIAPITest {
 
     public static class SulongCallFunctionPointerNode extends SendExecuteNode {
         public SulongCallFunctionPointerNode() {
-            super(sulongObject, "functionPointer", "((sint32,sint32):sint32):sint32", 0);
+            super(sulongObject, "functionPointer", "((sint32,sint32):sint32):sint32");
         }
     }
 }

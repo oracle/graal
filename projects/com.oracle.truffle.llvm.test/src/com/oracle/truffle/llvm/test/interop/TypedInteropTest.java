@@ -68,7 +68,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class DistSquaredNode extends SulongTestNode {
 
         public DistSquaredNode() {
-            super(testLibrary, "distSquared", 2);
+            super(testLibrary, "distSquared");
         }
     }
 
@@ -81,7 +81,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class FlipPointNode extends SulongTestNode {
 
         public FlipPointNode() {
-            super(testLibrary, "flipPoint", 1);
+            super(testLibrary, "flipPoint");
         }
     }
 
@@ -96,7 +96,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class SumPointsNode extends SulongTestNode {
 
         public SumPointsNode() {
-            super(testLibrary, "sumPoints", 1);
+            super(testLibrary, "sumPoints");
         }
     }
 
@@ -110,7 +110,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class FillPointsNode extends SulongTestNode {
 
         public FillPointsNode() {
-            super(testLibrary, "fillPoints", 3);
+            super(testLibrary, "fillPoints");
         }
     }
 
@@ -132,7 +132,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class FillNestedNode extends SulongTestNode {
 
         public FillNestedNode() {
-            super(testLibrary, "fillNested", 1);
+            super(testLibrary, "fillNested");
         }
     }
 
@@ -178,7 +178,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class AccessBitFieldsNode extends SulongTestNode {
 
         public AccessBitFieldsNode() {
-            super(testLibrary, "accessBitFields", 1);
+            super(testLibrary, "accessBitFields");
         }
     }
 
@@ -201,7 +201,7 @@ public class TypedInteropTest extends InteropTestBase {
     public static class FillFusedArrayNode extends SulongTestNode {
 
         public FillFusedArrayNode() {
-            super(testLibrary, "fillFusedArray", 1);
+            super(testLibrary, "fillFusedArray");
         }
     }
 

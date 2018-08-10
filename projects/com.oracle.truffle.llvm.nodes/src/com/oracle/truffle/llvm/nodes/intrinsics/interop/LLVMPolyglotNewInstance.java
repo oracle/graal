@@ -75,7 +75,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
         }
-        this.foreignNewInstance = Message.createNew(args.length).createNode();
+        this.foreignNewInstance = Message.NEW.createNode();
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;

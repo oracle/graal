@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallSocketNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode socket;
 
     public LLVMAMD64SyscallSocketNode() {
-        socket = LLVMAMD64PosixCallNodeGen.create("socket", "(SINT32,SINT32,SINT32):SINT32", 3);
+        socket = LLVMAMD64PosixCallNodeGen.create("socket", "(SINT32,SINT32,SINT32):SINT32");
     }
 
     @Override

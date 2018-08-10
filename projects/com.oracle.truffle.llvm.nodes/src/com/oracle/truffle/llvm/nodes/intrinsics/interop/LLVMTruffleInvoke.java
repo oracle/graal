@@ -74,7 +74,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
         }
-        this.foreignInvoke = Message.createInvoke(args.length).createNode();
+        this.foreignInvoke = Message.INVOKE.createNode();
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;

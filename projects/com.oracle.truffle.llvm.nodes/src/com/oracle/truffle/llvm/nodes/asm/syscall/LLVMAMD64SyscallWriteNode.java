@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallWriteNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode write;
 
     public LLVMAMD64SyscallWriteNode() {
-        write = LLVMAMD64PosixCallNodeGen.create("write", "(SINT32,POINTER,UINT64):SINT64", 3);
+        write = LLVMAMD64PosixCallNodeGen.create("write", "(SINT32,POINTER,UINT64):SINT64");
     }
 
     @Override

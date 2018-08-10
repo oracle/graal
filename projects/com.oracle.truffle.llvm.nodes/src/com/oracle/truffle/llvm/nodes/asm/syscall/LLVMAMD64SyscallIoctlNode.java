@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallIoctlNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode ioctl;
 
     public LLVMAMD64SyscallIoctlNode() {
-        ioctl = LLVMAMD64PosixCallNodeGen.create("ioctl", "(SINT32,UINT64,POINTER):SINT32", 3);
+        ioctl = LLVMAMD64PosixCallNodeGen.create("ioctl", "(SINT32,UINT64,POINTER):SINT32");
     }
 
     @Override

@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallRenameatNode extends LLVMSyscallOperationN
     @Child private LLVMAMD64PosixCallNode renameat;
 
     public LLVMAMD64SyscallRenameatNode() {
-        renameat = LLVMAMD64PosixCallNodeGen.create("renameat", "(SINT32,UINT64,SINT32,UINT64):SINT32", 4);
+        renameat = LLVMAMD64PosixCallNodeGen.create("renameat", "(SINT32,UINT64,SINT32,UINT64):SINT32");
     }
 
     @Override
