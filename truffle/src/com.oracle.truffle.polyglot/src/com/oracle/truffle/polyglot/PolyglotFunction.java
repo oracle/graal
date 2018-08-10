@@ -50,7 +50,6 @@ final class PolyglotFunction<T, R> implements Function<T, R> {
         return (R) apply.call(languageContext, guestObject, t);
     }
 
-
     @Override
     public int hashCode() {
         return guestObject.hashCode();
@@ -60,8 +59,8 @@ final class PolyglotFunction<T, R> implements Function<T, R> {
     public boolean equals(Object o) {
         if (o == this) {
             return true;
-        } else if (o instanceof TruffleFunction) {
-            return languageContext == ((TruffleFunction<?, ?>) o).languageContext && guestObject.equals(((TruffleFunction<?, ?>) o).guestObject);
+        } else if (o instanceof PolyglotFunction) {
+            return languageContext.context == ((PolyglotFunction<?, ?>) o).languageContext.context && guestObject.equals(((PolyglotFunction<?, ?>) o).guestObject);
         } else {
             return false;
         }

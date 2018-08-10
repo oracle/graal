@@ -101,8 +101,8 @@ class PolyglotList<T> extends AbstractList<T> {
     public boolean equals(Object o) {
         if (o == this) {
             return true;
-        } else if (o instanceof TruffleList) {
-            return languageContext == ((TruffleList<?>) o).languageContext && guestObject.equals(((TruffleList<?>) o).guestObject);
+        } else if (o instanceof PolyglotList) {
+            return languageContext.context == ((PolyglotList<?>) o).languageContext.context && guestObject.equals(((PolyglotList<?>) o).guestObject);
         } else {
             return false;
         }

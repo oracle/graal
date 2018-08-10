@@ -123,8 +123,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
     public boolean equals(Object o) {
         if (o == this) {
             return true;
-        } else if (o instanceof TruffleMap) {
-            return languageContext == ((TruffleMap<?, ?>) o).languageContext && guestObject.equals(((TruffleMap<?, ?>) o).guestObject);
+        } else if (o instanceof PolyglotMap) {
+            return languageContext.context == ((PolyglotMap<?, ?>) o).languageContext.context && guestObject.equals(((PolyglotMap<?, ?>) o).guestObject);
         } else {
             return false;
         }
