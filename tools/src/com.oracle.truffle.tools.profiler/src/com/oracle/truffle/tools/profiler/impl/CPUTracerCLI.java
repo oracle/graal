@@ -54,7 +54,7 @@ class CPUTracerCLI extends ProfilerCLI {
                             try {
                                 return Output.valueOf(s.toUpperCase());
                             } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Output can be: histogram or calltree");
+                                throw new IllegalArgumentException("Output can be: histogram or json");
                             }
                         }
                     });
