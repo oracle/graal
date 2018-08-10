@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -38,7 +37,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
-import com.oracle.truffle.llvm.runtime.GuestLanguageRuntimeException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -82,9 +80,6 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
                 statement.execute(frame);
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
-                throw e;
-            } catch (GuestLanguageRuntimeException e) {
-                CompilerDirectives.transferToInterpreter();
                 throw e;
             }
         }
