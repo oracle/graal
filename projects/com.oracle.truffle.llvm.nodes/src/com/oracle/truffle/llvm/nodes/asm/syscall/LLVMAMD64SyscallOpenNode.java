@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallOpenNode extends LLVMSyscallOperationNode 
     @Child private LLVMAMD64PosixCallNode open;
 
     public LLVMAMD64SyscallOpenNode() {
-        open = LLVMAMD64PosixCallNodeGen.create("open", "(POINTER,SINT32,SINT32):SINT32", 3);
+        open = LLVMAMD64PosixCallNodeGen.create("open", "(POINTER,SINT32,SINT32):SINT32");
     }
 
     @Override

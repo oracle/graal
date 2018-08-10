@@ -644,7 +644,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
         private final String name;
 
-        @Child private Node nativeExecute = Message.createExecute(2).createNode();
+        @Child private Node nativeExecute = Message.EXECUTE.createNode();
 
         public LLVM80BitFloatNativeCallNode(String name) {
             this.name = name;

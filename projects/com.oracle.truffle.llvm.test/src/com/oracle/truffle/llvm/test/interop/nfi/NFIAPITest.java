@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -83,7 +83,7 @@ public class NFIAPITest {
     private static final class LookupAndBindNode extends RootNode {
 
         @Child private Node lookupSymbol = Message.READ.createNode();
-        @Child private Node bind = Message.createInvoke(1).createNode();
+        @Child private Node bind = Message.INVOKE.createNode();
 
         private LookupAndBindNode() {
             super(null);
@@ -135,13 +135,13 @@ public class NFIAPITest {
 
         @Child private Node execute;
 
-        protected SendExecuteNode(TruffleObject library, String symbol, String signature, int argCount) {
-            this(lookupAndBind(library, symbol, signature), argCount);
+        protected SendExecuteNode(TruffleObject library, String symbol, String signature) {
+            this(lookupAndBind(library, symbol, signature));
         }
 
-        protected SendExecuteNode(TruffleObject receiver, int argCount) {
+        protected SendExecuteNode(TruffleObject receiver) {
             this.receiver = receiver;
-            execute = Message.createExecute(argCount).createNode();
+            execute = Message.EXECUTE.createNode();
         }
 
         @Override

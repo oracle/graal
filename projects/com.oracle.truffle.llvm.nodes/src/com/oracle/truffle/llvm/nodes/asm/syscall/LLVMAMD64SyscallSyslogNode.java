@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallSyslogNode extends LLVMSyscallOperationNod
     @Child private LLVMAMD64PosixCallNode syslog;
 
     public LLVMAMD64SyscallSyslogNode() {
-        syslog = LLVMAMD64PosixCallNodeGen.create("syslog", "(SINT32,UINT64,SINT32):SINT32", 3);
+        syslog = LLVMAMD64PosixCallNodeGen.create("syslog", "(SINT32,UINT64,SINT32):SINT32");
     }
 
     @Override

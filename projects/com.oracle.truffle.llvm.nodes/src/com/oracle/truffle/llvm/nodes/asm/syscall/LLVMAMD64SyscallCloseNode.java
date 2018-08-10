@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallCloseNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode close;
 
     public LLVMAMD64SyscallCloseNode() {
-        close = LLVMAMD64PosixCallNodeGen.create("close", "(SINT32):SINT32", 1);
+        close = LLVMAMD64PosixCallNodeGen.create("close", "(SINT32):SINT32");
     }
 
     @Override

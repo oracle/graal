@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallPipeNode extends LLVMSyscallOperationNode 
     @Child private LLVMAMD64PosixCallNode pipe;
 
     public LLVMAMD64SyscallPipeNode() {
-        pipe = LLVMAMD64PosixCallNodeGen.create("pipe", "(UINT64):SINT32", 1);
+        pipe = LLVMAMD64PosixCallNodeGen.create("pipe", "(UINT64):SINT32");
     }
 
     @Override

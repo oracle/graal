@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,10 +46,10 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
 
     @Child private Node nativeExecute;
 
-    public LLVMAMD64PosixCallNode(String name, String signature, int args) {
+    public LLVMAMD64PosixCallNode(String name, String signature) {
         this.name = name;
         this.signature = signature;
-        nativeExecute = Message.createExecute(args).createNode();
+        nativeExecute = Message.EXECUTE.createNode();
     }
 
     protected TruffleObject createFunction() {

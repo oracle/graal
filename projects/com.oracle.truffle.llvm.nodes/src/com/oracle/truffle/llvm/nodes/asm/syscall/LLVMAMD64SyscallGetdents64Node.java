@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallGetdents64Node extends LLVMSyscallOperatio
     @Child private LLVMAMD64PosixCallNode getdents64;
 
     public LLVMAMD64SyscallGetdents64Node() {
-        getdents64 = LLVMAMD64PosixCallNodeGen.create("getdents64", "(UINT32,UINT64,UINT32):SINT32", 3);
+        getdents64 = LLVMAMD64PosixCallNodeGen.create("getdents64", "(UINT32,UINT64,UINT32):SINT32");
     }
 
     @Override

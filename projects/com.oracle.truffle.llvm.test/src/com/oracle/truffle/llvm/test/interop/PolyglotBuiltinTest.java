@@ -63,7 +63,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
     public static class TestNewNode extends SulongTestNode {
 
         public TestNewNode() {
-            super(testLibrary, "test_new", 1);
+            super(testLibrary, "test_new");
         }
     }
 
@@ -79,7 +79,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
     public static class TestRemoveMemberNode extends SulongTestNode {
 
         public TestRemoveMemberNode() {
-            super(testLibrary, "test_remove_member", 1);
+            super(testLibrary, "test_remove_member");
         }
     }
 
@@ -97,7 +97,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
     public static class TestRemoveArrayElementNode extends SulongTestNode {
 
         public TestRemoveArrayElementNode() {
-            super(testLibrary, "test_remove_array_element", 1);
+            super(testLibrary, "test_remove_array_element");
         }
     }
 
@@ -114,7 +114,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
     public static class TestHostInteropNode extends SulongTestNode {
 
         public TestHostInteropNode() {
-            super(testLibrary, "test_host_interop", 0);
+            super(testLibrary, "test_host_interop");
         }
     }
 

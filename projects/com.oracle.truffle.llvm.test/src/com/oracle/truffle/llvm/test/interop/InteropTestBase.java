@@ -82,14 +82,14 @@ public class InteropTestBase {
         private final TruffleObject function;
         @Child private Node execute;
 
-        protected SulongTestNode(TruffleObject testLibrary, String fnName, int argCount) {
+        protected SulongTestNode(TruffleObject testLibrary, String fnName) {
             super(null);
             try {
                 function = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, fnName);
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
-            execute = Message.createExecute(argCount).createNode();
+            execute = Message.EXECUTE.createNode();
         }
 
         @Override

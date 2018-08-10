@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallStatfsNode extends LLVMSyscallOperationNod
     @Child private LLVMAMD64PosixCallNode statfs;
 
     public LLVMAMD64SyscallStatfsNode() {
-        statfs = LLVMAMD64PosixCallNodeGen.create("statfs", "(UINT64,UINT64):SINT32", 2);
+        statfs = LLVMAMD64PosixCallNodeGen.create("statfs", "(UINT64,UINT64):SINT32");
     }
 
     @Override

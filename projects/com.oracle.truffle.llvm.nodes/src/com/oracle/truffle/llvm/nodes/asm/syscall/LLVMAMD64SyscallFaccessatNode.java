@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallFaccessatNode extends LLVMSyscallOperation
     @Child private LLVMAMD64PosixCallNode faccessat;
 
     public LLVMAMD64SyscallFaccessatNode() {
-        faccessat = LLVMAMD64PosixCallNodeGen.create("faccessat", "(SINT32,UINT64,SINT32,SINT32):SINT32", 4);
+        faccessat = LLVMAMD64PosixCallNodeGen.create("faccessat", "(SINT32,UINT64,SINT32,SINT32):SINT32");
     }
 
     @Override

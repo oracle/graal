@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallRecvmsgNode extends LLVMSyscallOperationNo
     @Child private LLVMAMD64PosixCallNode recvmsg;
 
     public LLVMAMD64SyscallRecvmsgNode() {
-        recvmsg = LLVMAMD64PosixCallNodeGen.create("recvmsg", "(SINT32,UINT64,SINT32):SINT64", 3);
+        recvmsg = LLVMAMD64PosixCallNodeGen.create("recvmsg", "(SINT32,UINT64,SINT32):SINT64");
     }
 
     @Override

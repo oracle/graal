@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallPollNode extends LLVMSyscallOperationNode 
     @Child private LLVMAMD64PosixCallNode poll;
 
     public LLVMAMD64SyscallPollNode() {
-        poll = LLVMAMD64PosixCallNodeGen.create("poll", "(UINT64,UINT64,SINT32):SINT32", 3);
+        poll = LLVMAMD64PosixCallNodeGen.create("poll", "(UINT64,UINT64,SINT32):SINT32");
     }
 
     @Override

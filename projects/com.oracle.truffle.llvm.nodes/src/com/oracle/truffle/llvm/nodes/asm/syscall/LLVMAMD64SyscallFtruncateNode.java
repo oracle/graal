@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallFtruncateNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode ftruncate;
 
     public LLVMAMD64SyscallFtruncateNode() {
-        ftruncate = LLVMAMD64PosixCallNodeGen.create("ftruncate", "(SINT32,SINT64):SINT32", 2);
+        ftruncate = LLVMAMD64PosixCallNodeGen.create("ftruncate", "(SINT32,SINT64):SINT32");
     }
 
     @Override

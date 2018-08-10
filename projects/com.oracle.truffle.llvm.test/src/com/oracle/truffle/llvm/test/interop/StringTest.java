@@ -62,7 +62,7 @@ public class StringTest extends InteropTestBase {
     public class TestStringSizeNode extends SulongTestNode {
 
         public TestStringSizeNode() {
-            super(testLibrary, "test_get_string_size", 1);
+            super(testLibrary, "test_get_string_size");
         }
     }
 
@@ -90,7 +90,7 @@ public class StringTest extends InteropTestBase {
     public class TestAsStringAsciiNode extends SulongTestNode {
 
         public TestAsStringAsciiNode() {
-            super(testLibrary, "test_as_string_ascii", 1);
+            super(testLibrary, "test_as_string_ascii");
         }
     }
 
@@ -109,7 +109,7 @@ public class StringTest extends InteropTestBase {
     public class TestAsStringUTF8Node extends SulongTestNode {
 
         public TestAsStringUTF8Node() {
-            super(testLibrary, "test_as_string_utf8", 1);
+            super(testLibrary, "test_as_string_utf8");
         }
     }
 
@@ -122,7 +122,7 @@ public class StringTest extends InteropTestBase {
     public class TestAsStringUTF32Node extends SulongTestNode {
 
         public TestAsStringUTF32Node() {
-            super(testLibrary, "test_as_string_utf32", 1);
+            super(testLibrary, "test_as_string_utf32");
         }
     }
 
@@ -135,7 +135,7 @@ public class StringTest extends InteropTestBase {
     public class TestAsStringOverflowNode extends SulongTestNode {
 
         public TestAsStringOverflowNode() {
-            super(testLibrary, "test_as_string_overflow", 1);
+            super(testLibrary, "test_as_string_overflow");
         }
     }
 
@@ -148,7 +148,7 @@ public class StringTest extends InteropTestBase {
     public class TestFromStringNode extends SulongTestNode {
 
         public TestFromStringNode() {
-            super(testLibrary, "test_from_string", 1);
+            super(testLibrary, "test_from_string");
         }
     }
 

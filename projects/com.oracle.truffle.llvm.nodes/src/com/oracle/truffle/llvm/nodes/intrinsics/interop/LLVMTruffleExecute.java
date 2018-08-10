@@ -75,7 +75,7 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
         }
-        this.foreignExecute = Message.createExecute(args.length).createNode();
+        this.foreignExecute = Message.EXECUTE.createNode();
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;

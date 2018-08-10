@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallGetgroupsNode extends LLVMSyscallOperation
     @Child private LLVMAMD64PosixCallNode getgroups;
 
     public LLVMAMD64SyscallGetgroupsNode() {
-        getgroups = LLVMAMD64PosixCallNodeGen.create("getgroups", "(SINT32,UINT64):SINT32", 2);
+        getgroups = LLVMAMD64PosixCallNodeGen.create("getgroups", "(SINT32,UINT64):SINT32");
     }
 
     @Override

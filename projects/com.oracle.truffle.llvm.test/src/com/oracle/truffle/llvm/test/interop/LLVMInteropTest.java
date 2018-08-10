@@ -1073,7 +1073,7 @@ public class LLVMInteropTest {
             Object access(Object object) {
                 TruffleObject function = (TruffleObject) Sulong.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
                 try {
-                    return ForeignAccess.sendExecute(Message.createExecute(1).createNode(), function, object);
+                    return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), function, object);
                 } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                     Assert.fail("TO_NATIVE should have created a handle");
                     return null;

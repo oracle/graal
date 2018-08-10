@@ -102,7 +102,7 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
                     ContextReference<LLVMContext> contextRef = LLVMLanguage.getLLVMContextReference();
                     TruffleObject typecall = (TruffleObject) contextRef.get().getEnv().importSymbol("get_object2_typeid");
                     try {
-                        cachedType = ForeignAccess.send(Message.createExecute(0).createNode(), typecall);
+                        cachedType = ForeignAccess.send(Message.EXECUTE.createNode(), typecall);
                     } catch (InteropException e) {
                         throw new IllegalStateException("could not determine typeid");
                     }

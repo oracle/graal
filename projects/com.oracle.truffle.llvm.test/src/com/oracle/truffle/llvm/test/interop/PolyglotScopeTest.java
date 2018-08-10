@@ -53,7 +53,7 @@ public class PolyglotScopeTest extends InteropTestBase {
     public static class TestImportConstNode extends SulongTestNode {
 
         public TestImportConstNode() {
-            super(testLibrary, "test_import_const", 0);
+            super(testLibrary, "test_import_const");
         }
     }
 
@@ -68,7 +68,7 @@ public class PolyglotScopeTest extends InteropTestBase {
     public static class TestImportVarNode extends SulongTestNode {
 
         public TestImportVarNode() {
-            super(testLibrary, "test_import_var", 1);
+            super(testLibrary, "test_import_var");
         }
     }
 
@@ -91,7 +91,7 @@ public class PolyglotScopeTest extends InteropTestBase {
     public static class TestExportNode extends SulongTestNode {
 
         public TestExportNode() {
-            super(testLibrary, "test_export", 1);
+            super(testLibrary, "test_export");
         }
     }
 

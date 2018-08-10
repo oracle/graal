@@ -39,7 +39,7 @@ public abstract class LLVMAMD64SyscallChmodNode extends LLVMSyscallOperationNode
     @Child private LLVMAMD64PosixCallNode chmod;
 
     public LLVMAMD64SyscallChmodNode() {
-        chmod = LLVMAMD64PosixCallNodeGen.create("chmod", "(POINTER,SINT32):SINT32", 1);
+        chmod = LLVMAMD64PosixCallNodeGen.create("chmod", "(POINTER,SINT32):SINT32");
     }
 
     @Override

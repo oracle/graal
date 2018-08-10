@@ -78,7 +78,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     public class GetStructNode extends SulongTestNode {
 
         public GetStructNode() {
-            super(testLibrary, "getStruct" + name, 1);
+            super(testLibrary, "getStruct" + name);
         }
     }
 
@@ -93,7 +93,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     public class SetStructNode extends SulongTestNode {
 
         public SetStructNode() {
-            super(testLibrary, "setStruct" + name, 2);
+            super(testLibrary, "setStruct" + name);
         }
     }
 
@@ -107,7 +107,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     public class GetArrayNode extends SulongTestNode {
 
         public GetArrayNode() {
-            super(testLibrary, "getArray" + name, 2);
+            super(testLibrary, "getArray" + name);
         }
     }
 
@@ -122,7 +122,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     public class SetArrayNode extends SulongTestNode {
 
         public SetArrayNode() {
-            super(testLibrary, "setArray" + name, 3);
+            super(testLibrary, "setArray" + name);
         }
     }
 

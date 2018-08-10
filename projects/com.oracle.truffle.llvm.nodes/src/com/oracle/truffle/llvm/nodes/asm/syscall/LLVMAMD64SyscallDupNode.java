@@ -37,7 +37,7 @@ public class LLVMAMD64SyscallDupNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode dup;
 
     public LLVMAMD64SyscallDupNode() {
-        dup = LLVMAMD64PosixCallNodeGen.create("dup", "(SINT32):SINT32", 1);
+        dup = LLVMAMD64PosixCallNodeGen.create("dup", "(SINT32):SINT32");
     }
 
     @Override
