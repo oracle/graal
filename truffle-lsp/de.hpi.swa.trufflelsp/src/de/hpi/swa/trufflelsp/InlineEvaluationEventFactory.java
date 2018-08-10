@@ -19,9 +19,11 @@ import de.hpi.swa.trufflelsp.exceptions.InlineParsingNotSupportedException;
 
 final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
     private final TruffleInstrument.Env env;
+    private final String codeToEval;
 
-    public InlineEvaluationEventFactory(TruffleInstrument.Env env) {
+    public InlineEvaluationEventFactory(TruffleInstrument.Env env, String codeToEval) {
         this.env = env;
+        this.codeToEval = codeToEval;
     }
 
     public ExecutionEventNode create(final EventContext eventContext) {
@@ -29,8 +31,7 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
             @Override
             protected void onEnter(VirtualFrame frame) {
                 final LanguageInfo info = eventContext.getInstrumentedNode().getRootNode().getLanguageInfo();
-                final String code = eventContext.getInstrumentedSourceSection().getCharacters().toString();
-                final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").cached(false).build();
+                final Source source = Source.newBuilder(codeToEval).name("eval in context").language(info.getId()).mimeType("content/unknown").cached(false).build();
                 ExecutableNode fragment = env.parseInline(source, eventContext.getInstrumentedNode(), frame.materialize());
                 if (fragment != null) {
                     insert(fragment);
@@ -62,7 +63,7 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
                     throw new EvaluationResultException(result);
                 } else {
                     System.out.println("Inline-parsing not supported. Assuming code snippet is a frame slot identifier...");
-                    FrameSlot frameSlot = frame.getFrameDescriptor().getSlots().stream().filter(slot -> slot.getIdentifier().equals(code)).findFirst().orElseGet(() -> null);
+                    FrameSlot frameSlot = frame.getFrameDescriptor().getSlots().stream().filter(slot -> slot.getIdentifier().equals(codeToEval)).findFirst().orElseGet(() -> null);
                     if (frameSlot != null) {
                         try {
                             throw new EvaluationResultException(frame.getObject(frameSlot));

@@ -55,7 +55,6 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag.Kind;
 import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -580,6 +579,10 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     private EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final Node nearestNode) {
+        return runToSectionAndEval(surrogate, nearestNode, nearestNode.getSourceSection().getCharacters().toString());
+    }
+
+    private EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final Node nearestNode, final String codeToEval) {
         if (!(nearestNode instanceof InstrumentableNode)) {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
@@ -612,7 +615,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         EventBinding<ExecutionEventNodeFactory> binding = env.getInstrumenter().attachExecutionEventFactory(
                         createSourceSectionFilter(uri, sourceSection, name),
-                        new InlineEvaluationEventFactory(env));
+                        new InlineEvaluationEventFactory(env, codeToEval));
 
         try {
             callTarget.call();
@@ -1028,9 +1031,88 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         }
     }
 
-    @SuppressWarnings("unused")
-    public List<? extends Location> getDefinitions(URI uri, int line, int character) {
+    public Future<List<? extends Location>> getDefinitions(URI uri, int line, int character) {
+        return evaluator.executeWithDefaultContext(() -> getDefinitionsWithEnteredContext(uri, line, character));
+    }
+
+    public List<? extends Location> getDefinitionsWithEnteredContext(URI uri, int line, int character) {
         List<Location> locations = new ArrayList<>();
+
+        TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
+        SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
+        if (sourceWrapper.isParsingSuccessful()) {
+            Source source = sourceWrapper.getSource();
+            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), character + 1);
+            SourceSection containsSection = nearestSections.getContainsSourceSection();
+            InstrumentableNode containsNode = nearestSections.getContainsNode();
+            if (containsSection != null && containsNode != null) {
+                System.out.println(nearestSections.getContainsNode().getClass().getSimpleName() + " " + containsSection);
+
+                Object nodeObject = containsNode.getNodeObject();
+                if (nodeObject instanceof TruffleObject) {
+                    String name;
+                    TruffleObject truffleNodeObject = (TruffleObject) nodeObject;
+                    Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(),
+                                    truffleNodeObject);
+                    System.out.println("  -> NodeObject: " + map);
+                    if (containsNode.hasTag(StandardTags.CallTag.class) && map.containsKey("name")) {
+                        name = map.get("name").toString();
+                    } else if (map.containsKey("key")) {
+                        name = map.get("key").toString();
+                    } else {
+                        System.out.println(" -> " + containsNode.getClass().getSimpleName() + "'s node object has no 'name' or 'key' property.");
+                        return locations;
+                    }
+
+                    // First try: dynamic approach
+                    System.out.println("Trying run-to-section eval...");
+                    EvaluationResult evalResult = runToSectionAndEval(surrogate, (Node) containsNode, name);
+                    if (evalResult.isEvaluationDone() && !evalResult.isError()) {
+                        SourceSection sourceSection = findSourceLocation(surrogate.getLangId(), evalResult.getResult());
+                        if (sourceSection != null) {
+                            Range range = TruffleAdapter.sourceSectionToRange(sourceSection);
+                            String definitionUri;
+                            if (!sourceSection.getSource().getURI().getScheme().equals("file")) {
+                                // We assume, that the source name is a valid file path if
+                                // the URI has no file scheme
+                                Path path = Paths.get(sourceSection.getSource().getName());
+                                definitionUri = path.toUri().toString();
+                            } else {
+                                definitionUri = sourceSection.getSource().getURI().toString();
+                            }
+                            locations.add(new Location(definitionUri, range));
+                        }
+                    }
+
+                    if (locations.isEmpty()) {
+                        // Fallback: static approach
+                        System.out.println("Trying static declaration search...");
+                        env.getInstrumenter().attachLoadSourceSectionListener(
+                                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(DeclarationTag.class).build(),
+                                        new LoadSourceSectionListener() {
+
+                                            public void onLoad(LoadSourceSectionEvent event) {
+                                                Node eventNode = event.getNode();
+                                                if (!(eventNode instanceof InstrumentableNode)) {
+                                                    return;
+                                                }
+                                                InstrumentableNode instrumentableNode = (InstrumentableNode) eventNode;
+                                                Object declarationNodeObject = instrumentableNode.getNodeObject();
+                                                if (!(declarationNodeObject instanceof TruffleObject)) {
+                                                    return;
+                                                }
+                                                Map<Object, Object> declarationMap = ObjectStructures.asMap(new MessageNodes(), (TruffleObject) declarationNodeObject);
+                                                String declarationName = declarationMap.get(DeclarationTag.NAME).toString();
+                                                if (name.equals(declarationName)) {
+                                                    Range range = TruffleAdapter.sourceSectionToRange(eventNode.getSourceSection());
+                                                    locations.add(new Location(uri.toString(), range));
+                                                }
+                                            }
+                                        }, true).dispose();
+                    }
+                }
+            }
+        }
         return locations;
     }
 
