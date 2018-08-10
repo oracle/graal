@@ -97,7 +97,7 @@ public class SubstrateOptions {
     @Option(help = "Print summary GC information after main completion")//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Print the time since the first allocation on logs")//
+    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false);
 
     @Option(help = "Print more information about the heap before and after each collection")//
