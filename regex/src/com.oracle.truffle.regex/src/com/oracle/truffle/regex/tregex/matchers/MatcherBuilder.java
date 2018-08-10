@@ -717,14 +717,32 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
         return size() == 1 && isSingle(0);
     }
 
-    public boolean inverseMatchesSingleChar() {
-        if (size() == 1) {
-            return ((getHi(0) - getLo(0)) + 1) == Character.MAX_VALUE;
+    public int charCount() {
+        int charSize = 0;
+        for (int i = 0; i < size(); i++) {
+            charSize += (getHi(i) - getLo(i)) + 1;
         }
-        if (size() == 2) {
-            return getLo(0) == Character.MIN_VALUE && getHi(0) + 2 == getLo(1) && getHi(1) == Character.MAX_VALUE;
+        return charSize;
+    }
+
+    public int inverseCharCount() {
+        return Character.MAX_VALUE + 1 - charCount();
+    }
+
+    public char[] inverseToCharArray() {
+        char[] array = new char[inverseCharCount()];
+        int index = 0;
+        int lastHi = -1;
+        for (int i = 0; i < size(); i++) {
+            for (int j = lastHi + 1; j < getLo(i); j++) {
+                array[index++] = (char) j;
+            }
+            lastHi = getHi(i);
         }
-        return false;
+        for (int j = lastHi + 1; j <= Character.MAX_VALUE; j++) {
+            array[index++] = (char) j;
+        }
+        return array;
     }
 
     public boolean matchesEverything() {

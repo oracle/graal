@@ -34,9 +34,9 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
 
-    public TraceFinderDFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers,
+    public TraceFinderDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
                     byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
-        super(id, flags, loopToSelf, successors, matchers);
+        super(id, flags, loopOptimizationNode, successors, matchers);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = preCalculatedAnchoredResult;
     }

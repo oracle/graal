@@ -154,7 +154,11 @@ public final class TRegexDFAExecutorNode extends Node {
             final short[] successors = curState.getSuccessors();
             CompilerAsserts.partialEvaluationConstant(successors);
             CompilerAsserts.partialEvaluationConstant(successors.length);
+            int prevIndex = getIndex(frame);
             curState.executeFindSuccessor(frame, this);
+            if (recordExecution() && ip != 0) {
+                debugRecordTransition(frame, (DFAStateNode) curState, prevIndex);
+            }
             for (int i = 0; i < successors.length; i++) {
                 if (i == getSuccessorIndex(frame)) {
                     ip = successors[i];
@@ -167,6 +171,37 @@ public final class TRegexDFAExecutorNode extends Node {
         if (recordExecution()) {
             debugRecorder.finishRecording();
         }
+    }
+
+    private void debugRecordTransition(VirtualFrame frame, DFAStateNode curState, int prevIndex) {
+        short ip = curState.getId();
+        boolean hasSuccessor = getSuccessorIndex(frame) != -1;
+        if (isForward()) {
+            for (int i = prevIndex; i < getIndex(frame) - (hasSuccessor ? 1 : 0); i++) {
+                if (curState.hasLoopToSelf()) {
+                    debugRecorder.recordTransition(i, ip, curState.getLoopToSelf());
+                }
+            }
+        } else {
+            for (int i = prevIndex; i > getIndex(frame) + (hasSuccessor ? 1 : 0); i--) {
+                if (curState.hasLoopToSelf()) {
+                    debugRecorder.recordTransition(i, ip, curState.getLoopToSelf());
+                }
+            }
+        }
+        if (hasSuccessor) {
+            debugRecorder.recordTransition(getIndex(frame) + (isForward() ? -1 : 1), ip, getSuccessorIndex(frame));
+        }
+    }
+
+    public void setInputIsCompactString(VirtualFrame frame, boolean inputIsCompactString) {
+        frame.setBoolean(props.getInputIsCompactStringFS(), inputIsCompactString);
+    }
+
+    public boolean inputIsCompactString(VirtualFrame frame) {
+        boolean ret = FrameUtil.getBooleanSafe(frame, props.getInputIsCompactStringFS());
+        CompilerAsserts.partialEvaluationConstant(ret);
+        return ret;
     }
 
     /**

@@ -25,10 +25,11 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+
+import static com.oracle.truffle.api.CompilerDirectives.*;
 
 public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
 
@@ -38,7 +39,7 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         return new DFACaptureGroupPartialTransitionDispatchNode(precedingTransitions);
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] precedingTransitions;
+    @CompilationFinal(dimensions = 1) private final short[] precedingTransitions;
 
     private DFACaptureGroupPartialTransitionDispatchNode(short[] precedingTransitions) {
         this.precedingTransitions = precedingTransitions;
@@ -53,9 +54,9 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void applyPartialTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int partialTransitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getPartialTransitions()[partialTransitionIndex].apply(d, currentIndex);
+        executor.getCGTransitions()[transitionIndex].getPartialTransitions()[partialTransitionIndex].apply(executor, d, currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
@@ -66,7 +67,7 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                 for (int i = 0; i < partialTransitions.length; i++) {
                     CompilerAsserts.partialEvaluationConstant(i);
                     if (i == partialTransitionIndex) {
-                        partialTransitions[i].apply(executor.getCGData(frame), currentIndex);
+                        partialTransitions[i].apply(executor, executor.getCGData(frame), currentIndex);
                         return;
                     }
                 }
@@ -85,9 +86,9 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void applyPreAnchoredFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(d, executor.isSearching(), currentIndex);
+        executor.getCGTransitions()[transitionIndex].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(executor, d, executor.isSearching(), currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
@@ -95,7 +96,7 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
                 executor.getCGTransitions()[possibleTransition].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(
-                                executor.getCGData(frame), executor.isSearching(), currentIndex);
+                                executor, executor.getCGData(frame), executor.isSearching(), currentIndex);
                 return;
             }
         }
@@ -107,21 +108,21 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         if (precedingTransitions.length > EXPLODE_THRESHOLD) {
             applyPreFinalTransitionBoundary(executor, executor.getCGData(frame), transitionIndex, currentIndex);
         } else {
-            applyPreFinalTransitionExploded(frame, executor, transitionIndex, currentIndex);
+            applyPreFinalTransitionExploded(frame, executor, executor, transitionIndex, currentIndex);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void applyPreFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getTransitionToFinalState().applyPreFinalStateTransition(d, executor.isSearching(), currentIndex);
+        executor.getCGTransitions()[transitionIndex].getTransitionToFinalState().applyPreFinalStateTransition(executor, d, executor.isSearching(), currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private void applyPreFinalTransitionExploded(VirtualFrame frame, TRegexDFAExecutorNode executorNode, short transitionIndex, int currentIndex) {
+    private void applyPreFinalTransitionExploded(VirtualFrame frame, TRegexDFAExecutorNode executor, TRegexDFAExecutorNode executorNode, short transitionIndex, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
                 executorNode.getCGTransitions()[possibleTransition].getTransitionToFinalState().applyPreFinalStateTransition(
-                                executorNode.getCGData(frame), executorNode.isSearching(), currentIndex);
+                                executor, executorNode.getCGData(frame), executorNode.isSearching(), currentIndex);
                 return;
             }
         }

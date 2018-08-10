@@ -29,33 +29,33 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-public abstract class InputIndexOfNode extends Node {
+public abstract class InputIndexOfStringNode extends Node {
 
-    public static InputIndexOfNode create() {
-        return InputIndexOfNodeGen.create();
+    public static InputIndexOfStringNode create() {
+        return InputIndexOfStringNodeGen.create();
     }
 
-    public abstract int execute(Object input, int fromIndex, int maxIndex, char[] chars);
+    public abstract int execute(Object input, String match, int fromIndex, int maxIndex);
 
     @Specialization
-    public int indexOf(String input, int fromIndex, int maxIndex, char[] chars) {
-        assert chars.length == 1;
-        int index = input.indexOf(chars[0], fromIndex);
-        if (index >= maxIndex) {
+    public int doString(String input, String match, int fromIndex, int maxIndex) {
+        int result = input.indexOf(match, fromIndex);
+        return result >= maxIndex ? -1 : result;
+    }
+
+    @Specialization
+    public int doTruffleObject(TruffleObject input, String match, int fromIndex, int maxIndex,
+                    @Cached("create()") InputLengthNode lengthNode,
+                    @Cached("create()") InputRegionMatchesNode regionMatchesNode) {
+        if (maxIndex > lengthNode.execute(input)) {
             return -1;
         }
-        return index;
-    }
-
-    @Specialization
-    public int indexOf(TruffleObject input, int fromIndex, int maxIndex, char[] chars,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        for (int i = fromIndex; i < maxIndex; i++) {
-            char c = charAtNode.execute(input, i);
-            for (char v : chars) {
-                if (c == v) {
-                    return i;
-                }
+        if (fromIndex + match.length() > maxIndex) {
+            return -1;
+        }
+        for (int i = fromIndex; i < maxIndex - match.length(); i++) {
+            if (regionMatchesNode.execute(input, match, i)) {
+                return i;
             }
         }
         return -1;
