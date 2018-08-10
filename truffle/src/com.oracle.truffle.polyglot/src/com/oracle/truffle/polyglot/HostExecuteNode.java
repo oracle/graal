@@ -709,7 +709,7 @@ abstract class HostExecuteNode extends Node {
         try {
             ret = method.invoke(obj, arguments);
         } catch (Throwable e) {
-            throw HostInteropReflect.rethrow(PolyglotImpl.wrapHostException(languageContext, e));
+            throw HostInteropReflect.rethrow(e);
         }
         return toGuest.apply(languageContext, ret);
     }
