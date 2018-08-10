@@ -111,7 +111,7 @@ public class NewArrayStub extends SnippetStub {
         }
 
         newArrayC(NEW_ARRAY_C, thread, hub, length);
-        handlePendingException(thread, true);
+        handlePendingException(thread, true, true);
         return verifyObject(getAndClearObjectResult(thread));
     }
 
