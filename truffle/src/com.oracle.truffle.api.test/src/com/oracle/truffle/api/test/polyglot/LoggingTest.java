@@ -24,15 +24,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -51,10 +42,21 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class LoggingTest {
 
@@ -502,7 +504,7 @@ public class LoggingTest {
             // Expected
         }
         try {
-            r.setMillis(10);
+            setMillis(r, 10);
             Assert.fail("Should not reach here.");
         } catch (UnsupportedOperationException e) {
             // Expected
@@ -555,6 +557,11 @@ public class LoggingTest {
         } catch (UnsupportedOperationException e) {
             // Expected
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void setMillis(final LogRecord r, long value) {
+        r.setMillis(value);
     }
 
     private static Map<String, String> createLoggingOptions(final String... kvs) {

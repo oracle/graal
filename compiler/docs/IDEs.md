@@ -39,7 +39,7 @@ To make IntelliJ work the same way as Eclipse with respect to Problems View and 
 ### Eclipse
 This section describes how to set up Eclipse for Graal development. For convenience, `$GRAAL` denotes your local Graal repository.
 
-Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently recommended version for Graal development is 4.7.3a.
+Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently recommended version for Graal development is 4.7.3a ("Oxygen").
 
 Once you have installed Eclipse, if you have multiple Java versions on your computer, you should edit [eclipse.ini](http://wiki.eclipse.org/Eclipse.ini) to [specify the JVM](http://wiki.eclipse.org/Eclipse.ini#Specifying_the_JVM) that Eclipse will be run with. It must be run with a JDK 9 or later VM. For example:
 ```
@@ -49,11 +49,12 @@ Once you have installed Eclipse, if you have multiple Java versions on your comp
 
 When first launching Eclipse, you should create a new workspace for Graal development. Select the parent of  `$GRAAL` as the workspace as you will also be importing projects from the suites that Graal depends on.
 
-The configurations created by the `mx eclipseinit` command binds projects to Execution Environments corresponding to the Java compliance level of the projects. You need to configure these Execution Environments as follows:
+The configurations created by the `mx eclipseinit` command binds projects to Execution Environments or JREs corresponding to the Java compliance level of the projects. You need to configure these Execution Environments and JREs as follows:
 
 1. From the main menu bar, select **Window > Preferences**.
-2. On the left, select **Java > Installed JREs > Execution Environments**
-3. Configure the **JavaSE-1.8**, **JavaSE-9**, **JavaSE-10** etc environments. You may need to first add any missing JREs.
+2. On the left, select **Java > Installed JREs**
+3. Ensure there is an installed JRE with the name `jdk-11`.
+4. Select **Execution Environments** and configure the **JavaSE-1.8** environment.
 4. Click **OK**
 
 Run `mx eclipseinit` to create the Eclipse project configurations for all the Java projects then use the **Import Wizard** to import the created/updated projects:

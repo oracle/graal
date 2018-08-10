@@ -30,7 +30,7 @@ suite = {
               "<package-info>", # exports all packages containing package-info.java
               "com.oracle.truffle.tools.chromeinspector.instrument to com.oracle.truffle.truffle_api"
             ],
-            "javaCompliance" : "1.8",
+            "javaCompliance" : "8+",
             "checkstyle" : "com.oracle.truffle.api",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
@@ -45,7 +45,7 @@ suite = {
                 "truffle:TRUFFLE_SL",
                 "mx:JUNIT",
             ],
-            "javaCompliance" : "1.8",
+            "javaCompliance" : "8+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector.test",
             "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -62,7 +62,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.api",
-            "javaCompliance" : "1.8",
+            "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.profiler.test" : {
@@ -75,7 +75,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.api",
-            "javaCompliance" : "1.8",
+            "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
     },

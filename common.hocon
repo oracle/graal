@@ -29,7 +29,7 @@ labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HO
 
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
 
 common : ${mx} {
   timelimit : "30:00"

@@ -197,7 +197,7 @@ final class Target_jdk_internal_ref_Cleaner {
     static Target_jdk_internal_ref_Cleaner first;
 
     /**
-     * Contrary to the comment on {@link sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
+     * Contrary to the comment on {@code sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
      * have Cleaner instances on it, because SubstrateVM does not have a ReferenceHandler thread to
      * clean instances, so SubstrateVM puts them on the queue and drains the queue after collections
      * in {@link SunMiscSupport#drainCleanerQueue()}.

@@ -44,10 +44,15 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 @RunWith(Theories.class)
 public class IdentityValueProfileTest {
 
+    @SuppressWarnings("deprecation")
+    private static Integer newInteger(int value) {
+        return new Integer(value);
+    }
+
     @DataPoint public static final String O1 = new String();
     @DataPoint public static final String O2 = O1;
     @DataPoint public static final Object O3 = new Object();
-    @DataPoint public static final Integer O4 = new Integer(1);
+    @DataPoint public static final Integer O4 = newInteger(1);
     @DataPoint public static final Integer O5 = null;
 
     private ValueProfile profile;

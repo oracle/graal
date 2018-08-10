@@ -28,7 +28,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 
 /**
  * This interface allows to expose SubstrateVM specific functionality via
- * {@link java.lang.Compiler#command(Object)}. Use
+ * {@code java.lang.Compiler.command(Object)}. Use
  * {@link RuntimeSupport#addCommandPlugin(CompilerCommandPlugin)} to register a new command binding.
  */
 public interface CompilerCommandPlugin {

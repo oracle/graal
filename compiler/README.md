@@ -21,26 +21,28 @@ git clone https://github.com/graalvm/mx.git
 export PATH=$PWD/mx:$PATH
 ```
 
-Graal depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)). There is a JVMCI
-[port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and the required JVMCI version is built into the JDK as of JDK 11-ea+20.
+Graal depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
+There is a JVMCI [port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and the required JVMCI version is built into the JDK as of JDK 11.
+To develop Graal you need either a JVMCI-enabled JDK 8 (download from [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or [build](#building-jvmci-jdk8) yourself)
+or JDK 11 (build 20 or later).
 
-Graal currently requires a JVMCI-enabled JDK 8 (download from [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or [build](#building-jvmci-jdk8) yourself) and will do so until all JDK 8 specific Graal code is factored out as [versioned sources](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
-Developing versioned sources specific to other JDKs requires them to be made
-available on the `EXTRA_JAVA_HOMES` environment variable. At the time of writing, this
-JDK 11-ea+20 ([early access build](http://jdk.java.net/11/) should work but a build from
-the [latest bits](http://hg.openjdk.java.net/jdk/jdk/) is required if Graal targets features not yet in an early access build).
+Most Graal sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
+These sources are in [versioned projects](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
+If you don't have a JDK that satisfies the requirement of a versioned project, the project is ignored by mx.
+You specify the JDK(s) available to mx with the `JAVA_HOME` and `EXTRA_JAVA_HOMES` environment variables.
 
 Here is a typical set up for specifying multiple JDKs on Linux:
 ```
-export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.44
+export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
 export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
 ```
 And on macOS:
 ```
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/labsjdk1.8.0_172-jvmci-0.44/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/labsjdk1.8.0_172-jvmci-0.46/Contents/Home
 export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
-If you omit `EXTRA_JAVA_HOMES`, the associated sources will not be built. Note that `JAVA_HOME` defines the *primary* JDK for development. For instance, when running `mx vm`, this is the JDK that will be used so if you want to run on JDK 11, swap JDK 8 and JDK 11 in `JAVA_HOME` and `EXTRA_JAVA_HOMES`.
+If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on JDK 9 or later will be ignored.
+Note that `JAVA_HOME` defines the *primary* JDK for development. For instance, when running `mx vm`, this is the JDK that will be used so if you want to run on JDK 11, swap JDK 8 and JDK 11 in `JAVA_HOME` and `EXTRA_JAVA_HOMES`.
 
 Now change to the `graal/compiler` directory:
 

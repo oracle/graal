@@ -52,7 +52,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -67,7 +67,7 @@ suite = {
         "org.graalvm.polyglot.proxy",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
 
@@ -76,7 +76,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
     },
@@ -92,7 +92,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.launcher" : {
@@ -103,7 +103,7 @@ suite = {
         "org.graalvm.nativeimage",
         "JLINE",
       ],
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
     },
@@ -117,7 +117,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
     },
     "org.graalvm.collections" : {
@@ -127,7 +127,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.collections.test" : {
@@ -138,7 +138,7 @@ suite = {
         "org.graalvm.collections",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
     },
   },

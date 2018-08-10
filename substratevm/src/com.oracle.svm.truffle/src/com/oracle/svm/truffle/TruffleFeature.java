@@ -264,8 +264,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     private void safeLoadFileDetector(Class<? extends FileTypeDetector> detector) {
         try {
-            ImageSingletons.lookup(FilesSupport.class).addFileTypeDetector(detector.newInstance());
-        } catch (InstantiationException | IllegalAccessException ex) {
+            ImageSingletons.lookup(FilesSupport.class).addFileTypeDetector(detector.getDeclaredConstructor().newInstance());
+        } catch (Exception ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }

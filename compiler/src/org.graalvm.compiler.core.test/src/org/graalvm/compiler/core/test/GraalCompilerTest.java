@@ -1122,6 +1122,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return methodMap.get(javaMethod);
     }
 
+    @SuppressWarnings("deprecation")
     protected Object invoke(ResolvedJavaMethod javaMethod, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
         Executable method = lookupMethod(javaMethod);
         Assert.assertTrue(method != null);

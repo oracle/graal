@@ -119,6 +119,7 @@ class DumpHeapReport implements SignalHandler {
         Signal.handle(new Signal("USR1"), new DumpHeapReport());
     }
 
+    @SuppressWarnings("deprecation")
     @NeverInline("Ensure ClassCastException gets caught")
     private static void performHeapDump(FileOutputStream fileOutputStream) throws Exception {
         Object[] args = new Object[]{"HeapDump.dumpHeap(FileOutputStream, Boolean)Boolean", fileOutputStream, Boolean.TRUE};

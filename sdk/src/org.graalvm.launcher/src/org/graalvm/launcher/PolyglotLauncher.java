@@ -229,10 +229,10 @@ public final class PolyglotLauncher extends Launcher {
             launcherClass = getLauncherClass(launcherName);
         }
         try {
-            AbstractLanguageLauncher launcher = launcherClass.newInstance();
+            AbstractLanguageLauncher launcher = launcherClass.getDeclaredConstructor().newInstance();
             launcher.setPolyglot(true);
             launcher.launch(args, options, false);
-        } catch (IllegalAccessException | InstantiationException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to instanciate launcher class " + launcherName, e);
         }
     }
