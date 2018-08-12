@@ -120,7 +120,7 @@ public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
                 if (result == null) {
                     result = "null result";
                 }
-                return result;
+                return getContext().env.asGuestValue(result);
             }
 
             @TruffleBoundary
