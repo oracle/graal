@@ -364,7 +364,8 @@ public final class DebuggerTester implements AutoCloseable {
     public void expectKilled() {
         Throwable error = expectThrowable();
         if (error instanceof PolyglotException) {
-            Assert.assertTrue(error.getMessage(), error.getMessage().contains("KillException"));
+            Assert.assertTrue(((PolyglotException) error).isCancelled());
+            Assert.assertTrue(error.getMessage(), error.getMessage().contains("Execution cancelled by a debugging session."));
             return;
         }
         throw new AssertionError("Expected killed bug got error: " + error, error);

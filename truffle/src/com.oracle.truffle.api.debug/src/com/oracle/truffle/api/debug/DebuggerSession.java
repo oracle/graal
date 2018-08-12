@@ -855,7 +855,7 @@ public final class DebuggerSession implements Closeable {
             }
         }
         if (s.isKill()) {   // ComposedStrategy can become kill
-            throw new KillException();
+            throw new KillException(source.getContext().getInstrumentedNode());
         }
     }
 
@@ -968,7 +968,7 @@ public final class DebuggerSession implements Closeable {
 
         setSteppingStrategy(currentThread, strategy, true);
         if (strategy.isKill()) {
-            throw new KillException();
+            throw new KillException(context.getInstrumentedNode());
         } else if (strategy.isUnwind()) {
             ThreadDeath unwind = context.createUnwind(null, rootBinding);
             ((SteppingStrategy.Unwind) strategy).unwind = unwind;
