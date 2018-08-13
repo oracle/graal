@@ -69,25 +69,6 @@ suite = {
                 ]
             },
             {
-                "name": "sulong",
-                "version": "eb1049cb3aa90e3760265b78ecaf29554aada070",
-                "dynamic": True,
-                "urls": [
-                    {"url": "https://github.com/graalvm/sulong.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ],
-                "os_arch": {
-                    "<others>": {
-                        "sparcv9": {
-                            "ignore": True
-                        },
-                        "<others>": {
-                            "ignore": False
-                        }
-                    }
-                }
-            },
-            {
                 "name": "graalpython",
                 "version": "1d04ab1d2ec08ff6508f8841ce2f1a0ff4cb03f3",
                 "dynamic": True,
