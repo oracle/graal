@@ -1764,4 +1764,39 @@ public class LanguageSPITest {
             return null;
         }
     }
+
+    static final Source TEST_SOURCE = Source.newBuilder("").mimeType("").name("testLanguageErrorDuringInitialization").build();
+
+    @SuppressWarnings("serial")
+    static class TestError extends RuntimeException implements TruffleException {
+
+        public SourceSection getSourceLocation() {
+            return TEST_SOURCE.createSection(0, 0);
+        }
+
+        public Node getLocation() {
+            return null;
+        }
+
+    }
+
+    @Test
+    public void testLanguageErrorDuringInitialization() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                throw new TestError();
+            }
+        });
+
+        Context context = Context.create();
+        try {
+            context.eval(ProxyLanguage.ID, "");
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isGuestException());
+            assertEquals("testLanguageErrorDuringInitialization", e.getSourceLocation().getSource().getName());
+        }
+    }
+
 }
