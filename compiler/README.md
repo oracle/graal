@@ -29,9 +29,19 @@ or JDK 11 (build 20 or later).
 Most Graal sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
 These sources are in [versioned projects](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
 If you don't have a JDK that satisfies the requirement of a versioned project, the project is ignored by mx.
-You specify the JDK(s) available to mx with the `JAVA_HOME` and `EXTRA_JAVA_HOMES` environment variables.
 
-Here is a typical set up for specifying multiple JDKs on Linux:
+If you only want to develop Graal for a single JDK version, you only need to define `JAVA_HOME`. For example:
+```
+export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
+```
+or:
+```
+export JAVA_HOME=/usr/lib/jvm/jdk-11
+```
+
+If you want to ensure your changes will pass both JDK 8 and JDK 11 gates, you can specify the secondary JDK(s) in `EXTRA_JAVA_HOMES`.
+For example, to develop Graal for JDK 8 while ensuring `mx build` still works with the JDK 11 specific sources:
+
 ```
 export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
 export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
@@ -41,7 +51,7 @@ And on macOS:
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/labsjdk1.8.0_172-jvmci-0.46/Contents/Home
 export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
-If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on JDK 9 or later will be ignored.
+If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on the specified JDK(s) will be ignored.
 Note that `JAVA_HOME` defines the *primary* JDK for development. For instance, when running `mx vm`, this is the JDK that will be used so if you want to run on JDK 11, swap JDK 8 and JDK 11 in `JAVA_HOME` and `EXTRA_JAVA_HOMES`.
 
 Now change to the `graal/compiler` directory:
