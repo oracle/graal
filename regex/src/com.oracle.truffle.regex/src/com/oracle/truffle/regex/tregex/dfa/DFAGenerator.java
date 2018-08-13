@@ -535,7 +535,7 @@ public final class DFAGenerator implements JsonConvertible {
                 if (successors[i] == s.getId()) {
                     loopToSelf = (short) i;
                     MatcherBuilder loopMB = s.getTransitions()[i].getMatcherBuilder();
-                    if (acc.matchesEverything() && loopMB.inverseCharCount() == 1) {
+                    if (acc.matchesEverything() && !loopMB.matchesEverything() && loopMB.inverseCharCount() <= 4) {
                         indexOfChars = loopMB.inverseToCharArray();
                     }
                 }
