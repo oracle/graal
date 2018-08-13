@@ -293,7 +293,6 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMI1Vector
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMI32VectorReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMI64VectorReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadVectorNodeFactory.LLVMI8VectorReadNodeGen;
-import com.oracle.truffle.llvm.nodes.vars.LLVMSetInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWrite80BitFloatingNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteDoubleNodeGen;
@@ -345,8 +344,6 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
@@ -1964,20 +1961,6 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMStatementNode createDebugTrap(LLVMSourceLocation location) {
         return new LLVMDebugTrapNode(location);
-    }
-
-    @Override
-    public LLVMStatementNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type) {
-        LLVMSourceType actual = type.getActualType();
-        if (actual instanceof LLVMSourcePointerType) {
-            // only pointer types can contain foreign values
-            LLVMSourceType base = ((LLVMSourcePointerType) actual).getBaseType();
-            LLVMInteropType interopType = LLVMInteropType.fromSourceType(base);
-            if (interopType != null) {
-                return new LLVMSetInteropTypeNode(valueSlot, interopType);
-            }
-        }
-        return null;
     }
 
     @Override

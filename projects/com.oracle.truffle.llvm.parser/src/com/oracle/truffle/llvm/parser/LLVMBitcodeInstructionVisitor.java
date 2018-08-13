@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
@@ -296,21 +295,6 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private void visitDebugIntrinsic(SymbolImpl value, SourceVariable variable, MDExpression expression, long index, boolean isDeclaration) {
-        FrameSlot valueSlot = null;
-        if (value instanceof ValueInstruction) {
-            valueSlot = frame.findFrameSlot(((ValueInstruction) value).getName());
-
-        } else if (value instanceof FunctionParameter) {
-            valueSlot = frame.findFrameSlot(((FunctionParameter) value).getName());
-        }
-
-        if (valueSlot != null) {
-            final LLVMStatementNode typeNode = nodeFactory.registerSourceType(valueSlot, variable.getSourceType());
-            if (typeNode != null) {
-                addInstructionUnchecked(typeNode);
-            }
-        }
-
         final LLVMStatementNode dbgIntrinsic = dbgInfoHandler.handleDebugIntrinsic(value, variable, expression, index, isDeclaration);
         if (dbgIntrinsic != null) {
             addInstructionUnchecked(dbgIntrinsic);

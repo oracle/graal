@@ -81,7 +81,6 @@ public final class PointerType extends AggregateType {
     @Override
     public Type shallowCopy() {
         final PointerType copy = new PointerType(getPointeeType());
-        copy.setInteropType(getInteropType());
         return copy;
     }
 

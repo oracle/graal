@@ -104,7 +104,6 @@ public final class FunctionType extends Type {
     @Override
     public Type shallowCopy() {
         final FunctionType copy = new FunctionType(getReturnType(), argumentTypes, isVarargs);
-        copy.setInteropType(getInteropType());
         return copy;
     }
 
