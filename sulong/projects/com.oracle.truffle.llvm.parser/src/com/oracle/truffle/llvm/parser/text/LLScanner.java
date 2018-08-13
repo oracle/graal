@@ -91,7 +91,7 @@ final class LLScanner {
         }
 
         try (BufferedReader llReader = llFile.newBufferedReader()) {
-            final Source llSource = Source.newBuilder("llvm", llFile).mimeType("text/plain").build();
+            final Source llSource = Source.newBuilder("llvm", llFile).mimeType("text/x-llvmir").build();
             final LLSourceMap sourceMap = new LLSourceMap(llSource);
 
             final LLScanner scanner = new LLScanner(sourceMap);

@@ -7,12 +7,13 @@ Changes:
   Explicit polyglot casts are now strictly required (`polyglot_as_typed`).
   See [docs/INTEROP.md](docs/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
   for more details.
+* Support for IR-level tracing.
 
 # Version 1.0.0 RC6
 
 New features:
 
-* Support for IR-level debugging
+* Support for IR-level debugging.
 * New polyglot cast functions for primitive array types.
 * Support for function pointer members in `polyglot_as_typed`.
 
