@@ -943,24 +943,6 @@ public abstract class Launcher {
     }
 
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
-    private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
-    private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
-    private static final String GRAALVM_VERSION;
-    static {
-        String version = System.getProperty(GRAALVM_VERSION_PROPERTY);
-        String altVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        if (version != null && altVersion == null) {
-            GRAALVM_VERSION = version;
-        } else if (altVersion != null && version == null) {
-            GRAALVM_VERSION = altVersion;
-        } else if (version != null && version.equals(altVersion)) {
-            GRAALVM_VERSION = version;
-        } else if (isAOT()) {
-            throw new RuntimeException("Could not find GraalVM version: " + GRAALVM_VERSION_PROPERTY + "='" + version + "' " + ALT_GRAALVM_VERSION_PROPERTY + "='" + altVersion + "'");
-        } else {
-            GRAALVM_VERSION = null;
-        }
-    }
 
     class Native {
         void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
@@ -1296,47 +1278,6 @@ public abstract class Launcher {
                 return null;
             }
             return sb.substring(0, sb.length() - 1);
-        }
-
-        void setGraalVMProperties(String languageId) {
-            assert GRAALVM_VERSION != null;
-            System.setProperty(GRAALVM_VERSION_PROPERTY, GRAALVM_VERSION);
-            System.setProperty(ALT_GRAALVM_VERSION_PROPERTY, GRAALVM_VERSION);
-            Path executable = getCurrentExecutablePath();
-            Path languageHome = getLanguageHome(executable);
-            Path graalVmHome = null;
-            if (languageHome != null) {
-                if (languageId != null) {
-                    System.setProperty(languageId + ".home", languageHome.toString());
-                }
-                graalVmHome = getGraalVMHomeFromLanguageHome(languageHome);
-            }
-            if (graalVmHome == null) {
-                graalVmHome = getGraalVMHome(executable);
-            }
-            if (graalVmHome != null) {
-                String home = graalVmHome.toString();
-                System.setProperty("graalvm.home", home);
-                System.setProperty("org.graalvm.home", home);
-                setLanguagesOrToolsHomes(graalVmHome, "languages");
-                setLanguagesOrToolsHomes(graalVmHome, "tools");
-            }
-        }
-
-        void setLanguagesOrToolsHomes(Path graalVmHome, String kind) {
-            Path directory = graalVmHome.resolve(Paths.get("jre", kind));
-            if (Files.isDirectory(directory)) {
-                try {
-                    for (Path p : Files.newDirectoryStream(directory)) {
-                        if (!Files.isDirectory(p)) {
-                            continue;
-                        }
-                        System.setProperty(p.getFileName().toString() + ".home", p.toString());
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
 
         private Path getGraalVMBinaryPath(String binaryName) {
