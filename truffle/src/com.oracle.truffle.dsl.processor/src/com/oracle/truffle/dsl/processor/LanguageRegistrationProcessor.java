@@ -234,9 +234,6 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     }
 
                     if (annotation.mimeType().length > 0) {
-                        emitWarning("The attribute mimeType is deprecated. Use characterMimeTypes or byteMimeTypes instead.", e,
-                                        mirror, ElementUtils.getAnnotationValue(mirror, "mimeType"));
-                        valid = false;
                     } else {
                         String id = annotation.id();
                         if (id.isEmpty()) {

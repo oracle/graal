@@ -263,11 +263,6 @@ public class MIMETypeTest {
         }
     }
 
-    @ExpectError("The attribute mimeType is deprecated. Use characterMimeTypes or byteMimeTypes instead.")
-    @Registration(id = "MimeTypeLanguageLegacy1", name = "", mimeType = "text/javascript")
-    public static class MIMETypeLanguageLegacy1 extends ProxyLanguage {
-    }
-
     @Test
     public void testMIMETypeLanguageLegacy1() {
         Engine engine = Engine.create();
