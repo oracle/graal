@@ -66,10 +66,6 @@ public final class SulongEngineOption {
     public static final String ENABLE_NFI_NAME = "llvm.enableExternalNativeAccess";
     public static final String ENABLE_NFI_INFO = "Enable Sulongs native interface.";
 
-    public static final OptionKey<String> DEBUG = new OptionKey<>(String.valueOf(false));
-    public static final String DEBUG_NAME = "llvm.debug";
-    public static final String DEBUG_INFO = "Turns debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.";
-
     public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
     public static final String DEBUG_SYSCALLS_NAME = "llvm.debugSysCalls";
     public static final String DEBUG_SYSCALLS_INFO = "Turns syscall debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.";
