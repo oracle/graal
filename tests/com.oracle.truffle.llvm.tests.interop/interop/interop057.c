@@ -34,8 +34,10 @@ struct Foreign {
   uint32_t b;
 };
 
+POLYGLOT_DECLARE_STRUCT(Foreign)
+
 int main() {
-  struct Foreign *foreign = polyglot_import("foreign");
+  struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
   
   if (foreign->a != 0) {
     return 100 + foreign->a;
