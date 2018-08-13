@@ -1,8 +1,8 @@
-Sulong is copyright (c) 2013-2017 Oracle and/or its affiliates, and is licensed for use as follows:
+Sulong is copyright (c) 2013-2018 Oracle and/or its affiliates, and is licensed for use as follows:
 
 """
 
-Copyright (c) 2016, Oracle and/or its affiliates.
+Copyright (c) 2013, 2018, Oracle and/or its affiliates.
 
 All rights reserved.
 
@@ -35,8 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 
-- sulongeh.cpp, which depends on libc++abi (located at
-projects/com.oracle.truffle.llvm.libraries.native/src), is licensed as follows:
+This project contains code copied from libc++ and libc++abi (located in
+projects/com.oracle.truffle.llvm.libraries.bitcode/{libcxx,libcxxabi}).
+This code is licensed as follows:
 
 """
 
