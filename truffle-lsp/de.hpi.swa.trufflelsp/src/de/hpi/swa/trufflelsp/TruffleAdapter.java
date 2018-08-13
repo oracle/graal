@@ -32,9 +32,11 @@ import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.MarkedString;
 import org.eclipse.lsp4j.MarkupContent;
+import org.eclipse.lsp4j.ParameterInformation;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SignatureHelp;
+import org.eclipse.lsp4j.SignatureInformation;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -210,6 +212,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
         surrogate.getChangeEventsSinceLastSuccessfulParsing().addAll(list);
+        surrogate.setLastChange(list.get(list.size() - 1));
         surrogate.setEditorText(applyTextDocumentChanges(list, surrogate.getEditorText(), surrogate));
 
 // try {
@@ -1050,8 +1053,75 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         return null;
     }
 
-    @SuppressWarnings("unused")
-    public SignatureHelp signatureHelp(URI uri, int line, int character) {
+    public Future<SignatureHelp> signatureHelp(URI uri, int line, int character) {
+        return evaluator.executeWithDefaultContext(() -> signatureHelpWithEnteredContext(uri, line, character));
+    }
+
+    public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) {
+        System.out.println("signature " + line + " " + originalCharacter);
+
+        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentContentChangeEvent lastChange = surrogate.getLastChange();
+        Range range = lastChange.getRange();
+        TextDocumentContentChangeEvent replacementEvent = new TextDocumentContentChangeEvent(
+                        new Range(range.getStart(), new Position(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length())), lastChange.getText().length(), "");
+        String codeBeforeLastChange = applyTextDocumentChanges(Arrays.asList(replacementEvent), surrogate.getEditorText(), surrogate);
+        int character = originalCharacter - (originalCharacter - range.getStart().getCharacter());
+
+        TextDocumentSurrogate revertedSurrogate = surrogate.copy();
+        // TODO(ds) Should we reset coverage data etc? Or adjust the SourceLocations?
+        revertedSurrogate.setEditorText(codeBeforeLastChange);
+        SourceWrapper sourceWrapper = revertedSurrogate.prepareParsing();
+        CallTarget callTarget;
+        try {
+            callTarget = env.parse(sourceWrapper.getSource());
+        } catch (Exception e) {
+            err.println("Parsing a reverted source caused an exception: " + e.getClass().getSimpleName() + " > " + e.getLocalizedMessage());
+            return new SignatureHelp();
+        }
+        revertedSurrogate.notifyParsingSuccessful(callTarget);
+
+        uri2TextDocumentSurrogate.put(uri, revertedSurrogate);
+        try {
+            Source source = sourceWrapper.getSource();
+            if (isLineValid(line, source)) {
+                int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, source);
+                NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(oneBasedLineNumber, character, source, env);
+                Node nearestNode = nearestNodeHolder.getNearestNode();
+                NodeLocationType locationType = nearestNodeHolder.getLocationType();
+                System.out.println("nearestNode: " +
+                                (nearestNode != null ? nearestNode.getClass().getSimpleName() : "--NULL--") + "\t-" + locationType + "-\t" +
+                                (nearestNode != null ? nearestNode.getSourceSection() : ""));
+
+                EvaluationResult evalResult = runToSectionAndEval(revertedSurrogate, nearestNode);
+                if (evalResult.isEvaluationDone() && !evalResult.isError()) {
+                    Object result = evalResult.getResult();
+                    if (result instanceof TruffleObject) {
+                        try {
+                            Object signature = ForeignAccess.send(GET_SIGNATURE, (TruffleObject) result, nearestNode.getSourceSection().getCharacters().toString());
+                            List<Object> nameAndParams = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
+                            String formattedSignature = nameAndParams.stream().reduce("", (a, b) -> a.toString() + b.toString()).toString();
+                            SignatureInformation info = new SignatureInformation(formattedSignature);
+                            List<ParameterInformation> paramInfos = new ArrayList<>();
+                            for (int i = 1; i < nameAndParams.size(); i++) {
+                                String param = nameAndParams.get(i).toString();
+                                if (param.length() > 1) {
+                                    paramInfos.add(new ParameterInformation(param));
+                                }
+                            }
+                            info.setParameters(paramInfos);
+                            return new SignatureHelp(Arrays.asList(info), 0, 0);
+                        } catch (InteropException e) {
+                            if (!(e instanceof UnsupportedMessageException)) {
+                                e.printStackTrace(err);
+                            }
+                        }
+                    }
+                }
+            }
+        } finally {
+            uri2TextDocumentSurrogate.put(uri, surrogate);
+        }
         return new SignatureHelp();
     }
 

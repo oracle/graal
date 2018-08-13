@@ -25,6 +25,7 @@ public final class TextDocumentSurrogate {
     private String editorText;
     private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper sourceWrapper;
+    private TextDocumentContentChangeEvent lastChange = null;
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
         this.uri = blueprint.uri;
@@ -33,6 +34,7 @@ public final class TextDocumentSurrogate {
         this.changeEventsSinceLastSuccessfulParsing = blueprint.changeEventsSinceLastSuccessfulParsing;
         this.editorText = blueprint.editorText;
         this.sourceWrapper = blueprint.sourceWrapper;
+        this.lastChange = blueprint.lastChange;
     }
 
     public TextDocumentSurrogate(final URI uri, final String langId) {
@@ -93,6 +95,14 @@ public final class TextDocumentSurrogate {
     @Override
     public int hashCode() {
         return this.uri.hashCode();
+    }
+
+    public TextDocumentContentChangeEvent getLastChange() {
+        return lastChange;
+    }
+
+    public void setLastChange(TextDocumentContentChangeEvent lastChange) {
+        this.lastChange = lastChange;
     }
 
     @Override

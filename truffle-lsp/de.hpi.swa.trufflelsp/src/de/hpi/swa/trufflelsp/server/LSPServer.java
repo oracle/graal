@@ -54,6 +54,7 @@ import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.SignatureHelp;
+import org.eclipse.lsp4j.SignatureHelpOptions;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentPositionParams;
@@ -103,9 +104,8 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-// List<String> signatureTriggerChars = Arrays.asList(".");
-// final SignatureHelpOptions signatureHelpOptions = new
-// SignatureHelpOptions(signatureTriggerChars);
+        List<String> signatureTriggerChars = Arrays.asList("(");
+        final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(signatureTriggerChars);
 
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
@@ -122,7 +122,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         completionOptions.setTriggerCharacters(triggerCharacters);
         capabilities.setCompletionProvider(completionOptions);
         capabilities.setCodeActionProvider(true);
-// capabilities.setSignatureHelpProvider(signatureHelpOptions);
+        capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(true);
 
         capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE)));
@@ -231,8 +231,15 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<SignatureHelp> signatureHelp(TextDocumentPositionParams position) {
-        SignatureHelp help = truffleAdapter.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
-        return CompletableFuture.completedFuture(help);
+        Future<SignatureHelp> future = truffleAdapter.signatureHelp(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace(err);
+                return new SignatureHelp();
+            }
+        });
     }
 
     @Override
