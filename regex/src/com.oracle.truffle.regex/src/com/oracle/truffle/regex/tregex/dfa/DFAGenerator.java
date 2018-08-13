@@ -90,7 +90,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private short nextID = 1;
     private final DFAStateNodeBuilder lookupDummyState = new DFAStateNodeBuilder((short) -1, null, false);
-    private final Counter transitionIDCounter = new Counter.ThresholdCounter(Short.MAX_VALUE, "too many transitions");
+    private final Counter transitionIDCounter = new Counter.ThresholdCounter(Integer.MAX_VALUE, "too many transitions");
     private final Counter cgPartialTransitionIDCounter = new Counter.ThresholdCounter(Integer.MAX_VALUE, "too many partial transitions");
     private int maxNumberOfNfaStates = 1;
 
@@ -174,7 +174,7 @@ public final class DFAGenerator implements JsonConvertible {
         DFAStateNodeBuilder copy = stateIndexMap[oldID].createNodeSplitCopy(newID);
         stateIndexMap[newID] = copy;
         for (DFAStateTransitionBuilder t : copy.getTransitions()) {
-            t.setId((short) transitionIDCounter.inc());
+            t.setId(transitionIDCounter.inc());
             t.setSource(copy);
         }
     }
@@ -340,7 +340,7 @@ public final class DFAGenerator implements JsonConvertible {
         Arrays.sort(transitions, Comparator.comparing(TransitionBuilder::getMatcherBuilder));
         for (DFAStateTransitionBuilder transition : transitions) {
             assert !transition.getTransitionSet().isEmpty();
-            transition.setId((short) transitionIDCounter.inc());
+            transition.setId(transitionIDCounter.inc());
             transition.setSource(state);
             DFAStateNodeBuilder successorState = lookupState(transition.getTransitionSet(), false);
             if (successorState == null) {

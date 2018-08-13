@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -196,7 +197,10 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                                 new NFAStateSet(dfaGen.getNfa(), successor.getAnchoredFinalStateTransition().getSource()), compilationBuffer);
             }
             assert getId() >= 0;
-            lazyTransition = new DFACaptureGroupLazyTransitionNode(getId(), partialTransitions, transitionToFinalState, transitionToAnchoredFinalState);
+            if (getId() > Short.MAX_VALUE) {
+                throw new UnsupportedRegexException("too many capture group transitions");
+            }
+            lazyTransition = new DFACaptureGroupLazyTransitionNode((short) getId(), partialTransitions, transitionToFinalState, transitionToAnchoredFinalState);
         }
         return lazyTransition;
     }
