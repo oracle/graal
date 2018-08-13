@@ -593,6 +593,13 @@ public abstract class Source {
         return section;
     }
 
+    @Override
+    public String toString() {
+        return "Source [language=" + getLanguage() + ", name=" + getName() + ", path=" + getPath() + ", internal=" + isInternal() + ", cached=" + isCached() +
+                        ", interactive=" + isInteractive() + ", hasBytes=" + hasBytes() + ", hasCharacters=" + hasCharacters() + ", URL=" + getURL() + ", URI=" + getURI() +
+                        ", mimeType=" + getMimeType() + "]";
+    }
+
     private static boolean assertValid(SourceSection section) {
         if (!section.isValid()) {
             throw new IllegalArgumentException("Invalid source section bounds.");
@@ -894,7 +901,8 @@ public abstract class Source {
             File absoluteFile = file.exists() ? file.getCanonicalFile() : file;
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? absoluteFile.getPath() : usePath;
-            useUri = useUri == null ? absoluteFile.toURI() : useUri;
+            useUri = useUri == null ? absoluteFile.toPath().toUri() : useUri;
+            System.out.println(useUri);
             useMimeType = useMimeType == null ? findMimeType(absoluteFile.toPath(), getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
