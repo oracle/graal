@@ -199,7 +199,6 @@ final class SourceImpl extends Source {
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
             result = 31 * result + (cached ? 1231 : 1237);
-            result = 31 * result + (legacy ? 1231 : 1237);
             result = 31 * result + ((language == null) ? 0 : language.hashCode());
             result = 31 * result + ((mimeType == null) ? 0 : mimeType.hashCode());
             result = 31 * result + ((name == null) ? 0 : name.hashCode());
@@ -231,7 +230,6 @@ final class SourceImpl extends Source {
                             interactive == other.interactive && //
                             internal == other.internal &&
                             cached == other.cached &&
-                            legacy == other.legacy &&
                             compareContent(other);
         }
 

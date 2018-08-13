@@ -902,7 +902,6 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? absoluteFile.getPath() : usePath;
             useUri = useUri == null ? absoluteFile.toPath().toUri() : useUri;
-            System.out.println(useUri);
             useMimeType = useMimeType == null ? findMimeType(absoluteFile.toPath(), getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
