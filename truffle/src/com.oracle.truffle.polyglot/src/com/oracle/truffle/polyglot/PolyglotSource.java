@@ -163,7 +163,6 @@ class PolyglotSource extends AbstractSourceImpl {
         return source.getMimeType();
     }
 
-
     @Override
     public String findLanguage(File file) throws IOException {
         Objects.requireNonNull(file);
@@ -184,7 +183,6 @@ class PolyglotSource extends AbstractSourceImpl {
             return null;
         }
     }
-
 
     @Override
     public String findMimeType(File file) throws IOException {
