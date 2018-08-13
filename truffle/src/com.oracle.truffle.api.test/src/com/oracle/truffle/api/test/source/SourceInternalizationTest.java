@@ -179,13 +179,13 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
 
     @Test
     public void testUncachedAreNotInterned() {
-        Source source1 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(false).build();
-        Source source2 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(false).build();
+        Source source1 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(false).build();
+        Source source2 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(false).build();
         assertNotSame(source1, source2);
         assertEquals(source1, source2);
 
-        source1 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(true).build();
-        source2 = Source.newBuilder("").mimeType("mime").interactive().internal().name("name").language("language").cached(true).build();
+        source1 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(true).build();
+        source2 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(true).build();
 
         assertSame(source1, source2);
     }
