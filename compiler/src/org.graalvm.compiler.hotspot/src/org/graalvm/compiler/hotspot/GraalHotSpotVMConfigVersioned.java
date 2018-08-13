@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 
@@ -43,19 +40,6 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
 
     GraalHotSpotVMConfigVersioned(HotSpotVMConfigStore store) {
         super(store);
-        assert check();
-    }
-
-    private boolean check() {
-        for (Field field : getClass().getDeclaredFields()) {
-            int modifiers = field.getModifiers();
-            if (!Modifier.isStatic(modifiers)) {
-                // javac inlines non-static final fields which means
-                // versioned values are ignored in non-flattened Graal
-                assert !Modifier.isFinal(modifiers) : "Non-static field in " + getClass().getName() + " must not be final: " + field.getName();
-            }
-        }
-        return true;
     }
 
     // JDK-8073583

@@ -525,6 +525,7 @@ final class Target_java_lang_ClassValue {
     }
 }
 
+@SuppressWarnings("deprecation")
 @TargetClass(java.lang.Compiler.class)
 final class Target_java_lang_Compiler {
     @Substitute
@@ -732,6 +733,27 @@ public final class JavaLangSubstitutions {
         @Fold
         public static ClassLoaderSupport getInstance() {
             return ImageSingletons.lookup(ClassLoaderSupport.class);
+        }
+
+        public Target_java_lang_ClassLoader getOrCreate(ClassLoader classLoader) {
+            createClassLoaders(classLoader);
+            return classLoaders.get(classLoader);
+        }
+
+        public void createClassLoaders(ClassLoader loader) {
+            if (loader == null) {
+                return;
+            }
+            Map<ClassLoader, Target_java_lang_ClassLoader> loaders = ClassLoaderSupport.getInstance().classLoaders;
+            if (!loaders.containsKey(loader)) {
+                ClassLoader parent = loader.getParent();
+                if (parent != null) {
+                    createClassLoaders(parent);
+                    loaders.put(loader, new Target_java_lang_ClassLoader(loaders.get(parent)));
+                } else {
+                    loaders.put(loader, new Target_java_lang_ClassLoader());
+                }
+            }
         }
     }
 

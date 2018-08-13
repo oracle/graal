@@ -58,8 +58,8 @@ public final class RemoteObject {
         }
     }
 
-    private static final Double NEGATIVE_DOUBLE_0 = new Double("-0");
-    private static final Float NEGATIVE_FLOAT_0 = new Float("-0");
+    private static final Double NEGATIVE_DOUBLE_0 = Double.valueOf("-0");
+    private static final Float NEGATIVE_FLOAT_0 = Float.valueOf("-0");
 
     private static final AtomicLong LAST_ID = new AtomicLong(0);
 

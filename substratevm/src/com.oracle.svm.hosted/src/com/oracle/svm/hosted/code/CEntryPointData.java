@@ -108,9 +108,9 @@ public final class CEntryPointData {
             String symbolName = !providedName.isEmpty() ? providedName : alternativeNameSupplier.get();
             if (nameTransformation != null) {
                 try {
-                    Function<String, String> instance = nameTransformation.newInstance();
+                    Function<String, String> instance = nameTransformation.getDeclaredConstructor().newInstance();
                     symbolName = instance.apply(symbolName);
-                } catch (InstantiationException | IllegalAccessException e) {
+                } catch (Exception e) {
                     throw VMError.shouldNotReachHere(e);
                 }
             }

@@ -226,7 +226,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     @Test
     public void testOverloaded4() throws InteropException {
-        assertEquals(Byte.class.getName(), getValueFromMember("isOverloaded", new Byte(Byte.MAX_VALUE)));
+        assertEquals(Byte.class.getName(), getValueFromMember("isOverloaded", Byte.valueOf(Byte.MAX_VALUE)));
     }
 
     @Test
@@ -236,7 +236,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     @Test
     public void testOverloaded6() throws InteropException {
-        assertEquals(Character.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", new Character('a')));
+        assertEquals(Character.class.getName(), getValueFromMember(TestClass2.class, "isOverloaded", Character.valueOf('a')));
     }
 
     @Test
@@ -246,7 +246,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     @Test
     public void testOverloaded8() throws InteropException {
-        assertEquals(Float.class.getName(), getValueFromMember("isOverloaded", new Float(Float.MAX_VALUE)));
+        assertEquals(Float.class.getName(), getValueFromMember("isOverloaded", Float.valueOf(Float.MAX_VALUE)));
     }
 
     @Test
@@ -256,7 +256,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     @Test
     public void testOverloaded10() throws InteropException {
-        assertEquals(Double.class.getName(), getValueFromMember("isOverloaded", new Double(Double.MAX_VALUE)));
+        assertEquals(Double.class.getName(), getValueFromMember("isOverloaded", Double.valueOf(Double.MAX_VALUE)));
     }
 
     @Test

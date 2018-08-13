@@ -44,7 +44,6 @@ import com.oracle.svm.reflect.helpers.ReflectionProxy;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.ProxyGenerator;
 
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
@@ -118,13 +117,30 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
+    private static Method generateProxyMethod;
+
+    private static byte[] generateProxyClass(final String name, Class<?>[] interfaces) {
+        /* { Allow reflection in hosted code. Checkstyle: stop. */
+        try {
+            if (generateProxyMethod == null) {
+                final String packageName = (GraalServices.Java8OrEarlier ? "sun.misc." : "java.lang.reflect.");
+                generateProxyMethod = Class.forName(packageName + "ProxyGenerator").getDeclaredMethod("generateProxyClass", String.class, Class[].class);
+                generateProxyMethod.setAccessible(true);
+            }
+            return (byte[]) generateProxyMethod.invoke(null, name, interfaces);
+        } catch (Throwable e) {
+            throw new InternalError(e);
+        }
+        /* } Allow reflection in hosted code. Checkstyle: resume. */
+    }
+
     Class<?> getProxyClass(Member member) {
         Class<?> ret = proxyMap.get(member);
         if (ret == null) {
             String name = getProxyClassname(member);
             Class<?> iface = getAccessorInterface(member);
 
-            byte[] proxyBC = ProxyGenerator.generateProxyClass(name, new Class<?>[]{iface, ReflectionProxy.class});
+            byte[] proxyBC = generateProxyClass(name, new Class<?>[]{iface, ReflectionProxy.class});
 
             try {
                 ret = (Class<?>) defineClass.invoke(imageClassLoader.getClassLoader(), name, proxyBC, 0, proxyBC.length);

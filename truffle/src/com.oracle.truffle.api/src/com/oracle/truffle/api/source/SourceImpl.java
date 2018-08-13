@@ -270,8 +270,14 @@ final class SourceImpl extends Source {
             }
         }
 
-        SourceImpl toSource() {
+        SourceImpl toSourceInterned() {
+            assert cached;
             return new SourceImpl(this);
+        }
+
+        SourceImpl toSourceNotInterned() {
+            assert !cached;
+            return new SourceImpl(this, this);
         }
 
     }
