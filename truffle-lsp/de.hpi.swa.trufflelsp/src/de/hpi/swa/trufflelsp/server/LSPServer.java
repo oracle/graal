@@ -244,8 +244,16 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
-        List<? extends Location> result = truffleAdapter.getDefinitions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
-        return CompletableFuture.completedFuture(result);
+        Future<List<? extends Location>> result = truffleAdapter.getDefinitions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
+                        position.getPosition().getCharacter());
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return result.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace(err);
+                return new ArrayList<>();
+            }
+        });
     }
 
     @Override
