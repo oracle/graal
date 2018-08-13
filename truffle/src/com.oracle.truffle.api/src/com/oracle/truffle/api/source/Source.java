@@ -594,6 +594,11 @@ public abstract class Source {
         return section;
     }
 
+    /**
+     * {@inheritDoc}
+     * 
+     * @since 1.0
+     */
     @Override
     public String toString() {
         return "Source [language=" + getLanguage() + ", name=" + getName() + ", path=" + getPath() + ", internal=" + isInternal() + ", cached=" + isCached() +
