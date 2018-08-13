@@ -36,11 +36,15 @@ final class InternedSources {
     Source intern(SourceImpl.Key key) {
         cleanupStaleEntries();
 
+        if (!key.cached) {
+            return key.toSourceNotInterned();
+        }
+
         WeakSourceRef sourceRef = table.get(key);
         SourceImpl source = sourceRef != null ? sourceRef.get() : null;
         if (source == null) {
             while (true) {
-                source = key.toSource();
+                source = key.toSourceInterned();
                 sourceRef = new WeakSourceRef(source, deadReferences);
                 WeakSourceRef oldSourceRef = table.putIfAbsent(key, sourceRef);
                 if (oldSourceRef != null) {
