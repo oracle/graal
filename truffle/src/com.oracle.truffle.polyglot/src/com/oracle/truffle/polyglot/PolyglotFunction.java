@@ -51,20 +51,18 @@ final class PolyglotFunction<T, R> implements Function<T, R> {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof PolyglotFunction) {
-            return guestObject.equals(((PolyglotFunction<?, ?>) obj).guestObject);
-        }
-        return false;
+    public int hashCode() {
+        return guestObject.hashCode();
     }
 
     @Override
-    public int hashCode() {
-        try {
-            return guestObject.hashCode();
-        } catch (Throwable e) {
-            // not allowed to propagate exceptions
-            return 0;
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        } else if (o instanceof PolyglotFunction) {
+            return languageContext.context == ((PolyglotFunction<?, ?>) o).languageContext.context && guestObject.equals(((PolyglotFunction<?, ?>) o).guestObject);
+        } else {
+            return false;
         }
     }
 

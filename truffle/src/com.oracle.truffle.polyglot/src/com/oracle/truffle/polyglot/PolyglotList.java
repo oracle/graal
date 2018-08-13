@@ -93,6 +93,22 @@ class PolyglotList<T> extends AbstractList<T> {
     }
 
     @Override
+    public int hashCode() {
+        return guestObject.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        } else if (o instanceof PolyglotList) {
+            return languageContext.context == ((PolyglotList<?>) o).languageContext.context && guestObject.equals(((PolyglotList<?>) o).guestObject);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
     public String toString() {
         try {
             return languageContext.asValue(guestObject).toString();

@@ -40,6 +40,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -73,6 +74,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class ValueAPITest {
 
@@ -202,7 +207,6 @@ public class ValueAPITest {
             } else {
                 assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT);
             }
-
         }
     }
 
@@ -1203,6 +1207,130 @@ public class ValueAPITest {
 
         assertTrue(v.removeArrayElement(0));
         assertTrue(v.getArraySize() == 0);
+    }
+
+    @Test
+    public void testRecursiveList() {
+        Object[] o1 = new Object[1];
+        Object[] o2 = new Object[]{o1};
+        o1[0] = o2;
+
+        Value v1 = context.asValue(o1);
+        Value v2 = context.asValue(o2);
+
+        assertEquals(v1.as(List.class), v1.as(List.class));
+        assertEquals(v2.as(List.class), v2.as(List.class));
+        assertNotEquals(v1.as(List.class), (v2.as(List.class)));
+        assertNotEquals(v1, v2);
+        assertEquals(v1, v1);
+        assertEquals(v2, v2);
+
+        ValueAssert.assertValue(context, v1);
+        ValueAssert.assertValue(context, v2);
+    }
+
+    public static class RecursiveObject {
+
+        public RecursiveObject rec;
+
+    }
+
+    @Test
+    public void testRecursiveObject() {
+        RecursiveObject o1 = new RecursiveObject();
+        RecursiveObject o2 = new RecursiveObject();
+        o1.rec = o2;
+        o2.rec = o1;
+
+        Value v1 = context.asValue(o1);
+        Value v2 = context.asValue(o2);
+
+        assertEquals(v1.as(Map.class), v1.as(Map.class));
+        assertEquals(v2.as(Map.class), v2.as(Map.class));
+        assertNotEquals(v1.as(Map.class), v2.as(Map.class));
+        assertNotEquals(v1, v2);
+        assertEquals(v1, v1);
+        assertEquals(v2, v2);
+
+        ValueAssert.assertValue(context, v1);
+        ValueAssert.assertValue(context, v2);
+    }
+
+    public interface EmptyInterface {
+
+        void foo();
+
+        void bar();
+
+    }
+
+    @FunctionalInterface
+    public interface EmptyFunctionalInterface {
+
+        void noop();
+
+    }
+
+    @Test
+    public void testValueContextPropagation() {
+        ProxyInteropObject o = new ProxyInteropObject() {
+            @Override
+            public boolean hasKeys() {
+                return true;
+            }
+
+            @Override
+            public boolean isExecutable() {
+                return true;
+            }
+
+            @Override
+            public boolean hasSize() {
+                return true;
+            }
+        };
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(o));
+            }
+
+            @Override
+            protected String toString(@SuppressWarnings("hiding") LanguageContext context, Object value) {
+                if (o == value) {
+                    return "true";
+                } else {
+                    return "false";
+                }
+            }
+        });
+        Value v = context.eval(ProxyLanguage.ID, "");
+        assertEquals("true", v.toString());
+        assertEquals("true", context.asValue(v).toString());
+        assertEquals("true", v.as(Map.class).toString());
+        assertEquals("true", v.as(Function.class).toString());
+        assertEquals("true", v.as(List.class).toString());
+        assertEquals("true", context.asValue(v.as(Map.class)).toString());
+        assertEquals("true", context.asValue(v.as(Function.class)).toString());
+        assertEquals("true", context.asValue(v.as(List.class)).toString());
+
+        assertEquals(v, v);
+        assertEquals(v, context.asValue(v));
+
+        assertEquals(v.as(Map.class), v.as(Map.class));
+        assertEquals(v.as(Function.class), v.as(Function.class));
+        assertEquals(v.as(List.class), v.as(List.class));
+        assertEquals(v.as(Map.class), context.asValue(v.as(Map.class)).as(Map.class));
+        assertEquals(v.as(Function.class), context.asValue(v.as(Function.class)).as(Function.class));
+        assertEquals(v.as(List.class), context.asValue(v.as(List.class)).as(List.class));
+
+        assertNotEquals(v.as(Function.class), v.as(Map.class));
+        assertNotEquals(v.as(Function.class), v.as(List.class));
+        assertNotEquals(v.as(Map.class), v.as(Function.class));
+        assertNotEquals(v.as(Map.class), v.as(List.class));
+        assertNotEquals(v.as(List.class), v.as(Function.class));
+        assertNotEquals(v.as(List.class), v.as(Map.class));
+
     }
 
 }
