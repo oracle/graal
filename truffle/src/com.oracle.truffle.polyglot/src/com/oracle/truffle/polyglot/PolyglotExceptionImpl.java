@@ -44,6 +44,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -119,7 +120,15 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             }
             Object exceptionObject = ((TruffleException) exception).getExceptionObject();
             if (exceptionObject != null && languageContext != null) {
-                this.guestObject = languageContext.asValue(exceptionObject);
+                /*
+                 * Allow proxies in guest language objects. This is for legacy support. Ideally we
+                 * should get rid of this if it is no longer relied upon.
+                 */
+                Object receiver = exceptionObject;
+                if (receiver instanceof Proxy) {
+                    receiver = languageContext.toGuestValue(receiver);
+                }
+                this.guestObject = languageContext.asValue(receiver);
             } else {
                 this.guestObject = null;
             }

@@ -434,6 +434,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     private void checkAllThreadAccesses() {
+        assert Thread.holdsLock(this);
         Thread current = Thread.currentThread();
         List<PolyglotLanguage> deniedLanguages = null;
         for (PolyglotLanguageContext context : contexts) {
@@ -987,6 +988,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     PolyglotThreadInfo getCurrentThreadInfo() {
+        assert Thread.holdsLock(this);
         PolyglotThreadInfo currentTInfo = currentThreadInfo;
 
         if (currentTInfo.thread != Thread.currentThread()) {
