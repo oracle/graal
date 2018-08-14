@@ -26,9 +26,12 @@ package com.oracle.truffle.api.source;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.Collection;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
 
 final class SourceAccessor extends Accessor {
 
@@ -47,6 +50,11 @@ final class SourceAccessor extends Accessor {
         return super.languageSupport();
     }
 
+    @Override
+    protected EngineSupport engineSupport() {
+        return super.engineSupport();
+    }
+
     static Collection<ClassLoader> allLoaders() {
         return ACCESSOR.loaders();
     }
@@ -57,6 +65,10 @@ final class SourceAccessor extends Accessor {
 
     static boolean isTruffleFile(File file) {
         return ACCESSOR.languageSupport().checkTruffleFile(file);
+    }
+
+    static File asFile(TruffleFile file) {
+        return ACCESSOR.languageSupport().asFile(file);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {
@@ -79,6 +91,26 @@ final class SourceAccessor extends Accessor {
         @Override
         public void setPolyglotSource(Source source, org.graalvm.polyglot.Source polyglotSource) {
             source.polyglotSource = polyglotSource;
+        }
+
+        @Override
+        public String findMimeType(File file) throws IOException {
+            return Source.findMimeType(file.toPath(), null);
+        }
+
+        @Override
+        public String findMimeType(URL url) throws IOException {
+            return Source.findMimeType(url);
+        }
+
+        @Override
+        public SourceBuilder newBuilder(String language, File origin) {
+            return Source.newBuilder(language, origin);
+        }
+
+        @Override
+        public boolean isLegacySource(Source source) {
+            return source.isLegacy();
         }
 
     }

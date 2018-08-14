@@ -24,18 +24,21 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.util.regex.Pattern;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Test;
 
-import org.graalvm.polyglot.Source;
-
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
 import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 
@@ -839,7 +842,11 @@ public class SLInspectDebugTest {
         file.createNewFile();
         file.deleteOnExit();
 
-        com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(file).language("sl").mimeType("application/x-sl").build();
+        Context context = Context.newBuilder().allowIO(true).build();
+        context.initialize("sl");
+        context.enter();
+        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getTruffleFile(file.toPath().toString());
+        com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
         // Test name of a file
         assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("BlackboxTest.sl")}));
@@ -859,6 +866,9 @@ public class SLInspectDebugTest {
 
         // Test regular expression produced by Chrome Inspector's 'Blackbox Script' action.
         assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("^file://.*/BlackboxTest\\.sl$")}));
+
+        context.leave();
+        context.close();
     }
 
     @Test

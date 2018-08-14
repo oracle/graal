@@ -30,19 +30,14 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.spi.FileTypeDetector;
-import java.util.Collection;
 import java.util.Objects;
-import java.util.ServiceLoader;
 
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
+import org.graalvm.polyglot.io.ByteSequence;
 
-import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
 
 class PolyglotSource extends AbstractSourceImpl {
 
@@ -77,24 +72,22 @@ class PolyglotSource extends AbstractSourceImpl {
     @Override
     public URL getURL(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
-
         return source.getURL();
     }
 
     @Override
     public URI getURI(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
-
         return source.getURI();
     }
 
     @Override
     public Reader getReader(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
-
         return source.getReader();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public InputStream getInputStream(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
@@ -165,49 +158,52 @@ class PolyglotSource extends AbstractSourceImpl {
     }
 
     @Override
-    public String findLanguage(File file) throws IOException {
-        Objects.requireNonNull(file);
-        Path path = Paths.get(file.toURI());
-        return findLanguageImpl(path);
+    public String getMimeType(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.getMimeType();
     }
 
-    private static String findLanguageImpl(Path path) throws IOException {
-        String mimeType = getMimeType(path);
-
+    @Override
+    public String findLanguage(File file) throws IOException {
+        Objects.requireNonNull(file);
+        String mimeType = findMimeType(file);
         if (mimeType != null) {
-            LanguageCache cache = LanguageCache.languages().get(mimeType);
-            if (cache != null) {
-                return cache.getId();
-            }
+            return findLanguage(mimeType);
+        } else {
+            return null;
         }
-        return null;
+    }
+
+    @Override
+    public String findLanguage(URL url) throws IOException {
+        String mimeType = findMimeType(url);
+        if (mimeType != null) {
+            return findLanguage(mimeType);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String findMimeType(File file) throws IOException {
+        Objects.requireNonNull(file);
+        return VMAccessor.SOURCE.findMimeType(file);
+    }
+
+    @Override
+    public String findMimeType(URL url) throws IOException {
+        Objects.requireNonNull(url);
+        return VMAccessor.SOURCE.findMimeType(url);
     }
 
     @Override
     public String findLanguage(String mimeType) {
         Objects.requireNonNull(mimeType);
-        LanguageCache cache = LanguageCache.languages().get(mimeType);
+        LanguageCache cache = LanguageCache.languageMimes().get(mimeType);
         if (cache != null) {
             return cache.getId();
         }
         return null;
-    }
-
-    private static String getMimeType(Path filePath) throws IOException {
-        if (!TruffleOptions.AOT) {
-            Collection<ClassLoader> loaders = VMAccessor.allLoaders();
-            for (ClassLoader l : loaders) {
-                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
-                    String mimeType = detector.probeContentType(filePath);
-                    if (mimeType != null) {
-                        return mimeType;
-                    }
-                }
-            }
-        }
-
-        String found = Files.probeContentType(filePath);
-        return found;
     }
 
     @Override
@@ -220,53 +216,57 @@ class PolyglotSource extends AbstractSourceImpl {
         return impl.equals(otherImpl);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException {
+    public ByteSequence getBytes(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.getBytes();
+    }
+
+    @Override
+    public boolean hasBytes(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.hasBytes();
+    }
+
+    @Override
+    public boolean hasCharacters(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.hasCharacters();
+    }
+
+    @Override
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
         assert language != null;
-        com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
-        boolean needsName = false;
+        SourceBuilder builder;
         if (origin instanceof File) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder((File) origin);
+            builder = VMAccessor.SOURCE.newBuilder(language, (File) origin);
         } else if (origin instanceof CharSequence) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder(((CharSequence) origin));
-            needsName = true;
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, ((CharSequence) origin), name);
+        } else if (origin instanceof ByteSequence) {
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, ((ByteSequence) origin), name);
         } else if (origin instanceof Reader) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder((Reader) origin);
-            needsName = true;
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (Reader) origin, name);
         } else if (origin instanceof URL) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder((URL) origin);
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (URL) origin);
         } else {
             throw new AssertionError();
         }
 
-        if (uri != null) {
-            builder.uri(uri);
+        if (content instanceof CharSequence) {
+            builder.content((CharSequence) content);
+        } else if (content instanceof ByteSequence) {
+            builder.content((ByteSequence) content);
         }
 
-        if (name != null) {
-            builder.name(name);
-        } else if (needsName) {
-            builder.name("Unnamed");
-        }
-
-        if (content != null) {
-            builder.content(content);
-        }
-
-        if (internal) {
-            builder.internal();
-        }
-
-        if (interactive) {
-            builder.interactive();
-        }
-
+        builder.uri(uri);
+        builder.name(name);
+        builder.internal(internal);
+        builder.interactive(interactive);
+        builder.mimeType(mimeType);
         builder.cached(cached);
-        builder.language(language);
 
         try {
-            com.oracle.truffle.api.source.Source truffleSource = ((com.oracle.truffle.api.source.Source.Builder<IOException, ?, ?>) builder).build();
+            com.oracle.truffle.api.source.Source truffleSource = builder.build();
             Source polyglotSource = engineImpl.getAPIAccess().newSource(language, truffleSource);
             VMAccessor.SOURCE.setPolyglotSource(truffleSource, polyglotSource);
             return polyglotSource;
@@ -275,7 +275,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new AssertionError();
+            throw new AssertionError(e);
         }
     }
 

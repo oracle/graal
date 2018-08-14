@@ -29,6 +29,8 @@ import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CallTarget;
@@ -68,11 +70,77 @@ final class PolyglotSourceCache {
     }
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
+        if (!VMAccessor.SOURCE.isLegacySource(source)) {
+            validateSource(context, source);
+        }
         CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
         if (parsedTarget == null) {
             throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
         }
         return parsedTarget;
+    }
+
+    private static void validateSource(PolyglotLanguageContext context, Source source) {
+        String mimeType = source.getMimeType();
+        Set<String> mimeTypes = context.language.cache.getMimeTypes();
+        if (mimeType != null && !mimeTypes.contains(mimeType)) {
+            throw new PolyglotIllegalArgumentException(String.format("Error evaluating the source. The language %s does not support MIME type %s. Supported MIME types are %s.",
+                            source.getLanguage(), mimeType, mimeTypes));
+        }
+        String activeMimeType = mimeType;
+        if (activeMimeType == null) {
+            activeMimeType = context.language.cache.getDefaultMimeType();
+        }
+
+        boolean expectCharacters = activeMimeType != null ? context.language.cache.isCharacterMimeType(activeMimeType) : true;
+        if (mimeType != null && source.hasCharacters() != expectCharacters) {
+            if (source.hasBytes()) {
+                throw new PolyglotIllegalArgumentException(
+                                String.format("Error evaluating the source. MIME type '%s' is character based for language '%s' but the source contents are byte based.", mimeType,
+                                                source.getLanguage()));
+            } else {
+                throw new PolyglotIllegalArgumentException(
+                                String.format("Error evaluating the source. MIME type '%s' is byte based for language '%s' but the source contents are character based.", mimeType,
+                                                source.getLanguage()));
+            }
+        }
+
+        if (source.hasCharacters() != expectCharacters) {
+            Set<String> binaryMimeTypes = new HashSet<>();
+            Set<String> characterMimeTypes = new HashSet<>();
+            for (String supportedMimeType : mimeTypes) {
+                if (context.language.cache.isCharacterMimeType(supportedMimeType)) {
+                    characterMimeTypes.add(supportedMimeType);
+                } else {
+                    binaryMimeTypes.add(supportedMimeType);
+                }
+            }
+            if (expectCharacters) {
+                if (binaryMimeTypes.isEmpty()) {
+                    throw new PolyglotIllegalArgumentException(String.format(
+                                    "Error evaluating the source. The language %s only supports character based sources but a binary based source was provided.",
+                                    source.getLanguage()));
+                } else {
+                    throw new PolyglotIllegalArgumentException(String.format(
+                                    "Error evaluating the source. The language %s expects character based sources by default but a binary based source was provided. " +
+                                                    "Provide a binary based source instead or specify a MIME type for the source. " +
+                                                    "Available MIME types for binary based sources are %s.",
+                                    source.getLanguage(), binaryMimeTypes));
+                }
+            } else {
+                if (characterMimeTypes.isEmpty()) {
+                    throw new PolyglotIllegalArgumentException(String.format(
+                                    "Error evaluating the source. The language %s only supports binary based sources but a character based source was provided.",
+                                    source.getLanguage()));
+                } else {
+                    throw new PolyglotIllegalArgumentException(String.format(
+                                    "Error evaluating the source. The language %s expects character based sources by default but a binary based source was provided. " +
+                                                    "Provide a character based source instead or specify a MIME type for the source. " +
+                                                    "Available MIME types for character based sources are %s.",
+                                    source.getLanguage(), characterMimeTypes));
+                }
+            }
+        }
     }
 
     private void cleanupStaleEntries() {

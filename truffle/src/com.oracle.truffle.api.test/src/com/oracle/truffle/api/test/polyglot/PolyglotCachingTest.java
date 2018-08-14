@@ -68,8 +68,8 @@ public class PolyglotCachingTest {
             }
         });
         Context c = Context.create();
-        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).buildLiteral();
-        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).buildLiteral();
+        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).build();
+        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).build();
         assertEquals(0, parseCalled.get());
         c.eval(uncachedSource);
         assertEquals(1, parseCalled.get());

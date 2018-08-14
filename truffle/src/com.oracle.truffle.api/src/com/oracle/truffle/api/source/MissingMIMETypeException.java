@@ -25,19 +25,10 @@
 package com.oracle.truffle.api.source;
 
 /**
- * Use {@link Source.Builder#mimeType(java.lang.String)} to eliminate this exception. This exception
- * informs users of {@link Source.Builder} that they have to provide a MIME type before building the
- * final {@link Source} object.
- * <p>
- * Some of the factory methods already provide a MIME type: {@link Source#newBuilder(java.io.File)}
- * or {@link Source#newBuilder(java.net.URL)}. Other (like {@link Source#newBuilder(java.io.Reader)}
- * ) require one to call {@link Source.Builder#mimeType(java.lang.String)} explicitly.
- * <p>
- * Rather than catching this exception, make sure your code calls
- * {@link Source.Builder#mimeType(java.lang.String)}.
- *
  * @since 0.15
+ * @deprecated use new {@link Source} builders instead.
  */
+@Deprecated
 public final class MissingMIMETypeException extends Exception {
     static final long serialVersionUID = 1L;
 

@@ -58,7 +58,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+
 import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.io.ByteSequence;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -678,13 +680,33 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException {
+            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
                 throw noPolyglotImplementationFound();
             }
 
             @Override
             public String findLanguage(File file) throws IOException {
                 return null;
+            }
+
+            @Override
+            public String findLanguage(URL url) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findMimeType(File file) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findMimeType(URL url) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String getMimeType(Object impl) {
+                throw new UnsupportedOperationException();
             }
 
             @Override
@@ -784,6 +806,21 @@ public final class Engine implements AutoCloseable {
 
             @Override
             public boolean isInternal(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteSequence getBytes(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean hasCharacters(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean hasBytes(Object impl) {
                 throw new UnsupportedOperationException();
             }
 

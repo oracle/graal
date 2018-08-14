@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,6 +51,7 @@ import java.util.Set;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -65,12 +65,8 @@ public class SLLoggerTest {
     private static final Source ADD_SL;
     private static final Source MUL_SL;
     static {
-        try {
-            ADD_SL = Source.newBuilder("sl", "function add(a,b) {return a + b;} function main() {return add(1,1);}", "add.sl").build();
-            MUL_SL = Source.newBuilder("sl", "function mul(a,b) {return a * b;} function main() {return mul(1,1);}", "mul.sl").build();
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
+        ADD_SL = Source.newBuilder("sl", "function add(a,b) {return a + b;} function main() {return add(1,1);}", "add.sl").buildLiteral();
+        MUL_SL = Source.newBuilder("sl", "function mul(a,b) {return a * b;} function main() {return mul(1,1);}", "mul.sl").buildLiteral();
     }
 
     private TestHandler testHandler;

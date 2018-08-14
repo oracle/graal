@@ -780,7 +780,7 @@ public class LoggingTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = LoggingLanguageFirst.ID, name = LoggingLanguageFirst.ID, version = "1.0", mimeType = LoggingLanguageFirst.ID)
+    @TruffleLanguage.Registration(id = LoggingLanguageFirst.ID, name = LoggingLanguageFirst.ID, version = "1.0")
     public static final class LoggingLanguageFirst extends AbstractLoggingLanguage {
         static final String ID = "log1";
 
@@ -789,7 +789,7 @@ public class LoggingTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = LoggingLanguageSecond.ID, name = LoggingLanguageSecond.ID, version = "1.0", mimeType = LoggingLanguageSecond.ID)
+    @TruffleLanguage.Registration(id = LoggingLanguageSecond.ID, name = LoggingLanguageSecond.ID, version = "1.0")
     public static final class LoggingLanguageSecond extends AbstractLoggingLanguage {
         static final String ID = "log2";
 

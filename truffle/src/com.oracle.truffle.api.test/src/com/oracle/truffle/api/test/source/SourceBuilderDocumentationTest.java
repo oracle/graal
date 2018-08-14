@@ -26,7 +26,6 @@ package com.oracle.truffle.api.test.source;
 
 import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
 import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
@@ -36,8 +35,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-public class SourceBuilderDocumentationTest {
+public class SourceBuilderDocumentationTest extends AbstractPolyglotTest {
 
     private static final Class<?> SOURCE_SNIPPETS = loadRelative(SourceBuilderDocumentationTest.class, "SourceSnippets");
 
@@ -46,28 +46,6 @@ public class SourceBuilderDocumentationTest {
     @BeforeClass
     public static void isAvailable() {
         loadedOK = SOURCE_SNIPPETS != null;
-    }
-
-    @Test
-    public void relativeFile() throws Exception {
-        if (!loadedOK) {
-            return;
-        }
-
-        File relative = null;
-        for (File f : new File(".").listFiles()) {
-            if (f.isFile() && f.canRead()) {
-                relative = f;
-                break;
-            }
-        }
-        if (relative == null) {
-            // skip the test
-            return;
-        }
-        Source direct = Source.newBuilder(relative).name(relative.getPath()).build();
-        Source fromBuilder = (Source) invokeStatic(SOURCE_SNIPPETS, "likeFileName", relative.getPath());
-        assertEquals("Both sources are equal", direct, fromBuilder);
     }
 
     @Test

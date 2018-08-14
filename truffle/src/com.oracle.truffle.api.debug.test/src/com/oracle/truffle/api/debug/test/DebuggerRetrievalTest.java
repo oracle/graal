@@ -66,11 +66,10 @@ public class DebuggerRetrievalTest {
         Assert.assertTrue(InstrumentThatNeedsDebugger.haveDebugger);
     }
 
-    @TruffleLanguage.Registration(id = LanguageThatNeedsDebugger.ID, mimeType = LanguageThatNeedsDebugger.MIME_TYPE, name = "Language That Needs Debugger", version = "1.0")
+    @TruffleLanguage.Registration(id = LanguageThatNeedsDebugger.ID, name = "Language That Needs Debugger", version = "1.0")
     public static class LanguageThatNeedsDebugger extends TruffleLanguage<Debugger> {
 
         static final String ID = "language-that-needs-debugger";
-        static final String MIME_TYPE = "application/x-language-that-needs-debugger";
 
         @Override
         protected Debugger createContext(TruffleLanguage.Env env) {

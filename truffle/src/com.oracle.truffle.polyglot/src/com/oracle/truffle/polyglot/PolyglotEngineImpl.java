@@ -80,6 +80,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
      */
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
+
+    // also update list in LanguageRegistrationProcessor
     private static final Set<String> RESERVED_IDS = new HashSet<>(
                     Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
                                     PolyglotEngineOptions.OPTION_GROUP_LOG));
@@ -533,7 +535,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     private static LanguageCache createHostLanguageCache() {
-        return new LanguageCache(HOST_LANGUAGE_ID, Collections.emptySet(),
+        return new LanguageCache(HOST_LANGUAGE_ID,
                         "Host", "Host", System.getProperty("java.version"), false, false, new HostLanguage());
     }
 
@@ -626,7 +628,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             if (misspelledGuess != null) {
                 didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
             }
-            throw new PolyglotIllegalStateException(String.format("A language with id '%s' is not installed. %sInstalled languages are: %s.", id, didYouMean, getLanguages().keySet()));
+            throw new PolyglotIllegalArgumentException(String.format("A language with id '%s' is not installed. %sInstalled languages are: %s.", id, didYouMean, getLanguages().keySet()));
         }
         return language;
     }

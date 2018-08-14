@@ -30,7 +30,9 @@ import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -905,6 +907,36 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 throw new AssertionError();
             }
             return ((PolyglotContextImpl) context).config.logLevels;
+        }
+
+        @Override
+        public Set<String> getValidMimeTypes(String language) {
+            if (language == null) {
+                return LanguageCache.languageMimes().keySet();
+            } else {
+                LanguageCache lang = LanguageCache.languages().get(language);
+                if (lang != null) {
+                    return lang.getMimeTypes();
+                } else {
+                    return Collections.emptySet();
+                }
+            }
+        }
+
+        @Override
+        public boolean isCharacterBasedSource(String language, String mimeType) {
+            LanguageCache cache = LanguageCache.languages().get(language);
+            if (cache == null) {
+                return true;
+            }
+            String useMimeType = mimeType;
+            if (useMimeType == null) {
+                useMimeType = cache.getDefaultMimeType();
+            }
+            if (useMimeType == null || !cache.getMimeTypes().contains(useMimeType)) {
+                return true;
+            }
+            return cache.isCharacterMimeType(useMimeType);
         }
 
         @Override

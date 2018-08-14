@@ -204,12 +204,11 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals("Timeline length and self hit count to not match!", payload.getSelfHitCount(), payload.getSelfHitTimes().size());
     }
 
-    @TruffleLanguage.Registration(id = RecreateShadowStackTestLanguage.ID, mimeType = RecreateShadowStackTestLanguage.MIME_TYPE, name = "RecreateShadowStackTestLanguage", version = "0.1")
+    @TruffleLanguage.Registration(id = RecreateShadowStackTestLanguage.ID, name = "RecreateShadowStackTestLanguage", version = "0.1")
     @ProvidedTags({StandardTags.StatementTag.class, StandardTags.RootTag.class})
     public static class RecreateShadowStackTestLanguage extends TruffleLanguage<Integer> {
 
         public static final String ID = "RecreateShadowStackTestLanguage";
-        public static final String MIME_TYPE = "RecreateShadowStackTestLanguageMime";
 
         @Override
         protected Integer createContext(Env env) {

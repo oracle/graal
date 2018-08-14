@@ -321,7 +321,7 @@ public class InstrumentationUpdateTest {
 
     }
 
-    @TruffleLanguage.Registration(id = "InstrumentationUpdateLanguage", name = "", version = "", mimeType = "InstrumentationUpdateLanguage")
+    @TruffleLanguage.Registration(id = "InstrumentationUpdateLanguage", name = "", version = "")
     public static class InstrumentationUpdateLanguage extends TruffleLanguage<Object> {
 
         Env env;

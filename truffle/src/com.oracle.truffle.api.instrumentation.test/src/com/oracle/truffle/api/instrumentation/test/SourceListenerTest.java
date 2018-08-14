@@ -339,9 +339,9 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     private static void testNoRootSectionImpl(TestLoadExecuteSource impl) throws Exception {
-        com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("line1\nline2").mimeType("mime").name("NoName1").build();
-        com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("line3\nline4").mimeType("mime").name("NoName2").build();
-        com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("line5\nline6").mimeType("mime").name("NoName3").build();
+        com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("", "line1\nline2", null).name("NoName1").build();
+        com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("", "line3\nline4", null).name("NoName2").build();
+        com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("", "line5\nline6", null).name("NoName3").build();
         Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
         RootNode rootA = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node1);
         assertEvents(impl.allEvents);
@@ -379,8 +379,8 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         impl.onlyNewBinding.dispose();
         impl.allBinding.dispose();
         // No new events received after bindings are disposed
-        com.oracle.truffle.api.source.Source source2a = com.oracle.truffle.api.source.Source.newBuilder("line2a").mimeType("mime").name("NoName2a").build();
-        com.oracle.truffle.api.source.Source source2b = com.oracle.truffle.api.source.Source.newBuilder("line2b").mimeType("mime").name("NoName2b").build();
+        com.oracle.truffle.api.source.Source source2a = com.oracle.truffle.api.source.Source.newBuilder("", "line2a", null).name("NoName2a").build();
+        com.oracle.truffle.api.source.Source source2b = com.oracle.truffle.api.source.Source.newBuilder("", "line2b", null).name("NoName2b").build();
         Node node2a = new SourceSectionFilterTest.SourceSectionNode(source2a.createSection(1));
         Node node2b = new SourceSectionFilterTest.SourceSectionNode(source2b.createSection(1));
         RootNode root2 = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2a, node2b);

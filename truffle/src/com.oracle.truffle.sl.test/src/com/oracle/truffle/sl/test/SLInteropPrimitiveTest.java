@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.IOException;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -64,16 +62,16 @@ public class SLInteropPrimitiveTest {
     }
 
     @Test
-    public void testBoolean() throws IOException {
-        final Source src = Source.newBuilder("sl", "function testBoolean(a,b) {return a == b;} function main() {return testBoolean;}", "testBoolean.sl").build();
+    public void testBoolean() {
+        final Source src = Source.newBuilder("sl", "function testBoolean(a,b) {return a == b;} function main() {return testBoolean;}", "testBoolean.sl").buildLiteral();
         final Value fnc = context.eval(src);
         Assert.assertTrue(fnc.canExecute());
         fnc.execute(true, false);
     }
 
     @Test
-    public void testChar() throws IOException {
-        final Source src = Source.newBuilder("sl", "function testChar(a,b) {return a == b;} function main() {return testChar;}", "testChar.sl").build();
+    public void testChar() {
+        final Source src = Source.newBuilder("sl", "function testChar(a,b) {return a == b;} function main() {return testChar;}", "testChar.sl").buildLiteral();
         final Value fnc = context.eval(src);
         Assert.assertTrue(fnc.canExecute());
         fnc.execute('a', 'b');

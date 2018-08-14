@@ -821,7 +821,7 @@ public class VirtualizedFileSystemTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = LANGAUGE_ID, name = LANGAUGE_ID, version = "1.0", mimeType = LANGAUGE_ID)
+    @TruffleLanguage.Registration(id = LANGAUGE_ID, name = LANGAUGE_ID, version = "1.0")
     public static class VirtualizedFileSystemTestLanguage extends TruffleLanguage<LanguageContext> {
 
         @Override
