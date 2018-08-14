@@ -138,47 +138,46 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
-        printSamplingJsonRec(out, sampler.getRootNodes());
+        printSamplingJsonRec(new JSONPrinter(out), sampler.getRootNodes());
     }
 
-    private static void printSamplingJsonRec(PrintStream out, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
-        out.print('[');
+    private static void printSamplingJsonRec(JSONPrinter printer, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
+        printer.startArray();
         int i = 0;
         for (ProfilerNode<CPUSampler.Payload> node : nodes) {
-            out.print('{');
-            out.print(jsonEntry("root name", node.getRootName()));
-            out.print(',');
-            out.print(jsonEntry("source section", getShortDescription(node.getSourceSection())));
-            out.print(',');
+            printer.startObject();
+            printer.printKeyValue("root name", node.getRootName());
+            printer.comma();
+            printer.printKeyValue("source section", getShortDescription(node.getSourceSection()));
+            printer.comma();
 
             CPUSampler.Payload payload = node.getPayload();
+            printer.printKeyValue("hit count", payload.getHitCount());
+            printer.comma();
+            printer.printKeyValue("interpreted hit count", payload.getInterpretedHitCount());
+            printer.comma();
+            printer.printKeyValue("compiled hit count", payload.getCompiledHitCount());
+            printer.comma();
 
-            out.print(jsonEntry("hit count", String.valueOf(payload.getHitCount())));
-            out.print(',');
-            out.print(jsonEntry("interpreted hit count", String.valueOf(payload.getInterpretedHitCount())));
-            out.print(',');
-            out.print(jsonEntry("compiled hit count", String.valueOf(payload.getCompiledHitCount())));
-            out.print(',');
+            printer.printKeyValue("self hit count", payload.getSelfHitCount());
+            printer.comma();
+            printer.printKeyValue("self interpreted hit count", payload.getSelfInterpretedHitCount());
+            printer.comma();
+            printer.printKeyValue("self compiled hit count", payload.getSelfCompiledHitCount());
+            printer.comma();
 
-            out.print(jsonEntry("self hit count", String.valueOf(payload.getSelfHitCount())));
-            out.print(',');
-            out.print(jsonEntry("self interpreted hit count", String.valueOf(payload.getSelfInterpretedHitCount())));
-            out.print(',');
-            out.print(jsonEntry("self compiled hit count", String.valueOf(payload.getSelfCompiledHitCount())));
-            out.print(',');
+            printer.printKey("self hit times");
+            printer.printTimeStampArray(payload.getSelfHitTimes());
+            printer.comma();
 
-            out.print("\"self hit times\" : ");
-            printTimeStampArray(out, payload.getSelfHitTimes());
-            out.print(',');
-
-            out.print("\"children\" : ");
-            printSamplingJsonRec(out, node.getChildren());
-            out.print("}");
+            printer.printKey("children");
+            printSamplingJsonRec(printer, node.getChildren());
+            printer.endObject();
             if (i++ < nodes.size() - 1) {
-                out.print(',');
+                printer.comma();
             }
         }
-        out.print(']');
+        printer.endArray();
     }
 
     private static void printSelfHitTimesArray(PrintStream out, List<Long> times) {

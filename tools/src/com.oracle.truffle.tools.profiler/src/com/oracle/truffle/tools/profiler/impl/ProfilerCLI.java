@@ -228,20 +228,61 @@ abstract class ProfilerCLI {
         return s.toString();
     }
 
-    protected static String jsonEntry(String key, String value) {
-        return "\"" + key + "\":\"" + value + "\"";
-    }
+    static class JSONPrinter {
 
-    protected static void printTimeStampArray(PrintStream out, List<Long> times) {
-        out.print('[');
-        int i = 0;
-        for (Long time : times) {
-            out.print(time);
-            if (i++ < times.size() - 1) {
-                out.print(',');
-            }
+        final PrintStream out;
+
+        public JSONPrinter(PrintStream out) {
+            this.out = out;
         }
-        out.print("]");
+
+        void startObject() {
+            out.print('{');
+        }
+
+        void endObject() {
+            out.print('}');
+        }
+
+        void startArray() {
+            out.print('[');
+        }
+
+        void endArray() {
+            out.print(']');
+        }
+
+        void printKey(String key) {
+            out.print("\"" + key + "\":");
+        }
+
+        void printKeyValue(String key, String value) {
+            out.print("\"" + key + "\":\"" + value + "\"");
+        }
+
+        void printKeyValue(String key, int value) {
+            out.print("\"" + key + "\":" + value + "");
+        }
+
+        void printKeyValue(String key, long value) {
+            out.print("\"" + key + "\":" + value + "");
+        }
+
+        void comma() {
+            out.print(',');
+        }
+
+        void printTimeStampArray(List<Long> times) {
+            out.print('[');
+            int i = 0;
+            for (Long time : times) {
+                out.print(time);
+                if (i++ < times.size() - 1) {
+                    out.print(',');
+                }
+            }
+            out.print("]");
+        }
     }
 
     static class SourceLocation {
