@@ -1553,6 +1553,7 @@ suite = {
 
     "GRAAL_GRAPHIO" : {
       "subDir" : "src",
+      "path" : "build/graal-graphio.jar",
       "dependencies" : ["org.graalvm.graphio"],
       "distDependencies" : [
       ],
