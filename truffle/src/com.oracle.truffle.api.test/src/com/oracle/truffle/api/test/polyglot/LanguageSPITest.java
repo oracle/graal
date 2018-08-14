@@ -1777,8 +1777,7 @@ public class LanguageSPITest {
         }
     }
 
-
-    static final Source TEST_SOURCE = Source.newBuilder("").mimeType("").name("testLanguageErrorDuringInitialization").build();
+    static final Source TEST_SOURCE = Source.newBuilder("", "", "testLanguageErrorDuringInitialization").build();
 
     @SuppressWarnings("serial")
     static class TestError extends RuntimeException implements TruffleException {
