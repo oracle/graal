@@ -36,20 +36,20 @@ struct Point {
 
 POLYGLOT_DECLARE_STRUCT(Point)
 
-int distSquared(void *a, void *b) {
+extern "C" int distSquared(void *a, void *b) {
   int distX = polyglot_as_Point(b)->x - polyglot_as_Point(a)->x;
   int distY = polyglot_as_Point(b)->y - polyglot_as_Point(a)->y;
   return distX * distX + distY * distY;
 }
 
-void flipPoint(void *value) {
+extern "C" void flipPoint(void *value) {
   struct Point *point = polyglot_as_Point(value);
   int tmp = point->x;
   point->x = point->y;
   point->y = tmp;
 }
 
-int sumPoints(void *pointArray) {
+extern "C" int sumPoints(void *pointArray) {
   int sum;
 
   struct Point *arr = polyglot_as_Point_array(pointArray);
@@ -61,7 +61,7 @@ int sumPoints(void *pointArray) {
   return sum;
 }
 
-void fillPoints(void *pointArray, int x, int y) {
+extern "C" void fillPoints(void *pointArray, int x, int y) {
   struct Point *arr = polyglot_as_Point_array(pointArray);
   int len = polyglot_get_array_size(pointArray);
 
@@ -79,7 +79,7 @@ struct Nested {
 
 POLYGLOT_DECLARE_STRUCT(Nested)
 
-void fillNested(void *arg) {
+extern "C" void fillNested(void *arg) {
   int value = 42;
 
   struct Nested *nested = polyglot_as_Nested(arg);
@@ -103,7 +103,7 @@ struct BitFields {
 
 POLYGLOT_DECLARE_STRUCT(BitFields)
 
-int accessBitFields(void *arg) {
+extern "C" int accessBitFields(void *arg) {
 	struct BitFields *obj = polyglot_as_BitFields(arg);
 	return obj->x + obj->y + obj->z;
 }
@@ -115,7 +115,7 @@ struct FusedArray {
 
 POLYGLOT_DECLARE_STRUCT(FusedArray)
 
-int fillFusedArray(void *arg) {
+extern "C" void fillFusedArray(void *arg) {
   struct FusedArray *fused = polyglot_as_FusedArray(arg);
   int i;
 
