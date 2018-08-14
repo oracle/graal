@@ -250,6 +250,8 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         if (vaLength > 0) {
             int overflowOffset = 0;
 
+            // TODO (chaeubl): this generates pretty bad machine code as we don't know anything
+            // about the arguments
             for (int i = 0; i < vaLength; i++) {
                 final Object object = arguments[numberOfExplicitArguments + i];
                 final VarArgArea area = getVarArgArea(object);

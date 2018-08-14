@@ -30,12 +30,12 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.rust;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -61,11 +61,11 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
                     @Cached("createPanicLocation()") PanicLocType panicLoc,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         LLVMNativePointer pointer = toNative.executeWithTarget(panicLocVar);
-        CompilerDirectives.transferToInterpreter();
         throw panicLoc.read(memory, pointer.asNative());
     }
 
     static final class PanicLocType {
+        private static final int EXIT_CODE_PANIC = 101;
 
         private final StrSliceType strslice;
         private final long offsetFilename;
@@ -78,12 +78,14 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             this.offsetLineNr = structureType.getOffsetOf(2, dataLayout);
         }
 
-        RustPanicException read(LLVMMemory memory, long address) {
-            CompilerAsserts.neverPartOfCompilation();
+        @TruffleBoundary
+        LLVMExitException read(LLVMMemory memory, long address) {
             String desc = strslice.read(memory, address);
             String filename = strslice.read(memory, address + offsetFilename);
             int linenr = memory.getI32(address + offsetLineNr);
-            return new RustPanicException(desc, filename, linenr);
+            System.err.printf("thread '%s' panicked at '%s', %s:%d%n", Thread.currentThread().getName(), desc, filename, linenr);
+            System.err.print("note: No backtrace available");
+            return LLVMExitException.exit(EXIT_CODE_PANIC);
         }
 
         static PanicLocType create(DataLayout dataLayout) {
