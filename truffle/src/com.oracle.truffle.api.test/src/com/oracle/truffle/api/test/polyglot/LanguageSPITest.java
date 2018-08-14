@@ -47,7 +47,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -546,7 +545,7 @@ public class LanguageSPITest {
                 Object p = innerContext.enter();
                 LanguageContext innerLangContext = LanguageSPITestLanguage.getContext();
                 innerContext.leave(p);
-                return innerLangContext;
+                return env.asGuestValue(innerLangContext);
             }
         }).asHostObject();
         context.close();
@@ -1594,7 +1593,7 @@ public class LanguageSPITest {
     }
 
     @Test
-    public void testPolyglotBindingsMultiThreaded() throws InterruptedException, ExecutionException, TimeoutException {
+    public void testPolyglotBindingsMultiThreaded() throws Throwable {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
 
             @Override
@@ -1634,7 +1633,11 @@ public class LanguageSPITest {
         }
 
         for (Future<?> future : futures) {
-            future.get(100000, TimeUnit.MILLISECONDS);
+            try {
+                future.get(100000, TimeUnit.MILLISECONDS);
+            } catch (ExecutionException e) {
+                throw e.getCause();
+            }
         }
 
         service.shutdown();
@@ -1751,7 +1754,7 @@ public class LanguageSPITest {
     static final String INHERITED_VERSION = "SPIInheritedVersionLanguage";
 
     @TruffleLanguage.Registration(id = INHERITED_VERSION, name = "")
-    public static class InheritedVersionLanguage extends LanguageSPIOrderTest.BaseLang {
+    public static class InheritedVersionLanguage extends ProxyLanguage {
     }
 
     @Test

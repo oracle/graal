@@ -188,7 +188,7 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         @Override
         protected AllocationReporter createContext(TruffleLanguage.Env env) {
             AllocationReporter reporter = env.lookup(AllocationReporter.class);
-            env.exportSymbol(AllocationReporter.class.getSimpleName(), reporter);
+            env.exportSymbol(AllocationReporter.class.getSimpleName(), env.asGuestValue(reporter));
             return reporter;
         }
 

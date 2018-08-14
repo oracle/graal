@@ -284,6 +284,9 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         ContextProfile(PolyglotLanguage language) {
             this.language = language;
+            if (!language.engine.boundEngine) {
+                singleContext.invalidate();
+            }
         }
 
         Object get() {
@@ -317,7 +320,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             if (!singleContext.isValid()) {
                 return true;
             }
-            return cachedSingle == lookupLanguageContext(context);
+            Object verifyContext = lookupLanguageContext(context);
+            if (cachedSingle != verifyContext) {
+                throw new AssertionError(String.format("Expected %s but got %s.", cachedSingle, verifyContext));
+            }
+            return true;
         }
 
         private Object lookupLanguageContext(PolyglotContextImpl context) {
