@@ -24,44 +24,48 @@
  */
 package com.oracle.svm.core.windows.headers;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.util.VMError;
+//Checkstyle: stop
 
+/**
+ * Definitions manually translated from the Windows header file fileapi.h.
+ */
+@CContext(WindowsDirectives.class)
 @Platforms(Platform.WINDOWS.class)
-public class WindowsDirectives implements CContext.Directives {
+public class FileAPI {
 
-    private static final String[] windowsLibs = new String[]{
-                    "<windows.h>",
-                    "<stdio.h>",
-                    "<stdlib.h>",
-                    "<string.h>",
-                    "<io.h>"
-    };
+    /**
+     * Write nNumberOfBytesToWrite of lpBuffer to HANDLE hFile. Return non zero on success, zero on
+     * failure
+     */
+    @CFunction
+    public static native int WriteFile(int hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
+                    CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
-    @Override
-    public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS.class);
-    }
+    /** Flush the File Buffers for hFile. Return non zero on success, zero on failure */
+    @CFunction
+    public static native int FlushFileBuffers(int hFile);
 
-    @Override
-    public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            List<String> result = new ArrayList<>(Arrays.asList(windowsLibs));
-            return result;
-        } else {
-            throw VMError.shouldNotReachHere("Unsupported OS");
-        }
-    }
+    @CConstant
+    public static native int STD_INPUT_HANDLE();
 
-    @Override
-    public List<String> getMacroDefinitions() {
-        return Arrays.asList("_WIN64");
-    }
+    @CConstant
+    public static native int STD_OUTPUT_HANDLE();
+
+    @CConstant
+    public static native int STD_ERROR_HANDLE();
+
+    /** Retrieve a handle for standard input, output, error */
+    @CFunction
+    public static native int GetStdHandle(int stdHandle);
+
 }
