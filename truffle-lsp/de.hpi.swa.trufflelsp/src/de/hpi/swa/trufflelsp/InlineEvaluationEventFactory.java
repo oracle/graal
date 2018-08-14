@@ -30,6 +30,8 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
         return new ExecutionEventNode() {
             @Override
             protected void onEnter(VirtualFrame frame) {
+                if (1 == 1)
+                    return;
                 final LanguageInfo info = eventContext.getInstrumentedNode().getRootNode().getLanguageInfo();
                 final Source source = Source.newBuilder(codeToEval).name("eval in context").language(info.getId()).mimeType("content/unknown").cached(false).build();
                 ExecutableNode fragment = env.parseInline(source, eventContext.getInstrumentedNode(), frame.materialize());
@@ -60,7 +62,7 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
                         throw new EvaluationResultException(resultException, true);
                     }
                     CompilerDirectives.transferToInterpreter();
-                    throw new EvaluationResultException(result);
+// throw new EvaluationResultException(result);
                 } else {
                     System.out.println("Inline-parsing not supported. Assuming code snippet is a frame slot identifier...");
                     FrameSlot frameSlot = frame.getFrameDescriptor().getSlots().stream().filter(slot -> slot.getIdentifier().equals(codeToEval)).findFirst().orElseGet(() -> null);
@@ -72,6 +74,24 @@ final class InlineEvaluationEventFactory implements ExecutionEventNodeFactory {
                     }
                     throw new InlineParsingNotSupportedException();
                 }
+            }
+
+            @Override
+            protected void onReturnValue(VirtualFrame frame, Object result) {
+                System.out.println(env.findMetaObject(eventContext.getInstrumentedNode().getRootNode().getLanguageInfo(),
+                                result) + " " +
+                                eventContext.getInstrumentedNode().getClass().getSimpleName() + " " +
+                                result.getClass().getSimpleName() + " " + eventContext.getInstrumentedSourceSection());
+                throw new EvaluationResultException(result);
+            }
+
+            @Override
+            protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+// System.out.println(env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(),
+// inputValue) + " " +
+// inputContext.getInstrumentedNode().getClass().getSimpleName() + " " +
+// inputValue.getClass().getSimpleName() + " " + inputContext.getInstrumentedSourceSection());
+                throw new EvaluationResultException(inputValue);
             }
         };
     }

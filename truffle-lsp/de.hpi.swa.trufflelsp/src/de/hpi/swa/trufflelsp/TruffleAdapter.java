@@ -604,7 +604,18 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
         EventBinding<ExecutionEventNodeFactory> binding = env.getInstrumenter().attachExecutionEventFactory(
                         createSourceSectionFilter(uri, sourceSection, name),
-                        new InlineEvaluationEventFactory(env, codeToEval));
+                        new ExecutionEventNodeFactory() {
+
+                            public ExecutionEventNode create(EventContext context) {
+                                return new ExecutionEventNode() {
+
+                                    @Override
+                                    protected void onReturnValue(VirtualFrame frame, Object result) {
+                                        throw new EvaluationResultException(result);
+                                    }
+                                };
+                            }
+                        });
 
         try {
             callTarget.call();
