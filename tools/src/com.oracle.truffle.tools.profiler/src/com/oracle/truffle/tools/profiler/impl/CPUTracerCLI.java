@@ -101,15 +101,15 @@ class CPUTracerCLI extends ProfilerCLI {
         int i = 0;
         for (CPUTracer.Payload payload : payloads) {
             printer.startObject();
-            printer.printKeyValue("root name", payload.getRootName());
+            printer.printKeyValue("root_name", payload.getRootName());
             printer.comma();
-            printer.printKeyValue("source section", getShortDescription(payload.getSourceSection()));
+            printer.printKeyValue("source_section", getShortDescription(payload.getSourceSection()));
             printer.comma();
             printer.printKeyValue("count", payload.getCount());
             printer.comma();
-            printer.printKeyValue("interpreted count", payload.getCountInterpreted());
+            printer.printKeyValue("interpreted_count", payload.getCountInterpreted());
             printer.comma();
-            printer.printKeyValue("compiled count", payload.getCountCompiled());
+            printer.printKeyValue("compiled_count", payload.getCountCompiled());
             printer.endObject();
             if (i++ < payloads.size() - 1) {
                 printer.comma();

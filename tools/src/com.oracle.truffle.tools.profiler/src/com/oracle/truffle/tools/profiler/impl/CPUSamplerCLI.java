@@ -146,27 +146,27 @@ class CPUSamplerCLI extends ProfilerCLI {
         int i = 0;
         for (ProfilerNode<CPUSampler.Payload> node : nodes) {
             printer.startObject();
-            printer.printKeyValue("root name", node.getRootName());
+            printer.printKeyValue("root_name", node.getRootName());
             printer.comma();
-            printer.printKeyValue("source section", getShortDescription(node.getSourceSection()));
+            printer.printKeyValue("source_section", getShortDescription(node.getSourceSection()));
             printer.comma();
 
             CPUSampler.Payload payload = node.getPayload();
-            printer.printKeyValue("hit count", payload.getHitCount());
+            printer.printKeyValue("hit_count", payload.getHitCount());
             printer.comma();
-            printer.printKeyValue("interpreted hit count", payload.getInterpretedHitCount());
+            printer.printKeyValue("interpreted_hit_count", payload.getInterpretedHitCount());
             printer.comma();
-            printer.printKeyValue("compiled hit count", payload.getCompiledHitCount());
-            printer.comma();
-
-            printer.printKeyValue("self hit count", payload.getSelfHitCount());
-            printer.comma();
-            printer.printKeyValue("self interpreted hit count", payload.getSelfInterpretedHitCount());
-            printer.comma();
-            printer.printKeyValue("self compiled hit count", payload.getSelfCompiledHitCount());
+            printer.printKeyValue("compiled_hit_count", payload.getCompiledHitCount());
             printer.comma();
 
-            printer.printKey("self hit times");
+            printer.printKeyValue("self_hit_count", payload.getSelfHitCount());
+            printer.comma();
+            printer.printKeyValue("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
+            printer.comma();
+            printer.printKeyValue("self_compiled_hit_count", payload.getSelfCompiledHitCount());
+            printer.comma();
+
+            printer.printKey("self_hit_times");
             printer.printTimeStampArray(payload.getSelfHitTimes());
             printer.comma();
 
