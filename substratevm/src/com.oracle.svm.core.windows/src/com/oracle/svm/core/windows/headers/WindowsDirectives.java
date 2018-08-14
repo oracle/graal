@@ -29,17 +29,20 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.util.VMError;
 
+@Platforms(Platform.WINDOWS.class)
 public class WindowsDirectives implements CContext.Directives {
 
     private static final String[] windowsLibs = new String[]{
-                    /*
-                     * "<arpa/inet.h>", "<sys/epoll.h>", "<sys/sendfile.h>", "<mntent.h>",
-                     * "<link.h>",
-                     */
+                    "<windows.h>",
+                    "<stdio.h>",
+                    "<stdlib.h>",
+                    "<string.h>",
+                    "<io.h>"
     };
 
     @Override

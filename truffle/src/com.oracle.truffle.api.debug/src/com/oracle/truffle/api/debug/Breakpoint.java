@@ -1378,8 +1378,7 @@ public class Breakpoint {
             Source instrumentedSource = context.getInstrumentedSourceSection().getSource();
             Source conditionSource;
             synchronized (breakpoint) {
-                conditionSource = Source.newBuilder(breakpoint.condition).language(instrumentedSource.getLanguage()).mimeType(instrumentedSource.getMimeType()).name(
-                                "breakpoint condition").build();
+                conditionSource = Source.newBuilder(instrumentedSource.getLanguage(), breakpoint.condition, "breakpoint condition").mimeType(instrumentedSource.getMimeType()).build();
                 if (conditionSource == null) {
                     throw new IllegalStateException("Condition is not resolved " + rootNode);
                 }
@@ -1495,7 +1494,7 @@ class BreakpointSnippets {
             public void onSuspend(SuspendedEvent event) {
             }
         };
-        Source someCode = Source.newBuilder("").mimeType("").name("").build();
+        Source someCode = Source.newBuilder("", "", "").build();
         TruffleInstrument.Env instrumentEnvironment = null;
         // @formatter:off
         // BEGIN: BreakpointSnippets.example

@@ -198,7 +198,7 @@ public class FileSystemProviderTest {
 
     static FileSystem newFullIOFileSystem(final Path workDir) {
         try {
-            final Class<?> clz = Class.forName("com.oracle.truffle.api.vm.FileSystems");
+            final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
             final Method m = clz.getDeclaredMethod("newFullIOFileSystem", Path.class);
             m.setAccessible(true);
             return (FileSystem) m.invoke(null, workDir);
@@ -209,7 +209,7 @@ public class FileSystemProviderTest {
 
     static FileSystem newFullIOFileSystem() {
         try {
-            final Class<?> clz = Class.forName("com.oracle.truffle.api.vm.FileSystems");
+            final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
             final Method m = clz.getDeclaredMethod("getDefaultFileSystem");
             m.setAccessible(true);
             return (FileSystem) m.invoke(null);

@@ -60,7 +60,8 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
     public static int[] Memory = new int[]{0};
 
     public static void recursiveLoopMethodUnsafeLoad(int a) {
-        if (UNSAFE.getInt(Memory, (long) Unsafe.ARRAY_INT_BASE_OFFSET) == 0) {
+        long arrayIntBaseOffset = Unsafe.ARRAY_INT_BASE_OFFSET;
+        if (UNSAFE.getInt(Memory, arrayIntBaseOffset) == 0) {
             return;
         }
         for (int i = 0; i < a; i++) {

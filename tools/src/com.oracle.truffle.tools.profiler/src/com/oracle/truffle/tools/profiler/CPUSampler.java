@@ -255,20 +255,6 @@ public final class CPUSampler implements Closeable {
     /**
      * Finds {@link CPUSampler} associated with given engine.
      *
-     * @param engine the engine to find debugger for
-     * @return an instance of associated {@link CPUSampler}
-     * @since 0.30
-     * @deprecated use {@link #find(Engine)} instead
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static CPUSampler find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return CPUSamplerInstrument.getSampler(engine);
-    }
-
-    /**
-     * Finds {@link CPUSampler} associated with given engine.
-     *
      * @since 1.0
      */
     public static CPUSampler find(Engine engine) {

@@ -24,10 +24,11 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -97,7 +98,9 @@ public final class TypeHandler {
 
     public Collection<SectionTypeProfile> getSectionTypeProfiles() {
         EventBinding<TypeProfileEventFactory> binding = currentBinding.get();
-        return binding != null ? Collections.unmodifiableCollection(binding.getElement().profileMap.values()) : Collections.emptyList();
+        List<SectionTypeProfile> profiles = new ArrayList<>(binding.getElement().profileMap.values());
+        profiles.sort((p1, p2) -> Integer.compare(p1.sourceSection.getCharEndIndex(), p2.sourceSection.getCharEndIndex()));
+        return profiles;
     }
 
     public static final class SectionTypeProfile {

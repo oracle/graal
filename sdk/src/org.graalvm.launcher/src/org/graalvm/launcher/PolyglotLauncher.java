@@ -229,10 +229,10 @@ public final class PolyglotLauncher extends Launcher {
             launcherClass = getLauncherClass(launcherName);
         }
         try {
-            AbstractLanguageLauncher launcher = launcherClass.newInstance();
+            AbstractLanguageLauncher launcher = launcherClass.getDeclaredConstructor().newInstance();
             launcher.setPolyglot(true);
             launcher.launch(args, options, false);
-        } catch (IllegalAccessException | InstantiationException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to instanciate launcher class " + launcherName, e);
         }
     }
@@ -321,11 +321,18 @@ public final class PolyglotLauncher extends Launcher {
 
     public static void main(String[] args) {
         try {
-            new PolyglotLauncher().launch(args);
+            PolyglotLauncher launcher = new PolyglotLauncher();
+            try {
+                launcher.launch(args);
+            } catch (AbortException e) {
+                throw e;
+            } catch (PolyglotException e) {
+                handlePolyglotException(e);
+            } catch (Throwable t) {
+                throw launcher.abort(t);
+            }
         } catch (AbortException e) {
             handleAbortException(e);
-        } catch (PolyglotException e) {
-            handlePolyglotException(e);
         }
     }
 

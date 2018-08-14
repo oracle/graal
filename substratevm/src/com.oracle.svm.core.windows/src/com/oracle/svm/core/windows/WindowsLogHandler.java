@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import com.oracle.svm.core.windows.headers.FileAPI;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -33,6 +34,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.windows.headers.LibC;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -55,13 +57,27 @@ public class WindowsLogHandler implements LogHandler {
 
     @Override
     public void log(CCharPointer bytes, UnsignedWord length) {
+        if (!WindowsUtils.writeBytes(getOutputFile(), bytes, length)) {
+            /*
+             * We are in a low-level log routine and output failed, so there is little we can do.
+             */
+            fatalError();
+        }
     }
 
     @Override
     public void flush() {
+        WindowsUtils.flush(getOutputFile());
+        /* ignore error -- they're benign */
     }
 
     @Override
     public void fatalError() {
+        LibC.abort();
+    }
+
+    private static int getOutputFile() {
+        // [TODO] Change to use FileDescriptor.err once FileDescriptor class is functional
+        return FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
     }
 }

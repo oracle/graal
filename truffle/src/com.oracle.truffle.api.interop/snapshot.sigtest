@@ -24,6 +24,8 @@ intf java.lang.annotation.Annotation
 
 CLSS public final com.oracle.truffle.api.interop.ForeignAccess
 innr public abstract interface static Factory
+innr public abstract interface static Factory26
+innr public abstract interface static StandardFactory
 meth public !varargs static java.lang.Object execute(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[])
  anno 0 java.lang.Deprecated()
 meth public !varargs static java.lang.Object send(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.InteropException
@@ -31,40 +33,140 @@ meth public !varargs static java.lang.Object sendExecute(com.oracle.truffle.api.
 meth public !varargs static java.lang.Object sendInvoke(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.String,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public !varargs static java.lang.Object sendNew(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object[]) throws com.oracle.truffle.api.interop.ArityException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public java.lang.String toString()
+meth public static boolean sendHasKeys(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendHasSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsBoxed(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsExecutable(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
+meth public static boolean sendIsInstantiable(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
 meth public static boolean sendIsNull(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
+meth public static boolean sendIsPointer(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject)
+meth public static boolean sendRemove(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory)
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$Factory26,com.oracle.truffle.api.nodes.RootNode)
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(com.oracle.truffle.api.interop.ForeignAccess$StandardFactory,com.oracle.truffle.api.nodes.RootNode)
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(java.lang.Class<? extends com.oracle.truffle.api.interop.TruffleObject>,com.oracle.truffle.api.interop.ForeignAccess$Factory26)
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.interop.ForeignAccess create(java.lang.Class<? extends com.oracle.truffle.api.interop.TruffleObject>,com.oracle.truffle.api.interop.ForeignAccess$StandardFactory)
 meth public static com.oracle.truffle.api.interop.TruffleObject getReceiver(com.oracle.truffle.api.frame.Frame)
 meth public static com.oracle.truffle.api.interop.TruffleObject sendKeys(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public static com.oracle.truffle.api.interop.TruffleObject sendKeys(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,boolean) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public static int sendKeyInfo(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object)
 meth public static java.lang.Object sendGetSize(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendRead(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public static java.lang.Object sendToNative(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendUnbox(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public static java.lang.Object sendWrite(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject,java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException,com.oracle.truffle.api.interop.UnsupportedTypeException
 meth public static java.util.List<java.lang.Object> getArguments(com.oracle.truffle.api.frame.Frame)
+meth public static long sendAsPointer(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 supr java.lang.Object
 hfds ACCESSOR,factory,initThread,languageCheck
+hcls DelegatingFactory,DelegatingFactory26
 
 CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory
  outer com.oracle.truffle.api.interop.ForeignAccess
 meth public abstract boolean canHandle(com.oracle.truffle.api.interop.TruffleObject)
 meth public abstract com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
 
+CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory26
+ outer com.oracle.truffle.api.interop.ForeignAccess
+ anno 0 java.lang.Deprecated()
+meth public abstract com.oracle.truffle.api.CallTarget accessExecute(int)
+meth public abstract com.oracle.truffle.api.CallTarget accessGetSize()
+meth public abstract com.oracle.truffle.api.CallTarget accessHasSize()
+meth public abstract com.oracle.truffle.api.CallTarget accessInvoke(int)
+meth public abstract com.oracle.truffle.api.CallTarget accessIsBoxed()
+meth public abstract com.oracle.truffle.api.CallTarget accessIsExecutable()
+meth public abstract com.oracle.truffle.api.CallTarget accessIsNull()
+meth public abstract com.oracle.truffle.api.CallTarget accessKeyInfo()
+meth public abstract com.oracle.truffle.api.CallTarget accessKeys()
+meth public abstract com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
+meth public abstract com.oracle.truffle.api.CallTarget accessNew(int)
+meth public abstract com.oracle.truffle.api.CallTarget accessRead()
+meth public abstract com.oracle.truffle.api.CallTarget accessUnbox()
+meth public abstract com.oracle.truffle.api.CallTarget accessWrite()
+meth public com.oracle.truffle.api.CallTarget accessAsPointer()
+meth public com.oracle.truffle.api.CallTarget accessIsPointer()
+meth public com.oracle.truffle.api.CallTarget accessToNative()
+
+CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$StandardFactory
+ outer com.oracle.truffle.api.interop.ForeignAccess
+meth public com.oracle.truffle.api.CallTarget accessAsPointer()
+meth public com.oracle.truffle.api.CallTarget accessExecute(int)
+meth public com.oracle.truffle.api.CallTarget accessGetSize()
+meth public com.oracle.truffle.api.CallTarget accessHasKeys()
+meth public com.oracle.truffle.api.CallTarget accessHasSize()
+meth public com.oracle.truffle.api.CallTarget accessInvoke(int)
+meth public com.oracle.truffle.api.CallTarget accessIsBoxed()
+meth public com.oracle.truffle.api.CallTarget accessIsExecutable()
+meth public com.oracle.truffle.api.CallTarget accessIsInstantiable()
+meth public com.oracle.truffle.api.CallTarget accessIsNull()
+meth public com.oracle.truffle.api.CallTarget accessIsPointer()
+meth public com.oracle.truffle.api.CallTarget accessKeyInfo()
+meth public com.oracle.truffle.api.CallTarget accessKeys()
+meth public com.oracle.truffle.api.CallTarget accessMessage(com.oracle.truffle.api.interop.Message)
+meth public com.oracle.truffle.api.CallTarget accessNew(int)
+meth public com.oracle.truffle.api.CallTarget accessRead()
+meth public com.oracle.truffle.api.CallTarget accessRemove()
+meth public com.oracle.truffle.api.CallTarget accessToNative()
+meth public com.oracle.truffle.api.CallTarget accessUnbox()
+meth public com.oracle.truffle.api.CallTarget accessWrite()
+
 CLSS public abstract com.oracle.truffle.api.interop.InteropException
 meth public final java.lang.RuntimeException raise()
 supr java.lang.Exception
 hfds serialVersionUID
 
+CLSS public final com.oracle.truffle.api.interop.KeyInfo
+fld public final static int INSERTABLE = 64
+fld public final static int INTERNAL = 16
+fld public final static int INVOCABLE = 8
+fld public final static int MODIFIABLE = 4
+fld public final static int NONE = 0
+fld public final static int READABLE = 2
+fld public final static int REMOVABLE = 32
+innr public final Builder
+meth public static boolean isExisting(int)
+meth public static boolean isInsertable(int)
+meth public static boolean isInternal(int)
+meth public static boolean isInvocable(int)
+meth public static boolean isModifiable(int)
+meth public static boolean isReadable(int)
+meth public static boolean isRemovable(int)
+meth public static boolean isWritable(int)
+meth public static com.oracle.truffle.api.interop.KeyInfo$Builder newBuilder()
+ anno 0 java.lang.Deprecated()
+supr java.lang.Object
+hfds EXISTING,WRITABLE
+
+CLSS public final com.oracle.truffle.api.interop.KeyInfo$Builder
+ outer com.oracle.truffle.api.interop.KeyInfo
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.interop.KeyInfo$Builder setInternal(boolean)
+meth public com.oracle.truffle.api.interop.KeyInfo$Builder setInvocable(boolean)
+meth public com.oracle.truffle.api.interop.KeyInfo$Builder setReadable(boolean)
+meth public com.oracle.truffle.api.interop.KeyInfo$Builder setRemovable(boolean)
+meth public com.oracle.truffle.api.interop.KeyInfo$Builder setWritable(boolean)
+meth public int build()
+supr java.lang.Object
+hfds infoBits
+
 CLSS public abstract com.oracle.truffle.api.interop.Message
 cons protected init()
+fld public final static com.oracle.truffle.api.interop.Message AS_POINTER
 fld public final static com.oracle.truffle.api.interop.Message GET_SIZE
+fld public final static com.oracle.truffle.api.interop.Message HAS_KEYS
 fld public final static com.oracle.truffle.api.interop.Message HAS_SIZE
 fld public final static com.oracle.truffle.api.interop.Message IS_BOXED
 fld public final static com.oracle.truffle.api.interop.Message IS_EXECUTABLE
+fld public final static com.oracle.truffle.api.interop.Message IS_INSTANTIABLE
 fld public final static com.oracle.truffle.api.interop.Message IS_NULL
+fld public final static com.oracle.truffle.api.interop.Message IS_POINTER
 fld public final static com.oracle.truffle.api.interop.Message KEYS
+fld public final static com.oracle.truffle.api.interop.Message KEY_INFO
 fld public final static com.oracle.truffle.api.interop.Message READ
+fld public final static com.oracle.truffle.api.interop.Message REMOVE
+fld public final static com.oracle.truffle.api.interop.Message TO_NATIVE
 fld public final static com.oracle.truffle.api.interop.Message UNBOX
 fld public final static com.oracle.truffle.api.interop.Message WRITE
 meth public abstract boolean equals(java.lang.Object)
@@ -113,6 +215,8 @@ meth public static java.lang.RuntimeException raise(java.lang.Exception,java.lan
 meth public static java.lang.RuntimeException raise(java.lang.Object[])
 supr com.oracle.truffle.api.interop.InteropException
 hfds serialVersionUID,suppliedValues
+
+CLSS abstract interface com.oracle.truffle.api.interop.package-info
 
 CLSS public abstract interface java.io.Serializable
 

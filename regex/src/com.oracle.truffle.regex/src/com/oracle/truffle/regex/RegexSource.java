@@ -55,7 +55,7 @@ public final class RegexSource implements JsonConvertible {
     public Source getSource() {
         if (source == null) {
             String text = toString();
-            source = Source.newBuilder(text).name(text).mimeType(RegexLanguage.MIME_TYPE).language(RegexLanguage.ID).build();
+            source = Source.newBuilder(RegexLanguage.ID, text, text).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
         }
         return source;
     }

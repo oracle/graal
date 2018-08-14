@@ -60,21 +60,6 @@ public final class DebuggerInstrument extends TruffleInstrument {
     }
 
     /**
-     * @since 0.17
-     * @deprecated
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public static Debugger getDebugger(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
-        if (instrument == null) {
-            throw new IllegalStateException("Debugger is not installed.");
-        }
-        instrument.setEnabled(true);
-        return instrument.lookup(Debugger.class);
-    }
-
-    /**
      * @since 0.27
      */
     public static void setFactory(DebuggerFactory factory) {

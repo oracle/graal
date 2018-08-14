@@ -5,6 +5,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Cached
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int dimensions()
 meth public abstract java.lang.String value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.CreateCast
@@ -13,8 +14,14 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.CreateCast
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Fallback
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Executed
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[FIELD])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String[] with()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Fallback
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
@@ -105,6 +112,18 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeFields
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault com.oracle.truffle.api.dsl.NodeField[] value()
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ReportPolymorphism
+ anno 0 java.lang.annotation.Inherited()
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Exclude
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.ReportPolymorphism$Exclude
+ outer com.oracle.truffle.api.dsl.ReportPolymorphism
+ anno 0 java.lang.annotation.Inherited()
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, TYPE])
+intf java.lang.annotation.Annotation
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specialization
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
@@ -149,13 +168,9 @@ meth public java.lang.String getMessage()
 supr java.lang.RuntimeException
 hfds node,serialVersionUID,suppliedNodes,suppliedValues
 
-CLSS public abstract interface java.io.Serializable
+CLSS abstract interface com.oracle.truffle.api.dsl.package-info
 
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
+CLSS public abstract interface java.io.Serializable
 
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
@@ -220,6 +235,12 @@ meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> 
 meth public abstract java.lang.String toString()
 
 CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Inherited
  anno 0 java.lang.annotation.Documented()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])

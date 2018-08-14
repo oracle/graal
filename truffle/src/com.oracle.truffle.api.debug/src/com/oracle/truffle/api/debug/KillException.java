@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+
 /**
  * Controls breaking out of an execution context, such as a shell or eval. This exception now
  * extends {@link ThreadDeath} as that is the error that is supposed to not be ever caught. As its
@@ -36,14 +39,29 @@ package com.oracle.truffle.api.debug;
  *
  * @since 0.12
  */
-final class KillException extends ThreadDeath {
+final class KillException extends ThreadDeath implements TruffleException {
     private static final long serialVersionUID = -8638020836970813894L;
+    private final Node node;
 
     /**
      * Default constructor.
-     * 
+     *
      * @since 0.12
      */
-    KillException() {
+    KillException(Node node) {
+        this.node = node;
+    }
+
+    @Override
+    public String getMessage() {
+        return "Execution cancelled by a debugging session.";
+    }
+
+    public Node getLocation() {
+        return node;
+    }
+
+    public boolean isCancelled() {
+        return true;
     }
 }

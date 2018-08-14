@@ -33,6 +33,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -504,10 +505,10 @@ public final class NativeImageBuildServer {
         final String task = taskParameter.get().substring(TASK_PREFIX.length());
         try {
             Class<?> imageTaskClass = Class.forName(task, true, classLoader);
-            return (ImageBuildTask) imageTaskClass.newInstance();
+            return (ImageBuildTask) imageTaskClass.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
             throw UserError.abort("image building task " + task + " can not be found. Make sure that " + task + " is present on the classpath.");
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (IllegalArgumentException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
             throw UserError.abort("image building task " + task + " must have a public constructor without parameters.");
         }
     }

@@ -70,7 +70,7 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm,com.oracle.truffle.api.metadata'] + args)
+    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + args)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -161,7 +161,7 @@ def _unittest_config_participant(config):
 
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.api.vm=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+        vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -177,7 +177,7 @@ def _truffle_gate_runner(args, tasks):
         if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
-            if t: mx.javadoc(['--unified'])
+            if t: javadoc([])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:

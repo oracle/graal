@@ -855,7 +855,7 @@ public final class DebuggerSession implements Closeable {
             }
         }
         if (s.isKill()) {   // ComposedStrategy can become kill
-            throw new KillException();
+            throw new KillException(source.getContext().getInstrumentedNode());
         }
     }
 
@@ -968,7 +968,7 @@ public final class DebuggerSession implements Closeable {
 
         setSteppingStrategy(currentThread, strategy, true);
         if (strategy.isKill()) {
-            throw new KillException();
+            throw new KillException(context.getInstrumentedNode());
         } else if (strategy.isUnwind()) {
             ThreadDeath unwind = context.createUnwind(null, rootBinding);
             ((SteppingStrategy.Unwind) strategy).unwind = unwind;
@@ -1078,7 +1078,7 @@ public final class DebuggerSession implements Closeable {
             throw new IllegalStateException("Can not evaluate in a non-interactive language.");
         }
 
-        final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();
+        final Source source = Source.newBuilder(info.getId(), code, "eval in context").build();
         ExecutableNode fragment = ev.getSession().getDebugger().getEnv().parseInline(source, node, frame);
         if (fragment != null) {
             ev.getInsertableNode().setParentOf(fragment);
@@ -1354,9 +1354,8 @@ class DebuggerSessionSnippets {
                 event.prepareStepInto(1);
             }
         })) {
-            Source someCode = Source.newBuilder("...").
-                            mimeType("...").
-                            name("example").build();
+            Source someCode = Source.newBuilder("...",
+                            "...", "example").build();
 
             // install line breakpoint
             session.install(Breakpoint.newBuilder(someCode).lineIs(3).build());

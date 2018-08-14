@@ -37,4 +37,11 @@ public interface DynamicProxyRegistry {
     Class<?> getProxyClass(Class<?>... interfaces);
 
     boolean isProxyClass(Class<?> clazz);
+
+    @SuppressWarnings("deprecation")
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
+        return java.lang.reflect.Proxy.getProxyClass(loader, interfaces);
+    }
+
 }

@@ -814,7 +814,7 @@ public abstract class Message {
             if (l == null) {
                 l = ClassLoader.getSystemClassLoader();
             }
-            Class.forName(message, false, l).newInstance();
+            Class.forName(message, false, l).getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
             throw new IllegalArgumentException("Cannot find message for " + message, ex);
         }

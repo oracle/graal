@@ -70,6 +70,7 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -214,6 +215,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private Object annotationsEncoding;
 
     /**
+     * Classloader used for loading this class during image-build time.
+     */
+    private final Target_java_lang_ClassLoader classloader;
+
+    /**
      * Bits used for instance-of checks. A bit is set for each type, which an object with this HUB
      * is an instance of.
      * <p>
@@ -236,7 +242,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Alias private static java.security.ProtectionDomain allPermDomain;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic) {
+    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic,
+                    Target_java_lang_ClassLoader classLoader) {
         /* Class names must be interned strings according to the Java spec. */
         this.name = name.intern();
         this.isLocalClass = isLocalClass;
@@ -247,6 +254,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.annotatedSuperInfo = AnnotatedSuperInfo.forEmpty();
         this.isStatic = isStatic;
         this.isSynthetic = isSynthetic;
+        this.classloader = classLoader;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -487,16 +495,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private Object getClassLoader() {
-        /*
-         * null is an allowed result value, denoting that the class was loaded by the system class
-         * loader. This means we simulate a system where all classes are loaded by the system class
-         * loader.
-         */
-        return null;
-    }
-
-    @Substitute
     private InputStream getResourceAsStream(String resourceName) {
         final String path = resolveName(getName(), resourceName);
         List<byte[]> arr = Resources.get(path);
@@ -525,9 +523,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         }
     }
 
+    @KeepOriginal
+    private native ClassLoader getClassLoader();
+
     @Substitute
-    private Object getClassLoader0() {
-        return null;
+    private ClassLoader getClassLoader0() {
+        return KnownIntrinsics.unsafeCast(classloader, ClassLoader.class);
     }
 
     @KeepOriginal

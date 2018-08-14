@@ -62,7 +62,7 @@ public class NFITest {
             sourceString = lib;
         }
 
-        Source source = Source.newBuilder(sourceString).name("loadLibrary").mimeType("application/x-native").build();
+        Source source = Source.newBuilder("nfi", sourceString, "loadLibrary").build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
         return (TruffleObject) target.call();
     }

@@ -38,7 +38,7 @@ public class ForbiddenNFITest {
     @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
 
     private TruffleObject eval(String format, Object... args) {
-        Source source = Source.newBuilder(String.format(format, args)).name("ForbiddenNFITest").mimeType("application/x-native").build();
+        Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").build();
         return (TruffleObject) runWithPolyglot.getTruffleTestEnv().parse(source).call();
     }
 

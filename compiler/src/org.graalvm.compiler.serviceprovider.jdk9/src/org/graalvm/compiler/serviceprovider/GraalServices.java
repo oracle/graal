@@ -61,11 +61,6 @@ public final class GraalServices {
      */
     public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
 
-    /**
-     * Determines if the Java runtime is version 11 or later.
-     */
-    public static final boolean Java11OrLater = JAVA_SPECIFICATION_VERSION >= 11;
-
     private GraalServices() {
     }
 
@@ -208,27 +203,6 @@ public final class GraalServices {
             globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
         }
         return globalTimeStamp.get();
-    }
-
-    /**
-     * Access to thread specific information made available via Java Management Extensions (JMX).
-     * Using this abstraction enables avoiding a dependency to the {@code java.management} and
-     * {@code jdk.management} modules on JDK 9 and later.
-     */
-    public abstract static class JMXService {
-        protected abstract long getThreadAllocatedBytes(long id);
-
-        protected abstract long getCurrentThreadCpuTime();
-
-        protected abstract boolean isThreadAllocatedMemorySupported();
-
-        protected abstract boolean isCurrentThreadCpuTimeSupported();
-
-        protected abstract List<String> getInputArguments();
-
-        // Placing this static field in JMXService (instead of GraalServices)
-        // allows for lazy initialization.
-        static final JMXService instance = loadSingle(JMXService.class, false);
     }
 
     /**

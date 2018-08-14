@@ -138,7 +138,7 @@ public class Truffle {
                     try {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
-                        return (TruffleRuntime) runtimeClass.newInstance();
+                        return (TruffleRuntime) runtimeClass.getDeclaredConstructor().newInstance();
                     } catch (Throwable e) {
                         // Fail fast for other errors
                         throw (InternalError) new InternalError().initCause(e);
