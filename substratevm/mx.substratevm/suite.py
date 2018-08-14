@@ -341,6 +341,22 @@ suite = {
             "findbugs": "false",
         },
 
+        "com.oracle.svm.jmh": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.reflect",
+                "mx:JMH_1_21",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "8+",
+            "findbugs": "false",
+        },
+
         "com.oracle.svm.test": {
             "subDir": "src",
             "sourceDirs": ["src"],
