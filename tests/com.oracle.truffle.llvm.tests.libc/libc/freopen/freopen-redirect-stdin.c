@@ -28,12 +28,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <unistd.h>
+
+#define BUFFER_SIZE 200
 
 int main() {
   int oldStdin = dup(0);
   freopen(__FILE__, "r", stdin);
-  char buf[200];
-  while (gets(buf) == buf) {
+  char buf[BUFFER_SIZE];
+  while (fgets(buf, BUFFER_SIZE, stdin) == buf) {
     printf("%s\n", buf);
   }
   fclose(stdin);
