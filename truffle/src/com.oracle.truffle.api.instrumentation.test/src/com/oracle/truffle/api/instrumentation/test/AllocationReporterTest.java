@@ -606,7 +606,7 @@ public class AllocationReporterTest {
      * </ul>
      */
     @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter Language", version = "1.0")
-    public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
+    public static class AllocationReporterLanguage extends ProxyLanguage {
 
         public static final String ID = "truffle-allocation-reporter-language";
         public static final String PROP_SIZE_CALLS = "sizeCalls";
