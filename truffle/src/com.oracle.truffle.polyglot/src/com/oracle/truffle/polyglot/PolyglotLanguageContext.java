@@ -119,7 +119,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     private void checkThreadAccess(Env localEnv) {
-        Thread.holdsLock(context);
+        assert Thread.holdsLock(context);
         boolean singleThreaded = context.isSingleThreaded();
         Thread firstFailingThread = null;
         for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
