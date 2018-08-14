@@ -34,11 +34,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class LLVMSourceFunctionType extends LLVMSourceType {
 
     private final List<LLVMSourceType> types;
 
+    @TruffleBoundary
     public LLVMSourceFunctionType(List<LLVMSourceType> types) {
         // function type do not require size or offset information since there are no concrete
         // values of them in C/C++/Fortran. they are only used as basis for function pointers
@@ -53,6 +55,7 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
         });
     }
 
+    @TruffleBoundary
     public LLVMSourceType getReturnType() {
         if (types.size() > 0) {
             return types.get(0);
@@ -61,12 +64,18 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
         }
     }
 
+    @TruffleBoundary
     public List<LLVMSourceType> getParameterTypes() {
         if (types.size() <= 1) {
             return Collections.emptyList();
         } else {
-            return types.subList(1, types.size());
+            return types.subList(1, types.size() - (isVarArgs() ? 1 : 0));
         }
+    }
+
+    @TruffleBoundary
+    public boolean isVarArgs() {
+        return types.size() > 1 && types.get(types.size() - 1) == LLVMSourceType.VOID;
     }
 
     @Override
