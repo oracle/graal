@@ -406,19 +406,19 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     protected CompletionList getCompletionsWithEnteredContext(final URI uri, int line, int originalCharacter) {
-        TextDocumentSurrogate textDocumentSurrogate = this.uri2TextDocumentSurrogate.get(uri);
-        if (textDocumentSurrogate.isSourceCodeReadyForCodeCompletion()) {
-            Source source = textDocumentSurrogate.getSource();
-            CompletionKind completionKind = LanguageSpecificHacks.getCompletionKind(source, zeroBasedLineToOneBasedLine(line, source), originalCharacter, textDocumentSurrogate.getLangId());
-            return createCompletions(uri, line, textDocumentSurrogate, originalCharacter, completionKind);
+        TextDocumentSurrogate surrogate = this.uri2TextDocumentSurrogate.get(uri);
+        Source source = surrogate.getSource();
+        CompletionKind completionKind = getCompletionKind(source, zeroBasedLineToOneBasedLine(line, source), originalCharacter, surrogate.getLangId());
+        if (surrogate.isSourceCodeReadyForCodeCompletion() && !completionKind.equals(CompletionKind.OBJECT_PROPERTY)) {
+            return createCompletions(uri, line, surrogate, originalCharacter, completionKind);
         } else {
-            SourceFix sourceFix = fixSourceAtPosition(textDocumentSurrogate, line, originalCharacter);
+            SourceFix sourceFix = removeLastTextInsertion(surrogate, originalCharacter);
             if (sourceFix == null) {
                 System.out.println("Unable to fix unparsable source code. No completion possible.");
                 return new CompletionList();
             }
 
-            TextDocumentSurrogate fixedSurrogate = textDocumentSurrogate.copy();
+            TextDocumentSurrogate fixedSurrogate = surrogate.copy();
             // TODO(ds) Should we reset coverage data etc? Or adjust the SourceLocations?
             fixedSurrogate.setEditorText(sourceFix.text);
             SourceWrapper sourceWrapper = fixedSurrogate.prepareParsing();
@@ -438,7 +438,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             try {
                 return createCompletions(uri, line, fixedSurrogate, sourceFix.character, sourceFix.completionKind);
             } finally {
-                uri2TextDocumentSurrogate.put(uri, textDocumentSurrogate);
+                uri2TextDocumentSurrogate.put(uri, surrogate);
             }
         }
     }
@@ -501,12 +501,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     private EvaluationResult tryDifferentEvalStrategies(TextDocumentSurrogate surrogate, Node nearestNode) {
-        EvaluationResult literalEvalResult = evalLiteral(surrogate.getLangId(), nearestNode);
-        if (literalEvalResult.isEvaluationDone() && !literalEvalResult.isError()) {
-            System.out.println("Literal shortcut!");
-            return literalEvalResult;
-        }
-
         EvaluationResult coverageEvalResult = evalWithCoverageData(surrogate, nearestNode);
         if (coverageEvalResult.isEvaluationDone() && !coverageEvalResult.isError()) {
             return coverageEvalResult;
@@ -558,14 +552,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                     }
                 }
             }
-        }
-        return EvaluationResult.createEvaluationSectionNotReached();
-    }
-
-    private static EvaluationResult evalLiteral(String langId, Node nearestNode) {
-        Object literalObj = LanguageSpecificHacks.getLiteralObject(nearestNode, langId);
-        if (literalObj != null) {
-            return EvaluationResult.createResult(literalObj);
         }
         return EvaluationResult.createEvaluationSectionNotReached();
     }
@@ -831,9 +817,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 }
             }
         }
-        if (boxedObject == null) {
-            boxedObject = (TruffleObject) LanguageSpecificHacks.getBoxedObject(obj, langId);
-        }
         return boxedObject;
     }
 
@@ -869,30 +852,30 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         throw new IllegalStateException("Mismatch in line numbers. Source line count (one-based): " + source.getLineCount() + ", zero-based line count: " + line);
     }
 
-    private static SourceFix fixSourceAtPosition(TextDocumentSurrogate surrogate, int line, int character) {
-        Source originalSource = surrogate.getSource();
-        int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, originalSource);
-        String textAtCaretLine = originalSource.getCharacters(oneBasedLineNumber).toString();
+    private boolean isObjectPropertyCompletionCharacter(String text, String langId) {
+        List<String> completionCharacters = env.getCompletionCharacters(langId);
+        return completionCharacters.contains(text);
+    }
 
-        SourceFix sourceFix = LanguageSpecificHacks.fixSourceAtPosition(surrogate.getEditorText(), surrogate.getLangId(), character,
-                        originalSource, oneBasedLineNumber, textAtCaretLine);
-        if (sourceFix != null) {
-            return sourceFix;
+    public CompletionKind getCompletionKind(Source source, int oneBasedLineNumber, int character, String langId) {
+        int lineStartOffset;
+        try {
+            lineStartOffset = source.getLineStartOffset(oneBasedLineNumber);
+        } catch (IllegalArgumentException e) {
+            return CompletionKind.GLOBALS_AND_LOCALS;
         }
 
-        final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing = surrogate.getChangeEventsSinceLastSuccessfulParsing();
-        if (!changeEventsSinceLastSuccessfulParsing.isEmpty() && surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
-            String lastSuccessfullyParsedText = surrogate.getSource().getCharacters().toString();
-            List<TextDocumentContentChangeEvent> allButLastChanges = changeEventsSinceLastSuccessfulParsing.subList(0, changeEventsSinceLastSuccessfulParsing.size() - 1);
-            String fixedText = applyTextDocumentChanges(allButLastChanges, lastSuccessfullyParsedText, null);
-
-            TextDocumentContentChangeEvent lastEvent = changeEventsSinceLastSuccessfulParsing.get(changeEventsSinceLastSuccessfulParsing.size() - 1);
-            boolean isObjectPropertyCompletionCharacter = LanguageSpecificHacks.isObjectPropertyCompletionCharacter(lastEvent.getText(), surrogate.getLangId());
-
-            return new SourceFix(fixedText, lastEvent.getRange().getEnd().getCharacter(), isObjectPropertyCompletionCharacter ? CompletionKind.OBJECT_PROPERTY : CompletionKind.GLOBALS_AND_LOCALS);
+        String text = source.getCharacters().toString();
+        try {
+            char charAtOffset = text.charAt(lineStartOffset + character - 1);
+            if (isObjectPropertyCompletionCharacter(String.valueOf(charAtOffset), langId)) {
+                return CompletionKind.OBJECT_PROPERTY;
+            } else {
+                return CompletionKind.GLOBALS_AND_LOCALS;
+            }
+        } catch (StringIndexOutOfBoundsException e) {
+            return CompletionKind.GLOBALS_AND_LOCALS;
         }
-
-        return null;
     }
 
     @SuppressWarnings("unused")
@@ -1183,16 +1166,11 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         System.out.println("signature " + line + " " + originalCharacter);
 
         TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
-        TextDocumentContentChangeEvent lastChange = surrogate.getLastChange();
-        Range range = lastChange.getRange();
-        TextDocumentContentChangeEvent replacementEvent = new TextDocumentContentChangeEvent(
-                        new Range(range.getStart(), new Position(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length())), lastChange.getText().length(), "");
-        String codeBeforeLastChange = applyTextDocumentChanges(Arrays.asList(replacementEvent), surrogate.getEditorText(), surrogate);
-        int character = originalCharacter - (originalCharacter - range.getStart().getCharacter());
+        SourceFix sourceFix = removeLastTextInsertion(surrogate, originalCharacter);
 
         TextDocumentSurrogate revertedSurrogate = surrogate.copy();
         // TODO(ds) Should we reset coverage data etc? Or adjust the SourceLocations?
-        revertedSurrogate.setEditorText(codeBeforeLastChange);
+        revertedSurrogate.setEditorText(sourceFix.text);
         SourceWrapper sourceWrapper = revertedSurrogate.prepareParsing();
         CallTarget callTarget;
         try {
@@ -1208,7 +1186,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             Source source = sourceWrapper.getSource();
             if (isLineValid(line, source)) {
                 int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, source);
-                NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(oneBasedLineNumber, character, source, env);
+                NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(oneBasedLineNumber, sourceFix.character, source, env);
                 Node nearestNode = nearestNodeHolder.getNearestNode();
                 NodeLocationType locationType = nearestNodeHolder.getLocationType();
                 System.out.println("nearestNode: " +
@@ -1245,6 +1223,19 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             uri2TextDocumentSurrogate.put(uri, surrogate);
         }
         return new SignatureHelp();
+    }
+
+    private SourceFix removeLastTextInsertion(TextDocumentSurrogate surrogate, int originalCharacter) {
+        TextDocumentContentChangeEvent lastChange = surrogate.getLastChange();
+        Range range = lastChange.getRange();
+        TextDocumentContentChangeEvent replacementEvent = new TextDocumentContentChangeEvent(
+                        new Range(range.getStart(), new Position(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length())), lastChange.getText().length(), "");
+        String codeBeforeLastChange = applyTextDocumentChanges(Arrays.asList(replacementEvent), surrogate.getEditorText(), surrogate);
+        int character = originalCharacter - (originalCharacter - range.getStart().getCharacter());
+
+        boolean isObjectPropertyCompletion = isObjectPropertyCompletionCharacter(lastChange.getText(), surrogate.getLangId());
+
+        return new SourceFix(codeBeforeLastChange, character, isObjectPropertyCompletion ? CompletionKind.OBJECT_PROPERTY : CompletionKind.GLOBALS_AND_LOCALS);
     }
 
     public String getSourceText(Path path) {
