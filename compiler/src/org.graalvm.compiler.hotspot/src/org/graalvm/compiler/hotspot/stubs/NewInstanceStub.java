@@ -93,7 +93,7 @@ public class NewInstanceStub extends SnippetStub {
         }
 
         newInstanceC(NEW_INSTANCE_C, thread, hub);
-        handlePendingException(thread, true);
+        handlePendingException(thread, true, true);
         return verifyObject(getAndClearObjectResult(thread));
     }
 
