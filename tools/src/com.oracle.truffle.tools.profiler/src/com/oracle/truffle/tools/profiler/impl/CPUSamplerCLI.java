@@ -24,16 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +34,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
@@ -127,9 +128,9 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(CPUSampler sampler) {
+    private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
         Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = new HashMap<>();
-        computeHistogramImpl(sampler.getRootNodes(), histogram);
+        computeHistogramImpl(profilerNodes, histogram);
         return histogram;
     }
 
@@ -148,29 +149,30 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static void printSamplingHistogram(PrintStream out, CPUSampler sampler) {
-
-        final Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = computeHistogram(sampler);
-
-        List<List<ProfilerNode<CPUSampler.Payload>>> lines = new ArrayList<>(histogram.values());
-        Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.Payload>>>() {
-            @Override
-            public int compare(List<ProfilerNode<CPUSampler.Payload>> o1, List<ProfilerNode<CPUSampler.Payload>> o2) {
-                long sum1 = 0;
-                for (ProfilerNode<CPUSampler.Payload> tree : o1) {
-                    sum1 += tree.getPayload().getSelfHitCount();
-                }
-
-                long sum2 = 0;
-                for (ProfilerNode<CPUSampler.Payload> tree : o2) {
-                    sum2 += tree.getPayload().getSelfHitCount();
-                }
-                return Long.compare(sum2, sum1);
-            }
-        });
-
         int maxLength = 10;
-        for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
-            maxLength = Math.max(computeRootNameMaxLength(line.get(0)), maxLength);
+        Map<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> linesPerThread = new HashMap<>();
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : sampler.getThreadToNodesMap().entrySet()) {
+            List<List<ProfilerNode<CPUSampler.Payload>>> lines = new ArrayList<>(computeHistogram(node.getValue()).values());
+            Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.Payload>>>() {
+                @Override
+                public int compare(List<ProfilerNode<CPUSampler.Payload>> o1, List<ProfilerNode<CPUSampler.Payload>> o2) {
+                    long sum1 = 0;
+                    for (ProfilerNode<CPUSampler.Payload> tree : o1) {
+                        sum1 += tree.getPayload().getSelfHitCount();
+                    }
+
+                    long sum2 = 0;
+                    for (ProfilerNode<CPUSampler.Payload> tree : o2) {
+                        sum2 += tree.getPayload().getSelfHitCount();
+                    }
+                    return Long.compare(sum2, sum1);
+                }
+            });
+
+            for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
+                maxLength = Math.max(computeRootNameMaxLength(line.get(0)), maxLength);
+            }
+            linesPerThread.put(node.getKey(), lines);
         }
 
         String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
@@ -182,16 +184,23 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("  Total Time: Time the location spent on the stack. ");
         out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
         out.println(sep);
-        out.println(title);
-        out.println(sep);
-        for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
-            printAttributes(out, sampler, "", line, maxLength, false);
+        for (Map.Entry<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> entry : linesPerThread.entrySet()) {
+            out.println(" Thread: " + entry.getKey());
+            out.println(title);
+            out.println(sep);
+            for (List<ProfilerNode<CPUSampler.Payload>> line : entry.getValue()) {
+                printAttributes(out, sampler, "", line, maxLength, false);
+            }
+            out.println(sep);
         }
-        out.println(sep);
     }
 
     private static void printSamplingCallTree(PrintStream out, CPUSampler sampler) {
-        int maxLength = Math.max(10, computeTitleMaxLength(sampler.getRootNodes(), 0));
+        Collection<ProfilerNode<CPUSampler.Payload>> actualRoots = new ArrayList<>();
+        for (Collection<ProfilerNode<CPUSampler.Payload>> node : sampler.getThreadToNodesMap().values()) {
+            actualRoots.addAll(node);
+        }
+        int maxLength = Math.max(10, computeTitleMaxLength(actualRoots, 0));
         String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
         String sep = repeat("-", title.length());
         out.println(sep);
@@ -200,10 +209,13 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("  Total Time: Time spent somewhere on the stack. ");
         out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
         out.println(sep);
-        out.println(title);
-        out.println(sep);
-        printSamplingCallTreeRec(sampler, maxLength, "", sampler.getRootNodes(), out);
-        out.println(sep);
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : sampler.getThreadToNodesMap().entrySet()) {
+            out.println(" Thread: " + node.getKey());
+            out.println(title);
+            out.println(sep);
+            printSamplingCallTreeRec(sampler, maxLength, "", node.getValue(), out);
+            out.println(sep);
+        }
     }
 
     private static void printSamplingCallTreeRec(CPUSampler sampler, int maxRootLength, String prefix, Collection<ProfilerNode<CPUSampler.Payload>> children, PrintStream out) {
