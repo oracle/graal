@@ -89,7 +89,13 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
         @Override
         public DebugValue next() {
-            return new DebugValue.PropertyValue(debugger, language, object, entries.next(), scope);
+            try {
+                return new DebugValue.PropertyValue(debugger, language, object, entries.next(), scope);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(debugger, ex, language, null, true, null);
+            }
         }
 
         @Override

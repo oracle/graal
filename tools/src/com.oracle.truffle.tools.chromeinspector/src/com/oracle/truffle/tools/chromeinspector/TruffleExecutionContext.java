@@ -188,11 +188,7 @@ public final class TruffleExecutionContext {
                     cf.completeExceptionally(td);
                     throw td;
                 } catch (DebugException dex) {
-                    if (!dex.isInternalError()) {
-                        cf.complete(executable.processException(dex));
-                    } else {
-                        cf.completeExceptionally(dex);
-                    }
+                    cf.complete(executable.processException(dex));
                 } catch (Throwable t) {
                     cf.completeExceptionally(t);
                 }

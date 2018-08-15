@@ -50,7 +50,14 @@ final class ValueInteropList extends AbstractList<DebugValue> {
 
     @Override
     public DebugValue get(int index) {
-        AtomicReference<Object> objRef = new AtomicReference<>(list.get(index));
+        AtomicReference<Object> objRef;
+        try {
+            objRef = new AtomicReference<>(list.get(index));
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, language, null, true, null);
+        }
         String name = Integer.toString(index);
         Map.Entry<Object, Object> elementEntry = new Map.Entry<Object, Object>() {
             @Override
@@ -76,7 +83,13 @@ final class ValueInteropList extends AbstractList<DebugValue> {
     @Override
     public DebugValue set(int index, DebugValue value) {
         DebugValue old = get(index);
-        list.set(index, value.get());
+        try {
+            list.set(index, value.get());
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, language, null, true, null);
+        }
         return old;
     }
 

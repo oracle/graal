@@ -118,7 +118,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      *
      * @since 0.17
      */
-    public String getName() {
+    public String getName() throws DebugException {
         verifyValidState(true);
         RootNode root = findCurrentRoot();
         if (root == null) {
@@ -126,14 +126,11 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         }
         try {
             return root.getName();
-        } catch (Throwable e) {
-            /* Throw error if assertions are enabled. */
-            try {
-                assert false;
-            } catch (AssertionError e1) {
-                throw e;
-            }
-            return null;
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            Debugger debugger = event.getSession().getDebugger();
+            throw new DebugException(debugger, ex, root.getLanguageInfo(), null, true, null);
         }
     }
 
@@ -187,9 +184,10 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      *
      * @return the scope, or <code>null</code> when no language is associated with this frame
      *         location, or when no local scope exists.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.26
      */
-    public DebugScope getScope() {
+    public DebugScope getScope() throws DebugException {
         verifyValidState(false);
         SuspendedContext context = getContext();
         RootNode root = findCurrentRoot();
@@ -202,18 +200,25 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         } else {
             node = currentFrame.getCallNode();
         }
-        if (node.getRootNode().getLanguageInfo() == null) {
+        LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
+        if (languageInfo == null) {
             // no language, no scopes
             return null;
         }
         Debugger debugger = event.getSession().getDebugger();
         MaterializedFrame frame = findTruffleFrame();
-        Iterable<Scope> scopes = debugger.getEnv().findLocalScopes(node, frame);
-        Iterator<Scope> it = scopes.iterator();
-        if (!it.hasNext()) {
-            return null;
+        try {
+            Iterable<Scope> scopes = debugger.getEnv().findLocalScopes(node, frame);
+            Iterator<Scope> it = scopes.iterator();
+            if (!it.hasNext()) {
+                return null;
+            }
+            return new DebugScope(it.next(), it, debugger, event, frame, root);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, languageInfo, null, true, null);
         }
-        return new DebugScope(it.next(), it, debugger, event, frame, root);
     }
 
     /**
