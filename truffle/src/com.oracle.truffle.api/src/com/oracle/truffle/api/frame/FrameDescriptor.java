@@ -110,8 +110,8 @@ public final class FrameDescriptor implements Cloneable {
         this.defaultValue = defaultValue;
         this.slots = new ArrayList<>();
         this.identifierToSlotMap = EconomicMap.create();
-        this.version = createVersion();
         this.lock = lock == null ? this : lock;
+        newVersion(this);
     }
 
     /**
@@ -335,9 +335,9 @@ public final class FrameDescriptor implements Cloneable {
                  * First, only invalidate before updating kind so it's impossible to read a new kind
                  * and old still valid assumption.
                  */
-                version.invalidate();
+                invalidateVersion(this);
                 frameSlot.kind = kind;
-                version = createVersion();
+                newVersion(this);
             }
         }
     }
@@ -488,8 +488,16 @@ public final class FrameDescriptor implements Cloneable {
      * Invalidates the current, and create a new version assumption.
      */
     private void updateVersion() {
-        version.invalidate();
-        version = createVersion();
+        invalidateVersion(this);
+        newVersion(this);
+    }
+
+    private static void newVersion(FrameDescriptor descriptor) {
+        descriptor.version = Truffle.getRuntime().createAssumption("frame version");
+    }
+
+    private static void invalidateVersion(FrameDescriptor descriptor) {
+        descriptor.version.invalidate();
     }
 
     /**
@@ -502,10 +510,6 @@ public final class FrameDescriptor implements Cloneable {
      */
     public Assumption getVersion() {
         return version;
-    }
-
-    private static Assumption createVersion() {
-        return Truffle.getRuntime().createAssumption("frame version");
     }
 
     /**
