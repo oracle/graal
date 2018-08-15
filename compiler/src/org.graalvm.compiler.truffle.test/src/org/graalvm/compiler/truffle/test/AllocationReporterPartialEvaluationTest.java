@@ -28,10 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
-import org.graalvm.polyglot.Context;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,6 +55,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
 
     @Test
     public void testConsistentAssertions() {
+        TruffleTestUtil.assumeJavaDesktopModuleIsAvailable();
+
         // Test that onEnter()/onReturnValue() are not broken
         // when only one of them is compiled with PE.
         Context context = Context.newBuilder(AllocationReporterLanguage.ID).build();
