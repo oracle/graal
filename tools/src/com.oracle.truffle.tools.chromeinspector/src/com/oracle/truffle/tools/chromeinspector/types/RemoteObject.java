@@ -26,11 +26,13 @@ package com.oracle.truffle.tools.chromeinspector.types;
 
 import java.io.PrintWriter;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -110,11 +112,12 @@ public final class RemoteObject {
                         vdescription = property.as(String.class);
                     }
                 }
-            } catch (Exception ex) {
-                if (err != null) {
+            } catch (DebugException ex) {
+                if (err != null && ex.isInternalError()) {
                     err.println("getProperties of meta object of (" + debugValue.getName() + ") has caused: " + ex);
                     ex.printStackTrace(err);
                 }
+                throw ex;
             }
         }
         String descriptionType = null;
@@ -128,7 +131,18 @@ public final class RemoteObject {
             } else {
                 this.subtype = null;
             }
-            String metaType = (metaObject != null) ? metaObject.as(String.class) : null;
+            String metaType = null;
+            if (metaObject != null) {
+                try {
+                    metaType = metaObject.as(String.class);
+                } catch (DebugException ex) {
+                    if (err != null && ex.isInternalError()) {
+                        err.println(debugValue.getName() + " as(String.class) has caused: " + ex);
+                        ex.printStackTrace(err);
+                    }
+                    throw ex;
+                }
+            }
             if (debugValue.canExecute()) {
                 this.type = TYPE.FUNCTION.getId();
                 this.className = metaType;
@@ -173,12 +187,12 @@ public final class RemoteObject {
                     }
                 }
             }
-        } catch (Exception ex) {
-            if (err != null) {
+        } catch (DebugException ex) {
+            if (err != null && ex.isInternalError()) {
                 err.println(debugValue.getName() + " as(class) has caused: " + ex);
                 ex.printStackTrace(err);
             }
-            toString = null;
+            throw ex;
         }
         this.value = rawValue;
         this.replicableValue = replicableRawValue;
@@ -233,12 +247,12 @@ public final class RemoteObject {
             if (originalLanguage != null && metaObject != null) {
                 metaObject = metaObject.asInLanguage(originalLanguage);
             }
-        } catch (Exception ex) {
-            if (err != null) {
+        } catch (DebugException ex) {
+            if (err != null && ex.isInternalError()) {
                 err.println("getMetaObject(" + debugValue.getName() + ") has caused: " + ex);
                 ex.printStackTrace(err);
             }
-            metaObject = null;
+            throw ex;
         }
         return metaObject;
     }
@@ -247,12 +261,12 @@ public final class RemoteObject {
         boolean isObject;
         try {
             isObject = debugValue.getProperties() != null || debugValue.canExecute();
-        } catch (Exception ex) {
-            if (err != null) {
+        } catch (DebugException ex) {
+            if (err != null && ex.isInternalError()) {
                 err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
                 ex.printStackTrace(err);
             }
-            isObject = false;
+            throw ex;
         }
         return isObject;
     }
@@ -300,11 +314,12 @@ public final class RemoteObject {
                         }
                     }
                 }
-            } catch (Exception ex) {
-                if (err != null) {
+            } catch (DebugException ex) {
+                if (err != null && ex.isInternalError()) {
                     err.println("getProperties of meta object of (" + debugValue.getName() + ") has caused: " + ex);
                     ex.printStackTrace(err);
                 }
+                throw ex;
             }
         }
         if (vtype == null) {
@@ -316,28 +331,32 @@ public final class RemoteObject {
         }
         json.put("type", vtype);
         String[] unserializablePtr = new String[1];
-        json.putOpt("value", createJSONValue(debugValue, unserializablePtr, err));
+        try {
+            json.putOpt("value", createJSONValue(debugValue, unserializablePtr, err));
+        } catch (DebugException ex) {
+            if (err != null && ex.isInternalError()) {
+                err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
+                ex.printStackTrace(err);
+            }
+            throw ex;
+        }
         json.putOpt("unserializableValue", unserializablePtr[0]);
         return json;
     }
 
     private static Object createJSONValue(DebugValue debugValue, String[] unserializablePtr, PrintWriter err) {
-        Collection<DebugValue> properties = null;
-        try {
-            properties = debugValue.getProperties();
-        } catch (Exception ex) {
-            if (err != null) {
-                err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
-                ex.printStackTrace(err);
+        if (debugValue.isArray()) {
+            List<DebugValue> valueArray = debugValue.getArray();
+            if (valueArray != null) {
+                JSONArray array = new JSONArray();
+                for (DebugValue element : valueArray) {
+                    array.put(createJSONValue(element, null, err));
+                }
+                return array;
             }
         }
-        if (debugValue.isArray()) {
-            JSONArray array = new JSONArray();
-            for (DebugValue element : debugValue.getArray()) {
-                array.put(createJSONValue(element, null, err));
-            }
-            return array;
-        } else if (properties != null) {
+        Collection<DebugValue> properties = debugValue.getProperties();
+        if (properties != null) {
             JSONObject props = new JSONObject();
             for (DebugValue property : properties) {
                 props.put(property.getName(), createJSONValue(property, null, err));

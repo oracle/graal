@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1398,10 +1399,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @CompilationFinal private FrameSlot slot;
 
-        private VariableNode(String name, String value, BaseNode[] children, ContextReference<InstrumentContext> contextRef) {
+        private VariableNode(String name, String identifier, BaseNode[] children, ContextReference<InstrumentContext> contextRef) {
             super(children);
             this.name = name;
-            this.value = parseIdent(value);
+            this.value = parseIdent(identifier);
             this.contextRef = contextRef;
         }
 
@@ -1735,7 +1736,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     static class FunctionsObject implements TruffleObject {
 
-        final Map<String, CallTarget> callTargets = new HashMap<>();
+        final Map<String, CallTarget> callTargets = new LinkedHashMap<>();
         final Map<String, TruffleObject> functions = new HashMap<>();
 
         FunctionsObject() {
