@@ -33,6 +33,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
@@ -226,6 +227,16 @@ public final class Engine implements AutoCloseable {
      */
     public static Builder newBuilder() {
         return EMPTY.new Builder();
+    }
+
+    /**
+     * Finds the GraalVM home folder.
+     *
+     * @return the path to a folder containing the GraalVM or {@code null} if it cannot be found
+     * @since 1.0
+     */
+    public static Path findHome() {
+        return getImpl().findHome();
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -671,6 +682,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public void resetPreInitializedEngine() {
+        }
+
+        @Override
+        public Path findHome() {
+            return null;
         }
 
         static class EmptySource extends AbstractSourceImpl {

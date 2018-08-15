@@ -56,7 +56,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.impl.HomeFinder;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
@@ -1269,8 +1268,7 @@ public abstract class Launcher {
         }
 
         Path getGraalVMHome() {
-            final HomeFinder homeFinder = HomeFinder.getInstance(null);
-            return homeFinder != null ? homeFinder.getHomeFolder() : null;
+            return Engine.findHome();
         }
 
         private void exec(Path executable, List<String> command) {

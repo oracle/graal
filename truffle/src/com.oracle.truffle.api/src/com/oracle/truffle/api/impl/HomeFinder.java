@@ -22,16 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.impl;
+package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import java.nio.file.Path;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.ServiceLoader;
 
 public abstract class HomeFinder {
 
-    private static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot") || Boolean.getBoolean("com.oracle.truffle.aot");
     private static HomeFinder nativeImageHomeFinder;   // effectively final after native image
                                                        // compilation
 
@@ -43,13 +42,11 @@ public abstract class HomeFinder {
 
     public abstract Map<String, Path> getToolHomes();
 
-    public static HomeFinder getInstance(ClassLoader classLoader) {
-        if (IS_AOT) {
+    public static HomeFinder getInstance() {
+        if (TruffleOptions.AOT) {
             return nativeImageHomeFinder;
         }
-        ServiceLoader<HomeFinder> finders = classLoader == null ? ServiceLoader.load(HomeFinder.class) : ServiceLoader.load(HomeFinder.class, classLoader);
-        Iterator<HomeFinder> it = finders.iterator();
-        return it.hasNext() ? it.next() : null;
+        return Truffle.getRuntime().getCapability(HomeFinder.class);
     }
 
     /**
@@ -60,9 +57,8 @@ public abstract class HomeFinder {
      */
     @SuppressWarnings("unused")
     private static void initializeNativeImageState() {
-        assert IS_AOT : "Only supported during image generation";
-        Iterator<HomeFinder> homeFinders = ServiceLoader.load(HomeFinder.class).iterator();
-        nativeImageHomeFinder = homeFinders.next(); // todo hasNext
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        nativeImageHomeFinder = Truffle.getRuntime().getCapability(HomeFinder.class);
     }
 
     /**
@@ -73,7 +69,7 @@ public abstract class HomeFinder {
      */
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
-        assert IS_AOT : "Only supported during image generation";
+        assert TruffleOptions.AOT : "Only supported during image generation";
         nativeImageHomeFinder = null;
     }
 }

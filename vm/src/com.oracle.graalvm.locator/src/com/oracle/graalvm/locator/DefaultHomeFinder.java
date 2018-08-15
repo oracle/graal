@@ -24,7 +24,7 @@
  */
 package com.oracle.graalvm.locator;
 
-import org.graalvm.polyglot.impl.HomeFinder;
+import com.oracle.truffle.api.impl.HomeFinder;
 import com.oracle.truffle.api.TruffleOptions;
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -38,10 +38,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import org.graalvm.nativeimage.ImageInfo;
 
 public final class DefaultHomeFinder extends HomeFinder {
 
-    private static final boolean VERBOSE = Boolean.getBoolean("com.oracle.graalvm.locator.verbose") || Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LOCATOR"));
+    private static final boolean STATIC_VERBOSE = Boolean.getBoolean("com.oracle.graalvm.locator.verbose");
 
     private static final Path FORCE_GRAAL_HOME;
     private static final Path GRAAL_HOME_RELATIVE_PATH;
@@ -85,6 +86,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         }
     }
 
+    private volatile Boolean verbose;
     private volatile Path graalHome;
     private volatile String version;
     private volatile Map<String, Path> languageHomes;
@@ -98,7 +100,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         Path res = graalHome;
         if (res == null) {
             if (FORCE_GRAAL_HOME != null) {
-                if (VERBOSE) {
+                if (isVerbose()) {
                     System.err.println("GraalVM home forced to: " + FORCE_GRAAL_HOME);
                 }
                 res = FORCE_GRAAL_HOME;
@@ -110,13 +112,13 @@ public final class DefaultHomeFinder extends HomeFinder {
                         graalvmHomeValue = System.getProperty("org.graalvm.home");
                     }
                     if (graalvmHomeValue != null) {
-                        if (VERBOSE) {
+                        if (isVerbose()) {
                             System.err.println("GraalVM home already set to: " + graalvmHomeValue);
                         }
                         res = Paths.get(graalvmHomeValue);
                     } else {
                         res = getGraalVmHome();
-                        if (VERBOSE) {
+                        if (isVerbose()) {
                             System.err.println("Found GraalVM home: " + res);
                         }
                         if (res == null) {
@@ -137,21 +139,14 @@ public final class DefaultHomeFinder extends HomeFinder {
                     } else {
                         res = javaHome.getParent();
                     }
-                    if (VERBOSE) {
+                    if (isVerbose()) {
                         System.err.println("GraalVM home found by java.home property as: " + res);
                     }
                 }
             }
-            if (VERBOSE) {
-                System.err.println("Set graalvm.home to: " + res);
+            if (!ImageInfo.inImageBuildtimeCode()) {
+                graalHome = res;
             }
-            if (System.getProperty("graalvm.home") == null) {
-                System.setProperty("graalvm.home", res.toAbsolutePath().toString());
-            }
-            if (System.getProperty("org.graalvm.home") == null) {
-                System.setProperty("org.graalvm.home", res.toAbsolutePath().toString());
-            }
-            graalHome = res;
         }
         return res;
     }
@@ -187,7 +182,9 @@ public final class DefaultHomeFinder extends HomeFinder {
                     }
                 }
             }
-            version = res;
+            if (!ImageInfo.inImageBuildtimeCode()) {
+                version = res;
+            }
         }
         return res;
     }
@@ -202,7 +199,9 @@ public final class DefaultHomeFinder extends HomeFinder {
             } else {
                 res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("jre", "languages"))));
             }
-            languageHomes = res;
+            if (!ImageInfo.inImageBuildtimeCode()) {
+                languageHomes = res;
+            }
         }
         return res;
     }
@@ -217,7 +216,9 @@ public final class DefaultHomeFinder extends HomeFinder {
             } else {
                 res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("jre", "tools"))));
             }
-            toolHomes = res;
+            if (!ImageInfo.inImageBuildtimeCode()) {
+                toolHomes = res;
+            }
         }
         return res;
     }
@@ -241,7 +242,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         return res;
     }
 
-    private static Path getGraalVmHome() {
+    private Path getGraalVmHome() {
         assert TruffleOptions.AOT;
         Path executable = getCurrentExecutablePath();
         if (executable != null) {
@@ -250,7 +251,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                 result = getGraalVmHomeFallBack(executable);
             }
             if (result != null) {
-                if (VERBOSE) {
+                if (isVerbose()) {
                     System.err.println("GraalVM home found by executable as: " + result);
                 }
                 return result;
@@ -261,7 +262,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         if (result == null) {
             result = getGraalVmHomeLibPolyglotFallBack(objectFile);
         }
-        if (VERBOSE && result != null) {
+        if (isVerbose() && result != null) {
             System.err.println("GraalVM home found by object file as: " + result);
         }
         return result;
@@ -414,5 +415,18 @@ public final class DefaultHomeFinder extends HomeFinder {
         return Paths.get((String) Compiler.command(new String[]{
                         "com.oracle.svm.core.posix.GetExecutableName"
         }));
+    }
+
+    private boolean isVerbose() {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return STATIC_VERBOSE;
+        } else {
+            Boolean res = verbose;
+            if (res == null) {
+                res = STATIC_VERBOSE || Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LOCATOR"));
+                verbose = res;
+            }
+            return res;
+        }
     }
 }

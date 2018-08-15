@@ -73,6 +73,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
+import java.nio.file.Path;
+import com.oracle.truffle.api.impl.HomeFinder;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -208,6 +210,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         return null;
+    }
+
+    @Override
+    public Path findHome() {
+        final HomeFinder homeFinder = HomeFinder.getInstance();
+        return homeFinder == null ? null : homeFinder.getHomeFolder();
     }
 
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {
