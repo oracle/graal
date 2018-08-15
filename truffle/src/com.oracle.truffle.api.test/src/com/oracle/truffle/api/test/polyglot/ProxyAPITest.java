@@ -557,6 +557,36 @@ public class ProxyAPITest {
             assertTrue(frame.isHostFrame());
             assertEquals("testExceptionFrames", frame.toHostFrame().getMethodName());
         }
+    }
+
+    static class DummyObject {
+
+    }
+
+    /*
+     * Tests that if different incompatible argument array types are used, they are properly copied.
+     */
+    @Test
+    public void testInvalidArrayCopying() {
+        Value executable = context.asValue(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... args) {
+                return args[0];
+            }
+        });
+        Value instantiable = context.asValue(new ProxyInstantiable() {
+            @Override
+            public Object newInstance(Value... args) {
+                return args[0];
+            }
+        });
+        DummyObject[] arg0 = new DummyObject[]{new DummyObject()};
+        DummyObject[] arg1 = new DummyObject[]{new DummyObject(), new DummyObject()};
+        assertSame(arg0[0], executable.execute((Object[]) arg0).asHostObject());
+        assertSame(arg1[0], executable.execute((Object[]) arg1).asHostObject());
+
+        assertSame(arg0[0], instantiable.newInstance((Object[]) arg0).asHostObject());
+        assertSame(arg1[0], instantiable.newInstance((Object[]) arg1).asHostObject());
 
     }
 
