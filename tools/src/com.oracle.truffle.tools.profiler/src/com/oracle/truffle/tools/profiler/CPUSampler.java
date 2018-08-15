@@ -28,17 +28,19 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
-import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -206,6 +208,8 @@ public final class CPUSampler implements Closeable {
     private EventBinding<?> stacksBinding;
 
     private final ProfilerNode<Payload> rootNode = new ProfilerNode<>(this, new Payload());
+
+    private final Map<Thread, ProfilerNode<Payload>> rootNodes = new HashMap<>();
 
     private final Env env;
 
@@ -416,8 +420,25 @@ public final class CPUSampler implements Closeable {
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.30
      */
+    @Deprecated
     public Collection<ProfilerNode<Payload>> getRootNodes() {
-        return rootNode.getChildren();
+        Collection<ProfilerNode<Payload>> actualRoots = new ArrayList<>();
+        for (ProfilerNode<Payload> node : rootNodes.values()) {
+            actualRoots.addAll(node.getChildren());
+        }
+        return actualRoots;
+    }
+
+    /**
+     * @return The roots of the trees representing the profile of the execution per thread.
+     * @since 1.0
+     */
+    public Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
+        Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
+        for(Map.Entry<Thread, ProfilerNode<Payload>> entry : rootNodes.entrySet()) {
+           returnValue.put(entry.getKey(), entry.getValue().getChildren());
+        }
+        return returnValue;
     }
 
     /**
@@ -427,9 +448,11 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized void clearData() {
         samplesTaken.set(0);
-        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
-        if (rootChildren != null) {
-            rootChildren.clear();
+        for (ProfilerNode<Payload> node : rootNodes.values()) {
+            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            if (rootChildren != null) {
+                rootChildren.clear();
+            }
         }
     }
 
@@ -438,8 +461,12 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized boolean hasData() {
-        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
-        return rootChildren != null && !rootChildren.isEmpty();
+        boolean hasData = false;
+        for (ProfilerNode<Payload> node : rootNodes.values()) {
+            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            hasData = hasData || (rootChildren != null && !rootChildren.isEmpty());
+        }
+        return hasData;
     }
 
     /**
@@ -553,7 +580,12 @@ public final class CPUSampler implements Closeable {
             ShadowStack localShadowStack = shadowStack;
             if (localShadowStack != null) {
                 for (ShadowStack.ThreadLocalStack stack : localShadowStack.getStacks()) {
-                    sampleTaken |= sample(stack, timestamp);
+                    sampleTaken |= sample(stack, timestamp, rootNodes.computeIfAbsent(stack.getThread(), new Function<Thread, ProfilerNode<Payload>>() {
+                        @Override
+                        public ProfilerNode<Payload> apply(Thread thread) {
+                            return new ProfilerNode<>(this, new Payload());
+                        }
+                    }));
                 }
             }
             if (sampleTaken) {
@@ -561,7 +593,7 @@ public final class CPUSampler implements Closeable {
             }
         }
 
-        boolean sample(ShadowStack.ThreadLocalStack stack, long timestamp) {
+        boolean sample(ShadowStack.ThreadLocalStack stack, long timestamp, ProfilerNode<Payload> threadNode) {
             if (stack.hasStackOverflowed()) {
                 stackOverflowed = true;
                 return false;
@@ -575,7 +607,7 @@ public final class CPUSampler implements Closeable {
                 return false;
             }
             // now traverse the stack and insert the path into the tree
-            ProfilerNode<Payload> treeNode = rootNode;
+            ProfilerNode<Payload> treeNode = threadNode;
             for (int i = 0; i < correctedStackInfo.getLength(); i++) {
                 SourceLocation location = correctedStackInfo.getStack()[i];
                 boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
@@ -637,11 +669,13 @@ class CPUSamplerSnippets {
         context.eval("...", "...");
         sampler.setCollecting(false);
         sampler.close();
-        // Read information about the roots of the tree.
-        for (ProfilerNode<CPUSampler.Payload> node : sampler.getRootNodes()) {
-            final String rootName = node.getRootName();
-            final int selfHitCount = node.getPayload().getSelfHitCount();
-            // ...
+        // Read information about the roots of the tree per thread.
+        for (Collection<ProfilerNode<CPUSampler.Payload>> nodes : sampler.getThreadToNodesMap().values()) {
+            for (ProfilerNode<CPUSampler.Payload> node : nodes) {
+                final String rootName = node.getRootName();
+                final int selfHitCount = node.getPayload().getSelfHitCount();
+                // ...
+            }
         }
         // END: CPUSamplerSnippets#example
         // @formatter:on
