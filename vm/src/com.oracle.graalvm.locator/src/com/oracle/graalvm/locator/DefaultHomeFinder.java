@@ -24,6 +24,7 @@
  */
 package com.oracle.graalvm.locator;
 
+import org.graalvm.polyglot.impl.HomeFinder;
 import com.oracle.truffle.api.TruffleOptions;
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -38,7 +39,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-final class DefaultHomeFinder implements HomeFinder {
+public final class DefaultHomeFinder extends HomeFinder {
+
+    private static final boolean VERBOSE = Boolean.getBoolean("com.oracle.graalvm.locator.verbose") || Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LOCATOR"));
 
     private static final Path FORCE_GRAAL_HOME;
     private static final Path GRAAL_HOME_RELATIVE_PATH;
@@ -82,14 +85,12 @@ final class DefaultHomeFinder implements HomeFinder {
         }
     }
 
-    static final HomeFinder INSTANCE = new DefaultHomeFinder();
-
     private volatile Path graalHome;
     private volatile String version;
     private volatile Map<String, Path> languageHomes;
     private volatile Map<String, Path> toolHomes;
 
-    private DefaultHomeFinder() {
+    public DefaultHomeFinder() {
     }
 
     @Override
@@ -97,6 +98,9 @@ final class DefaultHomeFinder implements HomeFinder {
         Path res = graalHome;
         if (res == null) {
             if (FORCE_GRAAL_HOME != null) {
+                if (VERBOSE) {
+                    System.err.println("GraalVM home forced to: " + FORCE_GRAAL_HOME);
+                }
                 res = FORCE_GRAAL_HOME;
             } else {
                 boolean aot = TruffleOptions.AOT;
@@ -106,9 +110,15 @@ final class DefaultHomeFinder implements HomeFinder {
                         graalvmHomeValue = System.getProperty("org.graalvm.home");
                     }
                     if (graalvmHomeValue != null) {
+                        if (VERBOSE) {
+                            System.err.println("GraalVM home already set to: " + graalvmHomeValue);
+                        }
                         res = Paths.get(graalvmHomeValue);
                     } else {
                         res = getGraalVmHome();
+                        if (VERBOSE) {
+                            System.err.println("Found GraalVM home: " + res);
+                        }
                         if (res == null) {
                             return null;
                         }
@@ -127,7 +137,13 @@ final class DefaultHomeFinder implements HomeFinder {
                     } else {
                         res = javaHome.getParent();
                     }
+                    if (VERBOSE) {
+                        System.err.println("GraalVM home found by java.home property as: " + res);
+                    }
                 }
+            }
+            if (VERBOSE) {
+                System.err.println("Set graalvm.home to: " + res);
             }
             if (System.getProperty("graalvm.home") == null) {
                 System.setProperty("graalvm.home", res.toAbsolutePath().toString());
@@ -234,6 +250,9 @@ final class DefaultHomeFinder implements HomeFinder {
                 result = getGraalVmHomeFallBack(executable);
             }
             if (result != null) {
+                if (VERBOSE) {
+                    System.err.println("GraalVM home found by executable as: " + result);
+                }
                 return result;
             }
         }
@@ -241,6 +260,9 @@ final class DefaultHomeFinder implements HomeFinder {
         Path result = objectFile != null ? getGraalVmHome(objectFile) : null;
         if (result == null) {
             result = getGraalVmHomeLibPolyglotFallBack(objectFile);
+        }
+        if (VERBOSE && result != null) {
+            System.err.println("GraalVM home found by object file as: " + result);
         }
         return result;
     }
@@ -328,7 +350,7 @@ final class DefaultHomeFinder implements HomeFinder {
     }
 
     /**
-     * Fallback for the GraalVM home using lacation of libpolyglot in jdk/jre layout.
+     * Fallback for the GraalVM home using location of libpolyglot in jdk/jre layout.
      *
      * @param objectFile the path to libpolyglot
      * @return the path to GraalVM home or null

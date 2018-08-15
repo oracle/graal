@@ -24,6 +24,7 @@
  */
 package com.oracle.graalvm.locator;
 
+import org.graalvm.polyglot.impl.HomeFinder;
 import com.oracle.truffle.api.TruffleOptions;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -52,7 +53,10 @@ public final class GraalVMLocator extends TruffleLocator
 
     private static List<URL> collectClassPath() {
 
-        HomeFinder homeFinder = HomeFinder.getDefault();
+        HomeFinder homeFinder = HomeFinder.getInstance(GraalVMLocator.class.getClassLoader());
+        if (homeFinder == null) {
+            throw new IllegalStateException("No HomeFinder instance.");
+        }
         String home = homeFinder.getHomeFolder().toString();
         if (System.getProperty("graalvm.home") == null) {
             // automatically set graalvm.home
