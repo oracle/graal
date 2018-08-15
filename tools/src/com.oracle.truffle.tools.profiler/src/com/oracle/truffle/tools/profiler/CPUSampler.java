@@ -207,8 +207,6 @@ public final class CPUSampler implements Closeable {
 
     private EventBinding<?> stacksBinding;
 
-    private final ProfilerNode<Payload> rootNode = new ProfilerNode<>(this, new Payload());
-
     private final Map<Thread, ProfilerNode<Payload>> rootNodes = new HashMap<>();
 
     private final Env env;
