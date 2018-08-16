@@ -57,14 +57,17 @@ public final class GraalVMLocator extends TruffleLocator
         if (homeFinder == null) {
             throw new IllegalStateException("No HomeFinder instance.");
         }
-        String home = homeFinder.getHomeFolder().toString();
-        if (System.getProperty("graalvm.home") == null) {
-            // automatically set graalvm.home
-            System.setProperty("graalvm.home", home);
-        }
-        if (System.getProperty("org.graalvm.home") == null) {
-            // automatically set graalvm.home
-            System.setProperty("org.graalvm.home", home);
+        Path homePath = homeFinder.getHomeFolder();
+        if (homePath != null) {
+            String home = homePath.toString();
+            if (System.getProperty("graalvm.home") == null) {
+                // automatically set graalvm.home
+                System.setProperty("graalvm.home", home);
+            }
+            if (System.getProperty("org.graalvm.home") == null) {
+                // automatically set graalvm.home
+                System.setProperty("org.graalvm.home", home);
+            }
         }
 
         String version = homeFinder.getVersion();
