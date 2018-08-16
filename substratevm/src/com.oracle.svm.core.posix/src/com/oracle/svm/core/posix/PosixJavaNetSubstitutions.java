@@ -507,46 +507,47 @@ final class Target_java_net_PlainDatagramSocketImpl {
         //   810      packetBufferLen = (*env)->GetIntField(env, packet, dp_bufLengthID);
         packetBufferLen = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).bufLength;
 
-        //   812      if (packetBufferLen > MAX_BUFFER_LEN) {
-        if (packetBufferLen > JavaNetNetUtilMD.MAX_BUFFER_LEN()) {
-            //   813
-            //   814          /* When JNI-ifying the JDK's IO routines, we turned
-            //   815           * reads and writes of byte arrays of size greater
-            //   816           * than 2048 bytes into several operations of size 2048.
-            //   817           * This saves a malloc()/memcpy()/free() for big
-            //   818           * buffers.  This is OK for file IO and TCP, but that
-            //   819           * strategy violates the semantics of a datagram protocol.
-            //   820           * (one big send) != (several smaller sends).  So here
-            //   821           * we *must* allocate the buffer.  Note it needn't be bigger
-            //   822           * than 65,536 (0xFFFF) the max size of an IP packet,
-            //   823           * anything bigger is truncated anyway.
-            //   824           *
-            //   825           * We may want to use a smarter allocation scheme at some
-            //   826           * point.
-            //   827           */
-            //   828          if (packetBufferLen > MAX_PACKET_LEN) {
-            if (packetBufferLen > JavaNetNetUtil.MAX_PACKET_LEN()) {
-                //   829              packetBufferLen = MAX_PACKET_LEN;
-                packetBufferLen = JavaNetNetUtil.MAX_PACKET_LEN();
-            }
-
-            //   831          fullPacket = (char *)malloc(packetBufferLen);
-            fullPacket = LibC.malloc(WordFactory.unsigned(packetBufferLen));
-            //   832
-            //   833          if (!fullPacket) {
-            if (fullPacket.isNull()) {
-                //   834              JNU_ThrowOutOfMemoryError(env, "Receive buffer native heap allocation failed");
-                throw new OutOfMemoryError("Receive buffer native heap allocation failed");
-            } else {
-                //   837              mallocedPacket = JNI_TRUE;
-                mallocedPacket = true;
-            }
-        } else {
-            //   840          fullPacket = &(BUF[0]);
-            fullPacket = BUF;
-        }
 
         try {
+            //   812      if (packetBufferLen > MAX_BUFFER_LEN) {
+            if (packetBufferLen > JavaNetNetUtilMD.MAX_BUFFER_LEN()) {
+                //   813
+                //   814          /* When JNI-ifying the JDK's IO routines, we turned
+                //   815           * reads and writes of byte arrays of size greater
+                //   816           * than 2048 bytes into several operations of size 2048.
+                //   817           * This saves a malloc()/memcpy()/free() for big
+                //   818           * buffers.  This is OK for file IO and TCP, but that
+                //   819           * strategy violates the semantics of a datagram protocol.
+                //   820           * (one big send) != (several smaller sends).  So here
+                //   821           * we *must* allocate the buffer.  Note it needn't be bigger
+                //   822           * than 65,536 (0xFFFF) the max size of an IP packet,
+                //   823           * anything bigger is truncated anyway.
+                //   824           *
+                //   825           * We may want to use a smarter allocation scheme at some
+                //   826           * point.
+                //   827           */
+                //   828          if (packetBufferLen > MAX_PACKET_LEN) {
+                if (packetBufferLen > JavaNetNetUtil.MAX_PACKET_LEN()) {
+                    //   829              packetBufferLen = MAX_PACKET_LEN;
+                    packetBufferLen = JavaNetNetUtil.MAX_PACKET_LEN();
+                }
+
+                //   831          fullPacket = (char *)malloc(packetBufferLen);
+                fullPacket = LibC.malloc(WordFactory.unsigned(packetBufferLen));
+                //   832
+                //   833          if (!fullPacket) {
+                if (fullPacket.isNull()) {
+                    //   834              JNU_ThrowOutOfMemoryError(env, "Receive buffer native heap allocation failed");
+                    throw new OutOfMemoryError("Receive buffer native heap allocation failed");
+                } else {
+                    //   837              mallocedPacket = JNI_TRUE;
+                    mallocedPacket = true;
+                }
+            } else {
+                //   840          fullPacket = &(BUF[0]);
+                fullPacket = BUF;
+            }
+
             //   843      do {
             do {
                 //   844          retry = JNI_FALSE;
@@ -559,51 +560,42 @@ final class Target_java_net_PlainDatagramSocketImpl {
                     //   848              if (ret <= 0) {
                     if (ret <= 0) {
                         //   849                  if (ret == 0) {
-                        try {
-                            if (ret == 0) {
-                                //   850                      JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
-                                //   851                                      "Receive timed out");
-                                throw new SocketTimeoutException("Receive timed out");
-                                //   852                  } else if (ret == JVM_IO_ERR) {
-                            } else if (ret == Target_jvm.JVM_IO_ERR()) {
-                                //   853                       if (errno == ENOMEM) {
-                                if (Errno.errno() == Errno.ENOMEM()) {
-                                    //   854                          JNU_ThrowOutOfMemoryError(env, "NET_Timeout native heap allocation failed");
-                                    throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
-                                    //   855  #ifdef __linux__
-                                } else if (IsDefined.__linux__()) {
-                                    //   856                       } else if (errno == EBADF) {
-                                    if (Errno.errno() == Errno.EBADF()) {
-                                        //   857                           JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
-                                        throw new SocketException("Socket closed");
-                                    } else {
-                                        //   859                           NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Receive failed");
-                                        throw new SocketException(PosixUtils.lastErrorString("Receive failed"));
-                                    }
-                                    //   860  #else
-                                } else {
-                                    //   862                           JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
+                        if (ret == 0) {
+                            //   850                      JNU_ThrowByName(env, JNU_JAVANETPKG "SocketTimeoutException",
+                            //   851                                      "Receive timed out");
+                            throw new SocketTimeoutException("Receive timed out");
+                            //   852                  } else if (ret == JVM_IO_ERR) {
+                        } else if (ret == Target_jvm.JVM_IO_ERR()) {
+                            //   853                       if (errno == ENOMEM) {
+                            if (Errno.errno() == Errno.ENOMEM()) {
+                                //   854                          JNU_ThrowOutOfMemoryError(env, "NET_Timeout native heap allocation failed");
+                                throw new OutOfMemoryError("NET_Timeout native heap allocation failed");
+                                //   855  #ifdef __linux__
+                            } else if (IsDefined.__linux__()) {
+                                //   856                       } else if (errno == EBADF) {
+                                if (Errno.errno() == Errno.EBADF()) {
+                                    //   857                           JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
                                     throw new SocketException("Socket closed");
-                                    //   863  #endif
+                                } else {
+                                    //   859                           NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Receive failed");
+                                    throw new SocketException(PosixUtils.lastErrorString("Receive failed"));
                                 }
-
+                                //   860  #else
+                            } else {
+                                //   862                           JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Socket closed");
+                                throw new SocketException("Socket closed");
+                                //   863  #endif
+                            }
                                 //   865                  } else if (ret == JVM_IO_INTR) {
-                            } else if (ret == Target_jvm.JVM_IO_INTR()) {
-                                //   866                      JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
-                                //   867                                      "operation interrupted");
-                                throw new InterruptedIOException("operation interrupted");
-                            }
-                        } finally {
-                            //   870                  if (mallocedPacket) {
-                            if (mallocedPacket) {
-                                //   871                      free(fullPacket);
-                                LibC.free(fullPacket);
-                                /* so that the outter try/finally does not attempt to double-free() */
-                                mallocedPacket = false;
-                            }
-                            //   874                  return;
-                            /* Unreachable. */
+                        } else if (ret == Target_jvm.JVM_IO_INTR()) {
+                            //   866                      JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
+                            //   867                                      "operation interrupted");
+                            throw new InterruptedIOException("operation interrupted");
                         }
+                        //   870                  if (mallocedPacket) {
+                        //   871                      free(fullPacket);
+                        //   874                  return;
+                        /* This free() is handled by the outermost `finally` block */
                     }
                 }
 
@@ -708,7 +700,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 }
                 //   942      } while (retry);
             } while (retry);
-
         } finally {
             //   944      if (mallocedPacket) {
             if (mallocedPacket) {
@@ -718,6 +709,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
         // @formatter:on
     }
+
 
     /* Do not re-format commented out code: @formatter:off */
     //   1049  /*
