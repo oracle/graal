@@ -93,6 +93,7 @@ public final class PosixJavaNetSubstitutions {
     }
 }
 
+/* { Allow names with non-standard names: Checkstyle: stop */
 @TargetClass(className = "java.net.PlainDatagramSocketImpl")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainDatagramSocketImpl {
@@ -1353,8 +1354,8 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
     }
     // @formatter:on
-
 }
+/* } Allow names with non-standard names: Checkstyle: resume */
 
 @TargetClass(java.net.DatagramSocket.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -1379,11 +1380,13 @@ final class Target_java_net_DatagramPacket {
     @Alias int port;
 }
 
+/* { Allow names with non-standard names: Checkstyle: stop */
 class Util_java_net_DatagramPacket {
     static Target_java_net_DatagramPacket as_Target_java_net_DatagramPacket(DatagramPacket packet) {
         return KnownIntrinsics.unsafeCast(packet, Target_java_net_DatagramPacket.class);
     }
 }
+/* } Allow names with non-standard names: Checkstyle: resume */
 
 @TargetClass(java.net.DatagramSocketImpl.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -1393,12 +1396,15 @@ final class Target_java_net_DatagramSocketImpl {
     @Alias int localPort;
 }
 
+/* { Allow names with non-standard names: Checkstyle: stop */
 class Util_java_net_DatagramSocketImpl {
     static Target_java_net_DatagramSocketImpl as_Target_java_net_DatagramSocketImpl(Target_java_net_PlainDatagramSocketImpl tjnsi) {
         return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_DatagramSocketImpl.class);
     }
 }
+/* } Allow names with non-standard names: Checkstyle: resume */
 
+/* { Allow names with non-standard names: Checkstyle: stop */
 class Util_java_net_PlainDatagramSocketImpl {
     static Target_java_net_DatagramSocketImpl as_Target_java_net_DatagramSocketImpl(Target_java_net_PlainDatagramSocketImpl tjnsi) {
         return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_DatagramSocketImpl.class);
@@ -1765,6 +1771,7 @@ class Util_java_net_PlainDatagramSocketImpl {
         return false;
     }
 }
+/* } Allow names with non-standard names: Checkstyle: resume */
 
 @TargetClass(java.net.ServerSocket.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
