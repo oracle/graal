@@ -55,7 +55,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class PolyglotCachingTest {
 
-    private static final int ITERATIONS = 5;
+    /*
+     * Also used for other GC tests.
+     */
+    public static final int GC_TEST_ITERATIONS = 15;
 
     @Test
     public void testDisableCaching() throws Exception {
@@ -124,7 +127,7 @@ public class PolyglotCachingTest {
         Source source = Source.create(ProxyLanguage.ID, "0"); // needs to stay alive
 
         WeakReference<CallTarget> parsedRef = new WeakReference<>(assertParsedEval(context, source));
-        for (int i = 0; i < ITERATIONS; i++) {
+        for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             // cache should stay valid and never be collected as long as the source is alive.
             assertCachedEval(context, source);
             System.gc();
@@ -143,7 +146,7 @@ public class PolyglotCachingTest {
         setupTestLang();
 
         Context survivingContext = Context.create();
-        assertObjectsCollectible(ITERATIONS, (iteration) -> {
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget target = assertParsedEval(survivingContext, source);
             assertCachedEval(survivingContext, source);
@@ -163,7 +166,7 @@ public class PolyglotCachingTest {
 
         List<Source> survivingSources = new ArrayList<>();
 
-        assertObjectsCollectible(ITERATIONS, (iteration) -> {
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
             Context context = Context.create();
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget parsedAST = assertParsedEval(context, source);
