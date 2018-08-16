@@ -1883,7 +1883,7 @@ final class Target_java_net_InetAddress_CachedLocalHost {
 }
 
 /** Methods to operate on java.net.InetAddress instances. */
-class Util_java_net_InetAddress {
+final class Util_java_net_InetAddress {
 
     /** Private constructor: No instances. */
     private Util_java_net_InetAddress() {
@@ -2019,7 +2019,7 @@ final class Target_java_net_Inet4Address {
 }
 
 /** Methods to operate on java.net.Inet4Address instances. */
-class Util_java_net_Inet4Address {
+final class Util_java_net_Inet4Address {
 
     /** Private constructor: No instances. */
     private Util_java_net_Inet4Address() {
@@ -2080,7 +2080,7 @@ class Util_java_net_Inet4Address {
 /* In particular, the */
 /*     337 #else /* defined(_ALLBSD_SOURCE) && !defined(HAS_GLIBC_GETHOSTBY_R) */
 /* branch */
-/** Substitutions for the code from src/solaris/native/java/net/Inet4AddressImpl.c?v=Java_1.8.0_40_b10 */
+/** Substitutions for the code from src/solaris/native/java/net/Inet4AddressImpl.c?v=Java_1.8.0_40_b10. */
 @TargetClass(className = "java.net.Inet4AddressImpl")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet4AddressImpl {
@@ -2464,7 +2464,7 @@ final class Target_java_net_Inet6Address {
 }
 
 /** Methods to operate on java.net.Inet6Address instances. */
-class Util_java_net_Inet6Address {
+final class Util_java_net_Inet6Address {
 
     /** Private constructor: No instances. */
     private Util_java_net_Inet6Address() {
@@ -3028,14 +3028,14 @@ final class Target_java_net_NetworkInterface {
     @Alias String name;
     @Alias String displayName;
     @Alias int index;
-    @Alias InetAddress addrs[];
-    @Alias InterfaceAddress bindings[];
-    @Alias NetworkInterface childs[];
+    @Alias InetAddress[] addrs;
+    @Alias InterfaceAddress[] bindings;
+    @Alias NetworkInterface[] childs;
     @Alias NetworkInterface parent;
     @Alias boolean virtual;
 
     @Alias
-    public Target_java_net_NetworkInterface() {
+    Target_java_net_NetworkInterface() {
     }
 
     @Substitute
@@ -3686,7 +3686,7 @@ final class Target_java_net_SocketImpl {
 }
 
 /** Methods to operate on java.net.SocketImpl instances. */
-class Util_java_net_SocketImpl {
+final class Util_java_net_SocketImpl {
 
     /** Private constructor: No instances. */
     private Util_java_net_SocketImpl() {
@@ -3716,7 +3716,7 @@ final class Target_java_net_AbstractPlainSocketImpl {
     @Alias int trafficClass;
 }
 
-/** Translations from jdk/src/solaris/native/java/net/PlainSocketImpl.c */
+/** Translations from jdk/src/solaris/native/java/net/PlainSocketImpl.c. */
 @TargetClass(className = "java.net.PlainSocketImpl")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainSocketImpl {
@@ -3865,7 +3865,7 @@ final class Target_java_net_PlainSocketImpl {
         }
         // 817     /* JVM_SocketAvailable returns 0 for failure, 1 for success */
         // 818     if (!JVM_SocketAvailable(fd, &ret)){
-        if (! CTypeConversion.toBoolean(VmPrimsJVM.JVM_SocketAvailable(fd, ret_Pointer))) {
+        if (!CTypeConversion.toBoolean(VmPrimsJVM.JVM_SocketAvailable(fd, ret_Pointer))) {
             // 819         if (errno == ECONNRESET) {
             if (Errno.errno() == Errno.ECONNRESET()) {
                 // 820             JNU_ThrowByName(env, "sun/net/ConnectionResetException", "");
@@ -5140,7 +5140,7 @@ final class Target_sun_net_sdp_SdpSupport {
                 res = Unistd.dup2(s, fd);
             } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
             // 119         if (res < 0)
-            if (res < 0 ) {
+            if (res < 0) {
                 /* FIXME: Not implementing JNU_ThrowIOExceptionWithLastError. */
                 // 120             JNU_ThrowIOExceptionWithLastError(env, "dup2");
                 throw new IOException("dup2");
@@ -5228,7 +5228,7 @@ final class Util_sun_net_sdp_SdpSupport {
 }
 
 /** Things I need from jdk/src/share/javavm/export/jvm.h. */
-class Target_jvm {
+final class Target_jvm {
 
     /* Private constructor: No instances. */
     private Target_jvm() {
@@ -5276,7 +5276,7 @@ class Target_jvm {
 }
 
 /** Things I need from jdk/src/share/javavm/export/jni.h. */
-class Target_jni {
+final class Target_jni {
 
     /* Private constructor: No instances. */
     private Target_jni() {
@@ -5293,7 +5293,7 @@ class Target_jni {
     }
 }
 
-class Util_jni {
+final class Util_jni {
 
     /* Private constructor: No instances. */
     private Util_jni() {
