@@ -34,6 +34,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -154,6 +155,8 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();
 
     public abstract AbstractExecutionListenerImpl getExecutionListenerImpl();
+
+    public abstract Path findHome();
 
     public abstract static class AbstractExecutionListenerImpl {
 

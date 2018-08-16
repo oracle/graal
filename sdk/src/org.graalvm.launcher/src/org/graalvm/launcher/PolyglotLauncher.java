@@ -102,7 +102,6 @@ public final class PolyglotLauncher extends Launcher {
     private void launch(String[] args) {
         List<String> arguments = new ArrayList<>(Arrays.asList(args));
         if (isAOT()) {
-            nativeAccess.setGraalVMProperties(null);
             nativeAccess.maybeExec(arguments, true, Collections.emptyMap(), VMType.Native);
         }
 
