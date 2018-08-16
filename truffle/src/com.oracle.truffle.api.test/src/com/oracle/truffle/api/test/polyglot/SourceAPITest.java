@@ -355,7 +355,7 @@ public class SourceAPITest {
 
     @Test
     public void noIOWhenContentSpecified() {
-        File file = new File("some.js");
+        File file = new File("some.tjs");
 
         String text = "// Hello";
 
@@ -363,20 +363,20 @@ public class SourceAPITest {
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNotNull("Mime type specified", source.getMimeType());
         assertTrue("Recognized as JavaScript", source.getMimeType().equals("text/javascript"));
-        assertEquals("some.js", source.getName());
+        assertEquals("some.tjs", source.getName());
     }
 
     @Test
     public void fromTextWithFileURI() {
-        File file = new File("some.js");
+        File file = new File("some.tjs");
 
         String text = "// Hello";
 
-        Source source = Source.newBuilder("lang", text, "another.js").uri(file.toURI()).buildLiteral();
+        Source source = Source.newBuilder("lang", text, "another.tjs").uri(file.toURI()).buildLiteral();
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNull("Mime type not specified", source.getMimeType());
         assertNull("Null MIME type", source.getMimeType());
-        assertEquals("another.js", source.getName());
+        assertEquals("another.tjs", source.getName());
         assertEquals("Using the specified URI", file.toURI(), source.getURI());
     }
 
@@ -458,18 +458,18 @@ public class SourceAPITest {
         File sample = File.createTempFile("sample", ".jar");
         sample.deleteOnExit();
         JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
-        os.putNextEntry(new ZipEntry("x.js"));
+        os.putNextEntry(new ZipEntry("x.tjs"));
         byte[] bytes = "Hi!".getBytes("UTF-8");
         os.write(bytes);
         os.closeEntry();
         os.close();
 
-        URL resource = new URL("jar:" + sample.toURI() + "!/x.js");
+        URL resource = new URL("jar:" + sample.toURI() + "!/x.tjs");
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder("TestJS", resource).build();
         Assert.assertArrayEquals(bytes, s.getBytes().toByteArray());
-        assertEquals("x.js", s.getName());
+        assertEquals("x.tjs", s.getName());
 
         sample.delete();
     }
@@ -600,7 +600,7 @@ public class SourceAPITest {
 
     }
 
-    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/javascript")
+    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js")
     public static class TestJSLanguage extends ProxyLanguage {
 
     }

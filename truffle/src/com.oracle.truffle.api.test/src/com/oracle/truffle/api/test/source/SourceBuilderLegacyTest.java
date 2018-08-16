@@ -205,28 +205,28 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void noIOWhenContentSpecified() {
-        File file = new File("some.js");
+        File file = new File("some.tjs");
 
         String text = "// Hello";
 
         Source source = Source.newBuilder(file).content(text).build();
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNotNull("Mime type specified", source.getMimeType());
-        assertTrue("Recognized as JavaScript", source.getMimeType().endsWith("/javascript"));
-        assertEquals("some.js", source.getName());
+        assertEquals("Recognized as JavaScript", "application/test-js", source.getMimeType());
+        assertEquals("some.tjs", source.getName());
     }
 
     @Test
     public void fromTextWithFileURI() {
-        File file = new File("some.js");
+        File file = new File("some.tjs");
 
         String text = "// Hello";
 
-        Source source = Source.newBuilder(text).uri(file.toURI()).mimeType("plain/text").name("another.js").build();
+        Source source = Source.newBuilder(text).uri(file.toURI()).mimeType("plain/text").name("another.tjs").build();
         assertEquals("The content has been changed", text, source.getCharacters());
         assertNotNull("Mime type specified", source.getMimeType());
         assertEquals("Assigned MIME type", "plain/text", source.getMimeType());
-        assertEquals("another.js", source.getName());
+        assertEquals("another.tjs", source.getName());
         assertEquals("Using the specified URI", file.toURI(), source.getURI());
     }
 
@@ -302,17 +302,17 @@ public class SourceBuilderLegacyTest {
         File sample = File.createTempFile("sample", ".jar");
         sample.deleteOnExit();
         JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
-        os.putNextEntry(new ZipEntry("x.js"));
+        os.putNextEntry(new ZipEntry("x.tjs"));
         os.write("Hi!".getBytes("UTF-8"));
         os.closeEntry();
         os.close();
 
-        URL resource = new URL("jar:" + sample.toURI() + "!/x.js");
+        URL resource = new URL("jar:" + sample.toURI() + "!/x.tjs");
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder(resource).build();
         assertEquals("Hi!", s.getCharacters());
-        assertEquals("x.js", s.getName());
+        assertEquals("x.tjs", s.getName());
 
         sample.delete();
     }
@@ -412,8 +412,8 @@ public class SourceBuilderLegacyTest {
 
     @Test
     public void subSourceFromTwoFiles() throws Exception {
-        File f1 = File.createTempFile("subSource", ".js").getCanonicalFile();
-        File f2 = File.createTempFile("subSource", ".js").getCanonicalFile();
+        File f1 = File.createTempFile("subSource", ".tjs").getCanonicalFile();
+        File f2 = File.createTempFile("subSource", ".tjs").getCanonicalFile();
 
         try (FileWriter w = new FileWriter(f1)) {
             w.write("function test() {\n" + "  return 1;\n" + "}\n");
