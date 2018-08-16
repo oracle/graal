@@ -119,7 +119,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
     //    190                                             jint localport, jobject iaObj)
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
-    protected void bind0(int localport, InetAddress iaObj) throws SocketException {
+    protected void bind0(int localportArg, InetAddress iaObj) throws SocketException {
+        /* Warning: The parameter localport should not be assigned */
+        int localport = localportArg;
         //   191      /* fdObj is the FileDescriptor field on this */
         //   192      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
         FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
@@ -228,7 +230,8 @@ final class Target_java_net_PlainDatagramSocketImpl {
         FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
 
         //   368      jint trafficClass = (*env)->GetIntField(env, this, pdsi_trafficClassID);
-        int trafficClass = this.trafficClass;
+        /* Warning: The local variable trafficClass is hiding a field from type Target_java_net_PlainDatagramSocketImpl */
+        int trafficClassLocal = this.trafficClass;
 
         //   370      jbyteArray packetBuffer;
         byte[] packetBuffer = null;
@@ -237,10 +240,13 @@ final class Target_java_net_PlainDatagramSocketImpl {
         InetAddress packetAddress = null;
 
         //   372      jint packetBufferOffset, packetBufferLen, packetPort;
-        int packetBufferOffset, packetBufferLen, packetPort;
+        int packetBufferOffset;
+        int packetBufferLen;
+        int packetPort;
 
         //   373      jboolean connected;
-        boolean connected;
+        /* Warning: The local variable connected is hiding a field from type Target_java_net_PlainDatagramSocketImpl */
+        boolean connectedLocal;
 
         //   375      /* The fdObj'fd */
         //   376      jint fd;
@@ -272,7 +278,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
 
         //   393      connected = (*env)->GetBooleanField(env, this, pdsi_connected);
-        connected = this.connected;
+        connectedLocal = this.connected;
 
         //   395      packetBuffer = (*env)->GetObjectField(env, packet, dp_bufID);
         packetBuffer = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).buf;
@@ -292,7 +298,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         packetBufferLen = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length;
 
         //   405      if (connected) {
-        if (connected) {
+        if (connectedLocal) {
             //   406          /* arg to NET_Sendto () null in this case */
             //   407          len = 0;
             len_Pointer.write(0);
@@ -357,9 +363,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
         //   449  #ifdef AF_INET6
         if (IsDefined.socket_AF_INET6()) {
             //   450      if (trafficClass != 0 && ipv6_available()) {
-            if (trafficClass != 0 && JavaNetNetUtil.ipv6_available()) {
+            if (trafficClassLocal != 0 && JavaNetNetUtil.ipv6_available()) {
                 //   451          NET_SetTrafficClass((struct sockaddr *)&rmtaddr, trafficClass);
-                JavaNetNetUtilMD.NET_SetTrafficClass(rmtaddr, trafficClass);
+                JavaNetNetUtilMD.NET_SetTrafficClass(rmtaddr, trafficClassLocal);
             }
             //   453  #endif /* AF_INET6 */
         }
@@ -443,13 +449,15 @@ final class Target_java_net_PlainDatagramSocketImpl {
         FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
 
         //   773      jint timeout = (*env)->GetIntField(env, this, pdsi_timeoutID);
-        int timeout = this.timeout;
+        /* Warning: The local variable timeout is hiding a field from type Target_java_net_PlainDatagramSocketImpl */
+        int timeoutLocal = this.timeout;
 
         //   775      jbyteArray packetBuffer;
         byte[] packetBuffer;
         //   776      jint packetBufferOffset, packetBufferLen;
 
-        int packetBufferOffset, packetBufferLen;
+        int packetBufferOffset;
+        int packetBufferLen;
 
         //   778      int fd;
         int fd;
@@ -554,9 +562,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 retry = false;
 
                 //   846          if (timeout) {
-                if (timeout > 0) {
+                if (timeoutLocal > 0) {
                     //   847              int ret = NET_Timeout(fd, timeout);
-                    int ret = JavaNetNetUtilMD.NET_Timeout(fd, timeout);
+                    int ret = JavaNetNetUtilMD.NET_Timeout(fd, timeoutLocal);
                     //   848              if (ret <= 0) {
                     if (ret <= 0) {
                         //   849                  if (ret == 0) {
@@ -1581,7 +1589,7 @@ class Util_java_net_PlainDatagramSocketImpl {
                 //  1616
                 //  1617          if (JVM_GetSockOpt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
                 //  1618                             (char*)&index, &len) < 0) {
-                if (VmPrimsJVM.JVM_GetSockOpt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_IF(), index_Pointer, len_Pointer) < 0 ) {
+                if (VmPrimsJVM.JVM_GetSockOpt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_IF(), index_Pointer, len_Pointer) < 0) {
                     //  1619              NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
                     //  1620                             "Error getting socket option");
                     //  1621              return NULL;
@@ -1726,7 +1734,7 @@ class Util_java_net_PlainDatagramSocketImpl {
         ittl_Pointer.write((byte) ttl);
         //  1851      if (JVM_SetSockOpt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
         //  1852                         (char*)&ittl, sizeof(ittl)) < 0) {
-        if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_HOPS(), ittl_Pointer, SizeOf.get(CCharPointer.class))<0) {
+        if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_HOPS(), ittl_Pointer, SizeOf.get(CCharPointer.class)) < 0) {
             //  1853          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
             //  1854                         "Error setting socket option");
             throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
@@ -1743,7 +1751,7 @@ class Util_java_net_PlainDatagramSocketImpl {
 
     /** Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer. */
     static boolean not(byte b) {
-        if (b == 0 ) {
+        if (b == 0) {
             return true;
         }
         return false;
