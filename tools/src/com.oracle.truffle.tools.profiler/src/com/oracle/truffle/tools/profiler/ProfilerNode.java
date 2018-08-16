@@ -152,4 +152,8 @@ public final class ProfilerNode<T> {
             children.put(childLocation, child);
         }
     }
+
+    SourceLocation getSourceLocation() {
+        return sourceLocation;
+    }
 }
