@@ -772,13 +772,6 @@ public class BreakpointTest extends AbstractDebugTest {
     @SuppressWarnings("try") // auto-closeable resource session is never referenced in body of
                              // corresponding try statement
     public void testGlobalBreakpoints() throws Throwable {
-        try {
-            Class.forName("java.beans.PropertyChangeListener");
-        } catch (ClassNotFoundException ex) {
-            // skip the test if running only with java.base JDK9 module
-            return;
-        }
-
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT,\n" +
                         "  STATEMENT\n" +
@@ -875,13 +868,6 @@ public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testGlobalBreakpointsInMultipleSessions() throws Throwable {
-        try {
-            Class.forName("java.beans.PropertyChangeListener");
-        } catch (ClassNotFoundException ex) {
-            // skip the test if running only with java.base JDK9 module
-            return;
-        }
-
         final Source source = testSource("ROOT(\n" +
                         "  STATEMENT,\n" +
                         "  STATEMENT,\n" +

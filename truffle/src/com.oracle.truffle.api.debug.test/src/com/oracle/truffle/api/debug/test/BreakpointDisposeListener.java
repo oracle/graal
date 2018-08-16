@@ -24,39 +24,34 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Debugger;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import java.util.function.Consumer;
 import org.junit.Assert;
 
-final class BreakpointDisposeListener implements PropertyChangeListener {
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
+
+final class BreakpointDisposeListener implements Consumer<Breakpoint> {
 
     static void register(boolean[] notified, Debugger debugger, Breakpoint globalBreakpoint) {
-        PropertyChangeListener disposeBPListener = new BreakpointDisposeListener(notified, debugger, globalBreakpoint);
-        debugger.addPropertyChangeListener(disposeBPListener);
+        Consumer<Breakpoint> disposeBPListener = new BreakpointDisposeListener(notified, globalBreakpoint);
+        debugger.addBreakpointAddedListener((breakpoint) -> Assert.fail("No new breakpoint is excpected to be added. Breakpoint = " + breakpoint));
+        debugger.addBreakpointRemovedListener(disposeBPListener);
     }
 
     private final boolean[] notified;
-    private final Debugger debugger;
     private final Breakpoint globalBreakpoint;
 
-    private BreakpointDisposeListener(boolean[] notified, Debugger debugger, Breakpoint globalBreakpoint) {
+    private BreakpointDisposeListener(boolean[] notified, Breakpoint globalBreakpoint) {
         this.notified = notified;
-        this.debugger = debugger;
         this.globalBreakpoint = globalBreakpoint;
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent event) {
+    public void accept(Breakpoint breakpoint) {
         notified[0] = true;
-        Assert.assertEquals(Debugger.PROPERTY_BREAKPOINTS, event.getPropertyName());
-        Assert.assertEquals(debugger, event.getSource());
-        Assert.assertNull(event.getNewValue());
-        Assert.assertNotEquals(globalBreakpoint, event.getOldValue());
-        Breakpoint oldBP = (Breakpoint) event.getOldValue();
+        Assert.assertNotEquals(globalBreakpoint, breakpoint);
         try {
-            oldBP.dispose();
+            breakpoint.dispose();
             Assert.fail("Public dispose must not be possible for global breakpoints.");
         } catch (IllegalStateException ex) {
             // O.K.

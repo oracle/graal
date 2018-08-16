@@ -559,13 +559,6 @@ public class AllocationReporterTest {
 
     @Test
     public void testReporterChangeListener() {
-        try {
-            Class.forName("java.beans.PropertyChangeListener");
-        } catch (ClassNotFoundException ex) {
-            // skip the test if running only with java.base JDK9 module
-            return;
-        }
-
         // Test of AllocationReporter property change listener notifications
         allocation.setEnabled(false);
         Source source = Source.create(AllocationReporterLanguage.ID, "NEW");
