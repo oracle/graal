@@ -100,13 +100,13 @@ final class Target_java_net_PlainDatagramSocketImpl {
 
     // translated from {jdk8}/src/solaris/native/java/net/PlainDatagramSocketImpl.c
 
-    @Alias
+    @Alias //
     boolean connected;
 
-    @Alias
+    @Alias //
     int trafficClass;
 
-    @Alias
+    @Alias //
     int timeout;
 
     /* Do not re-format commented out code: @formatter:off */
@@ -719,7 +719,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
         // @formatter:on
     }
 
-
     /* Do not re-format commented out code: @formatter:off */
     //   1049  /*
     //   1050   * Class:     java_net_PlainDatagramSocketImpl
@@ -760,8 +759,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
         JavaNetNetUtilMD.NET_SocketClose(fd);
     }
     // @formatter:on
-
-
 
     /* Do not re-format commented out code: @formatter:off */
     //  1718  /*
@@ -907,7 +904,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
         return null;
     }
     // @formatter:on
-
 
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
@@ -1116,6 +1112,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     }
     // @formatter:on
 
+    /* Do not re-format commented out code: @formatter:off */
     //  2312  /*
     //  2313   * Class:     java_net_PlainDatagramSocketImpl
     //  2314   * Method:    dataAvailable
@@ -1126,7 +1123,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
     @Substitute
     @SuppressWarnings({"static-method"})
     int dataAvailable() {
-        /* Do not re-format commented out code: @formatter:off */
         //  2320      int fd, retval;
         int fd;
         CIntPointer retval_Pointer = StackValue.get(CIntPointer.class);
@@ -1155,6 +1151,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     }
     // @formatter:on
 
+    /* Do not re-format commented out code: @formatter:off */
     //  1859  /*
     //  1860   * Class:     java_net_PlainDatagramSocketImpl
     //  1861   * Method:    setTTL
@@ -1166,7 +1163,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
     protected void setTimeToLive(int ttl) throws IOException {
-        /* Do not re-format commented out code: @formatter:off */
         //  1868      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
         FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
 
@@ -1217,8 +1213,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     }
     // @formatter:on
 
-
-
+    /* Do not re-format commented out code: @formatter:off */
     //  1909  /*
     //  1910   * Class:     java_net_PlainDatagramSocketImpl
     //  1911   * Method:    getTTL
@@ -1292,7 +1287,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
             return ttl_Pointer.read();
         }
     }
+    // @formatter:on
 
+    /* Do not re-format commented out code: @formatter:off */
     //   248  /*
     //   249   * Class:     java_net_PlainDatagramSocketImpl
     //   250   * Method:    connect0
@@ -1304,7 +1301,6 @@ final class Target_java_net_PlainDatagramSocketImpl {
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
     protected void connect0(InetAddress address, int port) throws SocketException {
-        /* Do not re-format commented out code: @formatter:off */
         //   256      /* The object's field */
         //   257      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
         FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
@@ -1410,6 +1406,7 @@ class Util_java_net_PlainDatagramSocketImpl {
         return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_DatagramSocketImpl.class);
     }
 
+    /* Do not re-format commented out code: @formatter:off */
     //   137  static int getFD(JNIEnv *env, jobject this) {
     static int getFD(Target_java_net_PlainDatagramSocketImpl self) {
         //   138      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
@@ -1422,6 +1419,7 @@ class Util_java_net_PlainDatagramSocketImpl {
         //   142      return (*env)->GetIntField(env, fdObj, IO_fd_fdID);
         return PosixUtils.getFD(fdObj);
     }
+    /* @formatter:on */
 
     /* Do not re-format commented out code: @formatter:off */
     //  1487  jobject getMulticastInterface(JNIEnv *env, jobject this, int fd, jint opt) {
@@ -1716,9 +1714,9 @@ class Util_java_net_PlainDatagramSocketImpl {
         //  1713      return NULL;
         return null;
     }
-
     // @formatter:on
 
+    /* Do not re-format commented out code: @formatter:off */
     //  1836  static void setTTL(JNIEnv *env, int fd, jint ttl) {
     static void setTTL(int fd, int ttl) throws SocketException {
         //  1837      char ittl = (char)ttl;
@@ -1732,7 +1730,9 @@ class Util_java_net_PlainDatagramSocketImpl {
             throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
         }
     }
+    /* @formatter:on */
 
+    /* Do not re-format commented out code: @formatter:off */
     //  1849  static void setHopLimit(JNIEnv *env, int fd, jint ttl) {
     static void setHopLimit(int fd, int ttl) throws SocketException {
         //  1850      int ittl = (int)ttl;
@@ -1746,6 +1746,7 @@ class Util_java_net_PlainDatagramSocketImpl {
             throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
         }
     }
+    /* @formatter:on */
 
     static Boolean createBoolean(boolean b) {
         return b;
@@ -1755,7 +1756,9 @@ class Util_java_net_PlainDatagramSocketImpl {
         return i;
     }
 
-    /** Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer. */
+    /**
+     * Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer.
+     */
     static boolean not(byte b) {
         if (b == 0) {
             return true;
@@ -1763,7 +1766,9 @@ class Util_java_net_PlainDatagramSocketImpl {
         return false;
     }
 
-    /** Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer. */
+    /**
+     * Useful because you can't apply ! to non-booleans, to keep the code above a wee bit clearer.
+     */
     static boolean not(int i) {
         if (i == 0) {
             return true;
@@ -3365,7 +3370,7 @@ final class Target_java_net_Socket {
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketInputStream {
 
-    /* Do not re-format commeted-out code: @formatter:off
+    /* Do not re-format commeted-out code: @formatter:off */
     // 055 /*
     // 056  * Class: java_net_SocketInputStream
     // 057  * Method: socketRead0
@@ -5087,8 +5092,6 @@ final class Target_sun_net_sdp_SdpSupport {
     private Target_sun_net_sdp_SdpSupport() {
     }
 
-    /* @formatter:on */
-
     /* Do not re-format commented-out code: @formatter:off */
     // 094 /**
     // 095  * Converts an existing file descriptor, that references an unbound TCP socket,
@@ -5148,7 +5151,9 @@ final class Target_sun_net_sdp_SdpSupport {
             } while ((res == -1) && (Errno.errno() == Errno.EINTR()));
         }
     }
+    /* @formatter:on */
 }
+
 final class Util_sun_net_sdp_SdpSupport {
 
     // 030 #if defined(__solaris__)
