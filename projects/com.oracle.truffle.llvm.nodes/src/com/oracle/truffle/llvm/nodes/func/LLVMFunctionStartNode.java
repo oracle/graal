@@ -34,7 +34,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -43,7 +42,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameNullerUtil;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -56,8 +54,6 @@ public class LLVMFunctionStartNode extends RootNode {
     private final int explicitArgumentsCount;
     private final DebugInformation debugInformation;
 
-    private final ContextReference<LLVMContext> ctxRef;
-
     public LLVMFunctionStartNode(LLVMLanguage language, LLVMExpressionNode node, FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource,
                     LLVMSourceLocation location) {
         super(language, frameDescriptor);
@@ -66,12 +62,11 @@ public class LLVMFunctionStartNode extends RootNode {
         this.node = node;
         this.name = name;
         this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-        this.ctxRef = language.getContextReference();
     }
 
     @Override
     public SourceSection getSourceSection() {
-        return debugInformation.sourceLocation.getSourceSection(ctxRef);
+        return debugInformation.sourceLocation.getSourceSection();
     }
 
     @Override

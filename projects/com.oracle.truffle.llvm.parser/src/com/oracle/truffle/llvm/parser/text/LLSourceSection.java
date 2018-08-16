@@ -34,7 +34,6 @@ import java.nio.file.Paths;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazyContext;
 
 final class LLSourceSection extends LLVMSourceLocation.LazySourceSection {
 
@@ -45,7 +44,7 @@ final class LLSourceSection extends LLVMSourceLocation.LazySourceSection {
     }
 
     @Override
-    public SourceSection get(LazyContext context) {
+    public SourceSection get() {
         return section;
     }
 

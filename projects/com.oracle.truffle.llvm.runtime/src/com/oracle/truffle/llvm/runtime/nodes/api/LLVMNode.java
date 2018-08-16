@@ -132,7 +132,7 @@ public abstract class LLVMNode extends Node {
     public SourceSection getSourceSection() {
         final LLVMSourceLocation location = getSourceLocation();
         if (location != null) {
-            return location.getSourceSection(getContextReference());
+            return location.getSourceSection();
         }
 
         return null;

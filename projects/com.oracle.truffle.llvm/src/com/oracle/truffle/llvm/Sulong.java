@@ -221,7 +221,7 @@ public final class Sulong extends LLVMLanguage {
             location = ((LLVMDebugObject) value).getDeclaration();
         }
         if (location != null) {
-            return location.getSourceSection(context);
+            return location.getSourceSection();
         }
         return null;
     }

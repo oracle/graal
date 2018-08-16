@@ -54,7 +54,6 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazyContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySourceSection;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
@@ -64,6 +63,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 final class DIScopeBuilder {
 
@@ -169,6 +169,25 @@ final class DIScopeBuilder {
         return asNormalizedPath(path);
     }
 
+    private TruffleFile getSourceFile(MDFile file, String path) {
+        if (file == null) {
+            return null;
+        }
+
+        assert Objects.equals(paths.get(file), path);
+        if (sourceFiles.containsKey(file)) {
+            return sourceFiles.get(file);
+        }
+
+        TruffleFile sourceFile = context.getEnv().getTruffleFile(path);
+        if (!sourceFile.exists()) {
+            sourceFile = null;
+        }
+
+        sourceFiles.put(file, sourceFile);
+        return sourceFile;
+    }
+
     private String getPath(MDFile file) {
         if (file == null) {
             return null;
@@ -198,18 +217,22 @@ final class DIScopeBuilder {
 
     private final HashMap<MDBaseNode, LLVMSourceLocation> globalCache;
     private final HashMap<MDBaseNode, LLVMSourceLocation> localCache;
+    private final HashMap<MDFile, TruffleFile> sourceFiles;
     private final HashMap<MDFile, String> paths;
     private final HashMap<String, Source> sources;
     private final MetadataValueList metadata;
     private final FileExtractor fileExtractor;
+    private final LLVMContext context;
 
-    DIScopeBuilder(MetadataValueList metadata) {
+    DIScopeBuilder(MetadataValueList metadata, LLVMContext context) {
         this.metadata = metadata;
         this.fileExtractor = new FileExtractor();
         this.globalCache = new HashMap<>();
         this.localCache = new HashMap<>();
+        this.sourceFiles = new HashMap<>();
         this.sources = new HashMap<>();
         this.paths = new HashMap<>();
+        this.context = context;
     }
 
     private static boolean isLocalScope(LLVMSourceLocation location) {
@@ -252,14 +275,16 @@ final class DIScopeBuilder {
 
     private static final class LazySourceSectionImpl extends LazySourceSection {
 
+        private final TruffleFile sourceFile;
         private final String path;
         private final int line;
         private final int column;
         private final HashMap<String, Source> sources;
         private final boolean needsRange;
 
-        LazySourceSectionImpl(HashMap<String, Source> sources, String path, int line, int column, boolean needsRange) {
+        LazySourceSectionImpl(HashMap<String, Source> sources, TruffleFile sourceFile, String path, int line, int column, boolean needsRange) {
             this.sources = sources;
+            this.sourceFile = sourceFile;
             this.path = path;
             this.line = line;
             this.column = column;
@@ -267,12 +292,12 @@ final class DIScopeBuilder {
         }
 
         LazySourceSectionImpl extend() {
-            return needsRange ? this : new LazySourceSectionImpl(sources, path, line, column, true);
+            return needsRange ? this : new LazySourceSectionImpl(sources, sourceFile, path, line, column, true);
         }
 
         @Override
-        public SourceSection get(LazyContext context) {
-            Source source = asSource(sources, path, context);
+        public SourceSection get() {
+            Source source = asSource(sources, sourceFile, path);
             if (source == null) {
                 return null;
             }
@@ -516,10 +541,12 @@ final class DIScopeBuilder {
         if (path == null) {
             return null;
         }
-        return new LazySourceSectionImpl(sources, path, (int) startLine, (int) startCol, needsRange);
+
+        TruffleFile sourceFile = getSourceFile(file, path);
+        return new LazySourceSectionImpl(sources, sourceFile, path, (int) startLine, (int) startCol, needsRange);
     }
 
-    private static Source asSource(Map<String, Source> sources, String path, LazyContext lazyContext) {
+    private static Source asSource(Map<String, Source> sources, TruffleFile sourceFile, String path) {
         if (sources.containsKey(path)) {
             return sources.get(path);
         } else if (path == null) {
@@ -528,15 +555,11 @@ final class DIScopeBuilder {
 
         String mimeType = getMimeType(path);
         Source source = null;
-        LLVMContext context = lazyContext.get();
-        if (context != null) {
-            try {
-                TruffleFile file = context.getEnv().getTruffleFile(path);
-                if (file.exists() && file.isReadable()) {
-                    source = Source.newBuilder("llvm", file).mimeType(mimeType).build();
-                }
-            } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
+        try {
+            if (sourceFile != null && sourceFile.exists() && sourceFile.isReadable()) {
+                source = Source.newBuilder("llvm", sourceFile).mimeType(mimeType).build();
             }
+        } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
         }
 
         if (source == null) {

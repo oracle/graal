@@ -68,7 +68,7 @@ public final class DebugInfoModuleProcessor {
     public static void processModule(ModelModule irModel, MetadataValueList metadata, LLVMContext context) {
         MDUpgrade.perform(metadata);
 
-        final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers());
+        final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers(), context);
 
         ImportsProcessor.process(metadata, context, cache);
 

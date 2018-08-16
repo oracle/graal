@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -38,7 +37,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyBlockNode;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -52,8 +50,6 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     private final LLVMExpressionNode result;
 
-    private final ContextReference<LLVMContext> ctxRef;
-
     public LLVMInlineAssemblyRootNode(LLVMLanguage language, LLVMSourceLocation source, FrameDescriptor frameDescriptor,
                     LLVMStatementNode[] statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
@@ -61,13 +57,12 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
         this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
         this.block = new LLVMInlineAssemblyBlockNode(statements);
         this.result = result;
-        this.ctxRef = language.getContextReference();
     }
 
     @Override
     public SourceSection getSourceSection() {
         if (source != null) {
-            return source.getSourceSection(ctxRef);
+            return source.getSourceSection();
         }
         return null;
     }
