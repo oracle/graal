@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -57,9 +58,9 @@ final class DebugInfoCache {
     private final DIScopeBuilder scopeBuilder;
     private final DITypeExtractor typeExtractor;
 
-    DebugInfoCache(MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers) {
+    DebugInfoCache(MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers, LLVMContext context) {
         this.parsedVariables = new HashMap<>();
-        this.scopeBuilder = new DIScopeBuilder(metadata);
+        this.scopeBuilder = new DIScopeBuilder(metadata, context);
         this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, staticMembers);
     }
 

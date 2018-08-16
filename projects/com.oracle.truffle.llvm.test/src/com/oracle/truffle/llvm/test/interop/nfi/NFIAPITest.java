@@ -75,7 +75,7 @@ public class NFIAPITest {
     private static TruffleObject loadLibrary(String lib, String filename, String mimetype) {
         File file = new File(TEST_DIR.toFile(), lib + "/" + filename);
         String loadLib = "load '" + file.getAbsolutePath() + "'";
-        Source source = Source.newBuilder(loadLib).name("loadLibrary").mimeType(mimetype).build();
+        Source source = Source.newBuilder("llvm", loadLib, "loadLibrary").mimeType(mimetype).build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
         return (TruffleObject) target.call();
     }

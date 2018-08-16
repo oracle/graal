@@ -62,7 +62,7 @@ public abstract class LLVMSourceLocation {
     private static final SourceSection UNAVAILABLE_SECTION;
 
     static {
-        final Source source = Source.newBuilder("Source unavailable!").name("<unavailable>").mimeType("text/plain").build();
+        final Source source = Source.newBuilder("llvm", "Source unavailable!", "<unavailable>").mimeType("text/plain").build();
         UNAVAILABLE_SECTION = source.createUnavailableSection();
     }
 

@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.scanner;
 
-import java.nio.ByteBuffer;
+import org.graalvm.polyglot.io.ByteSequence;
 
 public final class BitStream {
 
@@ -37,13 +37,13 @@ public final class BitStream {
     private static final int BYTE_BITS_MASK = 0x7;
 
     private static final long BYTE_MASK = 0xffL;
-    private final ByteBuffer bitstream;
+    private final ByteSequence bitstream;
 
-    private BitStream(ByteBuffer bitstream) {
+    private BitStream(ByteSequence bitstream) {
         this.bitstream = bitstream;
     }
 
-    public static BitStream create(ByteBuffer bytes) {
+    public static BitStream create(ByteSequence bytes) {
 
         return new BitStream(bytes);
     }
@@ -57,7 +57,7 @@ public final class BitStream {
                 blob[to++] = (byte) ((l >> (Byte.SIZE * i)) & BYTE_MASK);
             }
         }
-        return new BitStream(ByteBuffer.wrap(blob));
+        return new BitStream(ByteSequence.create(blob));
     }
 
     public static long widthVBR(long value, long width) {
@@ -75,14 +75,14 @@ public final class BitStream {
         int bitOffsetInByte = (int) (offset & BYTE_BITS_MASK);
         int availableBits = Byte.SIZE - bitOffsetInByte;
 
-        long value = (bitstream.get(byteIndex++) & BYTE_MASK) >> bitOffsetInByte;
+        long value = (bitstream.byteAt(byteIndex++) & BYTE_MASK) >> bitOffsetInByte;
         if (bits <= availableBits) {
             return value & (BYTE_MASK >> (8 - bits));
         }
         int remainingBits = bits - availableBits;
         int shift = availableBits;
         while (true) {
-            byte byteValue = bitstream.get(byteIndex++);
+            byte byteValue = bitstream.byteAt(byteIndex++);
 
             if (remainingBits > Byte.SIZE) {
                 value = value | ((byteValue & BYTE_MASK) << shift);
@@ -110,10 +110,6 @@ public final class BitStream {
     }
 
     public long size() {
-        return bitstream.limit() * Byte.SIZE;
-    }
-
-    public ByteBuffer getBitstream() {
-        return bitstream;
+        return bitstream.length() * Byte.SIZE;
     }
 }

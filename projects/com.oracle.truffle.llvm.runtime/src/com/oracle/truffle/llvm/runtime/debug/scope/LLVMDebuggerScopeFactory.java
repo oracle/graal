@@ -205,15 +205,15 @@ public final class LLVMDebuggerScopeFactory {
         }
     }
 
-    private static LLVMDebuggerScopeFactory toScope(LLVMSourceLocation scope, LLVMSourceContext context, Node node, SourceSection sourceSection) {
+    private static LLVMDebuggerScopeFactory toScope(LLVMSourceLocation scope, LLVMSourceContext sourceContext, Node node, SourceSection sourceSection) {
         if (!scope.hasSymbols()) {
-            final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(context, node);
+            final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(sourceContext, node);
             sourceScope.setName(scope.getName());
             return sourceScope;
         }
 
         final List<LLVMSourceSymbol> symbols = new LinkedList<>();
-        final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(context, symbols, node);
+        final LLVMDebuggerScopeFactory sourceScope = new LLVMDebuggerScopeFactory(sourceContext, symbols, node);
         sourceScope.setName(scope.getName());
 
         for (LLVMSourceSymbol symbol : scope.getSymbols()) {
