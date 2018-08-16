@@ -26,6 +26,10 @@ package org.graalvm.compiler.serviceprovider;
 
 import java.util.List;
 
+/* This class lives in the "base" project even if it is only useful for JDK9
+ * because javac only links against classes from the "base".
+ */
+
 /**
  * Access to thread specific information made available via Java Management Extensions (JMX). Using
  * this abstraction enables avoiding a dependency to the {@code java.management} and
