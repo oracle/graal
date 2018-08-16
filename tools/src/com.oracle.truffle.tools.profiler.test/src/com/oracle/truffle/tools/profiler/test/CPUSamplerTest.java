@@ -68,14 +68,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         }
     }
 
-    private static Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(CPUSampler sampler) {
-        Collection<ProfilerNode<CPUSampler.Payload>> actualRoots = new ArrayList<>();
-        for (Collection<ProfilerNode<CPUSampler.Payload>> nodes : sampler.getThreadToNodesMap().values()) {
-            actualRoots.addAll(nodes);
-        }
-        return actualRoots;
-    }
-
     @Test
     public void testCollectingAndHasData() {
 
@@ -121,7 +113,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             execute(defaultSourceForSampling);
         }
 
-        Collection<ProfilerNode<CPUSampler.Payload>> children = getRootNodes(sampler);
+        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> program = children.iterator().next();
         Assert.assertEquals("", program.getRootName());
@@ -169,7 +161,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             execute(defaultRecursiveSourceForSampling);
         }
 
-        Collection<ProfilerNode<CPUSampler.Payload>> children = getRootNodes(sampler);
+        Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(1, children.size());
         ProfilerNode<CPUSampler.Payload> program = children.iterator().next();
         Assert.assertEquals("", program.getRootName());
@@ -408,7 +400,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Assert.assertTrue("Found roots before enabling sampler", getRootNodes(sampler).isEmpty());
+                Assert.assertTrue("Found roots before enabling sampler", sampler.getRootNodes().isEmpty());
                 sampler.setCollecting(true);
                 return child.execute(frame);
             }
@@ -421,7 +413,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setFilter(NO_INTERNAL_STATEMENT_TAG_FILTER);
         Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").buildLiteral();
         context.eval(test);
-        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = getRootNodes(sampler);
+        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
         ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
         current = checkStackState(current, "Statement", false);
@@ -449,7 +441,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").buildLiteral();
         context.eval(test);
-        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = getRootNodes(sampler);
+        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
         ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
         current = checkStackState(current, "Root", false);
