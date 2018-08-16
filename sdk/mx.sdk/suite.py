@@ -79,6 +79,9 @@ suite = {
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
+      "exports" : [
+        "<package-info>",  # exports all packages containing package-info.java
+      ],
     },
 
     "org.graalvm.nativeimage" : {
