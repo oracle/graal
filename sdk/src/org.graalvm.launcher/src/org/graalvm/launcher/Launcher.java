@@ -1159,10 +1159,11 @@ public abstract class Launcher {
         }
 
         private void helpXOption() {
-            printOption("--native.Xmn<value>", "Sets the maximum size of the young generation, in bytes.");
-            printOption("--native.Xmx<value>", "Sets the maximum size of the heap, in bytes.");
-            printOption("--native.Xms<value>", "Sets the minimum size of the heap, in bytes.");
-            printOption("--native.Xss<value>", "Sets the size of each thread stack, in bytes.");
+            /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
+            printOption("--native.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
+            printOption("--native.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
+            printOption("--native.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
+            printOption("--native.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
         }
 
         private boolean isBooleanOption(OptionDescriptor descriptor) {
