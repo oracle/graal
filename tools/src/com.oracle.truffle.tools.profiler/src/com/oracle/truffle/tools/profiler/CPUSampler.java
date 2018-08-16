@@ -419,10 +419,11 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
+     * Merges all the 'per thread' profiles into one set of nodes and returns it.
+     *
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.30
      */
-    @Deprecated
     public Collection<ProfilerNode<Payload>> getRootNodes() {
         ProfilerNode<Payload> mergedRoot = new ProfilerNode<>(this, new Payload());
         for (ProfilerNode<Payload> node : rootNodes.values()) {
