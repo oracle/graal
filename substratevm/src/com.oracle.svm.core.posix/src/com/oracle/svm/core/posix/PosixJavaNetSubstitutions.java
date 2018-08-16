@@ -955,7 +955,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         if ((fd = Socket.socket(domain, Socket.SOCK_DGRAM(), 0)) == Target_jvm.JVM_IO_ERR()) {
             //   973          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
             //   974                         "Error creating socket");
-            throw new SocketException(PosixUtils.lastErrorString("Error creating socket") + " (Error creating socket)");
+            throw new SocketException(PosixUtils.lastErrorString("Error creating socket"));
             //   975          return;
             /* Unreachable. */
         }
