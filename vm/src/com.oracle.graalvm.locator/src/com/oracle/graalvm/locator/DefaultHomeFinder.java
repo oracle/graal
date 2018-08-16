@@ -404,6 +404,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         return result;
     }
 
+    @SuppressWarnings("deprecation")
     private static Path getCurrentObjectFilePath() {
         return Paths.get((String) Compiler.command(new Object[]{
                         "com.oracle.svm.core.posix.GetObjectFile",
@@ -411,6 +412,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         }));
     }
 
+    @SuppressWarnings("deprecation")
     private static Path getCurrentExecutablePath() {
         return Paths.get((String) Compiler.command(new String[]{
                         "com.oracle.svm.core.posix.GetExecutableName"
