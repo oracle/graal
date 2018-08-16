@@ -62,7 +62,7 @@ suite = {
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.impl", # exported to truffle
+        "org.graalvm.polyglot.impl to com.oracle.truffle.truffle_api", # exported to truffle
         "org.graalvm.polyglot",
         "org.graalvm.polyglot.proxy",
       ],
