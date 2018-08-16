@@ -201,7 +201,7 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
 
         ReferenceQueue<Object> queue = new ReferenceQueue<>();
         List<WeakReference<Object>> sources = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 15; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
             System.gc();
         }

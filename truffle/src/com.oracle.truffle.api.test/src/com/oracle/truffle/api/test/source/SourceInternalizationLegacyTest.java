@@ -181,7 +181,7 @@ public class SourceInternalizationLegacyTest {
 
         ReferenceQueue<Object> queue = new ReferenceQueue<>();
         List<WeakReference<Object>> sources = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 15; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
             System.gc();
         }

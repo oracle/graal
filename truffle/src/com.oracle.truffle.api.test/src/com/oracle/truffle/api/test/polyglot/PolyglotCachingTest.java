@@ -55,7 +55,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class PolyglotCachingTest {
 
-    private static final int ITERATIONS = 5;
+    private static final int ITERATIONS = 15;
 
     @Test
     public void testDisableCaching() throws Exception {
