@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -543,7 +542,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         traverseAndCompareForSameSource(rootNodes, threadToNodesMap.get(first), threadToNodesMap.get(second));
     }
 
-    private void traverseAndCompareForSameSource(Collection<ProfilerNode<CPUSampler.Payload>> rootNodes, Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes1, Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes2) {
+    private void traverseAndCompareForSameSource(Collection<ProfilerNode<CPUSampler.Payload>> rootNodes, Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes1,
+                    Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes2) {
         for (ProfilerNode<CPUSampler.Payload> node : rootNodes) {
             ProfilerNode<CPUSampler.Payload> found1 = findNodeBySourceAndRoot(profilerNodes1, node.getSourceSection(), node.getRootName());
             ProfilerNode<CPUSampler.Payload> found2 = findNodeBySourceAndRoot(profilerNodes2, node.getSourceSection(), node.getRootName());
@@ -552,8 +552,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             CPUSampler.Payload nodePayload = node.getPayload();
             CPUSampler.Payload found1Payload = found1.getPayload();
             CPUSampler.Payload found2Payload = found2.getPayload();
-            Assert.assertTrue("Merged structure does not mach per thread structure",  nodePayload.getSelfHitCount() == found1Payload.getSelfHitCount() + found2Payload.getSelfHitCount());
-            Assert.assertTrue("Merged structure does not mach per thread structure",  nodePayload.getHitCount() == found1Payload.getHitCount() + found2Payload.getHitCount());
+            Assert.assertTrue("Merged structure does not mach per thread structure", nodePayload.getSelfHitCount() == found1Payload.getSelfHitCount() + found2Payload.getSelfHitCount());
+            Assert.assertTrue("Merged structure does not mach per thread structure", nodePayload.getHitCount() == found1Payload.getHitCount() + found2Payload.getHitCount());
             traverseAndCompareForSameSource(node.getChildren(), found1.getChildren(), found2.getChildren());
         }
     }
