@@ -81,6 +81,7 @@ suite = {
       "workingSets" : "API,SDK",
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.word.impl to jdk.internal.vm.compiler",
       ],
     },
 
