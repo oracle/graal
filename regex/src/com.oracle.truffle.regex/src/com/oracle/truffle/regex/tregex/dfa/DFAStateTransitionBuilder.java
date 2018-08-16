@@ -34,7 +34,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
 
-    private short id = -1;
+    private int id = -1;
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
@@ -51,11 +51,11 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         return new DFAStateTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()));
     }
 
-    public short getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(short id) {
+    public void setId(int id) {
         this.id = id;
     }
 

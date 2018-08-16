@@ -24,8 +24,10 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
+
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Character range matcher using a left-balanced tree of ranges.
@@ -100,7 +102,7 @@ public final class RangeTreeMatcher extends ProfiledCharMatcher {
         return (i * 2) + 4;
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final char[] tree;
+    @CompilationFinal(dimensions = 1) private final char[] tree;
 
     private RangeTreeMatcher(boolean invert, char[] tree) {
         super(invert);
@@ -136,8 +138,8 @@ public final class RangeTreeMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
-        return "tree " + modifiersToString() + MatcherBuilder.rangesToString(tree);
+        return "tree " + modifiersToString() + "[" + MatcherBuilder.rangesToString(tree) + "]";
     }
 }

@@ -127,14 +127,6 @@ public final class TRegexDFAExecutorNode extends Node {
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
                             getFromIndex(frame), getIndex(frame), getMaxIndex(frame)));
         }
-        if (recordExecution()) {
-            debugRecorder.startRecording(frame, this);
-        }
-        if (isBackward() && getFromIndex(frame) - 1 > getMaxIndex(frame)) {
-            setCurMaxIndex(frame, getFromIndex(frame) - 1);
-        } else {
-            setCurMaxIndex(frame, getMaxIndex(frame));
-        }
         if (props.isTrackCaptureGroups()) {
             createCGData(frame);
             initResultOrder(frame);
@@ -142,6 +134,19 @@ public final class TRegexDFAExecutorNode extends Node {
             setLastTransition(frame, (short) -1);
         } else {
             setResultInt(frame, TRegexDFAExecutorNode.NO_MATCH);
+        }
+        // check if input is long enough for a match
+        if (props.getMinResultLength() > 0 && (isForward() ? getMaxIndex(frame) - getIndex(frame) : getIndex(frame) - getMaxIndex(frame)) < props.getMinResultLength()) {
+            // no match possible, break immediately
+            return;
+        }
+        if (recordExecution()) {
+            debugRecorder.startRecording(frame, this);
+        }
+        if (isBackward() && getFromIndex(frame) - 1 > getMaxIndex(frame)) {
+            setCurMaxIndex(frame, getFromIndex(frame) - 1);
+        } else {
+            setCurMaxIndex(frame, getMaxIndex(frame));
         }
         int ip = 0;
         outer: while (true) {

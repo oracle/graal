@@ -931,11 +931,16 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
     @Override
     @TruffleBoundary
     public String toString() {
+        return toString(true);
+    }
+
+    @TruffleBoundary
+    private String toString(boolean addBrackets) {
         if (equalsCodePointSet(Constants.DOT)) {
             return ".";
         }
         if (equalsCodePointSet(Constants.LINE_TERMINATOR)) {
-            return "[\\r\\n]";
+            return "[\\r\\n\\u2028\\u2029]";
         }
         if (equalsCodePointSet(Constants.DIGITS)) {
             return "\\d";
@@ -956,19 +961,23 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
             return "\\S";
         }
         if (matchesEverything()) {
-            return "[_any_]";
+            return "[\\s\\S]";
         }
         if (matchesNothing()) {
-            return "[_none_]";
+            return "[]";
         }
         if (matchesSingleChar()) {
             return rangeToString(ranges[0], ranges[1]);
         }
         MatcherBuilder inverse = createInverse(new CompilationBuffer());
         if (inverse.size() < size()) {
-            return "!" + inverse.toString();
+            return "[^" + inverse.toString(false) + "]";
         }
-        return rangesToString(ranges);
+        if (addBrackets) {
+            return "[" + rangesToString(ranges) + "]";
+        } else {
+            return rangesToString(ranges);
+        }
     }
 
     @TruffleBoundary
@@ -987,18 +996,12 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
     @TruffleBoundary
     public static String rangesToString(char[] ranges, boolean numeric) {
         StringBuilder sb = new StringBuilder();
-        if (!numeric && ranges.length > 2) {
-            sb.append("[");
-        }
         for (int i = 0; i < ranges.length; i += 2) {
             if (numeric) {
                 sb.append("[").append((int) ranges[i]).append("-").append((int) ranges[i + 1]).append("]");
             } else {
                 sb.append(rangeToString(ranges[i], ranges[i + 1]));
             }
-        }
-        if (!numeric && ranges.length > 2) {
-            sb.append("]");
         }
         return sb.toString();
     }

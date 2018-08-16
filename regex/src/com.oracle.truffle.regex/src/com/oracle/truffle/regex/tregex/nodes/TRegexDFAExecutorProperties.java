@@ -46,6 +46,7 @@ public final class TRegexDFAExecutorProperties {
     private final boolean trackCaptureGroups;
     private final boolean regressionTestMode;
     private final int numberOfCaptureGroups;
+    private final int minResultLength;
 
     public TRegexDFAExecutorProperties(FrameDescriptor frameDescriptor,
                     FrameSlot inputFS,
@@ -63,7 +64,8 @@ public final class TRegexDFAExecutorProperties {
                     boolean searching,
                     boolean trackCaptureGroups,
                     boolean regressionTestMode,
-                    int numberOfCaptureGroups) {
+                    int numberOfCaptureGroups,
+                    int minResultLength) {
         this.frameDescriptor = frameDescriptor;
         this.inputFS = inputFS;
         this.fromIndexFS = fromIndexFS;
@@ -81,6 +83,7 @@ public final class TRegexDFAExecutorProperties {
         this.trackCaptureGroups = trackCaptureGroups;
         this.regressionTestMode = regressionTestMode;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
+        this.minResultLength = minResultLength;
     }
 
     public FrameDescriptor getFrameDescriptor() {
@@ -153,5 +156,9 @@ public final class TRegexDFAExecutorProperties {
 
     public int getNumberOfCaptureGroups() {
         return numberOfCaptureGroups;
+    }
+
+    public int getMinResultLength() {
+        return minResultLength;
     }
 }
