@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test;
 
 import java.util.HashMap;
+import java.util.List;
 
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.phases.MidTier;
@@ -145,7 +146,9 @@ public class HashCodeTest extends GraalCompilerTest {
     public void test08() {
         // This test requires profiling information which does not work reliable across platforms
         // when running with -Xcomp
-        Assume.assumeFalse(SubprocessUtil.getVMCommandLine().contains("-Xcomp"));
+        List<String> commandLine = SubprocessUtil.getVMCommandLine();
+        Assume.assumeTrue(commandLine != null);
+        Assume.assumeFalse(commandLine.contains("-Xcomp"));
         initialize(Appendable.class);
         checkForGuardedIntrinsicPattern("hashCodeInterface");
 
