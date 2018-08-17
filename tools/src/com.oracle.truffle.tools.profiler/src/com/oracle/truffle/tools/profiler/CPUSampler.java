@@ -34,7 +34,9 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -424,61 +426,59 @@ public final class CPUSampler implements Closeable {
      * @return The roots of the trees representing the profile of the execution.
      * @since 0.30
      */
-    public Collection<ProfilerNode<Payload>> getRootNodes() {
-        ProfilerNode<Payload> mergedRoot = new ProfilerNode<>(this, new Payload());
+    public synchronized Collection<ProfilerNode<Payload>> getRootNodes() {
+        ProfilerNode<Payload> mergedRoot = new ProfilerNode<>();
         for (ProfilerNode<Payload> node : rootNodes.values()) {
-            merge(mergedRoot, node);
+            mergedRoot.deepMergeChildrenFrom(node, mergePayload, payloadFactory);
         }
         return mergedRoot.getChildren();
     }
 
-    private static void merge(ProfilerNode<Payload> destination, ProfilerNode<Payload> node) {
-        for (ProfilerNode<Payload> child : node.getChildren()) {
-            final SourceLocation childSourceLocation = child.getSourceLocation();
-            final Payload childPayload = child.getPayload();
-            ProfilerNode<Payload> destinationChild = findBySourceLocation(destination.getChildren(), childSourceLocation);
-            if (destinationChild == null) {
-                Payload destinationPayload = new Payload();
-                updatePayload(childPayload, destinationPayload);
-                destinationChild = new ProfilerNode<>(destination, childSourceLocation, destinationPayload);
-                if (destination.children == null) {
-                    destination.children = new HashMap<>();
-                }
-                destination.children.put(childSourceLocation, destinationChild);
-            } else {
-                updatePayload(childPayload, destinationChild.getPayload());
-            }
-            merge(destinationChild, child);
+    private static Supplier<Payload> payloadFactory = new Supplier<Payload>() {
+        @Override
+        public Payload get() {
+            return new Payload();
         }
-    }
+    };
 
-    private static void updatePayload(Payload sourcePayload, Payload destinationPayload) {
-        destinationPayload.selfCompiledHitCount += sourcePayload.selfCompiledHitCount;
-        destinationPayload.selfInterpretedHitCount += sourcePayload.selfInterpretedHitCount;
-        destinationPayload.compiledHitCount += sourcePayload.compiledHitCount;
-        destinationPayload.interpretedHitCount += sourcePayload.interpretedHitCount;
-        for (Long timestamp : sourcePayload.getSelfHitTimes()) {
-            destinationPayload.addSelfHitTime(timestamp);
-        }
-    }
-
-    private static ProfilerNode<Payload> findBySourceLocation(Collection<ProfilerNode<Payload>> children, SourceLocation sourceLocation) {
-        for (ProfilerNode<Payload> child : children) {
-            if (child.getSourceLocation().equals(sourceLocation)) {
-                return child;
+    private static BiConsumer<Payload, Payload> mergePayload = new BiConsumer<Payload, Payload>() {
+        @Override
+        public void accept(Payload sourcePayload, Payload destinationPayload) {
+            destinationPayload.selfCompiledHitCount += sourcePayload.selfCompiledHitCount;
+            destinationPayload.selfInterpretedHitCount += sourcePayload.selfInterpretedHitCount;
+            destinationPayload.compiledHitCount += sourcePayload.compiledHitCount;
+            destinationPayload.interpretedHitCount += sourcePayload.interpretedHitCount;
+            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
+                destinationPayload.addSelfHitTime(timestamp);
             }
         }
-        return null;
-    }
+    };
+
+    Function<Payload, Payload> copyPayload = new Function<Payload, Payload>() {
+        @Override
+        public Payload apply(Payload sourcePayload) {
+            Payload destinationPayload = new Payload();
+            destinationPayload.selfCompiledHitCount = sourcePayload.selfCompiledHitCount;
+            destinationPayload.selfInterpretedHitCount = sourcePayload.selfInterpretedHitCount;
+            destinationPayload.compiledHitCount = sourcePayload.compiledHitCount;
+            destinationPayload.interpretedHitCount = sourcePayload.interpretedHitCount;
+            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
+                destinationPayload.addSelfHitTime(timestamp);
+            }
+            return destinationPayload;
+        }
+    };
 
     /**
      * @return The roots of the trees representing the profile of the execution per thread.
      * @since 1.0
      */
-    public Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
+    public synchronized Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
         Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
         for (Map.Entry<Thread, ProfilerNode<Payload>> entry : rootNodes.entrySet()) {
-            returnValue.put(entry.getKey(), entry.getValue().getChildren());
+            ProfilerNode<Payload> copy = new ProfilerNode<>();
+            copy.deepCopyChildrenFrom(entry.getValue(), copyPayload);
+            returnValue.put(entry.getKey(), copy.getChildren());
         }
         return Collections.unmodifiableMap(returnValue);
     }
@@ -622,12 +622,16 @@ public final class CPUSampler implements Closeable {
             ShadowStack localShadowStack = shadowStack;
             if (localShadowStack != null) {
                 for (ShadowStack.ThreadLocalStack stack : localShadowStack.getStacks()) {
-                    sampleTaken |= sample(stack, timestamp, rootNodes.computeIfAbsent(stack.getThread(), new Function<Thread, ProfilerNode<Payload>>() {
-                        @Override
-                        public ProfilerNode<Payload> apply(Thread thread) {
-                            return new ProfilerNode<>(this, new Payload());
-                        }
-                    }));
+                    ProfilerNode<Payload> threadNode;
+                    synchronized (CPUSampler.this) {
+                        threadNode = rootNodes.computeIfAbsent(stack.getThread(), new Function<Thread, ProfilerNode<Payload>>() {
+                            @Override
+                            public ProfilerNode<Payload> apply(Thread thread) {
+                                return new ProfilerNode<>();
+                            }
+                        });
+                    }
+                    sampleTaken |= sample(stack, timestamp, threadNode);
                 }
             }
             if (sampleTaken) {
@@ -648,30 +652,32 @@ public final class CPUSampler implements Closeable {
             if (correctedStackInfo == null || correctedStackInfo.getLength() == 0) {
                 return false;
             }
-            // now traverse the stack and insert the path into the tree
-            ProfilerNode<Payload> treeNode = threadNode;
-            for (int i = 0; i < correctedStackInfo.getLength(); i++) {
-                SourceLocation location = correctedStackInfo.getStack()[i];
-                boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
+            synchronized (CPUSampler.this) {
+                // now traverse the stack and insert the path into the tree
+                ProfilerNode<Payload> treeNode = threadNode;
+                for (int i = 0; i < correctedStackInfo.getLength(); i++) {
+                    SourceLocation location = correctedStackInfo.getStack()[i];
+                    boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
 
-                treeNode = addOrUpdateChild(treeNode, location);
-                Payload payload = treeNode.getPayload();
-                if (i == correctedStackInfo.getLength() - 1) {
-                    // last element is counted as self time
+                    treeNode = addOrUpdateChild(treeNode, location);
+                    Payload payload = treeNode.getPayload();
+                    if (i == correctedStackInfo.getLength() - 1) {
+                        // last element is counted as self time
+                        if (isCompiled) {
+                            payload.selfCompiledHitCount++;
+                        } else {
+                            payload.selfInterpretedHitCount++;
+                        }
+                        if (gatherSelfHitTimes) {
+                            payload.selfHitTimes.add(timestamp);
+                            assert payload.selfHitTimes.size() == payload.getSelfHitCount();
+                        }
+                    }
                     if (isCompiled) {
-                        payload.selfCompiledHitCount++;
+                        payload.compiledHitCount++;
                     } else {
-                        payload.selfInterpretedHitCount++;
+                        payload.interpretedHitCount++;
                     }
-                    if (gatherSelfHitTimes) {
-                        payload.selfHitTimes.add(timestamp);
-                        assert payload.selfHitTimes.size() == payload.getSelfHitCount();
-                    }
-                }
-                if (isCompiled) {
-                    payload.compiledHitCount++;
-                } else {
-                    payload.interpretedHitCount++;
                 }
             }
             return true;

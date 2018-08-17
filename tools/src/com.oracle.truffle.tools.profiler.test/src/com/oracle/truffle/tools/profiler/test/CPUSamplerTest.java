@@ -552,8 +552,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             CPUSampler.Payload nodePayload = node.getPayload();
             CPUSampler.Payload found1Payload = found1.getPayload();
             CPUSampler.Payload found2Payload = found2.getPayload();
-            Assert.assertTrue("Merged structure does not mach per thread structure", nodePayload.getSelfHitCount() == found1Payload.getSelfHitCount() + found2Payload.getSelfHitCount());
-            Assert.assertTrue("Merged structure does not mach per thread structure", nodePayload.getHitCount() == found1Payload.getHitCount() + found2Payload.getHitCount());
+            Assert.assertEquals("Merged structure does not mach per thread structure", nodePayload.getSelfHitCount(), found1Payload.getSelfHitCount() + found2Payload.getSelfHitCount());
+            Assert.assertEquals("Merged structure does not mach per thread structure", nodePayload.getHitCount(), found1Payload.getHitCount() + found2Payload.getHitCount());
             traverseAndCompareForSameSource(node.getChildren(), found1.getChildren(), found2.getChildren());
         }
     }
