@@ -81,14 +81,7 @@ public final class Target_java_lang_reflect_Field {
 
     @Substitute
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Target_java_lang_reflect_Field holder = root;
-        if (holder == null) {
-            holder = this;
-        }
-
-        if (holder.declaredAnnotations == null) {
-            throw VMError.shouldNotReachHere("Annotations must be computed during native image generation");
-        }
-        return holder.declaredAnnotations;
+        Target_java_lang_reflect_Field holder = ReflectionHelper.getHolder(this);
+        return ReflectionHelper.requireNonNull(holder.declaredAnnotations, "Declared annotations must be computed during native image generation.");
     }
 }
