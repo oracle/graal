@@ -1,4 +1,4 @@
-overlay = 285c321ec6602bca64076afe572c7b116977c01b
+overlay = a44e9f2718ef0f7a81963dc78bed0e93a2979ce6
 
 java8: {name: labsjdk, version: "8u172-jvmci-0.46", platformspecific: true}
 eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
