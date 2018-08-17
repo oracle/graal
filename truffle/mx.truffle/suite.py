@@ -107,7 +107,7 @@ suite = {
     "com.oracle.truffle.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "uses" : ["com.oracle.truffle.api.impl.TruffleLocator", "org.graalvm.polyglot.impl.AbstractPolyglotImpl",],
+      "uses" : ["com.oracle.truffle.api.impl.TruffleLocator",],
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
@@ -167,7 +167,6 @@ suite = {
       "dependencies" : ["com.oracle.truffle.api"],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
-        "com.oracle.truffle.api.dsl.internal", # Exported for com.oracle.truffle.sl.nodes.SLTypes
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",

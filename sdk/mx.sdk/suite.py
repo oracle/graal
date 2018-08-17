@@ -62,7 +62,7 @@ suite = {
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.impl", # exported to truffle
+        "org.graalvm.polyglot.impl to com.oracle.truffle.truffle_api", # exported to truffle
         "org.graalvm.polyglot",
         "org.graalvm.polyglot.proxy",
       ],
@@ -79,6 +79,10 @@ suite = {
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
+      "exports" : [
+        "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.word.impl to jdk.internal.vm.compiler",
+      ],
     },
 
     "org.graalvm.nativeimage" : {
