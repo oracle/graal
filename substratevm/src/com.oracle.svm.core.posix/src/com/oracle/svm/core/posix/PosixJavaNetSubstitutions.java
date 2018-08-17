@@ -48,7 +48,6 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
-import com.oracle.svm.core.posix.headers.Ioctl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
@@ -75,6 +74,7 @@ import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
+import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetIf;
 import com.oracle.svm.core.posix.headers.Netdb;
@@ -905,11 +905,157 @@ final class Target_java_net_PlainDatagramSocketImpl {
     }
     // @formatter:on
 
+    /* Do not re-format commented out code: @formatter:off */
+    //  1352  /*
+    //  1353   * Class:     java_net_PlainDatagramSocketImpl
+    //  1354   * Method:    socketSetOption0
+    //  1355   * Signature: (ILjava/lang/Object;)V
+    //  1356   */
+    //  1357  JNIEXPORT void JNICALL
+    //  1358  Java_java_net_PlainDatagramSocketImpl_socketSetOption0(JNIEnv *env,
+    //  1359                                                        jobject this,
+    //  1360                                                        jint opt,
+    //  1361                                                        jobject value)
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
-    protected void socketSetOption0(int opt, Object val) {
-        throw VMError.unsupportedFeature("Unimplemented: java.net.PlainDatagramSocketImpl.socketSetOption0(int, Object)");
+    protected void socketSetOption0(int opt, Object value) throws SocketException {
+        //  1362      int fd;
+        int fd;
+        //  1363      int level, optname, optlen;
+        CIntPointer level_Pointer = StackValue.get(CIntPointer.class);
+        CIntPointer optname_Pointer = StackValue.get(CIntPointer.class);
+        int optlen;
+        //  1364      int optval;
+        int optval;
+        //  1365      optlen = sizeof(int);
+        optlen = SizeOf.get(CIntPointer.class);
+        //  1366
+        //  1367      /*
+        //  1368       * Check that socket hasn't been closed
+        //  1369       */
+        //  1370      fd = getFD(env, this);
+        fd = Util_java_net_PlainDatagramSocketImpl.getFD(this);
+        //  1371      if (fd < 0) {
+        if (fd <0) {
+            //  1372          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+            //  1373                          "Socket closed");
+            throw new SocketException("Socket closed");
+            //  1374          return;
+            /* Unreachable. */
+        }
+
+        //  1377      /*
+        //  1378       * Check argument has been provided
+        //  1379       */
+        //  1380      if (IS_NULL(value)) {
+        if (value == null) {
+            //  1381          JNU_ThrowNullPointerException(env, "value argument");
+            throw new NullPointerException("value argument");
+            //  1382          return;
+            /* Unreachable. */
+            //  1383      }
+        }
+
+        //  1385      /*
+        //  1386       * Setting the multicast interface handled separately
+        //  1387       */
+        //  1388      if (opt == java_net_SocketOptions_IP_MULTICAST_IF ||
+        //  1389          opt == java_net_SocketOptions_IP_MULTICAST_IF2) {
+        if (opt == SocketOptions.IP_MULTICAST_IF || opt == SocketOptions.IP_MULTICAST_IF2) {
+            //  1391          setMulticastInterface(env, this, fd, opt, value);
+            Util_java_net_PlainDatagramSocketImpl.setMulticastInterface(fd, opt, (InetAddress) value);
+            //  1392          return;
+            /* Unreachable. */
+            //  1393      }
+        }
+
+        //  1395      /*
+        //  1396       * Setting the multicast loopback mode handled separately
+        //  1397       */
+        //  1398      if (opt == java_net_SocketOptions_IP_MULTICAST_LOOP) {
+        if (opt == SocketOptions.IP_MULTICAST_LOOP) {
+            //  1399          setMulticastLoopbackMode(env, this, fd, opt, value);
+            Util_java_net_PlainDatagramSocketImpl.setMulticastLoopbackMode(fd, opt, value);
+            //  1400          return;
+            /* Unreachable. */
+            //  1401      }
+        }
+
+        //  1403      /*
+        //  1404       * Map the Java level socket option to the platform specific
+        //  1405       * level and option name.
+        //  1406       */
+        //  1407      if (NET_MapSocketOption(opt, &level, &optname)) {
+        if (JavaNetNetUtilMD.NET_MapSocketOption(opt, level_Pointer, optname_Pointer) != 0) {
+            //  1408          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException", "Invalid option");
+            throw new SocketException("Invalid option");
+            //  1409          return;
+            /* Unreachable. */
+        }
+
+        //  1412      switch (opt) {
+        switch (opt) {
+            //  1413          case java_net_SocketOptions_SO_SNDBUF :
+            case SocketOptions.SO_SNDBUF:
+                //  1414          case java_net_SocketOptions_SO_RCVBUF :
+            case SocketOptions.SO_RCVBUF:
+                //  1415          case java_net_SocketOptions_IP_TOS :
+            case SocketOptions.IP_TOS: {
+                //  1417                  jclass cls;
+                //  1418                  jfieldID fid;
+                //  1419
+                //  1420                  cls = (*env)->FindClass(env, "java/lang/Integer");
+                //  1421                  CHECK_NULL(cls);
+                //  1422                  fid =  (*env)->GetFieldID(env, cls, "value", "I");
+                //  1423                  CHECK_NULL(fid);
+                //  1424
+                //  1425                  optval = (*env)->GetIntField(env, value, fid);
+                optval = (Integer) value;
+                //  1426                  break;
+                break;
+            }
+            //  1429          case java_net_SocketOptions_SO_REUSEADDR:
+            case SocketOptions.SO_REUSEADDR:
+                //  1430          case java_net_SocketOptions_SO_BROADCAST:
+            case SocketOptions.SO_BROADCAST: {
+                //  1432                  jclass cls;
+                //  1433                  jfieldID fid;
+                //  1434                  jboolean on;
+                boolean on;
+                //  1435
+                //  1436                  cls = (*env)->FindClass(env, "java/lang/Boolean");
+                //  1437                  CHECK_NULL(cls);
+                //  1438                  fid =  (*env)->GetFieldID(env, cls, "value", "Z");
+                //  1439                  CHECK_NULL(fid);
+                //  1440
+                //  1441                  on = (*env)->GetBooleanField(env, value, fid);
+                on = (Boolean) value;
+                //  1442
+                //  1443                  /* SO_REUSEADDR or SO_BROADCAST */
+                //  1444                  optval = (on ? 1 : 0);
+                optval = (on ? 1 : 0);
+                //  1445
+                //  1446                  break;
+                break;
+            }
+            //  1449          default :
+            default:
+                //  1450              JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                //  1451                  "Socket option not supported by PlainDatagramSocketImp");
+                throw new SocketException("Socket option not supported by PlainDatagramSocketImp");
+                //  1452              break;
+                /* Unreachable. */
+        }
+
+        //  1456      if (NET_SetSockOpt(fd, level, optname, (const void *)&optval, optlen) < 0) {
+        if ( JavaNetNetUtilMD.NET_SetSockOpt(fd, level_Pointer.read(), optname_Pointer.read(), WordFactory.unsigned(optval), optlen) < 0) {
+            //  1457          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
+            throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
+            //  1458          return;
+            /* Unreachable. */
+        }
     }
+    // @formatter:on
 
     /* Do not re-format commented out code: @formatter:off */
     //    949  /*
@@ -1713,6 +1859,395 @@ class Util_java_net_PlainDatagramSocketImpl {
         }
         //  1713      return NULL;
         return null;
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1208
+    //  1209  /*
+    //  1210   * Sets the multicast interface.
+    //  1211   *
+    //  1212   * SocketOptions.IP_MULTICAST_IF :-
+    //  1213   *      value is a InetAddress
+    //  1214   *      IPv4:   set outgoing multicast interface using
+    //  1215   *              IPPROTO_IP/IP_MULTICAST_IF
+    //  1216   *      IPv6:   Get the index of the interface to which the
+    //  1217   *              InetAddress is bound
+    //  1218   *              Set outgoing multicast interface using
+    //  1219   *              IPPROTO_IPV6/IPV6_MULTICAST_IF
+    //  1220   *
+    //  1221   * SockOptions.IF_MULTICAST_IF2 :-
+    //  1222   *      value is a NetworkInterface
+    //  1223   *      IPv4:   Obtain IP address bound to network interface
+    //  1224   *              (NetworkInterface.addres[0])
+    //  1225   *              set outgoing multicast interface using
+    //  1226   *              IPPROTO_IP/IP_MULTICAST_IF
+    //  1227   *      IPv6:   Obtain NetworkInterface.index
+    //  1228   *              Set outgoing multicast interface using
+    //  1229   *              IPPROTO_IPV6/IPV6_MULTICAST_IF
+    //  1230   *
+    //  1231   */
+    //  1232  static void setMulticastInterface(JNIEnv *env, jobject this, int fd,
+    //  1233                                    jint opt, jobject value)
+    static void setMulticastInterface(int fd, int opt, Object value) throws SocketException {
+        //  1235      if (opt == java_net_SocketOptions_IP_MULTICAST_IF) {
+        if (opt == SocketOptions.IP_MULTICAST_IF) {
+            //  1236          /*
+            //  1237           * value is an InetAddress.
+            //  1238           */
+            //  1239  #ifdef AF_INET6
+            if (IsDefined.socket_AF_INET6()) {
+                //  1240  #ifdef __linux__
+                if (IsDefined.__linux__()) {
+                    //  1241          mcast_set_if_by_addr_v4(env, this, fd, value);
+                    mcast_set_if_by_addr_v4(fd, (InetAddress) value);
+
+                    //  1242          if (ipv6_available()) {
+                    if (JavaNetNetUtil.ipv6_available()) {
+                        //  1243              mcast_set_if_by_addr_v6(env, this, fd, value);
+                        mcast_set_if_by_addr_v6(fd, (InetAddress) value);
+                    }
+                //  1245  #else  /* __linux__ not defined */
+                } else {
+                    //  1246          if (ipv6_available()) {
+                    if (JavaNetNetUtil.ipv6_available()) {
+                        //  1247              mcast_set_if_by_addr_v6(env, this, fd, value);
+                        mcast_set_if_by_addr_v6(fd, (InetAddress) value);
+                    } else {
+                        //  1249              mcast_set_if_by_addr_v4(env, this, fd, value);
+                        mcast_set_if_by_addr_v4(fd, (InetAddress) value);
+                    }
+                    //  1251  #endif  /* __linux__ */
+                }
+                //  1252  #else
+            } else {
+                //  1253          mcast_set_if_by_addr_v4(env, this, fd, value);
+                mcast_set_if_by_addr_v4(fd, (InetAddress) value);
+                //  1254  #endif  /* AF_INET6 */
+            }
+        }
+
+        //  1257      if (opt == java_net_SocketOptions_IP_MULTICAST_IF2) {
+        if (opt == SocketOptions.IP_MULTICAST_IF2) {
+            //  1258          /*
+            //  1259           * value is a NetworkInterface.
+            //  1260           */
+            //  1261  #ifdef AF_INET6
+            if (IsDefined.socket_AF_INET6()) {
+                //  1262  #ifdef __linux__
+                if (IsDefined.__linux__()) {
+                    //  1263          mcast_set_if_by_if_v4(env, this, fd, value);
+                    mcast_set_if_by_if_v4(fd, (NetworkInterface) value);
+                    //  1264          if (ipv6_available()) {
+                    if (JavaNetNetUtil.ipv6_available()) {
+                        //  1265              mcast_set_if_by_if_v6(env, this, fd, value);
+                        mcast_set_if_by_if_v6(fd, (NetworkInterface) value);
+                    }
+                    //  1267  #else  /* __linux__ not defined */
+                } else {
+                    //  1268          if (ipv6_available()) {
+                    if (JavaNetNetUtil.ipv6_available()) {
+                        //  1269              mcast_set_if_by_if_v6(env, this, fd, value);
+                        mcast_set_if_by_if_v6(fd, (NetworkInterface) value);
+                    } else {
+                        //  1271              mcast_set_if_by_if_v4(env, this, fd, value);
+                        mcast_set_if_by_if_v4(fd, (NetworkInterface) value);
+                    }
+                }
+                //  1273  #endif  /* __linux__ */
+                //  1274  #else
+            } else {
+                //  1275          mcast_set_if_by_if_v4(env, this, fd, value);
+                mcast_set_if_by_if_v4(fd, (NetworkInterface) value);
+                //  1276  #endif  /* AF_INET6 */
+            }
+        }
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1168  static void mcast_set_if_by_addr_v4(JNIEnv *env, jobject this, int fd, jobject value) {
+    static void mcast_set_if_by_addr_v4(int fd, InetAddress value) throws SocketException {
+        //  1169      struct in_addr in;
+        NetinetIn.in_addr in = StackValue.get(NetinetIn.in_addr.class);
+
+        //  1171      in.s_addr = htonl( getInetAddress_addr(env, value) );
+        in.set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(value)));
+
+        //  1173      JNU_CHECK_EXCEPTION(env);
+        //  1174      if (JVM_SetSockOpt(fd, IPPROTO_IP, IP_MULTICAST_IF,
+        //  1175                         (const char*)&in, sizeof(in)) < 0) {
+        if (VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_IF(), (CCharPointer) in, SizeOf.get(NetinetIn.in_addr.class)) < 0) {
+            //  1176          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
+            //  1177                           "Error setting socket option");
+            throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
+        }
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1075  /*
+    //  1076   * Set outgoing multicast interface designated by a NetworkInterface.
+    //  1077   * Throw exception if failed.
+    //  1078   */
+    //  1079  static void mcast_set_if_by_if_v4(JNIEnv *env, jobject this, int fd, jobject value) {
+    static void mcast_set_if_by_if_v4(int fd, NetworkInterface value) throws SocketException {
+        //  1080      static jfieldID ni_addrsID;
+        //  1081      struct in_addr in;
+        NetinetIn.in_addr in = StackValue.get(NetinetIn.in_addr.class);
+        //  1082      jobjectArray addrArray;
+        InetAddress[] addrArray;
+        //  1083      jsize len;
+        int len;
+        //  1084      jint family;
+        int family;
+        //  1085      jobject addr;
+        InetAddress addr;
+        //  1086      int i;
+        int i;
+        //  1087
+        //  1088      if (ni_addrsID == NULL ) {
+        //  1089          jclass c = (*env)->FindClass(env, "java/net/NetworkInterface");
+        //  1090          CHECK_NULL(c);
+        //  1091          ni_addrsID = (*env)->GetFieldID(env, c, "addrs",
+        //  1092                                          "[Ljava/net/InetAddress;");
+        //  1093          CHECK_NULL(ni_addrsID);
+        //  1094      }
+        //  1095
+        //  1096      addrArray = (*env)->GetObjectField(env, value, ni_addrsID);
+        addrArray = Util_java_net_NetworkInterface.fromNetworkInterface(value).addrs;
+        //  1097      len = (*env)->GetArrayLength(env, addrArray);
+        len = addrArray.length;
+
+        //  1099      /*
+        //  1100       * Check that there is at least one address bound to this
+        //  1101       * interface.
+        //  1102       */
+        //  1103      if (len < 1) {
+        if (len < 1) {
+            //  1104          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+            //  1105              "bad argument for IP_MULTICAST_IF2: No IP addresses bound to interface");
+            throw new SocketException("bad argument for IP_MULTICAST_IF2: No IP addresses bound to interface");
+            //  1106          return;
+            /* Unreachable. */
+        }
+
+        //  1109      /*
+        //  1110       * We need an ipv4 address here
+        //  1111       */
+        //  1112      for (i = 0; i < len; i++) {
+        for (i = 0; i < len; i++) {
+            //  1113          addr = (*env)->GetObjectArrayElement(env, addrArray, i);
+            addr = addrArray[i];
+            //  1114          family = getInetAddress_family(env, addr);
+            family = JavaNetNetUtil.getInetAddress_family(addr);
+            //  1115          JNU_CHECK_EXCEPTION(env);
+            //  1116          if (family == IPv4) {
+            if (family == Target_java_net_InetAddress.IPv4) {
+                //  1117              JNU_CHECK_EXCEPTION(env);
+                //  1118              in.s_addr = htonl(getInetAddress_addr(env, addr));
+                in.set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(addr)));
+                //  1119              JNU_CHECK_EXCEPTION(env);
+                //  1120              break;
+                break;
+            }
+        }
+        //  1123
+        //  1124      if (JVM_SetSockOpt(fd, IPPROTO_IP, IP_MULTICAST_IF,
+        //  1125                         (const char*)&in, sizeof(in)) < 0) {
+        if ( VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_IF(), (CCharPointer) in, SizeOf.get(NetinetIn.in_addr.class)) <0) {
+            //  1126          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
+            //  1127                         "Error setting socket option");
+            throw new SocketException("Error setting socket option");
+        }
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1131  /*
+    //  1132   * Set outgoing multicast interface designated by a NetworkInterface.
+    //  1133   * Throw exception if failed.
+    //  1134   */
+    //  1135  #ifdef AF_INET6
+    //  1136  static void mcast_set_if_by_if_v6(JNIEnv *env, jobject this, int fd, jobject value) {
+    static void mcast_set_if_by_if_v6(int fd, NetworkInterface value) throws SocketException {
+        //  1137      static jfieldID ni_indexID;
+        //  1138      int index;
+        CIntPointer index_Pointer = StackValue.get(CIntPointer.class);
+        //  1139
+        //  1140      if (ni_indexID == NULL) {
+        //  1141          jclass c = (*env)->FindClass(env, "java/net/NetworkInterface");
+        //  1142          CHECK_NULL(c);
+        //  1143          ni_indexID = (*env)->GetFieldID(env, c, "index", "I");
+        //  1144          CHECK_NULL(ni_indexID);
+        //  1145      }
+        //  1146      index = (*env)->GetIntField(env, value, ni_indexID);
+        index_Pointer.write(Util_java_net_NetworkInterface.fromNetworkInterface(value).index);
+        //  1147
+        //  1148      if (JVM_SetSockOpt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+        //  1149                         (const char*)&index, sizeof(index)) < 0) {
+        if ( VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IPV6_MULTICAST_IF(), (CCharPointer) index_Pointer, SizeOf.get(CIntPointer.class)) <0) {
+            //  1150          if (errno == EINVAL && index > 0) {
+            if (Errno.errno() == Errno.EINVAL() && index_Pointer.read() > 0) {
+                //  1151              JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                //  1152                  "IPV6_MULTICAST_IF failed (interface has IPv4 "
+                //  1153                  "address only?)");
+                throw new SocketException("IPV6_MULTICAST_IF failed (interface has IPv4 address only?");
+            } else {
+                //  1155              NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
+                //  1156                             "Error setting socket option");
+                throw new SocketException("Error setting socket option");
+            }
+            //  1158          return;
+            /* Unreachable. */
+        }
+    }
+    //  1162  #endif /* AF_INET6 */
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1181  /*
+    //  1182   * Set outgoing multicast interface designated by an InetAddress.
+    //  1183   * Throw exception if failed.
+    //  1184   */
+    //  1185  #ifdef AF_INET6
+    //  1186  static void mcast_set_if_by_addr_v6(JNIEnv *env, jobject this, int fd, jobject value) {
+    static void mcast_set_if_by_addr_v6(int fd, InetAddress valueArg) throws SocketException {
+        //  1187      static jclass ni_class;
+        //  1188      if (ni_class == NULL) {
+        //  1189          jclass c = (*env)->FindClass(env, "java/net/NetworkInterface");
+        //  1190          CHECK_NULL(c);
+        //  1191          ni_class = (*env)->NewGlobalRef(env, c);
+        //  1192          CHECK_NULL(ni_class);
+        //  1193      }
+        //  1194
+        //  1195      value = Java_java_net_NetworkInterface_getByInetAddress0(env, ni_class, value);
+        NetworkInterface value;
+
+        value = Target_java_net_NetworkInterface.getByInetAddress0(valueArg);
+        //  1196      if (value == NULL) {
+        if (value == null) {
+            //  1197          if (!(*env)->ExceptionOccurred(env)) {
+            //  1198              JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+            //  1199                   "bad argument for IP_MULTICAST_IF"
+            //  1200                   ": address not bound to any interface");
+            throw new SocketException("bad argument for IP_MULTICAST_IF: address not bound to any interface");
+            //  1202          return;
+            /* Unreachable. */
+        }
+        //  1204
+        //  1205      mcast_set_if_by_if_v6(env, this, fd, value);
+        mcast_set_if_by_if_v6(fd, value);
+    }
+    //  1207  #endif
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1329  /*
+    //  1330   * Sets the multicast loopback mode.
+    //  1331   */
+    //  1332  static void setMulticastLoopbackMode(JNIEnv *env, jobject this, int fd,
+    //  1333                                    jint opt, jobject value) {
+    static void setMulticastLoopbackMode(int fd, int opt, Object value) throws SocketException {
+        //  1334  #ifdef AF_INET6
+        if (IsDefined.socket_AF_INET6()) {
+            //  1335  #ifdef __linux__
+            if (IsDefined.__linux__()) {
+                //  1336      mcast_set_loop_v4(env, this, fd, value);
+                mcast_set_loop_v4(fd, (Boolean) value);
+                //  1337      if (ipv6_available()) {
+                if (JavaNetNetUtil.ipv6_available()) {
+                    //  1338          mcast_set_loop_v6(env, this, fd, value);
+                    mcast_set_loop_v6(fd, (Boolean) value);
+                }
+            //  1340  #else  /* __linux__ not defined */
+            } else {
+                //  1341      if (ipv6_available()) {
+                if (JavaNetNetUtil.ipv6_available()) {
+                    //  1342          mcast_set_loop_v6(env, this, fd, value);
+                    mcast_set_loop_v6(fd, (Boolean) value);
+                } else {
+                    //  1344          mcast_set_loop_v4(env, this, fd, value);
+                    mcast_set_loop_v4(fd, (Boolean) value);
+                }
+            //  1346  #endif  /* __linux__ */
+            }
+        //  1347  #else
+        } else {
+            //  1348      mcast_set_loop_v4(env, this, fd, value);
+            mcast_set_loop_v4(fd, (Boolean) value);
+            //  1349  #endif  /* AF_INET6 */
+        }
+        //  1350  }
+    }
+    // @formatter:on
+
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1283  static void mcast_set_loop_v4(JNIEnv *env, jobject this, int fd, jobject value) {
+    static void mcast_set_loop_v4(int fd, boolean value) throws SocketException {
+        //  1284      jclass cls;
+        //  1285      jfieldID fid;
+        //  1286      jboolean on;
+        boolean on;
+        //  1287      char loopback;
+        CCharPointer loopback_Pointer = StackValue.get(CCharPointer.class);
+
+        //  1289      cls = (*env)->FindClass(env, "java/lang/Boolean");
+        //  1290      CHECK_NULL(cls);
+        //  1291      fid =  (*env)->GetFieldID(env, cls, "value", "Z");
+        //  1292      CHECK_NULL(fid);
+        //  1293
+        //  1294      on = (*env)->GetBooleanField(env, value, fid);
+        on = value;
+        //  1295      loopback = (!on ? 1 : 0);
+        loopback_Pointer.write((byte) (!on ? 1 : 0));
+
+        //  1297      if (NET_SetSockOpt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, (const void *)&loopback, sizeof(char)) < 0) {
+        if ( JavaNetNetUtilMD.NET_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_LOOP(), (WordPointer) loopback_Pointer, SizeOf.get(CCharPointer.class)) < 0) {
+            //  1298          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
+            throw new SocketException("Error setting socket option");
+            //  1299          return;
+        /* Unreachable. */
+        }
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1303  /*
+    //  1304   * Enable/disable local loopback of multicast datagrams.
+    //  1305   */
+    //  1306  #ifdef AF_INET6
+    //  1307  static void mcast_set_loop_v6(JNIEnv *env, jobject this, int fd, jobject value) {
+    static void mcast_set_loop_v6(int fd, boolean value) throws SocketException {
+        //  1308      jclass cls;
+        //  1309      jfieldID fid;
+        //  1310      jboolean on;
+        boolean on;
+        //  1311      int loopback;
+
+        CIntPointer loopback_Pointer = StackValue.get(CIntPointer.class);
+        //  1312
+        //  1313      cls = (*env)->FindClass(env, "java/lang/Boolean");
+        //  1314      CHECK_NULL(cls);
+        //  1315      fid =  (*env)->GetFieldID(env, cls, "value", "Z");
+        //  1316      CHECK_NULL(fid);
+        //  1317
+        //  1318      on = (*env)->GetBooleanField(env, value, fid);
+        on = value;
+        //  1319      loopback = (!on ? 1 : 0);
+        loopback_Pointer.write( !on ? 1 : 0);
+        //  1320
+        //  1321      if (NET_SetSockOpt(fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, (const void *)&loopback, sizeof(int)) < 0) {
+        if ( JavaNetNetUtilMD.NET_SetSockOpt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_LOOP(), (WordPointer) loopback_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
+            //  1322          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
+            throw new SocketException("Error setting socket option");
+            //  1323          return;
+            /* Unreachable. */
+        }
+        //  1324      }
+        //  1325
+        //  1326  }
     }
     // @formatter:on
 
