@@ -1,0 +1,198 @@
+cache:
+  directories:
+  - $HOME/.cache/pip
+  - $HOME/.m2
+  - $HOME/.mx
+dist: trusty
+sudo: required
+language: generic
+install:
+  - cd ..
+  - gem install mdl
+  - pip install astroid==1.1.0 --user
+  - pip install pylint==1.1.0 --user
+  - git clone https://github.com/graalvm/mx
+  - export PATH=`pwd`/mx:$PATH
+  - wget -O mx/ecj.jar 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/ecj-4.5.2.jar'
+  - wget https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
+  - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
+  - wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/jvmci-0.48/openjdk-8u172-jvmci-0.48-linux-amd64.tar.gz
+  - tar -xzf openjdk-8u172-jvmci-0.48-linux-amd64.tar.gz
+  - export SULONG_ENV=sulong/mx.sulong/env
+  - echo ECLIPSE_EXE=`pwd`/eclipse/eclipse >> $SULONG_ENV
+  - echo JDT=`pwd`/mx/ecj.jar >> $SULONG_ENV
+  - echo JAVA_HOME=`pwd`/openjdk1.8.0_172-jvmci-0.48 >> $SULONG_ENV
+  - echo MAKEFLAGS=-j2 >> $SULONG_ENV
+  - echo CPPFLAGS=-g >> $SULONG_ENV
+  - cd sulong
+  - mx sforceimports
+# the style gate needs the full commit history for checking copyright years
+  - test "$GATE_TAGS" != "style" || git fetch --unshallow
+  - export CLANG=clang-$LLVM_VER
+  - export CLANGXX=clang++-$LLVM_VER
+  - export OPT=opt-$LLVM_VER
+  - export LLVM_AS=llvm-as-$LLVM_VER
+  - export LLVM_LINK=llvm-link-$LLVM_VER
+script:
+  - cd ../sulong
+  - test -z "$COMPILE_COMMAND" || $COMPILE_COMMAND
+  - test -z "$GATE_TAGS" || mx gate --tags $GATE_TAGS
+  - test -z "$DOWNSTREAM_COMMAND" || mx testdownstream -R $DOWNSTREAM_REPO --suitedir $DOWNSTREAM_SUITE -C "$DOWNSTREAM_COMMAND"
+matrix:
+  fast_finish: true
+  include:
+  - env: LLVM_VER=3.8 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.9 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-trusty-3.9
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.9
+          - llvm-3.9
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=4.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-trusty-4.0
+        packages:
+          - python2.7
+          - python-pip
+          - clang-4.0
+          - llvm-4.0
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=5.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-trusty-5.0
+        packages:
+          - python2.7
+          - python-pip
+          - clang-5.0
+          - llvm-5.0
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=6.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-trusty-6.0
+        packages:
+          - python2.7
+          - python-pip
+          - clang-6.0
+          - llvm-6.0
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='style'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - clang-format-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='fullbuild'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='sulongMisc' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='nwcc' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='llvm' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='parser' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 GATE_TAGS='gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+  - env: LLVM_VER=3.8 DOWNSTREAM_REPO='https://github.com/graalvm/graal.git' DOWNSTREAM_SUITE='vm' DYNAMIC_IMPORTS='sulong,/substratevm' NATIVE_IMAGE_TESTING='True' DOWNSTREAM_COMMAND='--disable-polyglot --disable-libpolyglot gate -B=--force-deprecation-as-warning --tags build,sulong'
+    addons:
+      apt:
+        packages:
+          - python2.7
+          - python-pip
+          - clang-3.8
+          - llvm-3.8
+          - libc++1
+          - libc++-dev
+after_failure:
+  - find . -iname "*.log" -print0 | xargs -0 cat

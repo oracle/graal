@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-22.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-24.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/plugin/self-assign-test-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/plugin/self-assign-test-1.c

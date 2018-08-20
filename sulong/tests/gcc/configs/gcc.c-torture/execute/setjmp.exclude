@@ -1,0 +1,2 @@
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/built-in-setjmp.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr60003.c
