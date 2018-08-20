@@ -24,6 +24,22 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
@@ -37,19 +53,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Implementation of a memory tracing profiler for
@@ -90,7 +93,7 @@ public final class MemoryTracer implements Closeable {
 
     private EventBinding<?> stacksBinding;
 
-    private final ProfilerNode<Payload> rootNode = new ProfilerNode<>();
+    private final Map<Thread, ProfilerNode<Payload>> rootNodes = new HashMap<>();
 
     private boolean stackOverflowed = false;
 
@@ -175,19 +178,54 @@ public final class MemoryTracer implements Closeable {
      */
     public synchronized Collection<ProfilerNode<Payload>> getRootNodes() {
         ProfilerNode<Payload> copy = new ProfilerNode<>();
-        copy.deepCopyChildrenFrom(rootNode, new Function<Payload, Payload>() {
-            @Override
-            public Payload apply(Payload payload) {
-                Payload copy = new Payload();
-                copy.totalAllocations = payload.totalAllocations;
-                for (AllocationEventInfo info : payload.events) {
-                    copy.events.add(new AllocationEventInfo(info.language, info.allocated, info.reallocation, info.metaObjectString));
-                }
-                return copy;
-            }
-        });
+        for (ProfilerNode<Payload> node : rootNodes.values()) {
+            copy.deepMergeChildrenFrom(node, mergePayload, payloadFactory);
+        }
         return copy.getChildren();
     }
+
+    /**
+     * @return The roots of the trees representing the profile of the execution per thread.
+     * @since 1.0
+     */
+    public synchronized Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
+        Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
+        for (Map.Entry<Thread, ProfilerNode<Payload>> entry : rootNodes.entrySet()) {
+            ProfilerNode<Payload> copy = new ProfilerNode<>();
+            copy.deepCopyChildrenFrom(entry.getValue(), copyPayload);
+            returnValue.put(entry.getKey(), copy.getChildren());
+        }
+        return Collections.unmodifiableMap(returnValue);
+    }
+
+    Supplier<Payload> payloadFactory = new Supplier<Payload>() {
+        @Override
+        public Payload get() {
+            return new Payload();
+        }
+    };
+
+    Function<Payload, Payload> copyPayload = new Function<Payload, Payload>() {
+        @Override
+        public Payload apply(Payload payload) {
+            Payload copy = new Payload();
+            copy.totalAllocations = payload.totalAllocations;
+            for (AllocationEventInfo info : payload.events) {
+                copy.events.add(new AllocationEventInfo(info.language, info.allocated, info.reallocation, info.metaObjectString));
+            }
+            return copy;
+        }
+    };
+
+    BiConsumer<Payload, Payload> mergePayload = new BiConsumer<Payload, Payload>() {
+        @Override
+        public void accept(Payload source, Payload dest) {
+            dest.totalAllocations += source.totalAllocations;
+            for (AllocationEventInfo info : source.events) {
+                dest.events.add(new AllocationEventInfo(info.language, info.allocated, info.reallocation, info.metaObjectString));
+            }
+        }
+    };
 
     /**
      * Erases all the data gathered by the tracer.
@@ -195,9 +233,11 @@ public final class MemoryTracer implements Closeable {
      * @since 0.30
      */
     public synchronized void clearData() {
-        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
-        if (rootChildren != null) {
-            rootChildren.clear();
+        for (ProfilerNode<Payload> node : rootNodes.values()) {
+            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            if (rootChildren != null) {
+                rootChildren.clear();
+            }
         }
     }
 
@@ -206,8 +246,12 @@ public final class MemoryTracer implements Closeable {
      * @since 0.30
      */
     public synchronized boolean hasData() {
-        Map<SourceLocation, ProfilerNode<Payload>> rootChildren = rootNode.children;
-        return rootChildren != null && !rootChildren.isEmpty();
+        boolean hasData = false;
+        for (ProfilerNode<Payload> node : rootNodes.values()) {
+            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            hasData |= (rootChildren != null && !rootChildren.isEmpty());
+        }
+        return hasData;
     }
 
     /**
@@ -316,7 +360,12 @@ public final class MemoryTracer implements Closeable {
             }
             synchronized (MemoryTracer.this) {
                 // now traverse the stack and reconstruct the call tree
-                ProfilerNode<Payload> treeNode = rootNode;
+                ProfilerNode<Payload> treeNode = rootNodes.computeIfAbsent(Thread.currentThread(), new Function<Thread, ProfilerNode<Payload>>() {
+                    @Override
+                    public ProfilerNode<Payload> apply(Thread thread) {
+                        return new ProfilerNode<>();
+                    }
+                });
                 for (int i = 0; i < correctedStackInfo.getLength(); i++) {
                     SourceLocation location = correctedStackInfo.getStack()[i];
                     ProfilerNode<Payload> child = treeNode.findChild(location);
