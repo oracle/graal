@@ -562,7 +562,7 @@ final class NativeImageServer extends NativeImage {
                 if (selectedPort == 0) {
                     try (BufferedReader serverStdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                         String line;
-                        int readLineTries = 12;
+                        int readLineTries = 60;
                         while ((line = serverStdout.readLine()) != null && --readLineTries > 0) {
                             if (line.startsWith(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX)) {
                                 String portStr = line.substring(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX.length());
@@ -572,6 +572,8 @@ final class NativeImageServer extends NativeImage {
                                 } catch (NumberFormatException ex) {
                                     /* Fall through */
                                 }
+                            } else {
+                                showWarning(line);
                             }
                         }
                         if (selectedPort == 0) {
