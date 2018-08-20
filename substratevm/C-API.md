@@ -73,4 +73,4 @@ int graal_tear_down_isolate(graal_isolate_t* isolate);
 ```
 In addition to the C level API, there is also a way to initialize an isolate
 from Java and thus use Java and Substrate VM to
-[implement native methods in Java](JNIviaSVM.md).
+[implement native methods in Java](ImplementingNativeMethodsInJavaWithSVM.md).
