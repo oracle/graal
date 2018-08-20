@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import re
-import mx, mx_benchmark, mx_sulong
+import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
 import mx_subst
 from os.path import join, exists
@@ -127,7 +127,7 @@ class GccLikeVm(Vm):
 
         env = os.environ.copy()
         env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
-        env['CC'] = 'clang'
+        env['CC'] = mx_buildtools.ClangCompiler.CLANG
         env['VPATH'] = '..'
         cmdline = ['make', '-f', '../Makefile']
 
@@ -167,7 +167,7 @@ class ClangVm(GccLikeVm):
 
     def compiler_name(self):
         mx_sulong.ensureLLVMBinariesExist()
-        return mx_sulong.findLLVMProgram('clang')
+        return mx_sulong.findLLVMProgram(mx_buildtools.ClangCompiler.CLANG)
 
 
 class SulongVm(GuestVm):
@@ -200,7 +200,7 @@ class SulongVm(GuestVm):
 
         env = os.environ.copy()
         env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
-        env['LLVM_COMPILER'] = 'clang'
+        env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
         env['CC'] = 'wllvm'
         env['VPATH'] = '..'
 

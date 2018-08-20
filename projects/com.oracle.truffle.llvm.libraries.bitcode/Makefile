@@ -32,6 +32,11 @@ QUIETLY$(MX_VERBOSE) = @
 .PHONY: default
 default: bin/libsulong.bc bin/libsulong-src.tar.gz
 
+CLANG?=clang
+CLANGXX?=clang++
+OPT?=opt
+LLVM_LINK?=llvm-link
+
 C_SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
 CXX_SOURCE_FILES=$(wildcard ${VPATH}/libcxxabi/*.cpp)
 BC_FILES=${C_SOURCE_FILES:${VPATH}/src/%.c=bin/%.bc} ${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
@@ -45,17 +50,17 @@ POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
 $(shell mkdir -p deps bin >/dev/null)
 
 bin/libsulong.bc: ${BC_FILES}
-	$(QUIETLY) llvm-link -o $@ $+
+	$(QUIETLY) $(LLVM_LINK) -o $@ $+
 
 bin/%.bc: bin/%.noopt.bc
-	$(QUIETLY) opt -o $@ $+ ${OPT_FLAGS}
+	$(QUIETLY) $(OPT) -o $@ $+ ${OPT_FLAGS}
 
 bin/%.noopt.bc: src/%.c deps/%.d
-	$(QUIETLY) clang -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
+	$(QUIETLY) $(CLANG) -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
-	$(QUIETLY) clang++ -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h

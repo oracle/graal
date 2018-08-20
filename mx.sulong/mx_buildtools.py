@@ -123,14 +123,14 @@ class ClangCompiler(Tool):
     def getTool(self, inputFile):
         inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
         if inputLanguage == ProgrammingLanguage.C or inputLanguage == ProgrammingLanguage.OBJECTIVE_C:
-            return 'clang'
+            return ClangCompiler.CLANG
         elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
-            return 'clang++'
+            return ClangCompiler.CLANGXX
         else:
             raise Exception('Unsupported input language')
 
     def getImplicitArgs(self, tool, program):
-        if tool == 'clang' or tool == 'clang++':
+        if tool == ClangCompiler.CLANG or tool == ClangCompiler.CLANGXX:
             llvmVersion = mx_sulong.getLLVMVersion(program)
             # prevent clang 5 from adding the 'optnone' attribute which would stop us from using opt
             return mx_sulong.getLLVMExplicitArgs(llvmVersion)
@@ -146,6 +146,9 @@ class ClangCompiler(Tool):
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
         return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+
+ClangCompiler.CLANG = os.environ['CLANG'] if 'CLANG' in os.environ else 'clang'
+ClangCompiler.CLANGXX = os.environ['CLANGXX'] if 'CLANGXX' in os.environ else 'clang++'
 
 
 class GCCCompiler(Tool):
@@ -199,7 +202,9 @@ class Opt(Tool):
         self.passes = passes
 
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
+        return mx.run([Opt.OPT, '-o', outputFile] + self.passes + [inputFile])
+
+Opt.OPT = os.environ['OPT'] if 'OPT' in os.environ else 'opt'
 
 Tool.CLANG = ClangCompiler()
 Tool.CLANG_C = ClangCompiler('clangc', [ProgrammingLanguage.C])

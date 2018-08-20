@@ -31,6 +31,8 @@ QUIETLY$(MX_VERBOSE)  = @
 
 .PHONY: default
 
+CLANG?=clang
+
 SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
 
 SOURCES=${SOURCE_FILES:${VPATH}/%=%}
@@ -39,8 +41,8 @@ OBJECTS=${SOURCES:src/%.c=bin/%.o}
 default: bin/$(LIBSULONGTEST)
 
 bin/$(LIBSULONGTEST): $(OBJECTS)
-	$(QUIETLY) clang -shared -fPIC -o $@ $+
+	$(QUIETLY) $(CLANG) -shared -fPIC -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin
-	$(QUIETLY) clang -c -fPIC -o $@ $+
+	$(QUIETLY) $(CLANG) -c -fPIC -o $@ $+

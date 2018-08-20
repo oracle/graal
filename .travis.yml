@@ -18,10 +18,7 @@ install:
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
   - wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/jvmci-0.46/openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
   - tar -xzf openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
-  - mkdir llvmDir
   - export SULONG_ENV=sulong/mx.sulong/env
-# Travis' pyenv prepends some directories to PATH with an older LLVM, we use mx to restore it
-  - echo PATH=`pwd`/llvmDir:$PATH >> $SULONG_ENV
   - echo ECLIPSE_EXE=`pwd`/eclipse/eclipse >> $SULONG_ENV
   - echo JDT=`pwd`/mx/ecj.jar >> $SULONG_ENV
   - echo JAVA_HOME=`pwd`/openjdk1.8.0_172-jvmci-0.46 >> $SULONG_ENV
@@ -31,13 +28,12 @@ install:
   - mx sforceimports
 # the style gate needs the full commit history for checking copyright years
   - test "$GATE_TAGS" != "style" || git fetch --unshallow
+  - export CLANG=clang-$LLVM_VER
+  - export CLANGXX=clang++-$LLVM_VER
+  - export OPT=opt-$LLVM_VER
+  - export LLVM_AS=llvm-as-$LLVM_VER
+  - export LLVM_LINK=llvm-link-$LLVM_VER
 script:
-  - cd ../llvmDir
-  - ln -s /usr/bin/clang-$LLVM_VER clang
-  - ln -s /usr/bin/clang++-$LLVM_VER clang++
-  - ln -s /usr/bin/opt-$LLVM_VER opt
-  - ln -s /usr/bin/llvm-link-$LLVM_VER llvm-link
-  - export PATH=`pwd`:$PATH
   - cd ../sulong
   - test -z "$COMPILE_COMMAND" || $COMPILE_COMMAND
   - test -z "$GATE_TAGS" || mx gate --tags $GATE_TAGS
