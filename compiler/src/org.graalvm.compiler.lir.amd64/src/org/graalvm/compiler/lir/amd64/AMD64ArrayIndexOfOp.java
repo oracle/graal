@@ -58,6 +58,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     private final JavaKind kind;
     private final int vmPageSize;
     private final int nValues;
+    private final boolean findTwoConsecutive;
     private final AMD64Kind vectorKind;
 
     @Def({REG}) protected Value resultValue;
@@ -81,14 +82,17 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) protected Value vectorArray3;
     @Temp({REG, ILLEGAL}) protected Value vectorArray4;
 
-    public AMD64ArrayIndexOfOp(JavaKind kind, int vmPageSize, int maxVectorSize, LIRGeneratorTool tool, Value result, Value arrayPtr, Value arrayLength, Value... searchValues) {
+    public AMD64ArrayIndexOfOp(JavaKind kind, boolean findTwoConsecutive, int vmPageSize, int maxVectorSize, LIRGeneratorTool tool, Value result, Value arrayPtr, Value arrayLength,
+                    Value... searchValues) {
         super(TYPE);
         this.kind = kind;
+        this.findTwoConsecutive = findTwoConsecutive;
         this.vmPageSize = vmPageSize;
         assert 0 < searchValues.length && searchValues.length <= 4;
         assert byteMode(kind) || charMode(kind);
         assert supports(tool, CPUFeature.SSSE3) || supports(tool, CPUFeature.AVX) || supportsAVX2(tool);
         nValues = searchValues.length;
+        assert !findTwoConsecutive || nValues == 1;
         resultValue = result;
         arrayPtrValue = arrayPtr;
         arrayLengthValue = arrayLength;
@@ -174,10 +178,10 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         }
         // fill comparison vector with copies of the search value
         for (int i = 0; i < nValues; i++) {
-            emitBroadcast(asm, kind, vecCmp[i], vecArray[0], vectorSize);
+            emitBroadcast(asm, findTwoConsecutive ? (byteMode(kind) ? JavaKind.Char : JavaKind.Int) : kind, vecCmp[i], vecArray[0], vectorSize);
         }
 
-        emitArrayIndexOfChars(crb, asm, kind, vectorSize, result, slotsRemaining, searchValue, vecCmp, vecArray, cmpResult, retFound, retNotFound, vmPageSize, nValues, nVectors, false);
+        emitArrayIndexOfChars(crb, asm, kind, vectorSize, result, slotsRemaining, searchValue, vecCmp, vecArray, cmpResult, retFound, retNotFound, vmPageSize, nValues, nVectors, findTwoConsecutive);
 
         // return -1 (no match)
         asm.bind(retNotFound);
@@ -191,7 +195,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.bind(end);
     }
 
-    static void emitArrayIndexOfChars(CompilationResultBuilder crb, AMD64MacroAssembler asm, JavaKind kind, AVXKind.AVXSize vectorSize,
+    private static void emitArrayIndexOfChars(CompilationResultBuilder crb, AMD64MacroAssembler asm, JavaKind kind, AVXKind.AVXSize vectorSize,
                     Register arrayPtr,
                     Register slotsRemaining,
                     Register[] searchValue,

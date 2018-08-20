@@ -77,7 +77,7 @@ public class AMD64ArrayIndexOfNCharsNode extends FixedWithNextNode implements LI
         for (int i = 0; i < searchValues.size(); i++) {
             searchValueOperands[i] = gen.operand(searchValues.get(i));
         }
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(kind, gen.operand(arrayPointer), gen.operand(arrayLength), searchValueOperands);
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(kind, false, gen.operand(arrayPointer), gen.operand(arrayLength), searchValueOperands);
         gen.setResult(this, result);
     }
 

@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
@@ -85,16 +86,31 @@ public class AMD64StringSubstitutions {
 
         Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
         Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
-        int result;
         if (targetCount == 1) {
-            result = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, sourceCount - fromIndex, target[targetOffset], JavaKind.Char);
+            int indexOfResult = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, sourceCount - fromIndex, target[targetOffset], JavaKind.Char);
+            if (indexOfResult >= 0) {
+                return indexOfResult + totalOffset;
+            }
+            return indexOfResult;
         } else {
-            result = AMD64StringIndexOfStringNode.optimizedStringIndexOf(JavaKind.Char, sourcePointer, sourceCount - fromIndex, targetPointer, targetCount);
+            int haystackLength = sourceCount - (fromIndex + (targetCount - 2));
+            int prefix = (target[targetOffset + 1] << Character.SIZE) | target[targetOffset];
+            while (haystackLength > 0) {
+                int indexOfResult = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, haystackLength, prefix, JavaKind.Char, true);
+                if (indexOfResult < 0) {
+                    return -1;
+                }
+                totalOffset += indexOfResult;
+                sourcePointer = sourcePointer.add(indexOfResult * charArrayIndexScale(INJECTED));
+                haystackLength -= (indexOfResult + 1);
+                if (ArrayRegionEqualsNode.regionEquals(sourcePointer, targetPointer, targetCount, JavaKind.Char)) {
+                    return totalOffset;
+                }
+                sourcePointer = sourcePointer.add(charArrayIndexScale(INJECTED));
+                totalOffset++;
+            }
+            return -1;
         }
-        if (result >= 0) {
-            return result + totalOffset;
-        }
-        return result;
     }
 
     // Only exists in JDK <= 8

@@ -87,7 +87,6 @@ import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
-import org.graalvm.compiler.lir.amd64.AMD64StringIndexOfStringOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
@@ -544,9 +543,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length)));
+        append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length), constantLength, directPointers));
         return result;
     }
 
@@ -566,26 +565,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitStringIndexOfString(JavaKind kind, Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount) {
-        return emitStringIndexOfString(kind, sourcePointer, sourceCount, targetPointer, targetCount, constantTargetCount, -1);
-    }
-
-    protected Variable emitStringIndexOfString(JavaKind kind, Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount, int maxVectorSize) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64StringIndexOfStringOp(kind, getVMPageSize(), this,
-                        asAllocatable(result), asAllocatable(sourcePointer), asAllocatable(sourceCount), asAllocatable(targetPointer), asAllocatable(targetCount),
-                        constantTargetCount, maxVectorSize));
-        return result;
-    }
-
-    @Override
-    public Variable emitArrayIndexOf(JavaKind kind, Value arrayPointer, Value arrayLength, Value... searchValues) {
+    public Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value... searchValues) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         Value[] allocatableSearchValues = new Value[searchValues.length];
         for (int i = 0; i < searchValues.length; i++) {
             allocatableSearchValues[i] = asAllocatable(searchValues[i]);
         }
-        append(new AMD64ArrayIndexOfOp(kind, getVMPageSize(), getMaxVectorSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), allocatableSearchValues));
+        append(new AMD64ArrayIndexOfOp(kind, findTwoConsecutive, getVMPageSize(), getMaxVectorSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), allocatableSearchValues));
         return result;
     }
 

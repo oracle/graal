@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements.nodes;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -42,49 +42,56 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
-@NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
-public class AMD64StringIndexOfStringNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
+// JaCoCo Exclude
 
-    public static final NodeClass<AMD64StringIndexOfStringNode> TYPE = NodeClass.create(AMD64StringIndexOfStringNode.class);
+/**
+ * Compares two array regions with a given length.
+ */
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
+public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LIRLowerable, MemoryAccess {
 
+    public static final NodeClass<ArrayRegionEqualsNode> TYPE = NodeClass.create(ArrayRegionEqualsNode.class);
+
+    /** {@link JavaKind} of the arrays to compare. */
     private final JavaKind kind;
 
-    @Input private ValueNode haystackPointer;
-    @Input private ValueNode haystackLength;
-    @Input private ValueNode needlePointer;
-    @Input private ValueNode needleLength;
+    /** Pointer to first array region to be tested for equality. */
+    @Input private ValueNode array1;
 
-    @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
+    /** Pointer to second array region to be tested for equality. */
+    @Input private ValueNode array2;
 
-    public AMD64StringIndexOfStringNode(@ConstantNodeParameter JavaKind kind,
-                    ValueNode haystackPointer,
-                    ValueNode haystackLength,
-                    ValueNode needlePointer,
-                    ValueNode needleLength) {
-        super(TYPE, StampFactory.forKind(JavaKind.Int));
+    /** Length of the array region. */
+    @Input private ValueNode length;
+
+    @OptionalInput(Memory) private MemoryNode lastLocationAccess;
+
+    public ArrayRegionEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.kind = kind;
-        this.haystackPointer = haystackPointer;
-        this.haystackLength = haystackLength;
-        this.needlePointer = needlePointer;
-        this.needleLength = needleLength;
+        this.array1 = array1;
+        this.array2 = array2;
+        this.length = length;
+    }
+
+    @NodeIntrinsic
+    public static native boolean regionEquals(Pointer array1, Pointer array2, int length, @ConstantNodeParameter JavaKind kind);
+
+    @Override
+    public void generate(NodeLIRBuilderTool gen) {
+        int constantLength = -1;
+        if (length.isConstant()) {
+            constantLength = length.asJavaConstant().asInt();
+        }
+        Value result = gen.getLIRGeneratorTool().emitArrayEquals(kind, gen.operand(array1), gen.operand(array2), gen.operand(length), constantLength, true);
+        gen.setResult(this, result);
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(kind);
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        int constantNeedleLength = -1;
-        if (needleLength.isConstant()) {
-            constantNeedleLength = needleLength.asJavaConstant().asInt();
-        }
-        Value result = gen.getLIRGeneratorTool().emitStringIndexOfString(kind,
-                        gen.operand(haystackPointer), gen.operand(haystackLength), gen.operand(needlePointer), gen.operand(needleLength), constantNeedleLength);
-        gen.setResult(this, result);
     }
 
     @Override
@@ -97,7 +104,4 @@ public class AMD64StringIndexOfStringNode extends FixedWithNextNode implements L
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;
     }
-
-    @NodeIntrinsic
-    public static native int optimizedStringIndexOf(@ConstantNodeParameter JavaKind kind, Pointer haystackPointer, int haystackLength, Pointer needlePointer, int needleLength);
 }

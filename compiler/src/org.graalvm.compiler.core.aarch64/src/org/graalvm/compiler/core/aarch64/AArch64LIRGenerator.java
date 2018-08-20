@@ -466,9 +466,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length)));
+        append(new AArch64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length), directPointers));
         return result;
     }
 

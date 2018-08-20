@@ -676,14 +676,4 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
         return new AMD64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
     }
-
-    @Override
-    public Variable emitStringIndexOfString(JavaKind kind, Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount) {
-        return emitStringIndexOfString(kind, sourcePointer, sourceCount, targetPointer, targetCount, constantTargetCount, config.maxVectorSize);
-    }
-
-    @Override
-    public Variable emitArrayIndexOf(JavaKind kind, Value arrayPointer, Value arrayLength, Value... searchValues) {
-        return emitArrayIndexOf(kind, config.maxVectorSize, arrayPointer, arrayLength, searchValues);
-    }
 }

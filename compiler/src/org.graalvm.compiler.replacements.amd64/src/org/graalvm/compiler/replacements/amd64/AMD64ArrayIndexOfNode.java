@@ -51,6 +51,7 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
     public static final NodeClass<AMD64ArrayIndexOfNode> TYPE = NodeClass.create(AMD64ArrayIndexOfNode.class);
 
     private final JavaKind kind;
+    private final boolean findTwoConsecutive;
 
     @Input private ValueNode arrayPointer;
     @Input private ValueNode arrayLength;
@@ -58,9 +59,11 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
 
     @OptionalInput(InputType.Memory) private MemoryNode lastLocationAccess;
 
-    public AMD64ArrayIndexOfNode(ValueNode arrayPointer, ValueNode arrayLength, ValueNode searchValue, @ConstantNodeParameter JavaKind kind) {
+    public AMD64ArrayIndexOfNode(ValueNode arrayPointer, ValueNode arrayLength, ValueNode searchValue,
+                    @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter boolean findTwoConsecutive) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.kind = kind;
+        this.findTwoConsecutive = findTwoConsecutive;
         this.arrayPointer = arrayPointer;
         this.arrayLength = arrayLength;
         this.searchValue = searchValue;
@@ -73,7 +76,7 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(kind, gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(searchValue));
+        Value result = gen.getLIRGeneratorTool().emitArrayIndexOf(kind, findTwoConsecutive, gen.operand(arrayPointer), gen.operand(arrayLength), gen.operand(searchValue));
         gen.setResult(this, result);
     }
 
@@ -89,5 +92,10 @@ public class AMD64ArrayIndexOfNode extends FixedWithNextNode implements LIRLower
     }
 
     @NodeIntrinsic
-    public static native int optimizedArrayIndexOf(Pointer arrayPointer, int arrayLength, char searchValue, @ConstantNodeParameter JavaKind kind);
+    public static native int optimizedArrayIndexOf(Pointer arrayPointer, int arrayLength, int searchValue,
+                    @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter boolean findTwoConsecutive);
+
+    public static int optimizedArrayIndexOf(Pointer arrayPointer, int arrayLength, char searchValue, @ConstantNodeParameter JavaKind kind) {
+        return optimizedArrayIndexOf(arrayPointer, arrayLength, searchValue, kind, false);
+    }
 }
