@@ -624,7 +624,7 @@ def native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
     mask_str = '#'
     def mask(arg):
-        if arg in ['--', '--build-args', '--run-args']:
+        if arg in ['--', '--build-args', '--run-args', '-h', '--help']:
             return arg
         else:
             return arg.replace('-', mask_str)
