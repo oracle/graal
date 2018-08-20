@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
@@ -108,6 +109,8 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
+    @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER) static final OptionKey<Boolean> SUMMARISE_THREADS= new OptionKey<>(false);
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         PrintStream out = new PrintStream(env.out());
         if (sampler.hasStackOverflowed()) {
@@ -118,12 +121,13 @@ class CPUSamplerCLI extends ProfilerCLI {
             out.println("-------------------------------------------------------------------------------- ");
             return;
         }
+        Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);
         switch (env.getOptions().get(OUTPUT)) {
             case HISTOGRAM:
-                printSamplingHistogram(out, sampler);
+                printSamplingHistogram(out, sampler, summariseThreads);
                 break;
             case CALLTREE:
-                printSamplingCallTree(out, sampler);
+                printSamplingCallTree(out, sampler, summariseThreads);
                 break;
         }
     }
@@ -148,10 +152,11 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    private static void printSamplingHistogram(PrintStream out, CPUSampler sampler) {
+    private static void printSamplingHistogram(PrintStream out, CPUSampler sampler, boolean summariseThreads) {
         int maxLength = 10;
         Map<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> linesPerThread = new HashMap<>();
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : sampler.getThreadToNodesMap().entrySet()) {
+        final Set<Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>>> entrySet = summariseThreads ? makeOneEntryMap(sampler).entrySet() : sampler.getThreadToNodesMap().entrySet();
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : entrySet) {
             List<List<ProfilerNode<CPUSampler.Payload>>> lines = new ArrayList<>(computeHistogram(node.getValue()).values());
             Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.Payload>>>() {
                 @Override
@@ -185,7 +190,9 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
         out.println(sep);
         for (Map.Entry<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> entry : linesPerThread.entrySet()) {
-            out.println(" Thread: " + entry.getKey());
+            if (!summariseThreads) {
+                out.println(" Thread: " + entry.getKey());
+            }
             out.println(title);
             out.println(sep);
             for (List<ProfilerNode<CPUSampler.Payload>> line : entry.getValue()) {
@@ -195,9 +202,16 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    private static void printSamplingCallTree(PrintStream out, CPUSampler sampler) {
+    private static Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> makeOneEntryMap(CPUSampler sampler) {
+        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> oneElementMap = new HashMap<>(1);
+        oneElementMap.put(new Thread("Summary"), sampler.getRootNodes());
+        return oneElementMap;
+    }
+
+    private static void printSamplingCallTree(PrintStream out, CPUSampler sampler, Boolean summariseThreads) {
         Collection<ProfilerNode<CPUSampler.Payload>> actualRoots = new ArrayList<>();
-        for (Collection<ProfilerNode<CPUSampler.Payload>> node : sampler.getThreadToNodesMap().values()) {
+        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = summariseThreads ? makeOneEntryMap(sampler) : sampler.getThreadToNodesMap();
+        for (Collection<ProfilerNode<CPUSampler.Payload>> node : threadToNodesMap.values()) {
             actualRoots.addAll(node);
         }
         int maxLength = Math.max(10, computeTitleMaxLength(actualRoots, 0));
@@ -209,8 +223,10 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("  Total Time: Time spent somewhere on the stack. ");
         out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
         out.println(sep);
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : sampler.getThreadToNodesMap().entrySet()) {
-            out.println(" Thread: " + node.getKey());
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : threadToNodesMap.entrySet()) {
+            if (!summariseThreads) {
+                out.println(" Thread: " + node.getKey());
+            }
             out.println(title);
             out.println(sep);
             printSamplingCallTreeRec(sampler, maxLength, "", node.getValue(), out);
