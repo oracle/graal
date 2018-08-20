@@ -936,7 +936,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         //  1370      fd = getFD(env, this);
         fd = Util_java_net_PlainDatagramSocketImpl.getFD(this);
         //  1371      if (fd < 0) {
-        if (fd <0) {
+        if (fd < 0) {
             //  1372          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
             //  1373                          "Socket closed");
             throw new SocketException("Socket closed");
@@ -963,7 +963,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         //  1389          opt == java_net_SocketOptions_IP_MULTICAST_IF2) {
         if (opt == SocketOptions.IP_MULTICAST_IF || opt == SocketOptions.IP_MULTICAST_IF2) {
             //  1391          setMulticastInterface(env, this, fd, opt, value);
-            Util_java_net_PlainDatagramSocketImpl.setMulticastInterface(fd, opt, (InetAddress) value);
+            Util_java_net_PlainDatagramSocketImpl.setMulticastInterface(fd, opt, value);
             //  1392          return;
             /* Unreachable. */
             //  1393      }
@@ -1010,7 +1010,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 //  1423                  CHECK_NULL(fid);
                 //  1424
                 //  1425                  optval = (*env)->GetIntField(env, value, fid);
-                optval = (Integer) value;
+                optval = ((Integer)value).intValue();
                 //  1426                  break;
                 break;
             }
@@ -1029,7 +1029,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 //  1439                  CHECK_NULL(fid);
                 //  1440
                 //  1441                  on = (*env)->GetBooleanField(env, value, fid);
-                on = (Boolean) value;
+                on = ((Boolean)value).booleanValue();
                 //  1442
                 //  1443                  /* SO_REUSEADDR or SO_BROADCAST */
                 //  1444                  optval = (on ? 1 : 0);
@@ -1048,7 +1048,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
 
         //  1456      if (NET_SetSockOpt(fd, level, optname, (const void *)&optval, optlen) < 0) {
-        if ( JavaNetNetUtilMD.NET_SetSockOpt(fd, level_Pointer.read(), optname_Pointer.read(), WordFactory.unsigned(optval), optlen) < 0) {
+        if (JavaNetNetUtilMD.NET_SetSockOpt(fd, level_Pointer.read(), optname_Pointer.read(), WordFactory.unsigned(optval), optlen) < 0) {
             //  1457          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
             throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
             //  1458          return;
@@ -2055,7 +2055,7 @@ class Util_java_net_PlainDatagramSocketImpl {
         //  1123
         //  1124      if (JVM_SetSockOpt(fd, IPPROTO_IP, IP_MULTICAST_IF,
         //  1125                         (const char*)&in, sizeof(in)) < 0) {
-        if ( VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_IF(), (CCharPointer) in, SizeOf.get(NetinetIn.in_addr.class)) <0) {
+        if (VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_IF(), (CCharPointer) in, SizeOf.get(NetinetIn.in_addr.class)) < 0) {
             //  1126          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
             //  1127                         "Error setting socket option");
             throw new SocketException("Error setting socket option");
@@ -2086,7 +2086,7 @@ class Util_java_net_PlainDatagramSocketImpl {
         //  1147
         //  1148      if (JVM_SetSockOpt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
         //  1149                         (const char*)&index, sizeof(index)) < 0) {
-        if ( VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IPV6_MULTICAST_IF(), (CCharPointer) index_Pointer, SizeOf.get(CIntPointer.class)) <0) {
+        if (VmPrimsJVM.JVM_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IPV6_MULTICAST_IF(), (CCharPointer) index_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
             //  1150          if (errno == EINVAL && index > 0) {
             if (Errno.errno() == Errno.EINVAL() && index_Pointer.read() > 0) {
                 //  1151              JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
@@ -2096,7 +2096,7 @@ class Util_java_net_PlainDatagramSocketImpl {
             } else {
                 //  1155              NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException",
                 //  1156                             "Error setting socket option");
-                throw new SocketException("Error setting socket option");
+                throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
             }
             //  1158          return;
             /* Unreachable. */
@@ -2122,9 +2122,9 @@ class Util_java_net_PlainDatagramSocketImpl {
         //  1193      }
         //  1194
         //  1195      value = Java_java_net_NetworkInterface_getByInetAddress0(env, ni_class, value);
-        NetworkInterface value;
+        /* Do not assign to a formal argument. */
+        NetworkInterface value = Target_java_net_NetworkInterface.getByInetAddress0(valueArg);
 
-        value = Target_java_net_NetworkInterface.getByInetAddress0(valueArg);
         //  1196      if (value == NULL) {
         if (value == null) {
             //  1197          if (!(*env)->ExceptionOccurred(env)) {
@@ -2148,6 +2148,7 @@ class Util_java_net_PlainDatagramSocketImpl {
     //  1331   */
     //  1332  static void setMulticastLoopbackMode(JNIEnv *env, jobject this, int fd,
     //  1333                                    jint opt, jobject value) {
+    @SuppressWarnings({"unused"})
     static void setMulticastLoopbackMode(int fd, int opt, Object value) throws SocketException {
         //  1334  #ifdef AF_INET6
         if (IsDefined.socket_AF_INET6()) {
@@ -2204,9 +2205,9 @@ class Util_java_net_PlainDatagramSocketImpl {
         loopback_Pointer.write((byte) (!on ? 1 : 0));
 
         //  1297      if (NET_SetSockOpt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, (const void *)&loopback, sizeof(char)) < 0) {
-        if ( JavaNetNetUtilMD.NET_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_LOOP(), (WordPointer) loopback_Pointer, SizeOf.get(CCharPointer.class)) < 0) {
+        if (JavaNetNetUtilMD.NET_SetSockOpt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_LOOP(), (WordPointer) loopback_Pointer, SizeOf.get(CCharPointer.class)) < 0) {
             //  1298          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
-            throw new SocketException("Error setting socket option");
+            throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
             //  1299          return;
         /* Unreachable. */
         }
@@ -2236,12 +2237,12 @@ class Util_java_net_PlainDatagramSocketImpl {
         //  1318      on = (*env)->GetBooleanField(env, value, fid);
         on = value;
         //  1319      loopback = (!on ? 1 : 0);
-        loopback_Pointer.write( !on ? 1 : 0);
+        loopback_Pointer.write(!on ? 1 : 0);
         //  1320
         //  1321      if (NET_SetSockOpt(fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, (const void *)&loopback, sizeof(int)) < 0) {
-        if ( JavaNetNetUtilMD.NET_SetSockOpt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_LOOP(), (WordPointer) loopback_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
+        if (JavaNetNetUtilMD.NET_SetSockOpt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_LOOP(), (WordPointer) loopback_Pointer, SizeOf.get(CIntPointer.class)) < 0) {
             //  1322          NET_ThrowByNameWithLastError(env, JNU_JAVANETPKG "SocketException", "Error setting socket option");
-            throw new SocketException("Error setting socket option");
+            throw new SocketException(PosixUtils.lastErrorString("Error setting socket option"));
             //  1323          return;
             /* Unreachable. */
         }
