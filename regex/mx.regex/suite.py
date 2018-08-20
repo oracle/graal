@@ -3,6 +3,16 @@ suite = {
 
   "name" : "regex",
 
+  "version" : "1.0.0-rc6",
+  "groupId" : "com.oracle.truffle",
+  "url" : "http://www.graalvm.org/",
+  "developer" : {
+    "name" : "Truffle and Graal developers",
+    "email" : "graalvm-users@oss.oracle.com",
+    "organization" : "Graal",
+    "organizationUrl" : "http://www.graalvm.org/",
+  },
+
   "imports" : {
     "suites": [
       {
@@ -58,6 +68,9 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],
+      "maven" : {
+        "artifactId" : "truffle-regex",
+      },
     },
 
     "TREGEX_UNIT_TESTS" : {
