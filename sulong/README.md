@@ -14,11 +14,10 @@ as `clang`.
 Graal VM
 --------
 
-Sulong is part of the [Graal VM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
+Sulong is part of the [Graal VM](http://www.graalvm.org).
 Graal VM supports Linux or Mac OS X on x86 64-bit systems.
 
-1. Download the [Graal VM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html)
-binaries.
+1. Download the [Graal VM](http://www.graalvm.org/downloads/) binaries.
 2. Extract the archive to your file system.
 3. Add the Graal VM `/bin` folder to your `PATH` environment variable.
 
@@ -139,26 +138,26 @@ Then, download mx, which is the build tool used by Sulong:
 
 Next, use git to clone the Sulong project and its dependencies:
 
-    git clone https://github.com/graalvm/sulong
+    git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
 [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u121-jvmci-0.29-linux-amd64.tar.gz
+    tar -zxf labsjdk-8u172-jvmci-0.47-linux-amd64.tar.gz
 
 Set `JAVA_HOME` to point to the extracted labsjdk from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_121-jvmci-0.29 > sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/labsjdk1.8.0_172-jvmci-0.47 > graal/sulong/mx.sulong/env
 
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:
 
-    echo MAKEFLAGS=-j9 >> sulong/mx.sulong/env
+    echo MAKEFLAGS=-j9 >> graal/sulong/mx.sulong/env
 
 Finally, build the project:
 
-    cd sulong && mx build
+    cd graal/sulong && mx build
 
 The first build will take some time because `mx` has not only to build Sulong,
 but also its dependencies and primary testsuite.
@@ -244,7 +243,7 @@ applied during compile-time, link-time, runtime, and offline.
 What is Truffle?
 ----------------
 
-[Truffle](https://github.com/graalvm/graal/tree/master/truffle) is a language
+[Truffle](https://github.com/oracle/graal/tree/master/truffle) is a language
 implementation framework written in Java. It allows language designers
 to implement a (guest) language as an Abstract Syntax Tree (AST)
 interpreter. Additionally, Truffle provides many language independent
@@ -252,12 +251,6 @@ facilities to the host language such as profiling, debugging, and
 language interoperability. When a Truffle AST is executed often and then
 dynamically compiled with Graal, Graal can exploit its knowledge about the
 Truffle framework and produce efficient machine code.
-
-Build Status
-------------
-
-Thanks to Travis CI, all commits of this repository are tested:
-[![Build Status](https://travis-ci.org/graalvm/sulong.svg?branch=master)](https://travis-ci.org/graalvm/sulong)
 
 Further Information
 -------------------
