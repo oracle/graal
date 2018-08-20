@@ -152,7 +152,6 @@ public final class ProfilerNode<T> {
         return sourceLocation;
     }
 
-
     void deepCopyChildrenFrom(ProfilerNode<T> node, Function<T, T> copyPayload) {
         for (ProfilerNode<T> child : node.getChildren()) {
             final SourceLocation childSourceLocation = child.getSourceLocation();
