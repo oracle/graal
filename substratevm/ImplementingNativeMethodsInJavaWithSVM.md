@@ -64,8 +64,8 @@ public static void main(String[] args) {
     // ...
 }
 ```
-under the assumption your `LD_LIBRARY_PATH` environment variable
-or `java.library.path` Java property are properly set.
+under the assumption your `LD_LIBRARY_PATH` environment variable is specified
+or `java.library.path` Java property is properly set.
 
 ## Initializing the Substrate VM
 
