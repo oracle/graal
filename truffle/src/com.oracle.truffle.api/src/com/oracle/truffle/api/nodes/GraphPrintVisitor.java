@@ -586,8 +586,8 @@ public class GraphPrintVisitor implements Closeable {
 
     private static GraphPrintHandler createGraphPrintHandlerFromClass(Class<? extends GraphPrintHandler> customHandlerClass) {
         try {
-            return customHandlerClass.newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+            return customHandlerClass.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }

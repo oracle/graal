@@ -3,162 +3,77 @@
 
 CLSS public final com.oracle.truffle.tck.DebuggerTester
 cons public init()
+cons public init(org.graalvm.polyglot.Context$Builder)
 intf java.lang.AutoCloseable
+meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SourceElement[])
+meth public com.oracle.truffle.api.debug.Debugger getDebugger()
 meth public com.oracle.truffle.api.debug.DebuggerSession startSession()
 meth public java.lang.String expectDone()
 meth public java.lang.String getErr()
 meth public java.lang.String getOut()
 meth public java.lang.Thread getEvalThread()
 meth public java.lang.Throwable expectThrowable()
+meth public static com.oracle.truffle.api.source.Source getSourceImpl(org.graalvm.polyglot.Source)
+meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source)
+meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
+meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
 meth public void close()
+meth public void closeEngine()
 meth public void expectKilled()
 meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public void startEval(com.oracle.truffle.api.source.Source)
+ anno 0 java.lang.Deprecated()
+meth public void startEval(org.graalvm.polyglot.Source)
 supr java.lang.Object
-hfds TRACE,closed,engine,err,evalThread,executing,executingLoop,handler,initialized,newEvent,out,source
+hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
 hcls ExecutingLoop,ExecutingSource
 
-CLSS public abstract com.oracle.truffle.tck.TruffleTCK
-cons protected init()
-meth protected abstract java.lang.String applyNumbers()
-meth protected abstract java.lang.String countInvocations()
-meth protected abstract java.lang.String fourtyTwo()
-meth protected abstract java.lang.String invalidCode()
-meth protected abstract java.lang.String mimeType()
-meth protected abstract java.lang.String returnsNull()
-meth protected com.oracle.truffle.api.vm.PolyglotEngine prepareVM() throws java.lang.Exception
-meth protected com.oracle.truffle.api.vm.PolyglotEngine prepareVM(com.oracle.truffle.api.vm.PolyglotEngine$Builder) throws java.lang.Exception
-meth protected java.lang.String addToArray()
-meth protected java.lang.String callFunction()
-meth protected java.lang.String callMethod()
-meth protected java.lang.String complexAdd()
-meth protected java.lang.String complexAddWithMethod()
-meth protected java.lang.String complexCopy()
-meth protected java.lang.String complexSumReal()
-meth protected java.lang.String compoundObject()
-meth protected java.lang.String countUpWhile()
-meth protected java.lang.String evaluateSource()
-meth protected java.lang.String functionAddNumbers()
-meth protected java.lang.String getSizeOfForeign()
-meth protected java.lang.String globalObject()
-meth protected java.lang.String hasSizeOfForeign()
-meth protected java.lang.String identity()
-meth protected java.lang.String isExecutableOfForeign()
-meth protected java.lang.String isNullForeign()
-meth protected java.lang.String multiplyCode(java.lang.String,java.lang.String)
-meth protected java.lang.String objectWithElement()
-meth protected java.lang.String objectWithValueAndAddProperty()
-meth protected java.lang.String objectWithValueProperty()
-meth protected java.lang.String plus(java.lang.Class<?>,java.lang.Class<?>)
-meth protected java.lang.String plusInt()
-meth protected java.lang.String readElementFromForeign()
-meth protected java.lang.String readValueFromForeign()
-meth protected java.lang.String valueWithSource()
-meth protected java.lang.String valuesObject()
-meth protected java.lang.String writeElementToForeign()
-meth protected java.lang.String writeValueToForeign()
-meth protected java.lang.String[] metaObjects()
-meth protected void assertDouble(java.lang.String,double,double)
-meth public static void disposePreviousVM()
-meth public void addOneToAnArrayElement() throws java.lang.Exception
-meth public void multiplyTwoVariables() throws java.lang.Exception
-meth public void readWriteBooleanValue() throws java.lang.Exception
-meth public void readWriteByteValue() throws java.lang.Exception
-meth public void readWriteCharValue() throws java.lang.Exception
-meth public void readWriteDoubleValue() throws java.lang.Exception
-meth public void readWriteFloatValue() throws java.lang.Exception
-meth public void readWriteIntValue() throws java.lang.Exception
-meth public void readWriteShortValue() throws java.lang.Exception
-meth public void testAddComplexNumbers() throws java.lang.Exception
-meth public void testAddComplexNumbersWithMethod() throws java.lang.Exception
-meth public void testCallFunction() throws java.lang.Exception
-meth public void testCallMethod() throws java.lang.Exception
-meth public void testCoExistanceOfMultipleLanguageInstances() throws java.lang.Exception
-meth public void testCopyComplexNumbersA() throws java.lang.Exception
-meth public void testCopyComplexNumbersB() throws java.lang.Exception
-meth public void testCopyStructuredComplexToComplexNumbersA() throws java.lang.Exception
-meth public void testEvaluateSource() throws java.lang.Exception
-meth public void testFortyTwo() throws java.lang.Exception
-meth public void testFortyTwoWithCompoundObject() throws java.lang.Exception
-meth public void testFunctionAddNumbers() throws java.lang.Exception
-meth public void testGetSize() throws java.lang.Exception
-meth public void testGetSizeOfForeign() throws java.lang.Exception
-meth public void testGlobalObjectIsAccessible() throws java.lang.Exception
-meth public void testHasSize() throws java.lang.Exception
-meth public void testHasSizeOfForeign() throws java.lang.Exception
-meth public void testInvalidTestMethod() throws java.lang.Exception
-meth public void testIsExecutable() throws java.lang.Exception
-meth public void testIsExecutableOfForeign() throws java.lang.Exception
-meth public void testIsNotNull() throws java.lang.Exception
-meth public void testIsNullOfForeign() throws java.lang.Exception
-meth public void testMaxOrMinValue() throws java.lang.Exception
-meth public void testMaxOrMinValue2() throws java.lang.Exception
-meth public void testMetaObject() throws java.lang.Exception
-meth public void testNull() throws java.lang.Exception
-meth public void testNullCanBeCastToAnything() throws java.lang.Exception
-meth public void testNullInCompoundObject() throws java.lang.Exception
-meth public void testObjectWithValueAndAddProperty() throws java.lang.Exception
-meth public void testPlusWithBytes() throws java.lang.Exception
-meth public void testPlusWithDouble() throws java.lang.Exception
-meth public void testPlusWithDoubleFloatSameAsInt() throws java.lang.Exception
-meth public void testPlusWithDoubleMaxInt() throws java.lang.Exception
-meth public void testPlusWithDoubleMaxIntPlusNegInf() throws java.lang.Exception
-meth public void testPlusWithDoubleMaxIntPlusOne() throws java.lang.Exception
-meth public void testPlusWithDoubleMaxIntPlusPosInf() throws java.lang.Exception
-meth public void testPlusWithDoubleMaxMinInt() throws java.lang.Exception
-meth public void testPlusWithDoubleMinIntMinusOne() throws java.lang.Exception
-meth public void testPlusWithDoubleNaNPlusNegInf() throws java.lang.Exception
-meth public void testPlusWithDoubleNaNPlusPosInf() throws java.lang.Exception
-meth public void testPlusWithDoubleRound() throws java.lang.Exception
-meth public void testPlusWithFloat() throws java.lang.Exception
-meth public void testPlusWithInts() throws java.lang.Exception
-meth public void testPlusWithIntsOnCompoundObject() throws java.lang.Exception
-meth public void testPlusWithLong() throws java.lang.Exception
-meth public void testPlusWithLongMaxIntMinInt() throws java.lang.Exception
-meth public void testPlusWithOneNegativeByte() throws java.lang.Exception
-meth public void testPlusWithOneNegativeInt() throws java.lang.Exception
-meth public void testPlusWithOneNegativeShort() throws java.lang.Exception
-meth public void testPlusWithShort() throws java.lang.Exception
-meth public void testPrimitiveIdentityForeignObject() throws java.lang.Exception
-meth public void testPrimitiveReturnTypeByte() throws java.lang.Exception
-meth public void testPrimitiveReturnTypeDouble() throws java.lang.Exception
-meth public void testPrimitiveReturnTypeFloat() throws java.lang.Exception
-meth public void testPrimitiveReturnTypeInt() throws java.lang.Exception
-meth public void testPrimitiveReturnTypeLong() throws java.lang.Exception
-meth public void testPrimitiveReturnTypeShort() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedByte() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedDouble() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedFloat() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedInt() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedLong() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedShort() throws java.lang.Exception
-meth public void testPrimitiveidentityBoxedString() throws java.lang.Exception
-meth public void testPrimitiveidentityByte() throws java.lang.Exception
-meth public void testPrimitiveidentityDouble() throws java.lang.Exception
-meth public void testPrimitiveidentityFloat() throws java.lang.Exception
-meth public void testPrimitiveidentityInt() throws java.lang.Exception
-meth public void testPrimitiveidentityLong() throws java.lang.Exception
-meth public void testPrimitiveidentityShort() throws java.lang.Exception
-meth public void testPrimitiveidentityString() throws java.lang.Exception
-meth public void testPropertiesInteropMessage() throws java.lang.Exception
-meth public void testReadElementFromForeign() throws java.lang.Exception
-meth public void testReadFromObjectWithElement() throws java.lang.Exception
-meth public void testReadFromObjectWithValueProperty() throws java.lang.Exception
-meth public void testReadValueFromForeign() throws java.lang.Exception
-meth public void testRootNodeName() throws java.lang.Exception
-meth public void testSumRealOfComplexNumbersA() throws java.lang.Exception
-meth public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws java.lang.Exception
-meth public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws java.lang.Exception
-meth public void testSumRealOfComplexNumbersB() throws java.lang.Exception
-meth public void testValueWithSource() throws java.lang.Exception
-meth public void testWriteElementOfForeign() throws java.lang.Exception
-meth public void testWriteToObjectWithElement() throws java.lang.Exception
-meth public void testWriteToObjectWithValueProperty() throws java.lang.Exception
-meth public void testWriteValueToForeign() throws java.lang.Exception
-meth public void timeOutTest() throws java.lang.Exception
+CLSS public final com.oracle.truffle.tck.TruffleRunner
+cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+innr public abstract interface static !annotation Inject
+innr public abstract interface static !annotation Warmup
+innr public final static ParametersFactory
+innr public final static RunWithPolyglotRule
+meth protected org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
+meth protected org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
+meth protected void validateTestMethods(java.util.List<java.lang.Throwable>)
+supr org.junit.runners.BlockJUnit4ClassRunner
+hfds truffleTestInvoker
+hcls ParameterizedRunner
+
+CLSS public abstract interface static !annotation com.oracle.truffle.tck.TruffleRunner$Inject
+ outer com.oracle.truffle.tck.TruffleRunner
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends com.oracle.truffle.api.nodes.RootNode> value()
+
+CLSS public final static com.oracle.truffle.tck.TruffleRunner$ParametersFactory
+ outer com.oracle.truffle.tck.TruffleRunner
+cons public init()
+intf org.junit.runners.parameterized.ParametersRunnerFactory
+meth public org.junit.runner.Runner createRunnerForTestWithParameters(org.junit.runners.parameterized.TestWithParameters) throws org.junit.runners.model.InitializationError
 supr java.lang.Object
-hfds RANDOM,previousVMReference,tckVM
-hcls CompoundObject,FunctionFooInterface,MessageInterface,ObjectWithValueInterface,ValuesObject
+
+CLSS public final static com.oracle.truffle.tck.TruffleRunner$RunWithPolyglotRule
+ outer com.oracle.truffle.tck.TruffleRunner
+cons public init()
+cons public init(org.graalvm.polyglot.Context$Builder)
+intf org.junit.rules.TestRule
+meth public com.oracle.truffle.api.TruffleLanguage$Env getTruffleTestEnv()
+meth public org.graalvm.polyglot.Context getPolyglotContext()
+meth public org.junit.runners.model.Statement apply(org.junit.runners.model.Statement,org.junit.runner.Description)
+supr java.lang.Object
+hfds context,contextBuilder,testEnv
+
+CLSS public abstract interface static !annotation com.oracle.truffle.tck.TruffleRunner$Warmup
+ outer com.oracle.truffle.tck.TruffleRunner
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
+meth public abstract int value()
+
+CLSS abstract interface com.oracle.truffle.tck.package-info
 
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception
@@ -176,4 +91,111 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public abstract interface org.junit.rules.TestRule
+meth public abstract org.junit.runners.model.Statement apply(org.junit.runners.model.Statement,org.junit.runner.Description)
+
+CLSS public abstract interface org.junit.runner.Describable
+meth public abstract org.junit.runner.Description getDescription()
+
+CLSS public abstract org.junit.runner.Runner
+cons public init()
+intf org.junit.runner.Describable
+meth public abstract org.junit.runner.Description getDescription()
+meth public abstract void run(org.junit.runner.notification.RunNotifier)
+meth public int testCount()
+supr java.lang.Object
+
+CLSS public abstract interface org.junit.runner.manipulation.Filterable
+meth public abstract void filter(org.junit.runner.manipulation.Filter) throws org.junit.runner.manipulation.NoTestsRemainException
+
+CLSS public abstract interface org.junit.runner.manipulation.Sortable
+meth public abstract void sort(org.junit.runner.manipulation.Sorter)
+
+CLSS public org.junit.runners.BlockJUnit4ClassRunner
+cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+meth protected boolean isIgnored(org.junit.runners.model.FrameworkMethod)
+meth protected java.lang.Object createTest() throws java.lang.Exception
+meth protected java.lang.String testName(org.junit.runners.model.FrameworkMethod)
+meth protected java.util.List<org.junit.rules.MethodRule> rules(java.lang.Object)
+meth protected java.util.List<org.junit.rules.TestRule> getTestRules(java.lang.Object)
+meth protected java.util.List<org.junit.runners.model.FrameworkMethod> computeTestMethods()
+meth protected java.util.List<org.junit.runners.model.FrameworkMethod> getChildren()
+meth protected org.junit.runner.Description describeChild(org.junit.runners.model.FrameworkMethod)
+meth protected org.junit.runners.model.Statement methodBlock(org.junit.runners.model.FrameworkMethod)
+meth protected org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
+meth protected org.junit.runners.model.Statement possiblyExpectingExceptions(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withAfters(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withBefores(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withPotentialTimeout(org.junit.runners.model.FrameworkMethod,java.lang.Object,org.junit.runners.model.Statement)
+ anno 0 java.lang.Deprecated()
+meth protected void collectInitializationErrors(java.util.List<java.lang.Throwable>)
+meth protected void runChild(org.junit.runners.model.FrameworkMethod,org.junit.runner.notification.RunNotifier)
+meth protected void validateConstructor(java.util.List<java.lang.Throwable>)
+meth protected void validateFields(java.util.List<java.lang.Throwable>)
+meth protected void validateInstanceMethods(java.util.List<java.lang.Throwable>)
+ anno 0 java.lang.Deprecated()
+meth protected void validateNoNonStaticInnerClass(java.util.List<java.lang.Throwable>)
+meth protected void validateOnlyOneConstructor(java.util.List<java.lang.Throwable>)
+meth protected void validateTestMethods(java.util.List<java.lang.Throwable>)
+meth protected void validateZeroArgConstructor(java.util.List<java.lang.Throwable>)
+supr org.junit.runners.ParentRunner<org.junit.runners.model.FrameworkMethod>
+hfds methodDescriptions
+
+CLSS public abstract org.junit.runners.ParentRunner<%0 extends java.lang.Object>
+cons protected init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+intf org.junit.runner.manipulation.Filterable
+intf org.junit.runner.manipulation.Sortable
+meth protected abstract java.util.List<{org.junit.runners.ParentRunner%0}> getChildren()
+meth protected abstract org.junit.runner.Description describeChild({org.junit.runners.ParentRunner%0})
+meth protected abstract void runChild({org.junit.runners.ParentRunner%0},org.junit.runner.notification.RunNotifier)
+meth protected boolean isIgnored({org.junit.runners.ParentRunner%0})
+meth protected final void runLeaf(org.junit.runners.model.Statement,org.junit.runner.Description,org.junit.runner.notification.RunNotifier)
+meth protected java.lang.String getName()
+meth protected java.lang.annotation.Annotation[] getRunnerAnnotations()
+meth protected java.util.List<org.junit.rules.TestRule> classRules()
+meth protected org.junit.runners.model.Statement childrenInvoker(org.junit.runner.notification.RunNotifier)
+meth protected org.junit.runners.model.Statement classBlock(org.junit.runner.notification.RunNotifier)
+meth protected org.junit.runners.model.Statement withAfterClasses(org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.Statement withBeforeClasses(org.junit.runners.model.Statement)
+meth protected org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
+meth protected void collectInitializationErrors(java.util.List<java.lang.Throwable>)
+meth protected void validatePublicVoidNoArgMethods(java.lang.Class<? extends java.lang.annotation.Annotation>,boolean,java.util.List<java.lang.Throwable>)
+meth public final org.junit.runners.model.TestClass getTestClass()
+meth public org.junit.runner.Description getDescription()
+meth public void filter(org.junit.runner.manipulation.Filter) throws org.junit.runner.manipulation.NoTestsRemainException
+meth public void run(org.junit.runner.notification.RunNotifier)
+meth public void setScheduler(org.junit.runners.model.RunnerScheduler)
+meth public void sort(org.junit.runner.manipulation.Sorter)
+supr org.junit.runner.Runner
+hfds VALIDATORS,childrenLock,filteredChildren,scheduler,testClass
+
+CLSS public abstract interface org.junit.runners.parameterized.ParametersRunnerFactory
+meth public abstract org.junit.runner.Runner createRunnerForTestWithParameters(org.junit.runners.parameterized.TestWithParameters) throws org.junit.runners.model.InitializationError
 

@@ -4339,10 +4339,8 @@ public class BytecodeParser implements GraphBuilderContext {
         return needsExplicitException();
     }
 
-    /**
-     * Returns true if an explicit exception check should be emitted.
-     */
-    protected boolean needsExplicitException() {
+    @Override
+    public boolean needsExplicitException() {
         BytecodeExceptionMode exceptionMode = graphBuilderConfig.getBytecodeExceptionMode();
         if (exceptionMode == BytecodeExceptionMode.CheckAll || StressExplicitExceptionCode.getValue(options)) {
             return true;
@@ -4350,6 +4348,15 @@ public class BytecodeParser implements GraphBuilderContext {
             return profilingInfo.getExceptionSeen(bci()) == TriState.TRUE;
         }
         return false;
+    }
+
+    @Override
+    public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind) {
+        BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(metaAccess, exceptionKind));
+        exceptionNode.setStateAfter(createFrameState(bci(), exceptionNode));
+        AbstractBeginNode exceptionDispatch = handleException(exceptionNode, bci(), false);
+        exceptionNode.setNext(exceptionDispatch);
+        return BeginNode.begin(exceptionNode);
     }
 
     protected void genPutField(int cpi, int opcode) {

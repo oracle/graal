@@ -34,13 +34,10 @@ import com.oracle.truffle.api.source.Source;
 
 public class SourceTextTest {
 
-    private final Source emptySource = Source.newBuilder("").name("emptySource").mimeType("content/unknown").build();
-
-    private final Source emptyLineSource = Source.newBuilder("\n").name("emptyLineSource").mimeType("content/unknown").build();
-
-    private final Source shortSource = Source.newBuilder("01").name("shortSource").mimeType("content/unknown").build();
-
-    private final Source longSource = Source.newBuilder("01234\n67\n9\n").name("longSource").mimeType("content/unknown").build();
+    private final Source emptySource = Source.newBuilder("", "", "emptySource").build();
+    private final Source emptyLineSource = Source.newBuilder("", "\n", "emptyLineSource").build();
+    private final Source shortSource = Source.newBuilder("", "01", "shortSource").build();
+    private final Source longSource = Source.newBuilder("", "01234\n67\n9\n", "long").build();
 
     @Test
     public void emptyTextTest0() {
@@ -281,7 +278,7 @@ public class SourceTextTest {
     @Test
     public void nameAndShortNameNoPath() {
         final String name = "/tmp/hi.txt";
-        Source source = Source.newBuilder("Hi").name(name).mimeType("content/unknown").build();
+        Source source = Source.newBuilder("", "Hi", name).build();
         assertEquals(name, source.getName());
     }
 }

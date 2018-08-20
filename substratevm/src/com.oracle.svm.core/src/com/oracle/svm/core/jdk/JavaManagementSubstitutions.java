@@ -170,6 +170,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         throw VMError.unsupportedFeature(MSG);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public String getName() {
         long id;

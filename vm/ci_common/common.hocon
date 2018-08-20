@@ -161,6 +161,7 @@ builds += [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
+      ${notify-nexus-deploy}
     ]
     timelimit: "45:00"
     name: deploy-vm-linux-amd64
@@ -169,6 +170,7 @@ builds += [
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
+      ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
     name: deploy-vm-installable-darwin-amd64
@@ -177,6 +179,7 @@ builds += [
     run: [
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
+      ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64

@@ -72,9 +72,10 @@ def _run_netbeans_app(app_name, env=None, args=None):
 def _igvJdk():
     v8u20 = mx.VersionSpec("1.8.0_20")
     v8u40 = mx.VersionSpec("1.8.0_40")
+    v11 = mx.VersionSpec("11") # IGV requires java.xml.bind which has been removed in 11 (JEP320)
     def _igvJdkVersionCheck(version):
-        return version < v8u20 or version >= v8u40
-    return mx.get_jdk(_igvJdkVersionCheck, versionDescription='>= 1.8 and < 1.8.0u20 or >= 1.8.0u40', purpose="running IGV").home
+        return (version < v8u20 or version >= v8u40) and version < v11
+    return mx.get_jdk(_igvJdkVersionCheck, versionDescription='(< 1.8.0u20 or >= 1.8.0u40) and < 11', purpose="running IGV").home
 
 def igv(args):
     """run the Ideal Graph Visualizer"""

@@ -57,8 +57,8 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
 	[
 	  {
 	    "name" : "java.lang.Class",
-        "allDeclaredConstructors" : true,
-        "allPublicConstructors" : true
+	    "allDeclaredConstructors" : true,
+	    "allPublicConstructors" : true,
 	    "allDeclaredMethods" : true,
 	    "allPublicMethods" : true
 	  },
@@ -72,7 +72,7 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
 	      { "name" : "<init>", "parameterTypes" : [] },
 	      { "name" : "<init>", "parameterTypes" : ["char[]"] },
 	      { "name" : "charAt" },
-	      { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] },
+	      { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] }
 	    ]
 	  },
       {

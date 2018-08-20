@@ -241,7 +241,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 
-    @TruffleLanguage.Registration(name = "", version = "", id = "test-custom-variables-scope-language", mimeType = "x-testCustomVariablesScope")
+    @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-language")
     @ProvidedTags({StandardTags.StatementTag.class})
     public static class CustomScopeLanguage extends TruffleLanguage<Env> {
 
@@ -331,7 +331,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
             @Override
             public SourceSection getSourceSection() {
-                return Source.newBuilder("test").name("unknown").mimeType("x-testCustomVariablesScope").build().createSection(1);
+                return Source.newBuilder("test-custom-variables-scope-language", "test", "unknown").build().createSection(1);
             }
 
             public WrapperNode createWrapper(ProbeNode probe) {

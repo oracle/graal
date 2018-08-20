@@ -269,6 +269,7 @@ public class NativeImage {
         private final Path rootDir;
         private final String[] args;
 
+        @SuppressWarnings("deprecation")
         DefaultBuildConfiguration(String[] args) {
             this.args = args;
             workDir = Paths.get(".").toAbsolutePath().normalize();

@@ -70,8 +70,8 @@ public class HostedOptionParser implements HostedOptionProvider {
 
             OptionDescriptors descriptors;
             try {
-                descriptors = optionsClass.newInstance();
-            } catch (InstantiationException | IllegalAccessException ex) {
+                descriptors = optionsClass.getDeclaredConstructor().newInstance();
+            } catch (Exception ex) {
                 throw shouldNotReachHere(ex);
             }
             for (OptionDescriptor descriptor : descriptors) {

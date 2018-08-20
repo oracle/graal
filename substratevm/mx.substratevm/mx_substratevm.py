@@ -567,7 +567,9 @@ def svm_gate_body(args, tasks):
     with native_image_context(IMAGE_ASSERTION_FLAGS, debug_gr_8964=debug_gr_8964) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
-                helloworld(native_image)
+                hello_path = svmbuild_dir()
+                javac_image(native_image, hello_path)
+                helloworld_internal(native_image, hello_path, javac_image_command(hello_path))
                 cinterfacetutorial(native_image)
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
@@ -588,6 +590,12 @@ def svm_gate_body(args, tasks):
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
             maven_plugin_install([])
+
+
+def javac_image_command(javac_path):
+    return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
+            join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
+
 
 def native_junit(native_image, unittest_args=None, build_args=None, run_args=None):
     unittest_args = unittest_args or ['com.oracle.svm.test']
@@ -616,7 +624,7 @@ def native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
     mask_str = '#'
     def mask(arg):
-        if arg in ['--', '--build-args', '--run-args']:
+        if arg in ['--', '--build-args', '--run-args', '-h', '--help']:
             return arg
         else:
             return arg.replace('-', mask_str)
@@ -743,25 +751,24 @@ def cinterfacetutorial(native_image, args=None):
 
 def helloworld(native_image, args=None):
     args = [] if args is None else args
+    helloworld_internal(native_image, svmbuild_dir(), ['javac'], args)
 
-    helloPath = svmbuild_dir()
-    mkpath(helloPath)
-
-    # Build an image for the javac compiler, so that we test and gate-check javac all the time.
-    # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(["-H:Path=" + helloPath, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
-           "-H:+ReportUnsupportedElementsAtRuntime", "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
-
-    helloFile = join(helloPath, 'HelloWorld.java')
+def helloworld_internal(native_image, path=svmbuild_dir(), javac_command=None, args=None):
+    if javac_command is None:
+        javac_command = ['javac']
+    args = [] if args is None else args
+    mkpath(path)
+    hello_file = join(path, 'HelloWorld.java')
     output = 'Hello from Substrate VM'
-    with open(helloFile, 'w') as fp:
+    with open(hello_file, 'w') as fp:
         fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println("' + output + '"); } }')
 
-    # Run the image for javac. Annotation processing must be disabled because it requires dynamic class loading,
-    # and we need to set the bootclasspath manually because our build directory does not contain any .jar files.
-    mx.run([join(helloPath, 'javac'), "-proc:none", "-bootclasspath", join(mx_compiler.jdk.home, "jre", "lib", "rt.jar"), helloFile])
+    # Run javac. We sometimes run with an image so annotation processing must be disabled because it requires dynamic
+    #  class loading, and we need to set the bootclasspath manually because our build directory does not contain any
+    # .jar files.
+    mx.run(javac_command + [hello_file])
 
-    native_image(["-H:Path=" + helloPath, '-cp', helloPath, 'HelloWorld'])
+    native_image(["-H:Path=" + path, '-cp', path, 'HelloWorld'] + args)
 
     expectedOutput = [output + '\n']
     actualOutput = []
@@ -769,10 +776,20 @@ def helloworld(native_image, args=None):
         actualOutput.append(x)
         mx.log(x)
 
-    mx.run([join(helloPath, 'helloworld')], out=_collector)
+    mx.run([join(path, 'helloworld')], out=_collector)
 
     if actualOutput != expectedOutput:
         raise Exception('Wrong output: ' + str(actualOutput) + "  !=  " + str(expectedOutput))
+
+def javac_image(native_image, path, args=None):
+    args = [] if args is None else args
+    mkpath(path)
+
+    # Build an image for the javac compiler, so that we test and gate-check javac all the time.
+    # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
+    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+                  "-H:+ReportUnsupportedElementsAtRuntime",
+                  "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
 orig_command_benchmark = mx.command_function('benchmark')
 def benchmark(args):

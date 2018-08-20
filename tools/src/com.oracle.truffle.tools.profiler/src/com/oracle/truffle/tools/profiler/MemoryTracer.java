@@ -61,7 +61,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * NOTE: This profiler is still experimental with limited capabilities.
  * <p>
- * Usage example: {@link MemoryTracerSnippets#example}
+ * Usage example: {@codesnippet MemoryTracerSnippets#example}
  * </p>
  *
  * @since 0.30
@@ -116,20 +116,6 @@ public final class MemoryTracer implements Closeable {
         this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), f, false);
 
         this.activeBinding = env.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new Listener());
-    }
-
-    /**
-     * Finds {@link MemoryTracer} associated with given engine.
-     *
-     * @param engine the engine to find debugger for
-     * @return an instance of associated {@link MemoryTracer}
-     * @since 0.30
-     * @deprecated use {@link #find(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static MemoryTracer find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return MemoryTracerInstrument.getTracer(engine);
     }
 
     /**

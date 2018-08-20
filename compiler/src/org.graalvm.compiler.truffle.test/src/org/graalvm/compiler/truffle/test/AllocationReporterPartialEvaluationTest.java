@@ -28,10 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
-import org.graalvm.polyglot.Context;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,6 +55,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
 
     @Test
     public void testConsistentAssertions() {
+        TruffleTestUtil.assumeJavaDesktopModuleIsAvailable();
+
         // Test that onEnter()/onReturnValue() are not broken
         // when only one of them is compiled with PE.
         Context context = Context.newBuilder(AllocationReporterLanguage.ID).build();
@@ -180,16 +182,15 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         return n * (n - 1) / 2;
     }
 
-    @TruffleLanguage.Registration(mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter PE Test Language", id = AllocationReporterLanguage.ID, version = "1.0")
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter PE Test Language")
     public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
 
         static final String ID = "truffle-allocation-reporter-pe-test-language";
-        static final String MIME_TYPE = "application/x-truffle-allocation-reporter-pe-test-language";
 
         @Override
         protected AllocationReporter createContext(TruffleLanguage.Env env) {
             AllocationReporter reporter = env.lookup(AllocationReporter.class);
-            env.exportSymbol(AllocationReporter.class.getSimpleName(), reporter);
+            env.exportSymbol(AllocationReporter.class.getSimpleName(), env.asGuestValue(reporter));
             return reporter;
         }
 

@@ -148,7 +148,7 @@ public class MethodGuardsWithArgumentsTest {
     abstract static class MArgumentsDouble0 extends ValueNode {
 
         static boolean guard(int a1, Object a2) {
-            return a1 == 42 && a2.equals(new Integer(42));
+            return a1 == 42 && a2.equals(Integer.valueOf(42));
         }
 
         @Specialization(guards = "guard(a,a)")
@@ -205,7 +205,7 @@ public class MethodGuardsWithArgumentsTest {
     abstract static class MArgumentsDouble3 extends ValueNode {
 
         static boolean guard(Object a1, double a2) {
-            return new Double(41.0).equals(a1) && a2 == 41;
+            return Double.valueOf(41.0).equals(a1) && a2 == 41;
         }
 
         @Specialization(guards = "guard(b,b)")

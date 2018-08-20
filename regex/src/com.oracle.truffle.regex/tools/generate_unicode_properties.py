@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 #
 # ------------------------------------------------------------------------------
 # Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
@@ -95,7 +95,8 @@ bin_props_emoji = [
     'Emoji_Component',
     'Emoji_Modifier_Base',
     'Emoji_Modifier',
-    'Emoji_Presentation'
+    'Emoji_Presentation',
+    'Extended_Pictographic'
 ]
 
 tracked_props = bin_props_xml + bin_props_emoji + ['gc', 'sc', 'scx']
@@ -284,7 +285,7 @@ POPULATE_DEFS = '\n\n'.join(['''private static void populate%s() {
                            for (name, prop) in sorted(prop_contents.items())])
 
 print '''/*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -307,17 +308,17 @@ print '''/*
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-/* Copyright (c) 2017 Unicode, Inc.
+/* Copyright (c) 2018 Unicode, Inc.
  * Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
  * For terms of use, see http://www.unicode.org/terms_of_use.html
  */
 
-package com.oracle.truffle.regex.tregex.parser;
+package com.oracle.truffle.regex.chardata;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
 class UnicodeCharacterPropertyData {
 

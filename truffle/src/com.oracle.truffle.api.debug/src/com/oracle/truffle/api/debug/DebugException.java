@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -47,9 +49,10 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class DebugException extends RuntimeException {
 
     private static final long serialVersionUID = 5017970176581546348L;
+    private static final String CAUSE_CAPTION = "Caused by: ";
 
     private final Debugger debugger;
-    private final TruffleException exception; // the exception, or null when only a message is given
+    private final Throwable exception; // the exception, or null when only a message is given
     private final LanguageInfo preferredLanguage; // the preferred language, or null
     private final Node throwLocation;         // node which intercepted the exception, or null
     private volatile boolean isCatchNodeComputed; // the catch node is computed lazily, can be given
@@ -66,16 +69,20 @@ public final class DebugException extends RuntimeException {
         this.throwLocation = throwLocation;
         this.isCatchNodeComputed = isCatchNodeComputed;
         this.catchLocation = catchLocation;
+        // we need to materialize the stack for the case that this exception is printed
+        super.setStackTrace(getStackTrace());
     }
 
-    DebugException(Debugger debugger, TruffleException exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        super(((Throwable) exception).getLocalizedMessage());
+    DebugException(Debugger debugger, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+        super(exception.getLocalizedMessage());
         this.debugger = debugger;
         this.exception = exception;
         this.preferredLanguage = preferredLanguage;
         this.throwLocation = throwLocation;
         this.isCatchNodeComputed = isCatchNodeComputed;
         this.catchLocation = catchLocation;
+        // we need to materialize the stack for the case that this exception is printed
+        super.setStackTrace(getStackTrace());
     }
 
     void setSuspendedEvent(SuspendedEvent suspendedEvent) {
@@ -85,7 +92,7 @@ public final class DebugException extends RuntimeException {
         this.suspendedEvent = suspendedEvent;
     }
 
-    TruffleException getTruffleException() {
+    Throwable getRawException() {
         return exception;
     }
 
@@ -144,8 +151,8 @@ public final class DebugException extends RuntimeException {
     public List<DebugStackTraceElement> getDebugStackTrace() {
         if (debugStackTrace == null) {
             if (exception != null) {
-                TruffleStackTraceElement.fillIn((Throwable) exception);
-                List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace((Throwable) exception);
+                TruffleStackTraceElement.fillIn(exception);
+                List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(exception);
                 int n = stackTrace.size();
                 List<DebugStackTraceElement> debugStack = new ArrayList<>(n);
                 for (int i = 0; i < n; i++) {
@@ -164,12 +171,50 @@ public final class DebugException extends RuntimeException {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public void printStackTrace() {
+        printStackTrace(new PrintStream(debugger.getEnv().err()));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public void printStackTrace(PrintStream s) {
+        super.printStackTrace(s);
+        if (!(exception instanceof TruffleException)) {
+            s.print(CAUSE_CAPTION);
+            exception.printStackTrace(s);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
+    @Override
+    public void printStackTrace(PrintWriter s) {
+        super.printStackTrace(s);
+        if (!(exception instanceof TruffleException)) {
+            s.print(CAUSE_CAPTION);
+            exception.printStackTrace(s);
+        }
+    }
+
+    /**
      * Returns <code>true</code> if this exception indicates an internal error.
      *
      * @since 1.0
      */
     public boolean isInternalError() {
-        return exception != null && exception.isInternalError();
+        return exception != null && (!(exception instanceof TruffleException) || ((TruffleException) exception).isInternalError());
     }
 
     /**
@@ -179,10 +224,10 @@ public final class DebugException extends RuntimeException {
      * @since 1.0
      */
     public DebugValue getExceptionObject() {
-        if (exception == null) {
+        if (!(exception instanceof TruffleException)) {
             return null;
         }
-        Object obj = exception.getExceptionObject();
+        Object obj = ((TruffleException) exception).getExceptionObject();
         if (obj == null) {
             return null;
         }
@@ -203,8 +248,8 @@ public final class DebugException extends RuntimeException {
      * @since 1.0
      */
     public SourceSection getThrowLocation() {
-        if (exception != null) {
-            SourceSection location = exception.getSourceLocation();
+        if (exception instanceof TruffleException) {
+            SourceSection location = ((TruffleException) exception).getSourceLocation();
             if (location != null) {
                 return location;
             }
@@ -227,9 +272,11 @@ public final class DebugException extends RuntimeException {
         if (!isCatchNodeComputed) {
             synchronized (this) {
                 if (!isCatchNodeComputed) {
-                    catchLocation = BreakpointExceptionFilter.getCatchNode(debugger, throwLocation, (Throwable) exception);
-                    if (catchLocation != null) {
-                        catchLocation.setSuspendedEvent(suspendedEvent);
+                    if (exception instanceof TruffleException) {
+                        catchLocation = BreakpointExceptionFilter.getCatchNode(debugger, throwLocation, exception);
+                        if (catchLocation != null) {
+                            catchLocation.setSuspendedEvent(suspendedEvent);
+                        }
                     }
                     isCatchNodeComputed = true;
                 }

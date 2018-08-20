@@ -415,7 +415,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
                 long firstRelocOffset = heap.getFirstRelocatablePointerOffsetInSection();
                 defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER_NAME, heapSection, firstRelocOffset);
-                assert ((ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0)).getLong((int) firstRelocOffset) == 0;
+                assert castToByteBuffer(heapSectionBuffer).getLong((int) firstRelocOffset) == 0;
             } else {
                 assert heapSectionBuffer == null;
                 heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
@@ -456,6 +456,15 @@ public abstract class NativeBootImage extends AbstractBootImage {
         // could prevent future optimizations.
         //
         // -Christian
+    }
+
+    /**
+     * Covariant return type overrides added by https://bugs.openjdk.java.net/browse/JDK-4774077
+     * make the cast below unnecessary as of JDK 9.
+     */
+    @SuppressWarnings("cast")
+    private static ByteBuffer castToByteBuffer(final RelocatableBuffer heapSectionBuffer) {
+        return (ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0);
     }
 
     private void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl, Map<Object, NativeImageHeap.ObjectInfo> objectMap) {

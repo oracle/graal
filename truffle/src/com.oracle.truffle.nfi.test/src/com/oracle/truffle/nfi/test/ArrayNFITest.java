@@ -85,8 +85,8 @@ public class ArrayNFITest extends NFITest {
         private final TruffleObject store;
         private final TruffleObject sum;
 
-        @Child Node executeStore = Message.createExecute(3).createNode();
-        @Child Node executeSum = Message.createExecute(2).createNode();
+        @Child Node executeStore = Message.EXECUTE.createNode();
+        @Child Node executeSum = Message.EXECUTE.createNode();
 
         public CreateAndSumArray() {
             this.finalJavaType = javaType;

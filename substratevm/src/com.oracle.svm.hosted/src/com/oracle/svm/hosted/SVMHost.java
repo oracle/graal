@@ -54,6 +54,8 @@ import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
+import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
@@ -197,9 +199,12 @@ public final class SVMHost implements HostVM {
         if (type.isArray()) {
             componentHub = dynamicHub(type.getComponentType());
         }
-        boolean isStatic = Modifier.isStatic(type.getJavaClass().getModifiers());
-        boolean isSynthetic = type.getJavaClass().isSynthetic();
-        return new DynamicHub(type.toClassName(), type.isLocal(), superHub, componentHub, type.getSourceFileName(), isStatic, isSynthetic);
+        Class<?> javaClass = type.getJavaClass();
+        boolean isStatic = Modifier.isStatic(javaClass.getModifiers());
+        boolean isSynthetic = javaClass.isSynthetic();
+
+        Target_java_lang_ClassLoader hubClassLoader = ClassLoaderSupport.getInstance().getOrCreate(javaClass.getClassLoader());
+        return new DynamicHub(type.toClassName(), type.isLocal(), superHub, componentHub, type.getSourceFileName(), isStatic, isSynthetic, hubClassLoader);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {

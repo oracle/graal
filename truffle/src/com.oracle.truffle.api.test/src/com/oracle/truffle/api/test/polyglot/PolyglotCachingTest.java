@@ -42,6 +42,7 @@ import java.util.function.Function;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -54,6 +55,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class PolyglotCachingTest {
 
+    /*
+     * Also used for other GC tests.
+     */
+    public static final int GC_TEST_ITERATIONS = 15;
+
     @Test
     public void testDisableCaching() throws Exception {
         AtomicInteger parseCalled = new AtomicInteger(0);
@@ -65,8 +71,8 @@ public class PolyglotCachingTest {
             }
         });
         Context c = Context.create();
-        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).buildLiteral();
-        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).buildLiteral();
+        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).build();
+        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).build();
         assertEquals(0, parseCalled.get());
         c.eval(uncachedSource);
         assertEquals(1, parseCalled.get());
@@ -114,13 +120,14 @@ public class PolyglotCachingTest {
      */
     @Test
     public void testParsedASTIsNotCollectedIfSourceIsAlive() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
         setupTestLang();
 
         Context context = Context.create();
         Source source = Source.create(ProxyLanguage.ID, "0"); // needs to stay alive
 
         WeakReference<CallTarget> parsedRef = new WeakReference<>(assertParsedEval(context, source));
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             // cache should stay valid and never be collected as long as the source is alive.
             assertCachedEval(context, source);
             System.gc();
@@ -135,10 +142,11 @@ public class PolyglotCachingTest {
      */
     @Test
     public void testSourceFreeContextStrong() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
         setupTestLang();
 
         Context survivingContext = Context.create();
-        assertObjectsCollectible(200, (iteration) -> {
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget target = assertParsedEval(survivingContext, source);
             assertCachedEval(survivingContext, source);
@@ -153,11 +161,12 @@ public class PolyglotCachingTest {
      */
     @Test
     public void testSourceStrongContextFree() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
         setupTestLang();
 
         List<Source> survivingSources = new ArrayList<>();
 
-        assertObjectsCollectible(200, (iteration) -> {
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
             Context context = Context.create();
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget parsedAST = assertParsedEval(context, source);

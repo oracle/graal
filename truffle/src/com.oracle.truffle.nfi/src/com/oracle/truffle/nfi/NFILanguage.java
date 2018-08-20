@@ -33,7 +33,7 @@ import com.oracle.truffle.nfi.NFILanguage.Context;
 import com.oracle.truffle.nfi.types.NativeSource;
 import com.oracle.truffle.nfi.types.Parser;
 
-@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", mimeType = NFILanguage.MIME_TYPE, internal = true)
+@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true)
 public class NFILanguage extends TruffleLanguage<Context> {
 
     public static final String MIME_TYPE = "application/x-native";
@@ -70,7 +70,7 @@ public class NFILanguage extends TruffleLanguage<Context> {
             backendId = source.getNFIBackendId();
         }
 
-        Source backendSource = Source.newBuilder(source.getLibraryDescriptor()).mimeType("trufflenfi/" + backendId).name("<nfi-impl>").build();
+        Source backendSource = Source.newBuilder(backendId, source.getLibraryDescriptor(), "<nfi-impl>").build();
         CallTarget backendTarget = getContextReference().get().env.parse(backendSource);
         DirectCallNode loadLibrary = DirectCallNode.create(backendTarget);
 

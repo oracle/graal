@@ -33,7 +33,7 @@ suite = {
         "com.oracle.truffle.regex.result",
       ],
       "checkstyleVersion" : "8.8",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
     },
 
@@ -45,7 +45,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.regex",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
     },
   },

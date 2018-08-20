@@ -49,7 +49,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
 
-    static final SourceSection DUMMY_SECTION = com.oracle.truffle.api.source.Source.newBuilder("").name("").language(ProxyLanguage.ID).build().createSection(0, 0);
+    static final SourceSection DUMMY_SECTION = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").name("").build().createSection(0, 0);
 
     Context context;
     ProxyLanguage langauge;

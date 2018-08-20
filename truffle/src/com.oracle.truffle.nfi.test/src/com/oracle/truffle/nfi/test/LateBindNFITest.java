@@ -45,8 +45,8 @@ public class LateBindNFITest extends NFITest {
 
     public static class BindAndExecuteNode extends NFITestRootNode {
 
-        @Child Node bind = Message.createInvoke(1).createNode();
-        @Child Node execute = Message.createExecute(1).createNode();
+        @Child Node bind = Message.INVOKE.createNode();
+        @Child Node execute = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {

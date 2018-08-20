@@ -732,6 +732,7 @@ public class NativeImageGenerator {
 
                     /* report the unsupported features by throwing UnsupportedFeatureException */
                     bigbang.getUnsupportedFeatures().report(bigbang);
+                    bigbang.checkUserLimitations();
                 } catch (UnsupportedFeatureException ufe) {
                     if (NativeImageOptions.ReportUnsupportedFeaturesCause.getValue() && ufe.getCause() != null) {
                         System.err.println("Original exception: ");
@@ -1022,8 +1023,8 @@ public class NativeImageGenerator {
             if (!Modifier.isAbstract(factoryClass.getModifiers()) && !factoryClass.getName().contains("hotspot")) {
                 NodeIntrinsicPluginFactory factory;
                 try {
-                    factory = factoryClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException ex) {
+                    factory = factoryClass.getDeclaredConstructor().newInstance();
+                } catch (Exception ex) {
                     throw VMError.shouldNotReachHere(ex);
                 }
                 factory.registerPlugins(plugins.getInvocationPlugins(), nodeIntrinsificationProvider);

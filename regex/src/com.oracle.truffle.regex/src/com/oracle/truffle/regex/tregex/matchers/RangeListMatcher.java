@@ -25,15 +25,17 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Character range matcher using a sorted list of ranges.
  */
 public final class RangeListMatcher extends ProfiledCharMatcher {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final char[] ranges;
+    @CompilationFinal(dimensions = 1) private final char[] ranges;
 
     /**
      * Constructs a new {@link RangeListMatcher}.
@@ -85,8 +87,8 @@ public final class RangeListMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
-        return "list " + modifiersToString() + MatcherBuilder.rangesToString(ranges);
+        return "list " + modifiersToString() + "[" + MatcherBuilder.rangesToString(ranges) + "]";
     }
 }

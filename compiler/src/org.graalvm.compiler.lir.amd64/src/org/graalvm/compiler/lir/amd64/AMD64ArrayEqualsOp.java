@@ -277,7 +277,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         Label loopCheck = new Label();
         Label nanCheck = new Label();
 
-        // Compare 16-byte vectors
+        // Compare 32-byte vectors
         masm.andl(result, AVX_VECTOR_SIZE - 1); // tail count (in bytes)
         masm.andl(length, ~(AVX_VECTOR_SIZE - 1)); // vector count (in bytes)
         masm.jcc(ConditionFlag.Zero, compareTail);

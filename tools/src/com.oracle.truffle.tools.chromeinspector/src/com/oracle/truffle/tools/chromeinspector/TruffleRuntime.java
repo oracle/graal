@@ -43,6 +43,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.LiteralBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.NoSuspendedThreadException;
@@ -58,6 +59,7 @@ import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.PropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
+import java.util.Iterator;
 
 import org.graalvm.collections.Pair;
 
@@ -101,10 +103,11 @@ public final class TruffleRuntime extends RuntimeDomain {
         String language = context.getLastLanguage();
         String mimeType = context.getLastMimeType();
         String name = (sourceURL != null) ? sourceURL : "eval";
-        Source.Builder<RuntimeException, RuntimeException, RuntimeException> builder = Source.newBuilder(expression).name(name).mimeType(mimeType);
-        if (language != null) {
-            builder.language(language);
+        if (language == null) {
+            // legacy support where language may be null
+            language = Source.findLanguage(mimeType);
         }
+        LiteralBuilder builder = Source.newBuilder(language, expression, name).name(name).mimeType(mimeType);
         if (sourceURL != null && !sourceURL.isEmpty()) {
             URI ownUri = null;
             try {
@@ -140,7 +143,9 @@ public final class TruffleRuntime extends RuntimeDomain {
                         try {
                             context.getEnv().parse(source);
                             return true;
-                        } catch (Exception ex) {
+                        } catch (ThreadDeath td) {
+                            throw td;
+                        } catch (Throwable ex) {
                             // Didn't manage to parse this
                             exceptionText[0] = ex.getLocalizedMessage();
                             return false;
@@ -287,31 +292,68 @@ public final class TruffleRuntime extends RuntimeDomain {
         final String functionLocation = "[[FunctionLocation]]";
         JSONArray result = new JSONArray();
         JSONArray internals = new JSONArray();
-        HashSet<String> storedPropertyNames = new HashSet<>(properties.size());
+        boolean hasArray = !arrayElements.isEmpty();
+        HashSet<String> storedPropertyNames = hasArray ? new HashSet<>(properties.size()) : null;
+        DebugException exception = null;
+        String nameExc = null;
         // Test functionLocation for executable values only
         boolean hasFunctionLocation = value == null || !value.canExecute();
-        for (DebugValue v : properties) {
-            if (v.isReadable()) {
-                if (!v.isInternal()) {
-                    result.put(createPropertyJSON(v));
-                    storedPropertyNames.add(v.getName());
-                } else {
-                    internals.put(createPropertyJSON(v));
-                }
-                if (!hasFunctionLocation && functionLocation.equals(v.getName())) {
-                    hasFunctionLocation = true;
+        Iterator<DebugValue> propertiesIterator = properties.iterator();
+        try {
+            while (propertiesIterator.hasNext()) {
+                DebugValue v = null;
+                try {
+                    v = propertiesIterator.next();
+                    if (v.isReadable()) {
+                        if (!v.isInternal()) {
+                            result.put(createPropertyJSON(v));
+                            if (storedPropertyNames != null) {
+                                storedPropertyNames.add(v.getName());
+                            }
+                        } else {
+                            internals.put(createPropertyJSON(v));
+                        }
+                        if (!hasFunctionLocation && functionLocation.equals(v.getName())) {
+                            hasFunctionLocation = true;
+                        }
+                    }
+                } catch (DebugException ex) {
+                    if (exception == null) {
+                        exception = ex;
+                        nameExc = (v != null) ? v.getName() : "<unknown>";
+                    }
                 }
             }
-        }
-        int i = 0;
-        for (DebugValue v : arrayElements) {
-            String name = Integer.toString(i++);
-            if (v.isReadable() && !storedPropertyNames.contains(name)) {
-                result.put(createPropertyJSON(v, name));
+            int i = 0;
+            for (DebugValue v : arrayElements) {
+                String name = Integer.toString(i++);
+                try {
+                    if (v.isReadable() && !storedPropertyNames.contains(name)) {
+                        result.put(createPropertyJSON(v, name));
+                    }
+                } catch (DebugException ex) {
+                    if (exception == null) {
+                        exception = ex;
+                        nameExc = name;
+                    }
+                }
+            }
+        } catch (DebugException ex) {
+            // From property iterators, etc.
+            if (exception == null) {
+                exception = ex;
             }
         }
         if (!hasFunctionLocation) {
-            SourceSection sourceLocation = value.getSourceLocation();
+            SourceSection sourceLocation = null;
+            try {
+                sourceLocation = value.getSourceLocation();
+            } catch (DebugException ex) {
+                // From property iterators, etc.
+                if (exception == null) {
+                    exception = ex;
+                }
+            }
             if (sourceLocation != null) {
                 int scriptId = slh.getScriptId(sourceLocation.getSource());
                 if (scriptId >= 0) {
@@ -330,6 +372,16 @@ public final class TruffleRuntime extends RuntimeDomain {
         }
         json.put("result", result);
         json.put("internalProperties", internals);
+        if (exception != null) {
+            fillExceptionDetails(json, exception);
+            if (exception.isInternalError()) {
+                PrintWriter err = context.getErr();
+                if (err != null) {
+                    err.println("Exception while retrieving variable " + nameExc);
+                    exception.printStackTrace(err);
+                }
+            }
+        }
     }
 
     @Override
@@ -423,17 +475,20 @@ public final class TruffleRuntime extends RuntimeDomain {
     }
 
     private JSONObject createCodecompletion(DebugValue value) {
+        JSONObject result = new JSONObject();
         Collection<DebugValue> properties = null;
         try {
             properties = value.getProperties();
-        } catch (Exception ex) {
-            PrintWriter err = context.getErr();
-            if (err != null) {
-                err.println("getProperties(" + value.getName() + ") has caused: " + ex);
-                ex.printStackTrace(err);
+        } catch (DebugException ex) {
+            fillExceptionDetails(result, ex);
+            if (ex.isInternalError()) {
+                PrintWriter err = context.getErr();
+                if (err != null) {
+                    err.println("getProperties(" + value.getName() + ") has caused: " + ex);
+                    ex.printStackTrace(err);
+                }
             }
         }
-        JSONObject result = new JSONObject();
         JSONArray valueArray = new JSONArray();
         JSONObject itemsObj = new JSONObject();
         JSONArray items = new JSONArray();

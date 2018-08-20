@@ -364,7 +364,8 @@ public final class DebuggerTester implements AutoCloseable {
     public void expectKilled() {
         Throwable error = expectThrowable();
         if (error instanceof PolyglotException) {
-            Assert.assertTrue(error.getMessage(), error.getMessage().contains("KillException"));
+            Assert.assertTrue(((PolyglotException) error).isCancelled());
+            Assert.assertTrue(error.getMessage(), error.getMessage().contains("Execution cancelled by a debugging session."));
             return;
         }
         throw new AssertionError("Expected killed bug got error: " + error, error);
@@ -443,7 +444,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @param language the source language
      * @since 0.33
      */
-    public void assertLineBreakpointsResolution(String sourceWithMarks, String resolvedMarkName, String language) throws IOException {
+    public void assertLineBreakpointsResolution(String sourceWithMarks, String resolvedMarkName, String language) {
         Pattern br = Pattern.compile("(" + resolvedMarkName + "\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
         Map<Integer, Integer> bps = new HashMap<>();
         String sourceString = sourceWithMarks;
@@ -475,7 +476,7 @@ public final class DebuggerTester implements AutoCloseable {
         if (TRACE) {
             trace("sourceString = '" + sourceString + "'");
         }
-        final Source source = Source.newBuilder(language, sourceString, "testMisplacedLineBreakpoint." + language).build();
+        final Source source = Source.newBuilder(language, sourceString, "testMisplacedLineBreakpoint." + language).buildLiteral();
         com.oracle.truffle.api.source.Source tsource = DebuggerTester.getSourceImpl(source);
         for (int l = 1; l < source.getLineCount(); l++) {
             if (!bps.containsKey(l)) {
@@ -549,7 +550,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @param language the source language
      * @since 0.33
      */
-    public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language) throws IOException {
+    public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language) {
         Pattern br = Pattern.compile("([" + breakpointMarkName + resolvedMarkName + "]\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
         Map<Integer, int[]> bps = new HashMap<>();
         String sourceString = sourceWithMarks;
@@ -585,7 +586,7 @@ public final class DebuggerTester implements AutoCloseable {
         if (TRACE) {
             trace("sourceString = '" + sourceString + "'");
         }
-        final Source source = Source.newBuilder(language, sourceString, "testMisplacedColumnBreakpoint." + language).build();
+        final Source source = Source.newBuilder(language, sourceString, "testMisplacedColumnBreakpoint." + language).buildLiteral();
 
         for (Map.Entry<Integer, int[]> bentry : bps.entrySet()) {
             int bpId = bentry.getKey();

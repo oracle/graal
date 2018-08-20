@@ -78,8 +78,8 @@ public class HeapPolicy {
 
         Object result;
         try {
-            result = policy.newInstance();
-        } catch (InstantiationException | IllegalAccessException ex) {
+            result = policy.getDeclaredConstructor().newInstance();
+        } catch (Exception ex) {
             throw UserError.abort("policy " + className + " cannot be instantiated.");
         }
 

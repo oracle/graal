@@ -51,11 +51,11 @@ public class ITLInspectDebugTest {
     // CheckStyle: stop line length check
     @Test
     public void testSuspendInInitialization() throws Exception {
-        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").buildLiteral();
+        Source initSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<init>").build();
         InstrumentationTestLanguage.envConfig = Collections.singletonMap("initSource", initSource);
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
-                        ")\n", "code").buildLiteral();
+                        ")\n", "code").build();
         String initURI = ScriptsHandler.getNiceStringFromURI(initSource.getURI());
         String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
 
@@ -120,10 +120,10 @@ public class ITLInspectDebugTest {
 
     @Test
     public void testSuspendInInternal() throws Exception {
-        Source internSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<intern>").internal(true).buildLiteral();
+        Source internSource = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION)", "<intern>").internal(true).build();
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  STATEMENT(CONSTANT(42))\n" +
-                        ")\n", "code").buildLiteral();
+                        ")\n", "code").build();
         String internURI = ScriptsHandler.getNiceStringFromURI(internSource.getURI());
         String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
 

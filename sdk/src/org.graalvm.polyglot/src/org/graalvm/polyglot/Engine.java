@@ -33,6 +33,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
@@ -58,7 +59,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+
 import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.io.ByteSequence;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -224,6 +227,16 @@ public final class Engine implements AutoCloseable {
      */
     public static Builder newBuilder() {
         return EMPTY.new Builder();
+    }
+
+    /**
+     * Finds the GraalVM home folder.
+     *
+     * @return the path to a folder containing the GraalVM or {@code null} if it cannot be found
+     * @since 1.0
+     */
+    public static Path findHome() {
+        return getImpl().findHome();
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -524,7 +537,7 @@ public final class Engine implements AutoCloseable {
 
                 if (engine == null) {
                     try {
-                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.api.vm.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
+                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.polyglot.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
                         Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
                         constructor.setAccessible(true);
                         engine = constructor.newInstance();
@@ -671,6 +684,11 @@ public final class Engine implements AutoCloseable {
         public void resetPreInitializedEngine() {
         }
 
+        @Override
+        public Path findHome() {
+            return null;
+        }
+
         static class EmptySource extends AbstractSourceImpl {
 
             protected EmptySource(AbstractPolyglotImpl engineImpl) {
@@ -678,13 +696,33 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException {
+            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
                 throw noPolyglotImplementationFound();
             }
 
             @Override
             public String findLanguage(File file) throws IOException {
                 return null;
+            }
+
+            @Override
+            public String findLanguage(URL url) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findMimeType(File file) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findMimeType(URL url) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String getMimeType(Object impl) {
+                throw new UnsupportedOperationException();
             }
 
             @Override
@@ -784,6 +822,21 @@ public final class Engine implements AutoCloseable {
 
             @Override
             public boolean isInternal(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteSequence getBytes(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean hasCharacters(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean hasBytes(Object impl) {
                 throw new UnsupportedOperationException();
             }
 
