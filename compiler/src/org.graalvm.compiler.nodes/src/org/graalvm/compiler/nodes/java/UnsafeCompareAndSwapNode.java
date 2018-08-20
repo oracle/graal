@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.java;
 
+import static org.graalvm.compiler.core.common.calc.CanonicalCondition.EQ;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.Value;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
@@ -32,22 +33,32 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.Virtualizable;
+import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Represents an atomic compare-and-swap operation. The result is a boolean that contains whether
  * the value matched the expected value.
  */
 @NodeInfo(allowedUsageTypes = {Value, Memory}, cycles = CYCLES_8, size = SIZE_8)
-public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single, Virtualizable {
 
     public static final NodeClass<UnsafeCompareAndSwapNode> TYPE = NodeClass.create(UnsafeCompareAndSwapNode.class);
     @Input ValueNode object;
@@ -97,5 +108,51 @@ public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint imp
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        ValueNode alias = tool.getAlias(object);
+        if (alias instanceof VirtualInstanceNode && offset.isConstant()) {
+
+            VirtualInstanceNode obj = (VirtualInstanceNode) alias;
+
+            int index = resolveFieldIndex(obj);
+
+            if (index >= 0) {
+
+                ValueNode currentValue = tool.getEntry(obj, index);
+                ValueNode expectedAlias = tool.getAlias(this.expected);
+                ValueNode newValueAlias = tool.getAlias(this.newValue);
+
+                LogicNode equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflectionProvider(), NodeView.DEFAULT);
+                if (equalsNode instanceof LogicConstantNode) {
+
+                    boolean equals = ((LogicConstantNode) equalsNode).getValue();
+                    if (equals) {
+                        tool.setVirtualEntry(obj, index, newValueAlias);
+                    }
+                    tool.replaceWith(ConstantNode.forBoolean(equals));
+
+                } else if (!(currentValue instanceof VirtualInstanceNode) &&
+                                !(expectedAlias instanceof VirtualObjectNode) &&
+                                !(newValueAlias instanceof VirtualObjectNode)) {
+                    ValueNode fieldValue = ConditionalNode.create(equalsNode, newValueAlias, currentValue, NodeView.DEFAULT);
+                    ValueNode result = ConditionalNode.create(equalsNode, ConstantNode.forBoolean(true), ConstantNode.forBoolean(false), NodeView.DEFAULT);
+
+                    tool.setVirtualEntry(obj, index, fieldValue);
+                    tool.addNode(equalsNode);
+                    tool.addNode(fieldValue);
+                    tool.addNode(result);
+                    tool.replaceWith(result);
+                }
+            }
+        }
+    }
+
+    private int resolveFieldIndex(VirtualInstanceNode obj) {
+        long fieldOffset = offset.asJavaConstant().asLong();
+        ResolvedJavaField field = obj.type().findInstanceFieldWithOffset(fieldOffset, expected.getStackKind());
+        return obj.fieldIndex(field);
     }
 }
