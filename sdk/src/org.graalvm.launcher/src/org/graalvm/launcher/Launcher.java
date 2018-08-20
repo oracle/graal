@@ -410,7 +410,7 @@ public abstract class Launcher {
     }
 
     protected boolean isGraalVMAvailable() {
-        return nativeAccess.getGraalVMHome() != null;
+        return nativeAccess != null && nativeAccess.getGraalVMHome() != null;
     }
 
     @SuppressWarnings("fallthrough")
