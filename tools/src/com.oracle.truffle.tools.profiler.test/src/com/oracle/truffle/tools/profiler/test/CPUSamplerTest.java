@@ -557,4 +557,51 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             traverseAndCompareForSameSource(node.getChildren(), found1.getChildren(), found2.getChildren());
         }
     }
+
+    @Test
+    public void testThreadSafe() {
+        sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
+        sampler.setCollecting(true);
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    execute(defaultSourceForSampling);
+                }
+            }
+        };
+        Thread execThread = new Thread(runnable);
+        execThread.start();
+        Collection<ProfilerNode<CPUSampler.Payload>> oldNodes = sampler.getRootNodes();
+        try {
+            // NOTE: Execution is still running in a separate thread.
+            for (int i = 0; i < 30; i++) {
+                Collection<ProfilerNode<CPUSampler.Payload>> newNodes = sampler.getRootNodes();
+                isSuperset(oldNodes, newNodes);
+                oldNodes = newNodes;
+                Thread.sleep(100);
+            }
+        } catch (InterruptedException e) {
+            Assert.fail("Thread interrupted");
+        } finally {
+            execThread.interrupt();
+        }
+
+    }
+
+    private static void isSuperset(Collection<ProfilerNode<CPUSampler.Payload>> firstRootNodes, Collection<ProfilerNode<CPUSampler.Payload>> secondRootNodes) {
+        for (ProfilerNode<CPUSampler.Payload> firstNode : firstRootNodes) {
+            ProfilerNode<CPUSampler.Payload> secondNode = null;
+            Iterator<ProfilerNode<CPUSampler.Payload>> iterator = secondRootNodes.iterator();
+            while (iterator.hasNext()) {
+                secondNode = iterator.next();
+                if (secondNode.getSourceSection().equals(firstNode.getSourceSection()) && secondNode.getRootName().equals(firstNode.getRootName())) {
+                    break;
+                }
+            }
+            Assert.assertTrue("Profile taken later in execution is not superset of earlier one", secondNode != null);
+            Assert.assertTrue("Profile taken later in execution is not superset of earlier one", firstNode.getPayload().getSelfHitCount() <= secondNode.getPayload().getSelfHitCount());
+            isSuperset(firstNode.getChildren(), secondNode.getChildren());
+        }
+    }
 }
