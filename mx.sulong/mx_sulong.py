@@ -41,6 +41,7 @@ import re
 import mx_benchmark
 import mx_sulong_benchmarks
 import mx_unittest
+import mx_buildtools
 
 from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
@@ -80,11 +81,9 @@ supportedLLVMVersions = [
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
-    'clang',
-    'clang++',
-    'opt',
-    'llc',
-    'llvm-as'
+    mx_buildtools.ClangCompiler.CLANG,
+    mx_buildtools.ClangCompiler.CLANGXX,
+    mx_buildtools.Opt.OPT
 ]
 
 # the file paths that we want to check with clang-format
@@ -528,7 +527,7 @@ def getLLVMExplicitArgs(mainLLVMVersion):
     return []
 
 def getClangImplicitArgs():
-    mainLLVMVersion = getLLVMVersion('clang')
+    mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
     return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
 
 mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
