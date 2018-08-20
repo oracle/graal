@@ -32,6 +32,8 @@ QUIETLY$(MX_VERBOSE) = @
 .PHONY: default
 default: bin/${LIBSULONG}
 
+CLANG?=clang
+
 ifeq ($(OS), darwin)
 LDFLAGS=-dynamiclib -g
 else
@@ -41,8 +43,8 @@ endif
 CFLAGS=-g -fPIC -DPIC -O3
 
 bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o
-	$(QUIETLY) clang ${LDFLAGS} -lm -o $@ $+
+	$(QUIETLY) $(CLANG) ${LDFLAGS} -lm -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin
-	$(QUIETLY) clang ${CPPFLAGS} ${CFLAGS} -c $< -o $@
+	$(QUIETLY) $(CLANG) ${CPPFLAGS} ${CFLAGS} -c $< -o $@

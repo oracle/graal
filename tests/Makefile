@@ -38,6 +38,11 @@ endif
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
 CXXFLAGS=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
 
+CLANG?=clang
+CLANGXX?=clang++
+LLVM_AS?=llvm-as
+OPT?=opt
+
 .PHONY: default
 default: $(REF_TARGETS) $(BC_TARGETS)
 
@@ -54,11 +59,11 @@ endif
 
 %/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 %/ref.out: %.cpp $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) clang++ $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 %/gcc_O0.bc: %/gcc_O0.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
@@ -66,11 +71,11 @@ endif
 define OPT_RULES
 %/$(1).bc: %.c
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANG) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $$@ $$<
 
 %/$(1).bc: %.cpp
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) clang++ -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
+	$(QUIETLY) $(CLANGXX) -c -emit-llvm $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g -o $$@ $$<
 
 %/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
@@ -78,7 +83,7 @@ define OPT_RULES
 
 %/$(1).bc: %.ll
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) llvm-as -o $$@ $$<
+	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
 
 endef
 
@@ -88,7 +93,7 @@ $(eval $(call OPT_RULES,O2,-O2))
 $(eval $(call OPT_RULES,O3,-O3))
 
 %_MISC_OPTS.bc: %.bc
-	$(QUIETLY) opt -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg $<
+	$(QUIETLY) $(OPT) -o $@ -functionattrs -instcombine -always-inline -jump-threading -simplifycfg -mem2reg $<
 
 %_MEM2REG.bc: %.bc
-	$(QUIETLY) opt -o $@ -mem2reg $<
+	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
