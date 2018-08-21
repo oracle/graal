@@ -35,7 +35,8 @@ method described in the next section. Compile the code with shared option on:
 ```bash
 $GRAALVM/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
 ```
-and the `libnativeimpl.so` is generated. We are ready to use it via [JNI](JNI.md).
+and the `libnativeimpl.so` is generated. We are ready to use it from standard
+Java code.
 
 ## Bind Java Native Method
 
@@ -84,7 +85,7 @@ method into the final `.so` library.
 The method initializes the Substrate VM runtime and
 returns a portable identification - e.g. `long` to hold
 an instance of a [Substrate VM isolate](C-API.md). The isolate can then be used for
-multiple invocations of our **JNI** code:
+multiple invocations of the native part of our code:
 ```java
 package org.pkg.apinative;
 
