@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
 
-@TruffleLanguage.Registration(id = "native", name = "nfi-native", version = "0.1", mimeType = NFILanguageImpl.MIME_TYPE, internal = true)
+@TruffleLanguage.Registration(id = "native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true)
 public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/native";

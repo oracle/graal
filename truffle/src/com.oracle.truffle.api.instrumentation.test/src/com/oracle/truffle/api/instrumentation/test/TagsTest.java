@@ -82,7 +82,7 @@ public class TagsTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = "tagLanguage", mimeType = "tagLanguage", version = "", name = "")
+    @TruffleLanguage.Registration(id = "tagLanguage", name = "")
     @ProvidedTags({ExpressionTag.class, StatementTag.class})
     public static class TagLanguage extends TruffleLanguage<Env> {
 

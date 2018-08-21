@@ -401,7 +401,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected boolean needsExplicitException() {
+        public boolean needsExplicitException() {
             return explicitExceptionEdges && !parsingIntrinsic();
         }
 

@@ -45,11 +45,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.amd64.FrameAccess;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -67,6 +69,7 @@ import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
@@ -101,7 +104,6 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeBootImage extends AbstractBootImage {
 
@@ -290,18 +292,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.append("(");
 
         String sep = "";
+        Parameter[] parameterInfo = m.getParameters();
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
             writer.append(sep);
             sep = ", ";
             writer.append(CSourceCodeWriter.toCTypeName(m,
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
-                            m.getParameters()[i].getDeclaredAnnotation(CConst.class) != null,
-                            m.getParameters()[i].getDeclaredAnnotation(CUnsigned.class) != null,
+                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CConst.class) != null,
+                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CUnsigned.class) != null,
                             metaAccess, nativeLibs));
-            Parameter param = m.getParameters()[i];
-            if (param.isNamePresent()) {
+            if (parameterInfo != null && parameterInfo[i].isNamePresent()) {
                 writer.append(" ");
-                writer.append(param.getName());
+                writer.append(parameterInfo[i].getName());
             }
         }
         writer.appendln(");");
@@ -413,7 +415,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
                 long firstRelocOffset = heap.getFirstRelocatablePointerOffsetInSection();
                 defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER_NAME, heapSection, firstRelocOffset);
-                assert ((ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0)).getLong((int) firstRelocOffset) == 0;
+                assert castToByteBuffer(heapSectionBuffer).getLong((int) firstRelocOffset) == 0;
             } else {
                 assert heapSectionBuffer == null;
                 heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
@@ -454,6 +456,15 @@ public abstract class NativeBootImage extends AbstractBootImage {
         // could prevent future optimizations.
         //
         // -Christian
+    }
+
+    /**
+     * Covariant return type overrides added by https://bugs.openjdk.java.net/browse/JDK-4774077
+     * make the cast below unnecessary as of JDK 9.
+     */
+    @SuppressWarnings("cast")
+    private static ByteBuffer castToByteBuffer(final RelocatableBuffer heapSectionBuffer) {
+        return (ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0);
     }
 
     private void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl, Map<Object, NativeImageHeap.ObjectInfo> objectMap) {
@@ -556,13 +567,15 @@ public abstract class NativeBootImage extends AbstractBootImage {
         } else if (target instanceof ConstantReference) {
             // Direct object reference in code that must be patched (not a linker relocation)
             assert info.getRelocationKind() == RelocationKind.DIRECT;
-            VMConstant constant = ((ConstantReference) target).getConstant();
-            Object object = SubstrateObjectConstant.asObject(constant);
-            ObjectInfo targetObjectInfo = objectMap.get(object);
+            Object object = SubstrateObjectConstant.asObject(((ConstantReference) target).getConstant());
+            long targetOffset = objectMap.get(object).getOffsetInSection();
+            int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
+            long targetValue = targetOffset >>> encShift;
+            assert (targetValue << encShift) == targetOffset : "Reference compression shift discards non-zero bits: " + Long.toHexString(targetOffset);
             if (info.getRelocationSize() == Long.BYTES) {
-                buffer.getBuffer().putLong(offset, targetObjectInfo.getOffsetInSection());
+                buffer.getBuffer().putLong(offset, targetValue);
             } else if (info.getRelocationSize() == Integer.BYTES) {
-                buffer.getBuffer().putInt(offset, Math.toIntExact(targetObjectInfo.getOffsetInSection()));
+                buffer.getBuffer().putInt(offset, NumUtil.safeToInt(targetValue));
             } else {
                 shouldNotReachHere("Unsupported object reference size");
             }

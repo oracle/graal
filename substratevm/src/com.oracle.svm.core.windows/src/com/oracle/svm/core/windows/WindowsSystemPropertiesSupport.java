@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 
@@ -52,6 +53,11 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     @Override
     protected String tmpdirValue() {
         return "C:\\Temp";
+    }
+
+    @Override
+    protected String osVersionValue() {
+        return "Unknown";
     }
 }
 

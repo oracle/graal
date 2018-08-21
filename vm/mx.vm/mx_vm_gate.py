@@ -40,19 +40,25 @@ _suite = mx.suite('vm')
 
 
 class VmGateTasks:
-    graal = 'graal'
-    graal_js = 'graal-js'
+    compiler = 'compiler'
+    substratevm = 'substratevm'
     sulong = 'sulong'
+    graal_js = 'graal-js'
+    graal_nodejs = 'graal-nodejs'
+    truffleruby = 'truffleruby'
     ruby = 'ruby'
+    fastr = 'fastr'
+    graalpython = 'graalpython'
+    integration = 'integration'
 
 
 _openjdk_version_regex = re.compile(r'openjdk version \"[0-9_.]+\"\nOpenJDK Runtime Environment \(build [0-9a-z_\-.]+\)\nGraalVM (?P<graalvm_version>[0-9a-z_\-.]+) \(build [0-9a-z\-.]+, mixed mode\)')
 _anyjdk_version_regex = re.compile(r'(openjdk|java) version \"[0-9_.]+\"\n(OpenJDK|Java\(TM\) SE) Runtime Environment \(build [0-9a-z_\-.]+\)\nGraalVM (?P<graalvm_version>[0-9a-z_\-.]+) \(build [0-9a-z\-.]+, mixed mode\)')
 
 
-def gate(args, tasks):
-    with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.graal]) as t:
-        if t:
+def gate_body(args, tasks):
+    with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
+        if t and mx_vm.has_component('Graal compiler'):
             _java = join(mx_vm.graalvm_output(), 'bin', 'java')
 
             _out = mx.OutputCapture()
@@ -76,10 +82,29 @@ def gate(args, tasks):
             elif match.group('graalvm_version') != _suite.release_version():
                 mx.abort("Wrong GraalVM version in -version string: got '{}', expected '{}'".format(match.group('graalvm_version'), _suite.release_version()))
 
-    if mx_vm.has_component('js'):
-        with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js]) as t:
-            if t:
-                pass
+    with Task('Vm: Sulong tests', tasks, tags=[VmGateTasks.sulong]) as t:
+        if t and mx_vm.has_component('Sulong', fatalIfMissing=True):
+            pass
+
+    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js]) as t:
+        if t and mx_vm.has_component('Graal.js', fatalIfMissing=True):
+            pass
+
+    with Task('Vm: Graal.nodejs tests', tasks, tags=[VmGateTasks.graal_nodejs]) as t:
+        if t and mx_vm.has_component('Graal.nodejs', fatalIfMissing=True):
+            pass
+
+    with Task('Vm: TruffleRuby tests', tasks, tags=[VmGateTasks.truffleruby]) as t:
+        if t and mx_vm.has_component('TruffleRuby', fatalIfMissing=True):
+            pass
+
+    with Task('Vm: FastR tests', tasks, tags=[VmGateTasks.fastr]) as t:
+        if t and mx_vm.has_component('FastR', fatalIfMissing=True):
+            pass
+
+    with Task('Vm: Graal.Python tests', tasks, tags=[VmGateTasks.graalpython]) as t:
+        if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
+            pass
 
     gate_sulong(tasks)
     gate_ruby(tasks)

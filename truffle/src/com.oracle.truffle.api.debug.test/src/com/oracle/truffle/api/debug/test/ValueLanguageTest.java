@@ -211,26 +211,24 @@ public class ValueLanguageTest extends AbstractDebugTest {
      * <li>a.b - object property</li>
      * </ul>
      */
-    @TruffleLanguage.Registration(id = ValuesLanguage1.ID, mimeType = ValuesLanguage1.MIME_TYPE, name = ValuesLanguage1.NAME, version = "1.0")
+    @TruffleLanguage.Registration(id = ValuesLanguage1.ID, name = ValuesLanguage1.NAME, version = "1.0")
     @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
     public static class ValuesLanguage1 extends ValuesLanguage {
 
         static final String NAME = "Test Values Language 1";
         static final String ID = "truffle-test-values-language1";
-        static final String MIME_TYPE = "application/x-truffle-test-values-language1";
 
         public ValuesLanguage1() {
             super("1");
         }
     }
 
-    @TruffleLanguage.Registration(id = ValuesLanguage2.ID, mimeType = ValuesLanguage2.MIME_TYPE, name = ValuesLanguage2.NAME, version = "1.0")
+    @TruffleLanguage.Registration(id = ValuesLanguage2.ID, name = ValuesLanguage2.NAME, version = "1.0")
     @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
     public static class ValuesLanguage2 extends ValuesLanguage {
 
         static final String NAME = "Test Values Language 2";
         static final String ID = "truffle-test-values-language2";
-        static final String MIME_TYPE = "application/x-truffle-test-values-language2";
 
         public ValuesLanguage2() {
             super("2");

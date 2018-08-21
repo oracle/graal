@@ -380,10 +380,10 @@ public class RealLog extends Log {
     }
 
     @Override
-    public Log indent(boolean addOrRemove) {
+    public Log redent(boolean addOrRemove) {
         int delta = addOrRemove ? 2 : -2;
         indent = Math.max(0, indent + delta);
-        return newline();
+        return this;
     }
 
     private static byte digit(long d) {

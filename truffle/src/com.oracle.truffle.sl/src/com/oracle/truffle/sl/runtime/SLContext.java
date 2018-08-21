@@ -93,7 +93,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
  */
 public final class SLContext {
 
-    private static final Source BUILTIN_SOURCE = Source.newBuilder("").name("SL builtin").language(SLLanguage.ID).build();
+    private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
     private static final Layout LAYOUT = Layout.createLayout();
 
     private final Env env;
@@ -118,6 +118,13 @@ public final class SLContext {
             installBuiltin(builtin);
         }
         this.emptyShape = LAYOUT.createShape(SLObjectType.SINGLETON);
+    }
+
+    /**
+     * Return the current Truffle environment.
+     */
+    public Env getEnv() {
+        return env;
     }
 
     /**

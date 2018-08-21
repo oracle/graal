@@ -44,25 +44,28 @@ public class TimeBoxingTest {
     public void testTimeBoxing() throws Exception {
         final Context context = Context.create();
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(LOOP(infinity,STATEMENT))", "NotEnoughTime").buildLiteral();
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
 
-        new Timer().schedule(new TimerTask() {
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
                 debugger.startSession(new SuspendedCallback() {
                     public void onSuspend(SuspendedEvent event) {
                         event.prepareKill();
                     }
                 }).suspendNextExecution();
             }
-        }, 1000);
+        }, 0, 10);
 
         try {
             context.eval(source); // throws KillException, wrapped by PolyglotException
             Assert.fail();
-        } catch (PolyglotException pex) {
-            Assert.assertEquals("com.oracle.truffle.api.debug.KillException", pex.getMessage());
+        } catch (PolyglotException error) {
+            Assert.assertTrue(error.isCancelled());
+            Assert.assertTrue(error.getMessage(), error.getMessage().contains("Execution cancelled by a debugging session."));
         }
+        timer.cancel();
     }
 
 }

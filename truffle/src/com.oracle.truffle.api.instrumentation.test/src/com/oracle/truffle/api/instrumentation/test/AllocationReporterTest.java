@@ -37,6 +37,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -58,10 +62,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 /**
  * A test of {@link AllocationReporter}.
@@ -558,13 +559,6 @@ public class AllocationReporterTest {
 
     @Test
     public void testReporterChangeListener() {
-        try {
-            Class.forName("java.beans.PropertyChangeListener");
-        } catch (ClassNotFoundException ex) {
-            // skip the test if running only with java.base JDK9 module
-            return;
-        }
-
         // Test of AllocationReporter property change listener notifications
         allocation.setEnabled(false);
         Source source = Source.create(AllocationReporterLanguage.ID, "NEW");
@@ -572,7 +566,8 @@ public class AllocationReporterTest {
         }, (info) -> {
         });
         context.eval(source);
-        AllocationReporter reporter = (AllocationReporter) context.getPolyglotBindings().getMember(AllocationReporter.class.getSimpleName()).asHostObject();
+        context.enter();
+        AllocationReporter reporter = ProxyLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
         AtomicInteger listenerCalls = new AtomicInteger(0);
         AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
@@ -588,6 +583,7 @@ public class AllocationReporterTest {
         allocation.setEnabled(false);
         assertEquals(1, listenerCalls.get());
         deactivatedListener.unregister();
+        context.leave();
     }
 
     /**
@@ -602,24 +598,11 @@ public class AllocationReporterTest {
      * <li>{ &lt;command&gt; ... } allocations nested under the previous command</li>
      * </ul>
      */
-    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter Language", version = "1.0")
-    public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter Language", version = "1.0")
+    public static class AllocationReporterLanguage extends ProxyLanguage {
 
         public static final String ID = "truffle-allocation-reporter-language";
-        public static final String MIME_TYPE = "application/x-truffle-allocation-reporter-language";
         public static final String PROP_SIZE_CALLS = "sizeCalls";
-
-        @Override
-        protected AllocationReporter createContext(Env env) {
-            AllocationReporter context = env.lookup(AllocationReporter.class);
-            env.exportSymbol(AllocationReporter.class.getSimpleName(), context);
-            return context;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -738,7 +721,7 @@ public class AllocationReporterTest {
                 children.add(node);
             }
 
-            AllocNode toNode(ContextReference<AllocationReporter> contextRef) {
+            AllocNode toNode(ContextReference<LanguageContext> contextRef) {
                 if (children == null) {
                     return new AllocNode(oldValue, newValue, contextRef);
                 } else {
@@ -751,14 +734,14 @@ public class AllocationReporterTest {
 
             private final AllocValue oldValue;
             private final AllocValue newValue;
-            private final ContextReference<AllocationReporter> contextRef;
+            private final ContextReference<LanguageContext> contextRef;
             @Children private final AllocNode[] children;
 
-            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<AllocationReporter> contextRef) {
+            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef) {
                 this(oldValue, newValue, contextRef, null);
             }
 
-            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<AllocationReporter> contextRef, AllocNode[] children) {
+            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef, AllocNode[] children) {
                 this.oldValue = oldValue;
                 this.newValue = newValue;
                 this.contextRef = contextRef;
@@ -767,35 +750,36 @@ public class AllocationReporterTest {
 
             public Object execute(VirtualFrame frame) {
                 Object value;
+                AllocationReporter reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
                 if (newValue == null) { // No allocation
                     value = InstrumentationTestLanguage.Null.INSTANCE;
                     execChildren(frame);
                 } else if (oldValue == null) {
                     // new allocation
-                    if (contextRef.get().isActive()) {
+                    if (reporter.isActive()) {
                         if (newValue.kind != AllocValue.Kind.WRONG) {
                             // Test that it's wrong not to report will allocate
-                            contextRef.get().onEnter(null, 0, getAllocationSizeEstimate(newValue));
+                            reporter.onEnter(null, 0, getAllocationSizeEstimate(newValue));
                         }
                     }
                     execChildren(frame);
                     value = allocateValue(newValue);
-                    if (contextRef.get().isActive()) {
-                        contextRef.get().onReturnValue(value, 0, computeValueSize(newValue, value));
+                    if (reporter.isActive()) {
+                        reporter.onReturnValue(value, 0, computeValueSize(newValue, value));
                     }
                 } else {
                     // re-allocation
                     value = allocateValue(oldValue);    // pretend that it was allocated already
                     long oldSize = AllocationReporter.SIZE_UNKNOWN;
                     long newSize = AllocationReporter.SIZE_UNKNOWN;
-                    if (contextRef.get().isActive()) {
+                    if (reporter.isActive()) {
                         oldSize = computeValueSize(oldValue, value);
                         newSize = getAllocationSizeEstimate(newValue);
-                        contextRef.get().onEnter(value, oldSize, newSize);
+                        reporter.onEnter(value, oldSize, newSize);
                     }
                     execChildren(frame);
                     // Re-allocate, oldValue -> newValue
-                    if (contextRef.get().isActive()) {
+                    if (reporter.isActive()) {
                         if (newSize == AllocationReporter.SIZE_UNKNOWN) {
                             if (AllocValue.Kind.BIG == newValue.kind) {
                                 newSize = ((BigNumber) allocateValue(newValue)).getSize();
@@ -803,7 +787,7 @@ public class AllocationReporterTest {
                                 newSize = getAllocationSizeEstimate(newValue);
                             }
                         }
-                        contextRef.get().onReturnValue(value, oldSize, newSize);
+                        reporter.onReturnValue(value, oldSize, newSize);
                     }
                 }
                 return value;

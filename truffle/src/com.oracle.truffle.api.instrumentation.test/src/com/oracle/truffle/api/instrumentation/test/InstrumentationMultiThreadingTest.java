@@ -97,7 +97,6 @@ public class InstrumentationMultiThreadingTest {
                     }
                 }));
             }
-            Thread.sleep(1000);
             terminated.set(true);
             for (Future<?> future : futures) {
                 future.get();

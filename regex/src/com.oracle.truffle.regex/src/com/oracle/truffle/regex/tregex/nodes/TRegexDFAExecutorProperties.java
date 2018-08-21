@@ -40,11 +40,13 @@ public final class TRegexDFAExecutorProperties {
     private final FrameSlot captureGroupResultFS;
     private final FrameSlot lastTransitionFS;
     private final FrameSlot cgDataFS;
+    private final FrameSlot inputIsCompactStringFS;
     private final boolean forward;
     private final boolean searching;
     private final boolean trackCaptureGroups;
     private final boolean regressionTestMode;
     private final int numberOfCaptureGroups;
+    private final int minResultLength;
 
     public TRegexDFAExecutorProperties(FrameDescriptor frameDescriptor,
                     FrameSlot inputFS,
@@ -57,11 +59,13 @@ public final class TRegexDFAExecutorProperties {
                     FrameSlot captureGroupResultFS,
                     FrameSlot lastTransitionFS,
                     FrameSlot cgDataFS,
+                    FrameSlot inputIsCompactStringFS,
                     boolean forward,
                     boolean searching,
                     boolean trackCaptureGroups,
                     boolean regressionTestMode,
-                    int numberOfCaptureGroups) {
+                    int numberOfCaptureGroups,
+                    int minResultLength) {
         this.frameDescriptor = frameDescriptor;
         this.inputFS = inputFS;
         this.fromIndexFS = fromIndexFS;
@@ -73,11 +77,13 @@ public final class TRegexDFAExecutorProperties {
         this.resultFS = resultFS;
         this.captureGroupResultFS = captureGroupResultFS;
         this.cgDataFS = cgDataFS;
+        this.inputIsCompactStringFS = inputIsCompactStringFS;
         this.forward = forward;
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
         this.regressionTestMode = regressionTestMode;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
+        this.minResultLength = minResultLength;
     }
 
     public FrameDescriptor getFrameDescriptor() {
@@ -124,6 +130,10 @@ public final class TRegexDFAExecutorProperties {
         return cgDataFS;
     }
 
+    public FrameSlot getInputIsCompactStringFS() {
+        return inputIsCompactStringFS;
+    }
+
     public boolean isForward() {
         return forward;
     }
@@ -146,5 +156,9 @@ public final class TRegexDFAExecutorProperties {
 
     public int getNumberOfCaptureGroups() {
         return numberOfCaptureGroups;
+    }
+
+    public int getMinResultLength() {
+        return minResultLength;
     }
 }

@@ -286,7 +286,7 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = "SplitTestLanguage", name = "SplitTestLanguage", mimeType = "application/x-split-test-lang", version = "0.1")
+    @TruffleLanguage.Registration(id = "SplitTestLanguage", name = "SplitTestLanguage")
     public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = "SplitTestLanguage";
 

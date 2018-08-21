@@ -50,7 +50,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
 
-public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
+public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex, RegexProfile.TracksRegexProfile {
 
     private static final DebugUtil.DebugLogger LOG_BAILOUT = new DebugUtil.DebugLogger("TRegex Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
 
@@ -59,6 +59,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     private final CallTarget regexCallTarget;
     private final LazyCaptureGroupRegexSearchNode lazySearchNode;
     private EagerCaptureGroupRegexSearchNode eagerSearchNode;
+    private RegexProfile regexProfile;
     private final TRegexCompiler tRegexCompiler;
     private final boolean eagerCompilation;
 
@@ -73,7 +74,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                     TRegexDFAExecutorNode backwardExecutor,
                     TRegexDFAExecutorNode captureGroupExecutor) {
         super(language, source);
-        lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor);
+        lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor, this);
         runRegexSearchNode = insert(lazySearchNode);
         regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, forwardExecutor.getProperties().getFrameDescriptor(), this));
         this.tRegexCompiler = tRegexCompiler;
@@ -93,7 +94,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         final RegexResult result = runRegexSearchNode.run(frame, regex, input, fromIndex);
         assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
         if (CompilerDirectives.inInterpreter() && canSwitchToEagerSearch() && runRegexSearchNode == lazySearchNode) {
-            RegexProfile profile = regex.getRegexProfile();
+            RegexProfile profile = getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
                 switchToEagerSearch(profile);
             }
@@ -105,8 +106,16 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         return result;
     }
 
+    @Override
+    public RegexProfile getRegexProfile() {
+        if (regexProfile == null) {
+            regexProfile = new RegexProfile();
+        }
+        return regexProfile;
+    }
+
     private boolean canSwitchToEagerSearch() {
-        return lazySearchNode.captureGroupExecutorNode != null;
+        return lazySearchNode.captureGroupEntryNode != null;
     }
 
     private void switchToEagerSearch(RegexProfile profile) {
@@ -132,7 +141,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     }
 
     private boolean eagerAndLazySearchNodesProduceSameResult(VirtualFrame frame, RegexObject regex, Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
-        if (lazySearchNode.captureGroupExecutorNode == null || eagerSearchNode == EAGER_SEARCH_BAILED_OUT) {
+        if (lazySearchNode.captureGroupEntryNode == null || eagerSearchNode == EAGER_SEARCH_BAILED_OUT) {
             return true;
         }
         RegexResult lazyResult;
@@ -184,9 +193,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         private final RegexSource source;
         @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
 
-        @Child private TRegexDFAExecutorNode forwardExecutorNode;
-        private final TRegexDFAExecutorNode backwardExecutorNode;
-        private final TRegexDFAExecutorNode captureGroupExecutorNode;
+        @Child private TRegexDFAExecutorEntryNode forwardEntryNode;
+        @Child private TRegexDFAExecutorEntryNode backwardEntryNode;
+        @Child private TRegexDFAExecutorEntryNode captureGroupEntryNode;
 
         private final CallTarget backwardCallTarget;
         private final CallTarget captureGroupCallTarget;
@@ -196,11 +205,12 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                         PreCalculatedResultFactory[] preCalculatedResults,
                         TRegexDFAExecutorNode forwardNode,
                         TRegexDFAExecutorNode backwardNode,
-                        TRegexDFAExecutorNode captureGroupExecutor) {
-            this.forwardExecutorNode = forwardNode;
+                        TRegexDFAExecutorNode captureGroupExecutor,
+                        RegexProfile.TracksRegexProfile profiler) {
+            this.forwardEntryNode = TRegexDFAExecutorEntryNode.create(forwardNode);
             this.source = source;
             this.preCalculatedResults = preCalculatedResults;
-            this.backwardExecutorNode = backwardNode;
+            this.backwardEntryNode = TRegexDFAExecutorEntryNode.create(backwardNode);
             if (backwardNode == null) {
                 assert singlePreCalcResult();
                 backwardCallTarget = null;
@@ -208,18 +218,18 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, backwardNode.getProperties().getFrameDescriptor(),
                                 new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode)));
             }
-            this.captureGroupExecutorNode = captureGroupExecutor;
+            this.captureGroupEntryNode = TRegexDFAExecutorEntryNode.create(captureGroupExecutor);
             if (captureGroupExecutor == null) {
                 captureGroupCallTarget = null;
             } else {
                 captureGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, captureGroupExecutor.getProperties().getFrameDescriptor(),
-                                new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor)));
+                                new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor, profiler)));
             }
         }
 
         @Override
         RegexResult run(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            if (backwardExecutorNode != null && backwardExecutorNode.isAnchored()) {
+            if (backwardEntryNode != null && backwardEntryNode.getExecutor().isAnchored()) {
                 return executeBackwardAnchored(frame, regex, input, fromIndexArg);
             } else {
                 return executeForward(frame, regex, input, fromIndexArg);
@@ -227,23 +237,19 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         }
 
         private RegexResult executeForward(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            forwardExecutorNode.setInput(frame, input);
-            forwardExecutorNode.setFromIndex(frame, fromIndexArg);
-            forwardExecutorNode.setIndex(frame, fromIndexArg);
-            forwardExecutorNode.setMaxIndex(frame, inputLengthNode.execute(input));
-            forwardExecutorNode.execute(frame);
-            final int end = forwardExecutorNode.getResultInt(frame);
+            forwardEntryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLengthNode.execute(input));
+            final int end = forwardEntryNode.getExecutor().getResultInt(frame);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
                 return RegexResult.NO_MATCH;
             }
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromEnd(regex, input, end);
             }
-            if (preCalculatedResults == null && captureGroupExecutorNode == null) {
+            if (preCalculatedResults == null && captureGroupEntryNode == null) {
                 if (end == fromIndexArg) { // zero-length match
                     return new SingleResult(regex, input, end, end);
                 }
-                if (forwardExecutorNode.isAnchored() || source.getFlags().isSticky()) {
+                if (forwardEntryNode.getExecutor().isAnchored() || source.getFlags().isSticky()) {
                     return new SingleResult(regex, input, fromIndexArg, end);
                 }
                 return new SingleResultLazyStart(regex, input, fromIndexArg, end, backwardCallTarget);
@@ -251,22 +257,22 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 if (preCalculatedResults != null) { // traceFinder
                     return new TraceFinderResult(regex, input, fromIndexArg, end, backwardCallTarget, preCalculatedResults);
                 } else {
-                    if (forwardExecutorNode.isAnchored() || (source.getFlags().isSticky() && forwardExecutorNode.getPrefixLength() == 0)) {
-                        return new LazyCaptureGroupsResult(regex, input, fromIndexArg, end, captureGroupExecutorNode.getNumberOfCaptureGroups(), null, captureGroupCallTarget);
+                    if (forwardEntryNode.getExecutor().isAnchored() ||
+                                    (source.getFlags().isSticky() && forwardEntryNode.getExecutor().getPrefixLength() == 0)) {
+                        return new LazyCaptureGroupsResult(regex, input, fromIndexArg, end,
+                                        captureGroupEntryNode.getExecutor().getNumberOfCaptureGroups(), null, captureGroupCallTarget);
                     }
-                    return new LazyCaptureGroupsResult(regex, input, fromIndexArg, end, captureGroupExecutorNode.getNumberOfCaptureGroups(), backwardCallTarget, captureGroupCallTarget);
+                    return new LazyCaptureGroupsResult(regex, input, fromIndexArg, end,
+                                    captureGroupEntryNode.getExecutor().getNumberOfCaptureGroups(), backwardCallTarget, captureGroupCallTarget);
                 }
             }
         }
 
         private RegexResult executeBackwardAnchored(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
             final int inputLength = inputLengthNode.execute(input);
-            backwardExecutorNode.setInput(frame, input);
-            backwardExecutorNode.setFromIndex(frame, 0);
-            backwardExecutorNode.setIndex(frame, inputLength - 1);
-            backwardExecutorNode.setMaxIndex(frame, Math.max(-1, fromIndexArg - 1 - forwardExecutorNode.getPrefixLength()));
-            backwardExecutorNode.execute(frame);
-            final int backwardResult = backwardExecutorNode.getResultInt(frame);
+            backwardEntryNode.execute(frame, input, 0, inputLength - 1,
+                            Math.max(-1, fromIndexArg - 1 - forwardEntryNode.getExecutor().getPrefixLength()));
+            final int backwardResult = backwardEntryNode.getExecutor().getResultInt(frame);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return RegexResult.NO_MATCH;
             }
@@ -277,8 +283,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromStart(regex, input, start);
             }
-            if (captureGroupExecutorNode != null) {
-                return new LazyCaptureGroupsResult(regex, input, start, inputLength, captureGroupExecutorNode.getNumberOfCaptureGroups(), null, captureGroupCallTarget);
+            if (captureGroupEntryNode != null) {
+                return new LazyCaptureGroupsResult(regex, input, start, inputLength,
+                                captureGroupEntryNode.getExecutor().getNumberOfCaptureGroups(), null, captureGroupCallTarget);
             }
             return new SingleResult(regex, input, start, inputLength);
         }
@@ -294,20 +301,16 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
     static final class EagerCaptureGroupRegexSearchNode extends RunRegexSearchNode {
 
-        @Child private TRegexDFAExecutorNode executorNode;
+        @Child private TRegexDFAExecutorEntryNode entryNode;
 
         EagerCaptureGroupRegexSearchNode(TRegexDFAExecutorNode executorNode) {
-            this.executorNode = executorNode;
+            entryNode = TRegexDFAExecutorEntryNode.create(executorNode);
         }
 
         @Override
         RegexResult run(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            executorNode.setInput(frame, input);
-            executorNode.setFromIndex(frame, fromIndexArg);
-            executorNode.setIndex(frame, fromIndexArg);
-            executorNode.setMaxIndex(frame, inputLengthNode.execute(input));
-            executorNode.execute(frame);
-            final int[] resultArray = executorNode.getResultCaptureGroups(frame);
+            entryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLengthNode.execute(input));
+            final int[] resultArray = entryNode.getExecutor().getResultCaptureGroups(frame);
             if (resultArray == null) {
                 return RegexResult.NO_MATCH;
             }

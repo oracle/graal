@@ -192,7 +192,7 @@ public class OptionProcessorTest {
 
     }
 
-    @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1", mimeType = "optiontestlang1")
+    @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1")
     public static class OptionTestLang1 extends TruffleLanguage<Object> {
 
         @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER) //

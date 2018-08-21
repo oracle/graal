@@ -33,6 +33,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -86,7 +87,7 @@ public final class NativeImageBuildServer {
     static final String PORT_PREFIX = "-port=";
     private static final String LOG_PREFIX = "-logFile=";
     private static final int TIMEOUT_MINUTES = 240;
-    private static final String SUBSTRATEVM_VERSION_PROPERTY = "substratevm.version";
+    private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
     private static final int SERVER_THREAD_POOL_SIZE = 4;
     private static final int FAILED_EXIT_STATUS = -1;
 
@@ -301,8 +302,8 @@ public final class NativeImageBuildServer {
                 sendExitStatus(output, 0);
                 return false;
             case GET_VERSION:
-                log("Received 'version' request. Responding with " + System.getProperty(SUBSTRATEVM_VERSION_PROPERTY) + ".\n");
-                SubstrateServerMessage.send(new SubstrateServerMessage(serverCommand.command, System.getProperty(SUBSTRATEVM_VERSION_PROPERTY).getBytes()), output);
+                log("Received 'version' request. Responding with " + System.getProperty(GRAALVM_VERSION_PROPERTY) + ".\n");
+                SubstrateServerMessage.send(new SubstrateServerMessage(serverCommand.command, System.getProperty(GRAALVM_VERSION_PROPERTY).getBytes()), output);
                 return Instant.now().isBefore(lastKeepAliveAction.plus(Duration.ofMinutes(TIMEOUT_MINUTES)));
             case BUILD_IMAGE:
                 try {
@@ -504,10 +505,10 @@ public final class NativeImageBuildServer {
         final String task = taskParameter.get().substring(TASK_PREFIX.length());
         try {
             Class<?> imageTaskClass = Class.forName(task, true, classLoader);
-            return (ImageBuildTask) imageTaskClass.newInstance();
+            return (ImageBuildTask) imageTaskClass.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
             throw UserError.abort("image building task " + task + " can not be found. Make sure that " + task + " is present on the classpath.");
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (IllegalArgumentException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
             throw UserError.abort("image building task " + task + " must have a public constructor without parameters.");
         }
     }

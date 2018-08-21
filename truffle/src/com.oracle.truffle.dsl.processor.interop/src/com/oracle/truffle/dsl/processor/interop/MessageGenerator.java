@@ -182,8 +182,8 @@ abstract class MessageGenerator extends InteropNodeGenerator {
             return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         } else if (Message.KEYS.toString().equalsIgnoreCase(messageName)) {
             return new KeysGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-        } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
-                        Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
+        } else if (Message.EXECUTE.toString().equalsIgnoreCase(messageName) || Message.INVOKE.toString().equalsIgnoreCase(messageName) ||
+                        Message.NEW.toString().equalsIgnoreCase(messageName)) {
             return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         } else {
             assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);

@@ -90,12 +90,19 @@ public final class DebugScope {
      * Get a parent scope.
      *
      * @return the parent scope, or <code>null</code>.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.26
      */
-    public DebugScope getParent() {
+    public DebugScope getParent() throws DebugException {
         verifyValidState();
-        if (parent == null && iterator.hasNext()) {
-            parent = new DebugScope(iterator.next(), iterator, debugger, event, frame, root, language);
+        try {
+            if (parent == null && iterator.hasNext()) {
+                parent = new DebugScope(iterator.next(), iterator, debugger, event, frame, root, language);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, language, null, true, null);
         }
         return parent;
     }
@@ -117,14 +124,21 @@ public final class DebugScope {
      * actually span after the suspension point.
      *
      * @return the source section, or <code>null</code> when not available.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.29
      */
-    public SourceSection getSourceSection() {
-        Node node = scope.getNode();
-        if (node != null) {
-            return node.getEncapsulatingSourceSection();
-        } else {
-            return null;
+    public SourceSection getSourceSection() throws DebugException {
+        try {
+            Node node = scope.getNode();
+            if (node != null) {
+                return node.getEncapsulatingSourceSection();
+            } else {
+                return null;
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, language, null, true, null);
         }
     }
 
@@ -137,19 +151,26 @@ public final class DebugScope {
      *
      * @return an iterable of arguments, or <code>null</code> when this scope does not have a
      *         concept of arguments.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.26
      */
-    public Iterable<DebugValue> getArguments() {
+    public Iterable<DebugValue> getArguments() throws DebugException {
         verifyValidState();
-        Object argumentsObj = scope.getArguments();
         Iterable<DebugValue> arguments = null;
-        if (argumentsObj != null && argumentsObj instanceof TruffleObject) {
-            TruffleObject argsTO = (TruffleObject) argumentsObj;
-            arguments = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
-            if (arguments == null && ObjectStructures.isArray(debugger.getMessageNodes(), argsTO)) {
-                List<Object> array = ObjectStructures.asList(debugger.getMessageNodes(), argsTO);
-                arguments = new ValueInteropList(debugger, getLanguage(), array);
+        try {
+            Object argumentsObj = scope.getArguments();
+            if (argumentsObj != null && argumentsObj instanceof TruffleObject) {
+                TruffleObject argsTO = (TruffleObject) argumentsObj;
+                arguments = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
+                if (arguments == null && ObjectStructures.isArray(debugger.getMessageNodes(), argsTO)) {
+                    List<Object> array = ObjectStructures.asList(debugger.getMessageNodes(), argsTO);
+                    arguments = new ValueInteropList(debugger, getLanguage(), array);
+                }
             }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, language, null, true, null);
         }
         return arguments;
     }
@@ -162,9 +183,10 @@ public final class DebugScope {
      * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
      * another thread than it was created with.
      *
+     * @throws DebugException when guest language code throws an exception
      * @since 0.26
      */
-    public Iterable<DebugValue> getDeclaredValues() {
+    public Iterable<DebugValue> getDeclaredValues() throws DebugException {
         return getVariables();
     }
 
@@ -176,17 +198,24 @@ public final class DebugScope {
      * another thread than it was created with.
      *
      * @return a value of requested name, or <code>null</code> when no such value was found.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.26
      */
-    public DebugValue getDeclaredValue(String name) {
+    public DebugValue getDeclaredValue(String name) throws DebugException {
         return getVariables().get(name);
     }
 
     private ValuePropertiesCollection getVariables() {
         verifyValidState();
-        if (variables == null) {
-            Object variablesObj = scope.getVariables();
-            variables = DebugValue.getProperties(variablesObj, debugger, getLanguage(), this);
+        try {
+            if (variables == null) {
+                Object variablesObj = scope.getVariables();
+                variables = DebugValue.getProperties(variablesObj, debugger, getLanguage(), this);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, language, null, true, null);
         }
         return variables;
     }

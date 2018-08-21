@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Engine;
 
@@ -82,12 +83,16 @@ public final class Debugger {
      * @since 0.27
      * @see #getBreakpoints()
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     * @deprecated Use {@link #addBreakpointAddedListener(Consumer)} and
+     *             {@link #addBreakpointRemovedListener(Consumer)}
      */
-    public static final String PROPERTY_BREAKPOINTS = "breakpoints";
+    @Deprecated public static final String PROPERTY_BREAKPOINTS = "breakpoints";
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
     private final Env env;
     final List<Object> propSupport = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Breakpoint>> breakpointAddedListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Breakpoint>> breakpointRemovedListeners = new CopyOnWriteArrayList<>();
     final ObjectStructures.MessageNodes msgNodes;
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
@@ -183,6 +188,9 @@ public final class Debugger {
             s.install(breakpoint, true);
         }
         BreakpointsPropertyChangeEvent.firePropertyChange(this, null, breakpoint);
+        for (Consumer<Breakpoint> listener : breakpointAddedListeners) {
+            listener.accept(breakpoint.getROWrapper());
+        }
         if (Debugger.TRACE) {
             trace("installed debugger breakpoint %s", breakpoint);
         }
@@ -195,11 +203,11 @@ public final class Debugger {
      * snapshot of breakpoints, those that were {@link Breakpoint#dispose() disposed} are not
      * included.
      * <p>
-     * It's not possible to modify state of breakpoints returned from this list, or from the
-     * associated property change events, they are not {@link Breakpoint#isModifiable() modifiable}.
-     * An attempt to modify breakpoints state using any of their set method, or an attempt to
-     * dispose such breakpoints, fails with an {@link IllegalStateException}. Use the original
-     * installed breakpoint instance to change breakpoint state or dispose the breakpoint.
+     * It's not possible to modify state of breakpoints returned from this list, or from methods on
+     * listeners, they are not {@link Breakpoint#isModifiable() modifiable}. An attempt to modify
+     * breakpoints state using any of their set method, or an attempt to dispose such breakpoints,
+     * fails with an {@link IllegalStateException}. Use the original installed breakpoint instance
+     * to change breakpoint state or dispose the breakpoint.
      *
      * @since 0.27
      * @see DebuggerSession#getBreakpoints()
@@ -229,6 +237,9 @@ public final class Debugger {
         }
         if (removed) {
             BreakpointsPropertyChangeEvent.firePropertyChange(this, breakpoint, null);
+            for (Consumer<Breakpoint> listener : breakpointRemovedListeners) {
+                listener.accept(breakpoint.getROWrapper());
+            }
         }
         if (Debugger.TRACE) {
             trace("disposed debugger breakpoint %s", breakpoint);
@@ -256,11 +267,54 @@ public final class Debugger {
     }
 
     /**
+     * Add a listener that is notified when a new breakpoint is added into {@link #getBreakpoints()
+     * list of breakpoints}. The reported breakpoint is not {@link Breakpoint#isModifiable()
+     * modifiable}.
+     *
+     * @since 1.0
+     */
+    public void addBreakpointAddedListener(Consumer<Breakpoint> listener) {
+        breakpointAddedListeners.add(listener);
+    }
+
+    /**
+     * Remove a listener that was added by {@link #addBreakpointAddedListener(Consumer)}.
+     *
+     * @since 1.0
+     */
+    public void removeBreakpointAddedListener(Consumer<Breakpoint> listener) {
+        breakpointAddedListeners.remove(listener);
+    }
+
+    /**
+     * Add a listener that is notified when a breakpoint is removed from {@link #getBreakpoints()
+     * list of breakpoints}. The reported breakpoint is not {@link Breakpoint#isModifiable()
+     * modifiable}.
+     *
+     * @since 1.0
+     */
+    public void addBreakpointRemovedListener(Consumer<Breakpoint> listener) {
+        breakpointRemovedListeners.add(listener);
+    }
+
+    /**
+     * Remove a listener that was added by {@link #addBreakpointRemovedListener(Consumer)}.
+     *
+     * @since 1.0
+     */
+    public void removeBreakpointRemovedListener(Consumer<Breakpoint> listener) {
+        breakpointRemovedListeners.remove(listener);
+    }
+
+    /**
      * Add a property change listener that is notified when a property of this debugger changes.
      *
      * @since 0.27
      * @see #PROPERTY_BREAKPOINTS
+     * @deprecated Use {@link #addBreakpointAddedListener(Consumer)} and
+     *             {@link #addBreakpointRemovedListener(Consumer)}
      */
+    @Deprecated
     public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
         // using FQN to avoid mx to generate dependency on java.desktop module
         propSupport.add(listener);
@@ -271,7 +325,10 @@ public final class Debugger {
      *
      * @since 0.27
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     * @deprecated Use {@link #removeBreakpointAddedListener(Consumer)} and
+     *             {@link #removeBreakpointRemovedListener(Consumer)}
      */
+    @Deprecated
     public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
         // using FQN to avoid mx to generate dependency on java.desktop module
         propSupport.remove(listener);
@@ -294,17 +351,6 @@ public final class Debugger {
             PrintStream out = System.out;
             out.println("Debugger: " + String.format(message, parameters));
         }
-    }
-
-    /**
-     * @since 0.9
-     * @deprecated use {@link #find(TruffleInstrument.Env)}, {@link #find(TruffleLanguage.Env)} or
-     *             {@link #find(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("all")
-    public static Debugger find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return DebuggerInstrument.getDebugger(engine);
     }
 
     /**

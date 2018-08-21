@@ -482,6 +482,9 @@ public abstract class BigBang {
 
     public abstract boolean isValidClassLoader(Object valueObj);
 
+    public void checkUserLimitations() {
+    }
+
     public interface TypeFlowRunnable extends DebugContextRunnable {
         TypeFlow<?> getTypeFlow();
     }

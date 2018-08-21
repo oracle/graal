@@ -249,6 +249,16 @@ public class HotSpotReplacementsUtil {
     }
 
     /**
+     * Gets the pending exception for the given thread.
+     *
+     * @return the pending exception, or null if there was none
+     */
+    @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF_NONVIRTUAL", justification = "foldable method parameters are injected")
+    public static Object getPendingException(Word thread) {
+        return thread.readObject(threadPendingExceptionOffset(INJECTED_VMCONFIG), PENDING_EXCEPTION_LOCATION);
+    }
+
+    /**
      * Gets and clears the object result from a runtime call stored in a thread local.
      *
      * @return the object that was in the thread local

@@ -67,7 +67,7 @@ final class LibFFIClosure implements TruffleObject {
     }
 
     private LibFFIClosure(NFIContext context, LibFFISignature signature, TruffleObject executable) {
-        Message message = Message.createExecute(signature.getArgTypes().length);
+        Message message = Message.EXECUTE;
 
         LibFFIType retType = signature.getRetType();
         if (retType instanceof LibFFIType.ObjectType) {

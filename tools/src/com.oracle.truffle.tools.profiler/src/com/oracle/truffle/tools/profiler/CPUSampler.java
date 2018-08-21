@@ -34,6 +34,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
@@ -58,7 +59,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain ProfilerNode
  * nodes}, which represent the profile of the execution.
  * <p>
- * Usage example: {@link CPUSamplerSnippets#example}
+ * Usage example: {@codesnippet CPUSamplerSnippets#example}
  *
  * @since 0.30
  */
@@ -249,20 +250,6 @@ public final class CPUSampler implements Closeable {
 
             }
         }, true);
-    }
-
-    /**
-     * Finds {@link CPUSampler} associated with given engine.
-     *
-     * @param engine the engine to find debugger for
-     * @return an instance of associated {@link CPUSampler}
-     * @since 0.30
-     * @deprecated use {@link #find(Engine)} instead
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static CPUSampler find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return CPUSamplerInstrument.getSampler(engine);
     }
 
     /**
@@ -493,7 +480,7 @@ public final class CPUSampler implements Closeable {
             f = DEFAULT_FILTER;
         }
         this.stackOverflowed = false;
-        this.shadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter());
+        this.shadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter(), TruffleLogger.getLogger(CPUSamplerInstrument.ID));
         this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
 
         this.samplerTask = new SamplingTimerTask();

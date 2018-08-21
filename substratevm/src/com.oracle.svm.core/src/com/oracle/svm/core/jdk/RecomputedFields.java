@@ -90,7 +90,9 @@ final class Target_sun_util_calendar_ZoneInfoFile {
 @TargetClass(className = "java.nio.DirectByteBuffer")
 @SuppressWarnings("unused")
 final class Target_java_nio_DirectByteBuffer {
-    @Alias @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = byte[].class) //
+    @Alias //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @RecomputeFieldValue(kind = ArrayBaseOffset, declClass = byte[].class) //
     static long arrayBaseOffset;
 
     @Alias
@@ -112,7 +114,7 @@ final class Target_java_nio_charset_CharsetEncoder {
     private WeakReference<CharsetDecoder> cachedDecoder;
 }
 
-@TargetClass(className = "java.nio.charset.CoderResult$Cache")
+@TargetClass(className = "java.nio.charset.CoderResult$Cache", onlyWith = JDK8OrEarlier.class)
 final class Target_java_nio_charset_CoderResult_Cache {
     @Alias @RecomputeFieldValue(kind = Reset) //
     private Map<Integer, WeakReference<CoderResult>> cache;
@@ -421,42 +423,54 @@ final class Target_java_util_concurrent_ForkJoinPool {
         /** Ensure that the common pool variables are initialized. */
         protected static void ensureCommonPoolIsInitialized() {
             if (injectedCommon.get() == null) {
-                /* "common" and "commonParallelism" have to be set together. */
-                /*
-                 * This is a simplified version of ForkJoinPool.makeCommonPool(), without the
-                 * dynamic class loading for factory and handler based on system properties.
-                 */
-                int parallelism = Runtime.getRuntime().availableProcessors() - 1;
-                if (!SubstrateOptions.MultiThreaded.getValue()) {
-                    /*
-                     * Using "parallelism = 0" gets me a ForkJoinPool that does not try to start any
-                     * threads, which is what I want if I am not multi-threaded.
-                     */
-                    parallelism = 0;
-                }
-                if (parallelism > MAX_CAP) {
-                    parallelism = MAX_CAP;
-                }
-                final Target_java_util_concurrent_ForkJoinPool proposedPool;
                 if (GraalServices.Java8OrEarlier) {
-                    proposedPool = new Target_java_util_concurrent_ForkJoinPool(parallelism, defaultForkJoinWorkerThreadFactory, null, LIFO_QUEUE, "ForkJoinPool.commonPool-worker-");
+                    initializeCommonPool_JDK8OrEarlier();
                 } else {
-                    proposedPool = new Target_java_util_concurrent_ForkJoinPool((byte) 0);
-                }
-                /* The assignment to "injectedCommon" is atomic to prevent races. */
-                injectedCommon.compareAndSet(null, proposedPool);
-                final ForkJoinPool actualPool = Util_java_util_concurrent_ForkJoinPool.as_ForkJoinPool(injectedCommon.get());
-                /*
-                 * The assignment to "commonParallelism" can race because multiple assignments are
-                 * idempotent once "injectedCommon" is set. This code is a copy of the relevant part
-                 * of the static initialization block in ForkJoinPool.
-                 */
-                if (GraalServices.Java8OrEarlier) {
-                    commonParallelism = actualPool.getParallelism();
-                } else {
-                    COMMON_PARALLELISM = actualPool.getParallelism();
+                    initializeCommonPool_JDK9OrLater();
                 }
             }
+        }
+
+        protected static void initializeCommonPool_JDK8OrEarlier() {
+            /* "common" and "commonParallelism" have to be set together. */
+            /*
+             * This is a simplified version of ForkJoinPool.makeCommonPool(), without the dynamic
+             * class loading for factory and handler based on system properties.
+             */
+            int parallelism = Runtime.getRuntime().availableProcessors() - 1;
+            if (!SubstrateOptions.MultiThreaded.getValue()) {
+                /*
+                 * Using "parallelism = 0" gets me a ForkJoinPool that does not try to start any
+                 * threads, which is what I want if I am not multi-threaded.
+                 */
+                parallelism = 0;
+            }
+            if (parallelism > MAX_CAP) {
+                parallelism = MAX_CAP;
+            }
+            final Target_java_util_concurrent_ForkJoinPool proposedPool = new Target_java_util_concurrent_ForkJoinPool(parallelism, defaultForkJoinWorkerThreadFactory, null, LIFO_QUEUE,
+                            "ForkJoinPool.commonPool-worker-");
+            /* The assignment to "injectedCommon" is atomic to prevent races. */
+            injectedCommon.compareAndSet(null, proposedPool);
+            final ForkJoinPool actualPool = Util_java_util_concurrent_ForkJoinPool.as_ForkJoinPool(injectedCommon.get());
+            /*
+             * The assignment to "commonParallelism" can race because multiple assignments are
+             * idempotent once "injectedCommon" is set. This code is a copy of the relevant part of
+             * the static initialization block in ForkJoinPool.
+             */
+            commonParallelism = actualPool.getParallelism();
+        }
+
+        protected static void initializeCommonPool_JDK9OrLater() {
+            /* "common" and "commonParallelism" have to be set together. */
+            /*
+             * TODO: This should be a simplified version of ForkJoinPool(byte), , without the
+             * dynamic class loading for factory and handler based on system properties.
+             *
+             * Among the problems is that the public ForkJoinPool constructor that takes a
+             * `parallelism` argument now throws an `IllegalArgumentException` if passed a `0`.
+             */
+            throw VMError.unsupportedFeature("Target_java_util_concurrent_ForkJoinPool.CommonInjector.initializeCommonPool_JDK9OrLater()");
         }
     }
 

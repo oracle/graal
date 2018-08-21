@@ -56,7 +56,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
         return new TruffleTestInvoker<>(testTvmci);
     }
 
-    @TruffleLanguage.Registration(id = "truffletestinvoker", name = "truffletestinvoker", mimeType = "application/x-unittest", version = "")
+    @TruffleLanguage.Registration(id = "truffletestinvoker", name = "truffletestinvoker", version = "")
     public static class TruffleTestInvokerLanguage extends TruffleLanguage<Env> {
 
         @Override

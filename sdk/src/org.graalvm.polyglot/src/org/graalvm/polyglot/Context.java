@@ -303,8 +303,9 @@ public final class Context implements AutoCloseable {
      * @param source a source object to evaluate
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
      * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the language of the given source is not
-     *             installed.
+     *             allowed to access this context
+     * @throws IllegalArgumentException if the language of the given source is not installed or the
+     *             {@link Source#getMimeType() MIME type} is not supported with the language.
      * @return result of the evaluation. The returned instance is is never <code>null</code>, but
      *         the result might represent a {@link Value#isNull() null} value.
      * @since 1.0
@@ -328,6 +329,7 @@ public final class Context implements AutoCloseable {
      * </pre>
      *
      * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
      * @throws IllegalStateException if the context is already closed, the current thread is not
      *             allowed to access this context or if the given language is not installed.
      * @return result of the evaluation. The returned instance is is never <code>null</code>, but
@@ -365,8 +367,8 @@ public final class Context implements AutoCloseable {
      * language's discretion. If the language was not yet {@link #initialize(String) initialized} it
      * will be initialized when the bindings are requested.
      *
-     * @throws IllegalArgumentException if the language does not exist.
-     * @throws IllegalStateException if context is already closed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException in case the lazy initialization failed due to a guest language
      *             error.
      * @since 1.0
@@ -380,12 +382,11 @@ public final class Context implements AutoCloseable {
      * language, it will be initialized the first time it is used.
      *
      * @param languageId the identifier of the language to initialize.
-     * @throws IllegalArgumentException if the language does not exist.
      * @return <code>true</code> if the language was initialized. Returns <code>false</code> if it
      *         was already initialized.
      * @throws PolyglotException in case the initialization failed due to a guest language error.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the given language is not installed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed.
      * @since 1.0
      */
     public boolean initialize(String languageId) {

@@ -28,6 +28,9 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -68,10 +71,12 @@ public final class AllocationReporter {
      * @since 0.27
      * @see #isActive()
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     * @deprecated Use {@link #addActiveListener(Consumer)}
      */
-    public static final String PROPERTY_ACTIVE = "active";
+    @Deprecated public static final String PROPERTY_ACTIVE = "active";
 
     final LanguageInfo language;
+    private final List<Consumer<Boolean>> activeListeners = new CopyOnWriteArrayList<>();
     private final PropChangeSupport propSupport = new PropChangeSupport(this);
     private final ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
 
@@ -86,12 +91,35 @@ public final class AllocationReporter {
     }
 
     /**
+     * Add a listener that is notified when {@link #isActive() active} value of this reporter
+     * changes. The listener {@link Consumer#accept(Object) accept} method is called with the new
+     * value of {@link #isActive()}.
+     *
+     * @since 1.0
+     */
+    public void addActiveListener(Consumer<Boolean> listener) {
+        activeListeners.add(listener);
+    }
+
+    /**
+     * Remove a listener that is notified when {@link #isActive() active} value of this reporter
+     * changes.
+     *
+     * @since 1.0
+     */
+    public void removeActiveListener(Consumer<Boolean> listener) {
+        activeListeners.remove(listener);
+    }
+
+    /**
      * Add a property change listener that is notified when a property of this reporter changes. Use
      * it to get notified when {@link #isActive()} changes.
      *
      * @since 0.27
      * @see #PROPERTY_ACTIVE
+     * @deprecated Use {@link #addActiveListener(Consumer)} instead.
      */
+    @Deprecated
     public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
         // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
         propSupport.addPropertyChangeListener(listener);
@@ -102,7 +130,9 @@ public final class AllocationReporter {
      *
      * @since 0.27
      * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     * @deprecated Use {@link #removeActiveListener(Consumer)} instead.
      */
+    @Deprecated
     public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
         // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
         propSupport.removePropertyChangeListener(listener);
@@ -112,9 +142,8 @@ public final class AllocationReporter {
      * Test if the reporter instance is actually doing some reporting when notify methods are
      * called. Methods {@link #onEnter(java.lang.Object, long, long)} and
      * {@link #onReturnValue(java.lang.Object, long, long)} have no effect when this method returns
-     * false. A {@link java.beans.PropertyChangeListener} can be
-     * {@link #addPropertyChangeListener(java.beans.PropertyChangeListener) added} to listen on
-     * changes of this property.
+     * false. A listener can be {@link #addActiveListener(Consumer) added} to listen on changes of
+     * this value.
      *
      * @return <code>true</code> when there are some {@link AllocationListener}s attached,
      *         <code>false</code> otherwise.
@@ -146,6 +175,9 @@ public final class AllocationReporter {
             assumption.invalidate();
         }
         if (!hadListeners) {
+            for (Consumer<Boolean> listener : activeListeners) {
+                listener.accept(true);
+            }
             propSupport.firePropertyChange(PROPERTY_ACTIVE, false, true);
         }
     }
@@ -182,6 +214,9 @@ public final class AllocationReporter {
             assumption.invalidate();
         }
         if (!hasListeners) {
+            for (Consumer<Boolean> listener : activeListeners) {
+                listener.accept(false);
+            }
             propSupport.firePropertyChange(PROPERTY_ACTIVE, true, false);
         }
     }
@@ -343,6 +378,7 @@ public final class AllocationReporter {
         assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
         assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
     }
+
 }
 
 class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {

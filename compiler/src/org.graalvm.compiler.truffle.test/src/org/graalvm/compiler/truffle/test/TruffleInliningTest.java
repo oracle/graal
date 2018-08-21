@@ -24,14 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -44,9 +40,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 
 public abstract class TruffleInliningTest {
 
@@ -82,6 +82,7 @@ public abstract class TruffleInliningTest {
         }
 
         @Override
+        @ExplodeLoop
         public Object execute(VirtualFrame frame) {
 
             int maxRecursionDepth = (int) frame.getArguments()[0];
@@ -269,7 +270,7 @@ public abstract class TruffleInliningTest {
 
     @Before
     public void before() {
-        scope = overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, Integer.MAX_VALUE);
+        scope = overrideOptions(TruffleCompilerOptions.TruffleCompilation, false);
     }
 
     @After

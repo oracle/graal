@@ -110,6 +110,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this == FLOATING_GUARDS;
         }
 
+        public boolean allowsGuardInsertion() {
+            return this.ordinal() <= FIXED_DEOPTS.ordinal();
+        }
+
         public boolean areFrameStatesAtDeopts() {
             return this == AFTER_FSA;
         }

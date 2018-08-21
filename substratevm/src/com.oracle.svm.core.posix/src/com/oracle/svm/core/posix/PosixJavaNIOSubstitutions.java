@@ -101,11 +101,6 @@ import static com.oracle.svm.core.posix.headers.Unistd.sysconf;
 import static com.oracle.svm.core.posix.headers.Unistd.unlink;
 import static com.oracle.svm.core.posix.headers.Unistd.write;
 import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFRelease;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringAppendCharacters;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringCreateMutable;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringGetCharacters;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringGetLength;
-import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringNormalize;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinSendfile.sendfile;
 import static com.oracle.svm.core.posix.headers.linux.LinuxSendfile.sendfile;
 import static com.oracle.svm.core.posix.headers.linux.Mntent.getmntent_r;
@@ -122,7 +117,6 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -162,8 +156,10 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.posix.darwin.DarwinCoreFoundationUtils;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -194,7 +190,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Uio.iovec;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFMutableStringRef;
+import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -532,6 +528,42 @@ public final class PosixJavaNIOSubstitutions {
             }
         }
 
+        /* open/src/java.base/unix/native/libnio/ch/IOUtil.c */
+        @Substitute
+        @TargetElement(onlyWith = JDK9OrLater.class)
+        // 131 JNIEXPORT jint JNICALL
+        // 132 Java_sun_nio_ch_IOUtil_drain1(JNIEnv *env, jclass cl, jint fd)
+        // 133 {
+        static int drain1(int fd) throws IOException {
+            // 134 int res;
+            int res;
+            // 135 char buf[1];
+            CCharPointer bufPointer = StackValue.get(1, CCharPointer.class);
+            // 136
+            // 137 res = read(fd, buf, 1);
+            res = (int) Unistd.read(fd, bufPointer, WordFactory.unsigned(1)).rawValue();
+            // 138 if (res < 0) {
+            if (res < 0) {
+                // 139 if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (Errno.errno() == Errno.EAGAIN() || Errno.errno() == Errno.EWOULDBLOCK()) {
+                    // 140 res = 0;
+                    res = 0;
+                    // 141 } else if (errno == EINTR) {
+                } else if (Errno.errno() == Errno.EINTR()) {
+                    // 142 return IOS_INTERRUPTED;
+                    return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
+                    // 143 } else {
+                } else {
+                    // 144 JNU_ThrowIOExceptionWithLastError(env, "read");
+                    throw throwIOExceptionWithLastError("read");
+                    // 145 return IOS_THROWN;
+                    /* Unreachable! */
+                }
+            }
+            // 148 return res;
+            return res;
+        }
+
         @Substitute
         private static int iovMax() {
             long iovmax = sysconf(_SC_IOV_MAX());
@@ -569,7 +601,7 @@ public final class PosixJavaNIOSubstitutions {
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_Net {
 
-        /* Do not re-format commented-out code: @formatter:off */
+    /* Do not re-format commented-out code: @formatter:off */
         /* Allow methods with non-standard names: Checkstyle: stop */
 
         @Substitute
@@ -2758,28 +2790,11 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         private static char[] normalizepath(char[] path, int form) {
-            char[] result;
-            CFMutableStringRef csref = CFStringCreateMutable(WordFactory.nullPointer(), WordFactory.zero());
-            if (csref.isNull()) {
-                throw throwOutOfMemoryError("native heap");
-            }
-
-            try (PinnedObject pathPin = PinnedObject.create(path)) {
-                PointerBase chars = pathPin.addressOfArrayElement(0);
-                int len = path.length;
-                CFStringAppendCharacters(csref, chars, WordFactory.signed(len));
-            }
-            CFStringNormalize(csref, WordFactory.signed(form));
-            SignedWord len = CFStringGetLength(csref);
-
-            result = new char[(int) len.rawValue()];
-            try (PinnedObject resultPin = PinnedObject.create(result)) {
-                PointerBase resultChars = resultPin.addressOfArrayElement(0);
-                CFStringGetCharacters(csref, len, resultChars);
-            }
-
+            CoreFoundation.CFMutableStringRef csref = DarwinCoreFoundationUtils.toCFStringRef(String.valueOf(path));
+            CoreFoundation.CFStringNormalize(csref, WordFactory.signed(form));
+            String res = DarwinCoreFoundationUtils.fromCFStringRef(csref);
             CFRelease(csref);
-            return result;
+            return res.toCharArray();
         }
     }
 
@@ -2847,6 +2862,7 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         private long position0(FileDescriptor fdo, long offset) throws IOException {
             int fd = fdval(fdo);
             long result = 0;
@@ -3090,6 +3106,9 @@ public final class PosixJavaNIOSubstitutions {
     @TargetClass(className = "sun.nio.ch.SocketChannelImpl")
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_SocketChannelImpl {
+
+        @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         // /jdk/src/share/classes/sun/nio/ch/SocketChannelImpl.java?v=Java_1.8.0_40_b10
         // 1027 private static native int checkConnect(FileDescriptor fd,
         // 1028 boolean block, boolean ready)
@@ -3101,7 +3120,6 @@ public final class PosixJavaNIOSubstitutions {
         // 050 jobject fdo, jboolean block,
         // 051 jboolean ready)
         // 052 {
-        @Substitute
         static int checkConnect(FileDescriptor fdo, boolean block, boolean ready) throws IOException {
             // 053 int error = 0;
             CIntPointer error_Pointer = StackValue.get(CIntPointer.class);
@@ -3167,6 +3185,87 @@ public final class PosixJavaNIOSubstitutions {
             // 085 return 0;
             return 0;
         }
+
+        /* { Do not format quoted code: @formatter:off */
+        @Substitute
+        @TargetElement(onlyWith = JDK9OrLater.class)
+        /* open/src/java.base/share/classes/sun/nio/ch/SocketChannelImpl.java */
+        // 1120    private static native int checkConnect(FileDescriptor fd, boolean block)
+        // 1121        throws IOException;
+        /* open/src/java.base/unix/native/libnio/ch/SocketChannelImpl.c */
+        // 48 JNIEXPORT jint JNICALL
+        // 49 Java_sun_nio_ch_SocketChannelImpl_checkConnect(JNIEnv *env, jobject this,
+        // 50                                                jobject fdo, jboolean block)
+        // 51 {
+        static int checkConnect(FileDescriptor fdo, boolean block) throws IOException {
+            // 52     int error = 0;
+            CIntPointer error_Pointer = StackValue.get(CIntPointer.class);
+            error_Pointer.write(0);
+            // 53     socklen_t n = sizeof(int);
+            CIntPointer n_Pointer = StackValue.get(CIntPointer.class);
+            n_Pointer.write(SizeOf.get(CIntPointer.class));
+            // 54     jint fd = fdval(env, fdo);
+            int fd = fdval(fdo);
+            // 55     int result = 0;
+            int result = 0;
+            // 56     struct pollfd poller;
+            Poll.pollfd poller = StackValue.get(Poll.pollfd.class);
+            // 57
+            // 58     poller.fd = fd;
+            poller.set_fd(fd);
+            // 59     poller.events = POLLOUT;
+            poller.set_events(Poll.POLLOUT());
+            // 60     poller.revents = 0;
+            poller.set_revents(0);
+            // 61     result = poll(&poller, 1, block ? -1 : 0);
+            result = Poll.poll(poller, 1, block ? -1 : 0);
+            // 62
+            // 63     if (result < 0) {
+            if (result < 0) {
+                // 64         if (errno == EINTR) {
+                if (Errno.errno() == Errno.EINTR()) {
+                    // 65             return IOS_INTERRUPTED;
+                    return Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
+                } else {
+                    // 67             JNU_ThrowIOExceptionWithLastError(env, "poll failed");
+                    throw throwIOExceptionWithLastError("poll failed");
+                    // 68             return IOS_THROWN;
+                    /* unreachable! */
+                }
+            }
+            // 71     if (!block && (result == 0))
+            if (!block && (result == 0)) {
+                // 72         return IOS_UNAVAILABLE;
+                return Target_sun_nio_ch_IOStatus.IOS_UNAVAILABLE;
+            }
+            // 73
+            // 74     if (result > 0) {
+            if (result > 0) {
+                // 75         errno = 0;
+                Errno.set_errno(0);
+                // 76         result = getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &n);
+                result = Socket.getsockopt(fd, Socket.SOL_SOCKET(), Socket.SO_ERROR(), error_Pointer, n_Pointer);
+                // 77         if (result < 0) {
+                if (result < 0) {
+                    // 78             return handleSocketError(env, errno);
+                    return Util_sun_nio_ch_Net.handleSocketError(Errno.errno());
+                    // 79         } else if (error) {
+                } else if (CTypeConversion.toBoolean(error_Pointer.read())) {
+                    // 80             return handleSocketError(env, error);
+                    return Util_sun_nio_ch_Net.handleSocketError(error_Pointer.read());
+                    // 81         } else if ((poller.revents & POLLHUP) != 0) {
+                } else if ((poller.revents() & Poll.POLLHUP()) != 0) {
+                    // 82             return handleSocketError(env, ENOTCONN);
+                    return Util_sun_nio_ch_Net.handleSocketError(Errno.ENOTCONN());
+                }
+                // 84         // connected
+                // 85         return 1;
+                return 1;
+            }
+            // 87     return 0;
+            return 0;
+        }
+        /* } Do not format quoted code: @formatter:on */
     }
 
     @TargetClass(className = "sun.nio.ch.UnixAsynchronousSocketChannelImpl")
@@ -3269,7 +3368,7 @@ public final class PosixJavaNIOSubstitutions {
      * jdk/src/solaris/native/sun/nio/fs/GnomeFileTypeDetector.c?v=Java_1.8.0_40_b10
      */
     @Platforms({Platform.LINUX.class})
-    @TargetClass(className = "sun.nio.fs.GnomeFileTypeDetector")
+    @TargetClass(className = "sun.nio.fs.GnomeFileTypeDetector", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_fs_GnomeFileTypeDetector {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3697,7 +3796,7 @@ public final class PosixJavaNIOSubstitutions {
      * jdk/src/solaris/native/sun/nio/fs/MagicFileTypeDetector.c?v=Java_1.8.0_40_b10
      */
     @Platforms({Platform.LINUX.class})
-    @TargetClass(className = "sun.nio.fs.MagicFileTypeDetector")
+    @TargetClass(className = "sun.nio.fs.MagicFileTypeDetector", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_fs_MagicFileTypeDetector {
         /* { Do not format quoted code: @formatter:off */
 

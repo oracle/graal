@@ -236,7 +236,7 @@ public class JNIAccessFeature implements Feature {
             JNIJavaCallWrapperMethod varargsNonvirtualCallWrapper = null;
             JNIJavaCallWrapperMethod arrayNonvirtualCallWrapper = null;
             JNIJavaCallWrapperMethod valistNonvirtualCallWrapper = null;
-            if (!Modifier.isStatic(method.getModifiers())) {
+            if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
                 varargsNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VARARGS, true, wrappedMetaAccess, nativeLibraries);
                 arrayNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.ARRAY, true, wrappedMetaAccess, nativeLibraries);
                 valistNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VA_LIST, true, wrappedMetaAccess, nativeLibraries);

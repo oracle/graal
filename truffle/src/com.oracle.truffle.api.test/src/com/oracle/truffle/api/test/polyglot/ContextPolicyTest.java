@@ -431,7 +431,7 @@ public class ContextPolicyTest {
         assertEquals(0, parseRequest.size());
     }
 
-    @Registration(id = SINGLE_LANGUAGE, name = SINGLE_LANGUAGE, mimeType = SINGLE_LANGUAGE, contextPolicy = ContextPolicy.EXCLUSIVE)
+    @Registration(id = SINGLE_LANGUAGE, name = SINGLE_LANGUAGE, contextPolicy = ContextPolicy.EXCLUSIVE)
     public static class SingleContextPolicyLanguage extends TruffleLanguage<Env> {
 
         public SingleContextPolicyLanguage() {
@@ -470,7 +470,7 @@ public class ContextPolicyTest {
 
     }
 
-    @Registration(id = SINGLE_REUSE_LANGUAGE, name = SINGLE_REUSE_LANGUAGE, mimeType = SINGLE_REUSE_LANGUAGE, contextPolicy = ContextPolicy.REUSE)
+    @Registration(id = SINGLE_REUSE_LANGUAGE, name = SINGLE_REUSE_LANGUAGE, contextPolicy = ContextPolicy.REUSE)
     public static class SingleReusePolicyLanguage extends SingleContextPolicyLanguage {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
@@ -486,7 +486,7 @@ public class ContextPolicyTest {
         }
     }
 
-    @Registration(id = MULTIPLE_LANGUAGE, name = MULTIPLE_LANGUAGE, mimeType = MULTIPLE_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
+    @Registration(id = MULTIPLE_LANGUAGE, name = MULTIPLE_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
     public static class MultipleContextPolicyLanguage extends SingleContextPolicyLanguage {
         @Option(help = "", category = OptionCategory.DEBUG) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);

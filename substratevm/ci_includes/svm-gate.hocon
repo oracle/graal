@@ -31,7 +31,7 @@ gate-svm-darwin-js: ${svm-common-darwin-gate} {
 
 gate-svm-style-fullbuild: ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
   run: [
-    ${svm-cmd-gate} ["style,fullbuild,helloworld,maven"]
+    ${svm-cmd-gate} ["style,fullbuild,helloworld,test,maven"]
   ]
   targets: [gate]
 }

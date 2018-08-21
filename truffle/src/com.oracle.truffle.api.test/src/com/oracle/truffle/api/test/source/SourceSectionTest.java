@@ -35,18 +35,17 @@ import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-public class SourceSectionTest {
+public class SourceSectionTest extends AbstractPolyglotTest {
 
-    private final Source emptySource = Source.newBuilder("").name("emptySource").mimeType("content/unknown").build();
-
-    private final Source emptyLineSource = Source.newBuilder("\n").name("emptyLineSource").mimeType("content/unknown").build();
-
-    private final Source shortSource = Source.newBuilder("01").name("shortSource").mimeType("content/unknown").build();
-
-    private final Source longSource = Source.newBuilder("01234\n67\n9\n").name("long").mimeType("content/unknown").build();
+    private final Source emptySource = Source.newBuilder("", "", "emptySource").build();
+    private final Source emptyLineSource = Source.newBuilder("", "\n", "emptyLineSource").build();
+    private final Source shortSource = Source.newBuilder("", "01", "shortSource").build();
+    private final Source longSource = Source.newBuilder("", "01234\n67\n9\n", "long").build();
 
     @Test
     public void emptySourceTest0() {
@@ -284,19 +283,22 @@ public class SourceSectionTest {
 
     @Test
     public void onceObtainedAlwaysTheSame() throws Exception {
-        File sample = File.createTempFile("hello", ".txt");
-        sample.deleteOnExit();
-        try (FileWriter w = new FileWriter(sample)) {
+        setupEnv();
+        File rawFile = File.createTempFile("hello", ".txt");
+        rawFile.deleteOnExit();
+        try (FileWriter w = new FileWriter(rawFile)) {
             w.write("Hello world!");
         }
-        Source complexHello = Source.newBuilder(sample).build();
+        TruffleFile sample = languageEnv.getTruffleFile(rawFile.getPath());
+
+        Source complexHello = Source.newBuilder("", sample).build();
         SourceSection helloTo = complexHello.createSection(6, 5);
         assertEquals("world", helloTo.getCharacters());
 
-        try (FileWriter w = new FileWriter(sample)) {
+        try (FileWriter w = new FileWriter(rawFile)) {
             w.write("Hi world!");
         }
-        Source simpleHi = Source.newBuilder(sample).build();
+        Source simpleHi = Source.newBuilder("", sample).build();
         SourceSection hiTo = simpleHi.createSection(3, 5);
         assertEquals("world", hiTo.getCharacters());
 

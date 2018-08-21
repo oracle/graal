@@ -27,9 +27,12 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -220,6 +223,21 @@ class TestHelper {
         }
     }
 
+    static int getSlowPathCount(Node node) {
+        if (!(node.getRootNode() instanceof SlowPathCounterRoot)) {
+            throw new IllegalArgumentException("Not instrumented. Instrument with instrumentSlowPath");
+        }
+        return ((SlowPathCounterRoot) node.getRootNode()).getSlowPathCount();
+    }
+
+    static void instrumentSlowPath(Node node) {
+        if (node.getParent() != null) {
+            throw new IllegalArgumentException("Node already adopted.");
+        }
+        SlowPathCounterRoot rootNode = new SlowPathCounterRoot(node);
+        rootNode.adoptChildren();
+    }
+
     public static final class LogListener implements TestExecutionListener {
 
         public void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last) {
@@ -231,6 +249,56 @@ class TestHelper {
     interface TestExecutionListener {
 
         void afterExecution(TestRootNode<? extends ValueNode> node, int index, Object value, Object expectedResult, Object actualResult, boolean last);
+
+    }
+
+    static class SlowPathCounterRoot extends RootNode {
+
+        @Child Node node;
+
+        private final AtomicInteger lockedCount = new AtomicInteger(0);
+        private final AtomicInteger slowPathCount = new AtomicInteger(0);
+
+        @SuppressWarnings("serial")
+        SlowPathCounterRoot(Node node) {
+            super(null);
+            this.node = node;
+            try {
+                Field lock = RootNode.class.getDeclaredField("lock");
+                lock.setAccessible(true);
+                lock.set(this, new ReentrantLock() {
+
+                    @Override
+                    public void lock() {
+                        slowPathCount.incrementAndGet();
+                        lockedCount.incrementAndGet();
+                        super.lock();
+                    }
+
+                    @Override
+                    public void unlock() {
+                        lockedCount.decrementAndGet();
+                        super.unlock();
+                    }
+
+                });
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return null;
+        }
+
+        boolean isInSlowPath() {
+            return lockedCount.get() > 0;
+        }
+
+        int getSlowPathCount() {
+            return slowPathCount.get();
+        }
 
     }
 

@@ -80,12 +80,19 @@ public final class TruffleFile {
 
     private final FileSystem fileSystem;
     private final Path path;
+    private final Path normalizedPath;
 
     TruffleFile(final FileSystem fileSystem, final Path path) {
-        Objects.requireNonNull(fileSystem, "FileSystemProvider must not be null.");
-        Objects.requireNonNull(fileSystem, "Path must not be null.");
+        this(fileSystem, path, path.normalize());
+    }
+
+    TruffleFile(final FileSystem fileSystem, final Path path, final Path normalizedPath) {
+        Objects.requireNonNull(fileSystem, "FileSystem must not be null.");
+        Objects.requireNonNull(path, "Path must not be null.");
+        Objects.requireNonNull(normalizedPath, "NormalizedPath must not be null.");
         this.fileSystem = fileSystem;
         this.path = path;
+        this.normalizedPath = normalizedPath;
     }
 
     /**
@@ -283,7 +290,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public URI toUri() {
         try {
-            final Path absolutePath = path.isAbsolute() ? path : toAbsolutePathImpl(path);
+            final Path absolutePath = path.isAbsolute() ? path : toAbsolutePathImpl()[0];
             return absolutePath.toUri();
         } catch (SecurityException se) {
             throw se;
@@ -307,7 +314,8 @@ public final class TruffleFile {
             return this;
         }
         try {
-            return new TruffleFile(fileSystem, toAbsolutePathImpl(path));
+            Path[] absolutePaths = toAbsolutePathImpl();
+            return new TruffleFile(fileSystem, absolutePaths[0], absolutePaths[1]);
         } catch (SecurityException se) {
             throw se;
         } catch (Throwable t) {
@@ -441,7 +449,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setLastModifiedTime(FileTime time, LinkOption... options) throws IOException {
         try {
-            fileSystem.setAttribute(path, "lastModifiedTime", time, options);
+            fileSystem.setAttribute(normalizedPath, "lastModifiedTime", time, options);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -481,7 +489,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setLastAccessTime(FileTime time, LinkOption... options) throws IOException {
         try {
-            fileSystem.setAttribute(path, "lastAccessTime", time, options);
+            fileSystem.setAttribute(normalizedPath, "lastAccessTime", time, options);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -521,7 +529,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setCreationTime(FileTime time, LinkOption... options) throws IOException {
         try {
-            fileSystem.setAttribute(path, "creationTime", time, options);
+            fileSystem.setAttribute(normalizedPath, "creationTime", time, options);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -543,9 +551,10 @@ public final class TruffleFile {
     public Collection<TruffleFile> list() throws IOException {
         try {
             final Collection<TruffleFile> result = new ArrayList<>();
-            try (DirectoryStream<Path> stream = fileSystem.newDirectoryStream(path, AllFiles.INSTANCE)) {
+            final boolean normalized = isNormalized();
+            try (DirectoryStream<Path> stream = fileSystem.newDirectoryStream(normalizedPath, AllFiles.INSTANCE)) {
                 for (Path p : stream) {
-                    result.add(new TruffleFile(fileSystem, p));
+                    result.add(new TruffleFile(fileSystem, normalized ? p : path.resolve(p.getFileName()), p));
                 }
             }
             return result;
@@ -574,7 +583,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
         try {
-            return ByteChannelDecorator.create(fileSystem.newByteChannel(path, options, attributes));
+            return ByteChannelDecorator.create(fileSystem.newByteChannel(normalizedPath, options, attributes));
         } catch (IOException | UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -771,7 +780,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void createDirectory(FileAttribute<?>... attributes) throws IOException {
         try {
-            createDirectoryImpl(path, attributes);
+            createDirectoryImpl(normalizedPath, attributes);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -796,7 +805,7 @@ public final class TruffleFile {
     public void createDirectories(FileAttribute<?>... attributes) throws IOException {
         try {
             try {
-                createDirAndCheck(path, attributes);
+                createDirAndCheck(normalizedPath, attributes);
                 return;
             } catch (FileAlreadyExistsException faee) {
                 throw faee;
@@ -804,9 +813,9 @@ public final class TruffleFile {
                 // Try to create parents
             }
             SecurityException notAllowed = null;
-            Path absolutePath = path;
+            Path absolutePath = normalizedPath;
             try {
-                absolutePath = toAbsolutePathImpl(absolutePath);
+                absolutePath = fileSystem.toAbsolutePath(absolutePath);
             } catch (SecurityException se) {
                 notAllowed = se;
             }
@@ -843,7 +852,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void delete() throws IOException {
         try {
-            fileSystem.delete(path);
+            fileSystem.delete(normalizedPath);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -872,7 +881,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void move(TruffleFile target, CopyOption... options) throws IOException {
         try {
-            fileSystem.move(path, target.path, options);
+            fileSystem.move(normalizedPath, target.normalizedPath, options);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -895,7 +904,7 @@ public final class TruffleFile {
     @SuppressWarnings("unchecked")
     public Set<PosixFilePermission> getPosixPermissions(LinkOption... linkOptions) throws IOException {
         try {
-            return (Set<PosixFilePermission>) getAttributeImpl(path, "posix:permissions", linkOptions);
+            return (Set<PosixFilePermission>) getAttributeImpl(normalizedPath, "posix:permissions", linkOptions);
         } catch (IOException | SecurityException | UnsupportedOperationException e) {
             throw e;
         } catch (Throwable t) {
@@ -917,7 +926,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setPosixPermissions(Set<? extends PosixFilePermission> permissions, LinkOption... linkOptions) throws IOException {
         try {
-            fileSystem.setAttribute(path, "posix:permissions", permissions, linkOptions);
+            fileSystem.setAttribute(normalizedPath, "posix:permissions", permissions, linkOptions);
         } catch (IOException | SecurityException | UnsupportedOperationException e) {
             throw e;
         } catch (Throwable t) {
@@ -968,8 +977,34 @@ public final class TruffleFile {
         return path.equals(otherFile.path) && fileSystem.equals(otherFile.fileSystem);
     }
 
-    private Path toAbsolutePathImpl(final Path forPath) {
-        return fileSystem.toAbsolutePath(forPath);
+    /**
+     * Returns a {@link TruffleFile} with removed redundant name elements in it's path.
+     *
+     * @return the normalized {@link TruffleFile}
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public TruffleFile normalize() {
+        if (isNormalized()) {
+            return this;
+        }
+        return new TruffleFile(fileSystem, normalizedPath, normalizedPath);
+    }
+
+    private boolean isNormalized() {
+        return path == normalizedPath || path.equals(normalizedPath);
+    }
+
+    private Path[] toAbsolutePathImpl() {
+        Path normalizedAbsolute = fileSystem.toAbsolutePath(normalizedPath);
+        if (isNormalized()) {
+            return new Path[]{normalizedAbsolute, normalizedAbsolute};
+        } else {
+            Path root = fileSystem.parsePath("/");
+            boolean emptyPath = normalizedPath.getFileName().getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
+            Path absolute = root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
+            return new Path[]{absolute, normalizedAbsolute};
+        }
     }
 
     private boolean checkAccess(AccessMode... modes) {
@@ -980,7 +1015,7 @@ public final class TruffleFile {
 
     private boolean checkAccess(Set<? extends AccessMode> modes, LinkOption... linkOptions) {
         try {
-            fileSystem.checkAccess(path, modes, linkOptions);
+            fileSystem.checkAccess(normalizedPath, modes, linkOptions);
             return true;
         } catch (IOException ioe) {
             return false;
@@ -988,7 +1023,7 @@ public final class TruffleFile {
     }
 
     private <T> T getAttributeImpl(String attribute, Class<T> type, LinkOption... options) throws IOException {
-        return getAttributeImpl(path, attribute, type, options);
+        return getAttributeImpl(normalizedPath, attribute, type, options);
     }
 
     private <T> T getAttributeImpl(Path forPath, String attribute, Class<T> type, LinkOption... options) throws IOException {

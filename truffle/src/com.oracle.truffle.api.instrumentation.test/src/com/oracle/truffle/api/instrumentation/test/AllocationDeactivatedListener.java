@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.junit.Assert;
 
-final class AllocationDeactivatedListener implements PropertyChangeListener {
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
+
+final class AllocationDeactivatedListener implements Consumer<Boolean> {
 
     private final AtomicInteger listenerCalls;
     private final AllocationReporter source;
@@ -41,21 +41,19 @@ final class AllocationDeactivatedListener implements PropertyChangeListener {
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent event) {
-        Assert.assertEquals(AllocationReporter.PROPERTY_ACTIVE, event.getPropertyName());
-        Assert.assertEquals(Boolean.TRUE, event.getOldValue());
-        Assert.assertEquals(Boolean.FALSE, event.getNewValue());
+    public void accept(Boolean active) {
+        Assert.assertEquals(false, active);
         listenerCalls.incrementAndGet();
     }
 
     static AllocationDeactivatedListener register(AtomicInteger listenerCalls, AllocationReporter reporter) {
         AllocationDeactivatedListener deactivatedListener = new AllocationDeactivatedListener(reporter, listenerCalls);
-        reporter.addPropertyChangeListener(deactivatedListener);
+        reporter.addActiveListener(deactivatedListener);
         return deactivatedListener;
     }
 
     void unregister() {
-        source.removePropertyChangeListener(this);
+        source.removeActiveListener(this);
 
     }
 

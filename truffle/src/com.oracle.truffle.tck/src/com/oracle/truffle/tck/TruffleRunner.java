@@ -365,7 +365,7 @@ class TruffleRunnerSnippets {
 
         public TestExecuteNode() {
             super(null);
-            executeNode = Message.createExecute(1).createNode();
+            executeNode = Message.EXECUTE.createNode();
         }
 
         @Override

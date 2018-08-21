@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.hosted;
 
-import java.util.Map;
-
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 
 @AutomaticFeature
 public class ClassLoaderFeature implements Feature {
@@ -40,22 +37,9 @@ public class ClassLoaderFeature implements Feature {
         ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupport());
     }
 
-    private void createClassLoaders(ClassLoader classLoader) {
-        Map<ClassLoader, Target_java_lang_ClassLoader> classLoaders = ClassLoaderSupport.getInstance().classLoaders;
-        if (!classLoaders.containsKey(classLoader)) {
-            ClassLoader parent = classLoader.getParent();
-            if (parent != null) {
-                createClassLoaders(parent);
-                classLoaders.put(classLoader, new Target_java_lang_ClassLoader(classLoaders.get(parent)));
-            } else {
-                classLoaders.put(classLoader, new Target_java_lang_ClassLoader());
-            }
-        }
-    }
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        createClassLoaders(ClassLoader.getSystemClassLoader());
+        ClassLoaderSupport.getInstance().createClassLoaders(ClassLoader.getSystemClassLoader());
         ClassLoaderSupport.getInstance().systemClassLoader = ClassLoaderSupport.getInstance().classLoaders.get(ClassLoader.getSystemClassLoader());
     }
 
@@ -63,7 +47,7 @@ public class ClassLoaderFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(object -> {
             if (object instanceof ClassLoader) {
-                createClassLoaders((ClassLoader) object);
+                ClassLoaderSupport.getInstance().createClassLoaders((ClassLoader) object);
                 return ClassLoaderSupport.getInstance().classLoaders.get(object);
             }
             return object;

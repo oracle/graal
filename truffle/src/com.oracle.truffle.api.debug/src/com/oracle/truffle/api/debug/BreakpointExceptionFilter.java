@@ -78,6 +78,9 @@ final class BreakpointExceptionFilter {
 
     @TruffleBoundary
     private Match testExceptionCaught(Node throwNode, Throwable exception) {
+        if (!(exception instanceof TruffleException)) {
+            return uncaught ? Match.MATCHED : Match.UNMATCHED;
+        }
         CatchLocation catchLocation = getCatchNode(debugger, throwNode, exception);
         boolean exceptionCaught = catchLocation != null;
         return new Match(caught && exceptionCaught || uncaught && !exceptionCaught, catchLocation);

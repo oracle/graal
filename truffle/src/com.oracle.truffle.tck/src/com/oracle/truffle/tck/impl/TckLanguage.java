@@ -38,7 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(mimeType = "application/x-tck", name = "TCK", version = "1.0")
+@TruffleLanguage.Registration(characterMimeTypes = "application/x-tck", id = "TCK", name = "TCK", version = "1.0")
 public final class TckLanguage extends TruffleLanguage<Env> {
 
     @Override
@@ -47,6 +47,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source code = request.getSource();
         final RootNode root;
@@ -54,7 +55,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         if (txt.startsWith("TCK42:")) {
             int nextColon = txt.indexOf(":", 6);
             String mimeType = txt.substring(6, nextColon);
-            Source toParse = Source.newBuilder(txt.substring(nextColon + 1)).mimeType(mimeType).name("src.tck").build();
+            Source toParse = Source.newBuilder(txt.substring(nextColon + 1)).name("src.tck").mimeType(mimeType).build();
             root = new MultiplyNode(this, toParse);
         } else {
             final double value = Double.parseDouble(txt);
@@ -111,7 +112,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         public CallTarget accessMessage(Message tree) {
             if (tree == Message.IS_EXECUTABLE) {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.TRUE));
-            } else if (Message.createExecute(2).equals(tree)) {
+            } else if (Message.EXECUTE.equals(tree)) {
                 return Truffle.getRuntime().createCallTarget(this);
             } else {
                 throw UnsupportedMessageException.raise(tree);

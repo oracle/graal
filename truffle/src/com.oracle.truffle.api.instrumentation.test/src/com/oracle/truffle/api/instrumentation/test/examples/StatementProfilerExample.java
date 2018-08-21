@@ -52,7 +52,7 @@ public class StatementProfilerExample extends TruffleInstrument {
     protected void onCreate(Env env) {
         for (Class<? extends ProfilerFrontEnd> frontEnd : installedFrontEnds) {
             try {
-                frontEnd.newInstance().onAttach(this);
+                frontEnd.getDeclaredConstructor().newInstance().onAttach(this);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

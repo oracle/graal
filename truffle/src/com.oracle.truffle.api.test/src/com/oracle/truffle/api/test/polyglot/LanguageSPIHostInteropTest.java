@@ -70,14 +70,14 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void testSystemMethod() throws InteropException {
         TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
-        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
+        Object value = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
 
         Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
         assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
-        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
+        value = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) getProperty, "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
     }
@@ -135,15 +135,15 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         Data data = new Data();
         TruffleObject obj = (TruffleObject) languageEnv.asGuestValue(data);
 
-        Object string = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "toString");
+        Object string = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
-        Object clazz = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "getClass");
+        Object clazz = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "getClass");
         assertTrue(clazz instanceof TruffleObject && languageEnv.asHostObject(clazz) == Data.class);
-        assertEquals(true, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "equals", obj));
-        assertTrue(ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "hashCode") instanceof Integer);
+        assertEquals(true, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "equals", obj));
+        assertTrue(ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "hashCode") instanceof Integer);
 
         for (String m : new String[]{"notify", "notifyAll", "wait"}) {
-            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, m), IllegalMonitorStateException.class);
+            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, m), IllegalMonitorStateException.class);
         }
     }
 
@@ -558,7 +558,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     private static Object invoke(Object foreignObject, String propertyName, Object... args) {
         try {
-            return ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), (TruffleObject) foreignObject, propertyName, args);
+            return ForeignAccess.sendInvoke(Message.INVOKE.createNode(), (TruffleObject) foreignObject, propertyName, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
             throw new AssertionError(e);
         }
@@ -566,7 +566,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     private static Object execute(Object foreignObject, Object... args) {
         try {
-            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), (TruffleObject) foreignObject, args);
+            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) foreignObject, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }

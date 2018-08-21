@@ -27,6 +27,8 @@ package com.oracle.truffle.api.source;
 import java.net.URI;
 import java.net.URL;
 
+import org.graalvm.polyglot.io.ByteSequence;
+
 final class SubSourceImpl extends Source {
 
     private final Key key;
@@ -48,6 +50,16 @@ final class SubSourceImpl extends Source {
     }
 
     @Override
+    public boolean hasBytes() {
+        return key.base.hasBytes();
+    }
+
+    @Override
+    public boolean hasCharacters() {
+        return key.base.hasCharacters();
+    }
+
+    @Override
     public boolean isCached() {
         return key.base.isCached();
     }
@@ -63,6 +75,11 @@ final class SubSourceImpl extends Source {
     }
 
     @Override
+    boolean isLegacy() {
+        return key.base.isLegacy();
+    }
+
+    @Override
     public String getPath() {
         return key.base.getPath();
     }
@@ -75,6 +92,11 @@ final class SubSourceImpl extends Source {
     @Override
     public URI getOriginalURI() {
         return key.base.getURI();
+    }
+
+    @Override
+    public ByteSequence getBytes() {
+        return key.base.getBytes().subSequence(key.baseIndex, key.baseIndex + key.subLength);
     }
 
     @Override

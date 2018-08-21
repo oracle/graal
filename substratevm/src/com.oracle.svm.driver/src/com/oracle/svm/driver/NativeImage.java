@@ -93,7 +93,6 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String svmVersion = System.getProperty("substratevm.version", "dev");
     static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
 
     static String getResource(String resourceName) {
@@ -177,6 +176,7 @@ public class NativeImage {
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean dryRun = false;
+    private String queryOption = null;
 
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
@@ -269,6 +269,7 @@ public class NativeImage {
         private final Path rootDir;
         private final String[] args;
 
+        @SuppressWarnings("deprecation")
         DefaultBuildConfiguration(String[] args) {
             this.args = args;
             workDir = Paths.get(".").toAbsolutePath().normalize();
@@ -434,7 +435,6 @@ public class NativeImage {
 
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
 
-        addImageBuilderJavaArgs("-Dsubstratevm.version=" + svmVersion);
         addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
 
@@ -622,8 +622,13 @@ public class NativeImage {
 
         completeOptionArgs();
 
+        if (queryOption != null) {
+            addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + queryOption);
+            addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + queryOption);
+        }
+
         /* If no customImageClasspath was specified put "." on classpath */
-        if (customImageClasspath.isEmpty()) {
+        if (customImageClasspath.isEmpty() && queryOption == null) {
             addImageProvidedClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
@@ -902,6 +907,10 @@ public class NativeImage {
 
     boolean isDryRun() {
         return dryRun;
+    }
+
+    public void setQueryOption(String val) {
+        this.queryOption = val;
     }
 
     void showVerboseMessage(boolean show, String message) {

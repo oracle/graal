@@ -39,7 +39,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -51,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -623,7 +623,7 @@ public class Breakpoint {
                 return false;
             }
             if (exceptionFilter != null && exception != null) {
-                Throwable throwable = (Throwable) exception.getTruffleException();
+                Throwable throwable = exception.getRawException();
                 assert throwable != null;
                 BreakpointExceptionFilter.Match matched = exceptionFilter.matchException(node, throwable);
                 if (!matched.isMatched) {
@@ -646,7 +646,7 @@ public class Breakpoint {
     private void doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception, BreakpointConditionFailure failure) {
         DebugException de;
         if (exception != null) {
-            de = new DebugException(debugger, (TruffleException) exception, null, source, false, null);
+            de = new DebugException(debugger, exception, null, source, false, null);
         } else {
             de = null;
         }
@@ -1071,7 +1071,7 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (exception instanceof TruffleException) {
+            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
                 onNode(frame, false, null, exception);
             }
         }
@@ -1107,7 +1107,7 @@ public class Breakpoint {
         @Override
         @ExplodeLoop
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (exception instanceof TruffleException) {
+            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
                 DebuggerSession[] debuggerSessions = getSessions();
                 boolean active = false;
                 List<DebuggerSession> nonDuplicateSessions = null;
@@ -1152,7 +1152,7 @@ public class Breakpoint {
         @TruffleBoundary
         void doBreak(MaterializedFrame frame, DebuggerSession[] debuggerSessions, BreakpointConditionFailure conditionError, Throwable exception, BreakpointExceptionFilter.Match matched) {
             Node throwLocation = getContext().getInstrumentedNode();
-            DebugException de = new DebugException(getBreakpoint().debugger, (TruffleException) exception, null, throwLocation, matched.isCatchNodeComputed, matched.catchLocation);
+            DebugException de = new DebugException(getBreakpoint().debugger, exception, null, throwLocation, matched.isCatchNodeComputed, matched.catchLocation);
             getBreakpoint().doBreak(this, debuggerSessions, frame, false, null, de, conditionError);
         }
     }
@@ -1378,8 +1378,7 @@ public class Breakpoint {
             Source instrumentedSource = context.getInstrumentedSourceSection().getSource();
             Source conditionSource;
             synchronized (breakpoint) {
-                conditionSource = Source.newBuilder(breakpoint.condition).language(instrumentedSource.getLanguage()).mimeType(instrumentedSource.getMimeType()).name(
-                                "breakpoint condition").build();
+                conditionSource = Source.newBuilder(instrumentedSource.getLanguage(), breakpoint.condition, "breakpoint condition").mimeType(instrumentedSource.getMimeType()).build();
                 if (conditionSource == null) {
                     throw new IllegalStateException("Condition is not resolved " + rootNode);
                 }
@@ -1495,7 +1494,7 @@ class BreakpointSnippets {
             public void onSuspend(SuspendedEvent event) {
             }
         };
-        Source someCode = Source.newBuilder("").mimeType("").name("").build();
+        Source someCode = Source.newBuilder("", "", "").build();
         TruffleInstrument.Env instrumentEnvironment = null;
         // @formatter:off
         // BEGIN: BreakpointSnippets.example

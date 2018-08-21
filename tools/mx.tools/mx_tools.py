@@ -118,8 +118,9 @@ def checkLinks(javadocDir):
             content = open(referencedfile, 'r').read()
             for path, s in sections:
                 if not s == None:
-                    where = content.find('name="' + s + '"')
-                    if where == -1:
+                    whereName = content.find('name="' + s + '"')
+                    whereId = content.find('id="' + s + '"')
+                    if whereName == -1 and whereId == -1:
                         mx.warn('There should be section ' + s + ' in ' + referencedfile + ". Referenced from " + path)
                         err = True
 
@@ -170,6 +171,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     truffle_jars=['tools:TRUFFLE_PROFILER'],
     support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
+    suite=_suite,
+    name='VisualVM',
+    short_name='vvm',
+    dir_name='visualvm',
+    license_files=[],
+    third_party_license_files=[],
+    support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
+    provided_executables=['bin/jvisualvm']
 ))
 
 mx.update_commands(_suite, {

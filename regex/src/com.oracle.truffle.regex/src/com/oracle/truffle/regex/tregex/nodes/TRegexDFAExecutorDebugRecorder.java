@@ -60,9 +60,32 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
             transitions = new ArrayList<>();
         }
 
+        private int getLowestIndex() {
+            return initialIndex < maxIndex ? initialIndex : maxIndex;
+        }
+
+        private void initUpToIndex(int currentIndex) {
+            for (int i = transitions.size(); i <= currentIndex - getLowestIndex(); i++) {
+                transitions.add(new RecordedTransition(getLowestIndex() + i));
+            }
+        }
+
+        private RecordedTransition getTransition(int currentIndex) {
+            RecordedTransition transition = transitions.get(currentIndex - getLowestIndex());
+            assert transition.currentIndex == currentIndex;
+            return transition;
+        }
+
         @TruffleBoundary
         public void recordTransition(int currentIndex, int transitionID) {
-            transitions.add(new RecordedTransition(currentIndex, transitionID));
+            initUpToIndex(currentIndex);
+            getTransition(currentIndex).setTransitionID(transitionID);
+        }
+
+        @TruffleBoundary
+        public void recordCGPartialTransition(int currentIndex, int cgPartialTransitionIndex) {
+            initUpToIndex(currentIndex);
+            getTransition(currentIndex).addCgPartialTransitionIDs(cgPartialTransitionIndex);
         }
 
         @TruffleBoundary
@@ -79,18 +102,31 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
     private static final class RecordedTransition implements JsonConvertible {
 
         private final int currentIndex;
-        private final int transitionID;
+        private int transitionID = -1;
+        private List<Integer> cgPartialTransitionIDs;
 
-        private RecordedTransition(int currentIndex, int transitionID) {
+        private RecordedTransition(int currentIndex) {
             this.currentIndex = currentIndex;
+        }
+
+        public void setTransitionID(int transitionID) {
             this.transitionID = transitionID;
+        }
+
+        public void addCgPartialTransitionIDs(int partialTransitionID) {
+            if (cgPartialTransitionIDs == null) {
+                cgPartialTransitionIDs = new ArrayList<>();
+            }
+            cgPartialTransitionIDs.add(partialTransitionID);
         }
 
         @TruffleBoundary
         @Override
         public JsonValue toJson() {
             return Json.obj(Json.prop("currentIndex", currentIndex),
-                            Json.prop("transitionID", transitionID));
+                            Json.prop("transitionID", transitionID),
+                            Json.prop("cgPartialTransitionIDs", Json.array(
+                                            cgPartialTransitionIDs == null ? new int[0] : cgPartialTransitionIDs.stream().mapToInt(x -> x).toArray())));
         }
     }
 
@@ -115,6 +151,12 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
         CompilerAsserts.neverPartOfCompilation();
         int transitionID = dfa.getState(stateNodeID).getTransitions()[transitionIndex].getId();
         curRecording().recordTransition(currentIndex, transitionID);
+    }
+
+    @TruffleBoundary
+    public void recordCGPartialTransition(int currentIndex, int cgPartialTransitionIndex) {
+        CompilerAsserts.neverPartOfCompilation();
+        curRecording().recordCGPartialTransition(currentIndex, cgPartialTransitionIndex);
     }
 
     @TruffleBoundary

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.IOException;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -64,9 +62,9 @@ public class SLParseErrorTest {
     }
 
     @Test
-    public void testParseError() throws IOException {
+    public void testParseError() {
         try {
-            final Source src = Source.newBuilder("sl", "function testSyntaxError(a) {break;} function main() {return testSyntaxError;}", "testSyntaxError.sl").build();
+            final Source src = Source.newBuilder("sl", "function testSyntaxError(a) {break;} function main() {return testSyntaxError;}", "testSyntaxError.sl").buildLiteral();
             context.eval(src);
             Assert.assertTrue("Should not reach here.", false);
         } catch (PolyglotException e) {

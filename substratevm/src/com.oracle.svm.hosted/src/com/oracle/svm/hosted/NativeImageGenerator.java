@@ -219,6 +219,7 @@ import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.image.AbstractBootImage;
+import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -386,7 +387,9 @@ public class NativeImageGenerator {
             if (!buildStarted.compareAndSet(false, true)) {
                 throw UserError.abort("An image build has already been performed with this generator.");
             }
-            System.setProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME);
+
+            setSystemPropertiesForImage(k);
+
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
             this.imageBuildPool = createForkJoinPool(maxConcurrentThreads);
             imageBuildPool.submit(() -> {
@@ -423,8 +426,22 @@ public class NativeImageGenerator {
             }
         } finally {
             shutdownPoolSafe();
-            System.clearProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY);
+            clearSystemPropertiesForImage();
         }
+    }
+
+    private static void setSystemPropertiesForImage(NativeImageKind imageKind) {
+        System.setProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME);
+        if (imageKind.executable) {
+            System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
+        } else {
+            System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY);
+        }
+    }
+
+    private static void clearSystemPropertiesForImage() {
+        System.clearProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY);
+        System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
     private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
@@ -471,10 +488,8 @@ public class NativeImageGenerator {
                     Platform platform = defaultPlatform(loader.getClassLoader());
 
                     TargetDescription target = createTarget(platform);
-                    CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.UseHeapBaseRegister.getValue() ? 1 : 0, 0);
                     ImageSingletons.add(Platform.class, platform);
                     ImageSingletons.add(TargetDescription.class, target);
-                    ImageSingletons.add(CompressEncoding.class, compressEncoding);
                     if (javaMainSupport != null) {
                         ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
                     }
@@ -515,9 +530,9 @@ public class NativeImageGenerator {
                     ImageSingletons.add(AnnotationSubstitutionProcessor.class, annotationSubstitutions);
                     annotationSubstitutions.init();
 
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = new UnsafeAutomaticSubstitutionProcessor(annotationSubstitutions);
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = new UnsafeAutomaticSubstitutionProcessor(annotationSubstitutions, originalSnippetReflection);
                     ImageSingletons.add(UnsafeAutomaticSubstitutionProcessor.class, automaticSubstitutions);
-                    automaticSubstitutions.init(originalMetaAccess);
+                    automaticSubstitutions.init(loader, originalMetaAccess);
 
                     CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
 
@@ -717,6 +732,7 @@ public class NativeImageGenerator {
 
                     /* report the unsupported features by throwing UnsupportedFeatureException */
                     bigbang.getUnsupportedFeatures().report(bigbang);
+                    bigbang.checkUserLimitations();
                 } catch (UnsupportedFeatureException ufe) {
                     if (NativeImageOptions.ReportUnsupportedFeaturesCause.getValue() && ufe.getCause() != null) {
                         System.err.println("Original exception: ");
@@ -1007,8 +1023,8 @@ public class NativeImageGenerator {
             if (!Modifier.isAbstract(factoryClass.getModifiers()) && !factoryClass.getName().contains("hotspot")) {
                 NodeIntrinsicPluginFactory factory;
                 try {
-                    factory = factoryClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException ex) {
+                    factory = factoryClass.getDeclaredConstructor().newInstance();
+                } catch (Exception ex) {
                     throw VMError.shouldNotReachHere(ex);
                 }
                 factory.registerPlugins(plugins.getInvocationPlugins(), nodeIntrinsificationProvider);
@@ -1029,7 +1045,7 @@ public class NativeImageGenerator {
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(pluginsMetaAccess, providers.getConstantReflection(), hostedSnippetReflection, plugins.getInvocationPlugins(),
                         replacementBytecodeProvider, analysis);
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins.getInvocationPlugins(), hosted));
+        featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins.getInvocationPlugins(), analysis, hosted));
 
         providers.setGraphBuilderPlugins(plugins);
         replacements.setGraphBuilderPlugins(plugins);
@@ -1283,12 +1299,13 @@ public class NativeImageGenerator {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
-         * The same holds for "hotspot" elements, which come from the hosting HotSpot VM.
+         * The same holds for "hotspot" elements, which come from the hosting HotSpot VM, unless
+         * they are JDK internal types.
          */
         String lname = name.toLowerCase();
         if (lname.contains("hosted")) {
             bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
-        } else if (lname.contains("hotspot")) {
+        } else if ((!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
             bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
         }
     }

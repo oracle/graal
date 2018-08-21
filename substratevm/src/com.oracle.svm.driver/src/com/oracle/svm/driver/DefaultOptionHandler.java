@@ -59,8 +59,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--version":
                 args.poll();
-                nativeImage.showMessage("SubstrateVM Version Info");
-                nativeImage.showMessage(NativeImage.svmVersion.replace(',', '\n'));
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
@@ -109,14 +107,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--expert-options":
                 args.poll();
-                String expertUserOption = OptionType.User.name();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + expertUserOption);
-                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + expertUserOption);
+                nativeImage.setQueryOption(OptionType.User.name());
                 return true;
             case "--expert-options-all":
                 args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
-                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
+                nativeImage.setQueryOption("");
                 return true;
         }
 

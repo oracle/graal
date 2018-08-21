@@ -58,6 +58,8 @@ public class SLCompileImmediatelyTestSuite {
         overrideScope = TruffleCompilerOptions.overrideOptions(TruffleCompileImmediately, true, TruffleBackgroundCompilation, false);
 
         Assume.assumeFalse("Crashes on AArch64 in C2 (GR-8733)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
+
+        TruffleTestUtil.assumeJavaDesktopModuleIsAvailable();
     }
 
     @AfterClass

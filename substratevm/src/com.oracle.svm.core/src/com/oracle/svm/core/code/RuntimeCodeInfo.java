@@ -201,6 +201,16 @@ public class RuntimeCodeInfo {
          * table.
          */
         methodInfos = newMethodInfos;
+
+        if (oldMethodInfos != null) {
+            /*
+             * The old array is in a pinned chunk that probably still contains metadata for other
+             * methods that are still alive. So even though we release our allocator, the old array
+             * is not garbage collected any time soon. By clearing the object array, we make sure
+             * that we do not keep objects alive unnecessarily.
+             */
+            Arrays.fill(oldMethodInfos, null);
+        }
     }
 
     protected void invalidateMethod(RuntimeMethodInfo methodInfo) {

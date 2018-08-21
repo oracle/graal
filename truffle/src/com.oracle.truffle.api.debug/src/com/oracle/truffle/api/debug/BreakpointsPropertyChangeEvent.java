@@ -44,6 +44,7 @@ final class BreakpointsPropertyChangeEvent extends java.beans.PropertyChangeEven
         }
     }
 
+    @SuppressWarnings("deprecation")
     private BreakpointsPropertyChangeEvent(Object source, Breakpoint oldBreakpoint, Breakpoint newBreakpoint) {
         super(source, Debugger.PROPERTY_BREAKPOINTS, oldBreakpoint, newBreakpoint);
     }

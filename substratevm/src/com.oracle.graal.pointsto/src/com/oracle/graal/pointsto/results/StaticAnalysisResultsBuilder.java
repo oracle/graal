@@ -152,7 +152,7 @@ public class StaticAnalysisResultsBuilder {
                 JavaMethodProfile methodProfile = makeMethodProfile(originalInvoke.getCallees());
                 JavaTypeProfile invokeResultTypeProfile = originalReturn == null ? null : makeTypeProfile(returnTypeState);
 
-                if (typeProfile != null || methodProfile != null || invokeResultTypeProfile != null) {
+                if (hasStaticProfiles(typeProfile, methodProfile, invokeResultTypeProfile) || hasRuntimeProfiles()) {
                     ensureSize(entries, bci);
                     assert entries.get(bci) == null : "In " + method.format("%h.%n(%p)") + " a profile with bci=" + bci + " already exists: " + entries.get(bci);
                     entries.set(bci, createBytecodeEntry(method, bci, typeProfile, methodProfile, invokeResultTypeProfile));
@@ -210,6 +210,14 @@ public class StaticAnalysisResultsBuilder {
         } else {
             return new StaticAnalysisResults(method.getCodeSize(), parameterTypeProfiles, resultTypeProfile, first);
         }
+    }
+
+    protected boolean hasRuntimeProfiles() {
+        return false;
+    }
+
+    private static boolean hasStaticProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile invokeResultTypeProfile) {
+        return typeProfile != null || methodProfile != null || invokeResultTypeProfile != null;
     }
 
     private static void ensureSize(ArrayList<?> list, int index) {
@@ -331,5 +339,4 @@ public class StaticAnalysisResultsBuilder {
         }
         return new JavaMethodProfile(0, pitems);
     }
-
 }

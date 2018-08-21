@@ -714,8 +714,8 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
 
             @Override
-            public LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal, boolean interactive) {
-                return new LanguageInfo(vmObject, id, name, version, mimeTypes, internal, interactive);
+            public LanguageInfo createLanguage(Object vmObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
+                return new LanguageInfo(vmObject, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
             }
 
             @Override

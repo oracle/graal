@@ -104,7 +104,7 @@ public class ObjectNFITest extends NFITest {
 
         TruffleObject initializeAPI = lookupAndBind("initialize_api", "( env, ():object, (object,string):sint32, (object,string,sint32):void ) : pointer");
         try {
-            nativeAPI = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(3).createNode(), initializeAPI, createNewObject, readIntField, writeIntField);
+            nativeAPI = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeAPI, createNewObject, readIntField, writeIntField);
         } catch (InteropException ex) {
             throw new AssertionError(ex);
         }
@@ -114,7 +114,7 @@ public class ObjectNFITest extends NFITest {
     public static void deleteAPI() {
         TruffleObject deleteAPI = lookupAndBind("delete_api", "(env, pointer):void");
         try {
-            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), deleteAPI, nativeAPI);
+            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), deleteAPI, nativeAPI);
             nativeAPI = null;
         } catch (InteropException ex) {
             throw new AssertionError(ex);
@@ -124,7 +124,7 @@ public class ObjectNFITest extends NFITest {
     public static class CopyAndIncrementNode extends SendExecuteNode {
 
         public CopyAndIncrementNode() {
-            super("copy_and_increment", "(env, pointer, object) : object", 2);
+            super("copy_and_increment", "(env, pointer, object) : object");
         }
     }
 
@@ -148,9 +148,9 @@ public class ObjectNFITest extends NFITest {
         final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
         final TruffleObject freeAndGetContent = lookupAndBind("free_and_get_content", "(env, pointer, pointer):sint32");
 
-        @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
+        @Child Node executeKeepExistingObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetContent = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -189,8 +189,8 @@ public class ObjectNFITest extends NFITest {
         final TruffleObject keepNewObject = lookupAndBind("keep_new_object", "(pointer):pointer");
         final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
 
-        @Child Node executeKeepNewObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
+        @Child Node executeKeepNewObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetObject = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -212,9 +212,9 @@ public class ObjectNFITest extends NFITest {
         final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(env, object):pointer");
         final TruffleObject compareExistingObject = lookupAndBind("compare_existing_object", "(env, pointer, pointer):sint32");
 
-        @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
-        @Child Node executeCompareExistingObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
+        @Child Node executeKeepExistingObject = Message.EXECUTE.createNode();
+        @Child Node executeCompareExistingObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetContent = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {

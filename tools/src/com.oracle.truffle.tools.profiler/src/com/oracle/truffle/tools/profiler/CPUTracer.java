@@ -58,7 +58,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
  * <p>
- * Usage example: {@link CPUTracerSnippets#example}
+ * Usage example: {@codesnippet CPUTracerSnippets#example}
  *
  * @since 0.30
  */
@@ -81,20 +81,6 @@ public final class CPUTracer implements Closeable {
     private EventBinding<?> activeBinding;
 
     private final Map<SourceSection, Payload> payloadMap = new ConcurrentHashMap<>();
-
-    /**
-     * Finds {@link CPUTracer} associated with given engine.
-     *
-     * @param engine the engine to find debugger for
-     * @return an instance of associated {@link CPUTracer}
-     * @since 0.30
-     * @deprecated use {@link #find(Engine)} instead
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static CPUTracer find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return CPUTracerInstrument.getTracer(engine);
-    }
 
     /**
      * Finds {@link CPUTracer} associated with given engine.

@@ -72,11 +72,6 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             polyglotOptions = new HashMap<>();
         }
 
-        if (isAOT() && doNativeSetup) {
-            assert nativeAccess != null;
-            nativeAccess.setGraalVMProperties(getLanguageId());
-        }
-
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {

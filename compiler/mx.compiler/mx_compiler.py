@@ -618,7 +618,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
         # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.api.metadata,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm'], quietForNoPackages=True)
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
@@ -970,7 +970,7 @@ def java_base_unittest(args):
     if not exists(jlink):
         raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
     basejdk_dir = join(_suite.get_output_root(), 'jdkbase')
-    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported'
+    basemodules = 'java.base,java.logging,jdk.internal.vm.ci,jdk.unsupported'
     if exists(basejdk_dir):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])

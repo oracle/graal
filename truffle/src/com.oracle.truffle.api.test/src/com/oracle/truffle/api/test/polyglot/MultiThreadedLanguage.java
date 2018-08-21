@@ -34,7 +34,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.LanguageContext;
 
-@TruffleLanguage.Registration(id = MultiThreadedLanguage.ID, name = MultiThreadedLanguage.ID, version = "1.0", mimeType = MultiThreadedLanguage.ID)
+@TruffleLanguage.Registration(id = MultiThreadedLanguage.ID, name = MultiThreadedLanguage.ID)
 public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String ID = "MultiThreadedLanguage";
@@ -120,7 +120,7 @@ public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
                 if (result == null) {
                     result = "null result";
                 }
-                return result;
+                return getContext().env.asGuestValue(result);
             }
 
             @TruffleBoundary

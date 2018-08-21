@@ -24,50 +24,12 @@
  */
 package com.oracle.truffle.api.interop;
 
-final class Execute extends KnownMessage {
-    public static final int EXECUTE = 423430;
-    public static final int INVOKE = 423429;
-    public static final int NEW = 423428;
-
-    private final int arity;
-    private final int type;
-
-    public static Execute create(int type, int arity) {
-        return new Execute(type, arity);
-    }
-
-    private Execute(int type, int arity) {
-        this.type = type;
-        this.arity = arity;
-    }
-
-    public int getArity() {
-        return arity;
-    }
-
-    @Override
-    public boolean equals(Object message) {
-        if (!(message instanceof Execute)) {
-            return false;
-        }
-        Execute m1 = this;
-        Execute m2 = (Execute) message;
-        return m1.type == m2.type;
-    }
+final class Execute extends UnaryMessage {
+    public static final int HASH = 423430;
+    static final Message INSTANCE = new Execute();
 
     @Override
     public int hashCode() {
-        return type;
-    }
-
-    String name() {
-        switch (type) {
-            case EXECUTE:
-                return "EXECUTE";
-            case INVOKE:
-                return "INVOKE";
-            default:
-                return "NEW";
-        }
+        return HASH;
     }
 }

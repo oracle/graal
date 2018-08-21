@@ -33,6 +33,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Locator that allows the users of the Truffle API to find implementations of languages to be
@@ -94,7 +95,7 @@ public abstract class TruffleLocator {
     static void initializeNativeImageTruffleLocator() {
         assert TruffleOptions.AOT : "Only supported in AOT mode.";
         if (nativeImageLocator != null) {
-            if (NATIVE_IMAGE_LOCATOR_INITIALIZED.compareAndSet(false, true)) {
+            if (ImageInfo.inImageBuildtimeCode() || NATIVE_IMAGE_LOCATOR_INITIALIZED.compareAndSet(false, true)) {
                 nativeImageLocator.locate(new Response(new HashSet<>()));
             }
         }
