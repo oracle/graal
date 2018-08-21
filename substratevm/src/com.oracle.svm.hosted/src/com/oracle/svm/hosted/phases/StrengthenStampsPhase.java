@@ -104,7 +104,7 @@ public class StrengthenStampsPhase extends Phase {
                 InstanceOfNode node = (InstanceOfNode) n;
                 ObjectStamp newStamp = (ObjectStamp) strengthen(node.getCheckedStamp());
                 if (newStamp != null) {
-                    node.strengthenCheckedStamp(newStamp);
+                    node.replaceAndDelete(graph.addOrUniqueWithInputs(InstanceOfNode.createHelper(newStamp, node.getValue(), node.profile(), node.getAnchor())));
                 }
 
             } else if (n instanceof PiNode) {
