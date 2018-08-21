@@ -114,14 +114,31 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
         Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) {
-            int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
+            Type[] argumentTypes = function.getType().getArgumentTypes();
+            int actualArgumentsLength = Math.max(arguments.length, argumentTypes.length);
             final Object[] packedArguments = new Object[1 + actualArgumentsLength];
             packedArguments[0] = stackPointer;
-            for (int i = 0; i < function.getType().getArgumentTypes().length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(function.getType().getArgumentTypes()[i], arguments[i]);
+            LLVMInteropType interopType = function.getInteropType();
+            if (interopType instanceof LLVMInteropType.Function) {
+                LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
+                // If the function has varargs, the parameter types contain an extra VOID entry.
+                assert interopFunctionType.getParameterLength() == argumentTypes.length + (function.getType().isVarargs() ? 1 : 0);
+                for (int i = 0; i < argumentTypes.length; i++) {
+                    LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
+                    if (interopParameterType instanceof LLVMInteropType.Value) {
+                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], (LLVMInteropType.Value) interopParameterType);
+                    } else {
+                        // interop only supported for value types
+                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
+                    }
+                }
+            } else {
+                for (int i = 0; i < argumentTypes.length; i++) {
+                    packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
+                }
             }
-            for (int i = function.getType().getArgumentTypes().length; i < arguments.length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i]);
+            for (int i = argumentTypes.length; i < arguments.length; i++) {
+                packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i], null);
             }
             return packedArguments;
         }
