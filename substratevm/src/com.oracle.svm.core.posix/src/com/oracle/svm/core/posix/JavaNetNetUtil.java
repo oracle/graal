@@ -2161,6 +2161,7 @@ class VmPrimsJVM {
         // 3832 JVM_END    /* @formatter:on */
     }
 
+    /* Do not re-format commented out code: @formatter:off */
     // 3794 JVM_LEAF(jint, JVM_SetSockOpt(jint fd, int level, int optname, const char *optval, int optlen))
     // 3794 JVMWrapper2("JVM_GetSockOpt (0x%x)", fd);
     static int JVM_SetSockOpt(int fd, int level, int optname, CCharPointer optval, int optlen) {
@@ -2169,7 +2170,7 @@ class VmPrimsJVM {
         // 3794 JVM_END
         return Socket.setsockopt(fd, level, optname, optval, optlen);
     }
-
+    /* Do not re-format commented out code: @formatter:on */
 
     // 3801 JVM_LEAF(jint, JVM_GetSockName(jint fd, struct sockaddr *him, int *len))
     static int JVM_GetSockName(int fd, Socket.sockaddr him, CIntPointer len_Pointer) {

@@ -2183,7 +2183,6 @@ class Util_java_net_PlainDatagramSocketImpl {
     }
     // @formatter:on
 
-
     /* Do not re-format commented out code: @formatter:off */
     //  1283  static void mcast_set_loop_v4(JNIEnv *env, jobject this, int fd, jobject value) {
     static void mcast_set_loop_v4(int fd, boolean value) throws SocketException {
