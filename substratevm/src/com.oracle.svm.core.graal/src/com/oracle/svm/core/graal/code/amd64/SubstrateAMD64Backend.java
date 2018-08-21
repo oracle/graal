@@ -542,7 +542,12 @@ public class SubstrateAMD64Backend extends Backend {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             int frameSize = tasm.frameMap.frameSize();
 
-            asm.decrementq(rsp, frameSize);
+            if (((SubstrateAMD64RegisterConfig) tasm.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
+                asm.enter(frameSize);
+            } else {
+                asm.decrementq(rsp, frameSize);
+            }
+
             tasm.recordMark(MARK_PROLOGUE_DECD_RSP);
             tasm.recordMark(MARK_PROLOGUE_END);
         }
@@ -553,7 +558,13 @@ public class SubstrateAMD64Backend extends Backend {
             int frameSize = tasm.frameMap.frameSize();
 
             tasm.recordMark(MARK_EPILOGUE_START);
-            asm.incrementq(rsp, frameSize);
+
+            if (((SubstrateAMD64RegisterConfig) tasm.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
+                asm.leave();
+            } else {
+                asm.incrementq(rsp, frameSize);
+            }
+
             if (frameSize != 0) {
                 tasm.recordMark(MARK_EPILOGUE_INCD_RSP);
             }
@@ -728,7 +739,7 @@ public class SubstrateAMD64Backend extends Backend {
 
     @Override
     public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new AMD64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory());
+        return new AMD64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory(), ((SubstrateAMD64RegisterConfig) registerConfig).shouldUseBasePointer());
     }
 
     @Override
