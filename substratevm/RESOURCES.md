@@ -9,6 +9,8 @@ specified with the following option
 ```bash
 -H:IncludeResources=<Java regexp that matches resources to be included in the image>
 ```
+For example: `-H:IncludeResources=/META-INF/.*`. Note that multiple patterns can be 
+joined together with `|`, e.g. `-H:IncludeResources=/META-INF/.*|application.properties`.
 
 # Resource Bundles on Substrate VM
 
