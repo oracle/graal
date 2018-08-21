@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.benchmark;
+package org.graalvm.compiler.truffle.benchmark;
 
 import java.util.Arrays;
 
@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 @State(Scope.Benchmark)
-public abstract class PELangBenchmark {
+public abstract class PartialEvaluationBenchmark {
 
     private static final int AST_WARMUPS = 5;
 
@@ -75,7 +75,7 @@ public abstract class PELangBenchmark {
     private final PhaseContext phaseContext;
     private final HighTierContext tierContext;
 
-    public PELangBenchmark() {
+    public PartialEvaluationBenchmark() {
         callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode());
         callArguments = callArguments();
         optionValues = TruffleCompilerOptions.getOptions();

@@ -22,13 +22,14 @@
  */
 package org.graalvm.compiler.truffle.pelang.benchmark;
 
+import org.graalvm.compiler.truffle.benchmark.PartialEvaluationBenchmark;
 import org.graalvm.compiler.truffle.pelang.util.PELangSample;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class PELangNCFBenchmark {
 
-    public static class SimpleAdd extends PELangBenchmark {
+    public static class SimpleAdd extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -37,7 +38,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleBlock extends PELangBenchmark {
+    public static class SimpleBlock extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -46,7 +47,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleLocalReadWrite extends PELangBenchmark {
+    public static class SimpleLocalReadWrite extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -55,7 +56,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleGlobalReadWrite extends PELangBenchmark {
+    public static class SimpleGlobalReadWrite extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -64,7 +65,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleBranch extends PELangBenchmark {
+    public static class SimpleBranch extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -73,7 +74,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleLoop extends PELangBenchmark {
+    public static class SimpleLoop extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -82,7 +83,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleSwitch extends PELangBenchmark {
+    public static class SimpleSwitch extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -91,7 +92,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleInvoke extends PELangBenchmark {
+    public static class SimpleInvoke extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -100,7 +101,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleObject extends PELangBenchmark {
+    public static class SimpleObject extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -109,7 +110,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleArrayRead extends PELangBenchmark {
+    public static class SimpleArrayRead extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -118,7 +119,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleMultiArrayRead extends PELangBenchmark {
+    public static class SimpleMultiArrayRead extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -127,7 +128,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleArrayWrite extends PELangBenchmark {
+    public static class SimpleArrayWrite extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -136,7 +137,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class SimpleMultiArrayWrite extends PELangBenchmark {
+    public static class SimpleMultiArrayWrite extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -145,7 +146,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class ComplexStringArray extends PELangBenchmark {
+    public static class ComplexStringArray extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -154,7 +155,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedAdds extends PELangBenchmark {
+    public static class NestedAdds extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -163,7 +164,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedBlocks extends PELangBenchmark {
+    public static class NestedBlocks extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -172,7 +173,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedLocalReadWrites extends PELangBenchmark {
+    public static class NestedLocalReadWrites extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -181,7 +182,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedBranches extends PELangBenchmark {
+    public static class NestedBranches extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -190,7 +191,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedLoops extends PELangBenchmark {
+    public static class NestedLoops extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -199,7 +200,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedSwitches extends PELangBenchmark {
+    public static class NestedSwitches extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -208,7 +209,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class BranchWithGlobalReadWrite extends PELangBenchmark {
+    public static class BranchWithGlobalReadWrite extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -217,7 +218,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class LoopWithGlobalReadWrite extends PELangBenchmark {
+    public static class LoopWithGlobalReadWrite extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -226,7 +227,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class NestedLoopsWithMultipleBackEdges extends PELangBenchmark {
+    public static class NestedLoopsWithMultipleBackEdges extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -235,7 +236,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class InvokeObjectFunctionProperty extends PELangBenchmark {
+    public static class InvokeObjectFunctionProperty extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -244,7 +245,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class BinaryTrees extends PELangBenchmark {
+    public static class BinaryTrees extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -258,7 +259,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class ArraySum extends PELangBenchmark {
+    public static class ArraySum extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {
@@ -267,7 +268,7 @@ public class PELangNCFBenchmark {
 
     }
 
-    public static class ArrayCompare extends PELangBenchmark {
+    public static class ArrayCompare extends PartialEvaluationBenchmark {
 
         @Override
         protected RootNode rootNode() {

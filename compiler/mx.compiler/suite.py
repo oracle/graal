@@ -1426,6 +1426,24 @@ suite = {
 
     # ------------- GraalTruffle -------------
 
+    "org.graalvm.compiler.truffle.benchmark" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JMH_1_21",
+        "org.graalvm.compiler.truffle.compiler",
+        "org.graalvm.compiler.truffle.runtime",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "checkPackagePrefix" : "false",
+      "annotationProcessors" : ["mx:JMH_1_21"],
+      "findbugsIgnoresGenerated" : True,
+      "workingSets" : "Graal,Truffle,Bench",
+      "testProject" : True,
+      "jacoco"      : "exclude",
+    },
+
     "org.graalvm.compiler.truffle.common" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1793,9 +1811,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JMH_1_21",
-        "org.graalvm.compiler.truffle.compiler",
+        "org.graalvm.compiler.truffle.benchmark",
         "org.graalvm.compiler.truffle.pelang",
-        "org.graalvm.compiler.truffle.runtime",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
