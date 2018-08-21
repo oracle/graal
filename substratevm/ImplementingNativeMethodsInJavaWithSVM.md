@@ -1,14 +1,19 @@
 # Implementing Native Methods in Java with Substrate VM
 
 Substrate VM can be used to implement low-level system operations in Java and
-make them available via [JNI](JNI.md) to Java code executing on a standard JVM. As
+make them available via JNI to Java code executing on a standard JVM. As
 a result one can use the same language to write the application logic
 as well as the system calls.
+
+Note that this document describes the opposite of what is commonly done via JNI:
+Usually low-level system operations are implemented in C and invoked from Java
+using JNI. If you are interested in how Substrate VM supports the common use case,
+read the documentation about [Substrate VM JNI support](JNI.md) instead.
 
 ## Create a Shared Library
 
 First of all one has to use the `native-image` command to generate a shared library
-with some [JNI](JNI.md)-compatible [entry points](README.md#images-and-entry-points).
+with some JNI-compatible [entry points](README.md#images-and-entry-points).
 Let's start with the Java code:
 ```java
 package org.pkg.implnative;
@@ -25,8 +30,8 @@ public final class NativeImpl {
 ```
 After being processed by the `native-image` command the code
 [exposes a C function](C-API.md) `Java_org_pkg_apinative_Native_add`
-(the name follows conventions of [JNI](JNI.md) that will be handy later) and
-a SubstrateVM signature typical for [JNI](JNI.md) methods. The first parameter
+(the name follows conventions of JNI that will be handy later) and
+a SubstrateVM signature typical for JNI methods. The first parameter
 is a reference to `JNIEnv*` value, the second parameter is a reference
 to the `jclass` value for the class declaring the method. The third parameter is a
 portable (e.g. `long`) identifier of the [SubstrateVM isolate](C-API.md).
