@@ -1,4 +1,4 @@
-# JNI via Substrate VM
+# Implementing Native Methods in Java with Substrate VM
 
 Substrate VM can be used to implement low-level system operations in Java and
 make them available via [JNI](JNI.md) to Java code executing on a standard JVM. As
