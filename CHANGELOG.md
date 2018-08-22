@@ -4,6 +4,7 @@ New features:
 
 * Support for IR-level debugging
 * New polyglot cast functions for primitive array types.
+* Support for function pointer members in `polyglot_as_typed`.
 
 # Version 1.0.0 RC5
 
