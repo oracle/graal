@@ -64,6 +64,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
+import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.StringInternSupport;
@@ -84,6 +85,7 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class NativeImageHeap {
 
@@ -706,8 +708,9 @@ public final class NativeImageHeap {
         assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
         assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
 
-        HostedMethod method = ((MethodPointer) pointer).getMethod();
-        if (method.isCodeAddressOffsetValid()) {
+        ResolvedJavaMethod method = ((MethodPointer) pointer).getMethod();
+        HostedMethod hMethod = method instanceof HostedMethod ? (HostedMethod) method : universe.lookup(method);
+        if (hMethod.isCodeAddressOffsetValid()) {
             // Only compiled methods inserted in vtables require relocation.
             int pointerSize = ConfigurationValues.getTarget().wordSize;
             addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
@@ -955,6 +958,9 @@ public final class NativeImageHeap {
         knownNonCanonicalizableClasses.add(Proxy.class);
         // The classes implementing Map have lazily initialized caches, so must not be immutable.
         knownNonCanonicalizableClasses.add(Map.class);
+        // ClassInitializationInfo is mutable, but referenced from the immutable DynamicHub
+        knownNonCanonicalizableClasses.add(ClassInitializationInfo.class);
+
         // Some hosted classes I know to be canonicalizable.
         knownCanonicalizableClasses.add(DynamicHub.class);
     }

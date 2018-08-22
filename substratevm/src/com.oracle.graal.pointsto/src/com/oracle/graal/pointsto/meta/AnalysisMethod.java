@@ -457,7 +457,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public boolean isDefault() {
-        throw unimplemented();
+        return wrapped.isDefault();
     }
 
     @Override

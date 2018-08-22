@@ -70,6 +70,8 @@ public interface HostVM {
 
     void registerType(AnalysisType newValue, ResolvedJavaType hostType);
 
+    boolean isInitialized(AnalysisType type);
+
     Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider);
 
     GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,

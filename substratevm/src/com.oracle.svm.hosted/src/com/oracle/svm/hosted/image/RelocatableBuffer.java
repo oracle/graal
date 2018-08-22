@@ -36,8 +36,9 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class RelocatableBuffer {
 
@@ -165,7 +166,7 @@ public final class RelocatableBuffer {
                 result.append("pointer to function");
                 if (targetObject instanceof MethodPointer) {
                     final MethodPointer mp = (MethodPointer) targetObject;
-                    final HostedMethod hm = mp.getMethod();
+                    final ResolvedJavaMethod hm = mp.getMethod();
                     result.append("  name: ");
                     result.append(hm.getName());
                 }

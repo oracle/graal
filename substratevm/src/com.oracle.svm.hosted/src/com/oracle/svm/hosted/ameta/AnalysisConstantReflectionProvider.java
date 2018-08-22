@@ -39,6 +39,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.Constant;
@@ -76,6 +77,24 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
+        if (ClassInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+            if (field.isStatic()) {
+                /*
+                 * Static fields of classes that are initialized at run time have the default
+                 * (uninitialized) value in the image heap.
+                 */
+                return JavaConstant.defaultForKind(field.getStorageKind());
+            } else {
+                /*
+                 * Classes that are initialized at run time must not have instances in the image
+                 * heap. Invoking instance methods would miss the class initialization checks. Image
+                 * generation should have been aborted earlier with a user-friendly message, this is
+                 * just a safeguard.
+                 */
+                throw VMError.shouldNotReachHere("Cannot read instance field of a class that is initialized at run time: " + field.format("%H.%n"));
+            }
+        }
+
         return interceptValue(field, receiver, replaceObject(universe.lookup(ReadableJavaField.readFieldValue(originalConstantReflection, field.wrapped, universe.toHosted(receiver)))));
     }
 

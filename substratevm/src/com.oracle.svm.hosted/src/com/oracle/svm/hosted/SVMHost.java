@@ -151,6 +151,8 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void registerType(AnalysisType analysisType, ResolvedJavaType hostType) {
+        ClassInitializationFeature.maybeInitializeHosted(analysisType);
+
         DynamicHub hub = createHub(analysisType);
         Object existing = typeToHub.put(analysisType, hub);
         assert existing == null;
@@ -160,6 +162,14 @@ public final class SVMHost implements HostVM {
         /* Compute the automatic substitutions. */
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = ImageSingletons.lookup(UnsafeAutomaticSubstitutionProcessor.class);
         automaticSubstitutions.computeSubstitutions(hostType, options);
+    }
+
+    @Override
+    public boolean isInitialized(AnalysisType type) {
+        boolean shouldInitializeAtRuntime = ClassInitializationFeature.shouldInitializeAtRuntime(type);
+        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
+
+        return !shouldInitializeAtRuntime;
     }
 
     @Override
