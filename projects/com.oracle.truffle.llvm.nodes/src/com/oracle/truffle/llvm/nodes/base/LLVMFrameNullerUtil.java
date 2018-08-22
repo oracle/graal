@@ -56,10 +56,16 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public final class LLVMFrameNullerUtil {
+    private static final boolean USE_FRAME_NULLING = true;
+
     private LLVMFrameNullerUtil() {
     }
 
     public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot, boolean forceNulling) {
+        if (!USE_FRAME_NULLING) {
+            return;
+        }
+
         FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(frameSlot);
         CompilerAsserts.partialEvaluationConstant(kind);
         if (kind == FrameSlotKind.Object) {
