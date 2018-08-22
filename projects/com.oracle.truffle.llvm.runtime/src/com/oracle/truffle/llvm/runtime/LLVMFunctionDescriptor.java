@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -74,9 +75,24 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
     @CompilationFinal private TruffleObject nativeWrapper;
     @CompilationFinal private long nativePointer;
+    @CompilationFinal private boolean interopTypeCached;
+    @CompilationFinal private LLVMInteropType interopType;
 
     private static long tagSulongFunctionPointer(int id) {
         return id | SULONG_FUNCTION_POINTER_TAG;
+    }
+
+    /**
+     * @see LLVMGlobal#getInteropType()
+     */
+    public LLVMInteropType getInteropType() {
+        if (!interopTypeCached) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            LLVMSourceFunctionType sourceType = getFunction().getSourceType();
+            interopType = sourceType == null ? LLVMInteropType.UNKNOWN : LLVMInteropType.fromSourceType(sourceType);
+            interopTypeCached = true;
+        }
+        return interopType;
     }
 
     public static final class Intrinsic {

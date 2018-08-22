@@ -79,7 +79,7 @@ struct MyStruct {
   int someField;
 };
 
-DECLARE_POLYGLOT_STRUCT(MyStruct)
+POLYGLOT_DECLARE_STRUCT(MyStruct)
 
 struct MyStruct *myStruct = polyglot_as_MyStruct(value);
 int x = myStruct->someField;  // sends READ("someField")

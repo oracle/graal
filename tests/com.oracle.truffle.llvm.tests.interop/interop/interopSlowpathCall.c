@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,30 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <polyglot.h>
 
-typedef void *VALUE;
-
 struct Foreign {
-  VALUE a;
-  VALUE b;
+  int a;
+  int b;
+  int c;
+  int d;
+  int e;
 };
 
-POLYGLOT_DECLARE_STRUCT(Foreign)
-
-int main() {
-  struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
-  
-  if ((int) foreign->a != 0) {
-    return 100 + (int) foreign->a;
-  }
-  
-  if ((int) foreign->b != 1) {
-    return 200 + (int) foreign->b;
-  }
-  
-  foreign->a = 101;
-  foreign->b = 102; 
-  
-  return 0;
-}
+int get_a(struct Foreign *f) { return f->a; }
+int get_b(struct Foreign *f) { return f->b; }
+int get_c(struct Foreign *f) { return f->c; }
+int get_d(struct Foreign *f) { return f->d; }
+int get_e(struct Foreign *f) { return f->e; }

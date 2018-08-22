@@ -212,16 +212,17 @@ public abstract class ForeignToLLVM extends LLVMNode {
         @CompilationFinal private LLVMMemory memory;
 
         @TruffleBoundary
-        public Object convert(Type type, Object value) {
-            return convert(ForeignToLLVM.convert(type), value);
+        public Object convert(Type type, Object value, LLVMInteropType.Value interopType) {
+            return convert(ForeignToLLVM.convert(type), value, interopType);
         }
 
         @TruffleBoundary
-        public Object convert(ForeignToLLVMType type, Object value) {
+        public Object convert(ForeignToLLVMType type, Object value, LLVMInteropType.Value interopType) {
             if (type == ForeignToLLVMType.ANY) {
                 return ToAnyLLVM.slowPathPrimitiveConvert(value);
             } else if (type == ForeignToLLVMType.POINTER) {
-                return ToPointer.slowPathPrimitiveConvert(value);
+                LLVMInteropType.Structured interopPointerType = interopType.getKind() == LLVMInteropType.ValueKind.POINTER ? interopType.getBaseType() : null;
+                return ToPointer.slowPathPrimitiveConvert(value, interopPointerType);
             } else {
                 if (memory == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

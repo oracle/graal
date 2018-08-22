@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
@@ -62,10 +63,26 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
     static class PackForeignArgumentsNode extends LLVMNode {
         @Children private final ForeignToLLVM[] toLLVM;
 
-        PackForeignArgumentsNode(NodeFactory nodeFactory, Type[] parameterTypes, int argumentsLength) {
+        PackForeignArgumentsNode(NodeFactory nodeFactory, Type[] parameterTypes, LLVMInteropType interopType, int argumentsLength, boolean isVarargs) {
             this.toLLVM = new ForeignToLLVM[argumentsLength];
-            for (int i = 0; i < parameterTypes.length; i++) {
-                toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+            if (interopType instanceof LLVMInteropType.Function) {
+                LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
+                // If the function has varargs, the parameter types contain an extra VOID entry.
+                assert interopFunctionType.getParameterLength() == parameterTypes.length + (isVarargs ? 1 : 0);
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
+                    if (interopParameterType instanceof LLVMInteropType.Value) {
+                        toLLVM[i] = nodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
+                    } else {
+                        // interop only supported for value types
+                        toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                    }
+                }
+            } else {
+                // no interop parameter types available
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                }
             }
             for (int i = parameterTypes.length; i < argumentsLength; i++) {
                 toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
@@ -90,21 +107,38 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
 
     protected PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
         checkArgLength(descriptor.getType().getArgumentTypes().length, length);
-        return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), length);
+        return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), descriptor.getInteropType(), length, descriptor.getType().isVarargs());
     }
 
     protected static class SlowPackForeignArgumentsNode extends LLVMNode {
         @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
         Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) {
-            int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
+            Type[] argumentTypes = function.getType().getArgumentTypes();
+            int actualArgumentsLength = Math.max(arguments.length, argumentTypes.length);
             final Object[] packedArguments = new Object[1 + actualArgumentsLength];
             packedArguments[0] = stackPointer;
-            for (int i = 0; i < function.getType().getArgumentTypes().length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(function.getType().getArgumentTypes()[i], arguments[i]);
+            LLVMInteropType interopType = function.getInteropType();
+            if (interopType instanceof LLVMInteropType.Function) {
+                LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
+                // If the function has varargs, the parameter types contain an extra VOID entry.
+                assert interopFunctionType.getParameterLength() == argumentTypes.length + (function.getType().isVarargs() ? 1 : 0);
+                for (int i = 0; i < argumentTypes.length; i++) {
+                    LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
+                    if (interopParameterType instanceof LLVMInteropType.Value) {
+                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], (LLVMInteropType.Value) interopParameterType);
+                    } else {
+                        // interop only supported for value types
+                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
+                    }
+                }
+            } else {
+                for (int i = 0; i < argumentTypes.length; i++) {
+                    packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
+                }
             }
-            for (int i = function.getType().getArgumentTypes().length; i < arguments.length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i]);
+            for (int i = argumentTypes.length; i < arguments.length; i++) {
+                packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i], null);
             }
             return packedArguments;
         }
