@@ -60,7 +60,6 @@ public abstract class ImageProfiles {
      * @return {@code null} or opaque string representing the collected image profiles
      */
     public static String dumpProfiles() {
-        ImageProfiles inst = ImageSingletons.lookup(ImageProfiles.class);
-        return inst == null ? null : inst.computeProfiles();
+        return ImageSingletons.contains(ImageProfiles.class) ? ImageSingletons.lookup(ImageProfiles.class).computeProfiles() : null;
     }
 }
