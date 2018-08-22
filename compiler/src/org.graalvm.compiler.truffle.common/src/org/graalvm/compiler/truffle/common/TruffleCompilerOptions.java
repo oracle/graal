@@ -313,7 +313,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
 
     @Option(help = "Whether to enable economy-mode compilations.")
-    public static final OptionKey<Boolean> TruffleEconomyMode = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleLowTierCompilation = new OptionKey<>(false);
 
     @Option(help = "Whether to do profiling in low-tier compilations.")
     public static final OptionKey<Boolean> TruffleLowTierProfiling = new OptionKey<>(false);

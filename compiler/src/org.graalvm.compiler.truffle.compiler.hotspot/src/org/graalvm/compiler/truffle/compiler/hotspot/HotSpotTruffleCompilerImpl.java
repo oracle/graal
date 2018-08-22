@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
@@ -45,6 +47,10 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -61,9 +67,11 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.AbstractInliningPhase;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -101,12 +109,23 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
         SnippetReflectionProvider snippetReflection = hotspotGraalRuntime.getRequiredCapability(SnippetReflectionProvider.class);
-        return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, snippetReflection);
+
+        // Create low tier suites.
+        EconomyCompilerConfigurationFactory economyConfigurationFactory = new EconomyCompilerConfigurationFactory();
+        CompilerConfiguration compilerConfiguration = economyConfigurationFactory.createCompilerConfiguration();
+        HotSpotBackendFactory backendFactory = economyConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
+        HotSpotBackend lowTierBackend = backendFactory.createBackend((HotSpotGraalRuntimeProvider) runtime.getGraalRuntime(), compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
+        Suites lowTierSuites = lowTierBackend.getSuites().getDefaultSuites(options);
+        LIRSuites lowTierLirSuites = lowTierBackend.getSuites().getDefaultLIRSuites(options);
+        Providers lowTierProviders = lowTierBackend.getProviders();
+
+        return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, lowTierSuites, lowTierLirSuites, lowTierProviders, snippetReflection);
     }
 
     private HotSpotTruffleCompilerImpl(HotSpotGraalRuntimeProvider hotspotGraalRuntime, TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend,
+                    Suites lowTierSuites, LIRSuites lowTierLirSuites, Providers lowTierProviders,
                     SnippetReflectionProvider snippetReflection) {
-        super(runtime, plugins, suites, lirSuites, backend, snippetReflection);
+        super(runtime, plugins, suites, lirSuites, backend, lowTierSuites, lowTierLirSuites, lowTierProviders, snippetReflection);
         this.hotspotGraalRuntime = hotspotGraalRuntime;
         installTruffleCallBoundaryMethods();
     }

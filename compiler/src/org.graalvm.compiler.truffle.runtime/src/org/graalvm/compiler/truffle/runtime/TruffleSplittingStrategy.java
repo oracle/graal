@@ -177,7 +177,7 @@ final class TruffleSplittingStrategy {
             return false;
         }
 
-        if (TruffleCompilerOptions.TruffleEconomyMode.getValue(getOptions())) {
+        if (TruffleCompilerOptions.TruffleLowTierCompilation.getValue(getOptions())) {
             return false;
         }
 
