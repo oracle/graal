@@ -24,7 +24,27 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
+import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+
 import java.io.Closeable;
+import java.io.File;
+import java.lang.ref.WeakReference;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,23 +56,8 @@ import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
-import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
 /**
  * Implementation of a sampling based profiler for
@@ -258,6 +263,7 @@ public final class CPUSampler implements Closeable {
 
             }
         }, true);
+        allInstances.add(new WeakReference<CPUSampler>(this));
     }
 
     /**
@@ -507,12 +513,18 @@ public final class CPUSampler implements Closeable {
         closed = true;
         resetSampling();
         clearData();
+        allInstances.removeIf(new Predicate<WeakReference<CPUSampler>>() {
+            @Override
+            public boolean test(WeakReference<CPUSampler> cpuSamplerWeakReference) {
+                CPUSampler cpuSampler = cpuSamplerWeakReference.get();
+                return cpuSampler == null || cpuSampler == CPUSampler.this;
+            }
+        });
     }
 
     /**
      * @return Whether or not timestamp information for the element at the top of the stack for each
      *         sample is gathered
-     *
      * @since 0.30
      */
     public boolean isGatherSelfHitTimes() {
@@ -524,7 +536,6 @@ public final class CPUSampler implements Closeable {
      * for each sample.
      *
      * @param gatherSelfHitTimes new value for whether or not to gather timestamps
-     *
      * @since 0.30
      */
     public synchronized void setGatherSelfHitTimes(boolean gatherSelfHitTimes) {
@@ -687,6 +698,130 @@ public final class CPUSampler implements Closeable {
                 return new CPUSampler(env);
             }
         });
+    }
+
+    // VisualVM support. None of this should even be public
+    static List<WeakReference<CPUSampler>> allInstances = new ArrayList<>();
+
+    private boolean visualVM = false;
+
+    public void setVisualVM(boolean visualVM) {
+        this.visualVM = visualVM;
+    }
+
+    @SuppressWarnings("unused")
+    Map<Thread, StackTraceElement[]> takeSample() {
+        if (!visualVM) {
+            return null;
+        }
+        if (shadowStack == null && stacksBinding == null) {
+            this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(DEFAULT_FILTER, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
+        }
+        return getAllStackTraces();
+    }
+
+    private Map<Thread, StackTraceElement[]> getAllStackTraces() {
+        if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
+            return null;
+        }
+        ShadowStack localShadowStack = shadowStack;
+        if (localShadowStack != null) {
+            Collection<ShadowStack.ThreadLocalStack> stacks = localShadowStack.getStacks();
+            Map<Thread, StackTraceElement[]> stackTraces = new HashMap<>();
+            for (ShadowStack.ThreadLocalStack stack : stacks) {
+                StackTraceElement[] strace = sample(stack);
+                if (strace != null) {
+                    stackTraces.put(stack.getThread(), strace);
+                }
+            }
+            if (!stackTraces.isEmpty()) {
+                return stackTraces;
+            }
+        }
+        return null;
+    }
+
+    private StackTraceElement[] sample(ShadowStack.ThreadLocalStack stack) {
+        if (stack.hasStackOverflowed()) {
+            stackOverflowed = true;
+            return null;
+        }
+        if (stack.getStackIndex() == -1) {
+            // nothing on the stack
+            return null;
+        }
+        final ShadowStack.ThreadLocalStack.CorrectedStackInfo correctedStackInfo = ShadowStack.ThreadLocalStack.CorrectedStackInfo.build(stack);
+        if (correctedStackInfo == null || correctedStackInfo.getLength() == 0) {
+            return null;
+        }
+        StackTraceElement[] stackEls = new StackTraceElement[correctedStackInfo.getLength()];
+        for (int i = 0; i < correctedStackInfo.getLength(); i++) {
+            int stackInfoIdx = correctedStackInfo.getLength() - 1 - i;
+            SourceLocation location = correctedStackInfo.getStack()[stackInfoIdx];
+            SourceSection section = location.getSourceSection();
+            boolean isCompiled = correctedStackInfo.getCompiledStack()[stackInfoIdx];
+            String lang = location.getInstrumentedNode().getRootNode().getLanguageInfo().getName();
+
+            stackEls[i] = new StackTraceElement(lang, location.getRootName(), getShortDescription(section), section.getStartLine());
+
+        }
+        return stackEls;
+    }
+
+    private final Map<SourceSection, String> shortDescription = new HashMap<>();
+
+    private String getShortDescription(SourceSection sourceSection) {
+        String descr = shortDescription.get(sourceSection);
+        if (descr == null) {
+            descr = getShortDescriptionImpl(sourceSection);
+            shortDescription.put(sourceSection, descr);
+        }
+        return descr;
+    }
+
+    // custom version of SourceSection#getShortDescription
+    private String getShortDescriptionImpl(SourceSection sourceSection) {
+
+        if (sourceSection.getSource() == null) {
+            // TODO the source == null branch can be removed if the deprecated
+            // SourceSection#createUnavailable has be removed.
+            return "<Unknown>";
+        }
+        StringBuilder b = new StringBuilder();
+        if (sourceSection.getSource().getPath() == null) {
+            b.append(sourceSection.getSource().getName());
+        } else {
+            Path pathAbsolute = Paths.get(sourceSection.getSource().getPath());
+            Path pathBase = new File("").getAbsoluteFile().toPath();
+            try {
+                Path pathRelative = pathBase.relativize(pathAbsolute);
+                b.append(pathRelative.toFile());
+            } catch (IllegalArgumentException e) {
+                b.append(sourceSection.getSource().getName());
+            }
+        }
+
+        b.append("~").append(formatIndices(sourceSection, true));
+        return b.toString();
+    }
+
+    private static String formatIndices(SourceSection sourceSection, boolean needsColumnSpecifier) {
+        StringBuilder b = new StringBuilder();
+        boolean singleLine = sourceSection.getStartLine() == sourceSection.getEndLine();
+        if (singleLine) {
+            b.append(sourceSection.getStartLine());
+        } else {
+            b.append(sourceSection.getStartLine()).append("-").append(sourceSection.getEndLine());
+        }
+        if (needsColumnSpecifier) {
+            b.append(":");
+            if (sourceSection.getCharLength() <= 1) {
+                b.append(sourceSection.getCharIndex());
+            } else {
+                b.append(sourceSection.getCharIndex()).append("-").append(sourceSection.getCharIndex() + sourceSection.getCharLength() - 1);
+            }
+        }
+        return b.toString();
     }
 }
 

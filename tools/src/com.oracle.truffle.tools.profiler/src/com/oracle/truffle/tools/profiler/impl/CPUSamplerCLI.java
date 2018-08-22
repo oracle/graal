@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.Option;
+ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.SourceSection;
