@@ -9,7 +9,7 @@ New features:
 
 New features:
 
-* Support the `__builtin_debugtrap` function based on LLVM's `@llvmn.debugtrap`
+* Support the `__builtin_debugtrap` function based on LLVM's `@llvm.debugtrap`
   intrinsic
 
 Improvements:
