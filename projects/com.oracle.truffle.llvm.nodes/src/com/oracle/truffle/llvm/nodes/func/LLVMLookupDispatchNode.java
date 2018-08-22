@@ -43,9 +43,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen.LLVMLookupDispatchForeignNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -53,6 +54,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
@@ -86,7 +88,8 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     @Specialization(guards = {"isForeignFunction(pointer.getObject())", "pointer.getOffset() == 0"})
     protected Object doForeign(LLVMManagedPointer pointer, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
-        return lookupDispatchForeignNode.execute(pointer, arguments);
+        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) pointer.getObject();
+        return lookupDispatchForeignNode.execute(foreign.getForeign(), foreign.getType(), arguments);
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor != null"})
@@ -147,32 +150,73 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
             this.type = type;
         }
 
-        abstract Object execute(LLVMManagedPointer function, Object[] arguments);
+        abstract Object execute(TruffleObject function, LLVMInteropType.Structured interopType, Object[] arguments);
 
-        @Specialization
-        protected Object doForeign(LLVMManagedPointer function, Object[] arguments,
-                        @Cached("create()") LLVMAsForeignNode asForeign,
+        @Specialization(guards = "functionType == cachedType")
+        protected Object doCachedType(TruffleObject function, @SuppressWarnings("unused") LLVMInteropType.Function functionType, Object[] arguments,
+                        @Cached("functionType") LLVMInteropType.Function cachedType,
+                        @Cached("createCrossLanguageCallNode()") Node crossLanguageCallNode,
+                        @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
+                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
+            return doGeneric(function, cachedType, arguments, crossLanguageCallNode, dataEscapeNodes, toLLVMNode);
+        }
+
+        @Specialization(replaces = "doCachedType")
+        protected Object doGeneric(TruffleObject function, LLVMInteropType.Function functionType, Object[] arguments,
                         @Cached("createCrossLanguageCallNode()") Node crossLanguageCallNode,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                         @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
             try {
+                Object[] args = getForeignArguments(dataEscapeNodes, arguments, functionType);
                 Object ret;
                 try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-                    ret = ForeignAccess.sendExecute(crossLanguageCallNode, asForeign.execute(function), getForeignArguments(dataEscapeNodes, arguments));
+                    ret = ForeignAccess.sendExecute(crossLanguageCallNode, function, args);
                 }
-                return toLLVMNode.executeWithTarget(ret);
+                if (!(type.getReturnType() instanceof VoidType) && functionType != null) {
+                    LLVMInteropType retType = functionType.getReturnType();
+                    if (retType instanceof LLVMInteropType.Value) {
+                        return toLLVMNode.executeWithType(ret, ((LLVMInteropType.Value) retType).getBaseType());
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new LLVMPolyglotException(this, "Can not call polyglot function with structured return type.");
+                    }
+                } else {
+                    return toLLVMNode.executeWithTarget(ret);
+                }
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
         }
 
+        @Specialization(guards = "functionType == null")
+        protected Object doUnknownType(TruffleObject function, @SuppressWarnings("unused") LLVMInteropType.Structured functionType, Object[] arguments,
+                        @Cached("createCrossLanguageCallNode()") Node crossLanguageCallNode,
+                        @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
+                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
+            return doGeneric(function, null, arguments, crossLanguageCallNode, dataEscapeNodes, toLLVMNode);
+        }
+
         @ExplodeLoop
-        private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments) {
+        private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType) {
             assert arguments.length == type.getArgumentTypes().length;
-            Object[] args = new Object[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
-            for (int i = 0; i < type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET; i++) {
-                args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
+            Object[] args = new Object[dataEscapeNodes.length];
+            if (functionType == null) {
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
+                }
+            } else {
+                assert arguments.length == functionType.getParameterLength() + LLVMCallNode.USER_ARGUMENT_OFFSET;
+                for (int i = 0; i < args.length; i++) {
+                    LLVMInteropType argType = functionType.getParameter(i);
+                    if (argType instanceof LLVMInteropType.Value) {
+                        LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).getBaseType();
+                        args[i] = dataEscapeNodes[i].executeWithType(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET], baseType);
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new LLVMPolyglotException(this, "Can not call polyglot function with structured argument type.");
+                    }
+                }
             }
             return args;
         }
