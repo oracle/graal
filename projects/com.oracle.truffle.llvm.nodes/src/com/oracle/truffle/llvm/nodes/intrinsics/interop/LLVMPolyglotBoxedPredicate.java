@@ -409,7 +409,7 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
         }
 
         protected boolean isBoxed(TruffleObject obj) {
-            return ForeignAccess.sendIsBoxed(isBoxed, obj);
+            return obj != null && ForeignAccess.sendIsBoxed(isBoxed, obj);
         }
 
         public static MatchForeign create() {
