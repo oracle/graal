@@ -29,14 +29,16 @@
  */
 package com.oracle.truffle.llvm.nodes.others;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.api.profiles.IntValueProfile;
-import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI16ProfiledValueNodeGen;
@@ -44,8 +46,12 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI1
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI64ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.profiling.BooleanValueProfile;
 import com.oracle.truffle.llvm.runtime.profiling.ShortValueProfile;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -124,17 +130,69 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
     }
 
     abstract static class LLVMI64ProfiledValueNode extends LLVMValueProfilingNode {
+        private static final byte UNINITIALIZED = 0;
+        private static final byte SPECIALIZED_LONG = 1;
+        private static final byte SPECIALIZED_POINTER = 2;
+        private static final byte GENERIC = 3;
 
-        private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
+        @CompilationFinal private byte state = UNINITIALIZED;
+        @CompilationFinal private LLVMPointer cachedPointer;
+        @CompilationFinal private long cachedLong;
 
         @Specialization
         protected long doI64(long value) {
-            return profile.profile(value);
+            byte localState = this.state;
+            if (localState != GENERIC) {
+                if (localState == SPECIALIZED_LONG) {
+                    long v = cachedLong;
+                    if (v == value) {
+                        return v;
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (localState == UNINITIALIZED) {
+                    this.cachedLong = value;
+                    this.state = SPECIALIZED_LONG;
+                } else {
+                    this.state = GENERIC;
+                }
+            }
+            return value;
         }
 
         @Specialization
-        protected Object doPointer(LLVMNativePointer value) {
-            return LLVMNativePointer.create(profile.profile(value.asNative())).export(value.getExportType());
+        protected LLVMPointer doPointer(LLVMPointer value) {
+            byte localState = this.state;
+            if (localState != GENERIC) {
+                if (localState == SPECIALIZED_POINTER) {
+                    LLVMPointer v = cachedPointer;
+                    if (value.equals(v)) {
+                        return v.export(value.getExportType());
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (localState == UNINITIALIZED && isCachablePointer(value)) {
+                    this.cachedPointer = value;
+                    this.state = SPECIALIZED_POINTER;
+                } else {
+                    this.state = GENERIC;
+                }
+            }
+            return value;
+        }
+
+        private static boolean isCachablePointer(LLVMPointer value) {
+            if (LLVMNativePointer.isInstance(value)) {
+                // Native pointers can always be cached.
+                return true;
+            } else {
+                // Managed pointers are only cached if they point to a white-listed class (we must
+                // not create a memory leak nor must we cache @ValueType objects)
+                assert LLVMManagedPointer.isInstance(value);
+                LLVMManagedPointer pointer = LLVMManagedPointer.cast(value);
+                TruffleObject object = pointer.getObject();
+                return object instanceof LLVMGlobalContainer || object instanceof LLVMFunctionDescriptor;
+            }
         }
 
         @Fallback

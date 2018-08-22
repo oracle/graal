@@ -60,6 +60,8 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
         if (!(obj instanceof LLVMPointerImpl)) {
             return false;
         }
+        // TODO (chaeubl): this equals implementation is not correct for foreign objects as those
+        // are wrapped in a LLVMTypedForeignObject which is a @ValueType.
         LLVMPointerImpl other = (LLVMPointerImpl) obj;
         return this.object == other.object && this.offset == other.offset;
     }
