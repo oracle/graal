@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.op;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -41,7 +40,6 @@ import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen.ManagedToCompar
 import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen.NativeToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -70,8 +68,8 @@ public abstract class ToComparableValue extends LLVMNode {
     }
 
     @TruffleBoundary
-    private static int getHashCode(Object address) {
-        return address.hashCode();
+    private static long getHashCode(Object obj) {
+        return (obj.hashCode() & 0xFFFFFFFFL) << 8;
     }
 
     protected abstract static class ForeignToComparableValue extends LLVMNode {
@@ -83,11 +81,6 @@ public abstract class ToComparableValue extends LLVMNode {
         }
 
         @Specialization
-        protected long doForeign(LLVMTypedForeignObject obj) {
-            return getHashCode(obj.getForeign());
-        }
-
-        @Fallback
         protected long doOther(TruffleObject obj) {
             // TODO (chaeubl): this code path is also used for pointers to global variables and
             // functions
