@@ -118,6 +118,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Suites lowTierSuites = lowTierBackend.getSuites().getDefaultSuites(options);
         LIRSuites lowTierLirSuites = lowTierBackend.getSuites().getDefaultLIRSuites(options);
         Providers lowTierProviders = lowTierBackend.getProviders();
+        lowTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
 
         return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, lowTierSuites, lowTierLirSuites, lowTierProviders, snippetReflection);
     }
