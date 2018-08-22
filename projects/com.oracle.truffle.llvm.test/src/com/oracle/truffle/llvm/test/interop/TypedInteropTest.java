@@ -34,10 +34,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.test.interop.values.NullValue;
 import com.oracle.truffle.llvm.test.interop.values.StructObject;
+import com.oracle.truffle.llvm.test.interop.values.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.HashMap;
 import java.util.Map;
+import org.graalvm.polyglot.Value;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import org.junit.BeforeClass;
 import org.junit.Assert;
 import org.junit.Test;
@@ -57,6 +61,17 @@ public class TypedInteropTest extends InteropTestBase {
         Map<String, Object> point = new HashMap<>();
         point.put("x", x);
         point.put("y", y);
+        point.put("length", new TestCallback(0, (args) -> {
+            int px = (int) point.get("x");
+            int py = (int) point.get("y");
+            return Math.sqrt(px * px + py * py);
+        }));
+        point.put("add", new TestCallback(1, (args) -> {
+            int px = (int) point.get("x");
+            int py = (int) point.get("y");
+            Value other = runWithPolyglot.getPolyglotContext().asValue(args[0]);
+            return makePoint(px + other.getMember("x").asInt(), py + other.getMember("y").asInt());
+        }));
         return new StructObject(point);
     }
 
@@ -127,6 +142,38 @@ public class TypedInteropTest extends InteropTestBase {
             Assert.assertEquals("x", 3, arr[i].get("x"));
             Assert.assertEquals("y", 1, arr[i].get("y"));
         }
+    }
+
+    public static class ModifyAndCallNode extends SulongTestNode {
+
+        public ModifyAndCallNode() {
+            super(testLibrary, "modifyAndCall");
+        }
+    }
+
+    @Test
+    public void testModifyAndCall(@Inject(ModifyAndCallNode.class) CallTarget modifyAndCall) {
+        StructObject point = makePoint(3, 4);
+        Object length = modifyAndCall.call(point);
+
+        checkPoint(point, 6, 8);
+        Assert.assertEquals("length", 10.0, length);
+    }
+
+    public static class AddAndSwapPoint extends SulongTestNode {
+
+        public AddAndSwapPoint() {
+            super(testLibrary, "addAndSwapPoint");
+        }
+    }
+
+    @Test
+    public void testAddAndSwapPoint(@Inject(AddAndSwapPoint.class) CallTarget addAndSwapPoint) {
+        StructObject point = makePoint(39, 17);
+        Object ret = addAndSwapPoint.call(point, 3, 7);
+
+        Assert.assertThat("ret", ret, is(instanceOf(StructObject.class)));
+        checkPoint((StructObject) ret, 24, 42);
     }
 
     public static class FillNestedNode extends SulongTestNode {
