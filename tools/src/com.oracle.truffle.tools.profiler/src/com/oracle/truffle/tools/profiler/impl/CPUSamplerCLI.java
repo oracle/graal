@@ -151,10 +151,21 @@ class CPUSamplerCLI extends ProfilerCLI {
         printer.printKeyValue("gathered_hit_times", sampler.isGatherSelfHitTimes());
         printer.comma();
         printer.printKey("profile");
-        printer.startObject();
-        printer.printKey("samples");
-        printSamplingJsonRec(printer, sampler.getRootNodes());
-        printer.endObject();
+        printer.startArray();
+        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
+        int i = 0;
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {
+            printer.startObject();
+            printer.printKeyValue("thread", entry.getKey().toString());
+            printer.comma();
+            printer.printKey("samples");
+            printSamplingJsonRec(printer, entry.getValue());
+            printer.endObject();
+            if (i++ < threadToNodesMap.size() - 1) {
+                printer.comma();
+            }
+        }
+        printer.endArray();
         printer.endObject();
     }
 
