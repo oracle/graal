@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.tools.profiler;
 
-import com.oracle.truffle.api.source.SourceSection;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Represents a node in the call tree built up by sampling the shadow stack. Additional data can be
@@ -45,25 +48,19 @@ public final class ProfilerNode<T> {
     ProfilerNode(ProfilerNode<T> parent, SourceLocation sourceLocation, T payload) {
         this.parent = parent;
         this.sourceLocation = sourceLocation;
-        this.sync = parent.sync;
         this.payload = payload;
     }
 
-    ProfilerNode(Object sync, T payload) {
-        if (sync == null) {
-            throw new IllegalStateException("Sync must be provided for root");
-        }
+    ProfilerNode() {
         this.parent = null;
         this.sourceLocation = null;
-        this.sync = sync;
-        this.payload = payload;
+        this.payload = null;
     }
 
     private final T payload;
     private final ProfilerNode<T> parent;
     private final SourceLocation sourceLocation;
     Map<SourceLocation, ProfilerNode<T>> children;
-    private final Object sync;
 
     /**
      * @return the children of this {@link ProfilerNode}
@@ -145,11 +142,58 @@ public final class ProfilerNode<T> {
     }
 
     void addChild(SourceLocation childLocation, ProfilerNode<T> child) {
-        synchronized (sync) {
+        if (children == null) {
+            children = new HashMap<>();
+        }
+        children.put(childLocation, child);
+    }
+
+    SourceLocation getSourceLocation() {
+        return sourceLocation;
+    }
+
+    void deepCopyChildrenFrom(ProfilerNode<T> node, Function<T, T> copyPayload) {
+        for (ProfilerNode<T> child : node.getChildren()) {
+            final SourceLocation childSourceLocation = child.getSourceLocation();
+            T childPayload = child.getPayload();
+            T destinationPayload = copyPayload.apply(childPayload);
+            ProfilerNode<T> destinationChild = new ProfilerNode<>(this, childSourceLocation, destinationPayload);
             if (children == null) {
                 children = new HashMap<>();
             }
-            children.put(childLocation, child);
+            children.put(childSourceLocation, destinationChild);
+            destinationChild.deepCopyChildrenFrom(child, copyPayload);
         }
+    }
+
+    void deepMergeChildrenFrom(ProfilerNode<T> node, BiConsumer<T, T> mergePayload, Supplier<T> payloadFactory) {
+        for (ProfilerNode<T> child : node.getChildren()) {
+            final SourceLocation childSourceLocation = child.getSourceLocation();
+            final T childPayload = child.getPayload();
+            ProfilerNode<T> destinationChild = findBySourceLocation(childSourceLocation);
+            if (destinationChild == null) {
+                T destinationPayload = payloadFactory.get();
+                mergePayload.accept(childPayload, destinationPayload);
+                destinationChild = new ProfilerNode<>(this, childSourceLocation, destinationPayload);
+                if (children == null) {
+                    children = new HashMap<>();
+                }
+                children.put(childSourceLocation, destinationChild);
+            } else {
+                mergePayload.accept(childPayload, destinationChild.getPayload());
+            }
+            destinationChild.deepMergeChildrenFrom(child, mergePayload, payloadFactory);
+        }
+    }
+
+    private ProfilerNode<T> findBySourceLocation(SourceLocation targetSourceLocation) {
+        if (children != null) {
+            for (ProfilerNode<T> child : children.values()) {
+                if (child.getSourceLocation().equals(targetSourceLocation)) {
+                    return child;
+                }
+            }
+        }
+        return null;
     }
 }
