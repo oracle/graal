@@ -16,12 +16,12 @@ install:
   - wget -O mx/ecj.jar 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/ecj-4.5.2.jar'
   - wget https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/eclipse-jdk8-linux-x86_64.tar.gz
   - tar -xvzf eclipse-jdk8-linux-x86_64.tar.gz
-  - wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/jvmci-0.46/openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
-  - tar -xzf openjdk-8u172-jvmci-0.46-linux-amd64.tar.gz
+  - wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/jvmci-0.48/openjdk-8u172-jvmci-0.48-linux-amd64.tar.gz
+  - tar -xzf openjdk-8u172-jvmci-0.48-linux-amd64.tar.gz
   - export SULONG_ENV=sulong/mx.sulong/env
   - echo ECLIPSE_EXE=`pwd`/eclipse/eclipse >> $SULONG_ENV
   - echo JDT=`pwd`/mx/ecj.jar >> $SULONG_ENV
-  - echo JAVA_HOME=`pwd`/openjdk1.8.0_172-jvmci-0.46 >> $SULONG_ENV
+  - echo JAVA_HOME=`pwd`/openjdk1.8.0_172-jvmci-0.48 >> $SULONG_ENV
   - echo MAKEFLAGS=-j2 >> $SULONG_ENV
   - echo CPPFLAGS=-g >> $SULONG_ENV
   - cd sulong
