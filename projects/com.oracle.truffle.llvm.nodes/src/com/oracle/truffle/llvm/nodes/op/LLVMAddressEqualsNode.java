@@ -29,21 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMForeignEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMManagedEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressEqualsNodeGen.LLVMNativeEqualsNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNode.LLVMPointToSameObjectNode;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
@@ -54,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
+    // TEMP (chaeubl): change val1 to a, val2 to b
     @Specialization(guards = {"lib1.guard(val1)", "lib2.guard(val2)"})
     protected boolean doCached(Object val1, Object val2,
                     @Cached("createCached(val1)") LLVMObjectNativeLibrary lib1,
@@ -73,53 +68,18 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
         return LLVMNativeEqualsNodeGen.create();
     }
 
-    abstract static class LLVMForeignEqualsNode extends LLVMNode {
-
-        abstract boolean execute(Env env, TruffleObject obj1, TruffleObject obj2);
-
-        boolean isHostObject(Env env, TruffleObject obj) {
-            return env.isHostObject(obj);
-        }
-
-        @Specialization(guards = {"isHostObject(env, obj1)", "isHostObject(env, obj2)"})
-        protected boolean doJava(Env env, TruffleObject obj1, TruffleObject obj2) {
-            return env.asHostObject(obj1) == env.asHostObject(obj2);
-        }
-
-        @Specialization
-        protected boolean doForeign(Env env, LLVMTypedForeignObject obj1, LLVMTypedForeignObject obj2,
-                        @Cached("create()") LLVMForeignEqualsNode equals) {
-            return equals.execute(env, obj1.getForeign(), obj2.getForeign());
-        }
-
-        @Fallback
-        protected boolean doOther(@SuppressWarnings("unused") Env env, TruffleObject obj1, TruffleObject obj2) {
-            return obj1 == obj2;
-        }
-
-        public static LLVMForeignEqualsNode create() {
-            return LLVMForeignEqualsNodeGen.create();
-        }
-    }
-
     abstract static class LLVMManagedEqualsNode extends LLVMNode {
-
         abstract boolean execute(Object val1, Object val2);
 
         @Specialization
-        protected boolean doForeign(LLVMManagedPointer obj1, LLVMManagedPointer obj2,
-                        @Cached("create()") LLVMForeignEqualsNode equals,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
-            return equals.execute(ctxRef.get().getEnv(), obj1.getObject(), obj2.getObject()) && obj1.getOffset() == obj2.getOffset();
+        protected boolean doForeign(LLVMManagedPointer a, LLVMManagedPointer b,
+                        @Cached("create()") LLVMPointToSameObjectNode pointToSameObject) {
+            return pointToSameObject.execute(a, b) && a.getOffset() == b.getOffset();
         }
 
         @Specialization
         protected boolean doVirtual(LLVMVirtualAllocationAddress v1, LLVMVirtualAllocationAddress v2) {
             return v1.getObject() == v2.getObject() && v1.getOffset() == v2.getOffset();
-        }
-
-        protected boolean isNative(LLVMPointer p) {
-            return LLVMNativePointer.isInstance(p);
         }
 
         @Specialization(guards = "isNative(p1) || isNative(p2)")
@@ -135,6 +95,10 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
             // different type, and at least one of them is managed, and not a pointer
             // these objects can not have the same address
             return false;
+        }
+
+        protected boolean isNative(LLVMPointer p) {
+            return LLVMNativePointer.isInstance(p);
         }
 
         public static LLVMManagedEqualsNode create() {

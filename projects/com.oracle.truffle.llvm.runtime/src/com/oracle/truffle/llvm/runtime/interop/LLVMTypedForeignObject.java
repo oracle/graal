@@ -87,7 +87,18 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     }
 
     @Override
+    public boolean equals(Object obj) {
+        // ignores the type explicitly
+        if (obj instanceof LLVMTypedForeignObject) {
+            LLVMTypedForeignObject other = (LLVMTypedForeignObject) obj;
+            return foreign.equals(other.foreign);
+        }
+        return false;
+    }
+
+    @Override
     public int hashCode() {
+        // ignores the type explicitly
         return foreign.hashCode();
     }
 

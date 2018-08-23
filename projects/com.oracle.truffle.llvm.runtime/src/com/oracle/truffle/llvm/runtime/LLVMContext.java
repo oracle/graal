@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -167,7 +166,7 @@ public final class LLVMContext {
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
-        this.handleFromManaged = EconomicMap.create(ForeignEquivalence.INSTANCE);
+        this.handleFromManaged = EconomicMap.create();
         this.handleFromPointer = EconomicMap.create();
         this.handlesLock = new Object();
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
@@ -486,29 +485,6 @@ public final class LLVMContext {
             }
 
             return handle.managed;
-        }
-    }
-
-    private static class ForeignEquivalence extends Equivalence {
-
-        private static final ForeignEquivalence INSTANCE = new ForeignEquivalence();
-
-        @Override
-        public boolean equals(Object a, Object b) {
-            return getIdentityKey(a) == getIdentityKey(b);
-        }
-
-        @Override
-        public int hashCode(Object o) {
-            return System.identityHashCode(getIdentityKey(o));
-        }
-
-        private static Object getIdentityKey(Object obj) {
-            if (obj instanceof LLVMTypedForeignObject) {
-                return ((LLVMTypedForeignObject) obj).getForeign();
-            } else {
-                return obj;
-            }
         }
     }
 
