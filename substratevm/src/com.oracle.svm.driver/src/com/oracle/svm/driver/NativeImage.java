@@ -422,10 +422,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-server", "-d64", "-noverify");
         addImageBuilderJavaArgs("-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI");
 
-        // Same as GRAAL_COMPILER_FLAGS in mx.substratevm/mx_substratevm.py
-        int ciCompilerCount = Runtime.getRuntime().availableProcessors() <= 4 ? 2 : 4;
-        addImageBuilderJavaArgs("-XX:-UseJVMCIClassLoader", "-XX:+UseJVMCICompiler", "-Dgraal.CompileGraalWithC1Only=false", "-XX:CICompilerCount=" + ciCompilerCount);
-        addImageBuilderJavaArgs("-Dgraal.VerifyGraalGraphs=false", "-Dgraal.VerifyGraalGraphEdges=false", "-Dgraal.VerifyGraalPhasesSize=false", "-Dgraal.VerifyPhases=false");
+        addImageBuilderJavaArgs("-XX:-UseJVMCIClassLoader");
 
         addImageBuilderJavaArgs("-Dgraal.EagerSnippets=true");
 

@@ -58,11 +58,8 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
-JVM_COMPILER_THREADS = 2 if mx.cpu_count() <= 4 else 4
-
-GRAAL_COMPILER_FLAGS = ['-XX:+UseJVMCICompiler', '-Dgraal.CompileGraalWithC1Only=false', '-XX:CICompilerCount=' + str(JVM_COMPILER_THREADS),
-                        '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
-                        '-Dgraal.VerifyGraalGraphs=false', '-Dgraal.VerifyGraalGraphEdges=false', '-Dgraal.VerifyGraalPhasesSize=false', '-Dgraal.VerifyPhases=false']
+GRAAL_COMPILER_FLAGS = ['-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
+                        ]
 if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
 else:
@@ -551,14 +548,7 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
         if exists(native_image_cmd):
             _native_image(['--server-shutdown'])
 
-#
-# It is essential to bootstrap JVMCI here ('-J-XX:+BootstrapJVMCI'). The `-esa` flag kills all parallelism in
-# multi-threaded execution when code is compiled with the C1 compiler with profiling enabled (Tier 3). Without
-# '-J-XX:+BootstrapJVMCI', `native-image` often ends up in the state where most of the code is in Tier 3,
-# hence N image-build threads and all CI threads effectively operate synchronously. Exiting this state usually takes
-# around 10 minutes as CI threads are crawling due to all un-parallelised work.
-#
-native_image_context.hosted_assertions = ['-J-ea', '-J-esa', '-J-XX:+BootstrapJVMCI', '-Dgraal.CompilationWatchDogStartDelay=30', '-Dgraal.CompilationWatchDogStackTraceInterval=30']
+native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
     # Debug GR-8964 on Darwin gates
