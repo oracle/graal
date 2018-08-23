@@ -108,6 +108,11 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
+    public String getImageName() {
+        return NativeImageOptions.Name.getValue(options);
+    }
+
+    @Override
     public boolean isRelocatedPointer(Object originalObject) {
         return originalObject instanceof RelocatedPointer;
     }
