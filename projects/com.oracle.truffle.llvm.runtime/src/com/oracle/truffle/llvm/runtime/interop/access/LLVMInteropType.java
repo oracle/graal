@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.runtime.interop.access;
 
 import java.util.Arrays;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
@@ -305,7 +305,7 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     private static final class InteropTypeFactory {
 
-        private final IdentityHashMap<LLVMSourceType, LLVMInteropType> typeCache = new IdentityHashMap<>();
+        private final EconomicMap<LLVMSourceType, LLVMInteropType> typeCache = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
         private final class Register {
 
