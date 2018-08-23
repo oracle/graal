@@ -57,7 +57,7 @@ public final class StackValue {
      * @since 1.0
      */
     public static <T extends PointerBase> T get(Class<T> structType) {
-        return get(SizeOf.get(structType));
+        throw new IllegalStateException("Cannot invoke method during native image generation");
     }
 
     /**
@@ -79,7 +79,7 @@ public final class StackValue {
      * @since 1.0
      */
     public static <T extends PointerBase> T get(int numberOfElements, Class<T> structType) {
-        return get(SizeOf.get(structType));
+        throw new IllegalStateException("Cannot invoke method during native image generation");
     }
 
     /**
