@@ -96,6 +96,12 @@ class CPUTracerCLI extends ProfilerCLI {
 
     private static void printTracerJson(PrintStream out, CPUTracer tracer) {
         JSONPrinter printer = new JSONPrinter(out);
+        printer.startObject();
+        printer.printKeyValue("tool", CPUTracerInstrument.ID);
+        printer.comma();
+        printer.printKeyValue("version", CPUTracerInstrument.VERSION);
+        printer.comma();
+        printer.printKey("profile");
         List<CPUTracer.Payload> payloads = new ArrayList<>(tracer.getPayloads());
         printer.startArray();
         int i = 0;
@@ -116,6 +122,7 @@ class CPUTracerCLI extends ProfilerCLI {
             }
         }
         printer.endArray();
+        printer.endObject();
     }
 
     static void printTracerHistogram(PrintStream out, CPUTracer tracer) {

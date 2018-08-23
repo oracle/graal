@@ -138,7 +138,24 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
-        printSamplingJsonRec(new JSONPrinter(out), sampler.getRootNodes());
+        JSONPrinter printer = new JSONPrinter(out);
+        printer.startObject();
+        printer.printKeyValue("tool", CPUSamplerInstrument.ID);
+        printer.comma();
+        printer.printKeyValue("version", CPUSamplerInstrument.VERSION);
+        printer.comma();
+        printer.printKeyValue("sample_count", sampler.getSampleCount());
+        printer.comma();
+        printer.printKeyValue("period", sampler.getPeriod());
+        printer.comma();
+        printer.printKeyValue("gathered_hit_times", sampler.isGatherSelfHitTimes());
+        printer.comma();
+        printer.printKey("profile");
+        printer.startObject();
+        printer.printKey("samples");
+        printSamplingJsonRec(printer, sampler.getRootNodes());
+        printer.endObject();
+        printer.endObject();
     }
 
     private static void printSamplingJsonRec(JSONPrinter printer, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {

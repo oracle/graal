@@ -39,7 +39,7 @@ import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TI
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = "0.2", services = {CPUSampler.class})
+@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = CPUSamplerInstrument.VERSION, services = {CPUSampler.class})
 public class CPUSamplerInstrument extends TruffleInstrument {
 
     /**
@@ -56,6 +56,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cpusampler";
+    static final String VERSION = "0.3.0";
     private CPUSampler sampler;
     private static ProfilerToolFactory<CPUSampler> factory;
 
