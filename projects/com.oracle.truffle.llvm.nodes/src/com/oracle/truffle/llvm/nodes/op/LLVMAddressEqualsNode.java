@@ -48,20 +48,19 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
-    // TEMP (chaeubl): change val1 to a, val2 to b
-    @Specialization(guards = {"lib1.guard(val1)", "lib2.guard(val2)"})
-    protected boolean doCached(Object val1, Object val2,
-                    @Cached("createCached(val1)") LLVMObjectNativeLibrary lib1,
-                    @Cached("createCached(val2)") LLVMObjectNativeLibrary lib2,
+    @Specialization(guards = {"libA.guard(a)", "libB.guard(b)"})
+    protected boolean doCached(Object a, Object b,
+                    @Cached("createCached(a)") LLVMObjectNativeLibrary libA,
+                    @Cached("createCached(b)") LLVMObjectNativeLibrary libB,
                     @Cached("createEquals()") LLVMNativeEqualsNode equals) {
-        return equals.execute(val1, lib1, val2, lib2);
+        return equals.execute(a, libA, b, libB);
     }
 
-    @Specialization(replaces = "doCached", guards = {"lib.guard(val1)", "lib.guard(val2)"})
-    protected boolean doGeneric(Object val1, Object val2,
+    @Specialization(replaces = "doCached", guards = {"lib.guard(a)", "lib.guard(b)"})
+    protected boolean doGeneric(Object a, Object b,
                     @Cached("createGeneric()") LLVMObjectNativeLibrary lib,
                     @Cached("createEquals()") LLVMNativeEqualsNode equals) {
-        return equals.execute(val1, lib, val2, lib);
+        return equals.execute(a, lib, b, lib);
     }
 
     static LLVMNativeEqualsNode createEquals() {
@@ -69,7 +68,7 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
     }
 
     abstract static class LLVMManagedEqualsNode extends LLVMNode {
-        abstract boolean execute(Object val1, Object val2);
+        abstract boolean execute(Object a, Object b);
 
         @Specialization
         protected boolean doForeign(LLVMManagedPointer a, LLVMManagedPointer b,
@@ -89,9 +88,9 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
             return false;
         }
 
-        @Specialization(guards = "val1.getClass() != val2.getClass()")
+        @Specialization(guards = "a.getClass() != b.getClass()")
         @SuppressWarnings("unused")
-        protected boolean doDifferentType(Object val1, Object val2) {
+        protected boolean doDifferentType(Object a, Object b) {
             // different type, and at least one of them is managed, and not a pointer
             // these objects can not have the same address
             return false;
@@ -108,24 +107,24 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
     abstract static class LLVMNativeEqualsNode extends LLVMNode {
 
-        abstract boolean execute(Object val1, LLVMObjectNativeLibrary lib1,
-                        Object val2, LLVMObjectNativeLibrary lib2);
+        abstract boolean execute(Object a, LLVMObjectNativeLibrary libA,
+                        Object b, LLVMObjectNativeLibrary libB);
 
-        @Specialization(guards = {"lib1.isPointer(val1)", "lib2.isPointer(val2)"})
-        protected boolean doPointerPointer(Object val1, LLVMObjectNativeLibrary lib1,
-                        Object val2, LLVMObjectNativeLibrary lib2) {
+        @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"})
+        protected boolean doPointerPointer(Object a, LLVMObjectNativeLibrary libA,
+                        Object b, LLVMObjectNativeLibrary libB) {
             try {
-                return lib1.asPointer(val1) == lib2.asPointer(val2);
+                return libA.asPointer(a) == libB.asPointer(b);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
         }
 
-        @Specialization(guards = "!lib1.isPointer(val1) || !lib2.isPointer(val2)")
-        protected boolean doOther(Object val1, @SuppressWarnings("unused") LLVMObjectNativeLibrary lib1,
-                        Object val2, @SuppressWarnings("unused") LLVMObjectNativeLibrary lib2,
+        @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)")
+        protected boolean doOther(Object a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
+                        Object b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB,
                         @Cached("create()") LLVMManagedEqualsNode managedEquals) {
-            return managedEquals.execute(val1, val2);
+            return managedEquals.execute(a, b);
         }
     }
 }
