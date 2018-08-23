@@ -32,6 +32,8 @@
 struct Point {
   int x;
   int y;
+  double (*length)();
+  struct Point *(*add)(struct Point *p);
 };
 
 POLYGLOT_DECLARE_STRUCT(Point)
@@ -69,6 +71,22 @@ extern "C" void fillPoints(void *pointArray, int x, int y) {
     arr[i].x = x;
     arr[i].y = y;
   }
+}
+
+extern "C" double modifyAndCall(void *value) {
+  struct Point *point = polyglot_as_Point(value);
+  point->x *= 2;
+  point->y *= 2;
+  return point->length();
+}
+
+extern "C" struct Point *addAndSwapPoint(struct Point *point, int ix, int iy) {
+  struct Point incr = {ix, iy};
+  struct Point *ret = point->add(&incr);
+  int tmp = ret->x;
+  ret->x = ret->y;
+  ret->y = tmp;
+  return ret;
 }
 
 struct Nested {
