@@ -273,6 +273,26 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 
+    /*
+     * The routines emitStringLatin1Inflate/3 and emitStringUTF16Compress/3 models a simplified
+     * version of
+     *
+     * emitStringLatin1Inflate(Value src, Value src_ndx, Value dst, Value dst_ndx, Value len) and
+     * emitStringUTF16Compress(Value src, Value src_ndx, Value dst, Value dst_ndx, Value len)
+     *
+     * respectively, where we have hoisted the offset address computations in a method replacement
+     * snippet.
+     */
+    @SuppressWarnings("unused")
+    default void emitStringLatin1Inflate(Value src, Value dst, Value len) {
+        throw GraalError.unimplemented("StringLatin1.inflate substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
+        throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);

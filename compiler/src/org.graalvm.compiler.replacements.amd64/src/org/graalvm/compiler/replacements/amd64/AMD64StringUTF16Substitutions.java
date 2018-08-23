@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +30,10 @@ import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
-
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
+
+import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
 
@@ -44,19 +44,6 @@ import org.graalvm.word.Pointer;
  */
 @ClassSubstitution(className = "java.lang.StringUTF16", optional = true)
 public class AMD64StringUTF16Substitutions {
-
-    @Fold
-    static int byteArrayBaseOffset(@InjectedParameter ArrayOffsetProvider arrayOffsetProvider) {
-        return arrayOffsetProvider.arrayBaseOffset(JavaKind.Byte);
-    }
-
-    @Fold
-    static int charArrayIndexScale(@InjectedParameter ArrayOffsetProvider arrayOffsetProvider) {
-        return arrayOffsetProvider.arrayScalingFactor(JavaKind.Char);
-    }
-
-    /** Marker value for the {@link InjectedParameter} injected parameter. */
-    static final ArrayOffsetProvider INJECTED = null;
 
     /**
      * @param value is char[]
@@ -89,4 +76,58 @@ public class AMD64StringUTF16Substitutions {
         }
         return result;
     }
+
+    // @formatter:off
+
+    /* java.lang.StringUTF16.compress([CI[BII)I
+     *
+     * @HotSpotIntrinsicCandidate
+     * public static int compress(char[] src, int src_indx, byte[] dst, int dst_indx, int len)
+     */
+    @MethodSubstitution
+    public static int compress(char[] src, int sndx, byte[] dst, int dndx, int len) {
+        int ndx1 = Math.max(0, sndx);
+        int ndx2 = Math.max(0, dndx);
+
+        assert ndx1 + len < src.length;
+        assert ndx2 + len < dst.length;
+
+        // Checkstyle: stop
+        Pointer srcptr = Word.objectToTrackedPointer(src)
+                             .add(charArrayBaseOffset(INJECTED))
+                             .add(ndx1 * charArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst)
+                             .add(byteArrayBaseOffset(INJECTED))
+                             .add(ndx2 * byteArrayIndexScale(INJECTED));
+        // Checkstyle: resume
+        return AMD64StringUTF16CompressNode.compress(srcptr, dstptr, len);
+    }
+
+    // @formatter:on
+
+    @Fold
+    protected static int charArrayBaseOffset(@InjectedParameter ArrayOffsetProvider aop) {
+        return aop.arrayBaseOffset(JavaKind.Char);
+    }
+
+    @Fold
+    protected static int charArrayIndexScale(@InjectedParameter ArrayOffsetProvider aop) {
+        return aop.arrayScalingFactor(JavaKind.Char);
+    }
+
+    @Fold
+    protected static int byteArrayBaseOffset(@InjectedParameter ArrayOffsetProvider aop) {
+        return aop.arrayBaseOffset(JavaKind.Byte);
+    }
+
+    @Fold
+    protected static int byteArrayIndexScale(@InjectedParameter ArrayOffsetProvider aop) {
+        return aop.arrayScalingFactor(JavaKind.Byte);
+    }
+
+    /**
+     * Marker value for the {@link InjectedParameter} injected parameter.
+     */
+    private static final ArrayOffsetProvider INJECTED = null;
+
 }
