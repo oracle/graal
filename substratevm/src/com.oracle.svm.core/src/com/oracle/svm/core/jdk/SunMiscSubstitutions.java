@@ -150,11 +150,13 @@ final class Target_sun_misc_Unsafe {
     }
 
     @Substitute
+    boolean shouldBeInitialized(Class<?> c) {
+        return !DynamicHub.fromClass(c).isInitialized();
+    }
+
+    @Substitute
     public void ensureClassInitialized(Class<?> c) {
-        if (c == null) {
-            throw new NullPointerException();
-        }
-        // no-op: all classes that exist in our image must have been initialized
+        DynamicHub.fromClass(c).ensureInitialized();
     }
 }
 

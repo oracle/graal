@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.option;
 
+// Checkstyle: allow reflection
+
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -40,6 +43,8 @@ import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -382,17 +387,43 @@ public class SubstrateOptionsParser {
     }
 
     /**
-     * Returns a string to be used on command line to set the option to a desirable value.
+     * Returns a string to be used on command line to set the option to a desirable value. If the
+     * option has one or more {@link APIOption} annotations, preference is given to a matching
+     * {@link APIOption} syntax.
      *
      * @param option for which the command line argument is created
      * @return recommendation for setting a option value (e.g., for option 'Name' and value 'file'
      *         it returns "-H:Name=file")
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value) {
+        Field field;
+        try {
+            field = option.getDescriptor().getDeclaringClass().getDeclaredField(option.getDescriptor().getFieldName());
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+
+        APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
+
         if (option.getDescriptor().getOptionValueType() == Boolean.class) {
-            assert value.equals("+") || value.equals("-") || value.equals("[+|-]") : "Boolean option can be only + or - or [+|-].";
+            VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
+            for (APIOption apiOption : apiOptions) {
+                String apiValue = apiOption.kind() == APIOption.APIOptionKind.Negated ? "-" : "+";
+                if (apiValue.equals(value)) {
+                    return APIOption.Utils.name(apiOption);
+                }
+            }
             return HOSTED_OPTION_PREFIX + value + option;
         } else {
+            for (APIOption apiOption : apiOptions) {
+                String fixedValue = apiOption.fixedValue().length == 0 ? null : apiOption.fixedValue()[0];
+                if (fixedValue == null) {
+                    return APIOption.Utils.name(apiOption) + "=" + value;
+                } else if (value.equals(fixedValue)) {
+                    return APIOption.Utils.name(apiOption);
+                }
+            }
             return HOSTED_OPTION_PREFIX + option.getName() + "=" + value;
         }
     }

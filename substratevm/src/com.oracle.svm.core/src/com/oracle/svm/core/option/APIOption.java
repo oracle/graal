@@ -95,4 +95,14 @@ public @interface APIOption {
          */
         Paths
     }
+
+    class Utils {
+        public static String name(APIOption annotation) {
+            if (annotation.name().startsWith("-")) {
+                return annotation.name();
+            } else {
+                return "--" + annotation.name();
+            }
+        }
+    }
 }

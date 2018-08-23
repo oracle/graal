@@ -215,6 +215,27 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private Object annotationsEncoding;
 
     /**
+     * Class/superclass/implemented interfaces has default methods. Necessary metadata for class
+     * initialization, but even for classes/interfaces that are already initialized during image
+     * generation, so it cannot be a field in {@link ClassInitializationInfo}.
+     */
+    private boolean hasDefaultMethods;
+
+    /**
+     * Directly declares default methods. Necessary metadata for class initialization, but even for
+     * interfaces that are already initialized during image generation, so it cannot be a field in
+     * {@link ClassInitializationInfo}.
+     */
+    private boolean declaresDefaultMethods;
+
+    /**
+     * Metadata for running class initializers at run time. Refers to a singleton marker object for
+     * classes/interfaces already initialized during image generation, i.e., this field is never
+     * null at run time.
+     */
+    private ClassInitializationInfo classInitializationInfo;
+
+    /**
      * Classloader used for loading this class during image-build time.
      */
     private final Target_java_lang_ClassLoader classloader;
@@ -255,6 +276,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.isStatic = isStatic;
         this.isSynthetic = isSynthetic;
         this.classloader = classLoader;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setClassInitializationInfo(ClassInitializationInfo classInitializationInfo, boolean hasDefaultMethods, boolean declaresDefaultMethods) {
+        this.classInitializationInfo = classInitializationInfo;
+        this.hasDefaultMethods = hasDefaultMethods;
+        this.declaresDefaultMethods = declaresDefaultMethods;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -333,6 +361,28 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public void setHostedIdentityHashCode(int newHostedIdentityHashCode) {
         assert this.hostedIdentityHashCode == 0 || this.hostedIdentityHashCode == newHostedIdentityHashCode;
         this.hostedIdentityHashCode = newHostedIdentityHashCode;
+    }
+
+    public boolean hasDefaultMethods() {
+        return hasDefaultMethods;
+    }
+
+    public boolean declaresDefaultMethods() {
+        return declaresDefaultMethods;
+    }
+
+    public ClassInitializationInfo getClassInitializationInfo() {
+        return classInitializationInfo;
+    }
+
+    public boolean isInitialized() {
+        return classInitializationInfo.isInitialized();
+    }
+
+    public void ensureInitialized() {
+        if (!classInitializationInfo.isInitialized()) {
+            classInitializationInfo.initialize(this);
+        }
     }
 
     public SharedType getMetaType() {

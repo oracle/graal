@@ -517,7 +517,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         final int functionPointerRelocationSize = 8;
         assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
         // References to functions are via relocations to the symbol for the function.
-        HostedMethod method = ((MethodPointer) info.getTargetObject()).getMethod();
+        ResolvedJavaMethod method = ((MethodPointer) info.getTargetObject()).getMethod();
         // A reference to a method. Mark the relocation site using the symbol name.
         sectionImpl.markRelocationSite(offset, functionPointerRelocationSize, RelocationKind.DIRECT, localSymbolNameForMethod(method), false, 0L);
     }

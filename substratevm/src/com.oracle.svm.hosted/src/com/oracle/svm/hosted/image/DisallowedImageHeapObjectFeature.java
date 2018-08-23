@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -43,10 +45,11 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     }
 
     private static Object replacer(Object original) {
-        String message = "This is not supported. The object was reached from a static initializer. " +
-                        "All static class initialization is done during native image construction, " +
-                        "thus a static initializer cannot contain code that captures state dependent on the build machine. " +
-                        "Write your own initialization methods and call them explicitly from your main entry point.";
+        String message = "This is not supported. The object was probaby created by a class initializer and is reachable from a static field. " +
+                        "By default, all class initialization is done during native image building." +
+                        "You can manually delay class initialization to runtime by using the option " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.DelayClassInitialization, "<class-name>") + "." +
+                        "Or you can write your own initialization methods and call them explicitly from your main entry point.";
 
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {

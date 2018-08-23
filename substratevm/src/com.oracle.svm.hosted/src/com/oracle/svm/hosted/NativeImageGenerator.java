@@ -236,6 +236,7 @@ import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.ImplicitExceptionsPlugin;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
+import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptFrameStatesLIRPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
 import com.oracle.svm.hosted.snippets.AssertSnippets;
@@ -917,7 +918,7 @@ public class NativeImageGenerator {
                 Path tmpDir = tempDirectory();
                 Path imagePath = image.write(debug, generatedFiles(HostedOptionValues.singleton()), tmpDir, imageName, beforeConfig);
 
-                AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, imagePath, tmpDir, image.getBootImageKind());
+                AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, imagePath, tmpDir, image.getBootImageKind());
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
         }
@@ -1013,6 +1014,8 @@ public class NativeImageGenerator {
         plugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         plugins.appendNodePlugin(wordOperationPlugin);
         plugins.appendNodePlugin(new ImplicitExceptionsPlugin(providers.getMetaAccess(), providers.getForeignCalls()));
+
+        plugins.setClassInitializationPlugin(new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()));
 
         featureHandler.forEachGraalFeature(feature -> feature.registerNodePlugins(analysis ? aMetaAccess : hMetaAccess, plugins, analysis, hosted));
 

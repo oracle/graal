@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -64,5 +65,13 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
         }
 
         return super.readConstantField(field, analysisTool);
+    }
+
+    @Override
+    protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
+        if (ClassInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+            return false;
+        }
+        return super.isFinalField(field, tool);
     }
 }

@@ -100,7 +100,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
             for (APIOption apiAnnotation : apiAnnotations) {
                 String builderOption = optionPrefix;
-                String apiOptionName = apiAnnotation.name();
+                String apiOptionName = APIOption.Utils.name(apiAnnotation);
                 String rawOptionName = optionDescriptor.getName();
                 boolean booleanOption = false;
                 if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
@@ -134,9 +134,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 VMError.guarantee(helpText != null && !helpText.isEmpty(),
                                 String.format("APIOption %s(%s) needs to provide help text", apiOptionName, rawOptionName));
                 helpText = helpText.substring(0, 1).toLowerCase() + helpText.substring(1);
-                if (!apiOptionName.startsWith("-")) {
-                    apiOptionName = "--" + apiOptionName;
-                }
 
                 String defaultValue = null;
                 if (apiAnnotation.defaultValue().length > 0) {
