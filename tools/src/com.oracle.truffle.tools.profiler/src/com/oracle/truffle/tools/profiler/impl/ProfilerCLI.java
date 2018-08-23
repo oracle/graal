@@ -284,9 +284,34 @@ abstract class ProfilerCLI {
             out.print("]");
         }
 
-        public void printKeyValue(String key, boolean value) {
+        void printKeyValue(String key, boolean value) {
             out.print("\"" + key + "\":" + value + "");
         }
+
+        void printSourceSection(SourceSection sourceSection) {
+            if (sourceSection != null) {
+                printKey("source_section");
+                startObject();
+                Source source = sourceSection.getSource();
+                if (source != null) {
+                    if (source.getLanguage() != null) {
+                        printKeyValue("language", source.getLanguage().toString());
+                        comma();
+                    }
+                    printKeyValue("path", source.getPath());
+                    comma();
+                }
+                printKeyValue("start_line", sourceSection.getStartLine());
+                comma();
+                printKeyValue("end_line", sourceSection.getEndLine());
+                comma();
+                printKeyValue("start_column", sourceSection.getStartColumn());
+                comma();
+                printKeyValue("end_column", sourceSection.getEndColumn());
+                endObject();
+            }
+        }
+
     }
 
     static class SourceLocation {

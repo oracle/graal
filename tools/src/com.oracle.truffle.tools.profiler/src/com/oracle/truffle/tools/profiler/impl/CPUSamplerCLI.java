@@ -176,7 +176,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             printer.startObject();
             printer.printKeyValue("root_name", node.getRootName());
             printer.comma();
-            printer.printKeyValue("source_section", getShortDescription(node.getSourceSection()));
+            printer.printSourceSection(node.getSourceSection());
             printer.comma();
 
             CPUSampler.Payload payload = node.getPayload();

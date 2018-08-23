@@ -109,7 +109,7 @@ class CPUTracerCLI extends ProfilerCLI {
             printer.startObject();
             printer.printKeyValue("root_name", payload.getRootName());
             printer.comma();
-            printer.printKeyValue("source_section", getShortDescription(payload.getSourceSection()));
+            printer.printSourceSection(payload.getSourceSection());
             printer.comma();
             printer.printKeyValue("count", payload.getCount());
             printer.comma();
