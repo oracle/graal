@@ -21,12 +21,13 @@ env:
     - JVMCI_VERSION="jvmci-0.48"
     - JDK8_UPDATE_VERSION="172"
   matrix:
-    - JDK="jdk8" GATE="style,fullbuild"
-    - JDK="jdk8" GATE="build,test"
-    - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk11" GATE="style,fullbuild"
-    - JDK="jdk11" GATE="build,test"
-    - JDK="jdk11" GATE="build,bootstraplite"
+    - JDK="jdk8" GATE="style,fullbuild" PRIMARY="compiler"
+    - JDK="jdk8" GATE="build,test" PRIMARY="compiler"
+    - JDK="jdk8" GATE="build,test" PRIMARY="substratevm"
+    - JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
+    - JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
+    - JDK="jdk11" GATE="build,test" PRIMARY="compiler"
+    - JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -67,6 +68,6 @@ install:
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/compiler --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*
