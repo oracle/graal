@@ -715,6 +715,7 @@ public final class CPUSampler implements Closeable {
             return null;
         }
         if (shadowStack == null && stacksBinding == null) {
+            this.shadowStack = new ShadowStack(stackLimit, DEFAULT_FILTER, env.getInstrumenter(), TruffleLogger.getLogger(CPUSamplerInstrument.ID));
             this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(DEFAULT_FILTER, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
         }
         return getAllStackTraces();
