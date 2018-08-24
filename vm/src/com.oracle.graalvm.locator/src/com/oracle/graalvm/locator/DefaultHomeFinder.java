@@ -101,6 +101,11 @@ public final class DefaultHomeFinder extends HomeFinder {
     public Path getHomeFolder() {
         Path res = graalHome;
         if (res == null) {
+            if (isVerbose()) {
+                System.err.println("FORCE_GRAAL_HOME: " + FORCE_GRAAL_HOME);
+                System.err.println("LANGUAGE_HOME_RELATIVE_PATH: " + LANGUAGE_HOME_RELATIVE_PATH);
+                System.err.println("GRAAL_HOME_RELATIVE_PATH: " + GRAAL_HOME_RELATIVE_PATH);
+            }
             if (FORCE_GRAAL_HOME != null) {
                 if (isVerbose()) {
                     System.err.println("GraalVM home forced to: " + FORCE_GRAAL_HOME);
@@ -262,14 +267,19 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
         }
         Path objectFile = getCurrentObjectFilePath();
-        Path result = objectFile != null ? getGraalVmHome(objectFile) : null;
-        if (result == null) {
-            result = getGraalVmHomeLibPolyglotFallBack(objectFile);
+        if (objectFile != null) {
+            Path result = getGraalVmHome(objectFile);
+            if (result == null) {
+                result = getGraalVmHomeLibPolyglotFallBack(objectFile);
+            }
+            if (result != null) {
+                if (isVerbose()) {
+                    System.err.println("GraalVM home found by object file as: " + result);
+                }
+                return result;
+            }
         }
-        if (isVerbose() && result != null) {
-            System.err.println("GraalVM home found by object file as: " + result);
-        }
-        return result;
+        return null;
     }
 
     private Path getGraalVmHome(Path executableOrObjFile) {
