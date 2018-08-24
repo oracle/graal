@@ -991,6 +991,13 @@ public abstract class Launcher {
                     remainingArgs.add(arg);
                 }
             }
+
+            /*
+             * All options are processed, now we can run the startup hooks that can depend on the
+             * option values.
+             */
+            RuntimeOptions.runStartupHooks();
+
             if (vmType == null) {
                 vmType = defaultVmType;
             }
