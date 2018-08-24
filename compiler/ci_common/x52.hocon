@@ -13,6 +13,12 @@ x52.tmpfs10g : ${x52.default} {
   capabilities: ${x52.default.capabilities} [tmpfs10g]
 }
 
+x52.default-g1gc : ${x52.default} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-g1gc"
+  }
+}
+
 x52.tmpfs10g-g1gc: ${x52.tmpfs10g} {
   environment : {
     JVM_CONFIG  : ${jvm-config.default}"-g1gc"
@@ -36,4 +42,11 @@ builds += [
   ${x52.tmpfs10g-g1gc} ${bench-scala-dacapo-hwloc} ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-scala-dacapo-g1gc-linux-x52" }
   ${x52.tmpfs10g-g1gc} ${bench-specjvm2008-Single} ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjvm2008-g1gc-Single-linux-x52" }
   ${x52.tmpfs10g-g1gc} ${bench-specjbb2015}        ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2015-g1gc-linux-x52" }
+
+  ${x52.default} ${bench-renaissance-hwloc}       ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52" }
+  ${x52.default-g1gc} ${bench-renaissance-hwloc}  ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-renaissance-g1gc-linux-x52" }
+  ${x52.default} ${bench-spark-sql-perf}          ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52" }
+
+  ${x52.default} ${bench-specjbb2005} ${labsjdk8} { name: "bench-compiler-specjbb2005-linux-x52"}
+  ${x52.default-g1gc} ${bench-specjbb2005} ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x52"}
 ]
