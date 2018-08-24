@@ -34,6 +34,6 @@ int main() {
   char *error1 = strerror(500);
   char *error2 = strerror(501);
   // the glibc uses a static buffer for the error message
-  puts(error1);
-  puts(error2);
+  printf("%d\n", strlen(error1) > 0);
+  printf("%d\n", strlen(error2) > 0);
 }

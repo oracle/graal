@@ -38,7 +38,7 @@ int main() {
     if (i != 0) {
       putchar(',');
     }
-    printf("\n\t\"%s\"", strerror(i));
+    printf("\n\t\"%d\"", strlen(strerror(i)) > 0);
   }
   puts("\n};");
 }
