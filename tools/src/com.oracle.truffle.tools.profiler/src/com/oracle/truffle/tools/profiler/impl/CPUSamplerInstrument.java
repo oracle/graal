@@ -32,12 +32,14 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 
+import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
+
 /**
  * The {@linkplain TruffleInstrument instrument} for the CPU sampler.
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = "0.2", services = {CPUSampler.class})
+@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = CPUSamplerInstrument.VERSION, services = {CPUSampler.class})
 public class CPUSamplerInstrument extends TruffleInstrument {
 
     /**
@@ -54,6 +56,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cpusampler";
+    static final String VERSION = "0.3.0";
     private CPUSampler sampler;
     private static ProfilerToolFactory<CPUSampler> factory;
 
@@ -108,6 +111,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setDelay(env.getOptions().get(CPUSamplerCLI.DELAY_PERIOD));
             sampler.setStackLimit(env.getOptions().get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
+            sampler.setGatherSelfHitTimes(env.getOptions().get(GATHER_HIT_TIMES));
             sampler.setMode(env.getOptions().get(CPUSamplerCLI.MODE));
             sampler.setCollecting(true);
         }

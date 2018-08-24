@@ -24,6 +24,18 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,23 +48,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
-
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
 
     enum Output {
         HISTOGRAM,
-        CALLTREE
+        CALLTREE,
+        JSON,
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
@@ -63,7 +65,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                             try {
                                 return Output.valueOf(s.toUpperCase());
                             } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Output can be: histogram or calltree");
+                                throw new IllegalArgumentException("Output can be: histogram, calltree or json");
                             }
                         }
                     });
@@ -95,7 +97,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER) static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram' or 'calltree' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
+    @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
                     Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
@@ -110,6 +112,8 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
     @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER) static final OptionKey<Boolean> SUMMARISE_THREADS = new OptionKey<>(false);
+
+    @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         PrintStream out = new PrintStream(env.out());
@@ -129,7 +133,48 @@ class CPUSamplerCLI extends ProfilerCLI {
             case CALLTREE:
                 printSamplingCallTree(out, sampler, summariseThreads);
                 break;
+            case JSON:
+                printSamplingJson(out, sampler);
         }
+    }
+
+    private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
+        JSONObject output = new JSONObject();
+        output.put("tool", CPUSamplerInstrument.ID);
+        output.put("version", CPUSamplerInstrument.VERSION);
+        output.put("sample_count", sampler.getSampleCount());
+        output.put("period", sampler.getPeriod());
+        output.put("gathered_hit_times", sampler.isGatherSelfHitTimes());
+        JSONArray profile = new JSONArray();
+        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {
+            JSONObject perThreadProfile = new JSONObject();
+            perThreadProfile.put("thread", entry.getKey().toString());
+            perThreadProfile.put("samples", getSamplesRec(entry.getValue()));
+            profile.put(perThreadProfile);
+        }
+        output.put("profile", profile);
+        out.println(output.toString());
+    }
+
+    private static JSONArray getSamplesRec(Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
+        JSONArray samples = new JSONArray();
+        for (ProfilerNode<CPUSampler.Payload> node : nodes) {
+            JSONObject sample = new JSONObject();
+            sample.put("root_name", node.getRootName());
+            sample.put("source_section", sourceSectionToJSON(node.getSourceSection()));
+            CPUSampler.Payload payload = node.getPayload();
+            sample.put("hit_count", payload.getHitCount());
+            sample.put("interpreted_hit_count", payload.getInterpretedHitCount());
+            sample.put("compiled_hit_count", payload.getCompiledHitCount());
+            sample.put("self_hit_count", payload.getSelfHitCount());
+            sample.put("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
+            sample.put("self_compiled_hit_count", payload.getSelfCompiledHitCount());
+            sample.put("self_hit_times", payload.getSelfHitTimes());
+            sample.put("children", getSamplesRec(node.getChildren()));
+            samples.put(sample);
+        }
+        return samples;
     }
 
     private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {

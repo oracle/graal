@@ -39,7 +39,7 @@ import com.oracle.truffle.tools.profiler.CPUTracer;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = "0.1", services = {CPUTracer.class})
+@TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = CPUTracerInstrument.VERSION, services = {CPUTracer.class})
 public class CPUTracerInstrument extends TruffleInstrument {
 
     /**
@@ -56,6 +56,8 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cputracer";
+
+    static final String VERSION = "0.3.0";
     private CPUTracer tracer;
     private static ProfilerToolFactory<CPUTracer> factory;
 
@@ -150,7 +152,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (env.getOptions().get(CPUTracerCLI.ENABLED)) {
-            CPUTracerCLI.printTracerHistogram(new PrintStream(env.out()), tracer);
+            CPUTracerCLI.handleOutput(env, tracer);
             tracer.close();
         }
     }
