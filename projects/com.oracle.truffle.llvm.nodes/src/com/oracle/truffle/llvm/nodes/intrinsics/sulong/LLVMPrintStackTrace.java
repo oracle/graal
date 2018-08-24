@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,30 +52,29 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     @TruffleBoundary
     @Specialization
     protected Object doOp() {
-        SulongStackTrace trace = getStackTrace("__sulong_print_stacktrace");
-        printCStackTrace(trace);
-        return null;
-    }
-
-    private static void printCStackTrace(SulongStackTrace trace) {
-        CompilerAsserts.neverPartOfCompilation();
+        SulongStackTrace trace = getStackTrace(this, "__sulong_print_stacktrace", true);
         List<Element> elements = trace.getTrace();
         System.err.println("C stack trace:");
         for (Element element : elements) {
             System.err.print(element);
         }
+        return null;
     }
 
-    private SulongStackTrace getStackTrace(String message) {
-        Throwable t = new CThrowable(this, message);
+    // method can be used for debugging
+    public static SulongStackTrace getStackTrace(LLVMNode node) {
+        return getStackTrace(node, "", false);
+    }
+
+    private static SulongStackTrace getStackTrace(LLVMNode node, String message, boolean filterCurrentLocation) {
+        Throwable t = new CThrowable(node, message);
         TruffleStackTraceElement.fillIn(t);
         List<TruffleStackTraceElement> ctrace = TruffleStackTraceElement.getStackTrace(t);
 
         SulongStackTrace trace = new SulongStackTrace(message);
         for (int i = 0; i < ctrace.size(); i++) {
             TruffleStackTraceElement element = ctrace.get(i);
-            // ignore this call
-            if (element.getLocation() == this) {
+            if (filterCurrentLocation && element.getLocation() == node) {
                 assert i == 0;
                 continue;
             }
