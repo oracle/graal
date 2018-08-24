@@ -25,8 +25,9 @@ builds += [
   ${x52.tracera} ${bench-specjvm2008-Single}                            ${labsjdk8} { targets : [bench, daily],  name: "bench-compiler-specjvm2008-Single-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-OneVM}                             ${labsjdk8} { targets : [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjbb2015}                                   ${labsjdk8} { targets : [bench, daily],  name: "bench-compiler-specjbb2015-linux-x52-tracera" }
-  ${x52.tracera} ${bench-micros-graal-whitebox}                         ${labsjdk8} { targets : [weekly],        name: "bench-compiler-jmh-micros-graal-whitebox-linux-x52-tracera" }
-  ${x52.tracera} ${bench-micros-graal-dist}                             ${labsjdk8} { targets : [weekly],        name: "bench-compiler-jmh-micros-graal-dist-linux-x52-tracera" }
+  ${x52.tracera} ${bench-micros-graal-whitebox}                         ${labsjdk8} { targets : [bench, weekly], name: "bench-compiler-jmh-micros-graal-whitebox-linux-x52-tracera" }
+  ${x52.tracera} ${bench-micros-graal-dist}                             ${labsjdk8} { targets : [bench, weekly], name: "bench-compiler-jmh-micros-graal-dist-linux-x52-tracera" }
+  ${x52.tracera} ${bench-renaissance-hwloc}                             ${labsjdk8} { targets : [bench, daily],  name: "bench-compiler-renaissance-linux-x52-tracera" }
 
   ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-hwloc}                      ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-linux-x52-tracera-bu" }
   ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-timing-hwloc}               ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-dacapo-timing-linux-x52-tracera-bu" }

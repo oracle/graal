@@ -135,7 +135,7 @@ bench-specjbb2015: ${bench-common} ${specjbb-bench-notifications} {
 # JMH micros graal
 
 bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
-  targets: [weekly]
+  targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
   ]
@@ -143,7 +143,7 @@ bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
 }
 
 bench-micros-graal-dist: ${bench-common} ${micros-bench-notifications} {
-  targets: [weekly]
+  targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
   ]

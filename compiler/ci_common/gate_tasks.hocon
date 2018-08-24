@@ -11,8 +11,8 @@ builds += [
   ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest}          ${openjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-openjdk8-linux-amd64"} ${graalWeekly}
   ${gateTestMaxVS}     ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-maxvectorsize"} ${graalWeekly}
-  ${gateTest}          ${oraclejdk11}    ${gateLinuxAMD64}   {name: "gate-compiler-test-11-linux-amd64"} {capabilities: ${gateLinuxAMD64.capabilities} ["!x4150"]}
-  ${gateJavaBaseTest}  ${oraclejdk11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-11-linux-amd64"} ${graalWeekly} {capabilities: ${gateLinuxAMD64.capabilities} ["!x4150"]}
+  ${gateTest}          ${oraclejdk11}    ${gateLinuxAMD64}   {name: "gate-compiler-test-11-linux-amd64"}
+  ${gateJavaBaseTest}  ${oraclejdk11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-11-linux-amd64"} ${graalWeekly}
   ${gateTestCTW}       ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
   ${gateTestCTW}       ${openjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-openjdk8-linux-amd64"} ${graalWeekly}
   ${gateTestCTW}       ${oraclejdk11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-11-linux-amd64"} ${graalWeekly}
