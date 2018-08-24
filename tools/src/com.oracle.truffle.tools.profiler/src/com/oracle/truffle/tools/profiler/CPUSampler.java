@@ -377,7 +377,7 @@ public final class CPUSampler implements Closeable {
      * @param delaySamplingUntilNonInternalLangInit Enable or disable this option.
      * @since 0.31
      */
-    public void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
+    public synchronized void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
         verifyConfigAllowed();
         this.delaySamplingUntilNonInternalLangInit = delaySamplingUntilNonInternalLangInit;
     }
@@ -527,7 +527,7 @@ public final class CPUSampler implements Closeable {
      *
      * @since 0.30
      */
-    public void setGatherSelfHitTimes(boolean gatherSelfHitTimes) {
+    public synchronized void setGatherSelfHitTimes(boolean gatherSelfHitTimes) {
         verifyConfigAllowed();
         this.gatherSelfHitTimes = gatherSelfHitTimes;
     }

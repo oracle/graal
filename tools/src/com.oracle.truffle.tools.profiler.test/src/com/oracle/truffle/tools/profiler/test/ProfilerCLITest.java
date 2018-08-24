@@ -70,8 +70,8 @@ public class ProfilerCLITest {
         context.close();
         JSONObject output = new JSONObject(out.toString());
 
-        Assert.assertEquals("Period wrong in json", period, new Long((Integer) output.get("period")).longValue());
-        Assert.assertEquals("Sample count not correct in json", sampleCount, new Long((Integer) output.get("sample_count")).longValue());
+        Assert.assertEquals("Period wrong in json", period, Long.valueOf((Integer) output.get("period")).longValue());
+        Assert.assertEquals("Sample count not correct in json", sampleCount, Long.valueOf((Integer) output.get("sample_count")).longValue());
         Assert.assertEquals("Gather self times not correct in json", gatherSelfHitTimes, output.get("gathered_hit_times"));
         JSONArray profile = (JSONArray) output.get("profile");
 
@@ -110,7 +110,7 @@ public class ProfilerCLITest {
         }
     }
 
-    private ProfilerNode<CPUSampler.Payload> findCorrespondingNode(JSONObject sample, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
+    private static ProfilerNode<CPUSampler.Payload> findCorrespondingNode(JSONObject sample, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
         String root = (String) sample.get("root_name");
         JSONObject sourceSection = (JSONObject) sample.get("source_section");
         String sourceName = (String) sourceSection.get("source_name");
