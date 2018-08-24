@@ -27,6 +27,8 @@ package com.oracle.truffle.tools.profiler.impl;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUTracer;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
@@ -95,34 +97,22 @@ class CPUTracerCLI extends ProfilerCLI {
     }
 
     private static void printTracerJson(PrintStream out, CPUTracer tracer) {
-        JSONPrinter printer = new JSONPrinter(out);
-        printer.startObject();
-        printer.printKeyValue("tool", CPUTracerInstrument.ID);
-        printer.comma();
-        printer.printKeyValue("version", CPUTracerInstrument.VERSION);
-        printer.comma();
-        printer.printKey("profile");
+        JSONObject output = new JSONObject();
+        output.put("tool", CPUTracerInstrument.ID);
+        output.put("version", CPUTracerInstrument.VERSION);
         List<CPUTracer.Payload> payloads = new ArrayList<>(tracer.getPayloads());
-        printer.startArray();
-        int i = 0;
+        JSONArray profile = new JSONArray();
         for (CPUTracer.Payload payload : payloads) {
-            printer.startObject();
-            printer.printKeyValue("root_name", payload.getRootName());
-            printer.comma();
-            printer.printSourceSection(payload.getSourceSection());
-            printer.comma();
-            printer.printKeyValue("count", payload.getCount());
-            printer.comma();
-            printer.printKeyValue("interpreted_count", payload.getCountInterpreted());
-            printer.comma();
-            printer.printKeyValue("compiled_count", payload.getCountCompiled());
-            printer.endObject();
-            if (i++ < payloads.size() - 1) {
-                printer.comma();
-            }
+            JSONObject entry = new JSONObject();
+            entry.put("root_name", payload.getRootName());
+            entry.put("source_section", sourceSectionToJSON(payload.getSourceSection()));
+            entry.put("count", payload.getCount());
+            entry.put("interpreted_count", payload.getCountInterpreted());
+            entry.put("compiled_count", payload.getCountCompiled());
+            profile.put(entry);
         }
-        printer.endArray();
-        printer.endObject();
+        output.put("profile", profile);
+        out.println(output.toString());
     }
 
     static void printTracerHistogram(PrintStream out, CPUTracer tracer) {

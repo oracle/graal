@@ -24,6 +24,18 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,17 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
-
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
@@ -138,87 +139,42 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
-        JSONPrinter printer = new JSONPrinter(out);
-        printer.startObject();
-        printer.printKeyValue("tool", CPUSamplerInstrument.ID);
-        printer.comma();
-        printer.printKeyValue("version", CPUSamplerInstrument.VERSION);
-        printer.comma();
-        printer.printKeyValue("sample_count", sampler.getSampleCount());
-        printer.comma();
-        printer.printKeyValue("period", sampler.getPeriod());
-        printer.comma();
-        printer.printKeyValue("gathered_hit_times", sampler.isGatherSelfHitTimes());
-        printer.comma();
-        printer.printKey("profile");
-        printer.startArray();
+        JSONObject output = new JSONObject();
+        output.put("tool", CPUSamplerInstrument.ID);
+        output.put("version", CPUSamplerInstrument.VERSION);
+        output.put("sample_count", sampler.getSampleCount());
+        output.put("period", sampler.getPeriod());
+        output.put("gathered_hit_times", sampler.isGatherSelfHitTimes());
+        JSONArray profile = new JSONArray();
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
-        int i = 0;
         for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {
-            printer.startObject();
-            printer.printKeyValue("thread", entry.getKey().toString());
-            printer.comma();
-            printer.printKey("samples");
-            printSamplingJsonRec(printer, entry.getValue());
-            printer.endObject();
-            if (i++ < threadToNodesMap.size() - 1) {
-                printer.comma();
-            }
+            JSONObject perThreadProfile = new JSONObject();
+            perThreadProfile.put("thread", entry.getKey().toString());
+            perThreadProfile.put("samples", getSamplesRec(entry.getValue()));
+            profile.put(perThreadProfile);
         }
-        printer.endArray();
-        printer.endObject();
+        output.put("profile", profile);
+        out.println(output.toString());
     }
 
-    private static void printSamplingJsonRec(JSONPrinter printer, Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
-        printer.startArray();
-        int i = 0;
+    private static JSONArray getSamplesRec(Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
+        JSONArray samples = new JSONArray();
         for (ProfilerNode<CPUSampler.Payload> node : nodes) {
-            printer.startObject();
-            printer.printKeyValue("root_name", node.getRootName());
-            printer.comma();
-            printer.printSourceSection(node.getSourceSection());
-            printer.comma();
-
+            JSONObject sample = new JSONObject();
+            sample.put("root_name", node.getRootName());
+            sample.put("source_section", sourceSectionToJSON(node.getSourceSection()));
             CPUSampler.Payload payload = node.getPayload();
-            printer.printKeyValue("hit_count", payload.getHitCount());
-            printer.comma();
-            printer.printKeyValue("interpreted_hit_count", payload.getInterpretedHitCount());
-            printer.comma();
-            printer.printKeyValue("compiled_hit_count", payload.getCompiledHitCount());
-            printer.comma();
-
-            printer.printKeyValue("self_hit_count", payload.getSelfHitCount());
-            printer.comma();
-            printer.printKeyValue("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
-            printer.comma();
-            printer.printKeyValue("self_compiled_hit_count", payload.getSelfCompiledHitCount());
-            printer.comma();
-
-            printer.printKey("self_hit_times");
-            printer.printTimeStampArray(payload.getSelfHitTimes());
-            printer.comma();
-
-            printer.printKey("children");
-            printSamplingJsonRec(printer, node.getChildren());
-            printer.endObject();
-            if (i++ < nodes.size() - 1) {
-                printer.comma();
-            }
+            sample.put("hit_count", payload.getHitCount());
+            sample.put("interpreted_hit_count", payload.getInterpretedHitCount());
+            sample.put("compiled_hit_count", payload.getCompiledHitCount());
+            sample.put("self_hit_count", payload.getSelfHitCount());
+            sample.put("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
+            sample.put("self_compiled_hit_count", payload.getSelfCompiledHitCount());
+            sample.put("self_hit_times", payload.getSelfHitTimes());
+            sample.put("children", getSamplesRec(node.getChildren()));
+            samples.put(sample);
         }
-        printer.endArray();
-    }
-
-    private static void printSelfHitTimesArray(PrintStream out, List<Long> times) {
-        out.print("\"self hit times\" : ");
-        out.print('[');
-        int i = 0;
-        for (Long time : times) {
-            out.print(time);
-            if (i++ < times.size() - 1) {
-                out.print(',');
-            }
-        }
-        out.print("],");
+        return samples;
     }
 
     private static String jsonEntry(String key, String value) {
