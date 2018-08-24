@@ -44,9 +44,6 @@ public class VisualVMSupportTest extends AbstractProfilerTest {
                 if (sample != null) {
                     StackTraceElement[] stackTraceElements = sample.get(execThread);
                     reverse(stackTraceElements);
-                    for (StackTraceElement element : stackTraceElements) {
-                        Assert.assertEquals("InstrumentTestLang", element.getClassName());
-                    }
                     if (stackTraceElements.length >= 1) {
                         Assert.assertEquals("", stackTraceElements[0].getMethodName());
                     }
