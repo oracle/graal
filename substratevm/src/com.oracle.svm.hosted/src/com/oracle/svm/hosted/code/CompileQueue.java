@@ -331,7 +331,8 @@ public class CompileQueue {
     @SuppressWarnings("try")
     public void finish(DebugContext debug) {
         try {
-            try (StopTimer t = new Timer("(parse)").start()) {
+            String imageName = universe.getBigBang().getHostVM().getImageName();
+            try (StopTimer t = new Timer(imageName, "(parse)").start()) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -345,11 +346,11 @@ public class CompileQueue {
             beforeCompileAll(debug);
 
             if (SubstrateOptions.AOTInline.getValue()) {
-                try (StopTimer ignored = new Timer("(inline)").start()) {
+                try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
                     inlineTrivialMethods(debug);
                 }
             }
-            try (StopTimer t = new Timer("(compile)").start()) {
+            try (StopTimer t = new Timer(imageName, "(compile)").start()) {
                 compileAll();
             }
         } catch (InterruptedException ie) {

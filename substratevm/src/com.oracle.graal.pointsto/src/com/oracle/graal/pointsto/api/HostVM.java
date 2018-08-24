@@ -80,4 +80,13 @@ public interface HostVM {
     String inspectServerContentPath();
 
     void warn(String message);
+
+    /**
+     * Gets the name of the native image being built.
+     *
+     * @return {@code null} if this VM is not being used in the context of building a native image
+     */
+    default String getImageName() {
+        return null;
+    }
 }

@@ -484,7 +484,7 @@ public class NativeImageGenerator {
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(originalSnippetReflection))) {
             try (Indent indent = debug.logAndIndent("start analysis pass")) {
-                try (StopTimer t = new Timer("setup").start()) {
+                try (StopTimer t = new Timer(imageName, "setup").start()) {
                     // TODO Make customizable via command line parameter.
                     Platform platform = defaultPlatform(loader.getClassLoader());
 
@@ -546,7 +546,7 @@ public class NativeImageGenerator {
                     AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(svmHost, aUniverse, originalProviders.getConstantReflection());
                     AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess);
                     aSnippetReflection = new HostedSnippetReflectionProvider(svmHost);
-                    nativeLibs = processNativeLibraryImports(aMetaAccess, aConstantReflection, aSnippetReflection);
+                    nativeLibs = processNativeLibraryImports(options, aMetaAccess, aConstantReflection, aSnippetReflection);
 
                     ImageSingletons.add(NativeLibraries.class, nativeLibs);
                     if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
@@ -673,9 +673,9 @@ public class NativeImageGenerator {
                     }
                 }
 
-                try (StopTimer t = new Timer("analysis").start()) {
+                try (StopTimer t = new Timer(imageName, "analysis").start()) {
 
-                    Timer processFeaturesTimer = new Timer("(features)", false);
+                    Timer processFeaturesTimer = new Timer(imageName, "(features)", false);
 
                     /*
                      * Iterate until analysis reaches a fixpoint
@@ -799,7 +799,7 @@ public class NativeImageGenerator {
             HostedMethod mainEntryPointHostedStub;
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
-            try (StopTimer t = new Timer("universe").start()) {
+            try (StopTimer t = new Timer(imageName, "universe").start()) {
                 hUniverse = new HostedUniverse(bigbang, svmHost);
                 hMetaAccess = new HostedMetaAccess(hUniverse, aMetaAccess);
 
@@ -859,7 +859,7 @@ public class NativeImageGenerator {
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
-            try (StopTimer t = new Timer("compile").start()) {
+            try (StopTimer t = new Timer(imageName, "compile").start()) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, NativeImageOptions.DeoptimizeAll.getValue(), aSnippetReflection,
                                 compilationExecutor);
                 compileQueue.finish(debug);
@@ -877,7 +877,7 @@ public class NativeImageGenerator {
 
             try (Indent indent = debug.logAndIndent("create native image")) {
                 try (DebugContext.Scope buildScope = debug.scope("CreateBootImage")) {
-                    try (StopTimer t = new Timer("image").start()) {
+                    try (StopTimer t = new Timer(imageName, "image").start()) {
 
                         // Start building the model of the native image heap.
                         heap.addInitialObjects(debug);
@@ -908,7 +908,7 @@ public class NativeImageGenerator {
                             runtime.getRuntimeConfig(), aUniverse, hUniverse, optionProvider, hMetaAccess);
             featureHandler.forEachFeature(feature -> feature.beforeImageWrite(beforeConfig));
 
-            try (StopTimer t = new Timer("write").start()) {
+            try (StopTimer t = new Timer(imageName, "write").start()) {
                 /*
                  * This will write the debug info too -- i.e. we may be writing more than one file,
                  * if the debug info is in a separate file. We need to push writing the file to the
@@ -1314,8 +1314,10 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private NativeLibraries processNativeLibraryImports(MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider aConstantReflection, SnippetReflectionProvider snippetReflection) {
-        try (StopTimer t = new Timer("(cap)").start()) {
+    private NativeLibraries processNativeLibraryImports(OptionValues options, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider aConstantReflection,
+                    SnippetReflectionProvider snippetReflection) {
+        String imageName = NativeImageOptions.Name.getValue(options);
+        try (StopTimer t = new Timer(imageName, "(cap)").start()) {
 
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, metaAccess, snippetReflection, ConfigurationValues.getTarget());
 

@@ -204,6 +204,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                                 "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Name, "<output-file>") + "'.");
             }
 
+            totalTimer.setPrefix(imageName);
+            classlistTimer.setPrefix(imageName);
+
             // print the time here to avoid interactions with flags processing
             classlistTimer.print();
 
