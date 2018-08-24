@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.common.spi;
 
+import java.lang.annotation.Annotation;
+
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -42,6 +44,9 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     static class Options {
         @Option(help = "Determines whether to treat final fields with default values as constant.")//
         public static final OptionKey<Boolean> TrustFinalDefaultFields = new OptionKey<>(true);
+
+        @Option(help = "Determines whether to treat scala companion objects as stable values.")//
+        public static final OptionKey<Boolean> ConsiderScalaCompanionObjectsStable = new OptionKey<>(false);
     }
 
     protected JavaConstantFieldProvider(MetaAccessProvider metaAccess) {
@@ -98,7 +103,6 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         return !value.isDefaultForKind() || Options.TrustFinalDefaultFields.getValue(tool.getOptions());
     }
 
-    @SuppressWarnings("unused")
     protected boolean isStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
         if (isSyntheticEnumSwitchMap(field)) {
             return true;
@@ -109,7 +113,39 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         if (field.equals(stringHashField)) {
             return true;
         }
+        if (Options.ConsiderScalaCompanionObjectsStable.getValue(tool.getOptions()) &&
+                        isScalaCompanionObjectField(field)) {
+            return true;
+        }
         return false;
+    }
+
+    private static boolean isScalaCompanionObjectField(ResolvedJavaField field) {
+        ResolvedJavaType declaringClass = field.getDeclaringClass();
+        String declaringClassName = declaringClass.toClassName();
+        if (declaringClass.isInitialized() && field.getName().equals("MODULE$") && declaringClassName.endsWith("$")) {
+            try {
+                String companionInstanceClassName = declaringClassName.substring(0, declaringClassName.length() - 1);
+                Class<?> companionInstanceClass = ClassLoader.getSystemClassLoader().loadClass(companionInstanceClassName);
+                return isScalaClass(companionInstanceClass);
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isScalaClass(Class<?> cls) {
+        for (Annotation annotation : cls.getAnnotations()) {
+            if (annotation.annotationType().getName().equals("scala.reflect.ScalaSignature")) {
+                return true;
+            }
+        }
+        if (cls.getEnclosingClass() != null) {
+            return isScalaClass(cls.getEnclosingClass());
+        } else {
+            return false;
+        }
     }
 
     protected boolean isDefaultStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
