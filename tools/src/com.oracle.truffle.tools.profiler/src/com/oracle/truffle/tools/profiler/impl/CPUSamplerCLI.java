@@ -177,10 +177,6 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    private static String jsonEntry(String key, String value) {
-        return "\"" + key + "\":\"" + value + "\",";
-    }
-
     private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
         Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = new HashMap<>();
         computeHistogramImpl(profilerNodes, histogram);
