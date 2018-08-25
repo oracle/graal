@@ -306,20 +306,12 @@ public class OldGeneration extends Generation {
 
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Old generation: ");
-        log.newline();
-        log.string("  FromSpace: ");
-        getFromSpace().report(log, traceHeapChunks);
-        log.newline();
-        log.string("  ToSpace: ");
-        getToSpace().report(log, traceHeapChunks);
-        log.newline();
-        log.string("  PinnedFromSpace: ");
-        getPinnedFromSpace().report(log, traceHeapChunks);
-        log.newline();
-        log.string("  PinnedToSpace: ");
+        log.string("[Old generation: ").indent(true);
+        getFromSpace().report(log, traceHeapChunks).newline();
+        getToSpace().report(log, traceHeapChunks).newline();
+        getPinnedFromSpace().report(log, traceHeapChunks).newline();
         getPinnedToSpace().report(log, traceHeapChunks);
-        log.string("]");
+        log.redent(false).string("]");
         return log;
     }
 
