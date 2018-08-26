@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.ameta;
 
 import java.lang.reflect.Modifier;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -95,20 +96,28 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
         }
 
-        return interceptValue(field, receiver, replaceObject(universe.lookup(ReadableJavaField.readFieldValue(originalConstantReflection, field.wrapped, universe.toHosted(receiver)))));
+        return interceptValue(field, universe.lookup(ReadableJavaField.readFieldValue(originalConstantReflection, field.wrapped, universe.toHosted(receiver))));
     }
 
+    public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+        JavaConstant result = value;
+        if (result != null) {
+            result = replaceObject(result);
+            result = interceptAssertionStatus(field, result);
+            result = interceptWordType(field, result);
+        }
+        return result;
+    }
+
+    /**
+     * Run all registered object replacers.
+     */
     private JavaConstant replaceObject(JavaConstant value) {
         if (value == JavaConstant.NULL_POINTER) {
             return JavaConstant.NULL_POINTER;
         }
-        if (value != null && value.getJavaKind() == JavaKind.Object) {
+        if (value.getJavaKind() == JavaKind.Object) {
             Object oldObject = universe.getSnippetReflection().asObject(Object.class, value);
-            /*
-             * During analysis (= at this place) most of the heap object replacements are done, e.g.
-             * Hosted metadata with Substrate metadata. The remaining replacements are done directly
-             * in BootImageHeap.
-             */
             Object newObject = universe.replaceObject(oldObject);
             if (newObject != oldObject) {
                 return universe.getSnippetReflection().forObject(newObject);
@@ -117,10 +126,13 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return value;
     }
 
-    private JavaConstant interceptValue(AnalysisField field, JavaConstant receiver, JavaConstant value) {
+    /**
+     * Intercept assertion status: the value of the field during image generation does not matter at
+     * all (because it is the hosted assertion status), we instead return the appropriate runtime
+     * assertion status.
+     */
+    private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
         if (Modifier.isStatic(field.getModifiers()) && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            assert receiver == null;
-
             String unsubstitutedName = field.wrapped.getDeclaringClass().toJavaName();
             if (unsubstitutedName.startsWith("java.") || unsubstitutedName.startsWith("javax.") || unsubstitutedName.startsWith("sun.")) {
                 /*
@@ -137,7 +149,15 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
             return JavaConstant.TRUE;
         }
-        if (value != null && value.getJavaKind() == JavaKind.Object) {
+        return value;
+    }
+
+    /**
+     * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
+     * values in the runtime world.
+     */
+    private JavaConstant interceptWordType(AnalysisField field, JavaConstant value) {
+        if (value.getJavaKind() == JavaKind.Object) {
             Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
             if (universe.hostVM().isRelocatedPointer(originalObject)) {
                 /*

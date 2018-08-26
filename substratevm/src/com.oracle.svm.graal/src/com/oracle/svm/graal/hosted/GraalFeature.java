@@ -855,8 +855,16 @@ class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
     @Override
     protected ResolvedJavaType toTarget(ResolvedJavaType type) {
         AnalysisType result = ((HostedType) type).getWrapped();
-        /* Make sure that the SubstrateType is created. */
-        objectReplacer.createType(result);
+
+        if (!objectReplacer.typeCreated(result)) {
+            /*
+             * The SubstrateType has not been created during analysis. We cannot crate new types at
+             * this point, because it can make objects reachable that the static analysis has not
+             * seen.
+             */
+            return null;
+        }
+
         return result;
     }
 }

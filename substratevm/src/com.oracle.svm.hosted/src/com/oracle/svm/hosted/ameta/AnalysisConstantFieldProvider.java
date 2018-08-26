@@ -41,10 +41,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
     private final AnalysisUniverse universe;
+    private final AnalysisConstantReflectionProvider constantReflection;
 
-    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection) {
         super(metaAccess);
         this.universe = universe;
+        this.constantReflection = constantReflection;
     }
 
     @Override
@@ -58,7 +60,7 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
             if (readableField.allowConstantFolding()) {
                 JavaConstant fieldValue = readableField.readValue(universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
-                    return analysisTool.foldConstant(universe.lookup(fieldValue));
+                    return analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
                 }
             }
             return null;
