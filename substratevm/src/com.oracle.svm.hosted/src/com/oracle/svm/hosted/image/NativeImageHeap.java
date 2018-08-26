@@ -227,6 +227,18 @@ public final class NativeImageHeap {
         if (original instanceof Class) {
             throw VMError.shouldNotReachHere("Must not have Class in native image heap: " + original);
         }
+        if (original instanceof DynamicHub && ((DynamicHub) original).getClassInitializationInfo() == null) {
+            /*
+             * All DynamicHub instances written into the image heap must have a
+             * ClassInitializationInfo, otherwise we can get a NullPointerException at run time.
+             * When this check fails, then the DynamicHub has not been seen during static analysis.
+             * Since many other objects are reachable from the DynamicHub (annotations, enum values,
+             * ...) this can also mean that types are used in the image that the static analysis has
+             * not seen - so this check actually protects against much more than just missing class
+             * initialization information.
+             */
+            throw VMError.shouldNotReachHere("DynamicHub written to the image that has not been seen as reachable during static analysis: " + original);
+        }
 
         int identityHashCode = 0;
         if (original instanceof HostedIdentityHashCodeProvider) {

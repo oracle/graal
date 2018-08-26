@@ -83,10 +83,9 @@ public abstract class SharedRuntimeConfigurationBuilder {
         StampProvider stampProvider = createStampProvider(p);
         p = createProviders(null, null, null, null, null, null, stampProvider, null);
         ConstantReflectionProvider constantReflection = createConstantReflectionProvider(p);
+        p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null);
         ConstantFieldProvider constantFieldProvider = createConstantFieldProvider(p);
-        createProviders(null, constantReflection, constantFieldProvider, null, null, null, stampProvider, null);
         SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
-        createProviders(null, constantReflection, constantFieldProvider, null, null, null, stampProvider, snippetReflection);
         ForeignCallsProvider foreignCalls = createForeignCallsProvider();
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection);
         LoweringProvider lowerer = createLoweringProvider(p);
