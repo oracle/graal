@@ -26,25 +26,6 @@ package com.oracle.svm.core.snippets;
 
 // Checkstyle: allow reflection
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -61,12 +42,32 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOf;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class SnippetRuntime {
 
@@ -105,6 +106,27 @@ public class SnippetRuntime {
      */
     public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallDescriptor.getName(), StrictMath.class, "exp", true);
     public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallDescriptor.getName(), StrictMath.class, "pow", true);
+
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_TWO_CONSECUTIVE_BYTES = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_TWO_CONSECUTIVE_CHARS = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_1_BYTE = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_1_BYTE.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_2_BYTES = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_2_BYTES.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_3_BYTES = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_3_BYTES.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_4_BYTES = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_4_BYTES.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_1_CHAR = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_1_CHAR.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_2_CHARS = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_2_CHARS.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_3_CHARS = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_3_CHARS.getName(), true);
+    public static final SubstrateForeignCallDescriptor AMD64_ARRAY_INDEX_OF_4_CHARS = findForeignCall(SnippetRuntime.class,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_4_CHARS.getName(), true);
 
     /*
      * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
@@ -420,5 +442,65 @@ public class SnippetRuntime {
     private static void reportRuntimeAssertionFatalDouble(@SuppressWarnings("unused") Object obj, @SuppressWarnings("unused") double val) {
         runtimeAssertionPrefix().string("[double number supressed]").newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_TWO_CONSECUTIVE_BYTES}. */
+    @SubstrateForeignCallTarget
+    private static int indexOfTwoConsecutiveBytes(Pointer arrayPointer, int arrayLength, int searchValue) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, true, arrayPointer, arrayLength, searchValue);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_TWO_CONSECUTIVE_CHARS}. */
+    @SubstrateForeignCallTarget
+    private static int indexOfTwoConsecutiveChars(Pointer arrayPointer, int arrayLength, int searchValue) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, true, arrayPointer, arrayLength, searchValue);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_1_BYTE}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf1Byte(Pointer arrayPointer, int arrayLength, byte b) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_2_BYTES}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf2Bytes(Pointer arrayPointer, int arrayLength, byte b1, byte b2) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b1, b2);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_3_BYTES}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf3Bytes(Pointer arrayPointer, int arrayLength, byte b1, byte b2, byte b3) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b1, b2, b3);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_4_BYTES}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf4Bytes(Pointer arrayPointer, int arrayLength, byte b1, byte b2, byte b3, byte b4) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b1, b2, b3, b4);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_1_CHAR}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf1Char(Pointer arrayPointer, int arrayLength, char c) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_2_CHARS}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf2Chars(Pointer arrayPointer, int arrayLength, char c1, char c2) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c1, c2);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_3_CHARS}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf3Chars(Pointer arrayPointer, int arrayLength, char c1, char c2, char c3) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c1, c2, c3);
+    }
+
+    /** Foreign call: {@link #AMD64_ARRAY_INDEX_OF_4_CHARS}. */
+    @SubstrateForeignCallTarget
+    private static int indexOf4Chars(Pointer arrayPointer, int arrayLength, char c1, char c2, char c3, char c4) {
+        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c1, c2, c3, c4);
     }
 }
