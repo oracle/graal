@@ -3601,7 +3601,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VMOVDQU16 zmm1, m512
 
     public final void evmovdqu16(Register dst, AMD64Address src) {
-        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
         assert inRC(XMM, dst);
         // Code: EVEX.512.F2.0F.W1 6F /r
@@ -3614,8 +3613,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evmovdqu16(Register dst, Register mask, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, dst);
-        assert inRC(MASK, mask);
+        assert inRC(XMM, dst) && inRC(MASK, mask);
         // Code: EVEX.512.F2.0F.W1 6F /r
         evexPrefix(dst, mask, Register.None, src, AVXSize.ZMM, P_F2, M_0F, W1, Z1, B0);
         emitByte(0x6F);
@@ -3639,8 +3637,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evmovdqu16(AMD64Address dst, Register mask, Register src) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, mask);
-        assert inRC(XMM, src);
+        assert inRC(MASK, mask) && inRC(XMM, src);
         // Code: EVEX.512.F2.0F.W1 7F /r
         evexPrefix(src, mask, Register.None, dst, AVXSize.ZMM, P_F2, M_0F, W1, Z0, B0);
         emitByte(0x7F);
@@ -3653,8 +3650,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evpbroadcastw(Register dst, Register src) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(XMM, dst);
-        assert inRC(CPU, src);
+        assert inRC(XMM, dst) && inRC(CPU, src);
         // Code: EVEX.512.66.0F38.W0 7B /r
         evexPrefix(dst, Register.None, Register.None, src, AVXSize.ZMM, P_66, M_0F38, W0, Z0, B0);
         emitByte(0x7B);
@@ -3667,9 +3663,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evpcmpuw(Register kdst, Register nds, Register src, int vcc) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst);
-        assert inRC(XMM, nds);
-        assert inRC(XMM, src);
+        assert inRC(MASK, kdst) && inRC(XMM, nds) && inRC(XMM, src);
         // Code: EVEX.NDS.512.66.0F3A.W1 3E /r ib
         evexPrefix(kdst, Register.None, nds, src, AVXSize.ZMM, P_66, M_0F3A, W1, Z0, B0);
         emitByte(0x3E);
@@ -3683,10 +3677,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evpcmpuw(Register kdst, Register mask, Register nds, Register src, int vcc) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, kdst);
-        assert inRC(MASK, mask);
-        assert inRC(XMM, nds);
-        assert inRC(XMM, src);
+        assert inRC(MASK, kdst) && inRC(MASK, mask);
+        assert inRC(XMM, nds) && inRC(XMM, src);
         // Code: EVEX.NDS.512.66.0F3A.W1 3E /r ib
         evexPrefix(kdst, mask, nds, src, AVXSize.ZMM, P_66, M_0F3A, W1, Z0, B0);
         emitByte(0x3E);
@@ -3711,8 +3703,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evpmovwb(AMD64Address dst, Register mask, Register src) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, mask);
-        assert inRC(XMM, src);
+        assert inRC(MASK, mask) && inRC(XMM, src);
         // Code: EVEX.512.F3.0F38.W0 30 /r
         evexPrefix(src, mask, Register.None, dst, AVXSize.ZMM, P_F3, M_0F38, W0, Z0, B0);
         emitByte(0x30);
@@ -3725,8 +3716,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void evpmovzxbw(Register dst, Register mask, AMD64Address src) {
         assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, mask);
-        assert inRC(XMM, dst);
+        assert inRC(MASK, mask) && inRC(XMM, dst);
         // Code: EVEX.512.66.0F38.WIG 30 /r
         evexPrefix(dst, mask, Register.None, src, AVXSize.ZMM, P_66, M_0F38, WIG, Z0, B0);
         emitByte(0x30);
