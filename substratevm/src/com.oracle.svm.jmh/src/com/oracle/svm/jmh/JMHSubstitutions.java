@@ -2,36 +2,41 @@ package com.oracle.svm.jmh;
 
 import java.util.Properties;
 
-import org.openjdk.jmh.infra.BenchmarkParams;
-import org.openjdk.jmh.results.BenchmarkResult;
-import org.openjdk.jmh.runner.ActionPlan;
 import org.openjdk.jmh.runner.BenchmarkList;
-import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.util.Multimap;
+import org.openjdk.jmh.runner.options.CommandLineOptions;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
+import org.openjdk.jmh.util.Optional;
 import org.openjdk.jmh.util.Utils;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * Substitutes the JMH runner so that it always runs in embedded mode, as forking is currently not
- * supported.
+ * Substitutes {@link CommandLineOptions} so that benchmarks are always run in embedded mode, as
+ * forking is currently not supported.
  */
-@TargetClass(Runner.class)
-final class Target_org_openjdk_jmh_runner_Runner {
+@TargetClass(CommandLineOptions.class)
+final class Target_org_openjdk_jmh_runner_options_CommandLineOptions {
 
     @Substitute
-    private Multimap<BenchmarkParams, BenchmarkResult> runSeparate(ActionPlan actionPlan) {
-        return Target_org_openjdk_jmh_runner_BaseRunner.class.cast(this).runBenchmarksEmbedded(actionPlan);
+    @SuppressWarnings("static-method")
+    Optional<Integer> getForkCount() {
+        return Optional.of(0);
     }
 
-    @TargetClass(className = "org.openjdk.jmh.runner.BaseRunner")
-    static final class Target_org_openjdk_jmh_runner_BaseRunner {
+}
 
-        @Alias
-        protected native Multimap<BenchmarkParams, BenchmarkResult> runBenchmarksEmbedded(ActionPlan actionPlan);
+/**
+ * Substitutes {@link OptionsBuilder} so that benchmarks are always run in embedded mode, as forking
+ * is currently not supported.
+ */
+@TargetClass(OptionsBuilder.class)
+final class Target_org_openjdk_jmh_runner_options_OptionsBuilder {
 
+    @Substitute
+    @SuppressWarnings("static-method")
+    Optional<Integer> getForkCount() {
+        return Optional.of(0);
     }
 
 }
