@@ -92,6 +92,13 @@ not recommended with Sulong. In particular, cross-language interoperability
 with Java or another Truffle language will not work when the bitcode is
 compiled without optimizations.
 
+##### Compiling C++
+
+You need to add `-stdlib=libc++` when compiling C++ code in order to use
+the right standard library.
+
+    clang++ -O1 -c -emit-llvm -stdlib=libc++ -o test.bc test.cpp
+
 Build Dependencies
 ------------------
 
@@ -173,6 +180,20 @@ path for the specifed libraries with a relative path. Both options can be given
 multiple arguments separated by `:`.
 
     mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
+
+#### Running with the Graal compiler
+
+In contrast to Graal VM, `mx lli` will by default  *not* optimize your program.
+If you are interested in high performance, you might want to import the Graal
+compiler. To do so, first ensure that the compiler is built:
+
+    mx --dynamicimport /compiler build
+
+Once the compiler is ready
+
+    mx --dynamicimport /compiler --jdk jvmci lli test.bc
+
+#### IDE Setup
 
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
