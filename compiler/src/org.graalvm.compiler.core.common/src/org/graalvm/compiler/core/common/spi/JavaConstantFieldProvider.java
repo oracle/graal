@@ -141,11 +141,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
                 return true;
             }
         }
-        if (cls.getEnclosingClass() != null) {
-            return isScalaClass(cls.getEnclosingClass());
-        } else {
-            return false;
-        }
+        return (cls.getEnclosingClass() != null) ? isScalaClass(cls.getEnclosingClass()) : false;
     }
 
     protected boolean isDefaultStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
