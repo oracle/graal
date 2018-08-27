@@ -45,6 +45,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
 import com.oracle.truffle.api.Truffle;
@@ -73,7 +74,10 @@ public abstract class PartialEvaluationBenchmark {
         callArguments = callArguments();
         optionValues = TruffleCompilerOptions.getOptions();
         debugContext = DebugContext.create(optionValues, DebugHandlersFactory.LOADER);
+    }
 
+    @Setup
+    public void warmupAST() {
         // run call target so that all classes are loaded and AST is specialized
         for (int i = 0; i < AST_WARMUPS; i++) {
             callTarget.call(callArguments);
