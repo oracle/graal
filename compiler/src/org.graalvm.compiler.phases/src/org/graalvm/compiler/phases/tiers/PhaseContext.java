@@ -32,6 +32,7 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 
 public class PhaseContext {
 
@@ -41,19 +42,27 @@ public class PhaseContext {
     private final LoweringProvider lowerer;
     private final Replacements replacements;
     private final StampProvider stampProvider;
+    private final ForeignCallsProvider foreignCalls;
 
     public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer, Replacements replacements,
-                    StampProvider stampProvider) {
+                    StampProvider stampProvider, ForeignCallsProvider foreignCalls) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
         this.lowerer = lowerer;
         this.replacements = replacements;
         this.stampProvider = stampProvider;
+        this.foreignCalls = foreignCalls;
+    }
+
+    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer, Replacements replacements,
+                    StampProvider stampProvider) {
+        this(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, null);
     }
 
     public PhaseContext(Providers providers) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider());
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider(),
+                        providers.getForeignCalls());
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -80,4 +89,7 @@ public class PhaseContext {
         return stampProvider;
     }
 
+    public ForeignCallsProvider getForeignCalls() {
+        return foreignCalls;
+    }
 }
