@@ -176,9 +176,8 @@ final class HotSpotGraalRuntimeMBean implements DynamicMBean {
             OK: if ("dumpMethod".equals(actionName)) {
                 retvalue = runtime.invokeManagementAction(actionName, params);
             } else {
-                List<MBeanOperationInfo> info = new ArrayList<>();
                 for (HotSpotMBeanOperationProvider p : GraalServices.load(HotSpotMBeanOperationProvider.class)) {
-                    info.clear();
+                    List<MBeanOperationInfo> info = new ArrayList<>();
                     p.registerOperations(info);
                     for (MBeanOperationInfo op : info) {
                         if (actionName.equals(op.getName())) {
