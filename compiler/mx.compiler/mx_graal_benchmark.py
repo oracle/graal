@@ -69,6 +69,10 @@ mx.update_commands(_suite, {
       lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
       '[-- [VM options] [-- [SPECjbb2015 options]]]'
     ],
+    'pelang': [
+      lambda args: createBenchmarkShortcut("pelang", args),
+      '[-- [VM options]]'
+    ],
 })
 
 
@@ -1627,6 +1631,38 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 
 
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
+
+
+class PELangBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
+
+    def name(self):
+        return "pelang"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    @staticmethod
+    def pelang_dependency(dist):
+        return itertools.chain(
+            ('pelang.benchmark' in dep.name for dep in dist.deps)
+        )
+
+    def filter_distribution(self, dist):
+        return super(PELangBenchmarkSuite, self).filter_distribution(dist) and \
+               any(PELangBenchmarkSuite.pelang_dependency(dist))
+
+    def extraVmArgs(self):
+        return ['-XX:-UseJVMCIClassLoader'] + super(PELangBenchmarkSuite, self).extraVmArgs()
+
+    def getJMHEntry(self, bmSuiteArgs):
+        assert self.dist
+        return [mx.distribution(self.dist).mainClass]
+
+
+mx_benchmark.add_bm_suite(PELangBenchmarkSuite())
 
 
 class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
