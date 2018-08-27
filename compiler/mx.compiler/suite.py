@@ -1440,7 +1440,6 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle,Bench",
-      "testProject" : True,
       "jacoco"      : "exclude",
     },
 
@@ -1798,7 +1797,6 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
-      "checkPackagePrefix" : "false",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle",
@@ -1810,7 +1808,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "mx:JMH_1_21",
         "org.graalvm.compiler.truffle.benchmark",
         "org.graalvm.compiler.truffle.pelang",
       ],
@@ -1836,8 +1833,6 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
-      "checkPackagePrefix" : "false",
-      "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle,Test",
       "testProject" : True,
       "jacoco"      : "exclude",
@@ -2341,8 +2336,7 @@ suite = {
       "distDependencies" : [
         "GRAAL",
       ],
-      "testDistribution" : True,
       "maven": False,
-    }
+    },
   },
 }
