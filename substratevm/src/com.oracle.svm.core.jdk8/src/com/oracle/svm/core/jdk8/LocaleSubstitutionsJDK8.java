@@ -22,41 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk8;
 
 import java.io.IOException;
 
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 
 import sun.text.normalizer.UBiDiProps;
 import sun.text.normalizer.UCharacterProperty;
 
-@TargetClass(sun.text.normalizer.UCharacterProperty.class)
-final class Target_sun_text_normalizer_UCharacterProperty {
+@TargetClass(value = sun.text.normalizer.UCharacterProperty.class, onlyWith = JDK8OrEarlier.class)
+final class Target_sun_text_normalizer_UCharacterProperty_JDK8 {
 
     @Substitute
     private static UCharacterProperty getInstance() {
-        return Util_sun_text_normalizer_UCharacterProperty.instance;
+        return Util_sun_text_normalizer_UCharacterProperty_JDK8.instance;
     }
 }
 
-final class Util_sun_text_normalizer_UCharacterProperty {
+final class Util_sun_text_normalizer_UCharacterProperty_JDK8 {
     static final UCharacterProperty instance = UCharacterProperty.getInstance();
 }
 
-@TargetClass(sun.text.normalizer.UBiDiProps.class)
-final class Target_sun_text_normalizer_UBiDiProps {
+@TargetClass(value = sun.text.normalizer.UBiDiProps.class, onlyWith = JDK8OrEarlier.class)
+final class Target_sun_text_normalizer_UBiDiProps_JDK8 {
 
     @Substitute
     private static UBiDiProps getSingleton() {
-        return Util_sun_text_normalizer_UBiDiProps.singleton;
+        return Util_sun_text_normalizer_UBiDiProps_JDK8.singleton;
     }
 }
 
-final class Util_sun_text_normalizer_UBiDiProps {
+final class Util_sun_text_normalizer_UBiDiProps_JDK8 {
 
     static final UBiDiProps singleton;
 
@@ -69,4 +70,8 @@ final class Util_sun_text_normalizer_UBiDiProps {
             throw VMError.shouldNotReachHere(ex);
         }
     }
+}
+
+/** Dummy class to have a class with the file's name. */
+public final class LocaleSubstitutionsJDK8 {
 }

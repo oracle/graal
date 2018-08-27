@@ -1,7 +1,7 @@
 // Checkstyle: stop
 // @formatter:off
 // Class copied from JDK9
-package com.oracle.svm.core.jdk.zipfile;
+package com.oracle.svm.core.jdk8.zipfile;
 /*
  * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -29,7 +29,7 @@ package com.oracle.svm.core.jdk.zipfile;
 
 //package java.util.zip;
 
-import static com.oracle.svm.core.jdk.zipfile.ZipConstants.ENDHDR;
+import static com.oracle.svm.core.jdk8.zipfile.ZipConstants.ENDHDR;
 
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;

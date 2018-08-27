@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.zipfile;
+package com.oracle.svm.core.jdk8.zipfile;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 

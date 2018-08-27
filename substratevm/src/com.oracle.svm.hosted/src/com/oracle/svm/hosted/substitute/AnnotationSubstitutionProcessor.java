@@ -264,9 +264,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
-        String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
-            guarantee(annotatedClass.getSimpleName().equals(expectedName), "Naming convention violation: %s must be named %s", annotatedClass, expectedName);
+            String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+            String actualName = annotatedClass.getSimpleName();
+            guarantee(actualName.equals(expectedName) || actualName.startsWith(expectedName + "_"),
+                            "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
         }
 
         ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);

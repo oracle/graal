@@ -1,7 +1,7 @@
 // Checkstyle: stop
 // @formatter:off
 // Class copied from JDK9
-package com.oracle.svm.core.jdk.zipfile;
+package com.oracle.svm.core.jdk8.zipfile;
 
 /*
  * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
@@ -90,8 +90,8 @@ import java.util.stream.StreamSupport;
 //import jdk.internal.misc.VM;
 //import jdk.internal.perf.PerfCounter;
 
-import static com.oracle.svm.core.jdk.zipfile.ZipConstants64.*;
-import static com.oracle.svm.core.jdk.zipfile.ZipUtils.*;
+import static com.oracle.svm.core.jdk8.zipfile.ZipConstants64.*;
+import static com.oracle.svm.core.jdk8.zipfile.ZipUtils.*;
 // SVM end
 
 /**
@@ -1414,7 +1414,7 @@ public final class ZipFile implements ZipConstants, Closeable {
         }
     }
 
-    @TargetClass(java.util.jar.JarFile.class)
+    @TargetClass(value = java.util.jar.JarFile.class, onlyWith = JDK8OrEarlier.class)
     static final class Target_java_util_jar_JarFile {
         @Substitute
         @SuppressFBWarnings(value = "BC", justification = "Target_java_util_jar_JarFile is an alias for java.util.jar.JarFile")
@@ -1423,7 +1423,7 @@ public final class ZipFile implements ZipConstants, Closeable {
         }
     }
 
-    @TargetClass(className = "sun.net.www.protocol.jar.JarFileFactory")
+    @TargetClass(className = "sun.net.www.protocol.jar.JarFileFactory", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_net_www_protocol_jar_JarFileFactory {
         @Alias//
         @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//

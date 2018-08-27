@@ -28,30 +28,35 @@ import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 
 import sun.text.normalizer.UBiDiProps;
 
-@TargetClass(className = "sun.text.normalizer.UCharacterProperty")
-final class Target_sun_text_normalizer_UCharacterProperty {
+@TargetClass(className = "sun.text.normalizer.UCharacterProperty", onlyWith = JDK9OrLater.class)
+final class Target_sun_text_normalizer_UCharacterProperty_JDK9 {
 
     @Alias //
-    public static /* final */ Target_sun_text_normalizer_UCharacterProperty INSTANCE;
+    public static /* final */ Target_sun_text_normalizer_UCharacterProperty_JDK9 INSTANCE;
 }
 
-@TargetClass(sun.text.normalizer.UBiDiProps.class)
-final class Target_sun_text_normalizer_UBiDiProps {
+@TargetClass(value = sun.text.normalizer.UBiDiProps.class, onlyWith = JDK9OrLater.class)
+final class Target_sun_text_normalizer_UBiDiProps_JDK9 {
 
     @Substitute
     private static UBiDiProps getSingleton() {
-        return Util_sun_text_normalizer_UBiDiProps.singleton;
+        return Util_sun_text_normalizer_UBiDiProps_JDK9.singleton;
     }
 }
 
-final class Util_sun_text_normalizer_UBiDiProps {
+final class Util_sun_text_normalizer_UBiDiProps_JDK9 {
 
     static final UBiDiProps singleton = UBiDiProps.INSTANCE;
 
     static {
         UnsafeAccess.UNSAFE.ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
     }
+}
+
+/** Dummy class to have a class with the file's name. */
+public final class LocaleSubstitutionsJDK9 {
 }

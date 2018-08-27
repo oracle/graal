@@ -59,7 +59,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
             "javaCompliance": "8",
-            "overlayTarget": "com.oracle.svm.core",
             "checkstyleVersion" : "8.8",
             "workingSets": "SVM",
         },
