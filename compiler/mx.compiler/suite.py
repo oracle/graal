@@ -1457,6 +1457,28 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.compiler.truffle.compiler.amd64" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.amd64",
+        "org.graalvm.compiler.truffle.compiler",
+      ],
+      "uses" : [
+        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
+        "GRAAL_OPTIONS_PROCESSOR",
+        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
+    },
+
     "org.graalvm.compiler.truffle.runtime.serviceprovider" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1521,10 +1543,14 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.compiler",
+        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
+      ],
+      "uses": [
+        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1987,6 +2013,7 @@ suite = {
         "org.graalvm.compiler.hotspot.jdk11",
         "org.graalvm.compiler.hotspot.jdk12",
         "org.graalvm.compiler.lir.aarch64.jdk11",
+        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk8",
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot",

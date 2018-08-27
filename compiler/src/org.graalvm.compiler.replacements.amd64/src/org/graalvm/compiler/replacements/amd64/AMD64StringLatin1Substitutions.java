@@ -104,7 +104,7 @@ public class AMD64StringLatin1Substitutions {
             return -1;
         }
         Pointer sourcePointer = Word.objectToTrackedPointer(value).add(byteArrayBaseOffset(INJECTED)).add(fromIndex);
-        int result = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, length - fromIndex, (char) ch, JavaKind.Byte);
+        int result = AMD64ArrayIndexOf.indexOf1Byte(sourcePointer, length - fromIndex, (byte) ch);
         if (result != -1) {
             return result + fromIndex;
         }

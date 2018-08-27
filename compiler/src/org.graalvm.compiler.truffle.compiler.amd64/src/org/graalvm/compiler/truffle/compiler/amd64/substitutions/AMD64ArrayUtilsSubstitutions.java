@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.substitutions.amd64;
+package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -31,6 +31,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.replacements.JDK9StringSubstitutions;
 import org.graalvm.compiler.replacements.StringSubstitutions;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOf;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
@@ -70,15 +71,14 @@ public class AMD64ArrayUtilsSubstitutions {
             int result;
             if (Java8OrEarlier) {
                 char[] sourceArray = StringSubstitutions.getValue(str);
-                result = optimizedIndexOf(JavaKind.Char, arrayToPointer(sourceArray, fromIndex), arrayLength, chars);
+                result = indexOfChar(arrayToPointer(sourceArray, fromIndex), arrayLength, chars);
             } else {
                 byte[] sourceArray = JDK9StringSubstitutions.getValue(str);
-                if (JDK9StringSubstitutions.getCoder(str) == 0) {
-                    // compact string
-                    result = optimizedIndexOf(JavaKind.Byte, arrayToPointer(sourceArray, fromIndex), arrayLength, chars);
+                if (JDK9StringSubstitutions.isCompactString(str)) {
+                    result = indexOfByte(arrayToPointer(sourceArray, fromIndex), arrayLength, chars);
                 } else {
                     Pointer pointer = Word.objectToTrackedPointer(sourceArray).add(byteArrayBaseOffset(INJECTED)).add(fromIndex * byteArrayIndexScale(INJECTED) * 2);
-                    result = optimizedIndexOf(JavaKind.Char, pointer, arrayLength, chars);
+                    result = indexOfChar(pointer, arrayLength, chars);
                 }
             }
             if (result >= 0) {
@@ -93,7 +93,7 @@ public class AMD64ArrayUtilsSubstitutions {
     @MethodSubstitution(optional = true)
     public static int runIndexOf(char[] array, int fromIndex, int maxIndex, char... chars) {
         if (chars.length <= 4) {
-            int result = optimizedIndexOf(JavaKind.Char, arrayToPointer(array, fromIndex), maxIndex - fromIndex, chars);
+            int result = indexOfChar(arrayToPointer(array, fromIndex), maxIndex - fromIndex, chars);
             if (result >= 0) {
                 return result + fromIndex;
             }
@@ -106,7 +106,7 @@ public class AMD64ArrayUtilsSubstitutions {
     @MethodSubstitution(optional = true)
     public static int runIndexOf(byte[] array, int fromIndex, int maxIndex, byte... bytes) {
         if (bytes.length <= 4) {
-            int result = optimizedIndexOf(arrayToPointer(array, fromIndex), maxIndex - fromIndex, bytes);
+            int result = indexOfByte(arrayToPointer(array, fromIndex), maxIndex - fromIndex, bytes);
             if (result >= 0) {
                 return result + fromIndex;
             }
@@ -124,27 +124,42 @@ public class AMD64ArrayUtilsSubstitutions {
         return Word.objectToTrackedPointer(array).add(charArrayBaseOffset(INJECTED)).add(fromIndex * charArrayIndexScale(INJECTED));
     }
 
-    private static int optimizedIndexOf(JavaKind kind, Pointer arrayPointer, int arrayLength, char[] chars) {
+    private static int indexOfChar(Pointer arrayPointer, int arrayLength, char[] chars) {
+        assert chars.length > 0;
         if (chars.length == 1) {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(kind, arrayPointer, arrayLength, chars[0]);
+            return AMD64ArrayIndexOf.indexOf1Char(arrayPointer, arrayLength, chars[0]);
         } else if (chars.length == 2) {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(kind, arrayPointer, arrayLength, chars[0], chars[1]);
+            return AMD64ArrayIndexOf.indexOf2Chars(arrayPointer, arrayLength, chars[0], chars[1]);
         } else if (chars.length == 3) {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(kind, arrayPointer, arrayLength, chars[0], chars[1], chars[2]);
+            return AMD64ArrayIndexOf.indexOf3Chars(arrayPointer, arrayLength, chars[0], chars[1], chars[2]);
         } else {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(kind, arrayPointer, arrayLength, chars[0], chars[1], chars[2], chars[3]);
+            return AMD64ArrayIndexOf.indexOf4Chars(arrayPointer, arrayLength, chars[0], chars[1], chars[2], chars[3]);
         }
     }
 
-    private static int optimizedIndexOf(Pointer arrayPointer, int arrayLength, byte[] chars) {
-        if (chars.length == 1) {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, chars[0]);
-        } else if (chars.length == 2) {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, chars[0], chars[1]);
-        } else if (chars.length == 3) {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, chars[0], chars[1], chars[2]);
+    private static int indexOfByte(Pointer arrayPointer, int arrayLength, byte[] bytes) {
+        assert bytes.length > 0;
+        if (bytes.length == 1) {
+            return AMD64ArrayIndexOf.indexOf1Byte(arrayPointer, arrayLength, bytes[0]);
+        } else if (bytes.length == 2) {
+            return AMD64ArrayIndexOf.indexOf2Bytes(arrayPointer, arrayLength, bytes[0], bytes[1]);
+        } else if (bytes.length == 3) {
+            return AMD64ArrayIndexOf.indexOf3Bytes(arrayPointer, arrayLength, bytes[0], bytes[1], bytes[2]);
         } else {
-            return AMD64ArrayIndexOfNCharsNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, chars[0], chars[1], chars[2], chars[3]);
+            return AMD64ArrayIndexOf.indexOf4Bytes(arrayPointer, arrayLength, bytes[0], bytes[1], bytes[2], bytes[3]);
+        }
+    }
+
+    private static int indexOfByte(Pointer arrayPointer, int arrayLength, char[] bytes) {
+        assert bytes.length > 0;
+        if (bytes.length == 1) {
+            return AMD64ArrayIndexOf.indexOf1Byte(arrayPointer, arrayLength, (byte) bytes[0]);
+        } else if (bytes.length == 2) {
+            return AMD64ArrayIndexOf.indexOf2Bytes(arrayPointer, arrayLength, (byte) bytes[0], (byte) bytes[1]);
+        } else if (bytes.length == 3) {
+            return AMD64ArrayIndexOf.indexOf3Bytes(arrayPointer, arrayLength, (byte) bytes[0], (byte) bytes[1], (byte) bytes[2]);
+        } else {
+            return AMD64ArrayIndexOf.indexOf4Bytes(arrayPointer, arrayLength, (byte) bytes[0], (byte) bytes[1], (byte) bytes[2], (byte) bytes[3]);
         }
     }
 }

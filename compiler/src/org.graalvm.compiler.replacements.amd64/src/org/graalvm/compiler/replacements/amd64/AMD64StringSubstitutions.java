@@ -84,29 +84,28 @@ public class AMD64StringSubstitutions {
         }
         assert sourceCount - fromIndex > 0 && targetCount > 0;
 
-        Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
-        Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
         if (targetCount == 1) {
-            int indexOfResult = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, sourceCount - fromIndex, target[targetOffset], JavaKind.Char);
+            Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
+            int indexOfResult = AMD64ArrayIndexOf.indexOf1Char(sourcePointer, sourceCount - fromIndex, target[targetOffset]);
             if (indexOfResult >= 0) {
                 return indexOfResult + totalOffset;
             }
             return indexOfResult;
         } else {
             int haystackLength = sourceCount - (fromIndex + (targetCount - 2));
-            int prefix = (target[targetOffset + 1] << Character.SIZE) | target[targetOffset];
             while (haystackLength > 0) {
-                int indexOfResult = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, haystackLength, prefix, JavaKind.Char, true);
+                Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
+                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, haystackLength, target[targetOffset], target[targetOffset + 1]);
                 if (indexOfResult < 0) {
                     return -1;
                 }
                 totalOffset += indexOfResult;
-                sourcePointer = sourcePointer.add(indexOfResult * charArrayIndexScale(INJECTED));
                 haystackLength -= (indexOfResult + 1);
-                if (ArrayRegionEqualsNode.regionEquals(sourcePointer, targetPointer, targetCount, JavaKind.Char)) {
+                Pointer cmpSourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
+                Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
+                if (ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char)) {
                     return totalOffset;
                 }
-                sourcePointer = sourcePointer.add(charArrayIndexScale(INJECTED));
                 totalOffset++;
             }
             return -1;
@@ -130,7 +129,7 @@ public class AMD64StringSubstitutions {
             char[] sourceArray = StringSubstitutions.getValue(source);
 
             Pointer sourcePointer = Word.objectToTrackedPointer(sourceArray).add(charArrayBaseOffset(INJECTED)).add(fromIndex * charArrayIndexScale(INJECTED));
-            int result = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, sourceCount - fromIndex, (char) ch, JavaKind.Char);
+            int result = AMD64ArrayIndexOf.indexOf1Char(sourcePointer, sourceCount - fromIndex, (char) ch);
             if (result != -1) {
                 return result + fromIndex;
             }

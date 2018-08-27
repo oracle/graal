@@ -180,7 +180,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.bind(done);
     }
 
-    static void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind,
+    private static void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind,
                     Register result, Register array1, Register array2, Register length,
                     Value temp4, Value temp5, Value tempXMM, Value vectorTemp1, Value vectorTemp2,
                     Label trueLabel, Label falseLabel) {
@@ -587,6 +587,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                     Label noMatch,
                     int nBytes,
                     int bytesPerVector) {
+        assert bytesPerVector >= 16;
         if (nBytes == 0) {
             // do nothing
             return;

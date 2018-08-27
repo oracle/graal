@@ -450,7 +450,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     /**
      * Fills {@code vecDst} with copies of its lowest byte, word or dword.
      */
-    static void emitBroadcast(AMD64MacroAssembler asm, JavaKind kind, Register vecDst, Register vecTmp, AVXKind.AVXSize vectorSize) {
+    private static void emitBroadcast(AMD64MacroAssembler asm, JavaKind kind, Register vecDst, Register vecTmp, AVXKind.AVXSize vectorSize) {
         switch (kind) {
             case Byte:
                 if (asm.supports(CPUFeature.AVX2)) {
@@ -492,7 +492,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
     /**
      * Convert a byte offset stored in {@code bytes} to an array index offset.
      */
-    static void emitBytesToArraySlots(AMD64MacroAssembler asm, JavaKind kind, Register bytes) {
+    private static void emitBytesToArraySlots(AMD64MacroAssembler asm, JavaKind kind, Register bytes) {
         if (charMode(kind)) {
             asm.shrl(bytes, 1);
         } else {

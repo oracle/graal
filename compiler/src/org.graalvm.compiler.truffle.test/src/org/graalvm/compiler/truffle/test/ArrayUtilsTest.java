@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import com.oracle.truffle.api.ArrayUtils;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.truffle.compiler.substitutions.amd64.TruffleAMD64InvocationPlugins;
+import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
 import org.junit.Test;
 
 public class ArrayUtilsTest extends GraalCompilerTest {

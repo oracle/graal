@@ -45,7 +45,7 @@ public final class ArrayUtils {
      * @since 1.0
      */
     public static int indexOf(String haystack, int fromIndex, int maxIndex, char... needle) {
-        checkArgs(haystack.length(), fromIndex, maxIndex);
+        checkArgs(haystack.length(), fromIndex, maxIndex, needle.length);
         return runIndexOf(haystack, fromIndex, maxIndex, needle);
     }
 
@@ -70,7 +70,7 @@ public final class ArrayUtils {
      * @since 1.0
      */
     public static int indexOf(char[] haystack, int fromIndex, int maxIndex, char... needle) {
-        checkArgs(haystack.length, fromIndex, maxIndex);
+        checkArgs(haystack.length, fromIndex, maxIndex, needle.length);
         return runIndexOf(haystack, fromIndex, maxIndex, needle);
     }
 
@@ -95,7 +95,7 @@ public final class ArrayUtils {
      * @since 1.0
      */
     public static int indexOf(byte[] haystack, int fromIndex, int maxIndex, byte... needle) {
-        checkArgs(haystack.length, fromIndex, maxIndex);
+        checkArgs(haystack.length, fromIndex, maxIndex, needle.length);
         return runIndexOf(haystack, fromIndex, maxIndex, needle);
     }
 
@@ -110,12 +110,15 @@ public final class ArrayUtils {
         return -1;
     }
 
-    private static void checkArgs(int length, int fromIndex, int maxIndex) {
+    private static void checkArgs(int length, int fromIndex, int maxIndex, int nValues) {
         if (fromIndex < 0) {
             throw new IllegalArgumentException("fromIndex must be positive");
         }
         if (maxIndex > length || maxIndex < fromIndex) {
             throw new IllegalArgumentException("maxIndex out of range");
+        }
+        if (nValues == 0) {
+            throw new IllegalArgumentException("no search values provided");
         }
     }
 }
