@@ -25,13 +25,15 @@
 package com.oracle.svm.hosted.image;
 
 import java.io.FileDescriptor;
-import java.nio.ByteBuffer;
+import java.lang.reflect.Field;
+import java.nio.MappedByteBuffer;
 
 import org.graalvm.nativeimage.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassInitializationFeature;
 
 /**
@@ -70,11 +72,16 @@ public class DisallowedImageHeapObjectFeature implements Feature {
             }
         }
         /* Direct ByteBuffers can not be in the image heap. */
-        if (original instanceof ByteBuffer) {
-            final ByteBuffer asByteBuffer = (ByteBuffer) original;
-            if (asByteBuffer.isDirect()) {
-                throw new UnsupportedFeatureException("Detected a direct ByteBuffer in the image heap. " +
-                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time. " + message);
+        if (original instanceof MappedByteBuffer) {
+            MappedByteBuffer buffer = (MappedByteBuffer) original;
+            /*
+             * We allow 0-length non-file-based direct buffers, see comment on
+             * Targt_java_nio_DirectByteBuffer.
+             */
+            if (buffer.capacity() != 0 || getFileDescriptor(buffer) != null) {
+                throw new UnsupportedFeatureException("Detected a direct/mapped ByteBuffer in the image heap. " +
+                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time. " +
+                                "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time. " + message);
             }
         }
 
@@ -85,5 +92,24 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         }
 
         return original;
+    }
+
+    private static final Field FILE_DESCRIPTOR_FIELD;
+
+    static {
+        try {
+            FILE_DESCRIPTOR_FIELD = MappedByteBuffer.class.getDeclaredField("fd");
+            FILE_DESCRIPTOR_FIELD.setAccessible(true);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    private static FileDescriptor getFileDescriptor(MappedByteBuffer buffer) {
+        try {
+            return (FileDescriptor) FILE_DESCRIPTOR_FIELD.get(buffer);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 }
