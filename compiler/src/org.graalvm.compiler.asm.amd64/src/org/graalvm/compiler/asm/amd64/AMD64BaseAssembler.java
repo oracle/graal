@@ -1148,16 +1148,20 @@ public abstract class AMD64BaseAssembler extends Assembler {
         emitByte(p3);
     }
 
+    // @formatter:off
+
     /**
-     * Get RXB bits for register-register instructions in EVEX encoding, Where ModRM.rm contains
-     * a register index. The R bit extends the ModRM.reg field and the X and B bits extends the
-     * ModRM.rm field.
+     * Get RXB bits for register-register instructions in EVEX-encoding, where ModRM.rm
+     * contains a register index. The R bit extends the ModRM.reg field and the X and B
+     * bits extends the ModRM.rm field.
      */
     private static int getRXBForEVEX(Register reg, Register rm) {
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
         rxb |= (rm == null ? 0 : rm.encoding & 0x018) >> 3;
         return rxb;
     }
+
+    // @formatter:on
 
     /**
      * Helper method for emitting EVEX prefix in the form of RRRR.

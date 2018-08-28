@@ -61,8 +61,8 @@ public class StringBenchmark extends BenchmarkBase {
         String loremLastChar = "Lorem ipsum dolor sit amet, consectetur adipisici elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi consequat. Quis aute iure reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint obcaecat cupiditat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum?";
         // Checkstyle: resume
 
-        byte[] smallByteArray = lorem.substring(0, 13).getBytes();
-        byte[] largeByteArray = lorem.concat(lorem).getBytes();
+        String smallLorem = lorem.substring(0, 13);
+        String largeLorem = lorem.concat(lorem);
 
         char[] smallCharArray = lorem.substring(0, 13).toCharArray();
         char[] largeCharArray = lorem.concat(lorem).toCharArray();
@@ -125,12 +125,12 @@ public class StringBenchmark extends BenchmarkBase {
     @Benchmark
     @Warmup(iterations = 5)
     public char[] inflateSmallString(BenchState state) {
-        return state.smallByteArray.toString().toCharArray();
+        return state.smallLorem.toCharArray();
     }
 
     @Benchmark
     @Warmup(iterations = 5)
     public char[] inflateLargeString(BenchState state) {
-        return state.largeByteArray.toString().toCharArray();
+        return state.largeLorem.toCharArray();
     }
 }

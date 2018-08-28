@@ -27,9 +27,6 @@ package org.graalvm.compiler.asm.amd64;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
 import static jdk.vm.ci.amd64.AMD64.k3;
-import static jdk.vm.ci.amd64.AMD64.rax;
-import static jdk.vm.ci.amd64.AMD64.rcx;
-import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIncDec;
