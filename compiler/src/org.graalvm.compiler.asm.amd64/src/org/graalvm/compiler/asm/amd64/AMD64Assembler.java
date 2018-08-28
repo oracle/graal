@@ -1333,22 +1333,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    public static final class VexGPOp extends VexOp {
+    public static final class VexGeneralPurposeRVMOp extends VexOp {
         // @formatter:off
-        public static final VexGPOp ANDN   = new VexGPOp("ANDN",   P_,   M_0F38, WIG, 0xF2, VEXOpAssertion.BMI1);
-        public static final VexGPOp MULX   = new VexGPOp("MULX",   P_F2, M_0F38, WIG, 0xF6, VEXOpAssertion.BMI2);
-        public static final VexGPOp PDEP   = new VexGPOp("PDEP",   P_F2, M_0F38, WIG, 0xF5, VEXOpAssertion.BMI2);
-        public static final VexGPOp PEXT   = new VexGPOp("PEXT",   P_F3, M_0F38, WIG, 0xF5, VEXOpAssertion.BMI2);
-        // The following instructions are with RMV operand ordering. User of this should swap their
-        // 2nd and 3rd operands.
-        public static final VexGPOp BEXTR  = new VexGPOp("BEXTR",  P_,   M_0F38, WIG, 0xF7, VEXOpAssertion.BMI1);
-        public static final VexGPOp BZHI   = new VexGPOp("BZHI",   P_,   M_0F38, WIG, 0xF5, VEXOpAssertion.BMI2);
-        public static final VexGPOp SARX   = new VexGPOp("SARX",   P_F3, M_0F38, WIG, 0xF7, VEXOpAssertion.BMI2);
-        public static final VexGPOp SHRX   = new VexGPOp("SHRX",   P_F2, M_0F38, WIG, 0xF7, VEXOpAssertion.BMI2);
-        public static final VexGPOp SHLX   = new VexGPOp("SHLX",   P_66, M_0F38, WIG, 0xF7, VEXOpAssertion.BMI2);
+        public static final VexGeneralPurposeRVMOp ANDN   = new VexGeneralPurposeRVMOp("ANDN",   P_,   M_0F38, WIG, 0xF2, VEXOpAssertion.BMI1);
+        public static final VexGeneralPurposeRVMOp MULX   = new VexGeneralPurposeRVMOp("MULX",   P_F2, M_0F38, WIG, 0xF6, VEXOpAssertion.BMI2);
+        public static final VexGeneralPurposeRVMOp PDEP   = new VexGeneralPurposeRVMOp("PDEP",   P_F2, M_0F38, WIG, 0xF5, VEXOpAssertion.BMI2);
+        public static final VexGeneralPurposeRVMOp PEXT   = new VexGeneralPurposeRVMOp("PEXT",   P_F3, M_0F38, WIG, 0xF5, VEXOpAssertion.BMI2);
         // @formatter:on
 
-        private VexGPOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+        private VexGeneralPurposeRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
         }
 
@@ -1366,6 +1359,36 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
+        }
+    }
+
+    public static final class VexGeneralPurposeRMVOp extends VexOp {
+        // @formatter:off
+        public static final VexGeneralPurposeRMVOp BEXTR  = new VexGeneralPurposeRMVOp("BEXTR",  P_,   M_0F38, WIG, 0xF7, VEXOpAssertion.BMI1);
+        public static final VexGeneralPurposeRMVOp BZHI   = new VexGeneralPurposeRMVOp("BZHI",   P_,   M_0F38, WIG, 0xF5, VEXOpAssertion.BMI2);
+        public static final VexGeneralPurposeRMVOp SARX   = new VexGeneralPurposeRMVOp("SARX",   P_F3, M_0F38, WIG, 0xF7, VEXOpAssertion.BMI2);
+        public static final VexGeneralPurposeRMVOp SHRX   = new VexGeneralPurposeRMVOp("SHRX",   P_F2, M_0F38, WIG, 0xF7, VEXOpAssertion.BMI2);
+        public static final VexGeneralPurposeRMVOp SHLX   = new VexGeneralPurposeRMVOp("SHLX",   P_66, M_0F38, WIG, 0xF7, VEXOpAssertion.BMI2);
+        // @formatter:on
+
+        private VexGeneralPurposeRMVOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+            super(opcode, pp, mmmmm, w, op, assertion);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
+            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src2, src1, null);
+            assert size == AVXSize.DWORD || size == AVXSize.QWORD;
+            asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src1);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src1, Register src2) {
+            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src2, null, null);
+            assert size == AVXSize.DWORD || size == AVXSize.QWORD;
+            asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src1, 0);
         }
     }
 
