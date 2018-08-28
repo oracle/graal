@@ -38,6 +38,7 @@ import java.util.Map;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -82,7 +83,7 @@ final class LLSourceMap {
             final SourceSection endSection = llSource.createSection(endLine);
             final int charLength = endSection.getCharEndIndex() - startCharIndex;
             final SourceSection totalSection = llSource.createSection(startCharIndex, charLength);
-            return LLVMSourceLocation.create(sourceMap.getGlobalScope(runtime.getFileScope()), LLVMSourceLocation.Kind.FUNCTION, name, new LLSourceSection(totalSection), null);
+            return LLVMSourceLocation.create(sourceMap.getGlobalScope(runtime.getContext(), runtime.getFileScope()), LLVMSourceLocation.Kind.FUNCTION, name, new LLSourceSection(totalSection), null);
         }
     }
 
@@ -126,7 +127,7 @@ final class LLSourceMap {
         globals.add(name);
     }
 
-    private LLVMSourceLocation getGlobalScope(LLVMScope moduleScope) {
+    private LLVMSourceLocation getGlobalScope(LLVMContext context, LLVMScope moduleScope) {
         if (globalScope == null) {
             globalScope = LLVMSourceLocation.createLLModule(llSource.getName(), llSource.createSection(0, llSource.getLength()));
         }
@@ -136,7 +137,7 @@ final class LLSourceMap {
                 if (actualSymbol != null && actualSymbol.isGlobalVariable()) {
                     globalScope.addGlobal(actualSymbol.asGlobalVariable());
                 } else {
-                    globalScope.addGlobal(LLVMGlobal.create(globalName + " (unavailable)", PointerType.VOID, null, true));
+                    globalScope.addGlobal(LLVMGlobal.create(context, globalName + " (unavailable)", PointerType.VOID, null, true));
                 }
             }
             globals.clear();

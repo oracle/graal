@@ -55,10 +55,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
@@ -114,6 +116,7 @@ public final class LLVMContext {
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
+    private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry;
 
     private final List<ContextExtension> contextExtensions;
 
@@ -170,6 +173,7 @@ public final class LLVMContext {
         this.handleFromPointer = EconomicMap.create();
         this.handlesLock = new Object();
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
+        this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
 
         this.globalScope = new LLVMScope();
@@ -629,6 +633,10 @@ public final class LLVMContext {
 
     public void setCleanupNecessary(boolean value) {
         cleanupNecessary = value;
+    }
+
+    public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
+        return interopTypeRegistry.get(sourceType);
     }
 
     private void printNativeCallStatistic() {
