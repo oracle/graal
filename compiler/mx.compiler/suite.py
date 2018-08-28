@@ -96,8 +96,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-543.zip"],
-      "sha1" : "39a1810b8443a64e5bcc431c78e56515109898b9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-619.zip"],
+      "sha1" : "7fa6906c7898e736396f7143a173c53ca4e2a831",
     },
 
     "JOL_CLI" : {
