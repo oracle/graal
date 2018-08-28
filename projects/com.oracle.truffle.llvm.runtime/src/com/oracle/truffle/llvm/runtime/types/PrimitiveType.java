@@ -128,7 +128,6 @@ public final class PrimitiveType extends Type {
     @Override
     public Type shallowCopy() {
         final PrimitiveType copy = new PrimitiveType(kind, constant);
-        copy.setInteropType(getInteropType());
         return copy;
     }
 

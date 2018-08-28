@@ -39,14 +39,12 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.ForeignAttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class LLVMReadNode extends LLVMExpressionNode {
@@ -132,16 +130,9 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAddressReadNode extends LLVMReadNode {
 
-        @Child private AttachInteropTypeNode attach = AttachInteropTypeNodeGen.create();
-
         @Specialization
         protected Object readObject(VirtualFrame frame) {
-            return attachType(FrameUtil.getObjectSafe(frame, getSlot()));
-        }
-
-        private Object attachType(Object obj) {
-            Type type = (Type) getSlot().getInfo();
-            return attach.execute(obj, type != null ? type.getInteropType() : null);
+            return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 

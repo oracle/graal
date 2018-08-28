@@ -37,7 +37,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -214,8 +213,6 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 
     LLVMStatementNode createDebugTrap(LLVMSourceLocation location);
-
-    LLVMStatementNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 
     LLVMMemMoveNode createMemMove();
 

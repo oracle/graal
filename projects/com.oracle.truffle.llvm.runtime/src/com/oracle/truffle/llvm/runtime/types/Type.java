@@ -29,21 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
-
-    @CompilationFinal private Assumption interopTypeAssumption = Truffle.getRuntime().createAssumption("Type.interopType");
-    @CompilationFinal private LLVMInteropType interopType = null;
 
     public static final Type[] EMPTY_ARRAY = {};
 
@@ -62,24 +53,6 @@ public abstract class Type {
 
     @Override
     public abstract int hashCode();
-
-    public LLVMInteropType getInteropType() {
-        try {
-            interopTypeAssumption.check();
-        } catch (InvalidAssumptionException ex) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
-        return interopType;
-    }
-
-    public void setInteropType(LLVMInteropType interopType) {
-        if (!this.interopTypeAssumption.isValid() || this.interopType != interopType) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.interopTypeAssumption.invalidate();
-            this.interopType = interopType;
-            this.interopTypeAssumption = Truffle.getRuntime().createAssumption("Type.interopType");
-        }
-    }
 
     public static Type getIntegerType(int size) {
         switch (size) {

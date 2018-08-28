@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VoidType extends Type {
@@ -71,10 +70,6 @@ public final class VoidType extends Type {
     @Override
     public Type shallowCopy() {
         return this;
-    }
-
-    @Override
-    public void setInteropType(LLVMInteropType sourceType) {
     }
 
     @Override

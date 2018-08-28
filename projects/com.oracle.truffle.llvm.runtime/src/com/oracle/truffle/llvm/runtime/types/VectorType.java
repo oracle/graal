@@ -107,7 +107,6 @@ public final class VectorType extends AggregateType {
     @Override
     public Type shallowCopy() {
         final VectorType copy = new VectorType(getElementType(), length);
-        copy.setInteropType(getInteropType());
         return copy;
     }
 

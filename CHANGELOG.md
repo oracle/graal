@@ -1,3 +1,13 @@
+# Version 1.0.0 RC7
+
+Changes:
+
+* Removed support for implicit polyglot types for local variables
+  as the availability of type information is not guaranteed.
+  Explicit polyglot casts are now strictly required (`polyglot_as_typed`).
+  See [docs/INTEROP.md](docs/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
+  for more details.
+
 # Version 1.0.0 RC6
 
 New features:
