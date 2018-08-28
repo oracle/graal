@@ -292,7 +292,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object newInstance(Object o, Object... args) {
         try {
-            return ForeignAccess.sendNew(Message.createNew(0).createNode(), (TruffleObject) o, args);
+            return ForeignAccess.sendNew(Message.NEW.createNode(), (TruffleObject) o, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
@@ -300,7 +300,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object execute(Object o, Object... args) {
         try {
-            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), (TruffleObject) o, args);
+            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) o, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }

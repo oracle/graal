@@ -24,29 +24,18 @@
  */
 package jdk.tools.jaotc;
 
-import org.graalvm.compiler.hotspot.meta.HotSpotInvokeDynamicPlugin.DynamicTypeStore;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvokeDynamicPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-
-import jdk.vm.ci.hotspot.HotSpotConstantPool;
-import jdk.vm.ci.hotspot.HotSpotConstantPoolObject;
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.graalvm.compiler.hotspot.meta.HotSpotInvokeDynamicPlugin.DynamicTypeStore;
+
+import jdk.vm.ci.hotspot.HotSpotConstantPool;
+import jdk.vm.ci.hotspot.HotSpotConstantPoolObject;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.JavaConstant;
 
 final class AOTDynamicTypeStore implements DynamicTypeStore {
 

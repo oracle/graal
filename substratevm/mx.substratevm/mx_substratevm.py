@@ -44,6 +44,7 @@ import collections
 import itertools
 import glob
 from xml.dom.minidom import parse
+from argparse import ArgumentParser
 
 import mx
 import mx_compiler
@@ -57,11 +58,8 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
-JVM_COMPILER_THREADS = 2 if mx.cpu_count() <= 4 else 4
-
-GRAAL_COMPILER_FLAGS = ['-XX:+UseJVMCICompiler', '-Dgraal.CompileGraalWithC1Only=false', '-XX:CICompilerCount=' + str(JVM_COMPILER_THREADS),
-                        '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
-                        '-Dgraal.VerifyGraalGraphs=false', '-Dgraal.VerifyGraalGraphEdges=false', '-Dgraal.VerifyGraalPhasesSize=false', '-Dgraal.VerifyPhases=false']
+GRAAL_COMPILER_FLAGS = ['-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
+                        ]
 if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
 else:
@@ -84,8 +82,12 @@ else:
     GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED']
     # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
     GRAAL_COMPILER_FLAGS += ['--add-exports', 'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED']
+    # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED']
     # Disable the check for JDK-8 graal version.
     GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
+    # Reflective access to java.net.URL.getURLStreamHandler.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.net=ALL-UNNAMED']
 
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
@@ -491,6 +493,7 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
+    'test',
     'maven',
     'js',
     'python',
@@ -545,14 +548,7 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
         if exists(native_image_cmd):
             _native_image(['--server-shutdown'])
 
-#
-# It is essential to bootstrap JVMCI here ('-J-XX:+BootstrapJVMCI'). The `-esa` flag kills all parallelism in
-# multi-threaded execution when code is compiled with the C1 compiler with profiling enabled (Tier 3). Without
-# '-J-XX:+BootstrapJVMCI', `native-image` often ends up in the state where most of the code is in Tier 3,
-# hence N image-build threads and all CI threads effectively operate synchronously. Exiting this state usually takes
-# around 10 minutes as CI threads are crawling due to all un-parallelised work.
-#
-native_image_context.hosted_assertions = ['-J-ea', '-J-esa', '-J-XX:+BootstrapJVMCI', '-Dgraal.CompilationWatchDogStartDelay=30', '-Dgraal.CompilationWatchDogStackTraceInterval=30']
+native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
     # Debug GR-8964 on Darwin gates
@@ -561,8 +557,14 @@ def svm_gate_body(args, tasks):
     with native_image_context(IMAGE_ASSERTION_FLAGS, debug_gr_8964=debug_gr_8964) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
-                helloworld(native_image)
+                hello_path = svmbuild_dir()
+                javac_image(native_image, hello_path)
+                helloworld_internal(native_image, hello_path, javac_image_command(hello_path))
                 cinterfacetutorial(native_image)
+
+        with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
+            if t:
+                native_junit(native_image)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
@@ -579,9 +581,16 @@ def svm_gate_body(args, tasks):
         if t:
             maven_plugin_install([])
 
-def native_junit(native_image, unittest_args, build_args=None, run_args=None):
+
+def javac_image_command(javac_path):
+    return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
+            join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
+
+
+def native_junit(native_image, unittest_args=None, build_args=None, run_args=None):
+    unittest_args = unittest_args or ['com.oracle.svm.test']
     build_args = build_args or []
-    run_args = run_args or []
+    run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
     junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
@@ -591,11 +600,32 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
             unittest_deps.extend(test_deps)
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
+        if not exists(unittest_file):
+            mx.abort('No matching unit tests found. Skip image build and execution.')
+        with open(unittest_file, 'r') as f:
+            mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
         unittest_image = native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         mx.run([unittest_image] + run_args)
     finally:
         remove_tree(junit_tmp_dir)
+
+def native_unittest(native_image, cmdline_args):
+    parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
+    mask_str = '#'
+    def mask(arg):
+        if arg in ['--', '--build-args', '--run-args', '-h', '--help']:
+            return arg
+        else:
+            return arg.replace('-', mask_str)
+    cmdline_args = [mask(arg) for arg in cmdline_args]
+    parser.add_argument('--build-args', metavar='ARG', nargs='*', default=[])
+    parser.add_argument('--run-args', metavar='ARG', nargs='*', default=[])
+    parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
+    pargs = parser.parse_args(cmdline_args)
+    def unmask(args):
+        return [arg.replace(mask_str, '-') for arg in args]
+    native_junit(native_image, unmask(pargs.unittest_args), unmask(pargs.build_args), unmask(pargs.run_args))
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
@@ -711,25 +741,24 @@ def cinterfacetutorial(native_image, args=None):
 
 def helloworld(native_image, args=None):
     args = [] if args is None else args
+    helloworld_internal(native_image, svmbuild_dir(), ['javac'], args)
 
-    helloPath = svmbuild_dir()
-    mkpath(helloPath)
-
-    # Build an image for the javac compiler, so that we test and gate-check javac all the time.
-    # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(["-H:Path=" + helloPath, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
-           "-H:+ReportUnsupportedElementsAtRuntime", "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
-
-    helloFile = join(helloPath, 'HelloWorld.java')
+def helloworld_internal(native_image, path=svmbuild_dir(), javac_command=None, args=None):
+    if javac_command is None:
+        javac_command = ['javac']
+    args = [] if args is None else args
+    mkpath(path)
+    hello_file = join(path, 'HelloWorld.java')
     output = 'Hello from Substrate VM'
-    with open(helloFile, 'w') as fp:
+    with open(hello_file, 'w') as fp:
         fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println("' + output + '"); } }')
 
-    # Run the image for javac. Annotation processing must be disabled because it requires dynamic class loading,
-    # and we need to set the bootclasspath manually because our build directory does not contain any .jar files.
-    mx.run([join(helloPath, 'javac'), "-proc:none", "-bootclasspath", join(mx_compiler.jdk.home, "jre", "lib", "rt.jar"), helloFile])
+    # Run javac. We sometimes run with an image so annotation processing must be disabled because it requires dynamic
+    #  class loading, and we need to set the bootclasspath manually because our build directory does not contain any
+    # .jar files.
+    mx.run(javac_command + [hello_file])
 
-    native_image(["-H:Path=" + helloPath, '-cp', helloPath, 'HelloWorld'])
+    native_image(["-H:Path=" + path, '-cp', path, 'HelloWorld'] + args)
 
     expectedOutput = [output + '\n']
     actualOutput = []
@@ -737,10 +766,20 @@ def helloworld(native_image, args=None):
         actualOutput.append(x)
         mx.log(x)
 
-    mx.run([join(helloPath, 'helloworld')], out=_collector)
+    mx.run([join(path, 'helloworld')], out=_collector)
 
     if actualOutput != expectedOutput:
         raise Exception('Wrong output: ' + str(actualOutput) + "  !=  " + str(expectedOutput))
+
+def javac_image(native_image, path, args=None):
+    args = [] if args is None else args
+    mkpath(path)
+
+    # Build an image for the javac compiler, so that we test and gate-check javac all the time.
+    # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
+    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+                  "-H:+ReportUnsupportedElementsAtRuntime",
+                  "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
 orig_command_benchmark = mx.command_function('benchmark')
 def benchmark(args):
@@ -901,4 +940,5 @@ mx.update_commands(suite, {
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
     'maven-plugin-install': [maven_plugin_install, ''],
+    'native-unittest' : [lambda args: native_image_context_run(native_unittest, args), ''],
 })

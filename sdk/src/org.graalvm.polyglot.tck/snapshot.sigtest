@@ -1,0 +1,149 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface !annotation java.lang.FunctionalInterface
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public abstract interface java.util.function.Consumer<%0 extends java.lang.Object>
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract void accept({java.util.function.Consumer%0})
+meth public java.util.function.Consumer<{java.util.function.Consumer%0}> andThen(java.util.function.Consumer<? super {java.util.function.Consumer%0}>)
+
+CLSS public final org.graalvm.polyglot.tck.InlineSnippet
+innr public final static Builder
+meth public java.lang.CharSequence getCode()
+meth public java.lang.String toString()
+meth public java.util.function.Predicate<org.graalvm.polyglot.SourceSection> getLocationPredicate()
+meth public org.graalvm.polyglot.tck.ResultVerifier getResultVerifier()
+meth public org.graalvm.polyglot.tck.Snippet getScript()
+meth public static org.graalvm.polyglot.tck.InlineSnippet$Builder newBuilder(org.graalvm.polyglot.tck.Snippet,java.lang.CharSequence)
+supr java.lang.Object
+hfds code,locationPredicate,script,verifier
+
+CLSS public final static org.graalvm.polyglot.tck.InlineSnippet$Builder
+ outer org.graalvm.polyglot.tck.InlineSnippet
+meth public org.graalvm.polyglot.tck.InlineSnippet build()
+meth public org.graalvm.polyglot.tck.InlineSnippet$Builder locationPredicate(java.util.function.Predicate<org.graalvm.polyglot.SourceSection>)
+meth public org.graalvm.polyglot.tck.InlineSnippet$Builder resultVerifier(org.graalvm.polyglot.tck.ResultVerifier)
+supr java.lang.Object
+hfds code,predicate,script,verifier
+
+CLSS public abstract interface org.graalvm.polyglot.tck.LanguageProvider
+meth public abstract java.lang.String getId()
+meth public abstract java.util.Collection<? extends org.graalvm.polyglot.Source> createInvalidSyntaxScripts(org.graalvm.polyglot.Context)
+meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Snippet> createExpressions(org.graalvm.polyglot.Context)
+meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Snippet> createScripts(org.graalvm.polyglot.Context)
+meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Snippet> createStatements(org.graalvm.polyglot.Context)
+meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Snippet> createValueConstructors(org.graalvm.polyglot.Context)
+meth public abstract org.graalvm.polyglot.Value createIdentityFunction(org.graalvm.polyglot.Context)
+meth public java.util.Collection<? extends org.graalvm.polyglot.tck.InlineSnippet> createInlineScripts(org.graalvm.polyglot.Context)
+
+CLSS public abstract interface org.graalvm.polyglot.tck.ResultVerifier
+innr public final static SnippetRun
+intf java.util.function.Consumer<org.graalvm.polyglot.tck.ResultVerifier$SnippetRun>
+meth public abstract void accept(org.graalvm.polyglot.tck.ResultVerifier$SnippetRun)
+meth public static org.graalvm.polyglot.tck.ResultVerifier getDefaultResultVerifier()
+
+CLSS public final static org.graalvm.polyglot.tck.ResultVerifier$SnippetRun
+ outer org.graalvm.polyglot.tck.ResultVerifier
+meth public java.util.List<? extends org.graalvm.polyglot.Value> getParameters()
+meth public org.graalvm.polyglot.PolyglotException getException()
+meth public org.graalvm.polyglot.Value getResult()
+meth public static org.graalvm.polyglot.tck.ResultVerifier$SnippetRun create(org.graalvm.polyglot.tck.Snippet,java.util.List<? extends org.graalvm.polyglot.Value>,org.graalvm.polyglot.PolyglotException)
+meth public static org.graalvm.polyglot.tck.ResultVerifier$SnippetRun create(org.graalvm.polyglot.tck.Snippet,java.util.List<? extends org.graalvm.polyglot.Value>,org.graalvm.polyglot.Value)
+supr java.lang.Object
+hfds exception,parameters,result,snippet
+
+CLSS public final org.graalvm.polyglot.tck.Snippet
+innr public final static Builder
+meth public java.lang.String getId()
+meth public java.lang.String toString()
+meth public java.util.List<? extends org.graalvm.polyglot.tck.TypeDescriptor> getParameterTypes()
+meth public org.graalvm.polyglot.Value getExecutableValue()
+meth public org.graalvm.polyglot.tck.ResultVerifier getResultVerifier()
+meth public org.graalvm.polyglot.tck.TypeDescriptor getReturnType()
+meth public static org.graalvm.polyglot.tck.Snippet$Builder newBuilder(java.lang.String,org.graalvm.polyglot.Value,org.graalvm.polyglot.tck.TypeDescriptor)
+supr java.lang.Object
+hfds executableValue,id,parameterTypes,type,verifier
+
+CLSS public final static org.graalvm.polyglot.tck.Snippet$Builder
+ outer org.graalvm.polyglot.tck.Snippet
+meth public !varargs org.graalvm.polyglot.tck.Snippet$Builder parameterTypes(org.graalvm.polyglot.tck.TypeDescriptor[])
+meth public org.graalvm.polyglot.tck.Snippet build()
+meth public org.graalvm.polyglot.tck.Snippet$Builder resultVerifier(org.graalvm.polyglot.tck.ResultVerifier)
+supr java.lang.Object
+hfds executableReturnType,executableValue,id,parameterTypes,verifier
+
+CLSS public final org.graalvm.polyglot.tck.TypeDescriptor
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor ANY
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor ARRAY
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor BOOLEAN
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor NATIVE_POINTER
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor NULL
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor NUMBER
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor OBJECT
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor STRING
+meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor executable(org.graalvm.polyglot.tck.TypeDescriptor,boolean,org.graalvm.polyglot.tck.TypeDescriptor[])
+meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor executable(org.graalvm.polyglot.tck.TypeDescriptor,org.graalvm.polyglot.tck.TypeDescriptor[])
+meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor intersection(org.graalvm.polyglot.tck.TypeDescriptor[])
+meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor union(org.graalvm.polyglot.tck.TypeDescriptor[])
+meth public boolean equals(java.lang.Object)
+meth public boolean isAssignable(org.graalvm.polyglot.tck.TypeDescriptor)
+meth public boolean isIntersection()
+meth public boolean isUnion()
+meth public int hashCode()
+meth public java.lang.String toString()
+meth public static org.graalvm.polyglot.tck.TypeDescriptor array(org.graalvm.polyglot.tck.TypeDescriptor)
+meth public static org.graalvm.polyglot.tck.TypeDescriptor forValue(org.graalvm.polyglot.Value)
+supr java.lang.Object
+hfds NOTYPE,PREDEFINED_TYPES,impl
+hcls ArrayImpl,ExecutableImpl,IntersectionImpl,PrimitiveImpl,PrimitiveKind,TypeDescriptorImpl,UnionImpl
+
+CLSS abstract interface org.graalvm.polyglot.tck.package-info
+

@@ -63,4 +63,18 @@ public final class RuntimeOptions {
     public static OptionDescriptors getOptions() {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
     }
+
+    /**
+     * Runs all startup hooks that were registered during image building. Startup hooks usually
+     * depend on option values, so it is recommended (but not required) that all option values are
+     * set before calling this method.
+     * <p>
+     * Invoking this method more than once has no effect, i.e., startup hooks are only executed at
+     * the first invocation.
+     *
+     * @since 1.0
+     */
+    public static void runStartupHooks() {
+        ImageSingletons.lookup(RuntimeOptionsSupport.class).runStartupHooks();
+    }
 }

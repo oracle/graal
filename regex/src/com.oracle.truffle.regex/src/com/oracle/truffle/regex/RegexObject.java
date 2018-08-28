@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import java.util.Map;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -33,10 +35,6 @@ import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
-
-import java.util.Map;
-
-import static com.oracle.truffle.api.CompilerDirectives.*;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
@@ -68,8 +66,7 @@ public class RegexObject implements RegexLanguageObject {
     private final RegexCompiler compiler;
     private final RegexSource source;
     private final TruffleObject namedCaptureGroups;
-    private @CompilationFinal TruffleObject compiledRegexObject;
-    private RegexProfile regexProfile;
+    private TruffleObject compiledRegexObject;
 
     public RegexObject(RegexCompiler compiler, RegexSource source, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
@@ -87,7 +84,6 @@ public class RegexObject implements RegexLanguageObject {
 
     public TruffleObject getCompiledRegexObject() {
         if (compiledRegexObject == null) {
-            transferToInterpreterAndInvalidate();
             compiledRegexObject = compileRegex();
         }
         return compiledRegexObject;
@@ -105,13 +101,6 @@ public class RegexObject implements RegexLanguageObject {
     public RegexObjectExecMethod getExecMethod() {
         // this allocation should get virtualized and optimized away by graal
         return new RegexObjectExecMethod(this);
-    }
-
-    public RegexProfile getRegexProfile() {
-        if (regexProfile == null) {
-            regexProfile = new RegexProfile();
-        }
-        return regexProfile;
     }
 
     public static boolean isInstance(TruffleObject object) {

@@ -218,13 +218,12 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     @Override
     public final boolean isInitialized() {
-        assert wrapped.isInitialized();
-        return true;
+        return wrapped.isInitialized();
     }
 
     @Override
     public void initialize() {
-        assert wrapped.isInitialized();
+        wrapped.initialize();
     }
 
     @Override

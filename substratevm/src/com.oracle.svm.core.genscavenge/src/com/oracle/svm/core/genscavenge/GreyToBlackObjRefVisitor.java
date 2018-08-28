@@ -92,7 +92,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             getCounters().noteForwardedReferent();
             trace.string("  forwards to ");
             // Update the reference to point to the forwarded Object.
-            final Object obj = ohi.getForwardedObject(header);
+            final Object obj = ohi.getForwardedObject(p);
             ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
             trace.object(obj);
             if (trace.isEnabled()) {

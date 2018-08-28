@@ -130,7 +130,7 @@ public class DiscoverableReferenceProcessing {
         /* It might be a forwarding pointer. */
         if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeader(header)) {
             /* If the referent got forwarded, then update the referent. */
-            final Pointer forwardedPointer = ObjectHeaderImpl.getObjectHeaderImpl().getForwardingPointer(header);
+            final Pointer forwardedPointer = ObjectHeaderImpl.getObjectHeaderImpl().getForwardingPointer(refPointer);
             dr.setReferentPointer(forwardedPointer);
             trace.string("  forwarded header: updated referent: ").hex(forwardedPointer).string("]").newline();
             return true;

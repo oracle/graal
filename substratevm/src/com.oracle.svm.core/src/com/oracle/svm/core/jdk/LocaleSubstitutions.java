@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
-import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.text.BreakIterator;
@@ -45,7 +42,6 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -56,8 +52,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
-import sun.text.normalizer.UBiDiProps;
-import sun.text.normalizer.UCharacterProperty;
+//Checkstyle: allow reflection
+
 import sun.util.locale.provider.JRELocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter.Type;
@@ -171,6 +167,14 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
         }
         return getter.getObject((P) cachedProvider, locale, key, params);
     }
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter,
+                    Locale locale,
+                    Boolean isObjectProvider,
+                    String key,
+                    Object... params);
 }
 
 @TargetClass(sun.util.locale.provider.LocaleProviderAdapter.class)
@@ -232,53 +236,6 @@ final class Util_sun_util_locale_provider_LocaleProviderAdapter {
 @Delete
 @TargetClass(sun.util.locale.provider.AuxLocaleProviderAdapter.class)
 final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
-}
-
-@TargetClass(sun.text.normalizer.UCharacterProperty.class)
-final class Target_sun_text_normalizer_UCharacterProperty {
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static UCharacterProperty getInstance() {
-        return Util_sun_text_normalizer_UCharacterProperty.instance;
-    }
-
-    @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
-    public static /* final */ UCharacterProperty INSTANCE;
-}
-
-final class Util_sun_text_normalizer_UCharacterProperty {
-    static final UCharacterProperty instance = UCharacterProperty.getInstance();
-}
-
-@TargetClass(sun.text.normalizer.UBiDiProps.class)
-final class Target_sun_text_normalizer_UBiDiProps {
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static UBiDiProps getSingleton() {
-        return Util_sun_text_normalizer_UBiDiProps.singleton;
-    }
-
-    @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
-    public static /* final */ UBiDiProps INSTANCE;
-}
-
-final class Util_sun_text_normalizer_UBiDiProps {
-
-    static final UBiDiProps singleton;
-
-    static {
-        UnsafeAccess.UNSAFE.ensureClassInitialized(sun.text.normalizer.NormalizerImpl.class);
-
-        try {
-            singleton = UBiDiProps.getSingleton();
-        } catch (IOException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 }
 
 @TargetClass(java.util.TimeZone.class)

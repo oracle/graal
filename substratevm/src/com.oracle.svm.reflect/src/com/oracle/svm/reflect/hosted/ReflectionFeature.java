@@ -26,20 +26,25 @@ package com.oracle.svm.reflect.hosted;
 
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
+import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
 @AutomaticFeature
-public final class ReflectionFeature implements Feature {
+public final class ReflectionFeature implements GraalFeature {
 
     public static class Options {
         @Option(help = "Enable support for reflection at run time")//
@@ -78,6 +83,7 @@ public final class ReflectionFeature implements Feature {
     }
 
     private ReflectionDataBuilder reflectionData;
+    private ImageClassLoader loader;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
@@ -92,6 +98,8 @@ public final class ReflectionFeature implements Feature {
 
         ReflectionConfigurationParser parser = new ReflectionConfigurationParser(reflectionData, access.getImageClassLoader());
         parser.parseAndRegisterConfigurations("reflection", Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources);
+
+        loader = access.getImageClassLoader();
     }
 
     @Override
@@ -102,5 +110,14 @@ public final class ReflectionFeature implements Feature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         reflectionData.afterAnalysis();
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
+        /*
+         * The reflection invocation plugins need to be registered only when reflection is enabled
+         * since it adds Field and Method objects to the image heap which otherwise are not allowed.
+         */
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, invocationPlugins, analysis, hosted);
     }
 }

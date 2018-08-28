@@ -34,6 +34,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
@@ -63,7 +65,7 @@ import org.graalvm.polyglot.management.ExecutionListener;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-        if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
+        if (!getClass().getName().equals("com.oracle.truffle.polyglot.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
             throw new AssertionError("Only one implementation Engine.Impl allowed.");
         }
     }
@@ -154,6 +156,8 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract AbstractExecutionListenerImpl getExecutionListenerImpl();
 
+    public abstract Path findHome();
+
     public abstract static class AbstractExecutionListenerImpl {
 
         protected AbstractExecutionListenerImpl(AbstractPolyglotImpl engineImpl) {
@@ -196,7 +200,7 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException;
 
         public abstract String getName(Object impl);
 
@@ -238,7 +242,22 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract String findLanguage(File file) throws IOException;
 
+        public abstract String findLanguage(URL url) throws IOException;
+
         public abstract String findLanguage(String mimeType);
+
+        public abstract String findMimeType(File file) throws IOException;
+
+        public abstract String findMimeType(URL url) throws IOException;
+
+        public abstract ByteSequence getBytes(Object impl);
+
+        public abstract boolean hasCharacters(Object impl);
+
+        public abstract boolean hasBytes(Object impl);
+
+        public abstract String getMimeType(Object impl);
+
     }
 
     public abstract static class AbstractSourceSectionImpl {
@@ -276,7 +295,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract static class AbstractContextImpl {
 
         protected AbstractContextImpl(AbstractPolyglotImpl impl) {
-            if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotContextImpl")) {
+            if (!getClass().getName().equals("com.oracle.truffle.polyglot.PolyglotContextImpl")) {
                 throw new AssertionError("Only one implementation of AbstractContextImpl allowed.");
             }
         }
@@ -425,6 +444,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getId();
 
         public abstract OptionDescriptors getOptions();
+
+        public abstract Set<String> getMimeTypes();
+
+        public abstract String getDefaultMimeType();
 
     }
 

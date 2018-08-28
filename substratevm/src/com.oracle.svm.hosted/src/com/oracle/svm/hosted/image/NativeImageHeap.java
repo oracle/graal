@@ -64,6 +64,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
+import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.StringInternSupport;
@@ -84,6 +85,7 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class NativeImageHeap {
 
@@ -224,6 +226,18 @@ public final class NativeImageHeap {
         }
         if (original instanceof Class) {
             throw VMError.shouldNotReachHere("Must not have Class in native image heap: " + original);
+        }
+        if (original instanceof DynamicHub && ((DynamicHub) original).getClassInitializationInfo() == null) {
+            /*
+             * All DynamicHub instances written into the image heap must have a
+             * ClassInitializationInfo, otherwise we can get a NullPointerException at run time.
+             * When this check fails, then the DynamicHub has not been seen during static analysis.
+             * Since many other objects are reachable from the DynamicHub (annotations, enum values,
+             * ...) this can also mean that types are used in the image that the static analysis has
+             * not seen - so this check actually protects against much more than just missing class
+             * initialization information.
+             */
+            throw VMError.shouldNotReachHere("DynamicHub written to the image that has not been seen as reachable during static analysis: " + original);
         }
 
         int identityHashCode = 0;
@@ -662,19 +676,22 @@ public final class NativeImageHeap {
         write(buffer, index, con, info);
     }
 
-    private void writeDynamicHub(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
+    private void writeDynamicHub(RelocatableBuffer buffer, int index, DynamicHub target) {
         assert target != null : "Null DynamicHub found during native image generation.";
         mustBeReferenceAligned(index);
 
         ObjectInfo targetInfo = objects.get(target);
         assert targetInfo != null : "Unknown object " + target.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
 
-        // Note that this object is allocated on the native image heap.
         if (useHeapBase()) {
-            writeReferenceValue(buffer, index, targetInfo.getOffsetInSection() | objectHeaderBits);
+            // NOTE: we do not apply a shift to the hub reference in the object header because the
+            // least significant bits are used for state information
+            long targetOffset = targetInfo.getOffsetInSection();
+            long bits = Heap.getHeap().getObjectHeader().setBootImageOnLong(targetOffset);
+            writeReferenceValue(buffer, index, bits);
         } else {
             // The address of the DynamicHub target will have to be added by the link editor.
-            // DynamicHubs are the size of Object references.
+            long objectHeaderBits = Heap.getHeap().getObjectHeader().setBootImageOnLong(0L);
             addDirectRelocationWithAddend(buffer, index, target, objectHeaderBits);
         }
     }
@@ -703,8 +720,9 @@ public final class NativeImageHeap {
         assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
         assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
 
-        HostedMethod method = ((MethodPointer) pointer).getMethod();
-        if (method.isCodeAddressOffsetValid()) {
+        ResolvedJavaMethod method = ((MethodPointer) pointer).getMethod();
+        HostedMethod hMethod = method instanceof HostedMethod ? (HostedMethod) method : universe.lookup(method);
+        if (hMethod.isCodeAddressOffsetValid()) {
             // Only compiled methods inserted in vtables require relocation.
             int pointerSize = ConfigurationValues.getTarget().wordSize;
             addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
@@ -747,7 +765,7 @@ public final class NativeImageHeap {
         if (referenceSize() == Long.BYTES) {
             buffer.getBuffer().putLong(index, value);
         } else if (referenceSize() == Integer.BYTES) {
-            buffer.getBuffer().putInt(index, Math.toIntExact(value));
+            buffer.getBuffer().putInt(index, NumUtil.safeToInt(value));
         } else {
             throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }
@@ -827,8 +845,7 @@ public final class NativeImageHeap {
         final HostedClass clazz = info.getClazz();
         final DynamicHub hub = clazz.getHub();
 
-        final long objectHeaderBits = Heap.getHeap().getObjectHeader().setBootImageOnLong(0L);
-        writeDynamicHub(buffer, indexInSection, hub, objectHeaderBits);
+        writeDynamicHub(buffer, indexInSection, hub);
 
         if (clazz.isInstanceClass()) {
             JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
@@ -953,6 +970,9 @@ public final class NativeImageHeap {
         knownNonCanonicalizableClasses.add(Proxy.class);
         // The classes implementing Map have lazily initialized caches, so must not be immutable.
         knownNonCanonicalizableClasses.add(Map.class);
+        // ClassInitializationInfo is mutable, but referenced from the immutable DynamicHub
+        knownNonCanonicalizableClasses.add(ClassInitializationInfo.class);
+
         // Some hosted classes I know to be canonicalizable.
         knownCanonicalizableClasses.add(DynamicHub.class);
     }

@@ -330,7 +330,7 @@ public final class TruffleDebugger extends DebuggerDomain {
             DebugScope dscope;
             try {
                 dscope = frame.getScope();
-            } catch (Exception ex) {
+            } catch (DebugException ex) {
                 PrintWriter err = context.getErr();
                 if (err != null) {
                     err.println("getScope() has caused " + ex);
@@ -341,6 +341,9 @@ public final class TruffleDebugger extends DebuggerDomain {
             String scopeType = "block";
             boolean wasFunction = false;
             SourceSection functionSourceSection = null;
+            if (dscope == null) {
+                functionSourceSection = sourceSection;
+            }
             while (dscope != null) {
                 if (wasFunction) {
                     scopeType = "closure";
@@ -357,7 +360,7 @@ public final class TruffleDebugger extends DebuggerDomain {
             }
             try {
                 dscope = ds.getTopScope(source.getLanguage());
-            } catch (Exception ex) {
+            } catch (DebugException ex) {
                 PrintWriter err = context.getErr();
                 if (err != null) {
                     err.println("getTopScope() has caused " + ex);
@@ -388,7 +391,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         DebugScope parentScope;
         try {
             parentScope = dscope.getParent();
-        } catch (Exception ex) {
+        } catch (DebugException ex) {
             PrintWriter err = context.getErr();
             if (err != null) {
                 err.println("Scope.getParent() has caused " + ex);

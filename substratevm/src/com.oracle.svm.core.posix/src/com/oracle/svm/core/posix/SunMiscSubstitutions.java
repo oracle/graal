@@ -31,6 +31,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
@@ -48,6 +49,7 @@ import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
+import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -80,6 +82,9 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
+        if (ImageInfo.isSharedLibrary()) {
+            throw new IllegalArgumentException("Installing signal handlers is not allowed for native-image shared libraries.");
+        }
         return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }
 
@@ -163,7 +168,7 @@ final class Util_jdk_internal_misc_Signal {
                         /* Report other failure. */
                         Log.log().string("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.create() failed.")
                                         .string("  errno: ").signed(openErrno).string("  ").string(Errno.strerror(openErrno)).newline();
-                        VMError.guarantee(false, "Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
+                        throw VMError.shouldNotReachHere("Util_sun_misc_Signal.ensureInitialized: CSunMiscSignal.open() failed.");
                     }
 
                     /* Initialize the table of signal states. */
@@ -173,6 +178,7 @@ final class Util_jdk_internal_misc_Signal {
                     dispatchThread = new Thread(new DispatchThread());
                     dispatchThread.setDaemon(true);
                     dispatchThread.start();
+                    RuntimeSupport.getRuntimeSupport().addTearDownHook(() -> DispatchThread.interrupt(dispatchThread));
 
                     /* Initialization is complete. */
                     initialized = true;
@@ -274,6 +280,11 @@ final class Util_jdk_internal_misc_Signal {
             /* Nothing to do. */
         }
 
+        static void interrupt(Thread thread) {
+            thread.interrupt();
+            SignalState.wakeUp();
+        }
+
         /**
          * Wait to be notified that a signal has been raised in the C signal handler, then find any
          * that were raised and dispatch to the Java signal handler. The C signal handler increments
@@ -281,17 +292,18 @@ final class Util_jdk_internal_misc_Signal {
          */
         @Override
         public void run() {
-            for (; /* break */;) {
-                /* Check if this thread was interrupted before blocking. */
+            while (!Thread.interrupted()) {
+                /*
+                 * Block waiting for one or more signals to be raised. Or a wake up for termination.
+                 */
+                SignalState.await();
                 if (Thread.interrupted()) {
+                    /* Thread was interrupted for termination. */
                     break;
                 }
-                /* Block waiting for one or more signals to be raised. Or a random wake up. */
-                SignalState.await();
                 /* Find any counters that are non-zero. */
-                for (int index = 0; index < signalState.length; index += 1) {
-                    final SignalState entry = signalState[index];
-                    final Signal.SignalDispatcher dispatcher = entry.getDispatcher();
+                for (final SignalState entry : signalState) {
+                    final SignalDispatcher dispatcher = entry.getDispatcher();
                     /* If the handler is the Java signal handler ... */
                     if (dispatcher.equal(CSunMiscSignal.countingHandlerFunctionPointer())) {
                         /* ... and if there are outstanding signals to be dispatched. */
@@ -350,6 +362,11 @@ final class Util_jdk_internal_misc_Signal {
         protected static void await() {
             final int awaitResult = CSunMiscSignal.await();
             PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.await(): CSunMiscSignal.await() failed.");
+        }
+
+        protected static void wakeUp() {
+            final int awaitResult = CSunMiscSignal.post();
+            PosixUtils.checkStatusIs0(awaitResult, "Util_sun_misc_Signal.SignalState.post(): CSunMiscSignal.post() failed.");
         }
 
         /*

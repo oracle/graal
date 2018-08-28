@@ -70,6 +70,8 @@ public interface HostVM {
 
     void registerType(AnalysisType newValue, ResolvedJavaType hostType);
 
+    boolean isInitialized(AnalysisType type);
+
     Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider);
 
     GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
@@ -78,4 +80,13 @@ public interface HostVM {
     String inspectServerContentPath();
 
     void warn(String message);
+
+    /**
+     * Gets the name of the native image being built.
+     *
+     * @return {@code null} if this VM is not being used in the context of building a native image
+     */
+    default String getImageName() {
+        return null;
+    }
 }

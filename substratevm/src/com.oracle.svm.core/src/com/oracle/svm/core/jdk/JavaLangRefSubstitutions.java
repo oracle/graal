@@ -145,6 +145,19 @@ final class Target_java_lang_ref_Reference {
     private static boolean tryHandlePending(boolean waitForNotify) {
         throw VMError.unimplemented();
     }
+
+    @Override
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    protected native Object clone() throws CloneNotSupportedException;
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    // @ForceInline
+    @SuppressWarnings("unused")
+    public static void reachabilityFence(Object ref) {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ref_Reference.reachabilityFence(Object ref)");
+    }
 }
 
 @TargetClass(java.lang.ref.ReferenceQueue.class)

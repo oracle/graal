@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.word.WordBase;
 
@@ -167,11 +168,22 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
          * classpath. While normally JVM doesn't care about missing classes unless they are really
          * used the analysis is eager to load all reachable classes. The analysis client should deal
          * with type resolution problems.
-         * 
+         *
          * We cannot cache the result as an AnalysisType, i.e., by calling
          * universe.lookup(JavaType), because that could lead to a deadlock.
          */
         wrapped.getEnclosingType();
+
+        /*
+         * Eagerly resolve the instance fields. The wrapped type caches the result, so when
+         * AnalysisType.getInstanceFields(boolean) is called it will use that cached result. We
+         * cannot call AnalysisType.getInstanceFields(boolean), and create the corresponding
+         * AnalysisField objects, directly here because that could lead to a deadlock.
+         */
+        for (ResolvedJavaField field : wrapped.getInstanceFields(false)) {
+            /* Eagerly resolve the field declared type. */
+            field.getType();
+        }
 
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         getSuperclass();
@@ -692,13 +704,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public final boolean isInitialized() {
-        assert wrapped.isInitialized();
-        return true;
+        return universe.hostVM.isInitialized(this);
     }
 
     @Override
     public void initialize() {
-        assert wrapped.isInitialized();
+        if (!wrapped.isInitialized()) {
+            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature");
+        }
     }
 
     @Override
@@ -945,7 +958,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     @Override
-    public ResolvedJavaMethod getClassInitializer() {
+    public AnalysisMethod getClassInitializer() {
         return universe.lookup(wrapped.getClassInitializer());
     }
 

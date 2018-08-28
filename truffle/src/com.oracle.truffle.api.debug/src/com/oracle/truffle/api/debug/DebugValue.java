@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.TruffleException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -188,12 +187,10 @@ public abstract class DebugValue {
         Object value = get();
         try {
             return getProperties(value, getDebugger(), resolveLanguage(), null);
+        } catch (ThreadDeath td) {
+            throw td;
         } catch (Throwable ex) {
-            if (ex instanceof TruffleException) {
-                throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-            } else {
-                throw ex;
-            }
+            throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
         }
     }
 
@@ -233,12 +230,10 @@ public abstract class DebugValue {
                     Map.Entry<Object, Object> entry = new ObjectStructures.TruffleEntry(getDebugger().getMessageNodes(), object, name);
                     return new DebugValue.PropertyValue(getDebugger(), resolveLanguage(), keyInfo, entry, null);
                 }
+            } catch (ThreadDeath td) {
+                throw td;
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         } else {
             return null;
@@ -320,9 +315,15 @@ public abstract class DebugValue {
         TruffleInstrument.Env env = getDebugger().getEnv();
         LanguageInfo languageInfo = resolveLanguage();
         if (languageInfo != null) {
-            obj = env.findMetaObject(languageInfo, obj);
-            if (obj != null) {
-                return new HeapValue(getDebugger(), languageInfo, null, obj);
+            try {
+                obj = env.findMetaObject(languageInfo, obj);
+                if (obj != null) {
+                    return new HeapValue(getDebugger(), languageInfo, null, obj);
+                }
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getDebugger(), ex, languageInfo, null, true, null);
             }
         }
         return null;
@@ -346,7 +347,13 @@ public abstract class DebugValue {
         TruffleInstrument.Env env = getDebugger().getEnv();
         LanguageInfo languageInfo = resolveLanguage();
         if (languageInfo != null) {
-            return env.findSourceLocation(languageInfo, obj);
+            try {
+                return env.findSourceLocation(languageInfo, obj);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getDebugger(), ex, languageInfo, null, true, null);
+            }
         } else {
             return null;
         }
@@ -362,7 +369,13 @@ public abstract class DebugValue {
         Object value = get();
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
-            return ObjectStructures.canExecute(getDebugger().getMessageNodes(), to);
+            try {
+                return ObjectStructures.canExecute(getDebugger().getMessageNodes(), to);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable ex) {
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
+            }
         } else {
             return false;
         }
@@ -458,12 +471,10 @@ public abstract class DebugValue {
                 } else if (clazz == Number.class || clazz == Boolean.class) {
                     return convertToPrimitive(clazz);
                 }
+            } catch (ThreadDeath td) {
+                throw td;
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
             throw new UnsupportedOperationException();
         }
@@ -558,12 +569,10 @@ public abstract class DebugValue {
             checkValid();
             try {
                 return property.getValue();
+            } catch (ThreadDeath td) {
+                throw td;
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -614,12 +623,10 @@ public abstract class DebugValue {
             checkValid();
             try {
                 property.setValue(value.get());
+            } catch (ThreadDeath td) {
+                throw td;
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -630,11 +637,7 @@ public abstract class DebugValue {
             try {
                 property.setValue(primitiveValue);
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -674,12 +677,10 @@ public abstract class DebugValue {
             checkValid();
             try {
                 return map.get(getName());
+            } catch (ThreadDeath td) {
+                throw td;
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -712,12 +713,10 @@ public abstract class DebugValue {
             checkValid();
             try {
                 map.put(getName(), value.get());
+            } catch (ThreadDeath td) {
+                throw td;
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         }
 
@@ -728,11 +727,7 @@ public abstract class DebugValue {
             try {
                 map.put(getName(), primitiveValue);
             } catch (Throwable ex) {
-                if (ex instanceof TruffleException) {
-                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
-                } else {
-                    throw ex;
-                }
+                throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }
         }
 

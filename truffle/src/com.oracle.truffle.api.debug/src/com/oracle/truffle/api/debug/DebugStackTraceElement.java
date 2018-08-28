@@ -88,13 +88,23 @@ public final class DebugStackTraceElement {
         }
         try {
             return root.getName();
-        } catch (Throwable e) {
-            /* Throw error if assertions are enabled. */
-            try {
-                assert false;
-            } catch (AssertionError e1) {
-                throw e;
-            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(debugger, ex, root.getLanguageInfo(), null, true, null);
+        }
+    }
+
+    private String getName0() {
+        RootNode root = findCurrentRoot();
+        if (root == null) {
+            return null;
+        }
+        try {
+            return root.getName();
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
             return null;
         }
     }
@@ -170,7 +180,7 @@ public final class DebugStackTraceElement {
         if (stackTrace == null) {
             LanguageInfo language = getLanguage();
             String declaringClass = language != null ? "<" + language.getId() + ">" : "<unknown>";
-            String methodName = getName();
+            String methodName = getName0();
             if (methodName == null) {
                 methodName = "";
             }

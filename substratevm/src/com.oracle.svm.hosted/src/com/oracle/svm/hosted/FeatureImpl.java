@@ -510,15 +510,21 @@ public class FeatureImpl {
     }
 
     public static class AfterImageWriteAccessImpl extends FeatureAccessImpl implements Feature.AfterImageWriteAccess {
+        private final HostedUniverse hUniverse;
         protected final Path imagePath;
         protected final Path tempDirectory;
         protected final NativeImageKind imageKind;
 
-        AfterImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Path imagePath, Path tempDirectory, NativeImageKind imageKind) {
+        AfterImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, Path imagePath, Path tempDirectory, NativeImageKind imageKind) {
             super(featureHandler, imageClassLoader);
+            this.hUniverse = hUniverse;
             this.imagePath = imagePath;
             this.tempDirectory = tempDirectory;
             this.imageKind = imageKind;
+        }
+
+        public HostedUniverse getUniverse() {
+            return hUniverse;
         }
 
         @Override

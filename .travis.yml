@@ -18,15 +18,16 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.46"
+    - JVMCI_VERSION="jvmci-0.48"
     - JDK8_UPDATE_VERSION="172"
   matrix:
-    - JDK="jdk8" GATE="style,fullbuild"
-    - JDK="jdk8" GATE="build,test"
-    - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk11" GATE="style,fullbuild"
-    - JDK="jdk11" GATE="build,test"
-    - JDK="jdk11" GATE="build,bootstraplite"
+    - JDK="jdk8" GATE="style,fullbuild" PRIMARY="compiler"
+    - JDK="jdk8" GATE="build,test" PRIMARY="compiler"
+    - JDK="jdk8" GATE="build,test" PRIMARY="substratevm"
+    - JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
+    - JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
+    - JDK="jdk11" GATE="build,test" PRIMARY="compiler"
+    - JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -56,23 +57,17 @@ install:
         fi
       fi
   - |
-      JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-      wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
-      tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-      export JAVA8_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       if [ "${JDK}" == "jdk8" ]
       then
-        export EXTRA_JAVA_HOMES=${JAVA_HOME} # JAVA_HOME is pointing to JDK11, which should be in EXTRA_JAVA_HOMES
-        export JAVA_HOME=${JAVA8_HOME} # JAVA_HOME should point to JDK8
-      fi
-      if [ "${JDK}" == "jdk11" ]
-      then
-        export EXTRA_JAVA_HOMES=${JAVA8_HOME} # JDK8 must be placed in EXTRA_JAVA_HOME
+        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
+        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
+        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi
 
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/compiler --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*

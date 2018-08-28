@@ -52,7 +52,7 @@ public interface GraalFeature extends Feature {
      * @param providers Providers that the lowering can use.
      * @param snippetReflection Snippet reflection providers.
      * @param foreignCalls The foreign call registry to add to.
-     * @param hosted True if registering for ahead-of-time compilation, false if registering for
+     * @param hosted True if registering for ahead-of-time compilation, false otherwise
      */
     default void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
@@ -60,13 +60,14 @@ public interface GraalFeature extends Feature {
 
     /**
      * Called to register Graal invocation plugins.
-     *
+     * 
      * @param providers Providers that the lowering can use.
      * @param snippetReflection Snippet reflection providers.
      * @param invocationPlugins The invocation plugins to add to.
-     * @param hosted True if registering for ahead-of-time compilation, false if registering for
+     * @param analysis true if registering for analysis, false if registering for compilation
+     * @param hosted True if registering for ahead-of-time compilation, false otherwise
      */
-    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean hosted) {
+    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
     }
 
     /**
@@ -74,8 +75,8 @@ public interface GraalFeature extends Feature {
      *
      * @param metaAccess MetaAccessProvider that the node plugins can use.
      * @param plugins The Plugins object where node plugins can be added to.
+     * @param analysis true if registering for analysis, false if registering for compilation
      * @param hosted true if registering for ahead-of-time compilation, false if registering for
-     * @param analysis true if registering for analysis, false if registering for compilaiton
      */
     default void registerNodePlugins(MetaAccessProvider metaAccess, Plugins plugins, boolean analysis, boolean hosted) {
     }

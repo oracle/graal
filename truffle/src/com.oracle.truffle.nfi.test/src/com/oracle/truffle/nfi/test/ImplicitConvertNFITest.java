@@ -88,7 +88,7 @@ public class ImplicitConvertNFITest extends NFITest {
     public class TestConvertNode extends SendExecuteNode {
 
         public TestConvertNode() {
-            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type), 2);
+            super("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
         }
     }
 

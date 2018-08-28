@@ -105,7 +105,7 @@ public final class RegexUnifier {
                     dump.append(((Token.LookAheadAssertionBegin) token).isNegated() ? "(?!" : "(?=");
                     break;
                 case lookBehindAssertionBegin:
-                    dump.append(((Token.LookAheadAssertionBegin) token).isNegated() ? "(?<!" : "(?<=");
+                    dump.append(((Token.LookBehindAssertionBegin) token).isNegated() ? "(?<!" : "(?<=");
                     break;
                 case groupEnd:
                     dump.append(")");

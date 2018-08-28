@@ -1063,6 +1063,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected StructuredGraph getFinalGraph(String method) {
+        return getFinalGraph(getResolvedJavaMethod(method));
+    }
+
+    protected StructuredGraph getFinalGraph(ResolvedJavaMethod method) {
+        StructuredGraph graph = parseForCompile(method);
+        applyFrontEnd(graph);
+        return graph;
+    }
+
+    protected void applyFrontEnd(StructuredGraph graph) {
+        GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(), createSuites(graph.getOptions()));
+    }
+
     protected StructuredGraph lastCompiledGraph;
 
     protected SpeculationLog getSpeculationLog() {
@@ -1108,6 +1122,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return methodMap.get(javaMethod);
     }
 
+    @SuppressWarnings("deprecation")
     protected Object invoke(ResolvedJavaMethod javaMethod, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
         Executable method = lookupMethod(javaMethod);
         Assert.assertTrue(method != null);

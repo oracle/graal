@@ -29,8 +29,8 @@ import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers) {
-        super(id, flags, loopToSelf, successors, matchers);
+    public BackwardDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers) {
+        super(id, flags, loopOptimizationNode, successors, matchers);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {

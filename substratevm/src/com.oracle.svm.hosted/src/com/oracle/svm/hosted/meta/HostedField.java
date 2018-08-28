@@ -165,8 +165,6 @@ public class HostedField implements ReadableJavaField, SharedField, Comparable<H
     public boolean allowConstantFolding() {
         if (location == LOC_CONSTANT_STATIC_FIELD) {
             return true;
-        } else if (getDeclaringClass().isEnum()) {
-            return true;
         } else if (!wrapped.isWritten()) {
             assert !Modifier.isStatic(getModifiers()) : "should have constantValue in this case";
             return true;

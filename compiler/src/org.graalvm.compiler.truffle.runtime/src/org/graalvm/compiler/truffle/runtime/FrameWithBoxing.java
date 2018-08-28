@@ -174,7 +174,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
 
     @Override
     public FrameDescriptor getFrameDescriptor() {
-        return this.descriptor;
+        return unsafeCast(descriptor, FrameDescriptor.class, true, true, false);
     }
 
     private Object[] resizeAndCheck(FrameSlot slot) {

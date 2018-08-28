@@ -205,12 +205,12 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public boolean isInitialized() {
-        return true;
+        return hub.isInitialized();
     }
 
     @Override
     public void initialize() {
-        throw VMError.unimplemented();
+        hub.ensureInitialized();
     }
 
     @Override
@@ -809,12 +809,14 @@ class SubstrateNodeIterator implements Iterator<Node> {
 
     private boolean computeNextFromField(SubstrateField field) {
         if (SubstrateNodeFieldAccessor.isChildField(field)) {
-            next = (Node) UnsafeAccess.UNSAFE.getObject(node, (long) field.getLocation());
+            long offset = field.getLocation();
+            next = (Node) UnsafeAccess.UNSAFE.getObject(node, offset);
             if (next != null) {
                 return true;
             }
         } else if (SubstrateNodeFieldAccessor.isChildrenField(field)) {
-            children = (Object[]) UnsafeAccess.UNSAFE.getObject(node, (long) field.getLocation());
+            long offset = field.getLocation();
+            children = (Object[]) UnsafeAccess.UNSAFE.getObject(node, offset);
             nextChildInChildren = 0;
             return computeNextFromChildren();
         }

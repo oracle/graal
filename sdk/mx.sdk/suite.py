@@ -1,8 +1,8 @@
 suite = {
   "mxversion" : "5.178.0",
   "name" : "sdk",
-  "version" : "1.0.0-rc5",
-  "release" : True,
+  "version" : "1.0.0-rc6",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
   "groupId" : "org.graalvm",
@@ -52,7 +52,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -62,12 +62,12 @@ suite = {
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.impl", # exported to truffle
+        "org.graalvm.polyglot.impl to com.oracle.truffle.truffle_api", # exported to truffle
         "org.graalvm.polyglot",
         "org.graalvm.polyglot.proxy",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
 
@@ -76,9 +76,13 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
+      "exports" : [
+        "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.word.impl to jdk.internal.vm.compiler",
+      ],
     },
 
     "org.graalvm.nativeimage" : {
@@ -92,7 +96,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.launcher" : {
@@ -103,7 +107,7 @@ suite = {
         "org.graalvm.nativeimage",
         "JLINE",
       ],
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
     },
@@ -117,7 +121,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
     },
     "org.graalvm.collections" : {
@@ -127,7 +131,7 @@ suite = {
         "<package-info>",  # exports all packages containing package-info.java
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.collections.test" : {
@@ -138,7 +142,7 @@ suite = {
         "org.graalvm.collections",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
     },
   },

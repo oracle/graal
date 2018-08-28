@@ -151,7 +151,7 @@ public abstract class SLDispatchNode extends Node {
     @Specialization(guards = "isForeignFunction(function)")
     protected Object doForeign(TruffleObject function, Object[] arguments,
                     // The child node to call the foreign function
-                    @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
+                    @Cached("createCrossLanguageCallNode()") Node crossLanguageCallNode,
                     // The child node to convert the result of the foreign call to a SL value
                     @Cached("createToSLTypeNode()") SLForeignToSLTypeNode toSLTypeNode) {
 
@@ -171,8 +171,8 @@ public abstract class SLDispatchNode extends Node {
         return !(function instanceof SLFunction);
     }
 
-    protected static Node createCrossLanguageCallNode(Object[] arguments) {
-        return Message.createExecute(arguments.length).createNode();
+    protected static Node createCrossLanguageCallNode() {
+        return Message.EXECUTE.createNode();
     }
 
     protected static SLForeignToSLTypeNode createToSLTypeNode() {

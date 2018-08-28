@@ -40,7 +40,7 @@ public class ForeignRegexCompiler extends RegexCompiler {
 
     private final TruffleObject foreignCompiler;
 
-    private final Node executeNode = Message.createExecute(2).createNode();
+    private final Node executeNode = Message.EXECUTE.createNode();
 
     public ForeignRegexCompiler(TruffleObject foreignCompiler) {
         this.foreignCompiler = foreignCompiler;

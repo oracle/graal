@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
+import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Random;
@@ -48,7 +49,7 @@ public class DebugUtil {
 
     @TruffleBoundary
     public static String charToString(int c) {
-        if (c <= 0xffff && (Character.isDigit(c) || (0 < c && c < 128 && !Character.isISOControl(c)))) {
+        if (Constants.WORD_CHARS.contains(c)) {
             return String.valueOf((char) c);
         } else if (c <= 0xff) {
             return String.format("\\x%02x", c);

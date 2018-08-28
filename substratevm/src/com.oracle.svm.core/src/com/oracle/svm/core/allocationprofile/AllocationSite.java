@@ -33,7 +33,10 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.Feature;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -57,6 +60,15 @@ public final class AllocationSite {
      * it is created during parsing when everything is concurrent.
      */
     private static final ConcurrentMap<AllocationSite, AllocationSite> sites = new ConcurrentHashMap<>();
+
+    static {
+        /*
+         * The static analysis sees all involved types (AllocationSite, AllocationCounter) as
+         * instantiated, but the actual objects are only created during compilation. Adding a unused
+         * counter makes the types reachable for the static analysis.
+         */
+        lookup("__unused_to_make_counter_types_reachable__", "__").createCounter("__");
+    }
 
     /** Allocation site name. */
     private final String siteName;
@@ -190,17 +202,14 @@ public final class AllocationSite {
         MetricsLogUtils.logMemoryMetric("Total memory:", totalAllocatedSize);
         MetricsLogUtils.logCounterMetric("Total object:", totalAllocatedObjectCnt);
     }
+}
 
-    /** A shutdown hook to print the AllocationProfiling output. */
-    public static class AllocationProfilingShutdownHook extends Thread {
-
-        public AllocationProfilingShutdownHook() {
-            super("AllocationProfilingShutdownHook");
-        }
-
-        @Override
-        public void run() {
-            AllocationSite.dumpProfilingResults();
+@AutomaticFeature
+class AllocationProfilingFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (AllocationSite.Options.AllocationProfiling.getValue()) {
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResults);
         }
     }
 }

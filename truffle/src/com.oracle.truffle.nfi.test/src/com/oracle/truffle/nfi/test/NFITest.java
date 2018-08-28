@@ -62,7 +62,7 @@ public class NFITest {
             sourceString = lib;
         }
 
-        Source source = Source.newBuilder(sourceString).name("loadLibrary").mimeType("application/x-native").build();
+        Source source = Source.newBuilder("nfi", sourceString, "loadLibrary").build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
         return (TruffleObject) target.call();
     }
@@ -77,7 +77,7 @@ public class NFITest {
     private static final class LookupAndBindNode extends RootNode {
 
         @Child Node lookupSymbol = Message.READ.createNode();
-        @Child Node bind = Message.createInvoke(1).createNode();
+        @Child Node bind = Message.INVOKE.createNode();
 
         private LookupAndBindNode() {
             super(null);
@@ -129,13 +129,13 @@ public class NFITest {
 
         @Child Node execute;
 
-        protected SendExecuteNode(String symbol, String signature, int argCount) {
-            this(lookupAndBind(symbol, signature), argCount);
+        protected SendExecuteNode(String symbol, String signature) {
+            this(lookupAndBind(symbol, signature));
         }
 
-        protected SendExecuteNode(TruffleObject receiver, int argCount) {
+        protected SendExecuteNode(TruffleObject receiver) {
             this.receiver = receiver;
-            execute = Message.createExecute(argCount).createNode();
+            execute = Message.EXECUTE.createNode();
         }
 
         @Override

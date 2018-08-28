@@ -15,7 +15,7 @@ Substrate VM does not support all features of Java to keep the implementation sm
 | [Lambda Expressions](#lambda-expressions) | Supported|
 | [Synchronized, wait, and notify](#synchronized-wait-and-notify) | Supported|
 | [Finalizers](#finalizers) | Not supported|
-| [Weak References](#weak-references) | Supported|
+| [References](#references) | Mostly supported|
 | [Threads](#threads) | Supported|
 | [Identity Hash Code](#identity-hash-code) | Supported|
 | [Security Manager](#security-manager) | Not supported|
@@ -39,7 +39,7 @@ Reflection
 
 What: Calling `Class.forName()`; listing methods and fields of a class; invoking methods and accessing fields reflectively; most classes in the package `java.lang.reflect`.
 
-Individual classes, methods, and fields that should be accessible via reflection must be specified during native image generation in a configuration file via the option `-H:ReflectionConfigurationFiles=`, or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/Feature.html). Elements (classes, methods, and fields) that are not included in a configuration cannot be accessed reflectively. For more details, read our [documentation on reflection](REFLECTION.md).
+Individual classes, methods, and fields that should be accessible via reflection need to be known ahead-of-time. SubstrateVM tries to resolve these elements through a static analysis that detects calls to the reflection API. Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a configuration file via the option `-H:ReflectionConfigurationFiles=`, or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/Feature.html). For more details, read our [documentation on reflection](REFLECTION.md).
 
 During native image generation, reflection can be used without restrictions during native image generation, for example in static initializers.
 
@@ -132,14 +132,16 @@ Finalizers are not supported at all, and there are no plans to support it. This 
 Alternatives: Use weak references and reference queues.
 
 
-Weak References
+References
 ---------------
 
-**Support Status: Supported**
+**Support Status: Mostly supported**
 
 What: The package `java.lang.ref` defines the base class `Reference`, as well as subclasses for weak, soft, and phantom references. The object that the reference refers to can be deallocated, in which case the reference is updated to contain the value null. With the help of a `ReferenceQueue`, user code can be executed when a reference gets deallocated.
 
 We have our own Feeble References (exposed as `java.lang.ref.Reference`) similar to Java's weak references. However, we do not distinguish between weak, soft, and phantom references.
+
+We do not support `Reference.enqueue()` or `Reference.isEnqueued()`.
 
 
 Threads

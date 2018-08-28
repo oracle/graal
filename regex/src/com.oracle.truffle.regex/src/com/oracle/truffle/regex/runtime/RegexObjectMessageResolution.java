@@ -27,9 +27,6 @@ package com.oracle.truffle.regex.runtime;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -124,7 +121,7 @@ public class RegexObjectMessageResolution {
     @Resolve(message = "INVOKE")
     abstract static class RegexObjectInvokeNode extends Node {
 
-        @Child private Node executeNode = Message.createExecute(3).createNode();
+        @Child private ExecuteRegexObjectNode executeNode = ExecuteRegexObjectNode.create();
 
         public Object access(RegexObject receiver, String name, Object[] args) {
             if (!name.equals("exec")) {
@@ -133,11 +130,7 @@ public class RegexObjectMessageResolution {
             if (args.length != 2) {
                 throw ArityException.raise(2, args.length);
             }
-            try {
-                return ForeignAccess.sendExecute(executeNode, receiver.getCompiledRegexObject(), receiver, args[0], args[1]);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
+            return executeNode.execute(receiver, args[0], args[1]);
         }
     }
 }

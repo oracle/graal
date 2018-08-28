@@ -66,6 +66,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -241,6 +242,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             return;
         }
 
+        /*
+         * The annotatedClass is never used directly, i.e., never wrapped in an AnalysisType. So we
+         * need to ensure manually here that its static initializer runs.
+         */
+        ClassInitializationFeature.forceInitializeHosted(annotatedClass);
+
         Delete deleteAnnotation = lookupAnnotation(annotatedClass, Delete.class);
         Substitute substituteAnnotation = lookupAnnotation(annotatedClass, Substitute.class);
 
@@ -257,9 +264,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
-        String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
-            guarantee(annotatedClass.getSimpleName().equals(expectedName), "Naming convention violation: %s must be named %s", annotatedClass, expectedName);
+            String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+            String actualName = annotatedClass.getSimpleName();
+            guarantee(actualName.equals(expectedName) || actualName.startsWith(expectedName + "_"),
+                            "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
         }
 
         ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);

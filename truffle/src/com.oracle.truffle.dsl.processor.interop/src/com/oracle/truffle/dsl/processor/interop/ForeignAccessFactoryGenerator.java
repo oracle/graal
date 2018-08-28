@@ -211,14 +211,14 @@ final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessIsExecutable(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsExecutable() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE, Message.createExecute(0));
+        appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE, Message.EXECUTE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsInstantiable(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsInstantiable() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_INSTANTIABLE, Message.createNew(0));
+        appendOptionalDefaultHandlerBody(w, Message.IS_INSTANTIABLE, Message.NEW);
         w.append("    }").append("\n");
     }
 
@@ -332,21 +332,21 @@ final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessExecute(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createExecute(0));
+        appendOptionalHandlerBody(w, Message.EXECUTE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessInvoke(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createInvoke(0));
+        appendOptionalHandlerBody(w, Message.INVOKE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessNew(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createNew(0));
+        appendOptionalHandlerBody(w, Message.NEW);
         w.append("    }").append("\n");
     }
 

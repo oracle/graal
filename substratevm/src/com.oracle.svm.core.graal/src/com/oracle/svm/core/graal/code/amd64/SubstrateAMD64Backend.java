@@ -130,12 +130,10 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -521,56 +519,22 @@ public class SubstrateAMD64Backend extends Backend {
 
         @Override
         public void enter(CompilationResultBuilder tasm) {
-            SubstrateAMD64FrameMap frameMap = (SubstrateAMD64FrameMap) tasm.frameMap;
-            int frameSize = frameMap.frameSize();
-
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
+            int frameSize = tasm.frameMap.frameSize();
 
             asm.decrementq(rsp, frameSize);
             tasm.recordMark(MARK_PROLOGUE_DECD_RSP);
-
-            RegisterConfig registerConfig = frameMap.getRegisterConfig();
-            RegisterArray csr = registerConfig.getCalleeSaveRegisters();
-            if (csr != null && csr.size() != 0) {
-                int frameToCSA = frameMap.offsetToCalleeSaveArea();
-                assert frameToCSA >= 0;
-                int offset = 0;
-                Register frameRegister = registerConfig.getFrameRegister();
-
-                for (Register r : csr) {
-                    asm.movq(new AMD64Address(frameRegister, frameToCSA + offset), r);
-                    offset += FrameAccess.wordSize();
-                }
-
-                tasm.recordMark(MARK_PROLOGUE_SAVED_REGS);
-            }
             tasm.recordMark(MARK_PROLOGUE_END);
         }
 
         @Override
         public void leave(CompilationResultBuilder tasm) {
-            SubstrateAMD64FrameMap frameMap = (SubstrateAMD64FrameMap) tasm.frameMap;
-            int frameSize = frameMap.frameSize();
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-
-            RegisterConfig registerConfig = frameMap.getRegisterConfig();
-            RegisterArray csr = registerConfig.getCalleeSaveRegisters();
-            if (csr != null && csr.size() != 0) {
-                // saved all registers, restore all registers
-                int frameToCSA = frameMap.offsetToCalleeSaveArea();
-                int offset = 0;
-                Register frameRegister = registerConfig.getFrameRegister();
-
-                for (Register r : csr) {
-                    asm.movq(r, new AMD64Address(frameRegister, frameToCSA + offset));
-                    offset += FrameAccess.wordSize();
-                }
-            }
+            int frameSize = tasm.frameMap.frameSize();
 
             tasm.recordMark(MARK_EPILOGUE_START);
             asm.incrementq(rsp, frameSize);
-            boolean genIncRsp = frameSize != 0;
-            if (genIncRsp) {
+            if (frameSize != 0) {
                 tasm.recordMark(MARK_EPILOGUE_INCD_RSP);
             }
             tasm.recordMark(MARK_EPILOGUE_END);
@@ -736,23 +700,6 @@ public class SubstrateAMD64Backend extends Backend {
         }
     }
 
-    static class SubstrateAMD64FrameMap extends AMD64FrameMap {
-
-        SubstrateAMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
-            super(codeCache, registerConfig, referenceMapFactory);
-            initialSpillSize += calleeSaveAreaSize();
-            spillSize = initialSpillSize;
-        }
-
-        protected int calleeSaveAreaSize() {
-            return getRegisterConfig().getCalleeSaveRegisters().size() * FrameAccess.wordSize();
-        }
-
-        public int offsetToCalleeSaveArea() {
-            return frameSize() - calleeSaveAreaSize();
-        }
-    }
-
     @Override
     public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
@@ -761,7 +708,7 @@ public class SubstrateAMD64Backend extends Backend {
 
     @Override
     public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new SubstrateAMD64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory());
+        return new AMD64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory());
     }
 
     @Override

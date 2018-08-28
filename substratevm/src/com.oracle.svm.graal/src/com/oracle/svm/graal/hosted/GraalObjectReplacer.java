@@ -263,17 +263,16 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         return fields.remove(field) != null;
     }
 
+    public boolean typeCreated(JavaType original) {
+        return types.containsKey(toAnalysisType(original));
+    }
+
     public SubstrateType createType(JavaType original) {
         if (original == null) {
             return null;
         }
 
-        AnalysisType aType;
-        if (original instanceof AnalysisType) {
-            aType = (AnalysisType) original;
-        } else {
-            aType = ((HostedType) original).getWrapped();
-        }
+        AnalysisType aType = toAnalysisType(original);
         SubstrateType sType = types.get(aType);
 
         if (sType == null) {
@@ -291,6 +290,14 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             }
         }
         return sType;
+    }
+
+    private static AnalysisType toAnalysisType(JavaType original) {
+        if (original instanceof HostedType) {
+            return ((HostedType) original).getWrapped();
+        } else {
+            return (AnalysisType) original;
+        }
     }
 
     private SubstrateField[] createAllInstanceFields(ResolvedJavaType originalType) {

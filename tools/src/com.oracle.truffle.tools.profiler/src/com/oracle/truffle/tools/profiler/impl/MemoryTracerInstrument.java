@@ -38,7 +38,7 @@ import com.oracle.truffle.tools.profiler.MemoryTracer;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.1", services = {MemoryTracer.class})
+@TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.2", services = {MemoryTracer.class})
 public class MemoryTracerInstrument extends TruffleInstrument {
 
     /**
@@ -79,24 +79,6 @@ public class MemoryTracerInstrument extends TruffleInstrument {
             // Can not happen
             throw new AssertionError();
         }
-    }
-
-    /**
-     * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link CPUTracer}.
-     *
-     * @since 0.30
-     * @deprecated use {@link #getTracer(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static MemoryTracer getTracer(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
-        if (instrument == null) {
-            throw new IllegalStateException("Memory Tracer is not installed.");
-        }
-        instrument.setEnabled(true);
-        return instrument.lookup(MemoryTracer.class);
     }
 
     /**

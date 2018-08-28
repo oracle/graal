@@ -121,7 +121,7 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
             b.append(line);
             b.append("\n");
         }
-        return com.oracle.truffle.api.source.Source.newBuilder(b.toString()).name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        return com.oracle.truffle.api.source.Source.newBuilder(InstrumentationTestLanguage.ID, b.toString(), null).name("unknown").build();
     }
 
     protected static Source lines(String... lines) {

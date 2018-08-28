@@ -24,15 +24,13 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleSplitting;
-
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 
@@ -40,6 +38,8 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleSplitting;
 
 public final class TraceSplittingListener implements GraalTruffleRuntimeListener {
 
@@ -75,7 +75,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     }
 
     static String getShortDescription(SourceSection sourceSection) {
-        if (sourceSection.getSource() == null) {
+        if (sourceSection == null || sourceSection.getSource() == null) {
             // TODO the source == null branch can be removed if the deprecated
             // SourceSection#createUnavailable has be removed.
             return "<Unknown>";
