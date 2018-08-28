@@ -48,10 +48,13 @@ import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN)
 
-public final class AMD64StringLatin1InflateNode
-        extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi, MemoryAccess {
+public final class AMD64StringLatin1InflateNode extends FixedWithNextNode
+                implements LIRLowerable, MemoryCheckpoint.Multi, MemoryAccess {
 
-    public static final NodeClass<AMD64StringLatin1InflateNode> TYPE = NodeClass.create(AMD64StringLatin1InflateNode.class);
+    // @formatter:off
+    public static final NodeClass<AMD64StringLatin1InflateNode>
+            TYPE = NodeClass.create(AMD64StringLatin1InflateNode.class);
+    // @formatter:on
 
     @Input private ValueNode src;
     @Input private ValueNode dst;
@@ -59,12 +62,12 @@ public final class AMD64StringLatin1InflateNode
 
     @OptionalInput(Memory) private MemoryNode lla; // Last access location registered.
 
-    /* java.lang.StringLatin1.inflate([BI[CII)V
-     *
-     * public static void inflate(byte[] src, int src_indx, char[] dst, int dst_indx, int len)
-     *
-     * Represented as a graph node by:
-     */
+    // java.lang.StringLatin1.inflate([BI[CII)V
+    //
+    // void inflate(byte[] src, int src_indx, char[] dst, int dst_indx, int len)
+    //
+    // Represented as a graph node by:
+
     public AMD64StringLatin1InflateNode(ValueNode src, ValueNode dst, ValueNode len) {
         super(TYPE, StampFactory.forVoid());
         this.src = src;
@@ -80,10 +83,12 @@ public final class AMD64StringLatin1InflateNode
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
+        // @formatter:off
         // Model write access via 'dst' using:
-        // Checkstyle: stop
-        return new LocationIdentity[] { NamedLocationIdentity.getArrayLocation(JavaKind.Char) };
-        // Checkstyle: resume
+        return new LocationIdentity[] {
+                NamedLocationIdentity.getArrayLocation(JavaKind.Char)
+        };
+        // @formatter:on
     }
 
     @Override

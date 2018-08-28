@@ -2382,7 +2382,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0x67);
         emitModRM(dst, src);
-      }
+    }
 
     public final void pop(Register dst) {
         prefix(dst);
