@@ -39,9 +39,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 
 import java.net.URL;
 import java.util.jar.JarFile;
-
-import java.net.URL;
-import java.util.jar.JarFile;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 import java.util.zip.ZipException;
