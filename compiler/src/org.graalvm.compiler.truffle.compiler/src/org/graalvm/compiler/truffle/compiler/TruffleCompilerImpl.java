@@ -66,6 +66,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -427,6 +428,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             Suites selectedSuites = suites;
             LIRSuites selectedLirSuites = lirSuites;
             Providers selectedProviders = providers;
+            // TTY.println(TruffleCompilerOptions.TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions()));
             if (TruffleCompilerOptions.TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions())) {
                 selectedSuites = lowTierSuites;
                 selectedLirSuites = lowTierLirSuites;

@@ -177,7 +177,8 @@ final class TruffleSplittingStrategy {
             return false;
         }
 
-        if (TruffleCompilerOptions.TruffleLowTierCompilation.getValue(getOptions())) {
+        // TTY.println("splitting: " + TruffleCompilerOptions.TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions()));
+        if (TruffleCompilerOptions.TruffleLowTier.getValue(getOptions()) && CompilerDirectives.inInterpreter()) {
             return false;
         }
 

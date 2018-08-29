@@ -152,6 +152,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleMinInvokeThreshold = new OptionKey<>(3);
 
+    @Option(help = "Minimum number of calls before a call target is compiled in low tier", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleLowTierMinInvokeThreshold = new OptionKey<>(1);
+
     @Option(help = "Delay compilation after an invalidation to allow for reprofiling", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleInvalidationReprofileCount = new OptionKey<>(3);
 
