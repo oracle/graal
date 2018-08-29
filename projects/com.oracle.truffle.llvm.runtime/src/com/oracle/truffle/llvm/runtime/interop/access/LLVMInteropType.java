@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -63,6 +64,10 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     private LLVMInteropType(long size) {
         this.size = size;
+    }
+
+    public long getSize() {
+        return size;
     }
 
     public LLVMInteropType.Array toArray(long length) {
@@ -78,19 +83,21 @@ public abstract class LLVMInteropType implements TruffleObject {
     protected abstract String toString(EconomicSet<LLVMInteropType> visited);
 
     public enum ValueKind {
-        I1(1),
-        I8(1),
-        I16(2),
-        I32(4),
-        I64(8),
-        FLOAT(4),
-        DOUBLE(8),
-        POINTER(8);
+        I1(ForeignToLLVMType.I1),
+        I8(ForeignToLLVMType.I8),
+        I16(ForeignToLLVMType.I16),
+        I32(ForeignToLLVMType.I32),
+        I64(ForeignToLLVMType.I64),
+        FLOAT(ForeignToLLVMType.FLOAT),
+        DOUBLE(ForeignToLLVMType.DOUBLE),
+        POINTER(ForeignToLLVMType.POINTER);
 
         public final LLVMInteropType.Value type;
+        public final ForeignToLLVMType foreignToLLVMType;
 
-        ValueKind(long size) {
-            type = Value.primitive(this, size);
+        ValueKind(ForeignToLLVMType foreignToLLVMType) {
+            this.foreignToLLVMType = foreignToLLVMType;
+            this.type = Value.primitive(this, foreignToLLVMType.getSizeInBytes());
         }
     }
 
