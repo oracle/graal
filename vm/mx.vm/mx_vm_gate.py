@@ -143,7 +143,7 @@ def gate_sulong(tasks):
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
-                sulong.extensions.runLLVMUnittests(functools.partial(svm.native_junit, native_image, build_args=['--language:llvm']))
+                sulong.extensions.runLLVMUnittests(functools.partial(svm.native_junit, native_image, build_args=['-J-XX:+PrintGC', '-J-XX:+BootstrapJVMCI', '--no-server', '--language:llvm']))
 
 def gate_ruby(tasks):
     with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
