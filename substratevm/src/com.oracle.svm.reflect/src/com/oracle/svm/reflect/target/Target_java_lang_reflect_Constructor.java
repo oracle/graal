@@ -40,13 +40,12 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.reflect.generics.repository.ConstructorRepository;
 
-@TargetClass(value = Constructor.class, onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(value = Constructor.class)
 public final class Target_java_lang_reflect_Constructor {
 
     @Alias ConstructorRepository genericInfo;

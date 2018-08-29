@@ -35,11 +35,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import sun.reflect.generics.repository.MethodRepository;
 
-@TargetClass(value = Method.class, onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(value = Method.class)
 public final class Target_java_lang_reflect_Method {
 
     @Alias MethodRepository genericInfo;

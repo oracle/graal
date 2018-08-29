@@ -39,11 +39,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 import sun.reflect.generics.repository.FieldRepository;
 
-@TargetClass(value = Field.class, onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(value = Field.class)
 public final class Target_java_lang_reflect_Field {
 
     @Alias FieldRepository genericInfo;
