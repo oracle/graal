@@ -164,7 +164,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/bin/jvisualvm',
                     exclude_base + '/lib/visualvm',
                     exclude_base + hsdis,
-                ]
+                ] + ([
+                    exclude_base + 'bin/jmc',
+                    exclude_base + 'lib/missioncontrol',
+                ] if mx.get_os() == 'darwin' else [])
             })
 
             # Add vm.properties
