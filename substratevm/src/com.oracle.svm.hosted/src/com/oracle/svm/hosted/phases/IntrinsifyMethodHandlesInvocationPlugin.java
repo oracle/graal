@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -49,8 +50,10 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -86,6 +89,7 @@ import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -136,11 +140,15 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
 
+    private final ClassInitializationPlugin classInitializationPlugin;
+
     public IntrinsifyMethodHandlesInvocationPlugin(Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
         this.originalProviders = GraalAccess.getOriginalProviders();
+
+        this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
     }
 
     @Override
@@ -381,6 +389,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             if (singleFunctionality instanceof MethodCallTargetNode) {
                 MethodCallTargetNode singleCallTarget = (MethodCallTargetNode) singleFunctionality;
                 assert singleReturn.result() == null || singleReturn.result() == singleCallTarget.invoke();
+                ResolvedJavaMethod resolvedTarget = lookup(singleCallTarget.targetMethod());
+
+                maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
+
                 /*
                  * Replace the originalTarget with the replacementTarget. Note that the
                  * replacementTarget node belongs to a different graph than originalTarget, so we
@@ -391,15 +403,21 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 for (int i = 0; i < replacedArguments.length; i++) {
                     replacedArguments[i] = lookup(b, methodHandleArguments, singleCallTarget.arguments().get(i));
                 }
-                b.handleReplacedInvoke(singleCallTarget.invokeKind(), lookup(singleCallTarget.targetMethod()), replacedArguments, false);
+                b.handleReplacedInvoke(singleCallTarget.invokeKind(), resolvedTarget, replacedArguments, false);
 
             } else if (singleFunctionality instanceof LoadFieldNode) {
                 LoadFieldNode fieldLoad = (LoadFieldNode) singleFunctionality;
-                b.addPush(b.getInvokeReturnType().getJavaKind(), LoadFieldNode.create(null, lookup(b, methodHandleArguments, fieldLoad.object()), lookup(fieldLoad.field())));
+                ResolvedJavaField resolvedTarget = lookup(fieldLoad.field());
+
+                maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
+                b.addPush(b.getInvokeReturnType().getJavaKind(), LoadFieldNode.create(null, lookup(b, methodHandleArguments, fieldLoad.object()), resolvedTarget));
 
             } else if (singleFunctionality instanceof StoreFieldNode) {
                 StoreFieldNode fieldStore = (StoreFieldNode) singleFunctionality;
-                b.add(new StoreFieldNode(lookup(b, methodHandleArguments, fieldStore.object()), lookup(fieldStore.field()), lookup(b, methodHandleArguments, fieldStore.value())));
+                ResolvedJavaField resolvedTarget = lookup(fieldStore.field());
+
+                maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
+                b.add(new StoreFieldNode(lookup(b, methodHandleArguments, fieldStore.object()), resolvedTarget, lookup(b, methodHandleArguments, fieldStore.value())));
 
             } else if (singleReturn.result() != null) {
                 /* Replace the invocation with he constant result. */
@@ -413,6 +431,18 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         } catch (Throwable ex) {
             throw debug.handle(ex);
+        }
+    }
+
+    private void maybeEmitClassInitialization(GraphBuilderContext b, boolean isStatic, ResolvedJavaType declaringClass) {
+        if (isStatic && classInitializationPlugin.shouldApply(b, declaringClass)) {
+            /*
+             * We know that this code only runs during bytecode parsing, so the casts to
+             * BytecodeParser are safe. We want to avoid putting additional rarely used methods into
+             * GraphBuilderContext.
+             */
+            FrameState stateBefore = ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null);
+            classInitializationPlugin.apply(b, declaringClass, stateBefore);
         }
     }
 
