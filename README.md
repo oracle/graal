@@ -41,7 +41,7 @@ GraalVM allows running of following languages which are being developed and test
 
 ## Related Tooling
 
-* [Gradle-Graal](http://github.com/palantir/gradle-graal) - A simple Gradle plugin for interacting with Graal tooling.
+* [gradle-graal](http://github.com/palantir/gradle-graal) - A simple Gradle plugin for interacting with Graal tooling.
 
 
 ## License
