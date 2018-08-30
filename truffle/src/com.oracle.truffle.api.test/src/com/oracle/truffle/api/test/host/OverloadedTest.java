@@ -30,6 +30,7 @@ import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class OverloadedTest extends ProxyLanguageEnvTest {
@@ -350,6 +352,47 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         @SuppressWarnings("unused")
         public String prepare4(String query, Concrete arg1, String arg2) {
             return Concrete.class.getName();
+        }
+    }
+
+    @Test
+    public void testFunctionalVsNonFunctionalInterface() throws InteropException {
+        Node n = Message.INVOKE.createNode();
+        TruffleObject receiver = asTruffleObject(new PreferSAM());
+        TruffleObject executable = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
+        assertEquals("SAM", ForeignAccess.sendInvoke(n, receiver, "overloaded1", executable));
+        assertEquals("SAM", ForeignAccess.sendInvoke(n, receiver, "overloaded2", executable));
+
+        // ambiguous (we do not take the object's members into consideration)
+        TruffleObject keysObject = asTruffleObject(new HostInteropTest.HasKeysObject(true));
+        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded1", keysObject), UnsupportedTypeException.class);
+        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded2", keysObject), UnsupportedTypeException.class);
+    }
+
+    public interface TwoMethods {
+        String one();
+
+        String two();
+    }
+
+    @SuppressWarnings("unused")
+    public static class PreferSAM {
+        public String overloaded1(Supplier<String> one) {
+            assertEquals(FunctionalInterfaceTest.EXPECTED_RESULT, one.get());
+            return "SAM";
+        }
+
+        public String overloaded1(TwoMethods two) {
+            return TwoMethods.class.getName();
+        }
+
+        public String overloaded2(FunctionalInterfaceTest.LegacyFunctionalInterface<String> one) {
+            assertEquals(FunctionalInterfaceTest.EXPECTED_RESULT, one.get());
+            return "SAM";
+        }
+
+        public String overloaded2(TwoMethods two) {
+            return TwoMethods.class.getName();
         }
     }
 }
