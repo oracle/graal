@@ -199,9 +199,9 @@ public final class ImageClassLoader {
 
     private void loadClassesFromPath(ForkJoinPool executor, Path path) {
         if (Files.exists(path)) {
-            String name = path.toAbsolutePath().toString();
-            if (path.getNameCount() > 0 && name.endsWith(".jar")) {
+            if (Files.isRegularFile(path)) {
                 try {
+                    String name = path.toAbsolutePath().toString();
                     name = name.replace('\\', '/');
                     URI jarURI = new URI("jar:file:///" + name);
                     try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
