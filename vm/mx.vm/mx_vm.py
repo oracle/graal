@@ -1185,11 +1185,11 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
             other_comp_names += [c.short_name for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
-        self.main_comp_name = installable.main_component.dir_name
+        self.main_comp_dir_name = installable.main_component.dir_name
         version = _suite.release_version()
 
-        name = '_'.join([self.main_comp_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
-        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=self.main_comp_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
+        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
+        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=self.main_comp_dir_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 
@@ -1290,9 +1290,9 @@ def get_standalone_distribution(comp_dir_name):
     standalones = _get_dists(GraalVmStandaloneComponent)
     if standalones:
         for standalone in standalones:
-            if standalone.main_comp_name == comp_dir_name:
+            if standalone.main_comp_dir_name == comp_dir_name:
                 return standalone
-        mx.abort("Cannot find a standalone with dir_name '{}'.\nAvailable standalones:\n{}".format(comp_dir_name, '\n'.join((('- ' + s.main_comp_name for s in standalones)))))
+        mx.abort("Cannot find a standalone with dir_name '{}'.\nAvailable standalones:\n{}".format(comp_dir_name, '\n'.join((('- ' + s.main_comp_dir_name for s in standalones)))))
     else:
         mx.abort('No standalones available. Did you forget to dynamically import a component?')
 
