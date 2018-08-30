@@ -303,22 +303,24 @@ public abstract class CompilationWrapper<T> {
     private ExceptionAction adjustAction(OptionValues initialOptions, EnumOptionKey<ExceptionAction> actionKey, ExceptionAction initialAction) {
         ExceptionAction action = initialAction;
         int maxProblems = MaxCompilationProblemsPerAction.getValue(initialOptions);
-        synchronized (problemsHandledPerAction) {
-            while (action != ExceptionAction.Silent) {
-                int problems = problemsHandledPerAction.getOrDefault(action, 0);
-                if (problems >= maxProblems) {
-                    if (problems == maxProblems) {
-                        TTY.printf("Warning: adjusting %s from %s to %s after %s (%d) failed compilations%n", actionKey, action, action.quieter(),
-                                        MaxCompilationProblemsPerAction, maxProblems);
-                        // Ensure that the message above is only printed once
-                        problemsHandledPerAction.put(action, problems + 1);
+        if (action != ExceptionAction.ExitVM) {
+            synchronized (problemsHandledPerAction) {
+                while (action != ExceptionAction.Silent) {
+                    int problems = problemsHandledPerAction.getOrDefault(action, 0);
+                    if (problems >= maxProblems) {
+                        if (problems == maxProblems) {
+                            TTY.printf("Warning: adjusting %s from %s to %s after %s (%d) failed compilations%n", actionKey, action, action.quieter(),
+                                            MaxCompilationProblemsPerAction, maxProblems);
+                            // Ensure that the message above is only printed once
+                            problemsHandledPerAction.put(action, problems + 1);
+                        }
+                        action = action.quieter();
+                    } else {
+                        break;
                     }
-                    action = action.quieter();
-                } else {
-                    break;
                 }
+                problemsHandledPerAction.put(action, problemsHandledPerAction.getOrDefault(action, 0) + 1);
             }
-            problemsHandledPerAction.put(action, problemsHandledPerAction.getOrDefault(action, 0) + 1);
         }
         return action;
     }

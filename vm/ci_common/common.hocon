@@ -152,7 +152,7 @@ builds += [
       ${mx_vm_common} [build]
       ${mx_vm_common}  ${maven_deploy_dry_run_vm}
     ]
-    timelimit: "45:00"
+    timelimit: "50:00"
     name: gate-vm-build-linux-amd64
   },
   ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
