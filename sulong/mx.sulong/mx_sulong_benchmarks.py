@@ -36,7 +36,7 @@ from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkS
 
 
 def _benchmarksDirectory():
-    return join(os.path.abspath(join(mx.suite('sulong').dir, os.pardir)), 'sulong-benchmarks')
+    return join(os.path.abspath(join(mx.suite('sulong').dir, os.pardir, os.pardir)), 'sulong-benchmarks')
 
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
