@@ -117,14 +117,14 @@ the isolate.
 
 There is a detailed [tutorial on the C interface](src/com.oracle.svm.tutorial/src/com/oracle/svm/tutorial/CInterfaceTutorial.java)
 of Substrate VM. Rather than repeating it here, let's apply some of its
-principles on a topic related to implementation of native methods: let's make
+principles to a related topic, the implementation of native methods. Let's make
 a callback to JVM!
 
 In the classical setup, when C needs to call into JVM, it uses [jni.h](JNI.md)
-header file. The file defines essential JVM structures (like `JNIEnv`) and
-functions one can invoke to inspect classes, access fields and call methods
-in the JVM. In order to call them from our `NativeImpl` part of our example,
-we need to define appropriate Java API wrappers of the `jni.h` concepts:
+header file. The file defines essential JVM structures (like `JNIEnv`) as well as
+functions one can invoke to inspect classes, access fields, and call methods
+in the JVM. In order to call these functions from our `NativeImpl` class in our
+example, we need to define appropriate Java API wrappers of the `jni.h` concepts:
 
 ```java
 @CContext(JNIHeaderDirectives.class)
@@ -170,17 +170,17 @@ interface JMethodID extends PointerBase {
 ```
 
 If we leave aside the meaning of `JNIHeaderDirectives` for now, the rest
-of the interfaces is a type-safe representation of the C pointers found on the
-`jni.h` file. `JClass` is a pointer. `JMethodID` is a pointer. `JObject` is a
-pointer. Thanks to the above definitions we now have Java interfaces to represent
+of the interfaces is a type-safe representation of the C pointers found in the
+`jni.h` file. `JClass`, `JMethodID`, `JObject` are all pointers. Thanks to
+the above definitions we now have Java interfaces to represent
 instances of these objects in our native Java code in a type safe way.
 
 The core part of any [JNI](JNI.md) API is the set of functions one can call
 when talking to the JVM. There are dozens of them, but in the `JNINativeInterface`
 definition we just define wrappers for those few that we need in our example.
 Again, we give them proper types, so in our native Java code we can use
-`GetMethodId.find(...)`, `CallStaticVoidMethod.call(...)`, etc. In addition to
-that, there is one important part of the puzzle - the `jvalue` union type
+`GetMethodId.find(...)`, `CallStaticVoidMethod.call(...)`, etc. In addition,
+there is another important part missing in the puzzle - the `jvalue` union type
 wrapping all the possible Java primitive and object types. Here comes definition
 of its getters and setters:
 
@@ -214,10 +214,11 @@ interface JValue extends PointerBase {
 ```
 The `addressOf` method is a special Substrate VM construct used to perform
 C pointer arithmetics. Given a pointer one can treat it as initial element of
-an array and use for example `addressOf(1)` to access subsequent one. With this
-we have all the API we need to make a callback: let's redefine the previously
-introduced `NativeImpl.add` method to accept properly typed pointers and use
-them to invoke a JVM method before computing the result:
+an array, then for example, use `addressOf(1)` to access the subsequent element.
+With this we have all the API we need to make a callback: let's redefine
+the previously introduced `NativeImpl.add` method to accept properly typed
+pointers, and then use these pointers to invoke a JVM method before computing
+the sum of `a + b`:
 
 ```java
 @CEntryPoint(name = "Java_org_pkg_apinative_Native_add")
