@@ -245,6 +245,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         verifyMissingAbstractMethods(node, members);
         verifyConstructors(node);
         verifySpecializationThrows(node);
+        verifyFrame(node);
         return node;
     }
 
@@ -1748,6 +1749,55 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
             }
         }
+    }
+
+    private static void verifyFrame(NodeData node) {
+        final List<NodeExecutionData> childExecutions = node.getChildExecutions();
+        final ExecutableTypeData[] requiresFrameParameter = new ExecutableTypeData[childExecutions.size()];
+        boolean needsCheck = false;
+        for (int i = 0; i < childExecutions.size(); i++) {
+            final NodeChildData childExecution = childExecutions.get(i).getChild();
+            if (childExecution != null) {
+                for (ExecutableTypeData executable : childExecution.getNodeData().getExecutableTypes()) {
+                    if (executable.getFrameParameter() != null) {
+                        requiresFrameParameter[i] = executable;
+                        needsCheck = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (needsCheck) {
+            for (ExecutableTypeData executable : node.getExecutableTypes()) {
+                if (executable.getFrameParameter() == null) {
+                    for (int executionIndex = executable.getEvaluatedCount(); executionIndex < node.getExecutionCount(); executionIndex++) {
+                        if (requiresFrameParameter[executionIndex] != null) {
+                            node.addError(String.format(
+                                            "Child execution method: %s called from method: %s requires a frame parameter.",
+                                            createMethodSignature(requiresFrameParameter[executionIndex].getMethod()),
+                                            createMethodSignature(executable.getMethod())));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static String createMethodSignature(final ExecutableElement method) {
+        final StringBuilder result = new StringBuilder();
+        result.append(ElementUtils.getSimpleName(method.getReturnType())).append(' ').append(ElementUtils.getSimpleName((TypeElement) method.getEnclosingElement())).append("::").append(
+                        method.getSimpleName()).append('(');
+        boolean first = true;
+        for (VariableElement parameter : method.getParameters()) {
+            if (first) {
+                first = false;
+            } else {
+                result.append(", ");
+            }
+            result.append(ElementUtils.getSimpleName(parameter.asType()));
+        }
+        result.append(')');
+        return result.toString();
     }
 
     private static void verifyConstructors(NodeData nodeData) {
