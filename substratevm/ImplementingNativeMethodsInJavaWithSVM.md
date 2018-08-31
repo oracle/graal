@@ -264,10 +264,10 @@ public class Native {
     }
 ```
 
-There is just a last missing piece to explain: the `JNIHeaderDirectives`.
+There is just one final piece to explain: the `JNIHeaderDirectives`.
 Substrate VM C interface needs to understand the layout of the C structures. It
 needs to know at which offset of `JNINativeInterface` structure it can find
-pointer to `GetMethodId` function. To do so, it needs `jni.h` and additional
+the pointer to `GetMethodId` function. To do so, it needs `jni.h` and additional
 files during compilation. One can specify them by `@CContext` annotation and
 implementation of its `Directives`:
 
@@ -299,8 +299,8 @@ final class JNIHeaderDirectives implements CContext.Directives {
 
 The good thing is that `jni.h` is inside of every JDK, so one can use the
 `java.home` property to locate the necessary header files. The actual logic
-can of course be made more robust and OS-independent.
+can, of course, be made more robust and OS-independent.
 
 Implementing any JVM native method in Java and/or making callbacks to the JVM
-with Substrate VM should now be as easy as expanding the here-in given example
+with Substrate VM should now be as easy as expanding upon the given example
 and invoking `native-image`.
