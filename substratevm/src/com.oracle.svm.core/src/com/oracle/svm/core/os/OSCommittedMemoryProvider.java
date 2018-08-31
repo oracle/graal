@@ -177,14 +177,10 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             if (virtualMemoryVerboseDebugging) {
                 Log.log().string("  prefix:      [").hex(prefixStart).string(" .. ").hex(prefixEnd).string(")").newline();
             }
-            final boolean prefixUnmap = (VirtualMemoryProvider.get().free(prefixStart, prefixSize) == 0);
-            if (!prefixUnmap) {
-                // Throwing an exception would be better.
-                // If this unmap fails, I will have reserved virtual address space
-                // that I won't be able to give back.
+            if (!free(prefixStart, prefixSize)) {
+                free(containerStart, pagedContainerSize);
                 return nullPointer();
             }
-            untrackVirtualMemory(prefixSize);
         }
         // - The suffix occupies [pagedEnd .. containerEnd).
         final Pointer pagedEnd = PointerUtils.roundUp(end, pageSize);
@@ -195,14 +191,10 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             if (virtualMemoryVerboseDebugging) {
                 Log.log().string("  suffix:      [").hex(suffixStart).string(" .. ").hex(suffixEnd).string(")").newline();
             }
-            final boolean suffixUnmap = (VirtualMemoryProvider.get().free(suffixStart, suffixSize) == 0);
-            if (!suffixUnmap) {
-                // Throwing an exception would be better.
-                // If this unmap fails, I will have reserved virtual address space
-                // that I won't be able to give back.
+            if (!free(suffixStart, suffixSize)) {
+                free(pagedStart, containerEnd.subtract(pagedStart));
                 return nullPointer();
             }
-            untrackVirtualMemory(suffixSize);
         }
         return start;
     }
@@ -216,15 +208,22 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         final Pointer pagedEnd = PointerUtils.roundUp(end, pageSize);
         final UnsignedWord pagedSize = pagedEnd.subtract(pagedStart);
         // Return that virtual address space to the operating system.
-        untrackVirtualMemory(pagedSize);
-        return (VirtualMemoryProvider.get().free(pagedStart, pagedSize) == 0);
+        return free(pagedStart, pagedSize);
     }
 
-    protected void trackVirtualMemory(UnsignedWord size) {
+    private boolean free(Pointer start, UnsignedWord size) {
+        boolean success = (VirtualMemoryProvider.get().free(start, size) == 0);
+        if (success) {
+            untrackVirtualMemory(size);
+        }
+        return success;
+    }
+
+    private void trackVirtualMemory(UnsignedWord size) {
         tracker.track(size);
     }
 
-    protected void untrackVirtualMemory(UnsignedWord size) {
+    private void untrackVirtualMemory(UnsignedWord size) {
         tracker.untrack(size);
     }
 

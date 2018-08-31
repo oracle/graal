@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import java.util.function.BooleanSupplier;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.Option;
@@ -37,7 +35,6 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
@@ -47,39 +44,11 @@ import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 public final class ReflectionFeature implements GraalFeature {
 
     public static class Options {
-        @Option(help = "Enable support for reflection at run time")//
-        public static final HostedOptionKey<Boolean> ReflectionEnabled = new HostedOptionKey<>(true);
-
         @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
         public static final HostedOptionKey<String> ReflectionConfigurationFiles = new HostedOptionKey<>("");
 
         @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).", type = OptionType.User)//
         public static final HostedOptionKey<String> ReflectionConfigurationResources = new HostedOptionKey<>("");
-    }
-
-    public static class IsEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return ImageSingletons.contains(ReflectionFeature.class);
-        }
-    }
-
-    public static class IsDisabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return !ImageSingletons.contains(ReflectionFeature.class);
-        }
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        Boolean result = Options.ReflectionEnabled.getValue();
-        if (!result && (!Options.ReflectionConfigurationFiles.getValue().isEmpty() || !Options.ReflectionConfigurationResources.getValue().isEmpty())) {
-            throw UserError.abort("The options " + Options.ReflectionConfigurationFiles.getName() + " and " + Options.ReflectionConfigurationResources.getName() +
-                            " can only be used when the option " + Options.ReflectionEnabled.getName() + " is set to true");
-        }
-        return result;
-
     }
 
     private ReflectionDataBuilder reflectionData;

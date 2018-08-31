@@ -58,6 +58,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         "-XX:+UseJVMCICompiler",
                         "-Dgraal.CompilationFailureAction=ExitVM",
                         "-Dgraal.CrashAt=Object.*,String.*",
+                        "-Dgraal.ShowDumpFiles=true",
                         "-version"));
     }
 
@@ -71,6 +72,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         "-XX:+UseJVMCICompiler",
                         "-Dgraal.ExitVMOnException=true",
                         "-Dgraal.CrashAt=Object.*,String.*",
+                        "-Dgraal.ShowDumpFiles=true",
                         "-version"));
     }
 
@@ -121,6 +123,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
                         "-Dgraal.CrashAt=Object.*,String.*",
+                        "-Dgraal.ShowDumpFiles=true",
                         "-version"));
     }
 
@@ -133,6 +136,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         Arrays.asList(
                                         "-Dgraal.CompilationFailureAction=ExitVM",
                                         "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                        "-Dgraal.ShowDumpFiles=true",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -149,6 +153,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         Arrays.asList(
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
+                                        "-Dgraal.ShowDumpFiles=true",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -165,6 +170,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         Arrays.asList(
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                        "-Dgraal.ShowDumpFiles=true",
                                         "-Dgraal.CrashAt=root test1:PermanentBailout"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
