@@ -67,28 +67,36 @@ else:
     GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
     GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED']
     GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.amd64=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.common=ALL-UNNAMED']
+    
     # Reflective access
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.unsupported/sun.reflect=ALL-UNNAMED']
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'jdk.unsupported/sun.reflect=ALL-UNNAMED']
+    # Reflective access to jdk.internal.module.Modules, using which I can export and open other modules.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED']
+ 
+    # These packages should be opened at runtime calls to Modules.addOpens, if they are still needed.
+    # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED']
     # Reflective access to private fields of java.lang.Class.
     GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED']
-    # Reflective access to resource bundle getContents() methods.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.text.resources=ALL-UNNAMED']
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.util.resources=ALL-UNNAMED']
-    # Reflective access to java.util.Bits.words.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.util=ALL-UNNAMED']
     # Reflective access to java.lang.invoke.VarHandle*.
     GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED']
     # Reflective access to java.lang.Reference.referent.
     GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED']
-    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED']
-    # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED']
-    # Disable the check for JDK-8 graal version.
-    GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
     # Reflective access to java.net.URL.getURLStreamHandler.
     GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.net=ALL-UNNAMED']
-
+    # Reflective access to java.nio.MappedByteBuffer.fd.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.nio=ALL-UNNAMED']
+    # Reflective access to java.util.Bits.words.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.util=ALL-UNNAMED']
+ 
+    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
+    GRAAL_COMPILER_FLAGS += ['--add-opens', 'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED']
+   
+    # Disable the check for JDK-8 graal version.
+    GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
