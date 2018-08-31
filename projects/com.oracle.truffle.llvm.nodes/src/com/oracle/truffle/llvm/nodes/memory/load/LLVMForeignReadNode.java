@@ -38,16 +38,18 @@ import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public class LLVMForeignReadNode extends LLVMNode {
-
     @Child private LLVMObjectReadNode read;
 
+    private final ForeignToLLVMType type;
+
     protected LLVMForeignReadNode(ForeignToLLVMType type) {
-        this.read = LLVMObjectAccessFactory.createRead(type);
+        this.read = LLVMObjectAccessFactory.createRead();
+        this.type = type;
     }
 
     public Object execute(LLVMManagedPointer addr) {
         try {
-            return read.executeRead(addr.getObject(), addr.getOffset());
+            return read.executeRead(addr.getObject(), addr.getOffset(), type);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw e.raise();
