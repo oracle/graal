@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.Platforms;
 public class LocalizationResourceBundles {
 
     static void initialize(LocalizationSupport localizationSupport) {
-        /* FIXME: */ System.out.println("[unversioned/com.oracle.svm.core.jdk.LocalizationResourceBundles.initialize]");
         final String[] bundleNameArray = new String[]{
                         "sun.util.resources.CalendarData",
                         "sun.util.resources.CurrencyNames",
