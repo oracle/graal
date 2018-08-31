@@ -33,7 +33,6 @@ import java.util.ResourceBundle;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -54,21 +53,8 @@ public class LocalizationSupport {
     public LocalizationSupport() {
         charsets = new HashMap<>();
         cache = new HashMap<>();
-        if (GraalServices.Java8OrEarlier) {
-            /* For JDK-8, add these resource bundles to the cache. */
-            final String[] bundleNameArray = new String[]{
-                            "sun.util.resources.CalendarData",
-                            "sun.util.resources.CurrencyNames",
-                            "sun.util.resources.LocaleNames",
-                            "sun.util.resources.TimeZoneNames",
-                            "sun.text.resources.CollationData",
-                            "sun.text.resources.FormatData",
-                            "sun.util.logging.resources.logging"
-            };
-            for (String bundleName : bundleNameArray) {
-                addBundleToCache(bundleName);
-            }
-        }
+        /* Multi-version jar loading will the the bundles appropriate for the platform version. */
+        LocalizationResourceBundles.initialize(this);
         includeResourceBundles();
     }
 
