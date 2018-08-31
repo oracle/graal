@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.util.stream.Stream.Builder;
@@ -220,32 +221,73 @@ public class HotSpotCompiledCodeBuilder {
              * results and corresponds with what C1 and C2 do. HotSpot doesn't like to see these
              * unless -XX:+DebugNonSafepoints is enabled, so don't emit them in that case.
              */
-            List<Site> sourcePositionSites = new ArrayList<>();
+
+            List<SourceMapping> sourceMappings = new ArrayList<>();
             for (SourceMapping source : target.getSourceMappings()) {
                 NodeSourcePosition sourcePosition = source.getSourcePosition();
                 if (sourcePosition.isPlaceholder() || sourcePosition.isSubstitution()) {
                     // HotSpot doesn't understand any of the special positions so just drop them.
                     continue;
                 }
+                sourceMappings.add(source);
+            }
+
+            /*
+             * Don't add BYTECODE_POSITION info points that would potentially create conflicts.
+             * Under certain conditions the site's pc is not the pc that gets recorded by HotSpot
+             * (see @code {CodeInstaller::site_Call}). So, avoid adding any source positions that
+             * can potentially map to the same pc. To do that the following code makes sure that the
+             * source mapping doesn't contain a pc of any important Site.
+             */
+            sourceMappings.sort(Comparator.comparingInt(SourceMapping::getStartOffset));
+            sites.sort(new SiteComparator());
+
+            ListIterator<Site> siteListIterator = sites.listIterator();
+            ListIterator<SourceMapping> sourceMappingListIterator = sourceMappings.listIterator();
+
+            List<Site> sourcePositionSites = new ArrayList<>();
+            Site site = null;
+
+            // Iterate over sourceMappings and sites in parallel. Create source position infopoints
+            // only for source mappings that don't have any sites inside their intervals.
+            while (sourceMappingListIterator.hasNext()) {
+                SourceMapping source = sourceMappingListIterator.next();
+
+                // Skip sites before the current source mapping
+                if (site == null || site.pcOffset < source.getStartOffset()) {
+                    while (siteListIterator.hasNext()) {
+                        site = siteListIterator.next();
+                        if (site.pcOffset >= source.getStartOffset()) {
+                            break;
+                        }
+                    }
+                }
+
+                assert site == null || site.pcOffset >= source.getStartOffset();
+                if (site != null && site.pcOffset <= source.getEndOffset()) {
+                    // Conflicting source mapping, skip it.
+                    continue;
+                } else {
+                    // Since the sites are sorted there can not be any more sites in this interval.
+                }
+
+                assert site == null || site.pcOffset > source.getEndOffset();
+                // Good source mapping. Create an infopoint and add it to the list.
+                NodeSourcePosition sourcePosition = source.getSourcePosition();
                 assert sourcePosition.verify();
                 sourcePosition = sourcePosition.trim();
-                /*
-                 * Don't add BYTECODE_POSITION info points that would potentially create conflicts.
-                 * Under certain conditions the site's pc is not the pc that gets recorded by
-                 * HotSpot (see @code {CodeInstaller::site_Call}). So, avoid adding any source
-                 * positions that can potentially map to the same pc. To do that make sure that the
-                 * source mapping doesn't contain a pc of any important Site.
-                 */
-                if (sourcePosition != null && !anyMatch(sites, s -> source.contains(s.pcOffset))) {
+                if (sourcePosition != null) {
+                    assert !anyMatch(sites, s -> source.contains(s.pcOffset));
                     sourcePositionSites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
-
                 }
             }
+
             sites.addAll(sourcePositionSites);
         }
 
         SiteComparator c = new SiteComparator();
         Collections.sort(sites, c);
+
         if (c.sawCollidingInfopoints) {
             Infopoint lastInfopoint = null;
             List<Site> copy = new ArrayList<>(sites.size());
@@ -265,6 +307,7 @@ public class HotSpotCompiledCodeBuilder {
             }
             sites = copy;
         }
+
         return sites.toArray(new Site[sites.size()]);
     }
 }
