@@ -72,6 +72,7 @@ suite = {
                 "jdk.internal.perf",
             ],
             "javaCompliance": "9+",
+            "multiReleaseJarVersion": "9",
             "checkstyleVersion" : "8.8",
             "workingSets": "SVM",
         },
