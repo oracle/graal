@@ -247,12 +247,13 @@ static int add(JNIEnvironment env, JClass clazz, @CEntryPoint.IsolateContext lon
 }
 ```
 
-The above finds a static method `hello` in the class `Native` and invokes it
-with eight different values wrapped in a `JValue` array. One can allocate/reserve
-the array on stack with a call to `StackValue.get(8, JValue.class)`. Once we
-have the array we use the `addressOf` to access each array element
-and fill it with Java values as expected by the
-method signature. Then we make a call. If there was a method:
+The above example seeks a static method `hello` and invokes it with eight
+`JValue` parameters in an array reserved by `StackValue.get`
+on the stack. Individual parameters are accessed by use of
+the `addressOf` operator and filled with appropriate primitive values
+before the call happens. The method `hello` is defined in the class `Native`
+and just prints values of all parameters to verify they are properly
+propagated from the `NativeImpl.add` caller:
 
 ```java
 public class Native {
@@ -262,9 +263,6 @@ public class Native {
         System.err.println(" and: " + i + " " + j + " " + f + " " + d);
     }
 ```
-
-it would be properly called and the appropriate values printed every time somebody
-invokes the native Java implementation of `NativeImpl.add` method.
 
 There is just a last missing piece to explain: the `JNIHeaderDirectives`.
 Substrate VM C interface needs to understand the layout of the C structures. It
