@@ -62,7 +62,6 @@ class OSCommittedMemoryProviderFeature implements Feature {
 }
 
 public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
-
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
@@ -114,12 +113,6 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
         return CEntryPointErrors.NO_ERROR;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public UnsignedWord getGranularity() {
-        return VirtualMemoryProvider.get().getGranularity();
     }
 
     /**

@@ -79,6 +79,7 @@ public final class UnsignedUtils {
      * @param y Another Unsigned.
      * @return The whichever Unsigned is smaller.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord min(UnsignedWord x, UnsignedWord y) {
         return (x.belowOrEqual(y)) ? x : y;
     }
