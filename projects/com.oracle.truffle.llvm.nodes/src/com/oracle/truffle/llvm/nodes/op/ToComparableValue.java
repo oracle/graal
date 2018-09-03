@@ -69,7 +69,7 @@ public abstract class ToComparableValue extends LLVMNode {
     private static long getHashCode(Object obj) {
         // if we ever switch to a more robust implementation, we can simplify the
         // LLVMManagedCompareNode
-        return (obj.hashCode() & 0xFFFFFFFFL) << 8;
+        return ((long) obj.hashCode()) << 8;
     }
 
     @ImportStatic(ForeignToLLVMType.class)
