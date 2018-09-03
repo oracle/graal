@@ -63,12 +63,11 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
     static class PackForeignArgumentsNode extends LLVMNode {
         @Children private final ForeignToLLVM[] toLLVM;
 
-        PackForeignArgumentsNode(NodeFactory nodeFactory, Type[] parameterTypes, LLVMInteropType interopType, int argumentsLength, boolean isVarargs) {
+        PackForeignArgumentsNode(NodeFactory nodeFactory, Type[] parameterTypes, LLVMInteropType interopType, int argumentsLength) {
             this.toLLVM = new ForeignToLLVM[argumentsLength];
             if (interopType instanceof LLVMInteropType.Function) {
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
-                // If the function has varargs, the parameter types contain an extra VOID entry.
-                assert interopFunctionType.getParameterLength() == parameterTypes.length + (isVarargs ? 1 : 0);
+                assert interopFunctionType.getParameterLength() == parameterTypes.length;
                 for (int i = 0; i < parameterTypes.length; i++) {
                     LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
                     if (interopParameterType instanceof LLVMInteropType.Value) {
@@ -107,7 +106,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
 
     protected PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
         checkArgLength(descriptor.getType().getArgumentTypes().length, length);
-        return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), descriptor.getInteropType(), length, descriptor.getType().isVarargs());
+        return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), descriptor.getInteropType(), length);
     }
 
     protected static class SlowPackForeignArgumentsNode extends LLVMNode {
@@ -121,8 +120,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
             LLVMInteropType interopType = function.getInteropType();
             if (interopType instanceof LLVMInteropType.Function) {
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
-                // If the function has varargs, the parameter types contain an extra VOID entry.
-                assert interopFunctionType.getParameterLength() == argumentTypes.length + (function.getType().isVarargs() ? 1 : 0);
+                assert interopFunctionType.getParameterLength() == argumentTypes.length;
                 for (int i = 0; i < argumentTypes.length; i++) {
                     LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
                     if (interopParameterType instanceof LLVMInteropType.Value) {
