@@ -39,11 +39,13 @@ import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class LLVMForeignWriteNode extends LLVMNode {
-
     @Child private LLVMObjectWriteNode write;
 
+    private final ForeignToLLVMType type;
+
     protected LLVMForeignWriteNode(ForeignToLLVMType type) {
-        this.write = LLVMObjectAccessFactory.createWrite(type);
+        this.write = LLVMObjectAccessFactory.createWrite();
+        this.type = type;
     }
 
     public abstract void execute(LLVMManagedPointer addr, Object value);
@@ -51,7 +53,7 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
     @Specialization
     protected void doForeignAccess(LLVMManagedPointer addr, Object value) {
         try {
-            write.executeWrite(addr.getObject(), addr.getOffset(), value);
+            write.executeWrite(addr.getObject(), addr.getOffset(), value, type);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw e.raise();

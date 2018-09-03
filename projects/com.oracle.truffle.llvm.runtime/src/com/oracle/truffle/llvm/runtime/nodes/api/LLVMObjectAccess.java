@@ -44,9 +44,9 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
  */
 public interface LLVMObjectAccess {
 
-    LLVMObjectReadNode createReadNode(ForeignToLLVMType type);
+    LLVMObjectReadNode createReadNode();
 
-    LLVMObjectWriteNode createWriteNode(ForeignToLLVMType type);
+    LLVMObjectWriteNode createWriteNode();
 
     abstract class LLVMObjectAccessNode extends LLVMNode {
 
@@ -62,7 +62,7 @@ public interface LLVMObjectAccess {
          * @param offset the byte offset into the object
          * @return the read value
          */
-        public abstract Object executeRead(Object obj, long offset) throws InteropException;
+        public abstract Object executeRead(Object obj, long offset, ForeignToLLVMType type) throws InteropException;
     }
 
     abstract class LLVMObjectWriteNode extends LLVMObjectAccessNode {
@@ -74,6 +74,6 @@ public interface LLVMObjectAccess {
          * @param offset the byte offset into the object
          * @param value the written value
          */
-        public abstract void executeWrite(Object obj, long offset, Object value) throws InteropException;
+        public abstract void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) throws InteropException;
     }
 }
