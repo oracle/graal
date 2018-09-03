@@ -300,7 +300,7 @@ public class OptimizedCompilationProfile {
 
     @SuppressWarnings("try")
     final boolean interpreterOrLowTierCall(OptimizedCallTarget callTarget) {
-        // if (lowTierEnabled) {
+        if (lowTierEnabled) {
             // int intCallCount = ++interpreterCallCount;
             // int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             // if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
@@ -332,9 +332,9 @@ public class OptimizedCompilationProfile {
                 }
             }
             return false;
-        // } else {
-        //     return interpreterCall(callTarget);
-        // }
+        } else {
+            return interpreterCall(callTarget);
+        }
     }
 
     private boolean interpreterCall(OptimizedCallTarget callTarget) {
