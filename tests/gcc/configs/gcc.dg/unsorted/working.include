@@ -535,4 +535,3 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/pr16660-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/pr16660-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/global-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/alloca-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/inlinehint-3.c
