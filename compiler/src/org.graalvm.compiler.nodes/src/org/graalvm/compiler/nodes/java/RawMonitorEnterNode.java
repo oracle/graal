@@ -63,6 +63,12 @@ public final class RawMonitorEnterNode extends AccessMonitorNode implements Virt
         this.hub = hub;
     }
 
+    public RawMonitorEnterNode(ValueNode object, ValueNode hub, MonitorIdNode monitorId, boolean biasable) {
+        super(TYPE, object, monitorId, biasable);
+        assert ((ObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
+        this.hub = hub;
+    }
+
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
