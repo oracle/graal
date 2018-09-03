@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.runtime.Klass;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
@@ -57,7 +57,7 @@ public interface ClassConstant extends PoolConstant {
      */
     Klass resolve(ConstantPool pool, int index);
 
-    public static final class Resolved implements ClassConstant {
+    static final class Resolved implements ClassConstant {
 
         final Klass klass;
 
@@ -66,7 +66,7 @@ public interface ClassConstant extends PoolConstant {
         }
 
         public TypeDescriptor getTypeDescriptor(ConstantPool pool, int index) {
-            return klass.getName();
+            return klass.getTypeDescriptor();
         }
 
         public Klass resolve(ConstantPool pool, int index) {
@@ -74,26 +74,26 @@ public interface ClassConstant extends PoolConstant {
         }
     }
 
-    public static class Unresolved implements ClassConstant {
+    static class Unresolved implements ClassConstant {
 
-        private final TypeDescriptor typeDescriptor;
+        private final TypeDescriptor type;
 
-        Unresolved(TypeDescriptor typeDescriptor) {
-            this.typeDescriptor = typeDescriptor;
+        Unresolved(TypeDescriptor type) {
+            this.type = type;
         }
 
         public TypeDescriptor getTypeDescriptor(ConstantPool pool, int index) {
-            return typeDescriptor;
+            return type;
         }
 
         public Klass resolve(ConstantPool pool, int index) {
             try {
                 try {
-                    Klass klass = typeDescriptor.resolveType(pool.getContext(), pool.classLoader());
+                    Klass klass = pool.getContext().getRegistries().resolve(type, pool.getClassLoader());
                     pool.updateAt(index, new Resolved(klass));
                     return klass;
                 } catch (RuntimeException e) {
-                    throw (NoClassDefFoundError) new NoClassDefFoundError(typeDescriptor.toString()).initCause(e);
+                    throw (NoClassDefFoundError) new NoClassDefFoundError(type.toString()).initCause(e);
                 }
             } catch (VirtualMachineError e) {
                 // Comment from Hotspot:
@@ -107,8 +107,7 @@ public interface ClassConstant extends PoolConstant {
 
     }
 
-    public static class Index implements ClassConstant {
-
+    static class Index implements ClassConstant {
         private final char classNameIndex;
 
         Index(int classNameIndex) {
@@ -116,9 +115,17 @@ public interface ClassConstant extends PoolConstant {
         }
 
         private ClassConstant replace(ConstantPool pool, int index) {
-            Utf8Constant className = pool.utf8At(classNameIndex);
-            Unresolved replacement = new Unresolved(pool.getContext().getLanguage().getTypeDescriptors().make('L' + className.toString() + ';'));
+            // TODO(peterssen): Handle names correctly.
+            String typeName = fixName(pool.utf8At(classNameIndex).getValue());
+            Unresolved replacement = new Unresolved(pool.getContext().getTypeDescriptors().make(typeName));
             return (ClassConstant) pool.updateAt(index, replacement);
+        }
+
+        private static String fixName(String name) {
+            if (name.startsWith("[")) {
+                return name;
+            }
+            return "L" + name + ";";
         }
 
         public boolean isResolved() {

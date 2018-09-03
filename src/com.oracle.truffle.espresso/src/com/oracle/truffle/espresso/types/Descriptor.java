@@ -66,5 +66,4 @@ public abstract class Descriptor implements Comparable<Descriptor> {
     public final int compareTo(Descriptor other) {
         return value.compareTo(other.value);
     }
-
 }

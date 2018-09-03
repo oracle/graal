@@ -44,6 +44,10 @@ public class ClassfileStream {
         this(bytes, 0, bytes.length, classfile);
     }
 
+    public ClassfileStream(ClasspathFile classfile) {
+        this(classfile.contents, classfile);
+    }
+
     public ClassfileStream(byte[] bytes, int offset, int length, ClasspathFile classfile) {
         this.length = length;
         this.bstream = new ByteArrayInputStream(bytes, offset, length);

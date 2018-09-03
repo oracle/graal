@@ -22,6 +22,7 @@ package com.oracle.truffle.espresso.bytecode;
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.ASSOCIATIVE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.BRANCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.COMMUTATIVE;

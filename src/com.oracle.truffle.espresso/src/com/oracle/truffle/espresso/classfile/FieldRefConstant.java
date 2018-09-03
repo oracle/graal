@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.runtime.FieldInfoView;
+import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public interface FieldRefConstant extends MemberRefConstant {
@@ -34,40 +35,42 @@ public interface FieldRefConstant extends MemberRefConstant {
         return Tag.FIELD_REF;
     }
 
-    TypeDescriptor getType(ConstantPool pool, int thisIndex);
+    TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex);
 
-    FieldInfoView resolve(ConstantPool pool, int thisIndex);
+    FieldInfo resolve(ConstantPool pool, int thisIndex);
 
     @Override
     default String toString(ConstantPool pool, int thisIndex) {
-        return getDeclaringClass(pool, thisIndex) + "." + getName(pool, thisIndex) + getType(pool, thisIndex);
+        return getDeclaringClass(pool, thisIndex) + "." + getName(pool, thisIndex) + getTypeDescriptor(pool, thisIndex);
     }
 
     public static final class Resolved implements FieldRefConstant {
 
-        private final FieldInfoView field;
+        private final FieldInfo field;
 
-        public FieldInfoView field() {
+        public FieldInfo field() {
             return field;
         }
 
-        public Resolved(FieldInfoView field) {
+        public Resolved(FieldInfo field) {
             this.field = field;
         }
 
-        public FieldInfoView resolve(ConstantPool pool, int index) {
+        @Override
+        public FieldInfo resolve(ConstantPool pool, int index) {
             return field;
         }
 
+        @Override
         public TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-            return field.getDeclaringClass().getName();
+            return field.getDeclaringClass().getTypeDescriptor();
         }
 
-        public Utf8Constant getName(ConstantPool pool, int thisIndex) {
+        public String getName(ConstantPool pool, int thisIndex) {
             return field.getName();
         }
 
-        public TypeDescriptor getType(ConstantPool pool, int thisIndex) {
+        public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
             return field.getType();
         }
     }
@@ -76,17 +79,26 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         private final TypeDescriptor type;
 
-        public Unresolved(TypeDescriptor declaringClass, Utf8Constant name, TypeDescriptor type) {
+        public Unresolved(TypeDescriptor declaringClass, String name, TypeDescriptor type) {
             super(declaringClass, name);
             this.type = type;
         }
 
-        public TypeDescriptor getType(ConstantPool pool, int thisIndex) {
+        public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
             return type;
         }
 
-        public FieldInfoView resolve(ConstantPool pool, int thisIndex) {
-            throw EspressoLanguage.unimplemented();
+        public FieldInfo resolve(ConstantPool pool, int thisIndex) {
+            Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
+            while (declaringClass != null) {
+                for (FieldInfo fi : declaringClass.getDeclaredFields()) {
+                    if (fi.getName().equals(getName(pool, -1)) && getTypeDescriptor(pool, -1).equals(fi.getType())) {
+                        return fi;
+                    }
+                }
+                declaringClass = declaringClass.getSuperclass();
+            }
+            throw EspressoError.shouldNotReachHere();
         }
     }
 
@@ -97,8 +109,8 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         @Override
-        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, Utf8Constant name, Utf8Constant type) {
-            return new FieldRefConstant.Unresolved(declaringClass, name, pool.getContext().getLanguage().getTypeDescriptors().make(type.toString()));
+        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type) {
+            return new FieldRefConstant.Unresolved(declaringClass, name, pool.getContext().getTypeDescriptors().make(type));
         }
 
         @Override
@@ -106,12 +118,12 @@ public interface FieldRefConstant extends MemberRefConstant {
             return (FieldRefConstant) super.replace(pool, thisIndex);
         }
 
-        public FieldInfoView resolve(ConstantPool pool, int thisIndex) {
+        public FieldInfo resolve(ConstantPool pool, int thisIndex) {
             return replace(pool, thisIndex).resolve(pool, thisIndex);
         }
 
-        public TypeDescriptor getType(ConstantPool pool, int thisIndex) {
-            return replace(pool, thisIndex).getType(pool, thisIndex);
+        public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
+            return replace(pool, thisIndex).getTypeDescriptor(pool, thisIndex);
         }
     }
 }

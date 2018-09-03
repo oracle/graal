@@ -25,34 +25,33 @@ package com.oracle.truffle.espresso.types;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.JavaKind;
+
 /**
- * A string description of a method signature.
+ * Represents a method signature provided by the runtime.
  *
- * @see "https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-4.html#jvms-4.3.3"
+ * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">Method
+ *      Descriptors</a>
  */
 public final class SignatureDescriptor extends Descriptor {
 
-    SignatureDescriptor(String value) {
+    SignatureDescriptor(TypeDescriptors typeDescriptors, String value) {
         super(value);
+        components = parse(typeDescriptors, value, 0);
+        int n = 0;
+        for (int i = 0; i != components.length; ++i) {
+            n += components[i].toKind().getSlotCount();
+        }
+        numberOfSlots = n;
     }
 
     /**
      * The parameter types in this signature followed by the return type.
      */
-    private TypeDescriptor[] components;
-
-    private int numberOfSlots;
-
-    private void ensureParsed(TypeDescriptors typeDescriptors) {
-        if (components == null) {
-            components = parse(typeDescriptors, value, 0);
-            int n = 0;
-            for (int i = 1; i != components.length; ++i) {
-                n += components[i].toKind().getSlotCount();
-            }
-            numberOfSlots = n;
-        }
-    }
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    private final TypeDescriptor[] components;
+    private final int numberOfSlots;
 
     /**
      * Parses a signature descriptor string into its parameter and return type components.
@@ -106,25 +105,35 @@ public final class SignatureDescriptor extends Descriptor {
         return TypeDescriptors.skipValidTypeDescriptor(value, i, true);
     }
 
-    public JavaKind resultKind(TypeDescriptors typeDescriptors) {
-        return resultDescriptor(typeDescriptors).toKind();
+    public JavaKind resultKind() {
+        return getReturnTypeDescriptor().toKind();
     }
 
     /**
      * Gets the type descriptor of the return type in this signature object.
      */
-    public TypeDescriptor resultDescriptor(TypeDescriptors typeDescriptors) {
-        ensureParsed(typeDescriptors);
+    public TypeDescriptor getReturnTypeDescriptor() {
         return components[components.length - 1];
     }
 
     /**
-     * Gets the number of local variable slots used by the parameters in this signature. Long and
-     * double parameters use two slots, all other parameters use one slot.
+     * Gets the number of local variable slots used by the parameters + return type in this
+     * signature. Long and double parameters use two slots, all other parameters use one slot.
      */
-    public int getNumberOfSlots(TypeDescriptors typeDescriptors) {
-        ensureParsed(typeDescriptors);
+    public int getNumberOfSlots() {
         return numberOfSlots;
+    }
+
+    /**
+     * Gets the number of local variable slots used by the parameters only in this signature. Long
+     * and double parameters use two slots, all other parameters use one slot.
+     */
+    public int getNumberOfSlotsForParameters() {
+        return numberOfSlots - components[components.length - 1].toKind().getSlotCount();
+    }
+
+    public int getParameterCount(boolean receiver) {
+        return components.length - 1 + (receiver ? 1 : 0);
     }
 
     @Override
@@ -133,5 +142,13 @@ public final class SignatureDescriptor extends Descriptor {
         if (endIndex != value.length()) {
             throw new ClassFormatError("Invalid method descriptor " + value);
         }
+    }
+
+    public JavaKind getParameterKind(int paramIndex) {
+        return components[paramIndex].toKind();
+    }
+
+    public TypeDescriptor getParameterType(int paramIndex) {
+        return components[paramIndex];
     }
 }

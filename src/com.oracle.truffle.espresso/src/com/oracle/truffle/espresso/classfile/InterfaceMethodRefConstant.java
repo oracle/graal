@@ -22,16 +22,17 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.runtime.MethodInfo;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
     default Tag tag() {
-        return Tag.METHOD_REF;
+        return Tag.INTERFACE_METHOD_REF;
     }
 
     static final class Resolved extends MethodRefConstant.Resolved implements InterfaceMethodRefConstant {
@@ -42,16 +43,38 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
     static final class Unresolved extends MethodRefConstant.Unresolved implements InterfaceMethodRefConstant {
 
-        public Unresolved(TypeDescriptor declaringClass, Utf8Constant name, SignatureDescriptor signature) {
+        public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
             super(declaringClass, name, signature);
         }
 
+        @Override
         public MethodInfo resolve(ConstantPool pool, int index) {
-            throw EspressoLanguage.unimplemented();
+            Klass declaringInterface = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
+            assert declaringInterface.isInterface();
+            String name = getName(pool, index);
+            SignatureDescriptor signature = getSignature(pool, index);
+            MethodInfo m = declaringInterface.findMethod(name, signature);
+            if (m != null) {
+                return m;
+            }
+
+            for (Klass i : declaringInterface.getInterfaces()) {
+                m = i.findMethod(name, signature);
+                if (m != null) {
+                    return m;
+                }
+            }
+
+            throw EspressoError.shouldNotReachHere(declaringInterface.toString() + "." + name + signature);
         }
     }
 
     static final class Indexes extends MethodRefConstant.Indexes implements InterfaceMethodRefConstant {
+
+        @Override
+        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type) {
+            return new InterfaceMethodRefConstant.Unresolved(declaringClass, name, pool.getContext().getSignatureDescriptors().make(type));
+        }
 
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);

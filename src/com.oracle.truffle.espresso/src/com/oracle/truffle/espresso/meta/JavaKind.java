@@ -20,7 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.meta;
+
+import com.oracle.truffle.espresso.impl.Klass;
+
+import java.lang.reflect.Array;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,
@@ -391,4 +395,86 @@ public enum JavaKind {
                 throw new IllegalArgumentException("illegal call to bits on " + this);
         }
     }
+
+    /**
+     * Marker interface for types that should be {@linkplain JavaKind#format(Object) formatted} with
+     * their {@link Object#toString()} value. Calling {@link Object#toString()} on other objects
+     * poses a security risk because it can potentially call user code.
+     */
+    public interface FormatWithToString {
+    }
+
+    /**
+     * Classes for which invoking {@link Object#toString()} does not run user code.
+     */
+    private static boolean isToStringSafe(Class<?> c) {
+        return c == Boolean.class || c == Byte.class || c == Character.class || c == Short.class || c == Integer.class || c == Float.class || c == Long.class || c == Double.class;
+    }
+
+    /**
+     * Gets a formatted string for a given value of this kind.
+     *
+     * @param value a value of this kind
+     * @return a formatted string for {@code value} based on this kind
+     */
+    public String format(Object value) {
+        if (isPrimitive()) {
+            assert isToStringSafe(value.getClass());
+            return value.toString();
+        } else {
+            if (value == null) {
+                return "null";
+            } else {
+                if (value instanceof String) {
+                    String s = (String) value;
+                    if (s.length() > 50) {
+                        return "String:\"" + s.substring(0, 30) + "...\"";
+                    } else {
+                        return "String:\"" + s + '"';
+                    }
+                } else if (value instanceof Klass) {
+                    return "JavaType:" + ((Klass) value).getName();
+                } else if (value instanceof Enum) {
+                    return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum<?>) value).name();
+                } else if (value instanceof FormatWithToString) {
+                    return MetaUtil.getSimpleName(value.getClass(), true) + ":" + String.valueOf(value);
+                } else if (value instanceof Class<?>) {
+                    return "Class:" + ((Class<?>) value).getName();
+                } else if (isToStringSafe(value.getClass())) {
+                    return value.toString();
+                } else if (value.getClass().isArray()) {
+                    return formatArray(value);
+                } else {
+                    return MetaUtil.getSimpleName(value.getClass(), true) + "@" + System.identityHashCode(value);
+                }
+            }
+        }
+    }
+
+    private static final int MAX_FORMAT_ARRAY_LENGTH = 5;
+
+    private static String formatArray(Object array) {
+        Class<?> componentType = array.getClass().getComponentType();
+        assert componentType != null;
+        int arrayLength = Array.getLength(array);
+        StringBuilder buf = new StringBuilder(MetaUtil.getSimpleName(componentType, true)).append('[').append(arrayLength).append("]{");
+        int length = Math.min(MAX_FORMAT_ARRAY_LENGTH, arrayLength);
+        boolean primitive = componentType.isPrimitive();
+        for (int i = 0; i < length; i++) {
+            if (primitive) {
+                buf.append(Array.get(array, i));
+            } else {
+                Object o = ((Object[]) array)[i];
+                buf.append(JavaKind.Object.format(o));
+            }
+            if (i != length - 1) {
+                buf.append(", ");
+            }
+        }
+        if (arrayLength != length) {
+            buf.append(", ...");
+        }
+        return buf.append('}').toString();
+    }
+
 }

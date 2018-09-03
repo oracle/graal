@@ -49,7 +49,7 @@ public final class EspressoOptions {
 
     /**
      * prints debug information to {@link System#err} while parsing and executing code. This flag
-     * should obviously never be enabled in productive code.
+     * should obviously never be enabled in production code.
      */
     public static final boolean ENABLE_DEBUG_OUTPUT;
 

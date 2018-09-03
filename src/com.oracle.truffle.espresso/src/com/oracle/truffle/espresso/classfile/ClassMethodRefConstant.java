@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.runtime.MethodInfo;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
@@ -42,12 +42,13 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
     static final class Unresolved extends MethodRefConstant.Unresolved implements ClassMethodRefConstant {
 
-        public Unresolved(TypeDescriptor declaringClass, Utf8Constant name, SignatureDescriptor signature) {
+        public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
             super(declaringClass, name, signature);
         }
 
         public MethodInfo resolve(ConstantPool pool, int index) {
-            throw EspressoLanguage.unimplemented();
+            Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
+            return declaringClass.findMethod(getName(pool, -1), getSignature(pool, -1));
         }
     }
 

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 public final class Utf8Constant implements PoolConstant {
@@ -49,5 +51,22 @@ public final class Utf8Constant implements PoolConstant {
     @Override
     public String toString(ConstantPool pool, int thisIndex) {
         return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Utf8Constant that = (Utf8Constant) o;
+        return Objects.equals(value, that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value);
     }
 }

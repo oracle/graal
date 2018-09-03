@@ -30,9 +30,8 @@ import com.oracle.truffle.espresso.types.TypeDescriptor;
 public interface MemberRefConstant extends PoolConstant {
 
     /**
-     * Gets the descriptor of the class in which this method or field is declared. Note that the
-     * actual holder after resolution may be a super class of the class described by the descriptor
-     * returned by this method.
+     * Gets the class in which this method or field is declared. Note that the actual holder after
+     * resolution may be a super class of the class described by the one returned by this method.
      */
     TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex);
 
@@ -42,13 +41,13 @@ public interface MemberRefConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    Utf8Constant getName(ConstantPool pool, int thisIndex);
+    String getName(ConstantPool pool, int thisIndex);
 
     static abstract class Unresolved implements MemberRefConstant {
         private final TypeDescriptor declaringClass;
-        private final Utf8Constant name;
+        private final String name;
 
-        public Unresolved(TypeDescriptor declaringClass, Utf8Constant name) {
+        public Unresolved(TypeDescriptor declaringClass, String name) {
             this.declaringClass = declaringClass;
             this.name = name;
         }
@@ -57,7 +56,7 @@ public interface MemberRefConstant extends PoolConstant {
             return declaringClass;
         }
 
-        public final Utf8Constant getName(ConstantPool pool, int thisIndex) {
+        public final String getName(ConstantPool pool, int thisIndex) {
             return name;
         }
     }
@@ -72,21 +71,21 @@ public interface MemberRefConstant extends PoolConstant {
             this.nameAndTypeIndex = PoolConstant.u2(nameAndTypeIndex);
         }
 
-        protected abstract MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, Utf8Constant name, Utf8Constant type);
+        protected abstract MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type);
 
         protected MemberRefConstant replace(ConstantPool pool, int thisIndex) {
             TypeDescriptor declaringClass = pool.classAt(classIndex).getTypeDescriptor(pool, classIndex);
             NameAndTypeConstant nat = pool.nameAndTypeAt(nameAndTypeIndex);
             Utf8Constant name = nat.getName(pool, nameAndTypeIndex);
             Utf8Constant type = nat.getType(pool, nameAndTypeIndex);
-            return (MemberRefConstant) pool.updateAt(thisIndex, createUnresolved(pool, declaringClass, name, type));
+            return (MemberRefConstant) pool.updateAt(thisIndex, createUnresolved(pool, declaringClass, name.getValue(), type.getValue()));
         }
 
         public final TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
             return replace(pool, thisIndex).getDeclaringClass(pool, thisIndex);
         }
 
-        public Utf8Constant getName(ConstantPool pool, int thisIndex) {
+        public String getName(ConstantPool pool, int thisIndex) {
             return replace(pool, thisIndex).getName(pool, thisIndex);
         }
     }

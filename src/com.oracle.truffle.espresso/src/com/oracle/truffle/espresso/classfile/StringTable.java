@@ -24,21 +24,30 @@ package com.oracle.truffle.espresso.classfile;
 
 import java.lang.ref.WeakReference;
 
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.Utils;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Used to implement String interning.
  */
 public final class StringTable {
 
-    private final EconomicMap<String, WeakReference<DynamicObject>> interned = EconomicMap.create();
+    private final EspressoContext context;
 
-    public synchronized DynamicObject intern(String value) {
-        WeakReference<DynamicObject> ref = interned.get(value);
-        DynamicObject unique = ref != null ? ref.get() : null;
+    private final EconomicMap<String, WeakReference<StaticObject>> interned = EconomicMap.create();
+
+    public StringTable(EspressoContext context) {
+        this.context = context;
+    }
+
+    public synchronized StaticObject intern(String value) {
+        WeakReference<StaticObject> ref = interned.get(value);
+        StaticObject unique = ref != null ? ref.get() : null;
         if (unique == null) {
             unique = createStringObject(value);
             interned.put(value, new WeakReference<>(unique));
@@ -46,18 +55,12 @@ public final class StringTable {
         return unique;
     }
 
-    private DynamicObject createStringObject(String value) {
-        throw EspressoLanguage.unimplemented();
+    private StaticObject createStringObject(String value) {
+        return Utils.toGuestString(context, value);
     }
 
-    public synchronized DynamicObject intern(DynamicObject stringObject) {
-        String key = new String((char[]) stringObject.getShape().getProperty("value").getLocation().get(stringObject));
-        WeakReference<DynamicObject> ref = interned.get(key);
-        DynamicObject unique = ref != null ? ref.get() : null;
-        if (unique == null) {
-            unique = stringObject;
-            interned.put(key, new WeakReference<>(unique));
-        }
-        return unique;
+    public synchronized StaticObject intern(StaticObject stringObject) {
+        String s = Utils.toHostString(stringObject);
+        return intern(s);
     }
 }

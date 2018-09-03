@@ -1,21 +1,19 @@
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.classfile.Utf8Constant;
-
 public class AttributeInfo {
 
-    private final Utf8Constant name;
+    private final String name;
     private final byte[] info;
 
-    public Utf8Constant getName() {
+    public String getName() {
         return name;
     }
 
-    public byte[] getInfo() {
+    public byte[] getRawInfo() {
         return info;
     }
 
-    public AttributeInfo(Utf8Constant name, byte[] info) {
+    public AttributeInfo(String name, byte[] info) {
         this.name = name;
         this.info = info;
     }

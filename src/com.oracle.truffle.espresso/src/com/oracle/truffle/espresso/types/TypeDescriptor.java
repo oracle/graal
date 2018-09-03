@@ -22,10 +22,8 @@
  */
 package com.oracle.truffle.espresso.types;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.Klass;
-import com.oracle.truffle.espresso.runtime.KlassRegistry;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * A string description of a Java runtime type, e.g. a field's type, see #4.3.2.
@@ -36,24 +34,85 @@ public final class TypeDescriptor extends Descriptor {
         super(string);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static String stringToJava(String string) {
         switch (string.charAt(0)) {
             // @formatter: off
-            case 'L': return dottified(string.substring(1, string.length() - 1));
-            case '[': return stringToJava(string.substring(1)) + "[]";
-            case 'B': return "byte";
-            case 'C': return "char";
-            case 'D': return "double";
-            case 'F': return "float";
-            case 'I': return "int";
-            case 'J': return "long";
-            case 'S': return "short";
-            case 'V': return "void";
-            case 'Z': return "boolean";
+            case 'L':
+                return dottified(string.substring(1, string.length() - 1));
+            case '[':
+                return stringToJava(string.substring(1)) + "[]";
+            case 'B':
+                return "byte";
+            case 'C':
+                return "char";
+            case 'D':
+                return "double";
+            case 'F':
+                return "float";
+            case 'I':
+                return "int";
+            case 'J':
+                return "long";
+            case 'S':
+                return "short";
+            case 'V':
+                return "void";
+            case 'Z':
+                return "boolean";
             default:
                 throw new InternalError("invalid type descriptor: " + "\"" + string + "\"");
-            // @formatter: on
+                // @formatter: on
         }
+    }
+
+    public static String fromJavaName(String javaName) {
+        if (javaName.endsWith("[]")) {
+            return "[" + fromJavaName(javaName.substring(0, javaName.length() - 2));
+        }
+        switch (javaName) {
+            case "byte":
+                return "B";
+            case "char":
+                return "C";
+            case "double":
+                return "D";
+            case "float":
+                return "F";
+            case "int":
+                return "I";
+            case "long":
+                return "J";
+            case "short":
+                return "S";
+            case "void":
+                return "V";
+            case "boolean":
+                return "Z";
+            default:
+                // Reference descriptor.
+                return "L" + slashified(javaName) + ";";
+        }
+
+    }
+
+    public boolean isPrimitive() {
+        if (value.length() != 1) {
+            return false;
+        }
+        switch (value.charAt(0)) {
+            case 'B': // byte
+            case 'C': // char
+            case 'D': // double
+            case 'F': // float
+            case 'I': // int
+            case 'J': // long
+            case 'S': // short
+            case 'V': // void
+            case 'Z': // boolean
+                return true;
+        }
+        return false;
     }
 
     public String toJavaName() {
@@ -77,31 +136,11 @@ public final class TypeDescriptor extends Descriptor {
      * Gets the number of array dimensions in this type descriptor.
      */
     public int getArrayDimensions() {
-        int dimension = 0;
-        while (value.charAt(dimension) == '[') {
-            dimension++;
+        int dimensions = 0;
+        while (value.charAt(dimensions) == '[') {
+            dimensions++;
         }
-        return dimension;
-    }
-
-    /**
-     * Resolves this type descriptor to a klass using a given class loader.
-     *
-     * @param classLoader the class loader used to resolve this type descriptor to a class
-     * @return the resolved class or null
-     */
-    public Klass resolveType(EspressoContext context, DynamicObject classLoader) {
-        // FIXME (ld): Recursing up the class registry's ancestors is wrong.
-        // This assumes a delegation model where a class loader delegates to class loaders up
-        // its class hierarchy only.
-        // This will not work with more elaborated loader where delegation may be customized to
-        // arbitrary loader, e.g., loader that aren't
-        // in its ancestor branch.
-        Klass klass = KlassRegistry.get(context, classLoader, this);
-        if (klass != null) {
-            return klass;
-        }
-        return null;
+        return dimensions;
     }
 
     @Override
@@ -110,5 +149,20 @@ public final class TypeDescriptor extends Descriptor {
         if (endIndex != value.length()) {
             throw new ClassFormatError("Invalid type descriptor " + value);
         }
+    }
+
+    public boolean isArray() {
+        return value.startsWith("[");
+    }
+
+    public TypeDescriptor getComponentType() {
+        if (value.startsWith("[")) {
+            return new TypeDescriptor(value.substring(1));
+        }
+        return null;
+    }
+
+    public TypeDescriptor getElementalType() {
+        return new TypeDescriptor(value.substring(getArrayDimensions()));
     }
 }

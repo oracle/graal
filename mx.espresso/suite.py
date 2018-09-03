@@ -58,6 +58,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.espresso",
+                "com.oracle.truffle.espresso.launcher",
                 "mx:JUNIT",
             ],
             "javaCompliance" : "1.8+",

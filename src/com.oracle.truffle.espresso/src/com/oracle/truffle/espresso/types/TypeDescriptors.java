@@ -2,6 +2,10 @@ package com.oracle.truffle.espresso.types;
 
 import java.util.EnumMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.MetaUtil;
+
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).
  *
@@ -13,9 +17,9 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
         return new TypeDescriptor(key);
     }
 
-    private final EnumMap<JavaKind, TypeDescriptor> primitives = new EnumMap<>(JavaKind.class);
+    private static final EnumMap<JavaKind, TypeDescriptor> primitives = new EnumMap<>(JavaKind.class);
 
-    public TypeDescriptors() {
+    static {
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
                 String key = String.valueOf(kind.getTypeChar());
@@ -26,7 +30,7 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
     }
 
     private TypeDescriptor builtin(Class<?> c) {
-        String name = 'L' + c.getName().replace('.', '/') + ';';
+        String name = MetaUtil.toInternalName(c.getName());
         TypeDescriptor type = new TypeDescriptor(name);
         cache.put(name, type);
         return type;
@@ -36,6 +40,16 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
     public final TypeDescriptor CLASS = builtin(Class.class);
     public final TypeDescriptor THROWABLE = builtin(Throwable.class);
     public final TypeDescriptor STRING = builtin(String.class);
+
+    // Exceptions
+    public final TypeDescriptor OUT_OF_MEMORY_ERROR = builtin(java.lang.OutOfMemoryError.class);
+    public final TypeDescriptor NULL_POINTER_EXCEPTION = builtin(java.lang.NullPointerException.class);
+    public final TypeDescriptor CLASS_CAST_EXCEPTION = builtin(java.lang.ClassCastException.class);
+    public final TypeDescriptor ARRAY_STORE_EXCEPTION = builtin(java.lang.ArrayStoreException.class);
+    public final TypeDescriptor ARITHMETIC_EXCEPTION = builtin(java.lang.ArithmeticException.class);
+    public final TypeDescriptor STACK_OVERFLOW_ERROR = builtin(java.lang.StackOverflowError.class);
+    public final TypeDescriptor ILLEGAL_MONITOR_STATE_EXCEPTION = builtin(java.lang.IllegalMonitorStateException.class);
+    public final TypeDescriptor ILLEGAL_ARGUMENT_EXCEPTION = builtin(java.lang.IllegalArgumentException.class);
 
     @Override
     public synchronized TypeDescriptor lookup(String key) {
@@ -49,7 +63,7 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
         return super.lookup(key);
     }
 
-    public TypeDescriptor forPrimitive(JavaKind kind) {
+    public static TypeDescriptor forPrimitive(JavaKind kind) {
         assert kind.isPrimitive();
         return primitives.get(kind);
     }
@@ -79,6 +93,7 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
      * @return the index one past the valid type descriptor starting at {@code beginIndex}
      * @throws ClassFormatError if there is no valid type descriptor
      */
+    @CompilerDirectives.TruffleBoundary
     public static int skipValidTypeDescriptor(String string, int beginIndex, boolean slashes) throws ClassFormatError {
         if (beginIndex >= string.length()) {
             throw new ClassFormatError("invalid type descriptor: " + string);
@@ -136,7 +151,7 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
         if (descriptor.getArrayDimensions() + dimensions > 255) {
             throw new ClassFormatError("Array type with more than 255 dimensions");
         }
-        for (int i = 0; i != dimensions; ++i) {
+        for (int i = 0; i < dimensions; ++i) {
             value = "[" + value;
         }
         return make(value);

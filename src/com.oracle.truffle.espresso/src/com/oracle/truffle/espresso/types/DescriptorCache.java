@@ -22,23 +22,18 @@
  */
 package com.oracle.truffle.espresso.types;
 
-import org.graalvm.collections.EconomicMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class DescriptorCache<T extends Descriptor> {
 
-    protected final EconomicMap<String, T> cache = EconomicMap.create();
+    protected final ConcurrentHashMap<String, T> cache = new ConcurrentHashMap<>();
 
-    public synchronized T lookup(String key) {
+    public T lookup(String key) {
         return cache.get(key);
     }
 
-    public synchronized T make(String key) {
-        T value = cache.get(key);
-        if (value == null) {
-            value = create(key);
-            cache.put(key, value);
-        }
-        return value;
+    public T make(String key) {
+        return cache.computeIfAbsent(key, this::create);
     }
 
     protected abstract T create(String key);

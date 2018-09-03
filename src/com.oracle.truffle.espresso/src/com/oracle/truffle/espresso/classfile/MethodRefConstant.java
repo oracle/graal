@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.runtime.MethodInfo;
+import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
@@ -53,10 +53,10 @@ public interface MethodRefConstant extends MemberRefConstant {
         }
 
         public TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-            return method.getDeclaringClass().getName();
+            return method.getDeclaringClass().getTypeDescriptor();
         }
 
-        public Utf8Constant getName(ConstantPool pool, int thisIndex) {
+        public String getName(ConstantPool pool, int thisIndex) {
             return method.getName();
         }
 
@@ -69,7 +69,7 @@ public interface MethodRefConstant extends MemberRefConstant {
 
         private final SignatureDescriptor signature;
 
-        public Unresolved(TypeDescriptor declaringClass, Utf8Constant name, SignatureDescriptor signature) {
+        public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
             super(declaringClass, name);
             this.signature = signature;
         }
@@ -86,8 +86,8 @@ public interface MethodRefConstant extends MemberRefConstant {
         }
 
         @Override
-        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, Utf8Constant name, Utf8Constant type) {
-            return new ClassMethodRefConstant.Unresolved(declaringClass, name, pool.getContext().getLanguage().getSignatureDescriptors().make(type.toString()));
+        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type) {
+            return new ClassMethodRefConstant.Unresolved(declaringClass, name, pool.getContext().getSignatureDescriptors().make(type));
         }
 
         @Override

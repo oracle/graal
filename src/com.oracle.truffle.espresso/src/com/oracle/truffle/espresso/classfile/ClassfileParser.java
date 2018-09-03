@@ -27,21 +27,26 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.CodeAttribute;
+import com.oracle.truffle.espresso.runtime.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.ExceptionHandlerEntry;
-import com.oracle.truffle.espresso.runtime.FieldInfo;
-import com.oracle.truffle.espresso.runtime.Klass;
-import com.oracle.truffle.espresso.runtime.KlassRegistry;
-import com.oracle.truffle.espresso.runtime.MethodInfo;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
-
-import java.lang.reflect.Modifier;
 
 public class ClassfileParser {
 
@@ -64,14 +69,14 @@ public class ClassfileParser {
     public static final int NO_RELAX_ACCESS_CTRL_CHECK_VERSION = JAVA_8_VERSION;
     public static final int DYNAMICCONSTANT_MAJOR_VERSION = JAVA_11_VERSION;
 
-    private final DynamicObject classLoader;
+    private final Object classLoader;
     private final ClasspathFile classfile;
 
-    private final TypeDescriptor requestedClassName;
+    private final String requestedClassName;
     private final EspressoContext context;
     private final ClassfileStream stream;
 
-    private TypeDescriptor className;
+    private String className;
     private int minorVersion;
     private int majorVersion;
 
@@ -91,18 +96,29 @@ public class ClassfileParser {
     private Klass superClass;
     private Klass[] localInterfaces;
 
-    private MethodInfo[] methods;
+    private MethodInfo.Builder[] methods;
     private AttributeInfo[] attributes;
-    private FieldInfo[] fields;
+    private FieldInfo.Builder[] fields;
+    private TypeDescriptor typeDescriptor;
 
-    public ClassfileParser(DynamicObject classLoader, ClasspathFile classpathFile, TypeDescriptor requestedClassName, Klass hostClass, EspressoContext context) {
+    public ClassfileParser(Object classLoader, ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.classLoader = classLoader;
         this.className = requestedClassName;
         this.hostClass = hostClass;
         this.context = context;
         this.classfile = classpathFile;
-        this.stream = new ClassfileStream(classfile.contents, classfile);
+        this.stream = new ClassfileStream(classfile);
+    }
+
+    public ClassfileParser(Object classLoader, ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
+        this.requestedClassName = requestedClassName;
+        this.classLoader = classLoader;
+        this.className = requestedClassName;
+        this.hostClass = hostClass;
+        this.context = context;
+        this.classfile = null;
+        this.stream = Objects.requireNonNull(stream);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -134,7 +150,7 @@ public class ClassfileParser {
         }
     }
 
-    public Klass loadClass() {
+    public Klass parseClass() {
         // magic
         int magic = stream.readS4();
         if (magic != MAGIC) {
@@ -147,7 +163,7 @@ public class ClassfileParser {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + majorVersion + "." + minorVersion);
         }
 
-        pool = new ConstantPool(context, classLoader, stream, this);
+        this.pool = new ConstantPool(context, classLoader, stream, this);
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
         if (majorVersion >= JAVA_9_VERSION) {
@@ -176,11 +192,11 @@ public class ClassfileParser {
         // This class and superclass
         int thisClassIndex = stream.readU2();
 
-        TypeDescriptor typeDescriptor = pool.classAt(thisClassIndex).getTypeDescriptor(pool, thisClassIndex);
+        this.typeDescriptor = pool.classAt(thisClassIndex).getTypeDescriptor(pool, thisClassIndex);
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
-        className = typeDescriptor;
+        className = typeDescriptor.toJavaName();
 
         // Checks if name in class file matches requested name
         if (requestedClassName != null && !requestedClassName.equals(className)) {
@@ -196,38 +212,56 @@ public class ClassfileParser {
 
         this.superClassIndex = parseSuperClass();
         this.localInterfaces = parseInterfaces();
+
         this.fields = parseFields();
         this.methods = parseMethods();
+
         this.attributes = parseAttributes();
 
-        TypeDescriptor superTypeDescriptor = pool.classAt(superClassIndex).getTypeDescriptor(pool, superClassIndex);
+        if (superClassIndex != 0) {
+            this.superClass = pool.classAt(superClassIndex).resolve(pool, superClassIndex);
+        } else {
+            this.superClass = null;
+        }
 
-        this.superClass = KlassRegistry.get(context, classLoader, superTypeDescriptor);
+        Optional<AttributeInfo> optEnclosingMethod = Arrays.stream(attributes).filter(a -> a.getName().equals("EnclosingMethod")).findAny();
 
-        boolean isInterface = Modifier.isInterface(accessFlags);
-
-        return Klass.create(className, superClass, localInterfaces, fields, methods, isInterface, accessFlags);
+        return ObjectKlass.create(context, typeDescriptor.toString(), superClass, localInterfaces, methods, fields, accessFlags, (EnclosingMethodAttribute) optEnclosingMethod.orElse(null), pool);
     }
 
-    private MethodInfo[] parseMethods() {
+    private MethodInfo.Builder[] parseMethods() {
         int methodCount = stream.readU2();
-        methods = new MethodInfo[methodCount];
+        methods = new MethodInfo.Builder[methodCount];
         for (int i = 0; i < methodCount; ++i) {
             methods[i] = parseMethod();
         }
         return methods;
     }
 
-    private MethodInfo parseMethod() {
+    private static <T> List<T> parseN(int n, Supplier<T> supplier) {
+        return Stream.generate(supplier).limit(n).collect(Collectors.toList());
+    }
+
+    private MethodInfo.Builder parseMethod() {
         int flags = stream.readU2();
         int nameIndex = stream.readU2();
-        Utf8Constant name = pool.utf8ConstantAt(nameIndex, "method_name");
+        String name = pool.utf8At(nameIndex).getValue();
 
         int descriptorIndex = stream.readU2();
         String value = pool.utf8At(descriptorIndex).getValue();
-        SignatureDescriptor signatureDescriptor = context.getLanguage().getSignatureDescriptors().make(value);
+
         AttributeInfo[] attributes = parseAttributes();
-        return new MethodInfo(name, signatureDescriptor, flags, attributes);
+
+        MethodInfo.Builder builder = new MethodInfo.Builder().setName(name).setSignature(context.getSignatureDescriptors().make(value)).setModifiers(flags);
+
+        Optional<AttributeInfo> optCode = Arrays.stream(attributes).filter(a -> a.getName().equals("Code")).findAny();
+
+        if (optCode.isPresent()) {
+            CodeAttribute code = (CodeAttribute) optCode.get();
+            builder.setMaxLocals(code.getMaxLocals()).setMaxStackSize(code.getMaxStack()).setCode(code.getCode()).setExceptionHandlers(code.getExceptionHandlers());
+        }
+
+        return builder;
     }
 
     private AttributeInfo[] parseAttributes() {
@@ -241,56 +275,69 @@ public class ClassfileParser {
 
     private AttributeInfo parseAttribute() {
         int nameIndex = stream.readU2();
-        Utf8Constant name = pool.utf8ConstantAt(nameIndex, "attribute_name");
-        if (name.getValue().equals("Code")) {
-            return parseCodeAttribute(name);
-        } else {
-            int length = stream.readS4();
-            byte[] info = stream.readByteArray(length);
-            return new AttributeInfo(name, info);
+        String name = pool.utf8At(nameIndex).getValue();
+        switch (name) {
+            case "Code":
+                return parseCodeAttribute(name);
+            case "EnclosingMethod":
+                return parseEnclosingMethodAttribute(name);
+            default:
+                int length = stream.readS4();
+                byte[] info = stream.readByteArray(length);
+                return new AttributeInfo(name, info);
         }
     }
 
-    private CodeAttribute parseCodeAttribute(Utf8Constant name) {
+    private EnclosingMethodAttribute parseEnclosingMethodAttribute(String name) {
+        int length = stream.readS4();
+        int classIndex = stream.readU2();
+        int methodIndex = stream.readU2();
+        return new EnclosingMethodAttribute(name, classIndex, methodIndex);
+    }
+
+    private CodeAttribute parseCodeAttribute(String name) {
         int length = stream.readS4();
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
         int codeLength = stream.readS4();
         byte[] code = stream.readByteArray(codeLength);
-        ExceptionHandlerEntry[] entries = parseExceptionHandlerEntries();
+        ExceptionHandler[] entries = parseExceptionHandlerEntries();
         AttributeInfo[] attributes = parseAttributes();
         return new CodeAttribute(name, maxStack, maxLocals, code, entries, attributes);
     }
 
-    private ExceptionHandlerEntry[] parseExceptionHandlerEntries() {
+    private ExceptionHandler[] parseExceptionHandlerEntries() {
         int count = stream.readU2();
-        ExceptionHandlerEntry[] entries = new ExceptionHandlerEntry[count];
+        ExceptionHandler[] entries = new ExceptionHandler[count];
         for (int i = 0; i < count; i++) {
             int startPc = stream.readU2();
             int endPc = stream.readU2();
             int handlerPc = stream.readU2();
             int catchTypeIndex = stream.readU2();
+            TypeDescriptor catchType = null;
             if (catchTypeIndex != 0) {
-                pool.classAt(catchTypeIndex, "catch_type");
+                catchType = pool.classAt(catchTypeIndex).getTypeDescriptor(pool, catchTypeIndex);
             }
-            entries[i] = new ExceptionHandlerEntry(startPc, endPc, handlerPc, catchTypeIndex);
+
+            entries[i] = new ExceptionHandler(startPc, endPc, handlerPc, catchTypeIndex, catchType);
         }
         return entries;
     }
 
-    private FieldInfo parseField() {
+    private FieldInfo.Builder parseField() {
         int flags = stream.readU2();
         final int nameIndex = stream.readU2();
         final int descriptorIndex = stream.readU2();
-        Utf8Constant name = pool.utf8ConstantAt(nameIndex, "field name");
-        TypeDescriptor descriptor = pool.makeTypeDescriptor(pool.utf8At(descriptorIndex).toString());
+        String name = pool.utf8At(nameIndex).getValue();
+        TypeDescriptor type = context.getTypeDescriptors().make(pool.utf8At(descriptorIndex).getValue());
         AttributeInfo[] attributes = parseAttributes();
-        return new FieldInfo(name, flags, descriptor, attributes);
+        return new FieldInfo.Builder().setName(name).setType(type).setModifiers(flags);
+        // .setAttributes(attributes);
     }
 
-    private FieldInfo[] parseFields() {
+    private FieldInfo.Builder[] parseFields() {
         int fieldCount = stream.readU2();
-        FieldInfo[] fields = new FieldInfo[fieldCount];
+        FieldInfo.Builder[] fields = new FieldInfo.Builder[fieldCount];
         for (int i = 0; i < fieldCount; i++) {
             fields[i] = parseField();
         }
@@ -305,7 +352,7 @@ public class ClassfileParser {
     private int parseSuperClass() {
         int index = stream.readU2();
         if (index == 0) {
-            if (!className.equals("Ljava/lang/Object;")) {
+            if (!className.equals("java.lang.Object")) {
                 throw classfile.classFormatError("Invalid superclass index 0");
             }
         }
@@ -318,7 +365,7 @@ public class ClassfileParser {
         for (int i = 0; i < count; i++) {
             int interfaceIndex = stream.readU2();
             TypeDescriptor interfaceDescriptor = pool.classAt(interfaceIndex).getTypeDescriptor(pool, interfaceIndex);
-            Klass interfaceKlass = KlassRegistry.get(context, classLoader, interfaceDescriptor);
+            Klass interfaceKlass = context.getRegistries().resolve(interfaceDescriptor, classLoader);
             interfaces[i] = interfaceKlass;
         }
         return interfaces;
@@ -349,19 +396,20 @@ public class ClassfileParser {
      * are in different packages then throw an {@link IllegalArgumentException}.
      */
     private void fixAnonymousClassName() {
-        int slash = this.className.toJavaName().lastIndexOf('/');
+        int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
         String hostPackageName = getPackageName(hostClass.getName().toString());
         if (slash == -1) {
             // For an anonymous class that is in the unnamed package, move it to its host class's
             // package by prepending its host class's package name to its class name.
             if (hostPackageName != null) {
-                String newClassName = 'L' + hostPackageName + '/' + this.className.toJavaName() + ';';
-                this.className = pool.makeTypeDescriptor(newClassName);
+                String newClassName = 'L' + hostPackageName + '/' + this.typeDescriptor.toJavaName() + ';';
+                this.className = pool.getContext().getTypeDescriptors().make(newClassName).toJavaName();
             }
         } else {
-            String packageName = getPackageName(this.className.toString());
+            String packageName = getPackageName(this.className);
             if (!hostPackageName.equals(packageName)) {
-                throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " + this.className + " are in different packages");
+                throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " +
+                                this.className + " are in different packages");
             }
         }
     }

@@ -29,7 +29,6 @@ import org.graalvm.collections.Equivalence;
  * Symbol cache.
  */
 public final class SymbolTable {
-
     /**
      * Searching and adding entries to this map is only performed by {@linkplain #make(String) one
      * method} which is synchronized.

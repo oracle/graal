@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class StringConstant implements PoolConstant {
 
@@ -51,7 +51,7 @@ public final class StringConstant implements PoolConstant {
         return pool.utf8At(utf8Index).toString();
     }
 
-    public DynamicObject intern(ConstantPool pool) {
+    public StaticObject intern(ConstantPool pool) {
         return pool.getContext().getStrings().intern(getValue(pool));
     }
 }
