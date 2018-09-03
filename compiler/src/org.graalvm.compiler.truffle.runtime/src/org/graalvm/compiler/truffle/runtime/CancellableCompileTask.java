@@ -28,29 +28,30 @@ import java.util.concurrent.Future;
 
 import org.graalvm.compiler.nodes.Cancellable;
 
-public class CancellableCompileTask implements Cancellable {
-    Future<?> future = null;
-    boolean cancelled = false;
+public final class CancellableCompileTask implements Cancellable {
+    private volatile Future<?> future;
+    private boolean cancelled;
 
     // This cannot be done in the constructor because the CancellableCompileTask needs to be
     // passed down to the compiler through a Runnable inner class.
     // This means it must be final and initialized before the future can be set.
-    public synchronized void setFuture(Future<?> future) {
-        if (this.future == null) {
-            this.future = future;
-        } else {
-            throw new IllegalStateException("The future should not be re-set.");
+    public void setFuture(Future<?> future) {
+        synchronized (this) {
+            if (this.future == null) {
+                this.future = future;
+            } else {
+                throw new IllegalStateException("The future should not be re-set.");
+            }
         }
     }
 
-    public synchronized Future<?> getFuture() {
+    public Future<?> getFuture() {
         return future;
     }
 
     @Override
     public synchronized boolean isCancelled() {
-        assert future != null;
-        assert !cancelled || future.isCancelled();
+        assert !cancelled || future != null && future.isCancelled();
         return cancelled;
     }
 
