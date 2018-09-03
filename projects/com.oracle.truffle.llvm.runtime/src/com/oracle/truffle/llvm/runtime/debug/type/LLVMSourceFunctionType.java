@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.debug.type;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -49,9 +48,26 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
         this.types = types;
         setName(() -> {
             CompilerDirectives.transferToInterpreter();
-            String name = getReturnType().getName();
-            name += getParameterTypes().stream().map(LLVMSourceType::getName).collect(Collectors.joining(", ", "(", ")"));
-            return name;
+
+            StringBuilder nameBuilder = new StringBuilder(getReturnType().getName()).append("(");
+
+            final List<LLVMSourceType> params = getParameterTypes();
+            if (params.size() > 0) {
+                nameBuilder.append(params.get(0).getName());
+            }
+            for (int i = 1; i < params.size(); i++) {
+                nameBuilder.append(", ").append(params.get(i).getName());
+            }
+
+            if (!isVarArgs()) {
+                nameBuilder.append(")");
+            } else if (getParameterTypes().size() == 0) {
+                nameBuilder.append("...)");
+            } else {
+                nameBuilder.append(", ...)");
+            }
+
+            return nameBuilder.toString();
         });
     }
 
