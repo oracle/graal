@@ -17,3 +17,4 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr40340-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/sibcall-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr43317.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/strify5.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/inlinehint-3.c
