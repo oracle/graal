@@ -28,9 +28,14 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 38 CONTINUE "start"
+BREAK 71 CONTINUE "start"
     OPEN_SCOPE
-        MEMBER int "int" "res" "5"
-        MEMBER any "int(void)*" "funcPtr"
-
+        MEMBER any "void()*" "voidFuncNoArgsPtr"
+        MEMBER any "void(...)*" "voidFuncImplicitVarArgsPtr"
+        MEMBER any "void(int)*" "voidFuncIntArgPtr"
+        MEMBER any "(void(int, ...))*" "voidFuncIntVarArgsPtr"
+        MEMBER any "int()*" "intFuncNoArgsPtr"
+        MEMBER any "int(...)*" "intFuncImplicitVarArgsPtr"
+        MEMBER any "int(int)*" "intFuncIntArgPtr"
+        MEMBER any "(int(int, ...))*" "intFuncIntVarArgsPtr"
 
