@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -63,6 +64,10 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     private LLVMInteropType(long size) {
         this.size = size;
+    }
+
+    public long getSize() {
+        return size;
     }
 
     public LLVMInteropType.Array toArray(long length) {
@@ -78,19 +83,21 @@ public abstract class LLVMInteropType implements TruffleObject {
     protected abstract String toString(EconomicSet<LLVMInteropType> visited);
 
     public enum ValueKind {
-        I1(1),
-        I8(1),
-        I16(2),
-        I32(4),
-        I64(8),
-        FLOAT(4),
-        DOUBLE(8),
-        POINTER(8);
+        I1(ForeignToLLVMType.I1),
+        I8(ForeignToLLVMType.I8),
+        I16(ForeignToLLVMType.I16),
+        I32(ForeignToLLVMType.I32),
+        I64(ForeignToLLVMType.I64),
+        FLOAT(ForeignToLLVMType.FLOAT),
+        DOUBLE(ForeignToLLVMType.DOUBLE),
+        POINTER(ForeignToLLVMType.POINTER);
 
         public final LLVMInteropType.Value type;
+        public final ForeignToLLVMType foreignToLLVMType;
 
-        ValueKind(long size) {
-            type = Value.primitive(this, size);
+        ValueKind(ForeignToLLVMType foreignToLLVMType) {
+            this.foreignToLLVMType = foreignToLLVMType;
+            this.type = Value.primitive(this, foreignToLLVMType.getSizeInBytes());
         }
     }
 
@@ -149,7 +156,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         final long elementSize;
         final long length;
 
-        Array(InteropTypeFactory.Register elementType, long elementSize, long length) {
+        Array(InteropTypeRegistry.Register elementType, long elementSize, long length) {
             super(elementSize * length);
             this.elementType = elementType.get(this);
             this.elementSize = elementSize;
@@ -269,7 +276,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         final LLVMInteropType returnType;
         @CompilationFinal(dimensions = 1) final LLVMInteropType[] parameterTypes;
 
-        Function(InteropTypeFactory.Register returnType, LLVMInteropType[] parameterTypes) {
+        Function(InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
             super(0);
             this.returnType = returnType.get(this);
             this.parameterTypes = parameterTypes;
@@ -299,12 +306,10 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static LLVMInteropType fromSourceType(LLVMSourceType type) {
-        return new InteropTypeFactory().get(type);
-    }
-
-    private static final class InteropTypeFactory {
-
+    // TODO (chaeubl): Interop types contain less information than the source type so that different
+    // source types can result in the creation of the same interop type. Therefore, we would need to
+    // deduplicate the created interop types.
+    public static final class InteropTypeRegistry {
         private final EconomicMap<LLVMSourceType, LLVMInteropType> typeCache = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
         private final class Register {
@@ -318,12 +323,17 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
 
             LLVMInteropType get(LLVMInteropType self) {
+                assert !typeCache.containsKey(source);
                 typeCache.put(source, self);
-                return InteropTypeFactory.this.get(target);
+                return InteropTypeRegistry.this.get(target);
             }
         }
 
-        LLVMInteropType get(LLVMSourceType type) {
+        public synchronized LLVMInteropType get(LLVMSourceType type) {
+            if (type == null) {
+                return LLVMInteropType.UNKNOWN;
+            }
+
             LLVMSourceType actual = type.getActualType();
             if (typeCache.containsKey(actual)) {
                 return typeCache.get(actual);
@@ -344,7 +354,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
         }
 
-        Structured getStructured(LLVMSourceType type) {
+        private Structured getStructured(LLVMSourceType type) {
             LLVMSourceType actual = type.getActualType();
             if (typeCache.containsKey(actual)) {
                 LLVMInteropType ret = typeCache.get(actual);
@@ -355,15 +365,14 @@ public abstract class LLVMInteropType implements TruffleObject {
                 }
             } else {
                 /*
-                 * No need to put, structured types put themselves in the map to break cycles. Also,
-                 * we don't want to put the null value in the map in case this type is not
-                 * structured.
+                 * Structured types put themselves in the map to break cycles. Also, we don't want
+                 * to put the null value in the map in case this type is not structured.
                  */
                 return convertStructured(actual);
             }
         }
 
-        Structured convertStructured(LLVMSourceType type) {
+        private Structured convertStructured(LLVMSourceType type) {
             if (type instanceof LLVMSourceArrayLikeType) {
                 return convertArray((LLVMSourceArrayLikeType) type);
             } else if (type instanceof LLVMSourceStructLikeType) {

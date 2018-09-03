@@ -89,7 +89,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         if (!interopTypeCached) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMSourceFunctionType sourceType = getFunction().getSourceType();
-            interopType = sourceType == null ? LLVMInteropType.UNKNOWN : LLVMInteropType.fromSourceType(sourceType);
+            interopType = context.getInteropType(sourceType);
             interopTypeCached = true;
         }
         return interopType;
