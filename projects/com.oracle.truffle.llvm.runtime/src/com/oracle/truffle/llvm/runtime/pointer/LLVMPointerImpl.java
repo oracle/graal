@@ -156,9 +156,8 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
 
     private static final class LLVMManagedPointerNativeLibrary extends LLVMObjectNativeLibrary {
 
+        @Child private LLVMObjectNativeLibrary lib;
         @Child private Node isNull;
-
-        private final LLVMObjectNativeLibrary lib;
 
         private LLVMManagedPointerNativeLibrary(LLVMObjectNativeLibrary lib) {
             this.lib = lib;
