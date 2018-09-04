@@ -5,12 +5,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.Utils;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
- * A {@link ClassRegistryImpl} maps class names to resolved {@link Klass} instances. Each class loader
- * is associated with a {@link ClassRegistryImpl} and vice versa.
+ * A {@link ClassRegistryImpl} maps class names to resolved {@link Klass} instances. Each class
+ * loader is associated with a {@link ClassRegistryImpl} and vice versa.
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
@@ -43,11 +42,9 @@ public class ClassRegistryImpl implements ClassRegistry {
         }
         assert classLoader != null;
 
-
-
         MethodInfo loadClass = ((StaticObject) classLoader).getKlass().findMethod("loadClass", context.getSignatureDescriptors().make("(Ljava/lang/String;Z)Ljava/lang/Class;"));
         // TODO(peterssen): Should the class be resolved?
-        StaticObjectClass guestClass = (StaticObjectClass) loadClass.getCallTarget().call(classLoader, Utils.toGuestString(context, type.toJavaName()), false);
+        StaticObjectClass guestClass = (StaticObjectClass) loadClass.getCallTarget().call(classLoader, context.getMeta().toGuest(type.toJavaName()), false);
         Klass k = guestClass.getMirror();
         classes.put(type, k);
         return k;

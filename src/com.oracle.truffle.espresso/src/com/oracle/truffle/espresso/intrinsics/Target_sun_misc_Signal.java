@@ -1,5 +1,6 @@
 package com.oracle.truffle.espresso.intrinsics;
 
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.Utils;
 
@@ -9,7 +10,7 @@ import sun.misc.Signal;
 public class Target_sun_misc_Signal {
     @Intrinsic
     public static int findSignal(@Type(String.class) StaticObject name) {
-        return new Signal(Utils.toHostString(name)).getNumber();
+        return new Signal(Meta.toHost(name)).getNumber();
     }
 
     @Intrinsic

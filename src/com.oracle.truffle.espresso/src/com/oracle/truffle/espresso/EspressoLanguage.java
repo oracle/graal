@@ -183,7 +183,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         Klass launcherHelperKlass = context.getRegistries().resolve(context.getTypeDescriptors().make("Lsun/launcher/LauncherHelper;"), null);
         MethodInfo checkAndLoadMain = launcherHelperKlass.findMethod("checkAndLoadMain",
                         context.getSignatureDescriptors().make("(ZILjava/lang/String;)Ljava/lang/Class;"));
-        StaticObjectClass mainClass = (StaticObjectClass) checkAndLoadMain.getCallTarget().call(true, mode.ordinal(), Utils.toGuestString(context, name));
+        StaticObjectClass mainClass = (StaticObjectClass) checkAndLoadMain.getCallTarget().call(true, mode.ordinal(), context.getMeta().toGuest(name));
         return mainClass;
     }
 

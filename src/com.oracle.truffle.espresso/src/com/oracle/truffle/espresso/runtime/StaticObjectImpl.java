@@ -10,6 +10,10 @@ public class StaticObjectImpl extends StaticObject {
     private final Map<String, Object> fields;
     private final boolean isStatic;
 
+    public boolean isStatic() {
+        return isStatic;
+    }
+
     public StaticObjectImpl(Klass klass, Map<String, Object> fields, boolean isStatic) {
         super(klass);
         this.fields = fields;
@@ -119,10 +123,6 @@ public class StaticObjectImpl extends StaticObject {
     public Object getField(FieldInfo field) {
         // TODO(peterssen): Klass check
         return fields.get(field.getName());
-    }
-
-    public <T> T getFieldByName(String name) {
-        return (T) (fields.get(name));
     }
 
     public void setFieldByName(String name, Object value) {

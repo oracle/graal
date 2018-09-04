@@ -1,12 +1,14 @@
 package com.oracle.truffle.espresso.intrinsics;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
 
 @EspressoIntrinsics
 public class Target_java_io_UnixFileSystem {
@@ -63,7 +65,6 @@ public class Target_java_io_UnixFileSystem {
     @Intrinsic(hasReceiver = true)
     public static @Type(String.class) StaticObject canonicalize0(Object self, @Type(String.class) StaticObject path) {
         // TODO(peterssen): Implement path canonicalization.
-        // System.err.println("UnixFileSystem.canonicalize0" + Utils.toHostString(path));
         return path;
     }
 
@@ -78,7 +79,8 @@ public class Target_java_io_UnixFileSystem {
     }
 
     private static File toHostFile(StaticObject f) {
-        String path = Utils.toHostString((StaticObject) f.getKlass().findDeclaredMethod("getPath", String.class).getCallTarget().call(f));
+        String path = Meta.toHost((StaticObject) meta(f).method("getPath", String.class).invokeDirect());
+        assert path != null;
         return new File(path);
     }
 }

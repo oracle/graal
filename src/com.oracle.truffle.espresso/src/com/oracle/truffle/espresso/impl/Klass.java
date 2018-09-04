@@ -1,18 +1,17 @@
 package com.oracle.truffle.espresso.impl;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.runtime.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
-
-import java.util.Arrays;
 
 public abstract class Klass implements ModifiersProvider {
 
@@ -277,8 +276,8 @@ public abstract class Klass implements ModifiersProvider {
     public abstract MethodInfo[] getDeclaredMethods();
 
     /**
-     * Returns an array of reflecting all the fields declared by this type. This method is similar
-     * to {@link Class#getDeclaredFields()} in terms of returned fields.
+     * Returns an array reflecting all the fields declared by this type. This method is similar to
+     * {@link Class#getDeclaredFields()} in terms of returned fields.
      */
     public abstract FieldInfo[] getDeclaredFields();
 
@@ -310,7 +309,6 @@ public abstract class Klass implements ModifiersProvider {
 
         return null;
     }
-
 
     public MethodInfo findConcreteMethod(String name, SignatureDescriptor signature) {
         for (Klass c = this; c != null; c = c.getSuperclass()) {

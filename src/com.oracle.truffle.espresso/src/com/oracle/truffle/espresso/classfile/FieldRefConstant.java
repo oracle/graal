@@ -71,7 +71,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
-            return field.getType();
+            return field.getTypeDescriptor();
         }
     }
 
@@ -92,7 +92,7 @@ public interface FieldRefConstant extends MemberRefConstant {
             Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
             while (declaringClass != null) {
                 for (FieldInfo fi : declaringClass.getDeclaredFields()) {
-                    if (fi.getName().equals(getName(pool, -1)) && getTypeDescriptor(pool, -1).equals(fi.getType())) {
+                    if (fi.getName().equals(getName(pool, -1)) && type.equals(fi.getTypeDescriptor())) {
                         return fi;
                     }
                 }

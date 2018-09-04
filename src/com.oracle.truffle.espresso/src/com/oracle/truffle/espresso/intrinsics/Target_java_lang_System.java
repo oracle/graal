@@ -7,6 +7,7 @@ import java.util.Properties;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
@@ -53,14 +54,14 @@ public class Target_java_lang_System {
 
         for (String prop : importedProps) {
 
-            StaticObject guestPropKey = Utils.toGuestString(context, prop);
+            StaticObject guestPropKey = context.getMeta().toGuest(prop);
             StaticObject guestPropValue;
 
             // Inject guest classpath.
             if (prop.equals("java.class.path")) {
-                guestPropValue = Utils.toGuestString(context, context.getClasspath().toString());
+                guestPropValue = context.getMeta().toGuest(context.getClasspath().toString());
             } else {
-                guestPropValue = Utils.toGuestString(context, System.getProperty(prop));
+                guestPropValue = context.getMeta().toGuest(System.getProperty(prop));
             }
 
             setProperty.getCallTarget().call(props, guestPropKey, guestPropValue);
@@ -71,26 +72,23 @@ public class Target_java_lang_System {
 
     @Intrinsic
     public static void setIn0(@Type(InputStream.class) StaticObjectImpl in) {
-        EspressoContext context = Utils.getContext();
-        Klass SYSTEM_KLASS = context.getRegistries().resolve(context.getTypeDescriptors().make("Ljava/lang/System;"), null);
-        InterpreterToVM vm = Utils.getVm();
-        vm.setFieldObject(in, SYSTEM_KLASS.getStatics(), Utils.findDeclaredField(SYSTEM_KLASS, "in"));
+        Utils.getContext().getMeta().knownKlass(System.class)
+                .staticField("in")
+                .set(in);
     }
 
     @Intrinsic
     public static void setOut0(@Type(PrintStream.class) StaticObject out) {
-        EspressoContext context = Utils.getContext();
-        Klass SYSTEM_KLASS = context.getRegistries().resolve(context.getTypeDescriptors().make("Ljava/lang/System;"), null);
-        InterpreterToVM vm = Utils.getVm();
-        vm.setFieldObject(out, SYSTEM_KLASS.getStatics(), Utils.findDeclaredField(SYSTEM_KLASS, "out"));
+        Utils.getContext().getMeta().knownKlass(System.class)
+                .staticField("out")
+                .set(out);
     }
 
     @Intrinsic
     public static void setErr0(@Type(PrintStream.class) StaticObject err) {
-        EspressoContext context = Utils.getContext();
-        Klass SYSTEM_KLASS = context.getRegistries().resolve(context.getTypeDescriptors().make("Ljava/lang/System;"), null);
-        InterpreterToVM vm = Utils.getVm();
-        vm.setFieldObject(err, SYSTEM_KLASS.getStatics(), Utils.findDeclaredField(SYSTEM_KLASS, "err"));
+        Utils.getContext().getMeta().knownKlass(System.class)
+                .staticField("err")
+                .set(err);
     }
 
     @Intrinsic

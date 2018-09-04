@@ -1,4 +1,6 @@
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.classfile;
+
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 
 public class EnclosingMethodAttribute extends AttributeInfo {
     private final int classIndex;

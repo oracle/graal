@@ -43,8 +43,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
-import com.oracle.truffle.espresso.runtime.CodeAttribute;
-import com.oracle.truffle.espresso.runtime.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
@@ -225,8 +223,12 @@ public class ClassfileParser {
         }
 
         Optional<AttributeInfo> optEnclosingMethod = Arrays.stream(attributes).filter(a -> a.getName().equals("EnclosingMethod")).findAny();
+        Optional<AttributeInfo> optInnerClasses = Arrays.stream(attributes).filter(a -> a.getName().equals("InnerClasses")).findAny();
 
-        return ObjectKlass.create(context, typeDescriptor.toString(), superClass, localInterfaces, methods, fields, accessFlags, (EnclosingMethodAttribute) optEnclosingMethod.orElse(null), pool);
+        return ObjectKlass.create(context, typeDescriptor.toString(), superClass, localInterfaces, methods, fields, accessFlags,
+                        (EnclosingMethodAttribute) optEnclosingMethod.orElse(null),
+                        (InnerClassesAttribute) optInnerClasses.orElse(null),
+                        pool);
     }
 
     private MethodInfo.Builder[] parseMethods() {
@@ -281,11 +283,31 @@ public class ClassfileParser {
                 return parseCodeAttribute(name);
             case "EnclosingMethod":
                 return parseEnclosingMethodAttribute(name);
+            case "InnerClasses":
+                return parseInnerClasses(name);
             default:
                 int length = stream.readS4();
                 byte[] info = stream.readByteArray(length);
                 return new AttributeInfo(name, info);
         }
+    }
+
+    private InnerClassesAttribute parseInnerClasses(String name) {
+        int length = stream.readS4();
+        int entryCount = stream.readU2();
+        InnerClassesAttribute.Entry[] entries = new InnerClassesAttribute.Entry[entryCount];
+        for (int i = 0; i < entryCount; ++i) {
+            entries[i] = parseInnerClassEntry();
+        }
+        return new InnerClassesAttribute(name, entries);
+    }
+
+    private InnerClassesAttribute.Entry parseInnerClassEntry() {
+        int innerClassIndex = stream.readU2();
+        int outerClassIndex = stream.readU2();
+        int innerNameIndex = stream.readU2();
+        int innerClassAccessFlags = stream.readU2();
+        return new InnerClassesAttribute.Entry(innerClassIndex, outerClassIndex, innerNameIndex, innerClassAccessFlags);
     }
 
     private EnclosingMethodAttribute parseEnclosingMethodAttribute(String name) {
@@ -397,7 +419,7 @@ public class ClassfileParser {
      */
     private void fixAnonymousClassName() {
         int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
-        String hostPackageName = getPackageName(hostClass.getName().toString());
+        String hostPackageName = getPackageName(hostClass.getName());
         if (slash == -1) {
             // For an anonymous class that is in the unnamed package, move it to its host class's
             // package by prepending its host class's package name to its class name.

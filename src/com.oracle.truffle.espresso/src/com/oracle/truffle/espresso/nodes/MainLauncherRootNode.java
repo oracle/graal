@@ -4,6 +4,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -29,16 +30,13 @@ public class MainLauncherRootNode extends RootNode {
             throw wrapped;
         } catch (Throwable throwable) {
             // Non-espresso exceptions cannot escape to the guest.
-            throw new RuntimeException(throwable);
             // throw EspressoError.shouldNotReachHere();
+            throw new RuntimeException(throwable);
         }
     }
 
-    private static StaticObject[] toGuestArguments(EspressoContext context, String... args) {
-        StaticObject[] guestArgs = new StaticObject[args.length];
-        for (int i = 0; i < args.length; ++i) {
-            guestArgs[i] = Utils.toGuestString(context, args[i]);
-        }
-        return guestArgs;
+    private static StaticObject toGuestArguments(EspressoContext context, String... args) {
+        Meta meta = context.getMeta();
+        return (StaticObject) meta.STRING.allocateArray(args.length, i -> meta.toGuest(args[i]));
     }
 }

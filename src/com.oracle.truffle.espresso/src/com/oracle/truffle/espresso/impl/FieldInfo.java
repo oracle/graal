@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.impl.EspressoVMConfig.config;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
@@ -14,20 +15,23 @@ public class FieldInfo implements ModifiersProvider {
     public static final FieldInfo[] EMPTY_ARRAY = new FieldInfo[0];
 
     private final Klass holder;
-    private TypeDescriptor type;
+    private TypeDescriptor typeDescriptor;
     private final String name;
     private final int offset;
     private final short index;
+
+    @CompilerDirectives.CompilationFinal
+    private Klass type;
 
     /**
      * This value contains all flags as stored in the VM including internal ones.
      */
     private final int modifiers;
 
-    FieldInfo(Klass holder, String name, TypeDescriptor type, long offset, int modifiers, int index) {
+    FieldInfo(Klass holder, String name, TypeDescriptor typeDescriptor, long offset, int modifiers, int index) {
         this.holder = holder;
         this.name = name;
-        this.type = type;
+        this.typeDescriptor = typeDescriptor;
         this.index = (short) index;
         this.offset = (int) offset;
         this.modifiers = modifiers;
@@ -37,7 +41,7 @@ public class FieldInfo implements ModifiersProvider {
     }
 
     public JavaKind getKind() {
-        return type.toKind();
+        return typeDescriptor.toKind();
     }
 
     @Override
@@ -54,6 +58,14 @@ public class FieldInfo implements ModifiersProvider {
             }
         }
         return false;
+    }
+
+    public Klass getType() {
+        if (type == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            type = getDeclaringClass().getContext().getRegistries().resolve(getTypeDescriptor(), getDeclaringClass().getClassLoader());
+        }
+        return type;
     }
 
     @Override
@@ -77,8 +89,8 @@ public class FieldInfo implements ModifiersProvider {
         return name;
     }
 
-    public TypeDescriptor getType() {
-        return type;
+    public TypeDescriptor getTypeDescriptor() {
+        return typeDescriptor;
     }
 
     public int offset() {

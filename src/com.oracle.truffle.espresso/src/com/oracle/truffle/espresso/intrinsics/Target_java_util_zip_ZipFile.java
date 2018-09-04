@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.zip.ZipFile;
 
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.Utils;
 
@@ -89,7 +90,7 @@ public class Target_java_util_zip_ZipFile {
     @Intrinsic
     public static long open(@Type(String.class) StaticObject name, int mode, long lastModified,
                     boolean usemmap) throws IOException {
-        return (long) ZipFileFunctions.OPEN.invokeStatic(Utils.toHostString(name), mode, lastModified, usemmap);
+        return (long) ZipFileFunctions.OPEN.invokeStatic(Meta.toHost(name), mode, lastModified, usemmap);
     }
 
     @Intrinsic
@@ -153,6 +154,6 @@ public class Target_java_util_zip_ZipFile {
     @Intrinsic
     public static @Type(String.class) Object getZipMessage(long jzfile) {
         String result = (String) ZipFileFunctions.GET_ZIP_MESSAGE.invokeStatic(jzfile);
-        return Utils.toGuestString(Utils.getContext(), result);
+        return Utils.getContext().getMeta().toGuest(result);
     }
 }

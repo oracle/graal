@@ -1,13 +1,16 @@
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.util.Arrays;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.runtime.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -24,6 +27,7 @@ public final class ObjectKlass extends Klass {
     private final ConstantPool pool;
 
     private FieldInfo[] instanceFieldsCache;
+    private final InnerClassesAttribute innerClasses;
 
     private int initState = LOADED;
     public static final int LOADED = 0;
@@ -36,6 +40,7 @@ public final class ObjectKlass extends Klass {
                     FieldInfo[] declaredFields,
                     int accessFlags,
                     EnclosingMethodAttribute enclosingMethod,
+                    InnerClassesAttribute innerClasses,
                     ConstantPool pool) {
         super(name);
         this.superclass = superclass;
@@ -44,6 +49,7 @@ public final class ObjectKlass extends Klass {
         this.declaredFields = declaredFields;
         this.accessFlags = accessFlags;
         this.enclosingMethod = enclosingMethod;
+        this.innerClasses = innerClasses;
         this.pool = pool;
     }
 
@@ -53,10 +59,10 @@ public final class ObjectKlass extends Klass {
     }
 
     public static Klass create(EspressoContext context, String className, Klass superClass, Klass[] localInterfaces, MethodInfo.Builder[] methodBuilders, FieldInfo.Builder[] fieldBuilders,
-                    int accessFlags, EnclosingMethodAttribute enclosingMethod, ConstantPool pool) {
+                    int accessFlags, EnclosingMethodAttribute enclosingMethod, InnerClassesAttribute innerClasses, ConstantPool pool) {
         MethodInfo[] methods = new MethodInfo[methodBuilders.length];
         FieldInfo[] fields = new FieldInfo[fieldBuilders.length];
-        ObjectKlass result = new ObjectKlass(context, className, superClass, localInterfaces, methods, fields, accessFlags, enclosingMethod, pool);
+        ObjectKlass result = new ObjectKlass(context, className, superClass, localInterfaces, methods, fields, accessFlags, enclosingMethod, innerClasses, pool);
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = methodBuilders[i].setDeclaringClass(result).build();
         }
@@ -111,11 +117,8 @@ public final class ObjectKlass extends Klass {
             if (getSuperclass() != null) {
                 getSuperclass().initialize();
             }
-            MethodInfo clinit = getClassInitializer();
             initState = INITIALIZED;
-            if (clinit != null) {
-                clinit.getCallTarget().call();
-            }
+            meta(this).getClassInitializer().ifPresent(clinit -> clinit.invokeDirect());
             assert isInitialized();
         }
     }
@@ -142,7 +145,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Klass[] getInterfaces() {
-        return interfaces.clone();
+        return interfaces;
     }
 
     @Override
@@ -229,5 +232,13 @@ public final class ObjectKlass extends Klass {
     @Override
     public FieldInfo[] getDeclaredFields() {
         return declaredFields;
+    }
+
+    public EnclosingMethodAttribute getEnclosingMethod() {
+        return enclosingMethod;
+    }
+
+    public InnerClassesAttribute getInnerClasses() {
+        return innerClasses;
     }
 }

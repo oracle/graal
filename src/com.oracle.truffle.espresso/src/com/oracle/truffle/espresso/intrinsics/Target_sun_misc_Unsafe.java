@@ -12,8 +12,12 @@ import com.oracle.truffle.espresso.runtime.Utils;
 
 import sun.misc.Unsafe;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 @EspressoIntrinsics
 public class Target_sun_misc_Unsafe {
+
+    private static final long SAFETY_FIELD_OFFSET = 123456789L;
 
     private static Unsafe hostUnsafe;
 
@@ -23,7 +27,7 @@ public class Target_sun_misc_Unsafe {
             f.setAccessible(true);
             hostUnsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -59,7 +63,7 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static long objectFieldOffset(Object self, @Type(Field.class) StaticObjectImpl field) {
-        return (long) (int) field.getFieldByName("slot");
+        return SAFETY_FIELD_OFFSET + (int) meta(field).field("slot").get();
     }
 
     @Intrinsic(hasReceiver = true)
@@ -70,10 +74,11 @@ public class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = holder.getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
-        Object inTheField = Utils.getVm().getFieldObject(holder, f);
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
+
+        Object inTheField = meta(f).get(holder);
         if (inTheField == before) {
-            Utils.getVm().setFieldObject(after, holder, f);
+            meta(f).set(holder, after);
             return true;
         } else {
             return false;
@@ -84,18 +89,18 @@ public class Target_sun_misc_Unsafe {
     public static int getIntVolatile(Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = holder.getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
-        return Utils.getVm().getFieldInt(holder, f);
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
+        return (int) meta(f).get(holder);
     }
 
     @Intrinsic(hasReceiver = true)
     public static boolean compareAndSwapInt(Object self, @Type(Object.class) StaticObject holder, long offset, int before, int after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = holder.getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
-        int inTheField = Utils.getVm().getFieldInt(holder, f);
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
+        int inTheField = (int) meta(f).get(holder);
         if (inTheField == before) {
-            Utils.getVm().setFieldInt(after, holder, f);
+            meta(f).set(holder, after);
             return true;
         } else {
             return false;
@@ -106,10 +111,10 @@ public class Target_sun_misc_Unsafe {
     public static boolean compareAndSwapLong(Object self, @Type(Object.class) StaticObject holder, long offset, long before, long after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = holder.getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
-        long inTheField = Utils.getVm().getFieldLong(holder, f);
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
+        long inTheField = (long) meta(f).get(holder);
         if (inTheField == before) {
-            Utils.getVm().setFieldLong(after, holder, f);
+            meta(f).set(holder, after);
             return true;
         } else {
             return false;
@@ -135,7 +140,7 @@ public class Target_sun_misc_Unsafe {
     public static void putLong(Object self, Object holder, long offset, long x) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = ((StaticObject) holder).getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
         Utils.getVm().setFieldLong(x, (StaticObject) holder, f);
     }
 
@@ -148,7 +153,7 @@ public class Target_sun_misc_Unsafe {
     public static byte getByte(Object self, Object holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = ((StaticObject) holder).getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
         return Utils.getVm().getFieldByte((StaticObject) holder, f);
     }
 
@@ -160,13 +165,13 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static Object getObjectVolatile(Object self, Object holder, long offset) {
         if (holder instanceof StaticObjectArray) {
-            holder = ((StaticObjectArray)holder).getWrapped();
-            return hostUnsafe.getObjectVolatile(holder, offset);
+            return hostUnsafe.getObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset);
         }
-        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <-> field index.
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         FieldInfo[] fields = ((StaticObject) holder).getKlass().getDeclaredFields();
-        FieldInfo f = fields[(int) offset];
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
         return Utils.getVm().getFieldObject((StaticObject) holder, f);
     }
 

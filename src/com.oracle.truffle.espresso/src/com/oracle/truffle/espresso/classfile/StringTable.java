@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import java.lang.ref.WeakReference;
 
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.Utils;
@@ -56,11 +57,11 @@ public final class StringTable {
     }
 
     private StaticObject createStringObject(String value) {
-        return Utils.toGuestString(context, value);
+        return context.getMeta().toGuest(value);
     }
 
     public synchronized StaticObject intern(StaticObject stringObject) {
-        String s = Utils.toHostString(stringObject);
+        String s = Meta.toHost(stringObject);
         return intern(s);
     }
 }

@@ -5,6 +5,8 @@ import java.io.IOException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.Utils;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 @EspressoIntrinsics
 public class Target_java_io_FileOutputStream {
     @Intrinsic
@@ -14,8 +16,7 @@ public class Target_java_io_FileOutputStream {
 
     @Intrinsic(hasReceiver = true)
     public static void writeBytes(StaticObject self, byte[] bytes, int offset, int len, boolean append) {
-        StaticObject fileDescriptor = (StaticObject) Utils.getVm().getFieldObject(self, Utils.findDeclaredField(self.getKlass(), "fd"));
-        int fd = Utils.getVm().getFieldInt(fileDescriptor, Utils.findDeclaredField(fileDescriptor.getKlass(), "fd"));
+        int fd = (int) meta((StaticObject) meta(self).field("fd").get()).field("fd").get();
         if (fd == 1) {
             try {
                 Utils.getContext().out().write(bytes, offset, len);

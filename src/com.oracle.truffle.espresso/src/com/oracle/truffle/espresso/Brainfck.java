@@ -3,7 +3,7 @@ package com.oracle.truffle.espresso;
 import java.util.Scanner;
 
 public class Brainfck {
-    private Scanner sc = null; // new Scanner(System.in);
+    private Scanner sc = new Scanner(System.in);
     private final int LENGTH = 65535;
     private int[] mem = new int[LENGTH];
     private int pc;
@@ -60,10 +60,6 @@ public class Brainfck {
     }
 
     public static void main(String[] args) {
-        main();
-    }
-
-    public static void main() {
         new Brainfck().interpret("      A mandelbrot set fractal viewer in brainf*** written by Erik Bosman\n" +
                         "+++++++++++++[->++>>>+++++>++>+<<<<<<]>>>>>++++++>--->>>>>>>>>>+++++++++++++++[[\n" +
                         ">>>>>>>>>]+[<<<<<<<<<]>>>>>>>>>-]+[>>>>>>>>[-]>]<<<<<<<<<[<<<<<<<<<]>>>>>>>>[-]+\n" +

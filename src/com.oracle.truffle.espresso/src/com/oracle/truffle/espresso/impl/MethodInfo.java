@@ -34,7 +34,7 @@ public final class MethodInfo implements ModifiersProvider {
     private final LocalVariableTable localVariableTable;
     private final int modifiers;
 
-    private CallTarget callTarget;
+    @CompilerDirectives.CompilationFinal private CallTarget callTarget;
 
     MethodInfo(Klass declaringClass, String name, SignatureDescriptor signature,
                     byte[] code, int maxStackSize, int maxLocals, int modifiers,
@@ -133,6 +133,7 @@ public final class MethodInfo implements ModifiersProvider {
     public CallTarget getCallTarget() {
         // TODO(peterssen): Make lazy call target thread-safe.
         if (callTarget == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             CallTarget redirectedMethod = getContext().getVm().getIntrinsic(this);
             if (redirectedMethod != null) {
                 callTarget = redirectedMethod;
@@ -156,13 +157,23 @@ public final class MethodInfo implements ModifiersProvider {
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
     }
 
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    private Klass[] parameterTypes;
+
     public Klass[] getParameterTypes() {
-        int argCount = getSignature().getParameterCount(false);
-        Klass[] params = new Klass[argCount];
-        for (int i = 0; i < argCount; ++i) {
-            params[i] = getContext().getRegistries().resolve(getSignature().getParameterType(i), getClassLoader());
+        if (parameterTypes == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            int argCount = getSignature().getParameterCount(false);
+            parameterTypes = new Klass[argCount];
+            for (int i = 0; i < argCount; ++i) {
+                parameterTypes[i] = getContext().getRegistries().resolve(getSignature().getParameterType(i), getClassLoader());
+            }
         }
-        return params;
+        return parameterTypes;
+    }
+
+    public int getParameterCount() {
+        return getParameterTypes().length;
     }
 
     public Object getClassLoader() {

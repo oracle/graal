@@ -22,6 +22,7 @@ import java.lang.reflect.Modifier;
  */
 public final class EspressoModifiers {
 
+    // TODO(peterssen): Initialize properly non-standard flags, all are set to 0.
     // @formatter:off
     public static final int ANNOTATION = config().jvmAccAnnotation;
     public static final int ENUM       = config().jvmAccEnum;

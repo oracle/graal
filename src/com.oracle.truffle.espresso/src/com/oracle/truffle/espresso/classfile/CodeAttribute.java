@@ -1,6 +1,7 @@
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 
 public class CodeAttribute extends AttributeInfo {
     private final int maxStack;

@@ -237,6 +237,7 @@ import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -245,7 +246,10 @@ public class EspressoRootNode extends RootNode {
     private final TruffleLanguage<EspressoContext> language;
     private final MethodInfo method;
     private final InterpreterToVM vm;
+
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private final FrameSlot[] locals;
+
     private final FrameSlot stackSlot;
 
     @Override
@@ -968,7 +972,7 @@ public class EspressoRootNode extends RootNode {
                     throw e;
                 }
             } catch (Throwable e) {
-                // TODO(peterssen): Shape-shift into host exception.
+                // TODO(peterssen): Shape-shift into GUEST exception.
                 throw e;
             }
             bs.next();
@@ -1136,7 +1140,8 @@ public class EspressoRootNode extends RootNode {
         return vm.newMultiArray(componentType, dimensions);
     }
 
-    protected Object allocateNativeArray(byte jvmPrimitiveType, int length) {
+    // TODO(peterssen): Move to InterpreterToVm.
+    protected static Object allocateNativeArray(byte jvmPrimitiveType, int length) {
         // the constants for the cpi are loosely defined and no real cpi indices.
         switch (jvmPrimitiveType) {
             case 4:
@@ -1342,16 +1347,12 @@ public class EspressoRootNode extends RootNode {
     private Object nullCheck(Object value) {
         assert value != null;
         if (value == StaticObject.NULL) {
-            // TODO(peterssen): Wrap exception.
-            EspressoContext context = getConstantPool().getContext();
-
-            Klass NULL_POINTER_EX = context.getRegistries().resolve(context.getTypeDescriptors().NULL_POINTER_EXCEPTION, null);
-            StaticObject ex = getVm().newObject(NULL_POINTER_EX);
-
-            // Initialize
-            NULL_POINTER_EX.findDeclaredMethod("<init>", void.class).getCallTarget().call();
-
-            throw new EspressoException(ex);
+            CompilerDirectives.transferToInterpreter();
+            // TODO(peterssen): Profile whether null was hit or not.
+            Meta meta = method.getDeclaringClass().getContext().getMeta();
+            StaticObject nullPointerEx = meta.exceptionKlass(NullPointerException.class).allocateInstance();
+            Meta.meta(nullPointerEx).method("<init>", void.class).invokeDirect();
+            throw new EspressoException(nullPointerEx);
         }
         return value;
     }
@@ -1456,5 +1457,10 @@ public class EspressoRootNode extends RootNode {
             default:
                 assert false : "unexpected kind";
         }
+    }
+
+    @Override
+    public String toString() {
+        return method.getDeclaringClass().getName() + "." + method.getName() + method.getSignature().toString();
     }
 }

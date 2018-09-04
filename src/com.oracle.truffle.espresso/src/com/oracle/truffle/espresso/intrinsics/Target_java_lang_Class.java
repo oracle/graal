@@ -1,21 +1,28 @@
 package com.oracle.truffle.espresso.intrinsics;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.runtime.Utils;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
@@ -26,15 +33,8 @@ public class Target_java_lang_Class {
     public static @Type(Class.class) StaticObject getPrimitiveClass(
                     @Type(String.class) StaticObject name) {
 
-
-
-        String hostName = MetaUtil.toInternalName(Utils.toHostString(name));
+        String hostName = MetaUtil.toInternalName(Meta.toHost(name));
         return Utils.getContext().getRegistries().resolve(TypeDescriptors.forPrimitive(JavaKind.fromTypeString(hostName)), null).mirror();
-    }
-
-    @Intrinsic(hasReceiver = true)
-    public static @Type(Object[].class) StaticObject getEnclosingMethod0(Object self) {
-        return StaticObject.NULL;
     }
 
     @Intrinsic(hasReceiver = true)
@@ -46,12 +46,13 @@ public class Target_java_lang_Class {
     public static @Type(Class.class) StaticObject forName0(
                     @Type(String.class) StaticObject name,
                     boolean initialize,
-                    @Type(ClassLoader.class) StaticObject loader,
+                    @Type(ClassLoader.class) Object loader,
                     @Type(Class.class) StaticObject caller) {
 
+        assert loader != null;
         EspressoContext context = Utils.getContext();
 
-        String typeDesc = Utils.toHostString(name);
+        String typeDesc = Meta.toHost(name);
         if (typeDesc.contains(".")) {
             // Normalize
             // Ljava/lang/InterruptedException;
@@ -60,113 +61,82 @@ public class Target_java_lang_Class {
         }
 
         try {
-            return context.getRegistries().resolve(context.getTypeDescriptors().make(typeDesc), null).mirror();
+            Klass klass = context.getRegistries().resolve(context.getTypeDescriptors().make(typeDesc), loader == StaticObject.NULL ? null : loader);
+            if (initialize) {
+                klass.initialize();
+            }
+            return klass.mirror();
         } catch (NoClassDefFoundError e) {
-
-            Klass classNotFoundExceptionKlass = context.getRegistries().resolve(context.getTypeDescriptors().make("Ljava/lang/ClassNotFoundException;"), null);
-
-            StaticObject instance = Utils.getVm().newObject(classNotFoundExceptionKlass);
-            throw new EspressoException(instance);
+            Meta.Klass classNotFoundExceptionKlass = context.getMeta().exceptionKlass(ClassNotFoundException.class);
+            StaticObject ex = classNotFoundExceptionKlass.allocateInstance();
+            meta(ex).method("<init>", void.class).invokeDirect();
+            // TODO(peterssen): Add class name to exception message.
+            throw new EspressoException(ex);
         }
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(String.class) StaticObject getName0(
-                    @Type(Class.class) StaticObjectClass self) {
-        return Utils.toGuestString(Utils.getContext(), self.getMirror().getName().toString());
+    public static @Type(String.class) StaticObject getName0(@Type(Class.class) StaticObjectClass self) {
+        String name = self.getMirror().getName();
+        // Class name is stored in internal form.
+        return Utils.getContext().getMeta().toGuest(MetaUtil.internalNameToJava(name, true, true));
     }
 
     @Intrinsic(hasReceiver = true)
     public static @Type(ClassLoader.class) StaticObject getClassLoader0(@Type(Class.class) StaticObject self) {
         Object cl = self.getKlass().getClassLoader();
+        // Boot class loader.
         if (cl == null) {
             return StaticObject.NULL;
         }
-        // TODO(peterssen): Classloader defined in the guest.
+        // Guest-defined class loader.
         return (StaticObject) cl;
     }
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Field[].class) StaticObject getDeclaredFields0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
-        FieldInfo[] fields = self.getMirror().getDeclaredFields();
-        if (publicOnly) {
-            fields = Arrays.stream(fields).filter(f -> Modifier.isPublic(f.getFlags())).toArray(FieldInfo[]::new);
-        }
+        final FieldInfo[] fields = Arrays.stream(self.getMirror().getDeclaredFields()).filter(f -> (!publicOnly || f.isPublic())).toArray(FieldInfo[]::new);
 
         EspressoContext context = Utils.getContext();
-        Klass FIELD_KLASS = context.getRegistries().resolve(context.getTypeDescriptors().make("Ljava/lang/reflect/Field;"), null);
+        Meta meta = context.getMeta();
 
-        InterpreterToVM vm = Utils.getVm();
-        StaticObject arr = vm.newArray(FIELD_KLASS, fields.length);
-        for (int i = 0; i < fields.length; ++i) {
-            StaticObjectImpl f = (StaticObjectImpl) vm.newObject(FIELD_KLASS);
+        Meta.Klass fieldKlass = meta.knownKlass(java.lang.reflect.Field.class);
 
-            vm.setFieldInt(fields[i].getFlags(), f, Utils.findDeclaredField(FIELD_KLASS, "modifiers"));
-
-            vm.setFieldObject(
-                            context.getRegistries().resolve(fields[i].getType(), null).mirror(),
-                            f,
-                            Utils.findDeclaredField(FIELD_KLASS, "type"));
-
-            vm.setFieldObject(vm.intern(Utils.toGuestString(context, fields[i].getName())),
-                            f,
-                            Utils.findDeclaredField(FIELD_KLASS, "name"));
-
-            vm.setFieldObject(fields[i].getDeclaringClass().mirror(), f, Utils.findDeclaredField(FIELD_KLASS,
-                            "clazz"));
-
-            vm.setFieldInt(i,
-                            f,
-                            Utils.findDeclaredField(FIELD_KLASS, "slot"));
-
-            vm.setArrayObject(f, i, arr);
-        }
+        StaticObject arr = (StaticObject) fieldKlass.allocateArray(fields.length, i -> {
+            Meta.Field f = meta(fields[i]);
+            return fieldKlass.metaNew().fields(
+                            Meta.Field.set("modifiers", f.getModifiers()),
+                            Meta.Field.set("type", f.getType().rawKlass().mirror()),
+                            Meta.Field.set("name", context.getStrings().intern(f.getName())),
+                            Meta.Field.set("clazz", f.getDeclaringClass().rawKlass().mirror()),
+                            Meta.Field.set("slot", i)).getInstance();
+        });
 
         return arr;
     }
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Constructor[].class) StaticObject getDeclaredConstructors0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
-        MethodInfo[] constructors = self.getMirror().getDeclaredConstructors();
-        constructors = Arrays.stream(constructors).filter(m -> m.getName().equals("<init>")).toArray(MethodInfo[]::new);
+        final MethodInfo[] constructors = Arrays.stream(self.getMirror().getDeclaredConstructors()).filter(m -> m.getName().equals("<init>") && (!publicOnly || m.isPublic())).toArray(
+                        MethodInfo[]::new);
 
-        if (publicOnly) {
-            constructors = Arrays.stream(constructors).filter(f -> Modifier.isPublic(f.getModifiers())).toArray(MethodInfo[]::new);
-        }
+        Meta meta = Utils.getContext().getMeta();
+        Meta.Klass constructorKlass = meta.knownKlass(Constructor.class);
 
-        EspressoContext context = Utils.getContext();
-        Klass CONSTRUCTOR_KLASS = context.getRegistries().resolve(
-                        context.getTypeDescriptors().make("Ljava/lang/reflect/Constructor;"),
-                        null);
+        StaticObject arr = (StaticObject) constructorKlass.allocateArray(constructors.length, i -> {
+            Meta.Method m = meta(constructors[i]);
 
-        InterpreterToVM vm = Utils.getVm();
-        StaticObject arr = vm.newArray(CONSTRUCTOR_KLASS, constructors.length);
+            StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
+                            m.getParameterCount(),
+                            j -> m.getParameterTypes()[j].rawKlass().mirror());
 
-        for (int i = 0; i < constructors.length; ++i) {
-            StaticObjectImpl obj = (StaticObjectImpl) vm.newObject(CONSTRUCTOR_KLASS);
+            return constructorKlass.metaNew().fields(
+                            Meta.Field.set("modifiers", m.getModifiers()),
+                            Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
+                            Meta.Field.set("slot", i),
+                            Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
+        });
 
-            vm.setFieldInt(constructors[i].getModifiers(), obj, Utils.findDeclaredField(CONSTRUCTOR_KLASS,
-                            "modifiers"));
-            vm.setFieldObject(constructors[i].getDeclaringClass().mirror(), obj,
-                            Utils.findDeclaredField(CONSTRUCTOR_KLASS, "clazz"));
-
-            vm.setFieldInt(i, obj, Utils.findDeclaredField(CONSTRUCTOR_KLASS, "slot"));
-
-            {
-                int parameterCount = constructors[i].getParameterTypes().length;
-                StaticObject parameterTypes = vm.newArray(context.getRegistries().resolve(context.getTypeDescriptors().CLASS, null),
-                                parameterCount);
-                // Fill parameterTypes
-                for (int j = 0; j < parameterCount; ++j) {
-                    vm.setArrayObject(constructors[i].getParameterTypes()[j].mirror(), j, parameterTypes);
-                }
-                vm.setFieldObject(parameterTypes, obj, Utils.findDeclaredField(CONSTRUCTOR_KLASS, "parameterTypes"));
-            }
-
-            // TODO(peterssen): Set parameter types.
-
-            vm.setArrayObject(obj, i, arr);
-        }
         return arr;
     }
 
@@ -212,12 +182,96 @@ public class Target_java_lang_Class {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(Class.class) Object getComponentType(@Type(Class.class) StaticObjectClass self) {
+    public static @Type(Class.class) StaticObject getComponentType(@Type(Class.class) StaticObjectClass self) {
         Klass comp = self.getMirror().getComponentType();
         if (comp == null) {
             return StaticObject.NULL;
         }
         return comp.mirror();
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(Object[].class) StaticObject getEnclosingMethod0(StaticObjectClass self) {
+        Meta meta = Utils.getContext().getMeta();
+        InterpreterToVM vm = Utils.getContext().getVm();
+        if (self.getMirror() instanceof ObjectKlass) {
+            EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirror()).getEnclosingMethod();
+            if (enclosingMethodAttr == null) {
+                return StaticObject.NULL;
+            }
+            StaticObjectArray arr = (StaticObjectArray) meta.OBJECT.allocateArray(3);
+
+            Klass enclosingKlass = self.getMirror().getConstantPool().classAt(enclosingMethodAttr.getClassIndex()).resolve(self.getMirror().getConstantPool(), enclosingMethodAttr.getClassIndex());
+
+            vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
+
+            if (enclosingMethodAttr.getMethodIndex() != 0) {
+                MethodInfo enclosingMethod = self.getMirror().getConstantPool().methodAt(enclosingMethodAttr.getMethodIndex()).resolve(self.getMirror().getConstantPool(),
+                                enclosingMethodAttr.getMethodIndex());
+                vm.setArrayObject(meta.toGuest(enclosingMethod.getName()), 1, arr);
+                vm.setArrayObject(meta.toGuest(enclosingMethod.getSignature().toString()), 2, arr);
+            } else {
+                assert vm.getArrayObject(1, arr) == StaticObject.NULL;
+                assert vm.getArrayObject(2, arr) == StaticObject.NULL;
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(Class.class) StaticObject getDeclaringClass0(StaticObjectClass self) {
+        // Primitives and arrays are not "enclosed".
+        if (!(self.getMirror() instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass k = (ObjectKlass) self.getMirror();
+        Klass outerKlass = computeEnclosingClass(k);
+        if (outerKlass == null) {
+            return StaticObject.NULL;
+        }
+        return outerKlass.mirror();
+    }
+
+    /**
+     * Return the enclosing class; or null for: primitives, arrays, anonymous classes (declared
+     * inside methods).
+     */
+    private static Klass computeEnclosingClass(ObjectKlass klass) {
+        InnerClassesAttribute innerClasses = klass.getInnerClasses();
+        if (innerClasses == null) {
+            return null;
+        }
+
+        ConstantPool pool = klass.getConstantPool();
+
+        boolean found = false;
+        boolean isMember = false;
+        Klass outerKlass = null;
+
+        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+            if (entry.innerClassIndex != 0) {
+                ClassConstant innerClassConst = pool.classAt(entry.innerClassIndex);
+                TypeDescriptor innerDecriptor = innerClassConst.getTypeDescriptor(pool, entry.innerClassIndex);
+
+                // Check decriptors/names before resolving.
+                if (innerDecriptor.equals(klass.getTypeDescriptor())) {
+                    Klass innerKlass = innerClassConst.resolve(pool, entry.innerClassIndex);
+                    found = (innerKlass == klass);
+                    if (found && entry.outerClassIndex != 0) {
+                        outerKlass = pool.classAt(entry.outerClassIndex).resolve(pool, entry.outerClassIndex);
+                        isMember = true;
+                    }
+                }
+            }
+            if (found)
+                break;
+        }
+
+        // TODO(peterssen): Follow HotSpot implementation described below.
+        // Throws an exception if outer klass has not declared k as an inner klass
+        // We need evidence that each klass knows about the other, or else
+        // the system could allow a spoof of an inner class to gain access rights.
+        return outerKlass;
     }
 
     @Intrinsic

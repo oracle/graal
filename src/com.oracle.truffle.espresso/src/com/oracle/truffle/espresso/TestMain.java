@@ -31,18 +31,10 @@ public class TestMain {
         System.out.println("Found " + count + " primes < " + n);
     }
 
-    public static void main() {
-
-
-        long ticks = System.currentTimeMillis();
-        //for (int i = 0; i < 100000; ++i) {
-            primeSieve(10);
-        //}
-        System.out.println("Elapsed: " + (System.currentTimeMillis() - ticks) + " ms");
-        //System.out.println(factorial(8));
-    }
-
     public static void main(String[] args) {
-        main();
+        long ticks = System.currentTimeMillis();
+        System.out.println(factorial(8));
+        primeSieve(1000);
+        System.out.println("Elapsed: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 }

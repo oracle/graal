@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.classfile.StringTable;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -49,23 +48,14 @@ public class EspressoContext {
 
     private final TruffleLanguage.Env env;
     private final InterpreterToVM vm;
-
+    private final StringTable strings;
+    private final ClassRegistries registries;
     private boolean initialized = false;
-
     private Classpath classpath;
     private Classpath bootClasspath;
-
-    private final StringTable strings;
     private String[] mainArguments;
     private Source mainSourceFile;
-
     private Object appClassLoader;
-
-    public ClassRegistries getRegistries() {
-        return registries;
-    }
-
-    private final ClassRegistries registries;
     private Meta meta;
     private StaticObject mainThread;
 
@@ -75,7 +65,10 @@ public class EspressoContext {
         this.vm = new InterpreterToVM(language);
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
-        this.meta = new Meta(this);
+    }
+
+    public ClassRegistries getRegistries() {
+        return registries;
     }
 
     public InputStream in() {
@@ -102,10 +95,6 @@ public class EspressoContext {
         return language;
     }
 
-    public void setMainArguments(String[] mainArguments) {
-        this.mainArguments = mainArguments;
-    }
-
     /**
      * @return The {@link String}[] array passed to the main function.
      */
@@ -113,24 +102,24 @@ public class EspressoContext {
         return mainArguments;
     }
 
-    public void setMainSourceFile(Source mainSourceFile) {
-        this.mainSourceFile = mainSourceFile;
-    }
-
-    public void setClasspath(Classpath classpath) {
-        this.classpath = classpath;
-    }
-
-    public void setBootClasspath(Classpath bootClasspath) {
-        this.bootClasspath = bootClasspath;
+    public void setMainArguments(String[] mainArguments) {
+        this.mainArguments = mainArguments;
     }
 
     public Classpath getClasspath() {
         return classpath;
     }
 
+    public void setClasspath(Classpath classpath) {
+        this.classpath = classpath;
+    }
+
     public Classpath getBootClasspath() {
         return bootClasspath;
+    }
+
+    public void setBootClasspath(Classpath bootClasspath) {
+        this.bootClasspath = bootClasspath;
     }
 
     /**
@@ -140,22 +129,29 @@ public class EspressoContext {
         return mainSourceFile;
     }
 
+    public void setMainSourceFile(Source mainSourceFile) {
+        this.mainSourceFile = mainSourceFile;
+    }
+
     public void initializeContext() {
         assert !this.initialized;
-        //this.refractor = new Refractor(this);
+        this.meta = new Meta(this);
         createVm();
         this.initialized = true;
+    }
+
+    public Meta getMeta() {
+        return meta;
     }
 
     private void createVm() {
 
         initializeClass(Object.class);
 
-        // Initialize primitive classes.
+        // Primitive classes have no dependencies.
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive()) {
                 initializeClass(kind.toJavaClass());
-                // initializeClass(kind.toBoxedJavaClass());
             }
         }
 
@@ -171,11 +167,7 @@ public class EspressoContext {
         initializeClass("Ljava/lang/ref/Finalizer;");
 
         // Call System.initializeSystemClass
-        {
-            //MethodInfo initializeSystemClass = systemKlass.findDeclaredMethod("initializeSystemClass", void.class);
-            meta.knownKlass(System.class).method("initializeSystemClass", void.class).invoke();
-            //initializeSystemClass.getCallTarget().call();
-        }
+        meta.knownKlass(System.class).staticMethod("initializeSystemClass", void.class).invokeDirect();
 
         // System exceptions.
         Stream.of(
@@ -189,12 +181,7 @@ public class EspressoContext {
                         IllegalArgumentException.class).forEachOrdered(this::initializeClass);
 
         // Load system class loader.
-        {
-            appClassLoader = meta.knownKlass(ClassLoader.class).method("getSystemClassLoader", ClassLoader.class).invoke(null);
-            //Klass classLoaderKlass = getRegistries().resolve(getTypeDescriptors().make("Ljava/lang/ClassLoader;"), null);
-            //MethodInfo getSystemClassLoader = classLoaderKlass.findDeclaredMethod("getSystemClassLoader", ClassLoader.class);
-            //appClassLoader = getSystemClassLoader.getCallTarget().call();
-        }
+        appClassLoader = meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
     }
 
     private void initializeClass(Class<?> clazz) {

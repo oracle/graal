@@ -53,11 +53,14 @@ import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 public class    InterpreterToVM {
 
@@ -264,7 +267,7 @@ public class    InterpreterToVM {
     public void registerIntrinsic(String clazz, String methodName, String signature, CallTarget intrinsic) {
 
         MethodKey key = new MethodKey(clazz, methodName, signature);
-        assert !intrinsics.containsKey(key) : key;
+        assert !intrinsics.containsKey(key) : key + " intrinsic is already registered";
         assert intrinsic != null;
         intrinsics.put(key, intrinsic);
     }
@@ -342,6 +345,7 @@ public class    InterpreterToVM {
     }
 
     public void setArrayObject(Object value, int index, Object arr) {
+        // TODO(peterssen): Array store check.
         ((StaticObjectArray) arr).getWrapped()[index] = value;
     }
     // endregion
@@ -448,7 +452,7 @@ public class    InterpreterToVM {
     }
 
     public StaticObject newArray(Klass componentType, int length) {
-        // assert !componentType.isPrimitive();
+        assert !componentType.isPrimitive();
         Object[] arr = new Object[length];
         Arrays.fill(arr, StaticObject.NULL);
         return new StaticObjectArray(componentType, arr);
@@ -465,7 +469,19 @@ public class    InterpreterToVM {
             return false;
         }
 
+        // WIP
+//        Meta meta = typeToCheck.getContext().getMeta();
+//
+//        if (meta(typeToCheck).isArray()) {
+//            if (meta.meta(instance).isArray()) {
+//                if (!typeToCheck.getComponentType().isPrimitive() && !meta.meta(instance).rawKlass().getComponentType().isPrimitive()) {
+//
+//                }
+//            }
+//        }
+
         if (instance instanceof StaticObject) {
+
             if (typeToCheck.isInterface()) {
                 Klass k = ((StaticObject) instance).getKlass();
                 while (k != null) {
@@ -496,7 +512,6 @@ public class    InterpreterToVM {
         }
         // TODO(peterssen): Throw guest exception.
         // throw newClassCastException();
-        instanceOf(instance, klass);
         throw new ClassCastException();
     }
 

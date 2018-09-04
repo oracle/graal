@@ -2,6 +2,8 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.espresso.impl.Klass;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 public class StaticObject {
     private final Klass klass;
 
@@ -25,6 +27,7 @@ public class StaticObject {
         if (this == VOID) {
             return "void";
         }
-        return klass.getTypeDescriptor().toJavaName();
+        return meta(this).guestToString();
+        // return klass.getTypeDescriptor().toJavaName();
     }
 }

@@ -4,12 +4,6 @@ import java.math.BigInteger;
 
 public class Fastorial {
 
-//    static BigInteger karatsuba(BigInteger a, BigInteger b) {
-//        int n = a.bitLength() / 2;
-//        BigInteger mask = BigInteger.ONE.shiftLeft(n);
-//        BigInteger ah =
-//    }
-
     static BigInteger mul(int from, int to) {
         if (from == to) {
             return BigInteger.valueOf(to);

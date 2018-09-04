@@ -3,6 +3,7 @@ package com.oracle.truffle.espresso.intrinsics;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -24,18 +25,18 @@ public class Target_java_lang_ClassLoader {
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) Object findLoadedClass0(Object self, @Type(String.class) StaticObject name) {
         EspressoContext context = Utils.getContext();
-        TypeDescriptor type = context.getTypeDescriptors().make(Utils.toHostString(name));
+        TypeDescriptor type = context.getTypeDescriptors().make(Meta.toHost(name));
         Klass klass = Utils.getContext().getRegistries().findLoadedClass(type, self);
         if (klass == null) {
             return StaticObject.NULL;
         }
-        return klass;
+        return klass.mirror();
     }
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) Object findBootstrapClass(Object self, @Type(String.class) StaticObject name) {
         EspressoContext context = Utils.getContext();
-        TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Utils.toHostString(name)));
+        TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Meta.toHost(name)));
         Klass klass = Utils.getContext().getRegistries().resolve(type, null);
         if (klass == null) {
             return StaticObject.NULL;
@@ -46,17 +47,12 @@ public class Target_java_lang_ClassLoader {
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject defineClass0(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
                                                                     @Type(ProtectionDomain.class) Object pd) {
-        ClasspathFile cpf =  new ClasspathFile(b, null, Utils.toHostString(name));
-        ClassfileParser parser = new ClassfileParser(self, new ClassfileStream(b, off, len, cpf), Utils.toHostString(name), null, Utils.getContext());
+        ClasspathFile cpf =  new ClasspathFile(b, null, Meta.toHost(name));
+        ClassfileParser parser = new ClassfileParser(self, new ClassfileStream(b, off, len, cpf), Meta.toHost(name), null, Utils.getContext());
 
         // TODO(peterssen): Propagate errors to the guest.
         // Class parsing should be moved to ClassRegistry.
-
-
         StaticObjectClass klass = (StaticObjectClass) parser.parseClass().mirror();
-
-        System.err.println("Class loader:" + self + " Type: " + klass.getMirror().getName());
-
         return klass;
     }
 
