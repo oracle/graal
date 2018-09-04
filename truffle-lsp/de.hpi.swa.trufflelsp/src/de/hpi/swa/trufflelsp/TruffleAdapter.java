@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
@@ -906,7 +907,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     private boolean isObjectPropertyCompletionCharacter(String text, String langId) {
-        List<String> completionCharacters = env.getCompletionCharacters(langId);
+        List<String> completionCharacters = env.getCompletionTriggerCharacters(langId);
         return completionCharacters.contains(text);
     }
 
@@ -1317,5 +1318,13 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
 
     public void register(NestedEvaluator nestedEvaluator) {
         this.evaluator = nestedEvaluator;
+    }
+
+    public Future<List<String>> getCompletionTriggerCharacters() {
+        return evaluator.executeWithDefaultContext(() -> getCompletionTriggerCharactersWithEnteredContext());
+    }
+
+    public List<String> getCompletionTriggerCharactersWithEnteredContext() {
+        return env.getLanguages().values().stream().filter(lang -> !lang.isInternal()).flatMap(info -> env.getCompletionTriggerCharacters(info.getId()).stream()).distinct().collect(Collectors.toList());
     }
 }

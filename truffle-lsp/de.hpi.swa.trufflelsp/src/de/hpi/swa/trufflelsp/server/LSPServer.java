@@ -116,9 +116,8 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         capabilities.setCodeLensProvider(new CodeLensOptions(false));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
-        List<String> triggerCharacters = Arrays.asList("."); // TODO(ds) Truffle API needed to ask
-                                                             // for trigger chars of installed
-                                                             // languages
+        List<String> triggerCharacters = waitForResultAndHandleExceptions(truffleAdapter.getCompletionTriggerCharacters());
+        System.out.println("Completion trigger character set: " + triggerCharacters);
         completionOptions.setTriggerCharacters(triggerCharacters);
         capabilities.setCompletionProvider(completionOptions);
         capabilities.setCodeActionProvider(true);
