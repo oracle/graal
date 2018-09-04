@@ -1040,6 +1040,10 @@ public abstract class TruffleLanguage<C> {
         return Collections.emptyList();
     }
 
+    protected Object boxPrimitive(@SuppressWarnings("unused") Object primitive) {
+        return null;
+    }
+
     /**
      * Find a hierarchy of top-most scopes of the language, if any. The scopes should be returned
      * from the inner-most to the outer-most scope order. The language may return an empty iterable
@@ -2097,6 +2101,10 @@ public abstract class TruffleLanguage<C> {
             return getSpi().getCompletionTriggerCharacters();
         }
 
+        Object boxPrimitive(Object primitive) {
+            return getSpi().boxPrimitive(primitive);
+        }
+
         Iterable<Scope> findTopScopes() {
             return getSpi().findTopScopes(context);
         }
@@ -2563,6 +2571,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public List<String> getCompletionTriggerCharacters(Env env) {
             return env.getCompletionTriggerCharacters();
+        }
+
+        @Override
+        public Object boxPrimitive(Env env, Object primitive) {
+            return env.boxPrimitive(primitive);
         }
 
         @Override
