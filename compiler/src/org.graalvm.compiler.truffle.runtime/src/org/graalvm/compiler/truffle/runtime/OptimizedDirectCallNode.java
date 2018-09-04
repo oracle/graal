@@ -38,6 +38,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleTraceSplittingSummary;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -51,6 +52,8 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     private boolean inliningForced;
     @CompilationFinal private ValueProfile exceptionProfile;
 
+    private final boolean experimentalSplitting;
+    private final boolean traceSplittingSummary;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
     private final GraalTruffleRuntime runtime;
@@ -59,6 +62,8 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         super(target);
         assert target.getSourceCallTarget() == null;
         this.runtime = runtime;
+        this.experimentalSplitting = TruffleCompilerOptions.getValue(TruffleExperimentalSplitting);
+        this.traceSplittingSummary = TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary);
     }
 
     @Override
@@ -146,7 +151,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
+        TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci(), traceSplittingSummary, experimentalSplitting);
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -188,7 +193,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean cloneCallTarget() {
-        TruffleSplittingStrategy.forceSplitting(this, runtime.getTvmci());
+        TruffleSplittingStrategy.forceSplitting(this, runtime.getTvmci(), traceSplittingSummary);
         return true;
     }
 }
