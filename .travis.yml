@@ -8,6 +8,10 @@ addons:
       - python-virtualenv
       - wget
       - mercurial
+      - clang-3.8
+      - llvm-3.8
+      - libc++1
+      - libc++-dev
 
 # Use Trusty to get enough RAM
 sudo: required
@@ -21,13 +25,7 @@ env:
     - JVMCI_VERSION="jvmci-0.48"
     - JDK8_UPDATE_VERSION="172"
   matrix:
-    - JDK="jdk8" GATE="style,fullbuild" PRIMARY="compiler"
-    - JDK="jdk8" GATE="build,test" PRIMARY="compiler"
-    - JDK="jdk8" GATE="build,test" PRIMARY="substratevm"
-    - JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-    - JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
-    - JDK="jdk11" GATE="build,test" PRIMARY="compiler"
-    - JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+    - JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true NATIVE_IMAGE_TESTING=true LLVM_VERSION="3.8"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -64,7 +62,15 @@ install:
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi
-
+  - |
+      if [ "${LLVM_VERSION}" != "" ]
+      then
+        export CLANG=clang-$LLVM_VERSION
+        export CLANGXX=clang++-$LLVM_VERSION
+        export OPT=opt-$LLVM_VERSION
+        export LLVM_AS=llvm-as-$LLVM_VERSION
+        export LLVM_LINK=llvm-link-$LLVM_VERSION
+      fi
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
