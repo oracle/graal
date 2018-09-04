@@ -48,6 +48,7 @@ import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -93,6 +94,7 @@ public abstract class Launcher {
     private boolean helpTools;
     private boolean helpLanguages;
     private boolean seenPolyglot;
+    private Path logFile;
 
     private VersionAction versionAction = VersionAction.None;
 
@@ -117,6 +119,10 @@ public abstract class Launcher {
 
     final void setPolyglot(boolean polyglot) {
         seenPolyglot = polyglot;
+    }
+
+    final Path getLogFile() {
+        return logFile;
     }
 
     private Engine getTempEngine() {
@@ -620,6 +626,9 @@ public abstract class Launcher {
                         } catch (IllegalArgumentException e) {
                             throw abort(String.format("Invalid log level %s specified. %s'", arg, e.getMessage()));
                         }
+                    } else if (key.equals("log.file")) {
+                        logFile = Paths.get(value);
+                        return true;
                     }
                 }
                 OptionDescriptor descriptor = findPolyglotOptionDescriptor(group, key);

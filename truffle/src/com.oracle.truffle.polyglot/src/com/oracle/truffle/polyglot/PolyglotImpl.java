@@ -193,7 +193,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public void preInitializeEngine() {
-        final Handler logHandler = PolyglotLogHandler.createStreamHandler(System.err, false, true);
+        final Handler logHandler = getAPIAccess().newLogHandler(System.err, false, true);
         try {
             final PolyglotEngineImpl preInitializedEngine = PolyglotEngineImpl.preInitialize(
                             this,
