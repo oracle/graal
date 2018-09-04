@@ -908,7 +908,7 @@ public class JavaNetNetworkInterface {
     // 1058  * proto is AF_INET/AF_INET6
     // 1059  */
     // 1060 static int  openSocket(JNIEnv *env, int proto){
-    static int openSocket(int proto) throws SocketException {
+    public static int openSocket(int proto) throws SocketException {
         // 1061     int sock;
         int sock;
         // 1062
@@ -941,6 +941,7 @@ public class JavaNetNetworkInterface {
         short getSubnet(int sock, CCharPointer ifname) throws SocketException;
         int getFlags(int sock, CCharPointer ifname, CIntPointer flags);
         int getIndex(int sock, CCharPointer name);
+        int getMacAddress(CCharPointer ifname, NetinetIn.in_addr addr, CCharPointer buf) throws SocketException;
     }
 }
 
