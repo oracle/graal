@@ -21,6 +21,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
@@ -568,10 +569,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     private EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final Node nearestNode) {
-        return runToSectionAndEval(surrogate, nearestNode, nearestNode.getSourceSection().getCharacters().toString());
-    }
-
-    private EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final Node nearestNode, final String codeToEval) {
         if (!(nearestNode instanceof InstrumentableNode)) {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
@@ -602,19 +599,80 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         final String name = uri.getPath();
         final CallTarget callTarget = parse(surrogateOfTestFile);
 
-        EventBinding<ExecutionEventNodeFactory> binding = env.getInstrumenter().attachExecutionEventFactory(
-                        createSourceSectionFilter(uri, sourceSection, name),
+// EventBinding<ExecutionEventNodeFactory> binding =
+// env.getInstrumenter().attachExecutionEventFactory(
+// createSourceSectionFilter(uri, sourceSection, name),
+// new ExecutionEventNodeFactory() {
+//
+// public ExecutionEventNode create(EventContext context) {
+// return new ExecutionEventNode() {
+//
+// @Override
+// protected void onReturnValue(VirtualFrame frame, Object result) {
+// throw new EvaluationResultException(result);
+// }
+// };
+// }
+// });
+
+        EventBinding<ExecutionEventNodeFactory> binding2 = env.getInstrumenter().attachExecutionEventFactory(
+                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getSource()).build(),
+// createSourceSectionFilter(coverageUri, sourceSection, name),
+                        createSourceSectionFilter(coverageUri, sourceSection, name),
                         new ExecutionEventNodeFactory() {
+                            StringBuilder indent = new StringBuilder("");
 
                             public ExecutionEventNode create(EventContext context) {
                                 return new ExecutionEventNode() {
 
+                                    private String sourceSectionFormat(SourceSection section) {
+                                        return "SourceSection(" + section.getCharacters().toString().replaceAll("\n", Matcher.quoteReplacement("\\n")) + ") ";
+                                    }
+
                                     @Override
-                                    protected void onReturnValue(VirtualFrame frame, Object result) {
-                                        throw new EvaluationResultException(result);
+                                    public void onReturnValue(VirtualFrame frame, Object result) {
+                                        indent.setLength(indent.length() - 2);
+                                        System.out.println(indent + "onReturnValue " + context.getInstrumentedNode().getClass().getSimpleName() + " " +
+                                                        sourceSectionFormat(context.getInstrumentedSourceSection()) + result);
+                                    }
+
+                                    @Override
+                                    public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+                                        indent.setLength(indent.length() - 2);
+                                        System.out.println(indent + "onReturnExceptional " + sourceSectionFormat(context.getInstrumentedSourceSection()));
+                                    }
+
+                                    @Override
+                                    public void onEnter(VirtualFrame frame) {
+                                        System.out.println(indent + "onEnter " + context.getInstrumentedNode().getClass().getSimpleName() + " " +
+                                                        sourceSectionFormat(context.getInstrumentedSourceSection()));
+                                        indent.append("  ");
+                                    }
+
+                                    @Override
+                                    public void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+                                        indent.setLength(indent.length() - 2);
+                                        System.out.println(indent + "onInputValue idx:" + inputIndex + " " +
+                                                        inputContext.getInstrumentedNode().getClass().getSimpleName() + " " +
+                                                        sourceSectionFormat(context.getInstrumentedSourceSection()) +
+                                                        sourceSectionFormat(inputContext.getInstrumentedSourceSection()) +
+                                                        inputValue + " " +
+                                                        env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(),
+                                                                        inputValue));
+                                        indent.append("  ");
+                                        if (inputContext.getInstrumentedSourceSection().equals(context.getInstrumentedSourceSection())) {
+                                            // TODO(ds) This is a fix for GraalJS, because
+                                            // GraalJS provides the result of a previous execution
+                                            // again as input value which we are not interested in
+                                            // here. See class JSTaggedTargetableExecutionNode.
+                                            return;
+                                        }
+
+                                        throw new EvaluationResultException(inputValue);
                                     }
                                 };
                             }
+
                         });
 
         try {
@@ -633,7 +691,8 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 }
             }
         } finally {
-            binding.dispose();
+// binding.dispose();
+            binding2.dispose();
         }
         return EvaluationResult.createEvaluationSectionNotReached();
     }
@@ -1039,75 +1098,60 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         if (sourceWrapper.isParsingSuccessful()) {
             Source source = sourceWrapper.getSource();
-            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), character + 1);
+            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, zeroBasedLineToOneBasedLine(line, source), character);
             SourceSection containsSection = nearestSections.getContainsSourceSection();
             InstrumentableNode containsNode = nearestSections.getContainsNode();
             if (containsSection != null && containsNode != null) {
                 System.out.println(nearestSections.getContainsNode().getClass().getSimpleName() + " " + containsSection);
 
-                Object nodeObject = containsNode.getNodeObject();
-                if (nodeObject instanceof TruffleObject) {
-                    String name;
-                    TruffleObject truffleNodeObject = (TruffleObject) nodeObject;
-                    Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(),
-                                    truffleNodeObject);
-                    System.out.println("  -> NodeObject: " + map);
-                    if (containsNode.hasTag(StandardTags.CallTag.class) && map.containsKey("name")) {
-                        name = map.get("name").toString();
-                    } else if (map.containsKey("key")) {
-                        name = map.get("key").toString();
-                    } else {
-                        System.out.println(" -> " + containsNode.getClass().getSimpleName() + "'s node object has no 'name' or 'key' property.");
-                        return locations;
-                    }
+                // First try: dynamic approach
+                System.out.println("Trying run-to-section eval...");
 
-                    // First try: dynamic approach
-                    System.out.println("Trying run-to-section eval...");
-                    EvaluationResult evalResult = runToSectionAndEval(surrogate, (Node) containsNode, name);
-                    if (evalResult.isEvaluationDone() && !evalResult.isError()) {
-                        SourceSection sourceSection = findSourceLocation(surrogate.getLangId(), evalResult.getResult());
-                        if (sourceSection != null) {
-                            Range range = TruffleAdapter.sourceSectionToRange(sourceSection);
-                            String definitionUri;
-                            if (!sourceSection.getSource().getURI().getScheme().equals("file")) {
-                                // We assume, that the source name is a valid file path if
-                                // the URI has no file scheme
-                                Path path = Paths.get(sourceSection.getSource().getName());
-                                definitionUri = path.toUri().toString();
-                            } else {
-                                definitionUri = sourceSection.getSource().getURI().toString();
-                            }
-                            locations.add(new Location(definitionUri, range));
+                EvaluationResult evalResult = runToSectionAndEval(surrogate, (Node) containsNode);
+                if (evalResult.isEvaluationDone() && !evalResult.isError()) {
+                    SourceSection sourceSection = findSourceLocation(surrogate.getLangId(), evalResult.getResult());
+                    if (sourceSection != null) {
+                        Range range = TruffleAdapter.sourceSectionToRange(sourceSection);
+                        String definitionUri;
+                        if (!sourceSection.getSource().getURI().getScheme().equals("file")) {
+                            // We assume, that the source name is a valid file path if
+                            // the URI has no file scheme
+                            Path path = Paths.get(sourceSection.getSource().getName());
+                            definitionUri = path.toUri().toString();
+                        } else {
+                            definitionUri = sourceSection.getSource().getURI().toString();
                         }
-                    }
-
-                    if (locations.isEmpty()) {
-                        // Fallback: static approach
-                        System.out.println("Trying static declaration search...");
-                        env.getInstrumenter().attachLoadSourceSectionListener(
-                                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(DeclarationTag.class).build(),
-                                        new LoadSourceSectionListener() {
-
-                                            public void onLoad(LoadSourceSectionEvent event) {
-                                                Node eventNode = event.getNode();
-                                                if (!(eventNode instanceof InstrumentableNode)) {
-                                                    return;
-                                                }
-                                                InstrumentableNode instrumentableNode = (InstrumentableNode) eventNode;
-                                                Object declarationNodeObject = instrumentableNode.getNodeObject();
-                                                if (!(declarationNodeObject instanceof TruffleObject)) {
-                                                    return;
-                                                }
-                                                Map<Object, Object> declarationMap = ObjectStructures.asMap(new MessageNodes(), (TruffleObject) declarationNodeObject);
-                                                String declarationName = declarationMap.get(DeclarationTag.NAME).toString();
-                                                if (name.equals(declarationName)) {
-                                                    Range range = TruffleAdapter.sourceSectionToRange(eventNode.getSourceSection());
-                                                    locations.add(new Location(uri.toString(), range));
-                                                }
-                                            }
-                                        }, true).dispose();
+                        locations.add(new Location(definitionUri, range));
                     }
                 }
+
+// if (locations.isEmpty()) {
+// // Fallback: static approach
+// System.out.println("Trying static declaration search...");
+// env.getInstrumenter().attachLoadSourceSectionListener(
+// SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(DeclarationTag.class).build(),
+// new LoadSourceSectionListener() {
+//
+// public void onLoad(LoadSourceSectionEvent event) {
+// Node eventNode = event.getNode();
+// if (!(eventNode instanceof InstrumentableNode)) {
+// return;
+// }
+// InstrumentableNode instrumentableNode = (InstrumentableNode) eventNode;
+// Object declarationNodeObject = instrumentableNode.getNodeObject();
+// if (!(declarationNodeObject instanceof TruffleObject)) {
+// return;
+// }
+// Map<Object, Object> declarationMap = ObjectStructures.asMap(new MessageNodes(), (TruffleObject)
+// declarationNodeObject);
+// String declarationName = declarationMap.get(DeclarationTag.NAME).toString();
+// if (name.equals(declarationName)) {
+// Range range = TruffleAdapter.sourceSectionToRange(eventNode.getSourceSection());
+// locations.add(new Location(uri.toString(), range));
+// }
+// }
+// }, true).dispose();
+// }
             }
         }
         return locations;
