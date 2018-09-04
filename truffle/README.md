@@ -133,5 +133,4 @@ Detailed info can be found in the [contributing document](CONTRIBUTING.md).
 
 ## License
 
-The Truffle framework is licensed under the [GPL 2 with Classpath exception](LICENSE.GPL.md).
-The SimpleLanguage is licensed under the [Universal Permissive License (UPL)](http://opensource.org/licenses/UPL).
+The Truffle framework and the contained SimpleLanguage are licensed under the [Universal Permissive License](LICENSE.md).

@@ -1,33 +1,43 @@
-#
-# commands.py - the GraalVM specific commands
-#
-# ----------------------------------------------------------------------------------------------------
-#
-# Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+# 
+# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
-# This code is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.  Oracle designates this
-# particular file as subject to the "Classpath" exception as provided
-# by Oracle in the LICENSE file that accompanied this code.
+# The Universal Permissive License (UPL), Version 1.0
+# 
+# Subject to the condition set forth below, permission is hereby granted to any
+# person obtaining a copy of this software, associated documentation and/or
+# data (collectively the "Software"), free of charge and under any and all
+# copyright rights in the Software, and any and all patent rights owned or
+# freely licensable by each licensor hereunder covering either (i) the
+# unmodified Software as contributed to or provided by such licensor, or (ii)
+# the Larger Works (as defined below), to deal in both
+# 
+# (a) the Software, and
+# 
+# (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+# one is included with the Software each a "Larger Work" to which the Software
+# is contributed by such licensors),
+# 
+# without restriction, including without limitation the rights to copy, create
+# derivative works of, display, perform, and distribute the Software and make,
+# use, sell, offer for sale, import, export, have made, and have sold the
+# Software and the Larger Work(s), and to sublicense the foregoing rights on
+# either these or other terms.
+# 
+# This license is subject to the following condition:
+# 
+# The above copyright notice and either this complete permission notice or at a
+# minimum a reference to the UPL must be included in all copies or substantial
+# portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 #
-# This code is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-# version 2 for more details (a copy is included in the LICENSE file that
-# accompanied this code).
-#
-# You should have received a copy of the GNU General Public License version
-# 2 along with this work; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
-#
-# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
-# or visit www.oracle.com if you need additional information or have any
-# questions.
-#
-# ----------------------------------------------------------------------------------------------------
-
 import os
 from os.path import exists
 import re
@@ -184,6 +194,8 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('File name length check', tasks) as t:
         if t: check_filename_length([])
+    with Task('Check Copyrights', tasks) as t:
+        if t: mx.checkcopyrights(['--primary'])
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
@@ -475,35 +487,6 @@ def check_filename_length(args):
             mx.log_error(x)
         mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
 
-COPYRIGHT_HEADER_GPL = """\
-/*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
-// Checkstyle: stop
-//@formatter:off
-{0}
-"""
 COPYRIGHT_HEADER_UPL = """\
 /*
  * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
@@ -555,7 +538,7 @@ PTRN_TOKEN_CAST = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)")
 
 def create_dsl_parser(args=None, out=None):
     """create the DSL expression parser using antlr"""
-    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", COPYRIGHT_HEADER_GPL, args, out)
+    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", COPYRIGHT_HEADER_UPL, args, out)
 
 def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""

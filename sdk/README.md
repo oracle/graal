@@ -38,4 +38,4 @@ Important API changes and additions are tracked in the [SDK changelog](./CHANGEL
 
 ## License
 
-[Graal SDK](../sdk) is licensed under the [GPL 2 with Classpath exception](./LICENSE.md).
+[Graal SDK](../sdk) is licensed under the [Universal Permissive License](./LICENSE.md).
