@@ -80,7 +80,6 @@ import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InlineParsingNotSupportedException;
 import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
-import de.hpi.swa.trufflelsp.message.BoxPrimitiveType;
 import de.hpi.swa.trufflelsp.message.GetSignature;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
@@ -93,7 +92,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
-    private static final Node BOX_PRIMITIVE_TYPE = BoxPrimitiveType.INSTANCE.createNode();
 
     protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
 
@@ -782,7 +780,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         if (object instanceof TruffleObject) {
             map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) object);
         } else {
-            Object boxedObject = boxPrimitiveType(object, langId);
+            Object boxedObject = env.boxPrimitive(langId, object);
             if (boxedObject instanceof TruffleObject) {
                 map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) boxedObject);
             } else {
@@ -842,7 +840,10 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         if (obj instanceof TruffleObject) {
             truffleObj = (TruffleObject) obj;
         } else {
-            truffleObj = boxPrimitiveType(obj, langId);
+            Object boxedObject = env.boxPrimitive(langId, obj);
+            if (boxedObject instanceof TruffleObject) {
+                truffleObj = (TruffleObject) boxedObject;
+            }
         }
 
         if (truffleObj != null && key != null) {
@@ -870,24 +871,6 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         detailText += metaObjectString;
 
         return detailText;
-    }
-
-    private TruffleObject boxPrimitiveType(Object obj, String langId) {
-        TruffleObject boxedObject = null;
-        Object metaObject = getMetaObject(langId, obj);
-        if (metaObject instanceof TruffleObject) {
-            try {
-                Object boxed = ForeignAccess.send(BOX_PRIMITIVE_TYPE, (TruffleObject) metaObject, obj);
-                if (boxed instanceof TruffleObject) {
-                    boxedObject = (TruffleObject) boxed;
-                }
-            } catch (InteropException e) {
-                if (!(e instanceof UnsupportedMessageException)) {
-                    e.printStackTrace(err);
-                }
-            }
-        }
-        return boxedObject;
     }
 
     protected Object getMetaObject(String langId, Object object) {
