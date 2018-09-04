@@ -56,12 +56,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     private final boolean traceSplittingSummary;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
-    private final GraalTruffleRuntime runtime;
-
-    public OptimizedDirectCallNode(GraalTruffleRuntime runtime, OptimizedCallTarget target) {
+    public OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         assert target.getSourceCallTarget() == null;
-        this.runtime = runtime;
         this.experimentalSplitting = TruffleCompilerOptions.getValue(TruffleExperimentalSplitting);
         this.traceSplittingSummary = TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary);
     }
@@ -151,7 +148,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci(), traceSplittingSummary, experimentalSplitting);
+        TruffleSplittingStrategy.beforeCall(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary, experimentalSplitting);
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -187,13 +184,13 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
                 replace(this, "Split call node");
             }
             splitCallTarget = splitTarget;
-            runtime.getListener().onCompilationSplit(this);
+            OptimizedCallTarget.runtime().getListener().onCompilationSplit(this);
         });
     }
 
     @Override
     public boolean cloneCallTarget() {
-        TruffleSplittingStrategy.forceSplitting(this, runtime.getTvmci(), traceSplittingSummary);
+        TruffleSplittingStrategy.forceSplitting(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary);
         return true;
     }
 }

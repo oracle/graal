@@ -477,7 +477,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(this, (OptimizedCallTarget) target);
+            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode((OptimizedCallTarget) target);
             TruffleSplittingStrategy.newDirectCallNodeCreated(directCallNode);
             return directCallNode;
         } else {
