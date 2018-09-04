@@ -26,6 +26,8 @@ package com.oracle.svm.reflect.hosted;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.reflect.hosted.ReflectionSubstitution.getStableProxyName;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -62,8 +64,8 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionField;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 import com.oracle.svm.reflect.helpers.ExceptionHelpers;
+import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -73,9 +75,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSubstitutionField, ReflectionSubstitutionMethod> {
 
+    private String stableName;
+
     public ReflectionSubstitutionType(ResolvedJavaType original, Member member) {
         super(original);
-
+        stableName = "L" + getStableProxyName(member).replace(".", "\\") + ";";
         for (ResolvedJavaMethod method : original.getDeclaredMethods()) {
             switch (method.getName()) {
                 case "invoke":
@@ -155,7 +159,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
     @Override
     public String getName() {
-        return original.getName();
+        return stableName;
     }
 
     public abstract static class ReflectionSubstitutionMethod extends CustomSubstitutionMethod {
