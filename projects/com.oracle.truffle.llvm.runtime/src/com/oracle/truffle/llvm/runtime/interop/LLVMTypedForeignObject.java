@@ -145,9 +145,9 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         }
     }
 
-    abstract static class ForeignGetTypeNode extends LLVMNode {
+    public abstract static class ForeignGetTypeNode extends LLVMNode {
 
-        protected abstract LLVMInteropType.Structured execute(LLVMTypedForeignObject object);
+        public abstract LLVMInteropType.Structured execute(LLVMTypedForeignObject object);
 
         static Node createGetDynamicType() {
             return GetDynamicType.INSTANCE.createNode();
