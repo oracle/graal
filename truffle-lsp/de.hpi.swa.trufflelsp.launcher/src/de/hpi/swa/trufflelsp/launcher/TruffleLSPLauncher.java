@@ -125,7 +125,6 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
 
         Future<Context> futureDefaultContext = evaluator.executeWithDefaultContext(() -> {
             // Create and enter the default context from "LSP server Graal worker"-thread
-            System.out.println("Setup default context...");
             Context context = contextBuilder.build();
             context.enter();
             return context;

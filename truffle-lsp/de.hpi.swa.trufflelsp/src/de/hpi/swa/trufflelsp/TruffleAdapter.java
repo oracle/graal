@@ -173,6 +173,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         try {
             System.out.println("Parsing " + surrogate.getLangId() + " " + surrogate.getUri());
             callTarget = env.parse(sourceWrapper.getSource());
+            System.out.println("Parsing done.");
             surrogate.notifyParsingSuccessful(callTarget);
         } catch (Exception e) {
             if (e instanceof TruffleException) {

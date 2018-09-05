@@ -83,13 +83,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     private final TruffleAdapter truffleAdapter;
     private final PrintWriter err;
     private final PrintWriter info;
-// private int shutdown = 1;
     private LanguageClient client;
     private Map<URI, String> openedFileUri2LangId = new HashMap<>();
     private String trace_server = "off";
     private Map<URI, PublishDiagnosticsParams> diagnostics = new HashMap<>();
     private ExecutorService executor;
-    private ServerSocket serverSocket;
 
     private LSPServer(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
         this.truffleAdapter = adapter;
@@ -135,12 +133,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     public void exit() {
-        try {
-            serverSocket.close();
-        } catch (IOException e) {
-            err.println("[Graal LSP] Error while closing socket: " + e.getLocalizedMessage());
-        }
-        executor.shutdownNow();
+        executor.shutdown();
         info.println("[Graal LSP] Server shutdown done.");
     }
 
@@ -452,8 +445,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         return "verbose".equals(trace_server);
     }
 
-    public Future<?> start(@SuppressWarnings("hiding") final ServerSocket serverSocket) {
-        this.serverSocket = serverSocket;
+    public Future<?> start(final ServerSocket serverSocket) {
         executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             public Thread newThread(Runnable r) {
@@ -465,7 +457,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         Future<?> future = executor.submit(new Runnable() {
 
             public void run() {
-// while (true) {
                 try {
                     if (serverSocket.isClosed()) {
                         err.println("[Graal LSP] Server socket is closed.");
@@ -504,12 +495,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                     } catch (InterruptedException | ExecutionException e) {
                         err.println("[Graal LSP] Error: " + e.getLocalizedMessage());
                     } finally {
-                        lspRequestExecutor.shutdownNow();
+                        lspRequestExecutor.shutdown();
                     }
                 } catch (IOException e) {
                     err.println("[Graal LSP] Error while connecting to client: " + e.getLocalizedMessage());
                 }
-// }
             }
         }, Boolean.TRUE);
         return future;
