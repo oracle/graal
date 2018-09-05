@@ -501,6 +501,12 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     private EvaluationResult tryDifferentEvalStrategies(TextDocumentSurrogate surrogate, Node nearestNode) {
+        System.out.println("Trying literal eval...");
+        Object nodeObject = ((InstrumentableNode) nearestNode).getNodeObject();
+        if (nodeObject instanceof TruffleObject) {
+            return EvaluationResult.createResult(nodeObject);
+        }
+
         EvaluationResult coverageEvalResult = evalWithCoverageData(surrogate, nearestNode);
         if (coverageEvalResult.isEvaluationDone() && !coverageEvalResult.isError()) {
             return coverageEvalResult;
@@ -1325,6 +1331,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public List<String> getCompletionTriggerCharactersWithEnteredContext() {
-        return env.getLanguages().values().stream().filter(lang -> !lang.isInternal()).flatMap(info -> env.getCompletionTriggerCharacters(info.getId()).stream()).distinct().collect(Collectors.toList());
+        return env.getLanguages().values().stream().filter(lang -> !lang.isInternal()).flatMap(info -> env.getCompletionTriggerCharacters(info.getId()).stream()).distinct().collect(
+                        Collectors.toList());
     }
 }
