@@ -1,0 +1,133 @@
+sulong-common: ${common} ${labsjdk8} {
+    setup: [
+        [cd, "./sulong"]
+    ]
+}
+
+sulong-gateCommon: ${sulong-common} {
+    targets: [gate]
+}
+
+sulong-gateStyle: ${sulong-gateCommon} ${linux-amd64} ${eclipse} {
+    packages: {
+        ruby: "==2.1.0" # for mdl
+        llvm: "==3.8"
+    }
+}
+
+sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
+    downloads: {
+        LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
+    }
+
+    environment: {
+        CPPFLAGS: "-g -I$LIBGMP/include"
+        LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+    }
+}
+
+sulong-gateTest38-linux: ${sulong-gateTest-linux} {
+    packages: {
+        llvm: "==3.8"
+    }
+}
+
+sulong-gateTest40-linux: ${sulong-gateTest-linux} {
+    packages: {
+        llvm: "==4.0.1"
+    }
+}
+
+darwin-llvm : {
+    packages: {
+        llvm: "==4.0.1"
+    }
+}
+
+sulong-gateTest40-darwin: ${sulong-gateCommon} ${darwin-amd64} ${darwin-llvm} {
+    environment: {
+        CPPFLAGS: "-g"
+    }
+}
+
+requireGCC: {
+    packages: {
+        gcc: "==6.1.0"
+    }
+    downloads: {
+        DRAGONEGG_GCC: {name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true}
+        DRAGONEGG_LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
+    }
+}
+
+sulong-deploy-command: [
+    ["mx", "build"]
+    ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
+]
+
+sulong-deploy-binaries: ${sulong-common} {
+    targets: [post-merge, deploy]
+    run : ${sulong-deploy-command}
+}
+
+sulong-deploy-binaries-linux: ${sulong-deploy-binaries} ${linux-amd64} ${requireGCC} {
+    packages: {
+        llvm: "==3.8"
+        maven: ">=3.3.9"
+    }
+}
+
+sulong-deploy-binaries-darwin: ${sulong-deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
+}
+
+sulong-ruby-downstream-test: {
+    packages: {
+        ruby: "==2.1.0"
+    }
+    run: [
+        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git",
+         --mx-command, "--dynamicimports /sulong ruby_testdownstream_sulong"]
+    ]
+    timelimit: "45:00"
+}
+
+sulong-python-downstream-test: {
+    packages: {
+        python: "==3.4.1"
+        gcc: "==4.9.1"
+        llvm: ">=4.0"
+    }
+    run: [
+        [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git",
+         --mx-command, "--dynamicimports /sulong gate -B=--force-deprecation-as-warning --tags build,python-cpyext"]
+    ]
+}
+
+sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
+  run: [
+    ["mx", "create-asm-parser"]
+    ["git", "diff", "--exit-code", "projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/InlineAssemblyLexer.java"]
+    ["git", "diff", "--exit-code", "projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/InlineAssemblyParser.java"]
+  ]
+}
+
+builds += [
+  ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
+  ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
+  ${sulong-gate-asm-parser} { name: gate-sulong-asm-parser }
+  ${sulong-gateTest38-linux} { name: gate-sulong-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
+  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
+  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-parser, run: [[mx, gate, --tags, "build,parser"]] }
+  ${sulong-gateTest38-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
+  ${sulong-gateTest38-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
+  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
+  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+
+  ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
+  ${sulong-gateTest38-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
+
+  ${sulong-deploy-binaries-linux} { name: postmerge-sulong-deploy-binaries-linux-amd64 }
+  ${sulong-deploy-binaries-darwin} { name: postmerge-sulong-deploy-binaries-darwin-amd64 }
+]
