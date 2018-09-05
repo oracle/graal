@@ -464,15 +464,17 @@ public abstract class Launcher {
                 printOption("--jvm", "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
                 printOption("--jvm.[option]", "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
             }
-            printOption("--help",                       "Print this help message.");
-            printOption("--help:languages",             "Print options for all installed languages.");
-            printOption("--help:tools",                 "Print options for all installed tools.");
-            printOption("--help:expert",                "Print additional options for experts.");
+            printOption("--help",                        "Print this help message.");
+            printOption("--help:languages",              "Print options for all installed languages.");
+            printOption("--help:tools",                  "Print options for all installed tools.");
+            printOption("--help:expert",                 "Print additional options for experts.");
             if (helpExpert || helpDebug) {
-                printOption("--help:debug",             "Print additional options for debugging.");
+                printOption("--help:debug",              "Print additional options for debugging.");
             }
-            printOption("--version:graalvm",            "Print GraalVM version information and exit.");
-            printOption("--show-version:graalvm",       "Print GraalVM version information and continue execution.");
+            printOption("--version:graalvm",             "Print GraalVM version information and exit.");
+            printOption("--show-version:graalvm",        "Print GraalVM version information and continue execution.");
+            printOption("--log.file=<String>",           "Redirect guest languages logging into a given file.");
+            printOption("--log.[logger].level=<String>", "Set language log level. Can be 'OFF', 'SEVERE', 'WARNING', 'INFO', 'CONFIG', 'FINE', 'FINER', 'FINEST' or 'ALL'.");
             // @formatter:on
             List<PrintableOption> engineOptions = new ArrayList<>();
             for (OptionDescriptor descriptor : getTempEngine().getOptions()) {
