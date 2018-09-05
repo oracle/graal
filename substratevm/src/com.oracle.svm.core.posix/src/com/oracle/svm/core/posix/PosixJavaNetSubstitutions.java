@@ -2725,45 +2725,46 @@ final class Target_java_net_Inet4AddressImpl {
             throw new NullPointerException("host is null");
         }
         // 417     hostname = JNU_GetStringPlatformChars(env, host, JNI_FALSE);
-        try {
-            try (CCharPointerHolder hostname_Pin = CTypeConversion.toCString(host)) {
-                hostname = hostname_Pin.get();
-                // 418     CHECK_NULL_RETURN(hostname, NULL);
-                if (hostname.isNull()) {
-                    return null;
-                }
-                // 420     /* Try once, with our static buffer. */
-                // 421     memset(&hints, 0, sizeof(hints));
-                LibC.memset(hints, WordFactory.zero(), SizeOf.unsigned(Netdb.addrinfo.class));
-                // 422     hints.ai_flags = AI_CANONNAME;
-                hints.set_ai_flags(Netdb.AI_CANONNAME());
-                // 423     hints.ai_family = AF_INET;
-                hints.set_ai_family(Socket.AF_INET());
-                // 425 #ifdef __solaris__
-                // 426     /*
-                // 427      * Workaround for Solaris bug 4160367 - if a hostname contains a
-                // 428      * white space then 0.0.0.0 is returned
-                // 429      */
-                // 430     if (isspace((unsigned char)hostname[0])) {
-                // 431         JNU_ThrowByName(env, JNU_JAVANETPKG "UnknownHostException",
-                // 432                         (char *)hostname);
-                // 433         JNU_ReleaseStringPlatformChars(env, host, hostname);
-                // 434         return NULL;
-                // 435     }
-                // 436 #endif
-                // 438     error = getaddrinfo(hostname, NULL, &hints, &res);
-                error = Netdb.getaddrinfo(hostname, WordFactory.nullPointer(), hints, res_Pointer);
-                // 440     if (error) {
-                if (CTypeConversion.toBoolean(error)) {
-                    // 441         /* report error */
-                    // 442         ThrowUnknownHostExceptionWithGaiError(env, hostname, error);
-                    /* FIXME: Not implementing ThrowUnknownHostExceptionWithGaiError. */
-                    throw new UnknownHostException(host);
-                    // 443         JNU_ReleaseStringPlatformChars(env, host, hostname);
-                    /* Released when exiting CCharPointerHolder hostname_Pin block. */
-                    // 444         return NULL;
-                    /* Throws exception instead of returning. */
-                } else {
+        try (CCharPointerHolder hostname_Pin = CTypeConversion.toCString(host)) {
+            hostname = hostname_Pin.get();
+            // 418     CHECK_NULL_RETURN(hostname, NULL);
+            if (hostname.isNull()) {
+                return null;
+            }
+            // 420     /* Try once, with our static buffer. */
+            // 421     memset(&hints, 0, sizeof(hints));
+            LibC.memset(hints, WordFactory.zero(), SizeOf.unsigned(Netdb.addrinfo.class));
+            // 422     hints.ai_flags = AI_CANONNAME;
+            hints.set_ai_flags(Netdb.AI_CANONNAME());
+            // 423     hints.ai_family = AF_INET;
+            hints.set_ai_family(Socket.AF_INET());
+            // 425 #ifdef __solaris__
+            // 426     /*
+            // 427      * Workaround for Solaris bug 4160367 - if a hostname contains a
+            // 428      * white space then 0.0.0.0 is returned
+            // 429      */
+            // 430     if (isspace((unsigned char)hostname[0])) {
+            // 431         JNU_ThrowByName(env, JNU_JAVANETPKG "UnknownHostException",
+            // 432                         (char *)hostname);
+            // 433         JNU_ReleaseStringPlatformChars(env, host, hostname);
+            // 434         return NULL;
+            // 435     }
+            // 436 #endif
+            // 438     error = getaddrinfo(hostname, NULL, &hints, &res);
+            error = Netdb.getaddrinfo(hostname, WordFactory.nullPointer(), hints, res_Pointer);
+            // 440     if (error) {
+            if (CTypeConversion.toBoolean(error)) {
+                // 441         /* report error */
+                // 442         ThrowUnknownHostExceptionWithGaiError(env, hostname, error);
+                /* FIXME: Not implementing ThrowUnknownHostExceptionWithGaiError. */
+                throw new UnknownHostException(host);
+                // 443         JNU_ReleaseStringPlatformChars(env, host, hostname);
+                /* Released when exiting CCharPointerHolder hostname_Pin block. */
+                // 444         return NULL;
+                /* Throws exception instead of returning. */
+            } else {
+                /* Translate `goto cleanupAndReturn` as a finally block. */
+                try {
                     // 446         int i = 0;
                     int i = 0;
                     // 447         struct addrinfo *itr, *last = NULL, *iterator = res;
@@ -2865,28 +2866,28 @@ final class Target_java_net_Inet4AddressImpl {
                         iterator = iterator.ai_next();
                     }
                     return ret;
+                } finally {
+                    // 510  cleanupAndReturn:
+                    // 512         struct addrinfo *iterator, *tmp;
+                    Netdb.addrinfo iterator;
+                    Netdb.addrinfo tmp;
+                    // 513         iterator = resNew;
+                    iterator = resNew;
+                    // 514         while (iterator != NULL) {
+                    while (iterator.isNonNull()) {
+                        // 515             tmp = iterator;
+                        tmp = iterator;
+                        // 516             iterator = iterator->ai_next;
+                        iterator = iterator.ai_next();
+                        // 517             free(tmp);
+                        LibC.free(tmp);
+                    }
+                    // 519         JNU_ReleaseStringPlatformChars(env, host, hostname);
+                    /* Releasing `hostname` happens when I exit the `CCharPointerHolder hostname_Pin` try-block. */
+                    // 522     freeaddrinfo(res);
+                    Netdb.freeaddrinfo(res_Pointer.read());
                 }
             }
-        } finally {
-            // 510  cleanupAndReturn:
-            // 512         struct addrinfo *iterator, *tmp;
-            Netdb.addrinfo iterator;
-            Netdb.addrinfo tmp;
-            // 513         iterator = resNew;
-            iterator = resNew;
-            // 514         while (iterator != NULL) {
-            while (iterator.isNonNull()) {
-                // 515             tmp = iterator;
-                tmp = iterator;
-                // 516             iterator = iterator->ai_next;
-                iterator = iterator.ai_next();
-                // 517             free(tmp);
-                LibC.free(tmp);
-            }
-            // 519         JNU_ReleaseStringPlatformChars(env, host, hostname);
-            /* This happened when I exited the CCharPointerHolder hostname_Pin block. */
-            // 522     freeaddrinfo(res);
-            Netdb.freeaddrinfo(res_Pointer.read());
         }
     }
 
