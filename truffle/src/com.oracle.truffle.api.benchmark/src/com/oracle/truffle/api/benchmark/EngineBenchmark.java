@@ -493,6 +493,15 @@ public class EngineBenchmark extends TruffleBenchmark {
                     return 0;
                 }
             }
+
+            @Resolve(message = "KEYS")
+            abstract static class VarsMapKeysNode extends Node {
+
+                @TruffleBoundary
+                public Object access(TopScopeObject ts) {
+                    return ts.context.env.asGuestValue(new String[]{"context"});
+                }
+            }
         }
     }
 
