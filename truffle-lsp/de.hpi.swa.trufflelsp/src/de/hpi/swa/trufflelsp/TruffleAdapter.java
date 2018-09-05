@@ -604,25 +604,8 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         final String name = uri.getPath();
         final CallTarget callTarget = parse(surrogateOfTestFile);
 
-// EventBinding<ExecutionEventNodeFactory> binding =
-// env.getInstrumenter().attachExecutionEventFactory(
-// createSourceSectionFilter(uri, sourceSection, name),
-// new ExecutionEventNodeFactory() {
-//
-// public ExecutionEventNode create(EventContext context) {
-// return new ExecutionEventNode() {
-//
-// @Override
-// protected void onReturnValue(VirtualFrame frame, Object result) {
-// throw new EvaluationResultException(result);
-// }
-// };
-// }
-// });
-
-        EventBinding<ExecutionEventNodeFactory> binding2 = env.getInstrumenter().attachExecutionEventFactory(
+        EventBinding<ExecutionEventNodeFactory> binding = env.getInstrumenter().attachExecutionEventFactory(
                         SourceSectionFilter.newBuilder().sourceIs(surrogate.getSource()).build(),
-// createSourceSectionFilter(coverageUri, sourceSection, name),
                         createSourceSectionFilter(coverageUri, sourceSection, name),
                         new ExecutionEventNodeFactory() {
                             StringBuilder indent = new StringBuilder("");
@@ -666,7 +649,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                                                                         inputValue));
                                         indent.append("  ");
                                         if (inputContext.getInstrumentedSourceSection().equals(context.getInstrumentedSourceSection())) {
-                                            // TODO(ds) This is a fix for GraalJS, because
+                                            // This is a fix for GraalJS, because
                                             // GraalJS provides the result of a previous execution
                                             // again as input value which we are not interested in
                                             // here. See class JSTaggedTargetableExecutionNode.
@@ -696,8 +679,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                 }
             }
         } finally {
-// binding.dispose();
-            binding2.dispose();
+            binding.dispose();
         }
         return EvaluationResult.createEvaluationSectionNotReached();
     }
