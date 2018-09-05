@@ -2,7 +2,7 @@ package de.hpi.swa.trufflelsp;
 
 import java.util.concurrent.Future;
 
-public interface LSPServerBootstrapper {
+public interface LanguageServerBootstrapper {
 
     public Future<?> startServer();
 }

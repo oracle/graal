@@ -17,16 +17,16 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
-import de.hpi.swa.trufflelsp.LSPServerBootstrapper;
-import de.hpi.swa.trufflelsp.LanguageSpecificHacks;
-import de.hpi.swa.trufflelsp.NestedEvaluatorRegistry;
+import de.hpi.swa.trufflelsp.LanguageServerBootstrapper;
+import de.hpi.swa.trufflelsp.ContextAwareExecutorWrapperRegistry;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
-import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
+import de.hpi.swa.trufflelsp.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.exceptions.LSPIOException;
-import de.hpi.swa.trufflelsp.server.LSPServer;
+import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
+import de.hpi.swa.trufflelsp.server.LanguageServerImpl;
 
-@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLSPFileProvider.class, NestedEvaluatorRegistry.class, LSPServerBootstrapper.class})
-public class LSPInstrument extends TruffleInstrument implements LSPServerBootstrapper {
+@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorWrapperRegistry.class, LanguageServerBootstrapper.class})
+public class LSPInstrument extends TruffleInstrument implements LanguageServerBootstrapper {
     public static final String ID = "lsp";
 
     private static final int DEFAULT_PORT = 8123;
@@ -98,7 +98,7 @@ public class LSPInstrument extends TruffleInstrument implements LSPServerBootstr
             socketAddress = hostAndPort.createSocket(options.get(Remote));
             ServerSocket serverSocket = new ServerSocket(socketAddress.getPort(), 50, socketAddress.getAddress());
             LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LanguageSpecificHacksOption).booleanValue();
-            LSPServer languageServer = LSPServer.create(truffleAdapter, info, err);
+            LanguageServerImpl languageServer = LanguageServerImpl.create(truffleAdapter, info, err);
             return languageServer.start(serverSocket);
         } catch (IOException e) {
             String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(options.get(Remote)), e.getLocalizedMessage());

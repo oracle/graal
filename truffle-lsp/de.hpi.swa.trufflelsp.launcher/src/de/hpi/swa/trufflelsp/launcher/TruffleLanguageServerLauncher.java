@@ -21,17 +21,17 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
-import de.hpi.swa.trufflelsp.LSPServerBootstrapper;
-import de.hpi.swa.trufflelsp.NestedEvaluator;
-import de.hpi.swa.trufflelsp.NestedEvaluatorRegistry;
-import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
+import de.hpi.swa.trufflelsp.LanguageServerBootstrapper;
+import de.hpi.swa.trufflelsp.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
 
-public class TruffleLSPLauncher extends AbstractLanguageLauncher {
+public class TruffleLanguageServerLauncher extends AbstractLanguageLauncher {
     private final ArrayList<String> lspargs = new ArrayList<>();
 
     public static void main(String[] args) {
-        new TruffleLSPLauncher().launch(args);
+        new TruffleLanguageServerLauncher().launch(args);
     }
 
     @Override
@@ -70,13 +70,13 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
         }
         Engine engine = newBuilder.build();
         Instrument instrument = engine.getInstruments().get("lsp");
-        VirtualLSPFileProvider lspFileProvider = instrument.lookup(VirtualLSPFileProvider.class);
+        VirtualLanguageServerFileProvider lspFileProvider = instrument.lookup(VirtualLanguageServerFileProvider.class);
 
         contextBuilder.fileSystem(LSPFileSystem.newFullIOFileSystem(userDir, lspFileProvider));
         contextBuilder.engine(engine);
 
-        NestedEvaluatorRegistry registry = instrument.lookup(NestedEvaluatorRegistry.class);
-        NestedEvaluator evaluator = new NestedEvaluator() {
+        ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
+        ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
 
             private ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
                 private final ThreadFactory factory = Executors.defaultThreadFactory();
@@ -117,9 +117,9 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
                 executor.shutdownNow();
             }
         };
-        registry.register(evaluator);
+        registry.register(executorWrapper);
 
-        Future<Context> futureDefaultContext = evaluator.executeWithDefaultContext(() -> {
+        Future<Context> futureDefaultContext = executorWrapper.executeWithDefaultContext(() -> {
             // Create and enter the default context from "LSP server Graal worker"-thread
             Context context = contextBuilder.build();
             context.enter();
@@ -127,12 +127,12 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
         });
 
         try (Context defaultContext = futureDefaultContext.get()) {
-            LSPServerBootstrapper bootstrapper = instrument.lookup(LSPServerBootstrapper.class);
+            LanguageServerBootstrapper bootstrapper = instrument.lookup(LanguageServerBootstrapper.class);
             Future<?> futureStartServer = bootstrapper.startServer();
             futureStartServer.get(); // blocking until LSP server is shutting down
 
-            evaluator.executeWithDefaultContext(() -> defaultContext.leave()).get();
-            evaluator.shutdown();
+            executorWrapper.executeWithDefaultContext(() -> defaultContext.leave()).get();
+            executorWrapper.shutdown();
         } catch (InterruptedException | ExecutionException e) {
             throw abort(e, -1);
         }

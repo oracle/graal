@@ -76,7 +76,7 @@ import com.google.gson.JsonPrimitive;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 
-public class LSPServer implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
+public class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
     private static final String SHOW_COVERAGE = "show_coverage";
     private static final String ANALYSE_COVERAGE = "analyse_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
@@ -89,14 +89,14 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     private Map<URI, PublishDiagnosticsParams> diagnostics = new HashMap<>();
     private ExecutorService executor;
 
-    private LSPServer(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
+    private LanguageServerImpl(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
         this.truffleAdapter = adapter;
         this.info = info;
         this.err = err;
     }
 
-    public static LSPServer create(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
-        LSPServer server = new LSPServer(adapter, info, err);
+    public static LanguageServerImpl create(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
+        LanguageServerImpl server = new LanguageServerImpl(adapter, info, err);
         adapter.setDiagnosticsPublisher(server);
         return server;
     }
@@ -479,7 +479,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
                     //@formatter:off
                     Launcher<LanguageClient> launcher = new LSPLauncher.Builder<LanguageClient>()
-                        .setLocalService(LSPServer.this)
+                        .setLocalService(LanguageServerImpl.this)
                         .setRemoteInterface(LanguageClient.class)
                         .setInput(clientSocket.getInputStream())
                         .setOutput(clientSocket.getOutputStream())
@@ -488,7 +488,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                         .create();
                     //@formatter:on
 
-                    LSPServer.this.connect(launcher.getRemoteProxy());
+                    LanguageServerImpl.this.connect(launcher.getRemoteProxy());
                     Future<?> listenFuture = launcher.startListening();
                     try {
                         listenFuture.get();

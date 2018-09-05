@@ -16,6 +16,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+import de.hpi.swa.trufflelsp.coverage.CoverageData;
+
 public final class TextDocumentSurrogate {
 
     private final URI uri;

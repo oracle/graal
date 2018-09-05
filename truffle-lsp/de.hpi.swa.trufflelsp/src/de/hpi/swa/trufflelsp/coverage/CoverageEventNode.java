@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.coverage;
 
 import java.net.URI;
 import java.nio.file.Files;
@@ -14,13 +14,16 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
+import de.hpi.swa.trufflelsp.SourceLocation;
+import de.hpi.swa.trufflelsp.TextDocumentSurrogate;
+
 public class CoverageEventNode extends ExecutionEventNode {
 
     private final URI coverageUri;
     private final SourceSection instrumentedSection;
     private final Function<URI, TextDocumentSurrogate> surrogateProvider;
 
-    protected CoverageEventNode(SourceSection instrumentedSection, URI coverageUri, Function<URI, TextDocumentSurrogate> func) {
+    public CoverageEventNode(SourceSection instrumentedSection, URI coverageUri, Function<URI, TextDocumentSurrogate> func) {
         this.instrumentedSection = instrumentedSection;
         this.coverageUri = coverageUri;
         this.surrogateProvider = func;
@@ -54,7 +57,7 @@ public class CoverageEventNode extends ExecutionEventNode {
         surrogate.addLocationCoverage(SourceLocation.from(instrumentedSection), new CoverageData(coverageUri, frame, this));
     }
 
-    protected void insertChild(Node node) {
+    public void insertChild(Node node) {
         insert(node);
     }
 }

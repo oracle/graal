@@ -55,7 +55,7 @@ public abstract class TruffleLSPTest implements DiagnosticsPublisher {
     public void setup() {
         engine = Engine.newBuilder().option("lspTestInstrument", "true").build();
         Instrument instrument = engine.getInstruments().get("lspTestInstrument");
-        VirtualLSPFileProvider lspFileProvider = instrument.lookup(VirtualLSPFileProvider.class);
+        VirtualLanguageServerFileProvider lspFileProvider = instrument.lookup(VirtualLanguageServerFileProvider.class);
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);
@@ -64,8 +64,8 @@ public abstract class TruffleLSPTest implements DiagnosticsPublisher {
         context = contextBuilder.build();
         context.enter();
 
-        NestedEvaluatorRegistry registry = instrument.lookup(NestedEvaluatorRegistry.class);
-        NestedEvaluator evaluator = new NestedEvaluator() {
+        ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
+        ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
 
             public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult) {
                 return CompletableFuture.completedFuture(taskWithResult.get());
@@ -85,7 +85,7 @@ public abstract class TruffleLSPTest implements DiagnosticsPublisher {
             public void shutdown() {
             }
         };
-        registry.register(evaluator);
+        registry.register(executorWrapper);
 
         truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).geTruffleAdapter();
         truffleAdapter.setDiagnosticsPublisher(this);

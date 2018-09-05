@@ -41,9 +41,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-final class ObjectStructures {
+public final class ObjectStructures {
 
-    static Map<Object, Object> asMap(MessageNodes nodes, TruffleObject object) {
+    public static Map<Object, Object> asMap(MessageNodes nodes, TruffleObject object) {
         TruffleObject keys;
         try {
             keys = ForeignAccess.sendKeys(nodes.keys, object, true);
@@ -57,11 +57,7 @@ final class ObjectStructures {
         return new ObjectMap(nodes, object, keys);
     }
 
-    static boolean isArray(MessageNodes nodes, TruffleObject object) {
-        return ForeignAccess.sendHasSize(nodes.hasSize, object);
-    }
-
-    static List<Object> asList(MessageNodes nodes, TruffleObject object) {
+    public static List<Object> asList(MessageNodes nodes, TruffleObject object) {
         if (!ForeignAccess.sendHasSize(nodes.hasSize, object)) {
             return null;
         }
@@ -240,7 +236,7 @@ final class ObjectStructures {
 
     }
 
-    static class MessageNodes {
+    public static class MessageNodes {
 
         final Node keyInfo;
         final Node keys;
@@ -249,7 +245,7 @@ final class ObjectStructures {
         final Node read;
         final Node write;
 
-        MessageNodes() {
+        public MessageNodes() {
             keyInfo = Message.KEY_INFO.createNode();
             keys = Message.KEYS.createNode();
             hasSize = Message.HAS_SIZE.createNode();

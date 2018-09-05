@@ -77,14 +77,17 @@ import com.oracle.truffle.api.source.SourceSection;
 import de.hpi.swa.trufflelsp.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.ObjectStructures.MessageNodes;
+import de.hpi.swa.trufflelsp.coverage.CoverageData;
+import de.hpi.swa.trufflelsp.coverage.CoverageEventNode;
 import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InlineParsingNotSupportedException;
 import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
+import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
 import de.hpi.swa.trufflelsp.message.GetSignature;
 import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
 
-public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRegistry {
+public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorWrapperRegistry {
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
     private static final String COVERAGE_SCRIPT = "COVERAGE_SCRIPT:";
@@ -99,7 +102,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     private final TruffleInstrument.Env env;
     private final PrintWriter err;
     private DiagnosticsPublisher diagnosticsPublisher;
-    private NestedEvaluator evaluator;
+    private ContextAwareExecutorWrapper contextExecutor;
 
     enum CompletionKind {
         UNKOWN,
@@ -138,7 +141,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<Void> parse(final String text, final String langId, final URI uri) {
-        return evaluator.executeWithDefaultContext(() -> {
+        return contextExecutor.executeWithDefaultContext(() -> {
             try {
                 parseWithEnteredContext(text, langId, uri);
             } finally {
@@ -199,7 +202,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<Void> processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {
-        return evaluator.executeWithDefaultContext(() -> {
+        return contextExecutor.executeWithDefaultContext(() -> {
             try {
                 processChangesAndParseWithContextEntered(list, uri);
             } finally {
@@ -302,7 +305,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<List<? extends SymbolInformation>> getSymbolInfo(URI uri) {
-        return evaluator.executeWithDefaultContext(() -> getSymbolInfoWithEnteredContext(uri));
+        return contextExecutor.executeWithDefaultContext(() -> getSymbolInfoWithEnteredContext(uri));
     }
 
     protected List<? extends SymbolInformation> getSymbolInfoWithEnteredContext(URI uri) {
@@ -397,7 +400,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
      *         position
      */
     public Future<CompletionList> getCompletions(final URI uri, int line, int column) {
-        return evaluator.executeWithDefaultContext(() -> {
+        return contextExecutor.executeWithDefaultContext(() -> {
             try {
                 return getCompletionsWithEnteredContext(uri, line, column);
             } finally {
@@ -966,7 +969,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<Boolean> runCoverageAnalysis(final URI uri) {
-        return evaluator.executeWithNestedContext(() -> {
+        return contextExecutor.executeWithNestedContext(() -> {
             try {
                 return runCoverageAnalysisWithNestedEnteredContext(uri);
             } finally {
@@ -1061,7 +1064,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<List<? extends Location>> getDefinitions(URI uri, int line, int character) {
-        return evaluator.executeWithDefaultContext(() -> getDefinitionsWithEnteredContext(uri, line, character));
+        return contextExecutor.executeWithDefaultContext(() -> getDefinitionsWithEnteredContext(uri, line, character));
     }
 
     public List<? extends Location> getDefinitionsWithEnteredContext(URI uri, int line, int character) {
@@ -1144,7 +1147,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<Hover> getHover(URI uri, int line, int column) {
-        return evaluator.executeWithDefaultContext(() -> {
+        return contextExecutor.executeWithDefaultContext(() -> {
             try {
                 return getHoverWithEnteredContext(uri, line, column);
             } finally {
@@ -1187,7 +1190,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
     }
 
     public Future<SignatureHelp> signatureHelp(URI uri, int line, int character) {
-        return evaluator.executeWithDefaultContext(() -> signatureHelpWithEnteredContext(uri, line, character));
+        return contextExecutor.executeWithDefaultContext(() -> signatureHelpWithEnteredContext(uri, line, character));
     }
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) {
@@ -1305,12 +1308,12 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
         }
     }
 
-    public void register(NestedEvaluator nestedEvaluator) {
-        this.evaluator = nestedEvaluator;
+    public void register(ContextAwareExecutorWrapper executor) {
+        this.contextExecutor = executor;
     }
 
     public Future<List<String>> getCompletionTriggerCharacters() {
-        return evaluator.executeWithDefaultContext(() -> getCompletionTriggerCharactersWithEnteredContext());
+        return contextExecutor.executeWithDefaultContext(() -> getCompletionTriggerCharactersWithEnteredContext());
     }
 
     public List<String> getCompletionTriggerCharactersWithEnteredContext() {

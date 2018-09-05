@@ -3,7 +3,7 @@ package de.hpi.swa.trufflelsp;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
-public interface NestedEvaluator {
+public interface ContextAwareExecutorWrapper {
 
     public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult);
 

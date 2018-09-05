@@ -20,22 +20,22 @@ import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
 
-import de.hpi.swa.trufflelsp.VirtualLSPFileProvider;
+import de.hpi.swa.trufflelsp.VirtualLanguageServerFileProvider;
 
 public class LSPFileSystem implements FileSystem {
 
     private final FileSystemProvider delegate;
     private final boolean explicitUserDir;
     private final Path userDir;
-    private final VirtualLSPFileProvider fileProvider;
+    private final VirtualLanguageServerFileProvider fileProvider;
 
     static final String FILE_SCHEME = "file";
 
-    public static FileSystem newFullIOFileSystem(Path userDir, VirtualLSPFileProvider fileProvider) {
+    public static FileSystem newFullIOFileSystem(Path userDir, VirtualLanguageServerFileProvider fileProvider) {
         return newFileSystem(findDefaultFileSystemProvider(), userDir, fileProvider);
     }
 
-    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLSPFileProvider fileProvider) {
+    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
         return new LSPFileSystem(fileSystemProvider, userDir, fileProvider);
     }
 
@@ -57,11 +57,11 @@ public class LSPFileSystem implements FileSystem {
         return true;
     }
 
-    LSPFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLSPFileProvider fileProvider) {
+    LSPFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
         this(fileSystemProvider, true, userDir, fileProvider);
     }
 
-    private LSPFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir, VirtualLSPFileProvider fileProvider) {
+    private LSPFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
         Objects.requireNonNull(fileSystemProvider, "FileSystemProvider must be non null.");
         this.delegate = fileSystemProvider;
         this.explicitUserDir = explicitUserDir;

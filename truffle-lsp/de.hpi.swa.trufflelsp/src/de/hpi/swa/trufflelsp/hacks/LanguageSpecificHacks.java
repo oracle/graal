@@ -1,8 +1,10 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.hacks;
 
 import java.util.Map;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+
+import de.hpi.swa.trufflelsp.ObjectStructures;
 
 public class LanguageSpecificHacks {
     public static boolean enableLanguageSpecificHacks = true;

@@ -2,7 +2,7 @@ package de.hpi.swa.trufflelsp;
 
 import java.nio.file.Path;
 
-public interface VirtualLSPFileProvider {
+public interface VirtualLanguageServerFileProvider {
 
     public String getSourceText(Path path);
 
