@@ -147,7 +147,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
             }
             // No deopt for not entering the loop.
 
-            if (CompilerDirectives.inInterpreterOrLowTier()) {
+            if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
                 if (condition) {
                     if (trueCountLocal < Long.MAX_VALUE) {
                         trueCount = trueCountLocal + 1;
@@ -166,7 +166,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
 
         @Override
         public void profileCounted(long length) {
-            if (CompilerDirectives.inInterpreterOrLowTier()) {
+            if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
                 long trueCountLocal = trueCount + length;
                 if (trueCountLocal >= 0) { // don't write overflow values
                     trueCount = trueCountLocal;

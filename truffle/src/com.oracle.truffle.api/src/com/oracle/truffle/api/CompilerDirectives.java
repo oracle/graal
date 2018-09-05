@@ -108,6 +108,12 @@ public final class CompilerDirectives {
     }
 
     /**
+     * This call returns true in the interpreter or a low tier compilation that does profiling.
+     */
+    public static boolean inInterpreterOrLowTierWithProfiling() {
+        return true;
+    }
+    /**
      * Returns a boolean value indicating whether the method is executed in the compiled code.
      *
      * @return {@code false} when executed in the interpreter, {@code true} in compiled code.

@@ -32,6 +32,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getCurrentOptionOverrides;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -62,6 +64,8 @@ public class OptimizedCompilationProfile {
     private int interpreterCallAndLoopCount;
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
+    private int lowTierCallCount;
+    private int lowTierCallAndLoopCount;
     private int lowTierCompilationCallThreshold;
     private int lowTierCompilationCallAndLoopThreshold;
     private boolean lowTierEnabled;
@@ -172,7 +176,7 @@ public class OptimizedCompilationProfile {
     void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
-            if (CompilerDirectives.inInterpreterOrLowTier()) {
+            if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
                 initializeProfiledArgumentTypes(args);
             }
         } else {
@@ -213,7 +217,7 @@ public class OptimizedCompilationProfile {
 
     final void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (CompilerDirectives.inInterpreterOrLowTier() && returnTypeAssumption == null) {
+        if (CompilerDirectives.inInterpreterOrLowTierWithProfiling() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
             if (TruffleCompilerOptions.getValue(TruffleReturnTypeSpeculation)) {
@@ -298,27 +302,28 @@ public class OptimizedCompilationProfile {
         ensureProfiling(1, replaceBackoff);
     }
 
+    @CompilerDirectives.TruffleBoundary
+    final boolean lowTierCall(OptimizedCallTarget callTarget) {
+        int callCount = ++lowTierCallCount;
+        int callAndLoopCount = ++lowTierCallAndLoopCount;
+        if (!callTarget.isCompiling() && !compilationFailed) {
+            // TTY.println("rollin' " + callTarget + ", " + callAndLoopCount);
+            if (callAndLoopCount >= compilationCallAndLoopThreshold && callCount >= compilationCallThreshold) {
+                TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget));
+                return callTarget.compile();
+            }
+        }
+        return false;
+    }
+
     @SuppressWarnings("try")
-    final boolean interpreterOrLowTierCall(OptimizedCallTarget callTarget) {
+    final boolean interpreterCall(OptimizedCallTarget callTarget) {
         if (lowTierEnabled) {
-            // int intCallCount = ++interpreterCallCount;
-            // int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-            // if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
-            //     // check if call target is hot enough to get compiled in low tier, but took not too long to get hot
-            //     if ((intAndLoopCallCount >= lowTierCompilationCallAndLoopThreshold && intCallCount >= lowTierCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
-            //                     compileImmediately) {
-            //         try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowTierCompilation, true, TruffleCompilerOptions.TruffleLowTierProfiling, true)) {
-            //             // TTY.println("low tier compiler! " + callTarget + ", " + intCallCount + ", " + intAndLoopCallCount);
-            //             return callTarget.compile();
-            //         }
-            //     }
-            // } else if (CompilerDirectives.inLowTier() && !callTarget.isCompiling() && !compilationFailed) {
-            //     if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold) || compileImmediately) {
-            //         // TTY.println("high tier compiler! " + callTarget);
-            //         return callTarget.compile();
-            //     }
-            // }
-            // return false;
+            if (CompilerDirectives.inLowTier()) {
+                TTY.println("In low-tier compiled code. " + callTarget);
+            } else if (!CompilerDirectives.inInterpreter()) {
+                TTY.println("In high-tier compiled code. " + callTarget);
+            }
             int intCallCount = ++interpreterCallCount;
             int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
@@ -326,6 +331,9 @@ public class OptimizedCompilationProfile {
                 // if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
                 if ((intAndLoopCallCount >= lowTierCompilationCallAndLoopThreshold && intCallCount >= lowTierCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
                                 TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
+                    // if (CompilerDirectives.inInterpreter()) {
+                    //     TTY.println("In interpreter, about to compile: " + callTarget);
+                    // }
                     try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowTierCompilation, true, TruffleCompilerOptions.TruffleLowTierProfiling, false)) {
                         return callTarget.compile();
                     }
@@ -333,21 +341,17 @@ public class OptimizedCompilationProfile {
             }
             return false;
         } else {
-            return interpreterCall(callTarget);
-        }
-    }
-
-    private boolean interpreterCall(OptimizedCallTarget callTarget) {
-        int intCallCount = ++interpreterCallCount;
-        int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-        if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
-            // check if call target is hot enough to get compiled, but took not too long to get hot
-            if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                            TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                return callTarget.compile();
+            int intCallCount = ++interpreterCallCount;
+            int intAndLoopCallCount = ++interpreterCallAndLoopCount;
+            if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
+                // check if call target is hot enough to get compiled, but took not too long to get hot
+                if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
+                                TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
+                    return callTarget.compile();
+                }
             }
+            return false;
         }
-        return false;
     }
 
     private boolean isDeferredCompile(OptimizedCallTarget target) {

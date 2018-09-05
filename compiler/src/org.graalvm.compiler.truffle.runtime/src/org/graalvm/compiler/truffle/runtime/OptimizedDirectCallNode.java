@@ -144,10 +144,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     private void onInterpreterCall() {
         int calls = ++callCount;
-        if (calls == 1) {
-            getCurrentCallTarget().incrementKnownCallSites();
+        if (CompilerDirectives.inInterpreter()) {
+            if (calls == 1) {
+                getCurrentCallTarget().incrementKnownCallSites();
+            }
         }
-        if (CompilerDirectives.inInterpreterOrLowTier()) {
+        if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
             TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
         }
     }
