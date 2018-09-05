@@ -73,12 +73,14 @@ public final class SVMHost implements HostVM {
     private final Platform platform;
     private final AnalysisPolicy analysisPolicy;
     private final ClassLoader classLoader;
+    private final ClassInitializationFeature classInitializationFeature;
 
     public SVMHost(OptionValues options, Platform platform, AnalysisPolicy analysisPolicy, ClassLoader classLoader) {
         this.options = options;
         this.platform = platform;
         this.analysisPolicy = analysisPolicy;
         this.classLoader = classLoader;
+        this.classInitializationFeature = ClassInitializationFeature.singleton();
     }
 
     @Override
@@ -156,7 +158,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void registerType(AnalysisType analysisType, ResolvedJavaType hostType) {
-        ClassInitializationFeature.maybeInitializeHosted(analysisType);
+        classInitializationFeature.maybeInitializeHosted(analysisType);
 
         DynamicHub hub = createHub(analysisType);
         Object existing = typeToHub.put(analysisType, hub);
@@ -171,7 +173,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public boolean isInitialized(AnalysisType type) {
-        boolean shouldInitializeAtRuntime = ClassInitializationFeature.shouldInitializeAtRuntime(type);
+        boolean shouldInitializeAtRuntime = classInitializationFeature.shouldInitializeAtRuntime(type);
         assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
 
         return !shouldInitializeAtRuntime;

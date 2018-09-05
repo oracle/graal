@@ -507,12 +507,12 @@ public class NativeImageGenerator {
                         analysisPolicy = new SVMDefaultAnalysisPolicy(options);
                     }
 
-                    svmHost = new SVMHost(options, platform, analysisPolicy, loader.getClassLoader());
-
                     featureHandler.registerFeatures(loader);
 
                     AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess);
                     featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
+
+                    svmHost = new SVMHost(options, platform, analysisPolicy, loader.getClassLoader());
 
                     registerEntryPoints(entryPoints);
 
