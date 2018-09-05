@@ -130,7 +130,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     public CompletableFuture<Object> shutdown() {
-        info.println("[Truffle LSP] Shutting down server...");
+        info.println("[Graal LSP] Shutting down server...");
         return CompletableFuture.completedFuture(null);
     }
 
@@ -138,10 +138,10 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         try {
             serverSocket.close();
         } catch (IOException e) {
-            err.println("[Truffle LSP] Error while closing socket: " + e.getLocalizedMessage());
+            err.println("[Graal LSP] Error while closing socket: " + e.getLocalizedMessage());
         }
         executor.shutdownNow();
-        info.println("[Truffle LSP] Server shutdown done.");
+        info.println("[Graal LSP] Server shutdown done.");
     }
 
     public TextDocumentService getTextDocumentService() {
@@ -468,13 +468,13 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 // while (true) {
                 try {
                     if (serverSocket.isClosed()) {
-                        err.println("[Truffle LSP] Server socket is closed.");
+                        err.println("[Graal LSP] Server socket is closed.");
                         return;
                     }
 
-                    info.println("[Truffle LSP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
+                    info.println("[Graal LSP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
                     Socket clientSocket = serverSocket.accept();
-                    info.println("[Truffle LSP] Client connected on " + clientSocket.getRemoteSocketAddress());
+                    info.println("[Graal LSP] Client connected on " + clientSocket.getRemoteSocketAddress());
 
                     ExecutorService lspRequestExecutor = Executors.newCachedThreadPool(new ThreadFactory() {
                         private final ThreadFactory factory = Executors.defaultThreadFactory();
@@ -502,12 +502,12 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
                     try {
                         listenFuture.get();
                     } catch (InterruptedException | ExecutionException e) {
-                        err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
+                        err.println("[Graal LSP] Error: " + e.getLocalizedMessage());
                     } finally {
                         lspRequestExecutor.shutdownNow();
                     }
                 } catch (IOException e) {
-                    err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
+                    err.println("[Graal LSP] Error while connecting to client: " + e.getLocalizedMessage());
                 }
 // }
             }

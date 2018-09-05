@@ -83,7 +83,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
 
                 public Thread newThread(Runnable r) {
                     Thread thread = factory.newThread(r);
-                    thread.setName("LSP server Truffle worker thread");
+                    thread.setName("LSP server Graal worker thread");
                     return thread;
                 }
             });
@@ -124,7 +124,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
         registry.register(evaluator);
 
         Future<Context> futureDefaultContext = evaluator.executeWithDefaultContext(() -> {
-            // Create and enter the default context from "LSP server Truffle worker"-thread
+            // Create and enter the default context from "LSP server Graal worker"-thread
             System.out.println("Setup default context...");
             Context context = contextBuilder.build();
             context.enter();
@@ -146,7 +146,7 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
     @Override
     protected String getLanguageId() {
         // Actually we are no launcher for a language but need to specify an identifier
-        return "TruffleLSP";
+        return "GraalLSP";
     }
 
     @Override

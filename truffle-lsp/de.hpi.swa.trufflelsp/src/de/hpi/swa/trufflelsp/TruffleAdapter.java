@@ -176,7 +176,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
             surrogate.notifyParsingSuccessful(callTarget);
         } catch (Exception e) {
             if (e instanceof TruffleException) {
-                diagnosticsPublisher.addDiagnostics(surrogate.getUri(), new Diagnostic(getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
+                diagnosticsPublisher.addDiagnostics(surrogate.getUri(), new Diagnostic(getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Graal"));
             } else {
                 // TODO(ds) throw an Exception which the LSPServer can catch to send a client
                 // notification
@@ -475,7 +475,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                                         TruffleException te = (TruffleException) evalResult.getResult();
                                         this.diagnosticsPublisher.addDiagnostics(uri,
                                                         new Diagnostic(sourceSectionToRange(te.getSourceLocation()), "An error occurred during execution: " + te.toString(),
-                                                                        DiagnosticSeverity.Warning, "Truffle"));
+                                                                        DiagnosticSeverity.Warning, "Graal"));
                                     } else {
                                         ((Exception) evalResult.getResult()).printStackTrace(err);
                                     }
@@ -483,7 +483,7 @@ public class TruffleAdapter implements VirtualLSPFileProvider, NestedEvaluatorRe
                             } else {
                                 this.diagnosticsPublisher.addDiagnostics(uri,
                                                 new Diagnostic(sourceSectionToRange(nearestNode.getSourceSection()), "No coverage information available for this source section.",
-                                                                DiagnosticSeverity.Information, "Truffle"));
+                                                                DiagnosticSeverity.Information, "Graal"));
                             }
                         }
                     } else if (completionKind == CompletionKind.GLOBALS_AND_LOCALS) {

@@ -101,7 +101,7 @@ public class LSPInstrument extends TruffleInstrument implements LSPServerBootstr
             LSPServer languageServer = LSPServer.create(truffleAdapter, info, err);
             return languageServer.start(serverSocket);
         } catch (IOException e) {
-            String message = String.format("[Truffle LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(options.get(Remote)), e.getLocalizedMessage());
+            String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(options.get(Remote)), e.getLocalizedMessage());
             throw new LSPIOException(message, e);
         }
     }
