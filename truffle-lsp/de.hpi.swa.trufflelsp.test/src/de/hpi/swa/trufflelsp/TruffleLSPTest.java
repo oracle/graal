@@ -72,14 +72,10 @@ public abstract class TruffleLSPTest implements DiagnosticsPublisher {
             }
 
             public <T> Future<T> executeWithNestedContext(Supplier<T> taskWithResult) {
-                return CompletableFuture.completedFuture(doWithNestedContext(taskWithResult));
-            }
-
-            public <T> T doWithNestedContext(Supplier<T> taskWithResult) {
                 try (Context newContext = contextBuilder.build()) {
                     newContext.enter();
                     try {
-                        return taskWithResult.get();
+                        return CompletableFuture.completedFuture(taskWithResult.get());
                     } finally {
                         newContext.leave();
                     }

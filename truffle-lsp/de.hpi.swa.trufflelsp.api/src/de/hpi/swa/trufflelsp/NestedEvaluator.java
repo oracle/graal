@@ -23,15 +23,6 @@ public interface NestedEvaluator {
         });
     }
 
-    public <T> T doWithNestedContext(Supplier<T> taskWithResult);
-
-    default public Void doWithNestedContext(Runnable taskWithResult) {
-        return doWithNestedContext(() -> {
-            taskWithResult.run();
-            return null;
-        });
-    }
-
     public void shutdown();
 
 }

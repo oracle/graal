@@ -101,20 +101,16 @@ public class TruffleLSPLauncher extends AbstractLanguageLauncher {
                 return executor.submit(new Callable<T>() {
 
                     public T call() throws Exception {
-                        return doWithNestedContext(taskWithResult);
+                        try (Context newContext = contextBuilder.build()) {
+                            newContext.enter();
+                            try {
+                                return taskWithResult.get();
+                            } finally {
+                                newContext.leave();
+                            }
+                        }
                     }
                 });
-            }
-
-            public <T> T doWithNestedContext(Supplier<T> taskWithResult) {
-                try (Context newContext = contextBuilder.build()) {
-                    newContext.enter();
-                    try {
-                        return taskWithResult.get();
-                    } finally {
-                        newContext.leave();
-                    }
-                }
             }
 
             public void shutdown() {
