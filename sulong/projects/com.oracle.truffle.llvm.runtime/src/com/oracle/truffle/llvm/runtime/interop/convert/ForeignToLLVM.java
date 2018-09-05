@@ -145,6 +145,38 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     throw new IllegalStateException("getSizeInBytes undefined on non-primitive type " + this);
             }
         }
+
+        public boolean isI1() {
+            return this == ForeignToLLVMType.I1;
+        }
+
+        public boolean isI8() {
+            return this == ForeignToLLVMType.I8;
+        }
+
+        public boolean isI16() {
+            return this == ForeignToLLVMType.I16;
+        }
+
+        public boolean isI32() {
+            return this == ForeignToLLVMType.I32;
+        }
+
+        public boolean isI64() {
+            return this == ForeignToLLVMType.I64;
+        }
+
+        public boolean isFloat() {
+            return this == ForeignToLLVMType.FLOAT;
+        }
+
+        public boolean isDouble() {
+            return this == ForeignToLLVMType.DOUBLE;
+        }
+
+        public boolean isPointer() {
+            return this == ForeignToLLVMType.POINTER;
+        }
     }
 
     public static ForeignToLLVMType convert(Type type) {
