@@ -325,6 +325,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     @Override
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
+        heap.alignPartitions(objectFile.getPageSize());
 
         try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
 
