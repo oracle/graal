@@ -1063,6 +1063,7 @@ def makegraaljdk(args):
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
     parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
+    parser.add_argument('-l', '--license', action='store', help='path to the license file', metavar='<path>')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1141,6 +1142,11 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
+        if args.license:
+            dst_licence = join(dstJdk, 'LICENSE')
+            if exists(dst_licence):
+                mx.rmtree(dst_licence)
+            shutil.copy(args.license, dst_licence)
         if args.bootstrap:
             with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
                 mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
