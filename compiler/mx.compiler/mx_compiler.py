@@ -380,6 +380,8 @@ class UnitTestRun:
 
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
+            if suite == 'truffle' and mx.get_os() == 'windows':
+                continue  # necessary until Truffle is fully supported (GR-7941)
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
