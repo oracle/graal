@@ -1129,7 +1129,7 @@ def makegraaljdk(args):
         for line in out.lines:
             m = pattern.match(line)
             if m:
-                with open(join(jvmlibDir, 'vm.properties'), 'w') as fp:
+                with open(join(jvmlibDir, 'vm.properties'), 'wb') as fp:
                     # Modify VM name in `java -version` to be Graal along
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
