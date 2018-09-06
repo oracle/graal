@@ -32,15 +32,21 @@ import jdk.vm.ci.runtime.JVMCI;
 
 public class HotSpotTruffleInstalledCode extends InstalledCode implements OptimizedAssumptionDependency {
     private final CompilableTruffleAST compilable;
+    private final boolean lowTier;
 
-    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable) {
+    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable, boolean lowTier) {
         super(compilable == null ? null : compilable.getName());
         this.compilable = compilable;
+        this.lowTier = lowTier;
     }
 
     @Override
     public CompilableTruffleAST getCompilable() {
         return compilable;
+    }
+
+    public boolean isLowTier() {
+        return lowTier;
     }
 
     @Override

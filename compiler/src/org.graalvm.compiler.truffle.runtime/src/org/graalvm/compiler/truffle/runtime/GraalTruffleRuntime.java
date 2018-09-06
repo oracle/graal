@@ -135,6 +135,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
@@ -771,15 +772,28 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask();
+        // try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
+        //     if (!TruffleLowTierCompilation.getValue(getOptions())) {
+        //         TTY.println("submitting htc...: " + optimizedCallTarget);
+        //     }
+        // }
         cancellable.setFuture(l.compilationExecutor.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
-                if (callTarget != null) {
-                    try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                        OptionValues options = TruffleCompilerOptions.getOptions();
+                try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
+                    // if (!TruffleLowTierCompilation.getValue(getOptions())) {
+                    //     TTY.println("submitted htc: " + optimizedCallTarget + ", " + callTarget);
+                    // }
+                    if (callTarget != null) {
+                        // if (!TruffleLowTierCompilation.getValue(getOptions())) {
+                        //     TTY.println("ehm.. if: " + optimizedCallTarget + ", " + callTarget + ", " + optionOverrides);
+                        // }
+                        OptionValues options = getOptions();
                         doCompile(options, callTarget, cancellable);
-                    } finally {
+                    }
+                } finally {
+                    if (callTarget != null) {
                         callTarget.resetCompilationTask();
                     }
                 }

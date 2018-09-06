@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -64,13 +65,18 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
-    protected void invalidateCode() {
+    public void invalidateCode() {
         CodeInfoTable.invalidateInstalledCode(this);
     }
 
     @Override
     public boolean isValid() {
         return address != 0;
+    }
+
+    @Override
+    public boolean isValidHighTier() {
+        throw GraalError.unimplemented();
     }
 
     @Override

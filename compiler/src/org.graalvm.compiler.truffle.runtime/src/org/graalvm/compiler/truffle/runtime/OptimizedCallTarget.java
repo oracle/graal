@@ -73,9 +73,11 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingMaxPropagationDepth;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
@@ -328,9 +330,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
     public final boolean compile() {
-        if (isValid()) {
-            return true;
-        }
+        if (isValidLowTierOrHighTier()) return true;
         if (!isCompiling()) {
             if (!runtime().acceptForCompilation(getRootNode())) {
                 return false;
@@ -340,7 +340,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (isValid()) {
+                if (isValidLowTierOrHighTier()) {
                     return true;
                 }
                 if (this.compilationProfile == null) {
@@ -359,6 +359,20 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     runtime().finishCompilation(this, submitted, mayBeAsynchronous);
                     return !mayBeAsynchronous;
                 }
+            }
+        }
+        return false;
+    }
+
+    private boolean isValidLowTierOrHighTier() {
+        if (TruffleCompilerOptions.TruffleLowTier.getValue(getOptions())) {
+            // We should still complete the high-tier compilation request if low-tier code was installed.
+            if ((TruffleLowTierCompilation.getValue(getOptions()) && isValid()) || isValidHighTier()) {
+                return true;
+            }
+        } else {
+            if (isValid()) {
+                return true;
             }
         }
         return false;
@@ -383,14 +397,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract long getCodeAddress();
 
     /**
-     * Invalidates any machine code attached to this call target.
+     * Determines if this call target has valid machine code attached to it.
      */
-    protected abstract void invalidateCode();
+    public abstract boolean isValid();
 
     /**
      * Determines if this call target has valid machine code attached to it.
      */
-    public abstract boolean isValid();
+    public abstract boolean isValidHighTier();
 
     /**
      * Invalidates this call target by invalidating any machine code attached to it.

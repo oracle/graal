@@ -38,6 +38,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExcludeAssertions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 
 import java.io.PrintWriter;
@@ -349,6 +351,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     TruffleCompilerListener listener) {
         final CompilationPrinter printer = CompilationPrinter.begin(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
+        // if (!TruffleLowTierCompilation.getValue(getOptions())) {
+        //     TTY.println("htc: " + compilable);
+        // }
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
@@ -447,6 +452,14 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
             InstalledCode installedCode = createInstalledCode(compilable);
+
+            // Invalidate the old code if it was compiled in low tier, and this is a high tier compilation.
+            if (!TruffleLowTierCompilation.getValue(getOptions())) {
+                // TTY.println("Invalidating low tier stuff: " + name);
+                compilable.invalidateCode();
+            }
+
+            // Install the new code.
             backend.createInstalledCode(debug, graph.method(), compilationRequest, result, graph.getSpeculationLog(), installedCode, false);
         } catch (Throwable e) {
             throw debug.handle(e);

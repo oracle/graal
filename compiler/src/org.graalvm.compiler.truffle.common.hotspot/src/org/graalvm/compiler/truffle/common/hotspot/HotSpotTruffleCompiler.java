@@ -39,5 +39,5 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
         public abstract HotSpotTruffleCompiler create(TruffleCompilerRuntime runtime);
     }
 
-    HotSpotTruffleInstalledCode INVALID_CODE = new HotSpotTruffleInstalledCode(null);
+    HotSpotTruffleInstalledCode INVALID_CODE = new HotSpotTruffleInstalledCode(null, false);
 }
