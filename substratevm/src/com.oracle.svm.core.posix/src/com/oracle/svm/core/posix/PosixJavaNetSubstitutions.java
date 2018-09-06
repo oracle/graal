@@ -4020,8 +4020,8 @@ final class Target_java_net_SocketInputStream {
     // 062                                             jobject fdObj, jbyteArray data,
     // 063                                             jint off, jint len, jint timeout)
     @Substitute
-    @SuppressWarnings({"static-method", "finally"})
-    private int socketRead0(FileDescriptor fdObj, byte[] data, int off, int lenArg, int timeout) throws IOException, OutOfMemoryError, sun.net.ConnectionResetException {
+    @SuppressWarnings({"static-method"})
+    private int socketRead0(FileDescriptor fdObj, byte[] data, int off, int lenArg, int timeout) throws IOException {
         int len = lenArg;
         // 065     char BUF[MAX_BUFFER_LEN];
         CCharPointer BUF = StackValue.get(JavaNetNetUtilMD.MAX_BUFFER_LEN(), CCharPointer.class);
@@ -4105,7 +4105,7 @@ final class Target_java_net_SocketInputStream {
                     } else if (nread == Target_jvm.JVM_IO_INTR()) {
                         // 118                 JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
                         // 119                             "Operation interrupted");
-                        throw new InterruptedException("Operation interrupted");
+                        throw new InterruptedIOException("Operation interrupted");
                     }
                 } finally {
                     // 121             if (bufP != BUF) {
@@ -4114,9 +4114,9 @@ final class Target_java_net_SocketInputStream {
                         LibC.free(bufP);
                         bufP = WordFactory.nullPointer();
                     }
-                    // 124             return -1;
-                    return -1;
                 }
+                // 124             return -1;
+                return -1;
             }
         }
         try {
@@ -4187,7 +4187,7 @@ final class Target_java_net_SocketOutputStream {
     // 064                                               jbyteArray data,
     // 065                                               jint off, jint len) {
     @Substitute
-    @SuppressWarnings({"static-method", "finally"})
+    @SuppressWarnings({"static-method"})
     private void socketWrite0(FileDescriptor fdObj, byte[] data, int offArg, int lenArg) throws IOException {
         /* Local variable copies rather than assign to formal parameter. */
         int off = offArg;
@@ -4251,44 +4251,37 @@ final class Target_java_net_SocketOutputStream {
                 VmPrimsJNI.GetByteArrayRegion(data, off, chunkLen, bufP);
                 // 106         while(llen > 0) {
                 while (llen > 0) {
-                    try {
-                        // 107             int n = NET_Send(fd, bufP + loff, llen, 0);
-                        int n = JavaNetNetUtilMD.NET_Send(fd, bufP.addressOf(loff), llen, 0);
-                        // 108             if (n > 0) {
-                        if (n > 0) {
-                            // 109                 llen -= n;
-                            llen -= n;
-                            // 110                 loff += n;
-                            loff += n;
-                            // 111                 continue;
-                            continue;
-                        }
-                        // 113             if (n == JVM_IO_INTR) {
-                        if (n == Target_jvm.JVM_IO_INTR()) {
-                            // 114                 JNU_ThrowByName(env, "java/io/InterruptedIOException", 0);
-                            throw new InterruptedIOException();
-                        } else {
-                            // 116                 if (errno == ECONNRESET) {
-                            if (Errno.errno() == Errno.ECONNRESET()) {
-                                // 117                     JNU_ThrowByName(env, "sun/net/ConnectionResetException",
-                                // 118                         "Connection reset");
-                                throw new sun.net.ConnectionResetException("Connection reset");
-                            } else {
-                                // 120                     NET_ThrowByNameWithLastError(env, "java/net/SocketException",
-                                // 121                         "Write failed");
-                                throw new SocketException(PosixUtils.lastErrorString("Write failed"));
-                            }
-                        }
-                    } finally {
-                        // 124             if (bufP != BUF) {
-                        if (bufP.notEqual(BUF) && bufP.isNonNull()) {
-                            // 125                 free(bufP);
-                            LibC.free(bufP);
-                            bufP = WordFactory.nullPointer();
-                        }
-                        // 127             return;
-                        return;
+                    // 107             int n = NET_Send(fd, bufP + loff, llen, 0);
+                    int n = JavaNetNetUtilMD.NET_Send(fd, bufP.addressOf(loff), llen, 0);
+                    // 108             if (n > 0) {
+                    if (n > 0) {
+                        // 109                 llen -= n;
+                        llen -= n;
+                        // 110                 loff += n;
+                        loff += n;
+                        // 111                 continue;
+                        continue;
                     }
+                    // 113             if (n == JVM_IO_INTR) {
+                    if (n == Target_jvm.JVM_IO_INTR()) {
+                        // 114                 JNU_ThrowByName(env, "java/io/InterruptedIOException", 0);
+                        throw new InterruptedIOException();
+                    } else {
+                        // 116                 if (errno == ECONNRESET) {
+                        if (Errno.errno() == Errno.ECONNRESET()) {
+                            // 117                     JNU_ThrowByName(env, "sun/net/ConnectionResetException",
+                            // 118                         "Connection reset");
+                            throw new sun.net.ConnectionResetException("Connection reset");
+                        } else {
+                            // 120                     NET_ThrowByNameWithLastError(env, "java/net/SocketException",
+                            // 121                         "Write failed");
+                            throw new SocketException(PosixUtils.lastErrorString("Write failed"));
+                        }
+                    }
+                    // 124             if (bufP != BUF) {
+                    // 125                 free(bufP);
+                    // 127             return;
+                    // Outer finally-block is doing the cleanup, no need to duplicate the code here
                 }
                 // 129         len -= chunkLen;
                 len -= chunkLen;
@@ -4363,7 +4356,6 @@ final class Target_java_net_PlainSocketImpl {
     /* Substitutions for native methods. */
 
     /* Do not re-format commented-out code: @formatter:off */
-    @SuppressWarnings("finally")
     @Substitute
     // 176 /*
     // 177  * Class:     java_net_PlainSocketImpl
@@ -4437,7 +4429,6 @@ final class Target_java_net_PlainSocketImpl {
                         // 221 close(fd);
                         Unistd.close(fd);
                         // 222 return;
-                        return;
                     }
                 }
             }
