@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileImmediately;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTier;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReplaceReprofileCount;
@@ -307,9 +308,11 @@ public class OptimizedCompilationProfile {
         int callCount = ++lowTierCallCount;
         int callAndLoopCount = ++lowTierCallAndLoopCount;
         if (!callTarget.isCompiling() && !compilationFailed) {
-            // TTY.println("rollin' " + callTarget + ", " + callAndLoopCount);
             if (callAndLoopCount >= compilationCallAndLoopThreshold && callCount >= compilationCallThreshold) {
-                TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget));
+                Boolean ltc = TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions());
+                // TTY.println("-> " + TruffleCompilerOptions.getCurrentOptionOverrides());
+                // TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget) + ", is a lt comp: " + ltc);
+                callTarget.invalidateCode();
                 return callTarget.compile();
             }
         }

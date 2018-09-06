@@ -259,9 +259,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (CompilerDirectives.inLowTier()) {
             getCompilationProfile().lowTierCall(this);
         }
-        if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inLowTier()) {
-            printYerself();
-        }
+        // if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inLowTier()) {
+        //     printYerself();
+        // }
         Object[] args = originalArguments;
         OptimizedCompilationProfile profile = this.compilationProfile;
         if (CompilerDirectives.inCompiledCode() && profile != null) {

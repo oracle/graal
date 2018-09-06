@@ -132,6 +132,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
@@ -777,6 +778,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
                         OptionValues options = TruffleCompilerOptions.getOptions();
+                        if (!TruffleLowTierCompilation.getValue(options)) {
+                            TTY.println("Target: " + callTarget + ", " + TruffleCompilerOptions.TruffleLowTierCompilation.getValue(options));
+                        }
                         doCompile(options, callTarget, cancellable);
                     } finally {
                         callTarget.resetCompilationTask();
