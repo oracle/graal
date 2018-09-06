@@ -778,9 +778,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
                         OptionValues options = TruffleCompilerOptions.getOptions();
-                        if (!TruffleLowTierCompilation.getValue(options)) {
-                            TTY.println("Target: " + callTarget + ", " + TruffleCompilerOptions.TruffleLowTierCompilation.getValue(options));
-                        }
                         doCompile(options, callTarget, cancellable);
                     } finally {
                         callTarget.resetCompilationTask();
