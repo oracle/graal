@@ -1348,6 +1348,18 @@ def updategraalinopenjdk(args):
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
 
 
+original_build = mx.command_function('build')
+
+
+def build(cmd_args, parser=None):
+    no_native = []
+    if mx.get_os() == 'windows':
+        # necessary until Truffle is fully supported (GR-7941)
+        mx.log('Building of native projects is disabled on Windows.')
+        no_native = ['--no-native']
+    original_build(no_native + cmd_args, parser)
+
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
     name='Graal compiler',
@@ -1381,6 +1393,7 @@ mx.update_commands(_suite, {
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
+    'build': [build, ''],
 })
 
 def mx_post_parse_cmd_line(opts):
