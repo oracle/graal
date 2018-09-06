@@ -60,26 +60,6 @@ requireGCC: {
     }
 }
 
-sulong-deploy-command: [
-    ["mx", "build"]
-    ["mx", "deploy-binary", "--skip-existing", "lafo-snapshots"]
-]
-
-sulong-deploy-binaries: ${sulong-common} {
-    targets: [post-merge, deploy]
-    run : ${sulong-deploy-command}
-}
-
-sulong-deploy-binaries-linux: ${sulong-deploy-binaries} ${linux-amd64} ${requireGCC} {
-    packages: {
-        llvm: "==3.8"
-        maven: ">=3.3.9"
-    }
-}
-
-sulong-deploy-binaries-darwin: ${sulong-deploy-binaries} ${darwin-amd64} ${darwin-llvm} {
-}
-
 sulong-ruby-downstream-test: {
     packages: {
         ruby: "==2.1.0"
@@ -127,7 +107,4 @@ builds += [
 
   ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
   ${sulong-gateTest38-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
-
-  ${sulong-deploy-binaries-linux} { name: postmerge-sulong-deploy-binaries-linux-amd64 }
-  ${sulong-deploy-binaries-darwin} { name: postmerge-sulong-deploy-binaries-darwin-amd64 }
 ]
