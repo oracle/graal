@@ -40,9 +40,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
+import com.oracle.truffle.api.TruffleRuntime;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
@@ -303,20 +307,38 @@ public class OptimizedCompilationProfile {
         ensureProfiling(1, replaceBackoff);
     }
 
+    private Random random = new Random();
     @CompilerDirectives.TruffleBoundary
     final boolean lowTierCall(OptimizedCallTarget callTarget) {
         int callCount = ++lowTierCallCount;
-        int callAndLoopCount = ++lowTierCallAndLoopCount;
-        if (!callTarget.isCompiling() && !compilationFailed) {
-            if (callAndLoopCount >= compilationCallAndLoopThreshold && callCount >= compilationCallThreshold) {
-                Boolean ltc = TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions());
-                // TTY.println("-> " + TruffleCompilerOptions.getCurrentOptionOverrides());
-                // TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget) + ", is a lt comp: " + ltc);
+        if (callCount >= compilationCallThreshold && !callTarget.isCompiling() && !compilationFailed) {
+            // if (random.nextDouble() < 0.000001) {
+                // int compilationQueueSize = GraalTruffleRuntime.getRuntime().getCompilationQueueSize();
+                // TTY.println(callTarget.toString() + ", qs: " + compilationQueueSize);
+            // }
+            int compilationQueueSize = GraalTruffleRuntime.getRuntime().getCompilationQueueSize();
+            long adaptiveCallThreshold = compilationCallAndLoopThreshold + compilationThresholdPenalty(compilationQueueSize);
+            if (callCount >= adaptiveCallThreshold) {
+                TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget) + ", qs: " + compilationQueueSize);
+                // Here, I'd like to instead keep the code around during the compilation,
+                // and invalidate it immediately before installing it.
                 callTarget.invalidateCode();
                 return callTarget.compile();
             }
         }
         return false;
+    }
+
+    private long compilationThresholdPenalty(int queueSize) {
+        long penalty = 0;
+        int numWorkers = Runtime.getRuntime().availableProcessors();
+        penalty += numWorkers - queueSize);
+        int totalExtra = Math.max(0, queueSize - numWorkers);
+        int smallExtra = Math.min(2 * numWorkers, totalExtra);
+        penalty += 5000L * smallExtra * smallExtra;
+        totalExtra -= Math.max(0, totalExtra - smallExtra);
+        penalty += 50000L * totalExtra;
+        return penalty;
     }
 
     @SuppressWarnings("try")
