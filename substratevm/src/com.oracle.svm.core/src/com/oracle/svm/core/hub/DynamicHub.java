@@ -271,7 +271,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.superHub = superType;
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
-        this.genericInfo = GenericInfo.forEmpty();
         this.isStatic = isStatic;
         this.isSynthetic = isSynthetic;
         this.classloader = classLoader;
@@ -318,6 +317,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setGenericInfo(GenericInfo genericInfo) {
         this.genericInfo = genericInfo;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public GenericInfo getGenericInfo() {
+        return genericInfo;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -136,8 +136,15 @@ public class Inflation extends BigBang {
     private void checkType(AnalysisType type) {
         SVMHost svmHost = (SVMHost) hostVM;
 
+        DynamicHub hub = svmHost.dynamicHub(type);
+        if (hub.getGenericInfo() == null) {
+            fillGenericInfo(type, hub);
+        }
+        if (hub.getAnnotatedSuperInfo() == null) {
+            fillAnnotatedSuperInfo(type, hub);
+        }
+
         if (type.getJavaKind() == JavaKind.Object) {
-            DynamicHub hub = svmHost.dynamicHub(type);
             if (type.isArray() && (type.isInstantiated() || type.isInTypeCheck())) {
                 hub.getComponentHub().setArrayHub(hub);
             }
@@ -151,9 +158,6 @@ public class Inflation extends BigBang {
                 getUnsupportedFeatures().addMessage(type.toJavaName(true), null, ex.getMessage(), null, ex);
             }
 
-            if (hub.getAnnotatedSuperInfo() == null) {
-                fillGenericInfo(type, hub);
-            }
             if (hub.getInterfacesEncoding() == null) {
                 fillInterfaces(type, hub);
             }
@@ -281,6 +285,10 @@ public class Inflation extends BigBang {
         Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
         Type genericSuperClass = javaClass.getGenericSuperclass();
         hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
+    }
+
+    private void fillAnnotatedSuperInfo(AnalysisType type, DynamicHub hub) {
+        Class<?> javaClass = type.getJavaClass();
 
         AnnotatedType annotatedSuperclass = javaClass.getAnnotatedSuperclass();
         AnnotatedType[] annotatedInterfaces = Arrays.stream(javaClass.getAnnotatedInterfaces())
