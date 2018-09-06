@@ -1,7 +1,7 @@
 package com.oracle.truffle.espresso;
 
-import java.util.Scanner;
 import java.io.PrintWriter;
+import java.util.Scanner;
 
 public class Sudoku {
     final Scanner in = new Scanner(System.in);
@@ -14,19 +14,19 @@ public class Sudoku {
     int[][] board = new int[DIMENSION][DIMENSION];
     boolean[][] row = new boolean[DIMENSION][DIMENSION];
     boolean[][] col = new boolean[DIMENSION][DIMENSION];
-    boolean[][][] box = new boolean [BASE][BASE][DIMENSION];
+    boolean[][][] box = new boolean[BASE][BASE][DIMENSION];
 
     void set(int r, int c, int d, boolean flag) {
         row[r][d] = flag;
         col[c][d] = flag;
-        box[r/BASE][c/BASE][d] = flag;
+        box[r / BASE][c / BASE][d] = flag;
         board[r][c] = flag ? d : -1;
     }
 
     void printBoard() {
         for (int i = 0; i < DIMENSION; ++i) {
             for (int j = 0; j < DIMENSION; j++) {
-                out.print(board[i][j]);
+                out.print(board[i][j] + 1);
             }
             out.println();
         }
@@ -37,18 +37,18 @@ public class Sudoku {
         if (r >= DIMENSION) {
             ++solutionCount;
             printBoard();
-            return ;
+            return;
         }
         if (c >= DIMENSION) {
             solve(r + 1, 0);
-            return ;
+            return;
         }
         if (board[r][c] != -1) {
             solve(r, c + 1);
             return;
         }
         for (int d = 0; d < DIMENSION; ++d) {
-            if (!row[r][d] && !col[c][d] && !box[r/BASE][c/BASE][d]) {
+            if (!row[r][d] && !col[c][d] && !box[r / BASE][c / BASE][d]) {
                 set(r, c, d, true);
                 solve(r, c + 1);
                 set(r, c, d, false);
@@ -66,16 +66,14 @@ public class Sudoku {
                 }
             }
         }
+        long ticks = System.currentTimeMillis();
         solve(0, 0);
         out.println(solutionCount + " solution(s) found.");
-    }
-
-    public static void main() {
-        new Sudoku().run();
+        out.println("Elapsed: " + (System.currentTimeMillis() - ticks) + " ms");
+        out.flush();
     }
 
     public static void main(String[] args) {
-        main();
+        new Sudoku().run();
     }
 }
-

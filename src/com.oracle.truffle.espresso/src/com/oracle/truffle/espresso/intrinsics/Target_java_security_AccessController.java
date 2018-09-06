@@ -31,4 +31,9 @@ public class Target_java_security_AccessController {
     public static Object doPrivileged3(@Type(PrivilegedExceptionAction.class) StaticObject action, @Type(AccessControlContext.class) StaticObject context) {
         return doPrivileged(action);
     }
+
+    @Intrinsic(methodName = "doPrivileged")
+    public static Object doPrivileged4(@Type(PrivilegedAction.class) StaticObject action, @Type(AccessControlContext.class) StaticObject context) {
+        return doPrivileged(action);
+    }
 }

@@ -907,7 +907,7 @@ public class EspressoRootNode extends RootNode {
                         stack.pushObject(allocateInstance(resolveType(bs.currentBC(), bs.readCPI())));
                         break;
                     case NEWARRAY:
-                        stack.pushObject(allocateNativeArray(bs.readByte(), stack.popInt()));
+                        stack.pushObject(vm.allocateNativeArray(bs.readByte(), stack.popInt()));
                         break;
                     case ANEWARRAY:
                         stack.pushObject(
@@ -1129,40 +1129,13 @@ public class EspressoRootNode extends RootNode {
         return vm.newArray(componentType, length);
     }
 
-    private StaticObject allocateMultiArray(OperandStack stack, Klass componentType, int allocatedDimensions) {
-        for (int i = 0; i < allocatedDimensions; i++) {
-            componentType = componentType.getComponentType();
-        }
+    private StaticObject allocateMultiArray(OperandStack stack, Klass klass, int allocatedDimensions) {
+        assert klass.isArray();
         int[] dimensions = new int[allocatedDimensions];
         for (int i = allocatedDimensions - 1; i >= 0; i--) {
             dimensions[i] = stack.popInt();
         }
-        return vm.newMultiArray(componentType, dimensions);
-    }
-
-    // TODO(peterssen): Move to InterpreterToVm.
-    protected static Object allocateNativeArray(byte jvmPrimitiveType, int length) {
-        // the constants for the cpi are loosely defined and no real cpi indices.
-        switch (jvmPrimitiveType) {
-            case 4:
-                return new boolean[length];
-            case 5:
-                return new char[length];
-            case 6:
-                return new float[length];
-            case 7:
-                return new double[length];
-            case 8:
-                return new byte[length];
-            case 9:
-                return new short[length];
-            case 10:
-                return new int[length];
-            case 11:
-                return new long[length];
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
+        return vm.newMultiArray(klass, dimensions);
     }
 
     private void pushPoolConstant(OperandStack stack, char cpi) {

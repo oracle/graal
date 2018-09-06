@@ -176,6 +176,20 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
+    public static void putObjectVolatile(Object self, Object holder, long offset, Object value) {
+        if (holder instanceof StaticObjectArray) {
+            hostUnsafe.putObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset, value);
+            return ;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
+        FieldInfo[] fields = ((StaticObject) holder).getKlass().getDeclaredFields();
+        FieldInfo f = fields[(int) (offset - SAFETY_FIELD_OFFSET)];
+        Utils.getVm().setFieldObject(value, (StaticObject) holder, f);
+    }
+
+    @Intrinsic(hasReceiver = true)
     public static void ensureClassInitialized(Object self, @Type(Class.class) StaticObjectClass clazz) {
         clazz.getMirror().initialize();
     }

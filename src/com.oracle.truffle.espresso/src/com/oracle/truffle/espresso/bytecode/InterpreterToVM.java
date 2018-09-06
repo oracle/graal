@@ -1,5 +1,7 @@
 package com.oracle.truffle.espresso.bytecode;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
@@ -15,7 +17,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -55,14 +59,14 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-public class    InterpreterToVM {
+public class InterpreterToVM {
 
     private final Map<MethodKey, CallTarget> intrinsics = new HashMap<>();
 
@@ -223,14 +227,7 @@ public class    InterpreterToVM {
                 continue;
             }
 
-            MethodHandle handle;
-            try {
-                handle = MethodHandles.publicLookup().unreflect(method);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-
-            RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new IntrinsicRootNode(language, handle));
+            RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(createRootNodeForMethod(language, method));
             StringBuilder signature = new StringBuilder("(");
             Parameter[] parameters = method.getParameters();
             for (int i = intrinsic.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
@@ -261,6 +258,20 @@ public class    InterpreterToVM {
             }
 
             registerIntrinsic(fixTypeName(className), methodName, signature.toString(), callTarget);
+        }
+    }
+
+    private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
+        if (EspressoOptions.INTRINSICS_VIA_REFLECTION) {
+            return new IntrinsicReflectionRootNode(language, method);
+        } else {
+            MethodHandle handle;
+            try {
+                handle = MethodHandles.publicLookup().unreflect(method);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            return new IntrinsicRootNode(language, handle);
         }
     }
 
@@ -452,67 +463,83 @@ public class    InterpreterToVM {
     }
 
     public StaticObject newArray(Klass componentType, int length) {
-        assert !componentType.isPrimitive();
+        assert !componentType.isPrimitive() : "use allocatePrimitiveArray for primitives";
+        assert length >= 0;
         Object[] arr = new Object[length];
         Arrays.fill(arr, StaticObject.NULL);
         return new StaticObjectArray(componentType, arr);
     }
 
-    public StaticObject newMultiArray(Klass componentType, int[] dimensions) {
-        // assert !componentType.isPrimitive();
-        throw EspressoError.unimplemented();
+    public StaticObject newMultiArray(Klass klass, int[] dimensions) {
+        assert dimensions.length > 1;
+
+        Klass componentType = klass.getComponentType();
+
+        if (dimensions.length == 2) {
+            assert dimensions[0] >= 0;
+            if (componentType.getComponentType().isPrimitive()) {
+                return (StaticObject) meta(componentType).allocateArray(dimensions[0],
+                        i -> allocateNativeArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]));
+            }
+            return (StaticObject) meta(componentType).allocateArray(dimensions[0], i -> newArray(componentType.getComponentType(), dimensions[1]));
+        } else {
+            int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
+            return (StaticObject) meta(componentType).allocateArray(dimensions[0], i -> newMultiArray(componentType, newDimensions));
+        }
     }
 
+    // TODO(peterssen): Move to InterpreterToVm.
+    public static Object allocateNativeArray(byte jvmPrimitiveType, int length) {
+        // the constants for the cpi are loosely defined and no real cpi indices.
+        switch (jvmPrimitiveType) {
+            case 4:
+                return new boolean[length];
+            case 5:
+                return new char[length];
+            case 6:
+                return new float[length];
+            case 7:
+                return new double[length];
+            case 8:
+                return new byte[length];
+            case 9:
+                return new short[length];
+            case 10:
+                return new int[length];
+            case 11:
+                return new long[length];
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * Subtyping among Array Types
+     *
+     * The following rules define the direct supertype relation among array types:
+     *
+     * - If S and T are both reference types, then S[] >1 T[] iff S >1 T. - Object >1 Object[] -
+     * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
+     * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
+     */
     public boolean instanceOf(Object instance, Klass typeToCheck) {
         assert instance != null : "use StaticObject.NULL";
         if (instance == StaticObject.NULL) {
             return false;
         }
-
-        // WIP
-//        Meta meta = typeToCheck.getContext().getMeta();
-//
-//        if (meta(typeToCheck).isArray()) {
-//            if (meta.meta(instance).isArray()) {
-//                if (!typeToCheck.getComponentType().isPrimitive() && !meta.meta(instance).rawKlass().getComponentType().isPrimitive()) {
-//
-//                }
-//            }
-//        }
-
-        if (instance instanceof StaticObject) {
-
-            if (typeToCheck.isInterface()) {
-                Klass k = ((StaticObject) instance).getKlass();
-                while (k != null) {
-                    if (Arrays.asList(k.getInterfaces()).contains(typeToCheck)) {
-                        return true;
-                    }
-                    k = k.getSuperclass();
-                }
-            }
-
-            for (Klass k = ((StaticObject) instance).getKlass(); k != null; k = k.getSuperclass()) {
-                if (k == typeToCheck) {
-                    return true;
-                }
-            }
-        } else {
-            assert instance.getClass().isArray();
-            // TODO(peterssen): Handle T[] instanceof C.
-            throw EspressoError.unimplemented();
-        }
-
-        return false;
+        Meta meta = meta(typeToCheck).getMeta();
+        return meta(typeToCheck).isAssignableFrom(meta.meta(instance));
     }
 
     public Object checkCast(Object instance, Klass klass) {
         if (instance == StaticObject.NULL || instanceOf(instance, klass)) {
             return instance;
         }
-        // TODO(peterssen): Throw guest exception.
-        // throw newClassCastException();
-        throw new ClassCastException();
+        instanceOf(instance, klass);
+        Meta meta = klass.getContext().getMeta();
+        StaticObject ex = meta.exceptionKlass(ClassCastException.class).allocateInstance();
+        meta(ex).method("<init>", void.class).invoke();
+        throw new EspressoException(ex);
     }
 
     public StaticObject newObject(Klass klass) {

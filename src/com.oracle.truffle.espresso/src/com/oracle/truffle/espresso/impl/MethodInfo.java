@@ -87,20 +87,6 @@ public final class MethodInfo implements ModifiersProvider {
         throw EspressoError.unimplemented();
     }
 
-    public boolean isClassInitializer() {
-        assert signature.resultKind() == JavaKind.Void;
-        assert isStatic();
-        assert signature.getParameterCount(false) == 0;
-        return "<clinit>".equals(getName());
-    }
-
-    public boolean isConstructor() {
-        assert signature.resultKind() == JavaKind.Void;
-        assert isStatic();
-        assert signature.getParameterCount(false) == 0;
-        return "<init>".equals(getName());
-    }
-
     public boolean canBeStaticallyBound() {
         throw EspressoError.unimplemented();
     }
@@ -146,6 +132,13 @@ public final class MethodInfo implements ModifiersProvider {
 
     public int getModifiers() {
         return modifiers;
+    }
+
+    public boolean isConstructor() {
+        assert signature.resultKind() == JavaKind.Void;
+        assert isStatic();
+        assert signature.getParameterCount(false) == 0;
+        return "<init>".equals(getName());
     }
 
     public boolean isDefault() {

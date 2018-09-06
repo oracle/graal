@@ -274,6 +274,12 @@ public class Target_java_lang_Class {
         return outerKlass;
     }
 
+    @Intrinsic(hasReceiver = true)
+    public static boolean isInstance(StaticObjectClass self, Object obj) {
+        Meta meta = meta(self.getKlass()).getMeta();
+        return meta(self.getMirror()).isAssignableFrom(meta.meta(obj));
+    }
+
     @Intrinsic
     public static void registerNatives() {
         /* nop */

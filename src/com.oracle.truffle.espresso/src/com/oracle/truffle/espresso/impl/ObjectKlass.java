@@ -241,4 +241,11 @@ public final class ObjectKlass extends Klass {
     public InnerClassesAttribute getInnerClasses() {
         return innerClasses;
     }
+
+    public ObjectKlass getSupertype() {
+        if (isInterface()) {
+            return (ObjectKlass) getContext().getMeta().OBJECT.rawKlass();
+        }
+        return (ObjectKlass) getSuperclass();
+    }
 }

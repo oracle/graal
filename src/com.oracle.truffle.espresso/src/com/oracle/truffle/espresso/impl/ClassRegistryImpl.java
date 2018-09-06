@@ -53,7 +53,11 @@ public class ClassRegistryImpl implements ClassRegistry {
     @Override
     public Klass findLoadedClass(TypeDescriptor type) {
         if (type.isArray()) {
-            return findLoadedClass(type.getComponentType()).getArrayClass();
+            Klass klass = findLoadedClass(type.getComponentType());
+            if (klass == null) {
+                return null;
+            }
+            return klass.getArrayClass();
         }
         return classes.get(type);
     }

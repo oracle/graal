@@ -62,9 +62,14 @@ public final class EspressoOptions {
     /** Methods of classes which are mentioned in this list will be inlined. */
     public static final List<String> FORCE_INLINE = new ArrayList<>();
 
+    public static final boolean INTRINSICS_VIA_REFLECTION;
+
     static {
         USE_DYNAMIC_OBJECT = Boolean.getBoolean("truffle.espresso.dynamic");
         ENABLE_DEBUG_OUTPUT = Boolean.getBoolean("truffle.espresso.debug");
+
+        INTRINSICS_VIA_REFLECTION = Boolean.getBoolean("truffle.espresso.reflection");
+
         COMPLIANT_ARRAY_READ_BEHAVIOUR = Boolean.getBoolean("truffle.espresso.compliant");
 
         try {

@@ -1,22 +1,20 @@
 package com.oracle.truffle.espresso.nodes;
 
-import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public class IntrinsicRootNode extends RootNode {
+public class IntrinsicReflectionRootNode extends RootNode {
 
-    private final MethodHandle handle;
+    private final Method method;
 
-    public IntrinsicRootNode(EspressoLanguage language, MethodHandle handle) {
+    public IntrinsicReflectionRootNode(EspressoLanguage language, Method method) {
         super(language);
-        this.handle = handle;
+        this.method = method;
     }
 
     @Override
@@ -34,6 +32,6 @@ public class IntrinsicRootNode extends RootNode {
 
     @CompilerDirectives.TruffleBoundary
     private Object callIntrinsic(Object... args) throws Throwable {
-        return handle.invokeWithArguments(args);
+        return method.invoke(null, args);
     }
 }

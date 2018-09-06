@@ -3,10 +3,15 @@ package com.oracle.truffle.espresso.meta;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -15,6 +20,9 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
+
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -59,7 +67,6 @@ public final class Meta {
     public static Meta.Klass meta(com.oracle.truffle.espresso.impl.Klass klass) {
         return new Meta.Klass(klass);
     }
-
 
     public Klass meta(Object obj) {
         assert obj != null;
@@ -112,18 +119,21 @@ public final class Meta {
         return clazz.getClassLoader() == null;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Klass exceptionKlass(java.lang.Class<?> exceptionClass) {
         assert isKnownClass(exceptionClass);
-        assert exceptionClass.isAssignableFrom(Exception.class);
+        assert Exception.class.isAssignableFrom(exceptionClass);
         return knownKlass(exceptionClass);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Meta.Klass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve classes using BCL.
         return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(hostClass.getName())), null));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static String toHost(StaticObject str) {
         assert str != null;
         if (str == StaticObject.NULL) {
@@ -133,10 +143,12 @@ public final class Meta {
         return createString(value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public StaticObject toGuest(String str) {
         return toGuest(this, str);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static StaticObject toGuest(Meta meta, String str) {
         if (str == null) {
             return StaticObject.NULL;
@@ -208,6 +220,98 @@ public final class Meta {
             this.klass = klass;
         }
 
+        public Meta.Klass getComponentType() {
+            return isArray() ? meta(klass.getComponentType()) : null;
+        }
+
+        public Meta getMeta() {
+            return klass.getContext().getMeta();
+        }
+
+        public Meta.Klass getSuperclass() {
+            com.oracle.truffle.espresso.impl.Klass superclass = klass.getSuperclass();
+            return superclass != null ? meta(superclass) : null;
+        }
+
+        public Meta.Klass getSupertype() {
+            if (isArray()) {
+                Meta.Klass componentType = getComponentType();
+                if (this.rawKlass() == getMeta().OBJECT.array().rawKlass() || componentType.isPrimitive()) {
+                    return getMeta().OBJECT;
+                }
+                return componentType.getSupertype().array();
+            }
+            if (isInterface()) {
+                return getMeta().OBJECT;
+            }
+            return getSuperclass();
+        }
+
+
+        /**
+         * Determines if this type is either the same as, or is a superclass or superinterface of, the
+         * type represented by the specified parameter. This method is identical to
+         * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
+         */
+        public boolean isAssignableFrom(Meta.Klass other) {
+            assert !isPrimitive() && !other.isPrimitive();
+            if (this.rawKlass() == other.rawKlass()) {
+                return true;
+            }
+            if (isInterface()) {
+                return other.getInterfacesStream(true).anyMatch(i -> i.rawKlass() == this.rawKlass());
+            }
+            if (!isPrimaryType() || !other.isPrimaryType()) {
+                throw EspressoError.unimplemented();
+            }
+            return other.getSupertypesStream(true).anyMatch(k -> k.rawKlass() == this.rawKlass());
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private boolean isPrimaryType() {
+            assert !isPrimitive();
+            if (isArray()) return getElementalType().isPrimaryType();
+            return !isInterface();
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        public Meta.Klass getElementalType() {
+            if (!isArray()) {
+                return null;
+            }
+            return meta(klass.getElementalType());
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private Stream<Meta.Klass> getSupertypesStream(boolean includeOwn) {
+            Meta.Klass supertype = getSupertype();
+            Stream<Meta.Klass> supertypes;
+            if (supertype != null) {
+                supertypes = supertype.getSupertypesStream(true);
+            } else {
+                supertypes = Stream.empty();
+            }
+            if (includeOwn) {
+                return Stream.concat(Stream.of(this), supertypes);
+            }
+            return supertypes;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private Stream<Meta.Klass> getInterfacesStream(boolean includeSuperclasses) {
+            Stream<Meta.Klass> interfaces = Stream.of(klass.getInterfaces()).map(Meta::meta);
+            Meta.Klass superclass = getSuperclass();
+            if (includeSuperclasses && superclass != null) {
+                interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeSuperclasses));
+            }
+            return interfaces;
+        }
+
+        public List<Klass> getInterfaces(boolean includeSuperclasses) {
+            return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), Collections::unmodifiableList));
+        }
+
+        @CompilerDirectives.TruffleBoundary
         public StaticObject allocateInstance() {
             assert !klass.isArray();
             return klass.getContext().getVm().newObject(klass);
@@ -215,6 +319,10 @@ public final class Meta {
 
         public boolean isArray() {
             return klass.isArray();
+        }
+
+        public boolean isPrimitive() {
+            return klass.isPrimitive();
         }
 
         public Object allocateArray(int length) {
@@ -230,8 +338,11 @@ public final class Meta {
 
         public Optional<Method.WithInstance> getClassInitializer() {
             MethodInfo clinit = klass.findDeclaredMethod("<clinit>", void.class);
-            assert clinit == null || (clinit.isStatic() && clinit.isClassInitializer());
-            return Optional.ofNullable(clinit).map(m -> new Meta.Method(m).forInstance(klass.getStatics()));
+            return Optional.ofNullable(clinit).map(mi -> {
+                Meta.Method m = meta(mi);
+                assert m.isClassInitializer();
+                return m.forInstance(klass.getStatics());
+            });
         }
 
         public Meta.Method method(String name, Class<?> returnType, Class<?>... parameterTypes) {
@@ -328,7 +439,7 @@ public final class Meta {
         }
 
         public Meta.Klass getDeclaringClass() {
-            return new Meta.Klass(method.getDeclaringClass());
+            return meta(method.getDeclaringClass());
         }
 
         /**
@@ -337,6 +448,7 @@ public final class Meta {
          * and StaticObject.NULL/null. There's no parameter casting based on the method's signature,
          * widening nor narrowing.
          */
+        @CompilerDirectives.TruffleBoundary
         public Object invoke(Object self, Object... parameters) {
             assert parameters.length == method.getSignature().getParameterCount(!method.isStatic());
             assert !isStatic() || self == null;
@@ -359,6 +471,7 @@ public final class Meta {
          * Invoke a guest method without parameter/return type conversion. There's no parameter
          * casting based on the method's signature, widening nor narrowing.
          */
+        @CompilerDirectives.TruffleBoundary
         public Object invokeDirect(Object self, Object... parameters) {
             assert !isStatic() || ((StaticObjectImpl) self).isStatic();
             if (isStatic()) {
@@ -371,6 +484,21 @@ public final class Meta {
                 args[0] = self;
                 return method.getCallTarget().call(args);
             }
+        }
+
+        public String getName() {
+            return method.getName();
+        }
+
+        public boolean isClassInitializer() {
+            assert method.getSignature().resultKind() == JavaKind.Void;
+            assert isStatic();
+            assert method.getSignature().getParameterCount(false) == 0;
+            return "<clinit>".equals(getName());
+        }
+
+        public boolean isConstructor() {
+            return method.isConstructor();
         }
 
         public Meta.Method.WithInstance forInstance(StaticObject obj) {
@@ -391,10 +519,12 @@ public final class Meta {
                 instance = obj;
             }
 
+            @CompilerDirectives.TruffleBoundary
             public Object invoke(Object... parameters) {
                 return Method.this.invoke(instance, parameters);
             }
 
+            @CompilerDirectives.TruffleBoundary
             public Object invokeDirect(Object... parameters) {
                 return Method.this.invokeDirect(instance, parameters);
             }
