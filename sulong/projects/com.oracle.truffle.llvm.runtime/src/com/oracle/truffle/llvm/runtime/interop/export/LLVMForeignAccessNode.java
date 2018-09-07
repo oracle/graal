@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -105,7 +104,6 @@ public abstract class LLVMForeignAccessNode {
             return ctxRef.get().getNodeFactory().createStoreNode(kind);
         }
 
-        @TruffleBoundary
         protected ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type) {
             return getNodeFactory().createForeignToLLVM(type);
         }

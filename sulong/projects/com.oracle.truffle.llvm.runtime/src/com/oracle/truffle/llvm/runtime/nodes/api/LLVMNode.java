@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import java.io.PrintStream;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -83,6 +84,7 @@ public abstract class LLVMNode extends Node {
     }
 
     public final NodeFactory getNodeFactory() {
+        CompilerAsserts.neverPartOfCompilation();
         RootNode rootNode = getRootNode();
         if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
             return rootNode.getLanguage(LLVMLanguage.class).getContextReference().get().getNodeFactory();
