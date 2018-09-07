@@ -40,7 +40,7 @@ public final class LLVMInlineAssemblyPrologueNode extends LLVMStatementNode {
     @Children private final LLVMStatementNode[] writeNodes;
 
     public LLVMInlineAssemblyPrologueNode(List<LLVMStatementNode> writeNodes) {
-        this.writeNodes = writeNodes.toArray(new LLVMStatementNode[writeNodes.size()]);
+        this.writeNodes = writeNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
     }
 
     @Override

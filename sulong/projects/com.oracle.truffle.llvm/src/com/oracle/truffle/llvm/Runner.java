@@ -399,7 +399,7 @@ public final class Runner {
 
         // allocate all non-pointer types as one struct
         ArrayList<Type> nonPointerTypes = getNonPointerTypes(res, dataLayout);
-        StructureType structType = new StructureType("globals_struct", true, nonPointerTypes.toArray(new Type[0]));
+        StructureType structType = new StructureType("globals_struct", true, nonPointerTypes.toArray(Type.EMPTY_ARRAY));
         LLVMAllocateStructNode allocationNode = context.getNodeFactory().createAllocateStruct(structType);
         LLVMPointer nonPointerStore = allocationNode.executeWithTarget();
         LLVMScope fileScope = res.getRuntime().getFileScope();
@@ -889,7 +889,7 @@ public final class Runner {
         }
 
         if (!globalNodes.isEmpty()) {
-            LLVMStatementNode[] initNodes = globalNodes.toArray(new LLVMStatementNode[globalNodes.size()]);
+            LLVMStatementNode[] initNodes = globalNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
             RootNode globalVarInits = new LLVMStaticInitsBlockNode(context.getLanguage(), initNodes, rootFrame);
             return Truffle.getRuntime().createCallTarget(globalVarInits);
         }

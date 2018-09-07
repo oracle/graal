@@ -114,7 +114,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMSourceLocation location = method.getLexicalScope();
 
         List<LLVMStatementNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
-        LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMStatementNode[copyArgumentsToFrame.size()]);
+        LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(LLVMStatementNode.NO_STATEMENTS);
         LLVMExpressionNode body = runtime.getContext().getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(), uniquesRegion.build(),
                         nullableBeforeBlock, nullableAfterBlock, location, copyArgumentsToFrameArray);
 
@@ -146,7 +146,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 }
             }
             if (nullableSlots.size() > 0) {
-                result[i] = nullableSlots.toArray(new FrameSlot[nullableSlots.size()]);
+                result[i] = nullableSlots.toArray(LLVMBitcodeInstructionVisitor.NO_SLOTS);
             } else {
                 assert result[i] == null;
             }
