@@ -2,8 +2,13 @@ package com.oracle.truffle.espresso.intrinsics;
 
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.Utils;
+
+import java.io.IOException;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_java_lang_Thread {
@@ -48,5 +53,17 @@ public class Target_java_lang_Thread {
     @Intrinsic(hasReceiver = true)
     public static boolean isInterrupted(@Type(Thread.class) StaticObject self, boolean ClearInterrupted) {
         return false;
+    }
+
+    @Intrinsic
+    public static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Meta meta = Utils.getContext().getMeta();
+            StaticObject ex = meta.exceptionKlass(InterruptedException.class).allocateInstance();
+            meta(ex).method("<init>", void.class).invokeDirect();
+            throw new EspressoException(ex);
+        }
     }
 }

@@ -30,6 +30,6 @@ public class Fastorial {
         int n = Integer.parseInt(args[0]);
         BigInteger f = fastorial(n);
         System.out.println(n + "! = " + f);
-        System.out.println("Elapsed :" + (System.currentTimeMillis() - ticks) + " ms");
+        System.out.println("Elapsed: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 }

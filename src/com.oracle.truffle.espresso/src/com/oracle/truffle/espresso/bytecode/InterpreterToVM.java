@@ -25,6 +25,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.EspressoIntrinsics;
 import com.oracle.truffle.espresso.intrinsics.Intrinsic;
+import com.oracle.truffle.espresso.intrinsics.Target_java_io_Console;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileDescriptor;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileInputStream;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileOutputStream;
@@ -71,6 +72,7 @@ public class InterpreterToVM {
     private final Map<MethodKey, CallTarget> intrinsics = new HashMap<>();
 
     public static List<Class<?>> DEFAULTS = Arrays.asList(
+                    Target_java_io_Console.class,
                     Target_java_io_FileDescriptor.class,
                     Target_java_io_FileInputStream.class,
                     Target_java_io_FileOutputStream.class,
@@ -479,7 +481,7 @@ public class InterpreterToVM {
             assert dimensions[0] >= 0;
             if (componentType.getComponentType().isPrimitive()) {
                 return (StaticObject) meta(componentType).allocateArray(dimensions[0],
-                        i -> allocateNativeArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]));
+                                i -> allocateNativeArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]));
             }
             return (StaticObject) meta(componentType).allocateArray(dimensions[0], i -> newArray(componentType.getComponentType(), dimensions[1]));
         } else {
