@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server.utils;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
@@ -22,7 +22,20 @@ public final class NearestSectionsFinder {
     private NearestSectionsFinder() {
     }
 
-    public static NearestNodeHolder findNearestNode(int oneBasedLineNumber, int column, Source source, Env env) {
+    public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env) {
+        int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
+        NearestNodeHolder nearestNodeHolder = findNearestNodeOneBased(oneBasedLineNumber, character, source, env);
+
+        // TODO(ds) wrap debug printing
+        Node nearestNode = nearestNodeHolder.getNearestNode();
+        System.out.println("nearestNode: " +
+                        (nearestNode != null ? nearestNode.getClass().getSimpleName() : "--NULL--") + "\t-" + nearestNodeHolder.getLocationType() + "-\t" +
+                        (nearestNode != null ? nearestNode.getSourceSection() : ""));
+
+        return nearestNodeHolder;
+    }
+
+    protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env) {
         NearestSections nearestSections = getNearestSections(source, env, oneBasedLineNumber, column);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
@@ -93,7 +106,7 @@ public final class NearestSectionsFinder {
         return boundLine;
     }
 
-    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
+    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
         int boundLine = fixLine(source, line);
         int boundColumn = fixColumn(source, column, boundLine);
         return getNearestSections(source, env, convertLineAndColumnToOffset(source, boundLine, boundColumn));

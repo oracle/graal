@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server.utils;
 
 public class EvaluationResult {
     private final Object result;

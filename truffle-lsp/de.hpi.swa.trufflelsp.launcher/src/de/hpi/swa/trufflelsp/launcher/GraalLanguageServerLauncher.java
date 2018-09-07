@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
-import java.util.function.Supplier;
 
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
@@ -21,17 +20,17 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
-import de.hpi.swa.trufflelsp.LanguageServerBootstrapper;
-import de.hpi.swa.trufflelsp.ContextAwareExecutorWrapper;
-import de.hpi.swa.trufflelsp.ContextAwareExecutorWrapperRegistry;
-import de.hpi.swa.trufflelsp.VirtualLanguageServerFileProvider;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.LanguageServerBootstrapper;
+import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
 
-public class TruffleLanguageServerLauncher extends AbstractLanguageLauncher {
+public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
     private final ArrayList<String> lspargs = new ArrayList<>();
 
     public static void main(String[] args) {
-        new TruffleLanguageServerLauncher().launch(args);
+        new GraalLanguageServerLauncher().launch(args);
     }
 
     @Override
@@ -88,23 +87,18 @@ public class TruffleLanguageServerLauncher extends AbstractLanguageLauncher {
                 }
             });
 
-            public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult) {
-                return executor.submit(new Callable<T>() {
-
-                    public T call() throws Exception {
-                        return taskWithResult.get();
-                    }
-                });
+            public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult) {
+                return executor.submit(taskWithResult);
             }
 
-            public <T> Future<T> executeWithNestedContext(Supplier<T> taskWithResult) {
+            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult) {
                 return executor.submit(new Callable<T>() {
 
                     public T call() throws Exception {
                         try (Context newContext = contextBuilder.build()) {
                             newContext.enter();
                             try {
-                                return taskWithResult.get();
+                                return taskWithResult.call();
                             } finally {
                                 newContext.leave();
                             }
@@ -131,7 +125,10 @@ public class TruffleLanguageServerLauncher extends AbstractLanguageLauncher {
             Future<?> futureStartServer = bootstrapper.startServer();
             futureStartServer.get(); // blocking until LSP server is shutting down
 
-            executorWrapper.executeWithDefaultContext(() -> defaultContext.leave()).get();
+            executorWrapper.executeWithDefaultContext(() -> {
+                defaultContext.leave();
+                return null;
+            }).get();
             executorWrapper.shutdown();
         } catch (InterruptedException | ExecutionException e) {
             throw abort(e, -1);

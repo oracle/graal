@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp.coverage;
+package de.hpi.swa.trufflelsp.server.utils;
 
 import java.net.URI;
 

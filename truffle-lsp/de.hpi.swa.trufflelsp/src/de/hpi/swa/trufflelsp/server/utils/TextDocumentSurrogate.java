@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server.utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,8 +16,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.coverage.CoverageData;
-
 public final class TextDocumentSurrogate {
 
     private final URI uri;
@@ -28,6 +26,7 @@ public final class TextDocumentSurrogate {
     private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper sourceWrapper;
     private TextDocumentContentChangeEvent lastChange = null;
+    private List<String> completionTriggerCharacters;
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
         this.uri = blueprint.uri;
@@ -37,9 +36,10 @@ public final class TextDocumentSurrogate {
         this.editorText = blueprint.editorText;
         this.sourceWrapper = blueprint.sourceWrapper;
         this.lastChange = blueprint.lastChange;
+        this.completionTriggerCharacters = blueprint.completionTriggerCharacters;
     }
 
-    public TextDocumentSurrogate(final URI uri, final String langId) {
+    public TextDocumentSurrogate(final URI uri, final String langId, final List<String> completionTriggerCharacters) {
         this.uri = uri;
         String actualLangId = org.graalvm.polyglot.Source.findLanguage(langId);
         if (actualLangId == null) {
@@ -53,12 +53,13 @@ public final class TextDocumentSurrogate {
             }
         }
         this.langId = actualLangId;
+        this.completionTriggerCharacters = completionTriggerCharacters;
         this.location2coverageData = new HashMap<>();
         this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
     }
 
-    public TextDocumentSurrogate(final URI uri, final String langId, final String editorText) {
-        this(uri, langId);
+    public TextDocumentSurrogate(final URI uri, final String langId, final List<String> completionTriggerCharacters, final String editorText) {
+        this(uri, langId, completionTriggerCharacters);
         this.editorText = editorText;
     }
 
@@ -94,9 +95,13 @@ public final class TextDocumentSurrogate {
         this.sourceWrapper = sourceWrapper;
     }
 
+    public List<String> getCompletionTriggerCharacters() {
+        return completionTriggerCharacters;
+    }
+
     @Override
     public int hashCode() {
-        return this.uri.hashCode();
+        return uri.hashCode();
     }
 
     public TextDocumentContentChangeEvent getLastChange() {
@@ -110,7 +115,7 @@ public final class TextDocumentSurrogate {
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof TextDocumentSurrogate) {
-            return this.uri.equals(((TextDocumentSurrogate) obj).uri);
+            return uri.equals(((TextDocumentSurrogate) obj).uri);
         }
         return false;
     }

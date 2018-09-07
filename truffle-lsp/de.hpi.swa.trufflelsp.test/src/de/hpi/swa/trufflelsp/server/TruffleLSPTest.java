@@ -1,16 +1,14 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import org.eclipse.lsp4j.Diagnostic;
 import org.graalvm.polyglot.Context;
@@ -21,30 +19,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
 import de.hpi.swa.trufflelsp.instrument.TruffleAdapterProvider;
-import de.hpi.swa.trufflelsp.server.DiagnosticsPublisher;
+import de.hpi.swa.trufflelsp.server.TruffleAdapter;
 
-public abstract class TruffleLSPTest implements DiagnosticsPublisher {
+public abstract class TruffleLSPTest {
 
     private static AtomicInteger globalCounter;
     protected Map<URI, List<Diagnostic>> diagnostics = new LinkedHashMap<>();
     protected Engine engine;
     protected TruffleAdapter truffleAdapter;
     protected Context context;
-
-    public void addDiagnostics(URI uri, Diagnostic... diagnosticsParam) {
-        if (!diagnostics.containsKey(uri)) {
-            diagnostics.put(uri, new ArrayList<>());
-        }
-        diagnostics.get(uri).addAll(Arrays.asList(diagnosticsParam));
-    }
-
-    public void reportCollectedDiagnostics(String documentUri) {
-    }
-
-    public void reportCollectedDiagnostics() {
-    }
 
     @BeforeClass
     public static void classSetup() {
@@ -67,15 +55,27 @@ public abstract class TruffleLSPTest implements DiagnosticsPublisher {
         ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
         ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
 
-            public <T> Future<T> executeWithDefaultContext(Supplier<T> taskWithResult) {
-                return CompletableFuture.completedFuture(taskWithResult.get());
+            public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult) {
+                try {
+                    return CompletableFuture.completedFuture(taskWithResult.call());
+                } catch (Exception e) {
+                    if (e instanceof RuntimeException) {
+                        throw (RuntimeException) e;
+                    }
+                    throw new RuntimeException(e);
+                }
             }
 
-            public <T> Future<T> executeWithNestedContext(Supplier<T> taskWithResult) {
+            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult) {
                 try (Context newContext = contextBuilder.build()) {
                     newContext.enter();
                     try {
-                        return CompletableFuture.completedFuture(taskWithResult.get());
+                        return CompletableFuture.completedFuture(taskWithResult.call());
+                    } catch (Exception e) {
+                        if (e instanceof RuntimeException) {
+                            throw (RuntimeException) e;
+                        }
+                        throw new RuntimeException(e);
                     } finally {
                         newContext.leave();
                     }
@@ -87,8 +87,7 @@ public abstract class TruffleLSPTest implements DiagnosticsPublisher {
         };
         registry.register(executorWrapper);
 
-        truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).geTruffleAdapter();
-        truffleAdapter.setDiagnosticsPublisher(this);
+        truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).getTruffleAdapter();
     }
 
     @After

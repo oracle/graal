@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server.utils;
 
 import java.util.ArrayList;
 

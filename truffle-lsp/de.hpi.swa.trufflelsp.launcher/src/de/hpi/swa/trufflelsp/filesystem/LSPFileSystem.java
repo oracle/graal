@@ -20,7 +20,7 @@ import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
 
-import de.hpi.swa.trufflelsp.VirtualLanguageServerFileProvider;
+import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 
 public class LSPFileSystem implements FileSystem {
 

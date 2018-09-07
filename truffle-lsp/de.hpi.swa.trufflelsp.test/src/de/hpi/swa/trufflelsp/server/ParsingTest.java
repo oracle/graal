@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -14,6 +14,7 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.junit.Test;
 
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class ParsingTest extends TruffleLSPTest {
 
@@ -29,7 +30,7 @@ public class ParsingTest extends TruffleLSPTest {
     public void unknownlanguage() throws InterruptedException, ExecutionException {
         URI uri = createDummyFileUri();
 
-        Future<Void> future = truffleAdapter.parse("", "unknown-lang-id", uri);
+        Future<?> future = truffleAdapter.parse("", "unknown-lang-id", uri);
         future.get();
     }
 
@@ -39,7 +40,7 @@ public class ParsingTest extends TruffleLSPTest {
             URI uri = createDummyFileUri();
             String text = "function main() {return 3+3;}";
             truffleAdapter.didOpen(uri, text, "sl");
-            Future<Void> future = truffleAdapter.parse(text, "sl", uri);
+            Future<?> future = truffleAdapter.parse(text, "sl", uri);
             future.get();
 
             assertTrue(diagnostics.isEmpty());
@@ -67,7 +68,7 @@ public class ParsingTest extends TruffleLSPTest {
             {
                 String text = "function main() {return 3+3;}";
                 truffleAdapter.didOpen(uri, text, "sl");
-                Future<Void> future = truffleAdapter.parse(text, "sl", uri);
+                Future<?> future = truffleAdapter.parse(text, "sl", uri);
                 future.get();
             }
 

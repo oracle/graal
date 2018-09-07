@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp.message;
+package de.hpi.swa.trufflelsp.interop;
 
 import com.oracle.truffle.api.interop.Message;
 

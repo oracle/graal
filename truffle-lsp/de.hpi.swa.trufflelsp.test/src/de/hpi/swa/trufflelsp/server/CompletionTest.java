@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -23,6 +23,8 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.builtins.SLHelloEqualsWorldBuiltin;
 import com.oracle.truffle.sl.runtime.SLContext;
 
+import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
+
 public class CompletionTest extends TruffleLSPTest {
 
     @Test
@@ -44,7 +46,7 @@ public class CompletionTest extends TruffleLSPTest {
         //@formatter:on
         String text = "function main() {\n  return 3+3;\n}\nfunction abc(p1, p2) {\n  varA = p1 + p2;\n\n  varB = p1 * p2;\n  return varA;\n}\n";
         truffleAdapter.didOpen(uri, text, "sl");
-        Future<Void> future = truffleAdapter.parse(text, "sl", uri);
+        Future<?> future = truffleAdapter.parse(text, "sl", uri);
         future.get();
 
         assertTrue(diagnostics.isEmpty());
@@ -54,7 +56,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 0;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -74,7 +76,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 1;
             int column = 12;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -93,7 +95,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 5;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -114,7 +116,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 7;
             int column = 2;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -135,7 +137,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 9;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -155,7 +157,7 @@ public class CompletionTest extends TruffleLSPTest {
             // if line is out of range only globals are provided
             int line = 100;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -175,7 +177,7 @@ public class CompletionTest extends TruffleLSPTest {
             // if column is out of range only globals are provided
             int line = 8;
             int column = 5;
-            Future<CompletionList> futureCompletions = truffleAdapter.getCompletions(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -216,22 +218,24 @@ public class CompletionTest extends TruffleLSPTest {
         //@formatter:on
         String text = "function main() {\n    obj = abc();\n    obj;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction never_called(obj) {\n    obj;\n}\n";
         truffleAdapter.didOpen(uri, text, "sl");
-        Future<Void> future = truffleAdapter.parse(text, "sl", uri);
+        Future<?> future = truffleAdapter.parse(text, "sl", uri);
         future.get();
-
-        assertTrue(diagnostics.isEmpty());
 
         {
             String replacement = ".";
             Range range = new Range(new Position(2, 7), new Position(2, 7));
             TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
-            Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
-            future2.get();
+            boolean thrown = false;
+            try {
+                Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+                future2.get();
+            } catch (RuntimeException e) {
+                thrown = true;
+                assertTrue(e.getCause() instanceof DiagnosticsNotification);
+            }
+            assertTrue(thrown);
 
-            assertTrue(!diagnostics.isEmpty());
-            diagnostics.clear();
-
-            Future<CompletionList> future3 = truffleAdapter.getCompletions(uri, 2, 8);
+            Future<CompletionList> future3 = truffleAdapter.completion(uri, 2, 8);
             CompletionList completionList = future3.get();
             assertEquals(1, completionList.getItems().size());
             CompletionItem item = completionList.getItems().get(0);
@@ -247,20 +251,29 @@ public class CompletionTest extends TruffleLSPTest {
             Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event1), uri);
             future2.get();
 
-            assertTrue(diagnostics.isEmpty());
-
             String replacement2 = ".";
             Range range2 = new Range(new Position(12, 7), new Position(12, 7));
             TextDocumentContentChangeEvent event2 = new TextDocumentContentChangeEvent(range2, replacement2.length(), replacement2);
-            Future<Void> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
-            future3.get();
+            boolean thrown = false;
+            try {
+                Future<Void> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
+                future3.get();
+            } catch (RuntimeException e) {
+                thrown = true;
+                assertTrue(e.getCause() instanceof DiagnosticsNotification);
+            }
+            assertTrue(thrown);
 
-            assertTrue(!diagnostics.isEmpty());
-            diagnostics.clear();
-
-            Future<CompletionList> future4 = truffleAdapter.getCompletions(uri, 12, 8);
-            CompletionList completionList = future4.get();
-            assertEquals(0, completionList.getItems().size());
+            thrown = false;
+            try {
+                Future<CompletionList> future4 = truffleAdapter.completion(uri, 12, 8);
+                CompletionList completionList = future4.get();
+                assertEquals(0, completionList.getItems().size());
+            } catch (RuntimeException e) {
+                thrown = true;
+                assertTrue(e.getCause() instanceof DiagnosticsNotification);
+            }
+            assertTrue(thrown);
         }
     }
 }

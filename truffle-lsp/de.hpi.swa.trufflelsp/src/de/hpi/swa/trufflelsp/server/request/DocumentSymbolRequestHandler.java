@@ -1,0 +1,94 @@
+package de.hpi.swa.trufflelsp.server.request;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SymbolInformation;
+import org.eclipse.lsp4j.SymbolKind;
+
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.interop.ObjectStructures;
+import de.hpi.swa.trufflelsp.interop.ObjectStructures.MessageNodes;
+import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
+
+public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
+
+    public DocumentSymbolRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor) {
+        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+    }
+
+    public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
+        Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
+
+        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+
+        env.getInstrumenter().attachLoadSourceSectionListener(
+                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(DeclarationTag.class).build(),
+                        new LoadSourceSectionListener() {
+
+                            public void onLoad(LoadSourceSectionEvent event) {
+                                Node node = event.getNode();
+                                if (!(node instanceof InstrumentableNode)) {
+                                    return;
+                                }
+                                InstrumentableNode instrumentableNode = (InstrumentableNode) node;
+                                Object nodeObject = instrumentableNode.getNodeObject();
+                                if (!(nodeObject instanceof TruffleObject)) {
+                                    return;
+                                }
+                                Map<Object, Object> map = ObjectStructures.asMap(new MessageNodes(), (TruffleObject) nodeObject);
+                                String name = map.get(DeclarationTag.NAME).toString();
+                                SymbolKind kind = map.containsKey(DeclarationTag.KIND) ? declarationKindToSmybolKind(map.get(DeclarationTag.KIND)) : null;
+                                Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
+                                String container = map.containsKey(DeclarationTag.CONTAINER) ? map.get(DeclarationTag.CONTAINER).toString() : "";
+                                SymbolInformation si = new SymbolInformation(name, kind != null ? kind : SymbolKind.Null, new Location(node.getSourceSection().getSource().getURI().toString(), range),
+                                                container);
+                                symbolInformation.add(si);
+                            }
+
+                            private SymbolKind declarationKindToSmybolKind(Object kind) {
+                                if (kind == null) {
+                                    return null;
+                                }
+                                Integer kindValue = (Integer) kind;
+                                return SymbolKind.forValue(kindValue);
+                            }
+                        }, true).dispose();
+
+        // Fallback: search for generic RootTags
+        if (symbolInformation.isEmpty()) {
+            env.getInstrumenter().attachLoadSourceSectionListener(
+                            SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(StandardTags.RootTag.class).build(),
+                            new LoadSourceSectionListener() {
+
+                                public void onLoad(LoadSourceSectionEvent event) {
+                                    Node node = event.getNode();
+                                    SymbolKind kind = SymbolKind.Function;
+                                    Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
+                                    SymbolInformation si = new SymbolInformation(node.getRootNode().getName(),
+                                                    kind, new Location(node.getSourceSection().getSource().getURI().toString(), range));
+                                    symbolInformation.add(si);
+                                }
+                            }, true).dispose();
+        }
+
+        return new ArrayList<>(symbolInformation);
+    }
+}

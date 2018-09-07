@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.api;
 
 public interface ContextAwareExecutorWrapperRegistry {
 

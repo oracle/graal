@@ -4,7 +4,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 
-import de.hpi.swa.trufflelsp.ObjectStructures;
+import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 
 public class LanguageSpecificHacks {
     public static boolean enableLanguageSpecificHacks = true;

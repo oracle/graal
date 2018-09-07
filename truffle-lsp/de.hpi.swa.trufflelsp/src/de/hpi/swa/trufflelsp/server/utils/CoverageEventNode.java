@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp.coverage;
+package de.hpi.swa.trufflelsp.server.utils;
 
 import java.net.URI;
 import java.nio.file.Files;
@@ -13,9 +13,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-
-import de.hpi.swa.trufflelsp.SourceLocation;
-import de.hpi.swa.trufflelsp.TextDocumentSurrogate;
 
 public class CoverageEventNode extends ExecutionEventNode {
 

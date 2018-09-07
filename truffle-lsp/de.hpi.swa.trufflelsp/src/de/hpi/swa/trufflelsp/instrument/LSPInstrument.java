@@ -17,15 +17,16 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
-import de.hpi.swa.trufflelsp.LanguageServerBootstrapper;
-import de.hpi.swa.trufflelsp.ContextAwareExecutorWrapperRegistry;
-import de.hpi.swa.trufflelsp.TruffleAdapter;
-import de.hpi.swa.trufflelsp.VirtualLanguageServerFileProvider;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.LanguageServerBootstrapper;
+import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.exceptions.LSPIOException;
 import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
 import de.hpi.swa.trufflelsp.server.LanguageServerImpl;
+import de.hpi.swa.trufflelsp.server.TruffleAdapter;
 
-@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorWrapperRegistry.class, LanguageServerBootstrapper.class})
+@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorWrapperRegistry.class,
+                LanguageServerBootstrapper.class})
 public class LSPInstrument extends TruffleInstrument implements LanguageServerBootstrapper {
     public static final String ID = "lsp";
 
@@ -61,7 +62,7 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
 
     private OptionValues options;
 
-    private TruffleAdapter truffleAdapter;
+    private LanguageServerImpl languageServer;
 
     private PrintWriter err;
 
@@ -77,7 +78,8 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
         info = new PrintWriter(env.out(), true);
         err = new PrintWriter(env.err(), true);
 
-        truffleAdapter = new TruffleAdapter(env);
+        TruffleAdapter truffleAdapter = new TruffleAdapter(env);
+        languageServer = LanguageServerImpl.create(truffleAdapter, info, err);
         env.registerService(truffleAdapter);
         env.registerService(this);
     }
@@ -88,7 +90,7 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
     }
 
     public Future<?> startServer() {
-        assert truffleAdapter != null;
+        assert languageServer != null;
         assert options != null;
         assert options.hasSetOptions();
 
@@ -98,7 +100,6 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
             socketAddress = hostAndPort.createSocket(options.get(Remote));
             ServerSocket serverSocket = new ServerSocket(socketAddress.getPort(), 50, socketAddress.getAddress());
             LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LanguageSpecificHacksOption).booleanValue();
-            LanguageServerImpl languageServer = LanguageServerImpl.create(truffleAdapter, info, err);
             return languageServer.start(serverSocket);
         } catch (IOException e) {
             String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(options.get(Remote)), e.getLocalizedMessage());

@@ -1,8 +1,8 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server.utils;
 
 import com.oracle.truffle.api.nodes.Node;
 
-import de.hpi.swa.trufflelsp.NearestSectionsFinder.NodeLocationType;
+import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NodeLocationType;
 
 public class NearestNodeHolder {
 

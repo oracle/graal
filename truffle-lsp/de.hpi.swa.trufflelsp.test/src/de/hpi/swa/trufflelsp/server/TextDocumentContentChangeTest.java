@@ -1,4 +1,4 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server;
 
 import static org.junit.Assert.assertEquals;
 
@@ -9,11 +9,13 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.junit.Test;
 
+import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+
 public class TextDocumentContentChangeTest {
 
     private static void assertDocumentChanges(String oldText, String replacement, Range range, String expectedText) {
         TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
-        String actualText = TruffleAdapter.applyTextDocumentChanges(Arrays.asList(event), oldText, null);
+        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event), oldText, null);
         assertEquals(expectedText, actualText);
     }
 
@@ -70,7 +72,7 @@ public class TextDocumentContentChangeTest {
         String replacement4 = "\n";
         TextDocumentContentChangeEvent event4 = new TextDocumentContentChangeEvent(new Range(new Position(1, 7), new Position(1, 7)), replacement4.length(), replacement4);
 
-        String actualText = TruffleAdapter.applyTextDocumentChanges(Arrays.asList(event1, event2, event3, event4), oldText, null);
+        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event1, event2, event3, event4), oldText, null);
         assertEquals("a\n####hij\n", actualText);
     }
 }
