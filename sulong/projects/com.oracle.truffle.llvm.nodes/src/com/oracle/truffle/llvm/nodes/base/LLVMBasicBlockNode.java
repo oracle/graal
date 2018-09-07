@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -50,6 +51,13 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 public class LLVMBasicBlockNode extends LLVMStatementNode {
 
     public static final int RETURN_FROM_FUNCTION = -1;
+
+    public static LLVMBasicBlockNode createLazyBasicBlock(LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
+        final LLVMBasicBlockNode block = new LLVMBasicBlockNode(statements, termInstruction, blockId, blockName);
+        final LLVMStatementNode[] lazyBlockInsert = new LLVMStatementNode[]{new InsertBlockNode(block)};
+        final LLVMControlFlowNode executeInsertedBlock = new RepeatBlockNode();
+        return new LLVMBasicBlockNode(lazyBlockInsert, executeInsertedBlock, blockId, blockName);
+    }
 
     @Children private final LLVMStatementNode[] statements;
     @Child public LLVMControlFlowNode termInstruction;
@@ -157,5 +165,43 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
     private void incrementCountAtIndex(int successorIndex) {
         assert termInstruction.needsBranchProfiling();
         successorExecutionCount[successorIndex]++;
+    }
+
+    public static final class RepeatBlockNode extends LLVMControlFlowNode {
+
+        private RepeatBlockNode() {
+            super(null);
+        }
+
+        @Override
+        public int getSuccessorCount() {
+            return 1;
+        }
+
+        @Override
+        public LLVMStatementNode getPhiNode(int successorIndex) {
+            return null;
+        }
+    }
+
+    private static final class InsertBlockNode extends LLVMStatementNode {
+
+        private final LLVMBasicBlockNode materializedBlock;
+
+        private InsertBlockNode(LLVMBasicBlockNode materializedBlock) {
+            this.materializedBlock = materializedBlock;
+        }
+
+        @Override
+        public void execute(VirtualFrame frame) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            final LLVMBasicBlockNode currentBlock = NodeUtil.findParent(this, LLVMBasicBlockNode.class);
+            if (currentBlock == null) {
+                // this should never happen
+                throw new IllegalStateException("Tried to insert orphaned LLVM Basic Block!");
+            }
+            currentBlock.replace(materializedBlock, "Lazily Inserting LLVM Basic Block");
+            notifyInserted(materializedBlock);
+        }
     }
 }

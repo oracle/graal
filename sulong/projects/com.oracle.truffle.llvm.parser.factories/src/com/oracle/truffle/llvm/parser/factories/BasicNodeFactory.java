@@ -1471,7 +1471,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId,
                     String blockName) {
-        return new LLVMBasicBlockNode(statementNodes, terminatorNode, blockId, blockName);
+        return LLVMBasicBlockNode.createLazyBasicBlock(statementNodes, terminatorNode, blockId, blockName);
     }
 
     @Override

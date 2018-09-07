@@ -245,6 +245,12 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 nullDeadSlots(frame, basicBlockIndex, afterBlockNuller);
                 basicBlockIndex = retNode.getSuccessor();
                 continue outer;
+            } else if (controlFlowNode instanceof LLVMBasicBlockNode.RepeatBlockNode) {
+                assert noPhisNecessary(controlFlowNode);
+                // appears only after a new basic block was just inserted
+                // intended successor is the just inserted basic block
+                // do not execute nullers or phis here
+                continue outer;
             } else if (controlFlowNode instanceof LLVMResumeNode) {
                 LLVMResumeNode resumeNode = (LLVMResumeNode) controlFlowNode;
                 assert noPhisNecessary(resumeNode);
