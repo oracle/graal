@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.graal.windows;
 
+import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateOptions.UseHeapBaseRegister;
+import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -48,23 +51,29 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -74,16 +83,16 @@ import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-/*
-import com.oracle.svm.core.windows.WindowsIsolates;
 import com.oracle.svm.core.windows.headers.LibC;
-import com.oracle.svm.core.windows.headers.Stdio.FILE;
-import com.oracle.svm.core.windows.thread.WindowsVMThreads;
-*/
+import com.oracle.svm.core.windows.WindowsVMThreads;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and
@@ -144,82 +153,206 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
 
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
+        if (MultiThreaded.getValue()) {
+            writeCurrentVMThread(VMThreads.nullThread());
+        }
         return runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
     }
 
-    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
-        return CEntryPointErrors.NO_ERROR;
+        WordPointer isolate = StackValue.get(WordPointer.class);
+        isolate.write(WordFactory.nullPointer());
+        int error = Isolates.create(isolate, parameters);
+        if (error != CEntryPointErrors.NO_ERROR) {
+            return error;
+        }
+        if (UseHeapBaseRegister.getValue()) {
+            setHeapBase(Isolates.getHeapBase(isolate.read()));
+        }
+        if (MultiThreaded.getValue()) {
+            WindowsVMThreads.ensureInitialized();
+        }
+        return attachThread(isolate.read(), vmThreadSize);
     }
 
-    @SuppressWarnings("unused")
     @Snippet
     public static int attachThreadSnippet(Isolate isolate, @ConstantParameter int vmThreadSize) {
-        return CEntryPointErrors.NO_ERROR;
+        if (MultiThreaded.getValue()) {
+            writeCurrentVMThread(VMThreads.nullThread());
+        }
+        int result = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
+        if (MultiThreaded.getValue() && result == CEntryPointErrors.NO_ERROR) {
+            Safepoint.transitionNativeToJava();
+        }
+        return result;
     }
 
-    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static int attachThread(Isolate isolate, int vmThreadSize) {
+        int sanityError = Isolates.checkSanity(isolate);
+        if (sanityError != CEntryPointErrors.NO_ERROR) {
+            return sanityError;
+        }
+        if (UseHeapBaseRegister.getValue()) {
+            setHeapBase(Isolates.getHeapBase(isolate));
+        }
+        if (MultiThreaded.getValue()) {
+            if (!WindowsVMThreads.isInitialized()) {
+                return CEntryPointErrors.UNINITIALIZED_ISOLATE;
+            }
+            IsolateThread thread = WindowsVMThreads.VMThreadTL.get();
+            if (VMThreads.isNullThread(thread)) { // not attached
+                thread = LibC.calloc(WordFactory.unsigned(1), WordFactory.unsigned(vmThreadSize));
+                VMThreads.attachThread(thread);
+                // Store thread and isolate in thread-local variables.
+                WindowsVMThreads.VMThreadTL.set(thread);
+                WindowsVMThreads.IsolateTL.set(thread, isolate);
+            }
+            writeCurrentVMThread(thread);
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet
     public static int detachThreadSnippet() {
         int result = CEntryPointErrors.NO_ERROR;
+        if (MultiThreaded.getValue()) {
+            IsolateThread thread = CEntryPointContext.getCurrentIsolateThread();
+            result = runtimeCall(DETACH_THREAD_MT, thread);
+        }
+        if (UseHeapBaseRegister.getValue()) {
+            writeCurrentVMHeapBase(WordFactory.nullPointer());
+        }
         return result;
     }
 
-    @SuppressWarnings("unused")
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Thread state going away.")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not (thread-local) allocate while detaching a thread.")
     private static int detachThreadMT(IsolateThread thread) {
         int result = CEntryPointErrors.NO_ERROR;
+        /*
+         * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
+         * functions that are not marked as @Uninterruptible during the detach process. We hold the
+         * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
+         * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
+         * possible that we enter the safepoint slow path.
+         */
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+
+        // try-finally because try-with-resources can call interruptible code
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        try {
+            detachJavaLangThreadMT(thread);
+
+            // clear references to thread to avoid unintended use
+            writeCurrentVMThread(VMThreads.nullThread());
+            WindowsVMThreads.VMThreadTL.set(VMThreads.nullThread());
+
+            VMThreads.detachThread(thread);
+        } catch (Throwable t) {
+            result = CEntryPointErrors.UNSPECIFIED;
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+            LibC.free(thread);
+        }
         return result;
     }
 
-    @SuppressWarnings("unused")
     @Uninterruptible(reason = "For calling interruptible code from uninterruptible code.", callerMustBe = true, mayBeInlined = true, calleeMustBe = false)
     private static void detachJavaLangThreadMT(IsolateThread thread) {
+        JavaThreads.detachThread(thread);
     }
 
     @Snippet
     public static int tearDownIsolateSnippet() {
-        return CEntryPointErrors.NO_ERROR;
+        return runtimeCallTearDownIsolate(TEAR_DOWN_ISOLATE);
     }
 
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
-        return CEntryPointErrors.NO_ERROR;
+        RuntimeSupport.executeTearDownHooks();
+        boolean success = JavaThreads.singleton().tearDownVM();
+        if (!success) {
+            return CEntryPointErrors.UNSPECIFIED;
+        }
+        WindowsVMThreads.finishTearDown();
+        return Isolates.tearDownCurrent();
     }
 
-    @SuppressWarnings("unused")
     @Snippet
     public static int enterIsolateSnippet(Isolate isolate) {
-        return CEntryPointErrors.NO_ERROR;
+        int result;
+        if (MultiThreaded.getValue()) {
+            writeCurrentVMThread(VMThreads.nullThread());
+            result = runtimeCall(ENTER_ISOLATE_MT, isolate);
+            if (result == CEntryPointErrors.NO_ERROR) {
+                Safepoint.transitionNativeToJava();
+            }
+        } else {
+            result = Isolates.checkSanity(isolate);
+            if (result == CEntryPointErrors.NO_ERROR && UseHeapBaseRegister.getValue()) {
+                setHeapBase(Isolates.getHeapBase(isolate));
+            }
+        }
+        return result;
     }
 
-    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget
     private static int enterIsolateMT(Isolate isolate) {
+        int sanityError = Isolates.checkSanity(isolate);
+        if (sanityError != CEntryPointErrors.NO_ERROR) {
+            return sanityError;
+        }
+        if (UseHeapBaseRegister.getValue()) {
+            setHeapBase(Isolates.getHeapBase(isolate));
+        }
+        if (!WindowsVMThreads.isInitialized()) {
+            return CEntryPointErrors.UNINITIALIZED_ISOLATE;
+        }
+        IsolateThread thread = WindowsVMThreads.VMThreadTL.get();
+        if (VMThreads.isNullThread(thread)) {
+            return CEntryPointErrors.UNATTACHED_THREAD;
+        }
+        writeCurrentVMThread(thread);
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @SuppressWarnings("unused")
     @Snippet
     public static int enterSnippet(IsolateThread thread) {
+        Isolate isolate;
+        if (MultiThreaded.getValue()) {
+            if (thread.isNull()) {
+                return CEntryPointErrors.NULL_ARGUMENT;
+            }
+            writeCurrentVMThread(thread);
+            isolate = WindowsVMThreads.IsolateTL.get(thread);
+        } else { // single-threaded
+            if (SpawnIsolates.getValue()) {
+                if (thread.isNull()) {
+                    return CEntryPointErrors.NULL_ARGUMENT;
+                }
+            } else if (!thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
+                return CEntryPointErrors.UNATTACHED_THREAD;
+            }
+            isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
+        }
+        if (UseHeapBaseRegister.getValue()) {
+            setHeapBase(Isolates.getHeapBase(isolate));
+        }
+        if (MultiThreaded.getValue()) {
+            Safepoint.transitionNativeToJava();
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @SuppressWarnings("unused")
     @Snippet
     public static int reportExceptionSnippet(Throwable exception) {
-        return CEntryPointErrors.NO_ERROR;
+        return runtimeCall(REPORT_EXCEPTION, exception);
     }
 
     @SubstrateForeignCallTarget
@@ -238,34 +371,53 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
 
     @Snippet
     public static int returnFromJavaToCSnippet() {
+        if (MultiThreaded.getValue()) {
+            assert VMThreads.StatusSupport.isStatusJava() : "Should be coming from Java to native.";
+            VMThreads.StatusSupport.setStatusNative();
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @SuppressWarnings("unused")
     @Snippet
     public static boolean isAttachedSnippet(Isolate isolate) {
-        return true;
+        return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
+                        (!MultiThreaded.getValue() || runtimeCallIsAttached(IS_ATTACHED_MT, isolate));
     }
 
-    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static boolean isAttachedMT(Isolate isolate) {
-        return true;
+        if (UseHeapBaseRegister.getValue()) {
+            setHeapBase(Isolates.getHeapBase(isolate));
+        }
+        return WindowsVMThreads.isInitialized() && WindowsVMThreads.VMThreadTL.get().isNonNull();
     }
 
-    @SuppressWarnings("unused")
     @Snippet
     public static void failFatallySnippet(int code, CCharPointer message) {
+        runtimeCallFailFatally(FAIL_FATALLY, code, message);
     }
 
     private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
     private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
 
-    @SuppressWarnings("unused")
+    /*
+     * @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION) public static native FILE
+     * fdopen(int fd, CCharPointer mode);
+     * 
+     * @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION) public static native int
+     * fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
+     */
+
     @Uninterruptible(reason = "Unknown thread state.")
+    @SuppressWarnings("unused")
     @SubstrateForeignCallTarget
     private static void failFatally(int code, CCharPointer message) {
+        /*
+         * FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get()); fprintfSD(stderr,
+         * FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
+         */
+        LibC.exit(code);
     }
 
     @SuppressWarnings("unused")

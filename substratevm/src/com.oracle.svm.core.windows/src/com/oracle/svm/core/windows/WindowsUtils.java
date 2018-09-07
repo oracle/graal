@@ -25,6 +25,7 @@
 package com.oracle.svm.core.windows;
 
 import com.oracle.svm.core.windows.headers.FileAPI;
+import com.oracle.svm.core.windows.headers.WinBase;
 
 import java.io.FileDescriptor;
 
@@ -33,11 +34,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 @Platforms(Platform.WINDOWS.class)
@@ -95,4 +98,24 @@ public class WindowsUtils {
         return (result != 0);
     }
 
+    private static long performanceFrequency = 0L;
+    public static long NANOSECS_PER_SEC = 1000000000L;
+    public static int NANOSECS_PER_MILLISEC = 1000000;
+
+    /** Retrieve a nanosecond counter for elapsed time measurement. */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static long getNanoCounter() {
+        if (performanceFrequency == 0L) {
+            CLongPointer count = StackValue.get(CLongPointer.class);
+            WinBase.QueryPerformanceFrequency(count);
+            performanceFrequency = count.read();
+        }
+
+        CLongPointer currentCount = StackValue.get(CLongPointer.class);
+        WinBase.QueryPerformanceCounter(currentCount);
+        double current = currentCount.read();
+        double freq = performanceFrequency;
+        return (long) ((current / freq) * NANOSECS_PER_SEC);
+    }
 }
+

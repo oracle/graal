@@ -24,45 +24,53 @@
  */
 package com.oracle.svm.core.windows.headers;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.util.VMError;
+//Checkstyle: stop
 
+/**
+ * Definitions for Windows syncapi.h header file
+ */
+@CContext(WindowsDirectives.class)
 @Platforms(Platform.WINDOWS.class)
-public class WindowsDirectives implements CContext.Directives {
+public class SynchAPI {
 
-    private static final String[] windowsLibs = new String[]{
-                    "<windows.h>",
-                    "<process.h>",
-                    "<stdio.h>",
-                    "<stdlib.h>",
-                    "<string.h>",
-                    "<io.h>"
-    };
+    /**
+     * Create an Event Object
+     */
+    @CFunction
+    public static native WinBase.HANDLE CreateEventA(PointerBase lpEventAttributes, int bManualReset, int bInitialState, PointerBase lpName);
 
-    @Override
-    public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS.class);
-    }
+    @CFunction
+    public static native int ResetEvent(WinBase.HANDLE hEvent);
 
-    @Override
-    public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            List<String> result = new ArrayList<>(Arrays.asList(windowsLibs));
-            return result;
-        } else {
-            throw VMError.shouldNotReachHere("Unsupported OS");
-        }
-    }
+    @CFunction
+    public static native int SetEvent(WinBase.HANDLE hEvent);
 
-    @Override
-    public List<String> getMacroDefinitions() {
-        return Arrays.asList("_WIN64");
-    }
+    @CFunction
+    public static native int WaitForSingleObject(WinBase.HANDLE hEvent, int dwMilliseconds);
+
+    /** Infinite timeout for WaitForSingleObject */
+    @CConstant
+    public static native int INFINITE();
+
+    /**
+     * Result codes for WaitForSingleObject
+     */
+    @CConstant
+    public static native int WAIT_OBJECT_0();
+
+    @CConstant
+    public static native int WAIT_TIMEOUT();
+
+    @CConstant
+    public static native int WAIT_ABANDONED();
+
+    @CConstant
+    public static native int WAIT_FAILED();
 }

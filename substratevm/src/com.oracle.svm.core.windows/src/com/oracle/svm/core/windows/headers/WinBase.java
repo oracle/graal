@@ -34,15 +34,23 @@ import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 
 // Checkstyle: stop
 
 @CContext(WindowsDirectives.class)
 @Platforms(Platform.WINDOWS.class)
 public class WinBase {
+
+    /**
+     * Windows opaque Handle type
+     */
+    public interface HANDLE extends WordBase {
+    }
 
     /**
      * Structure containing information about physical and virtual memory.
@@ -247,4 +255,26 @@ public class WinBase {
      */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int VirtualProtect(PointerBase lpAddress, UnsignedWord dwSize, int flNewProtect, CIntPointer lpflOldProtect);
+
+    /**
+     * GetLastError - Return additional error information
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetLastError();
+
+    @CConstant
+    public static native int ERROR_TIMEOUT();
+
+    /**
+     * QueryPerformance Counter - used for elapsed time
+     */
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native void QueryPerformanceCounter(CLongPointer counter);
+
+    /**
+     * QueryPerformance Frequency - used for elapsed time
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native void QueryPerformanceFrequency(CLongPointer counter);
 }

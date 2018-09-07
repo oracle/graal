@@ -28,12 +28,17 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.windows.headers.FileAPI;
 
 import java.io.FileDescriptor;
+import java.io.IOException;
 
 @TargetClass(java.io.FileDescriptor.class)
 @Platforms(WINDOWS.class)
@@ -59,6 +64,23 @@ final class Target_java_io_FileDescriptor {
         FileDescriptor desc = new FileDescriptor();
         KnownIntrinsics.unsafeCast(desc, Target_java_io_FileDescriptor.class).handle = set(handle);
         return (desc);
+    }
+}
+
+@TargetClass(java.io.FileOutputStream.class)
+@Platforms(WINDOWS.class)
+final class Target_java_io_FileOutputStream {
+
+    /** Temp fix to enable running tests */
+    @SuppressWarnings("unused")
+    @Substitute
+    protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
+        PinnedObject bytesPin = PinnedObject.create(bytes);
+        CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
+        UnsignedWord curLen = WordFactory.unsigned(len);
+        if (!WindowsUtils.writeBytes(FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE()), curBuf, curLen)) {
+            throw new IOException("writeBytes failed");
+        }
     }
 }
 
