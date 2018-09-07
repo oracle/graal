@@ -80,7 +80,6 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
     }
 
-    @TruffleBoundary
     private LLVMToNativeNode getToNative() {
         if (toNative == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
