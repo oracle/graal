@@ -162,7 +162,7 @@ public class DebugContextTest {
         byte[] buf = new byte[in.available()];
         in.readFully(buf);
         String threadLabel = "[thread:" + Thread.currentThread().getId() + "]";
-        String expect = new String(buf).replace("[thread:1]", threadLabel);
+        String expect = new String(buf).replace("[thread:1]", threadLabel).replace("\n", System.lineSeparator());
 
         String log = setup.logOutput.toString();
         Assert.assertEquals(expect, log);
