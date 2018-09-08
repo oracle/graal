@@ -27,6 +27,7 @@ package com.oracle.svm.core.threadlocal;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -71,7 +72,7 @@ public class VMThreadLocalInfos {
                 WordBase value = primitiveData(thread).readWord(WordFactory.signed(info.offset));
                 log.signed(value).string("  ").zhex(value.rawValue());
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
-                Object value = objectData(thread).readObject(WordFactory.signed(info.offset));
+                Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
                 if (value == null) {
                     log.string("null");
                 } else {
@@ -88,7 +89,7 @@ public class VMThreadLocalInfos {
         }
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code")
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
     private static Pointer primitiveData(IsolateThread thread) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return (Pointer) thread;
@@ -97,12 +98,12 @@ public class VMThreadLocalInfos {
         }
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code")
-    private static Pointer objectData(IsolateThread thread) {
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    private static Object objectData(IsolateThread thread) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            return (Pointer) thread;
+            return ((Pointer) thread).toObjectNonNull();
         } else {
-            return Word.objectToUntrackedPointer(ImageSingletons.lookup(VMThreadLocalSTSupport.class).objectThreadLocals);
+            return ImageSingletons.lookup(VMThreadLocalSTSupport.class).objectThreadLocals;
         }
     }
 
