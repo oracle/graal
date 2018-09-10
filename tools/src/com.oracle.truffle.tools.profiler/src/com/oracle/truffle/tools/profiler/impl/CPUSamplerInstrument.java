@@ -115,7 +115,6 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setMode(env.getOptions().get(CPUSamplerCLI.MODE));
             sampler.setCollecting(true);
         }
-        sampler.setVisualVM(env.getOptions().get(CPUSamplerCLI.VISUAL_VM));
         env.registerService(sampler);
     }
 

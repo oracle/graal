@@ -35,6 +35,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -723,5 +724,7 @@ public abstract class AbstractPolyglotImpl {
     public Context getCurrentContext() {
         throw new IllegalStateException("No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
     }
+
+    public abstract Collection<Engine> findActiveEngines();
 
 }

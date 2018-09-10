@@ -55,7 +55,7 @@ public class CPUTracerTest extends AbstractProfilerTest {
         Assert.assertEquals(0, tracer.getPayloads().size());
         Assert.assertTrue(tracer.isCollecting());
 
-        execute(defaultSource);
+        eval(defaultSource);
 
         Assert.assertNotEquals(0, tracer.getPayloads().size());
         Assert.assertTrue(tracer.isCollecting());
@@ -164,7 +164,7 @@ public class CPUTracerTest extends AbstractProfilerTest {
         final int longExecutionCount = 1000;
 
         tracer.setCollecting(true);
-        execute(recursiveSource);
+        eval(recursiveSource);
         Collection<CPUTracer.Payload> payloads = tracer.getPayloads();
         Assert.assertEquals(
                         "Total number of counters does not match after one elxecution",
@@ -178,7 +178,7 @@ public class CPUTracerTest extends AbstractProfilerTest {
         }
 
         for (int i = 1; i < longExecutionCount; i++) {
-            execute(recursiveSource);
+            eval(recursiveSource);
         }
 
         payloads = tracer.getPayloads();
@@ -197,7 +197,7 @@ public class CPUTracerTest extends AbstractProfilerTest {
     private void executeAndCheckStatementCounters(Source source,
                     Map<String, Long> expectedCountMap) {
         tracer.setCollecting(true);
-        execute(source);
+        eval(source);
         Collection<CPUTracer.Payload> payloads = tracer.getPayloads();
 
         Assert.assertEquals("Total number of counters does not match",

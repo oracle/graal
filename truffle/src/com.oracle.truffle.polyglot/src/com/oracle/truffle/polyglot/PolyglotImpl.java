@@ -30,6 +30,7 @@ import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -210,6 +211,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         return null;
+    }
+
+    @Override
+    public Collection<Engine> findActiveEngines() {
+        return PolyglotEngineImpl.findActiveEngines();
     }
 
     @Override

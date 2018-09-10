@@ -36,12 +36,15 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -248,6 +251,14 @@ public final class Engine implements AutoCloseable {
      */
     static Class<?> loadLanguageClass(String className) {
         return getImpl().loadLanguageClass(className);
+    }
+
+    /*
+     * Used internally to find all active engines. Do not hold on to the returned collection
+     * permanently as this may cause memory leaks.
+     */
+    static Collection<Engine> findActiveEngines() {
+        return getImpl().findActiveEngines();
     }
 
     private static final Engine EMPTY = new Engine(null);
@@ -674,6 +685,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public Class<?> loadLanguageClass(String className) {
             return null;
+        }
+
+        @Override
+        public Collection<Engine> findActiveEngines() {
+            return Collections.emptyList();
         }
 
         @Override

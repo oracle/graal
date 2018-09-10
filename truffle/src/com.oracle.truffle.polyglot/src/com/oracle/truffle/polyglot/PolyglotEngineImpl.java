@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -212,6 +213,16 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         if (!preInitialization) {
             createInstruments(instrumentsOptions);
             registerShutDownHook();
+        }
+    }
+
+    static Collection<Engine> findActiveEngines() {
+        synchronized (ENGINES) {
+            List<Engine> engines = new ArrayList<>(ENGINES.size());
+            for (PolyglotEngineImpl engine : ENGINES.keySet()) {
+                engines.add(engine.creatorApi);
+            }
+            return engines;
         }
     }
 
