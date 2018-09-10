@@ -22,16 +22,20 @@
  */
 package com.oracle.truffle.espresso.types;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class DescriptorCache<T extends Descriptor> {
 
     protected final ConcurrentHashMap<String, T> cache = new ConcurrentHashMap<>();
 
+    @CompilerDirectives.TruffleBoundary
     public T lookup(String key) {
         return cache.get(key);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public T make(String key) {
         return cache.computeIfAbsent(key, this::create);
     }

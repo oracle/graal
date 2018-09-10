@@ -287,6 +287,7 @@ public class InterpreterToVM {
 
     // region Get (array) operations
 
+
     public int getArrayInt(int index, Object arr) {
         return ((int[]) arr)[index];
     }
@@ -375,95 +376,114 @@ public class InterpreterToVM {
     }
     // endregion
 
+    @CompilerDirectives.TruffleBoundary
     public boolean getFieldBoolean(StaticObject obj, FieldInfo field) {
         return (boolean) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public int getFieldInt(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Int;
         return (int) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public long getFieldLong(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Long;
         return (long) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public byte getFieldByte(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Byte;
         return (byte) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public short getFieldShort(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Short;
         return (short) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public float getFieldFloat(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Float;
         return (float) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public double getFieldDouble(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Double;
         return (double) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object getFieldObject(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Object;
         return ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public char getFieldChar(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Char;
         return (char) ((StaticObjectImpl) obj).getField(field);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldBoolean(boolean value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Boolean;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldByte(byte value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Byte;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldChar(char value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Char;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldShort(short value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Short;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldInt(int value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Int;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldLong(long value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Long;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldFloat(float value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Float;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldDouble(double value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Double;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setFieldObject(Object value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Object;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public StaticObject newArray(Klass componentType, int length) {
         assert !componentType.isPrimitive() : "use allocatePrimitiveArray for primitives";
         assert length >= 0;
@@ -472,6 +492,7 @@ public class InterpreterToVM {
         return new StaticObjectArray(componentType, arr);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public StaticObject newMultiArray(Klass klass, int[] dimensions) {
         assert dimensions.length > 1;
 
@@ -524,6 +545,7 @@ public class InterpreterToVM {
      * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
      * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
      */
+    @CompilerDirectives.TruffleBoundary
     public boolean instanceOf(Object instance, Klass typeToCheck) {
         assert instance != null : "use StaticObject.NULL";
         if (instance == StaticObject.NULL) {
@@ -533,6 +555,7 @@ public class InterpreterToVM {
         return meta(typeToCheck).isAssignableFrom(meta.meta(instance));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object checkCast(Object instance, Klass klass) {
         if (instance == StaticObject.NULL || instanceOf(instance, klass)) {
             return instance;
@@ -544,6 +567,7 @@ public class InterpreterToVM {
         throw new EspressoException(ex);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public StaticObject newObject(Klass klass) {
         klass.initialize();
         assert klass != null && !klass.isArray();

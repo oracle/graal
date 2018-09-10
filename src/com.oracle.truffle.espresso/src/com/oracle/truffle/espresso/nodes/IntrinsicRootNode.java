@@ -26,6 +26,7 @@ public class IntrinsicRootNode extends RootNode {
         } catch (EspressoException wrapped) {
             throw wrapped;
         } catch (Throwable throwable) {
+            CompilerDirectives.transferToInterpreter();
             // Non-espresso exceptions cannot escape to the guest.
             throw new RuntimeException(throwable);
             // throw EspressoError.shouldNotReachHere();

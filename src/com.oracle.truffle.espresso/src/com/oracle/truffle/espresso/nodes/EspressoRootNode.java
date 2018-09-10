@@ -209,6 +209,7 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -252,6 +253,8 @@ public class EspressoRootNode extends RootNode {
 
     private final FrameSlot stackSlot;
 
+    private final BytecodeStream bs;
+
     @Override
     public String getName() {
         // TODO(peterssen): Set proper location.
@@ -267,6 +270,7 @@ public class EspressoRootNode extends RootNode {
         this.language = language;
         this.method = method;
         this.vm = vm;
+        this.bs = new BytecodeStream(method.getCode());
 
         FrameSlot[] slots = getFrameDescriptor().getSlots().toArray(new FrameSlot[0]);
         locals = Arrays.copyOf(slots, slots.length - 1);
@@ -281,7 +285,6 @@ public class EspressoRootNode extends RootNode {
         return method;
     }
 
-    @CompilerDirectives.TruffleBoundary
     private static FrameDescriptor initFrameDescriptor(MethodInfo method) {
         FrameDescriptor descriptor = new FrameDescriptor();
         int maxLocals = method.getMaxLocals();
@@ -297,20 +300,21 @@ public class EspressoRootNode extends RootNode {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     public Object execute(VirtualFrame frame) {
         // TODO(peterssen): Inline this object.
-
-
-        BytecodeStream bs = new BytecodeStream(method.getCode());
         int curBCI = 0;
 
         // slots = locals... + stack
 
-        OperandStack stack = new OperandStack(method.getMaxStackSize());
+        final OperandStack stack = new OperandStack(method.getMaxStackSize());
         frame.setObject(stackSlot, stack);
 
         initArguments(frame, locals);
 
         loop: while (true) {
             try {
+                // Fail?
+                CompilerAsserts.partialEvaluationConstant(curBCI);
+                CompilerAsserts.partialEvaluationConstant(bs.currentBC(curBCI));
+
                 switch (bs.currentBC(curBCI)) {
                     case NOP:
                         break;
@@ -919,6 +923,7 @@ public class EspressoRootNode extends RootNode {
                         stack.pushInt(vm.arrayLength(nullCheck(stack.popObject())));
                         break;
                     case ATHROW:
+                        CompilerDirectives.transferToInterpreter();
                         throw new EspressoException((StaticObject) stack.popObject());
                     case CHECKCAST:
                         // TODO(peterssen): Implement check cast for arrays and primitive arrays.
@@ -963,8 +968,10 @@ public class EspressoRootNode extends RootNode {
                                                                                                  // fart
                 }
             } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException(e);
             } catch (EspressoException e) {
+                CompilerDirectives.transferToInterpreter();
                 ExceptionHandler handler = resolveExceptionHandlers(bs.currentBCI(curBCI), e.getException());
                 if (handler != null) {
                     stack.pushObject(e.getException());
@@ -974,6 +981,7 @@ public class EspressoRootNode extends RootNode {
                     throw e;
                 }
             } catch (Throwable e) {
+                CompilerDirectives.transferToInterpreter();
                 // TODO(peterssen): Shape-shift into GUEST exception.
                 throw e;
             }
@@ -981,6 +989,7 @@ public class EspressoRootNode extends RootNode {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
         ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
         for (ExceptionHandler handler : handlers) {
@@ -1000,9 +1009,13 @@ public class EspressoRootNode extends RootNode {
     }
 
     @ExplodeLoop
-    private void initArguments(VirtualFrame frame, FrameSlot[] locals) {
+    private void initArguments(final VirtualFrame frame, final FrameSlot[] locals) {
         boolean hasReceiver = !Modifier.isStatic(method.getModifiers());
         int argCount = method.getSignature().getParameterCount(!method.isStatic());
+
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(locals.length);
+
         Object[] arguments = frame.getArguments();
         int n = 0;
         if (hasReceiver) {
@@ -1077,12 +1090,14 @@ public class EspressoRootNode extends RootNode {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     private MethodInfo resolveMethod(int opcode, char cpi) {
         ConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.methodAt(cpi).resolve(pool, cpi);
         return methodInfo;
     }
 
+    @CompilerDirectives.TruffleBoundary
     private MethodInfo resolveInterfaceMethod(int opcode, char cpi) {
         assert opcode == INVOKEINTERFACE;
         ConstantPool pool = getConstantPool();
@@ -1111,6 +1126,7 @@ public class EspressoRootNode extends RootNode {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void resolveAndInvoke(OperandStack stack, MethodInfo method) {
         // TODO(peterssen): Ignore return type on method signature.
         // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
@@ -1120,17 +1136,20 @@ public class EspressoRootNode extends RootNode {
         invoke(stack, target, receiver);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void invokeRedirectedMethodViaVM(OperandStack stack, MethodInfo originalMethod, CallTarget intrinsic) {
         Object[] originalCalleeParameters = stack.popArguments(originalMethod);
         Object returnValue = intrinsic.call(originalCalleeParameters);
         stack.pushKindIntrinsic(returnValue, originalMethod.getSignature().resultKind());
     }
 
+    @CompilerDirectives.TruffleBoundary
     private StaticObject allocateArray(Klass componentType, int length) {
         // assert !componentType.isPrimitive();
         return vm.newArray(componentType, length);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private StaticObject allocateMultiArray(OperandStack stack, Klass klass, int allocatedDimensions) {
         assert klass.isArray();
         int[] dimensions = new int[allocatedDimensions];
@@ -1140,6 +1159,7 @@ public class EspressoRootNode extends RootNode {
         return vm.newMultiArray(klass, dimensions);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void pushPoolConstant(OperandStack stack, char cpi) {
         ConstantPool pool = getConstantPool();
         PoolConstant constant = pool.at(cpi);
@@ -1165,6 +1185,7 @@ public class EspressoRootNode extends RootNode {
         return this.method.getConstantPool();
     }
 
+    @CompilerDirectives.TruffleBoundary
     private boolean instanceOf(Object instance, Klass typeToCheck) {
         return vm.instanceOf(instance, typeToCheck);
     }
@@ -1334,18 +1355,21 @@ public class EspressoRootNode extends RootNode {
 
     // endregion
 
+    @CompilerDirectives.TruffleBoundary
     private Klass resolveType(int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
         ConstantPool pool = getConstantPool();
         return pool.classAt(cpi).resolve(pool, cpi);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private FieldInfo resolveField(int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
         ConstantPool pool = getConstantPool();
         return pool.fieldAt(cpi).resolve(pool, cpi);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void putField(OperandStack stack, FieldInfo field, boolean isStatic) {
         assert Modifier.isStatic(field.getFlags()) == isStatic;
 
@@ -1392,6 +1416,7 @@ public class EspressoRootNode extends RootNode {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void getField(OperandStack stack, FieldInfo field, boolean isStatic) {
         if (isStatic) {
             field.getDeclaringClass().initialize();

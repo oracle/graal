@@ -8,8 +8,8 @@ public class StaticObject {
     private final Klass klass;
 
     // Context-less objects.
-    public static StaticObject NULL = new StaticObject(null);
-    public static StaticObject VOID = new StaticObject(null);
+    public static final StaticObject NULL = new StaticObject(null);
+    public static final StaticObject VOID = new StaticObject(null);
 
     public Klass getKlass() {
         return klass;

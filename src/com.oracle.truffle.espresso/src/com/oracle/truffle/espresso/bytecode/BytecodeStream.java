@@ -235,14 +235,14 @@ public final class BytecodeStream {
                     }
                 }
                 default:
-                    throw error("unknown variable-length bytecode: " + opcode(curBCI));
+                    throw error(opcode(curBCI));
             }
         }
         return length;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static EspressoError error(String msg) {
-        throw EspressoError.shouldNotReachHere(msg);
+    private static EspressoError error(int opcode) {
+        throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
     }
 }

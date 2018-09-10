@@ -23,6 +23,8 @@ package com.oracle.truffle.espresso.bytecode;
  * questions.
  */
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.ASSOCIATIVE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.BRANCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.COMMUTATIVE;
@@ -348,24 +350,28 @@ public class Bytecodes {
      * An array that maps from a bytecode value to a {@link String} for the corresponding
      * instruction mnemonic.
      */
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static final String[] nameArray = new String[256];
 
     /**
      * An array that maps from a bytecode value to the set of {@link Flags} for the corresponding
      * instruction.
      */
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static final int[] flagsArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the length in bytes for the corresponding
      * instruction.
      */
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static final int[] lengthArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the number of slots pushed on the stack by the
      * corresponding instruction.
      */
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static final int[] stackEffectArray = new int[256];
 
     // Checkstyle: stop

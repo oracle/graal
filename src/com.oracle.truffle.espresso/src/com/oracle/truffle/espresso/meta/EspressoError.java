@@ -1,5 +1,7 @@
 package com.oracle.truffle.espresso.meta;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -10,14 +12,17 @@ public class EspressoError extends Error {
 
     private static final long serialVersionUID = 2625263796982958128L;
 
+    @CompilerDirectives.TruffleBoundary
     public static RuntimeException unimplemented() {
         throw new EspressoError("unimplemented");
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static RuntimeException unimplemented(String msg) {
         throw new EspressoError("unimplemented: %s", msg);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static RuntimeException shouldNotReachHere() {
         throw new EspressoError("should not reach here");
     }
@@ -26,10 +31,12 @@ public class EspressoError extends Error {
         throw new EspressoError("should not reach here: %s", msg);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static RuntimeException shouldNotReachHere(Throwable cause) {
         throw new EspressoError(cause);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static RuntimeException unexpected(String msg, Throwable cause) {
         throw new EspressoError(msg, cause);
     }
