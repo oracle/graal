@@ -508,37 +508,37 @@ public final class LLVMContext {
         }
     }
 
-    @TruffleBoundary
     public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+        return getHandle(memory, object, false);
+    }
+
+    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+        return getHandle(memory, object, true);
+    }
+
+    private LLVMNativePointer getHandle(LLVMMemory memory, TruffleObject object, boolean autoDeref) {
         synchronized (handlesLock) {
-            Handle handle = handleFromManaged.get(object);
+            Handle handle = getHandle(object);
             if (handle == null) {
-                LLVMNativePointer allocatedMemory = memory.allocateMemory(Long.BYTES);
-                memory.putI64(allocatedMemory, 0xdeadbeef);
+                LLVMNativePointer allocatedMemory = memory.allocateHandle(autoDeref);
                 handle = new Handle(allocatedMemory, object);
-                handleFromManaged.put(object, handle);
-                handleFromPointer.put(allocatedMemory, handle);
+                putHandle(object, handle, allocatedMemory);
             }
 
             handle.refcnt++;
-            return handle.pointer;
+            return handle.pointer.copy();
         }
     }
 
     @TruffleBoundary
-    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
-        synchronized (handlesLock) {
-            Handle handle = handleFromManaged.get(object);
-            if (handle == null) {
-                LLVMNativePointer allocatedMemory = memory.allocateDerefMemory();
-                handle = new Handle(allocatedMemory, object);
-                handleFromManaged.put(object, handle);
-                handleFromPointer.put(allocatedMemory, handle);
-            }
+    private void putHandle(TruffleObject object, Handle handle, LLVMNativePointer allocatedMemory) {
+        handleFromManaged.put(object, handle);
+        handleFromPointer.put(allocatedMemory, handle);
+    }
 
-            handle.refcnt++;
-            return handle.pointer;
-        }
+    @TruffleBoundary
+    private Handle getHandle(TruffleObject object) {
+        return handleFromManaged.get(object);
     }
 
     @TruffleBoundary

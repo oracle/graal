@@ -48,30 +48,18 @@ import sun.misc.Unsafe;
 public final class LLVMNativeMemory extends LLVMMemory {
     /* must be a power of 2 */
     private static final long DEREF_HANDLE_OBJECT_SIZE = 1L << 20;
-    private static final long DEREF_HANDLE_OBJECT_MASK = (1L << 20) - 1L;
 
-    private static final long DEREF_HANDLE_SPACE_START = 0x0FFFFFFFFFFFFFFFL & ~DEREF_HANDLE_OBJECT_MASK;
-    private static final long DEREF_HANDLE_SPACE_END = 0x0FFF800000000000L & ~DEREF_HANDLE_OBJECT_MASK;
+    private static final long DEREF_HANDLE_SPACE_START = 0x8000000000000000L;
+    public static final long DEREF_HANDLE_SPACE_END = 0xC000000000000000L;
+    private static final long HANDLE_SPACE_START = DEREF_HANDLE_SPACE_END;
+    private static final long HANDLE_SPACE_END = 0xFFFFFFFFFFFFFFFFL;
 
     private static final Unsafe unsafe = getUnsafe();
 
-    private final Object freeListLock = new Object();
-    private FreeListNode freeList;
-
-    private final Object derefSpaceTopLock = new Object();
-    private long derefSpaceTop = DEREF_HANDLE_SPACE_START;
+    private final HandleContainer derefHandleContainer = new DerefHandleContainer(DEREF_HANDLE_SPACE_START, DEREF_HANDLE_SPACE_END, DEREF_HANDLE_OBJECT_SIZE);
+    private final HandleContainer handleContainer = new CommonHandleContainer(HANDLE_SPACE_START, HANDLE_SPACE_END, Long.BYTES);
 
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
-
-    private static final class FreeListNode {
-        protected FreeListNode(long address, FreeListNode next) {
-            this.address = address;
-            this.next = next;
-        }
-
-        private final long address;
-        private final FreeListNode next;
-    }
 
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
@@ -125,20 +113,17 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
     @Override
     public void free(long address) {
-        if (address <= DEREF_HANDLE_SPACE_START && address > DEREF_HANDLE_SPACE_END) {
-            assert isAllocated(address) : "double-free of " + Long.toHexString(address);
-            synchronized (freeListLock) {
-                // We need to mask because we allow creating handles with an offset.
-                freeList = new FreeListNode(address & ~DEREF_HANDLE_OBJECT_MASK, freeList);
-            }
-        } else {
-            try {
-                unsafe.freeMemory(address);
-            } catch (Throwable e) {
-                // this avoids unnecessary exception edges in the compiled code
-                CompilerDirectives.transferToInterpreter();
-                throw e;
-            }
+        if (!noDerefHandleAssumption.isValid() && derefHandleContainer.accept(address)) {
+            derefHandleContainer.free(address);
+        } else if (handleContainer.accept(address)) {
+            handleContainer.free(address);
+        }
+        try {
+            unsafe.freeMemory(address);
+        } catch (Throwable e) {
+            // this avoids unnecessary exception edges in the compiled code
+            CompilerDirectives.transferToInterpreter();
+            throw e;
         }
     }
 
@@ -167,32 +152,13 @@ public final class LLVMNativeMemory extends LLVMMemory {
         }
     }
 
-    /**
-     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
-     */
     @Override
-    public LLVMNativePointer allocateDerefMemory() {
-        noDerefHandleAssumption.invalidate();
-
-        // preferably consume from free list
-        synchronized (freeListLock) {
-            if (freeList != null) {
-                FreeListNode n = freeList;
-                freeList = n.next;
-                return LLVMNativePointer.create(n.address);
-            }
+    public LLVMNativePointer allocateHandle(boolean autoDeref) {
+        if (autoDeref) {
+            noDerefHandleAssumption.invalidate();
+            return derefHandleContainer.allocate();
         }
-
-        synchronized (derefSpaceTopLock) {
-            LLVMNativePointer addr = LLVMNativePointer.create(derefSpaceTop);
-            assert derefSpaceTop > 0L;
-            derefSpaceTop -= DEREF_HANDLE_OBJECT_SIZE;
-            if (derefSpaceTop < DEREF_HANDLE_SPACE_END) {
-                CompilerDirectives.transferToInterpreter();
-                throw new OutOfMemoryError();
-            }
-            return addr;
-        }
+        return handleContainer.allocate();
     }
 
     @Override
@@ -642,34 +608,149 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public boolean isDerefMemory(LLVMNativePointer addr) {
-        return isDerefMemory(addr.asNative());
+    public boolean isCommonHandleMemory(LLVMNativePointer addr) {
+        return isDerefHandleMemory(addr.asNative());
+    }
+
+    /**
+     * A fast check (a bounds check, i.e., two compares) if the provided address is within the
+     * common handle space.
+     */
+    @Override
+    public boolean isCommonHandleMemory(long addr) {
+        return handleContainer.accept(addr);
     }
 
     @Override
-    public boolean isDerefMemory(long addr) {
-        return !noDerefHandleAssumption.isValid() && addr > DEREF_HANDLE_SPACE_END;
+    public boolean isDerefHandleMemory(LLVMNativePointer addr) {
+        return isDerefHandleMemory(addr.asNative());
+    }
+
+    /**
+     * A fast check (just one compare) if the provided address is within the deref handle space.
+     */
+    @Override
+    public boolean isDerefHandleMemory(long addr) {
+        return !noDerefHandleAssumption.isValid() && derefHandleContainer.accept(addr);
     }
 
     public static long getDerefHandleObjectMask() {
         return DEREF_HANDLE_OBJECT_SIZE - 1;
     }
 
-    private boolean isAllocated(long address) {
-        synchronized (derefSpaceTopLock) {
-            if (address <= derefSpaceTop) {
-                return false;
+    private abstract static class HandleContainer {
+        protected final long rangeStart;
+        protected final long rangeEnd;
+        protected final long objectSize;
+
+        private long derefSpaceTop;
+        private FreeListNode freeList;
+
+        private final Object freeListLock = new Object();
+        private final Object derefSpaceTopLock = new Object();
+
+        HandleContainer(long startAddr, long endAddr, long objectSize) {
+            this.rangeStart = startAddr;
+            this.rangeEnd = endAddr;
+            this.derefSpaceTop = startAddr;
+
+            assert isPowerOfTwo(objectSize);
+            this.objectSize = objectSize;
+        }
+
+        protected static final class FreeListNode {
+            protected FreeListNode(long address, FreeListNode next) {
+                this.address = address;
+                this.next = next;
+            }
+
+            private final long address;
+            private final FreeListNode next;
+        }
+
+        abstract boolean accept(long address);
+
+        LLVMNativePointer allocate() {
+
+            // preferably consume from free list
+            synchronized (freeListLock) {
+                if (freeList != null) {
+                    FreeListNode n = freeList;
+                    freeList = n.next;
+                    return LLVMNativePointer.create(n.address);
+                }
+            }
+
+            synchronized (derefSpaceTopLock) {
+                LLVMNativePointer addr = LLVMNativePointer.create(derefSpaceTop);
+                assert derefSpaceTop >= rangeStart;
+                derefSpaceTop += objectSize;
+                if (!accept(derefSpaceTop)) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new OutOfMemoryError();
+                }
+                return addr;
             }
         }
 
-        synchronized (freeListLock) {
-            for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
-                if (cur.address == address) {
+        boolean isAllocated(long address) {
+            synchronized (derefSpaceTopLock) {
+                if (address > derefSpaceTop) {
                     return false;
                 }
             }
+
+            synchronized (freeListLock) {
+                for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
+                    if (cur.address == address) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
-        return true;
+
+        void free(long address) {
+            assert isAllocated(address) : "double-free of " + Long.toHexString(address);
+            synchronized (freeListLock) {
+                // We need to mask because we allow creating handles with an offset.
+                freeList = new FreeListNode(address & ~getObjectMask(), freeList);
+            }
+        }
+
+        private long getObjectMask() {
+            return objectSize - 1;
+        }
+
+        static boolean isPowerOfTwo(long x) {
+            return x > 0 && (x & (x - 1)) == 0;
+        }
+    }
+
+    static final class DerefHandleContainer extends HandleContainer {
+
+        DerefHandleContainer(long startAddr, long endAddr, long objectSize) {
+            super(startAddr, endAddr, objectSize);
+        }
+
+        @Override
+        boolean accept(long address) {
+            return address < rangeEnd;
+        }
+
+    }
+
+    static final class CommonHandleContainer extends HandleContainer {
+
+        CommonHandleContainer(long startAddr, long endAddr, long objectSize) {
+            super(startAddr, endAddr, objectSize);
+        }
+
+        @Override
+        boolean accept(long address) {
+            return rangeStart <= address && address < rangeEnd;
+        }
+
     }
 
 }

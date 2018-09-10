@@ -27,48 +27,64 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.load;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
+
+    private final ConditionProfile derefHandleProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile commonHandleProfile = ConditionProfile.createBinaryProfile();
 
     @CompilationFinal private LLVMMemory llvmMemory;
-    @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-    @Child private LLVMForeignReadNode foreignReadNode;
 
-    protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
-        if (derefHandleGetReceiverNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
+    @Specialization
+    protected boolean doLongCase(long a) {
+        if (derefHandleProfile.profile(!getLLVMMemoryCached().isDerefHandleMemory(a))) {
+            return true;
         }
-        return derefHandleGetReceiverNode;
+        return commonHandleProfile.profile(!getLLVMMemoryCached().isCommonHandleMemory(a));
     }
 
-    protected LLVMForeignReadNode getForeignReadNode() {
-        if (foreignReadNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            foreignReadNode = insert(createForeignRead());
+    @Specialization
+    protected boolean doPointerCase(LLVMNativePointer a) {
+        if (derefHandleProfile.profile(!getLLVMMemoryCached().isDerefHandleMemory(a))) {
+            return true;
         }
-        return foreignReadNode;
+        return commonHandleProfile.profile(!getLLVMMemoryCached().isCommonHandleMemory(a));
     }
 
-    protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
-        return getLLVMMemoryCached().isDerefHandleMemory(addr);
+    @Specialization
+    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        if (from.getValue() instanceof Long) {
+            return doLongCase((long) from.getValue());
+        } else {
+            return true;
+        }
     }
 
-    abstract LLVMForeignReadNode createForeignRead();
+    @Fallback
+    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
+        return true;
+    }
 
-    protected final LLVMMemory getLLVMMemoryCached() {
+    private LLVMMemory getLLVMMemoryCached() {
         if (llvmMemory == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             llvmMemory = getLLVMMemory();
         }
         return llvmMemory;
     }
-
 }

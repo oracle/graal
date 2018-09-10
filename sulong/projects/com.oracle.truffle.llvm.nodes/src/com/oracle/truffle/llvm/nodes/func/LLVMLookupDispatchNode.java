@@ -254,7 +254,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     }
 
     protected boolean isAutoDerefHandle(long addr) {
-        return getLLVMMemoryCached().isDerefMemory(addr);
+        return getLLVMMemoryCached().isDerefHandleMemory(addr);
     }
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {

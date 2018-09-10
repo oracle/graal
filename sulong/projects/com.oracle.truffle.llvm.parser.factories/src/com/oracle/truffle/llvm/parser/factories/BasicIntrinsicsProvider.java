@@ -111,6 +111,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsBoxedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsExecutableNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsNullNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleCannotBeHandleNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleDerefHandleToManagedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleExecuteNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleFreeCStringNodeGen;
@@ -1244,6 +1245,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMTruffleIsHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1));
+            }
+        });
+
+        add("@truffle_cannot_be_handle", new LLVMIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMTruffleCannotBeHandleNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
 
