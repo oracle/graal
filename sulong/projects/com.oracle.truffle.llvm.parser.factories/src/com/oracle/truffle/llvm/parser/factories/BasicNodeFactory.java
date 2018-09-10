@@ -341,6 +341,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -1393,7 +1394,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size) {
-        return LLVMMemSetNodeGen.create(createMemSet(), addressNode, new LLVMI8LiteralNode((byte) 0), new LLVMI32LiteralNode(size), new LLVMI32LiteralNode(0), new LLVMI1LiteralNode(false), null);
+        return LLVMMemSetNodeGen.create(createMemSet(), addressNode, new LLVMI8LiteralNode((byte) 0), new LLVMI32LiteralNode(size), new LLVMI1LiteralNode(false), null);
     }
 
     @Override
@@ -1568,12 +1569,45 @@ public class BasicNodeFactory implements NodeFactory {
         return null;
     }
 
+    private LLVMExpressionNode createMemsetIntrinsic(LLVMExpressionNode[] args, LLVMSourceLocation sourceSection) {
+        if (args.length == 6) {
+            return LLVMMemSetNodeGen.create(createMemSet(), args[1], args[2], args[3], args[5], sourceSection);
+        } else if (args.length == 5) {
+            // LLVM 7 drops the alignment argument
+            return LLVMMemSetNodeGen.create(createMemSet(), args[1], args[2], args[3], args[4], sourceSection);
+        } else {
+            throw new LLVMParserException("Illegal number of arguments to @llvm.memset.*: " + args.length);
+        }
+    }
+
+    private LLVMExpressionNode createMemcpyIntrinsic(LLVMExpressionNode[] args, LLVMSourceLocation sourceSection) {
+        if (args.length == 6) {
+            return LLVMMemCopyNodeGen.create(createMemMove(), args[1], args[2], args[3], args[5], sourceSection);
+        } else if (args.length == 5) {
+            // LLVM 7 drops the alignment argument
+            return LLVMMemCopyNodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], sourceSection);
+        } else {
+            throw new LLVMParserException("Illegal number of arguments to @llvm.memcpy.*: " + args.length);
+        }
+    }
+
+    private LLVMExpressionNode createMemmoveIntrinsic(LLVMExpressionNode[] args, LLVMSourceLocation sourceSection) {
+        if (args.length == 6) {
+            return LLVMMemMoveI64NodeGen.create(createMemMove(), args[1], args[2], args[3], args[5], sourceSection);
+        } else if (args.length == 5) {
+            // LLVM 7 drops the alignment argument
+            return LLVMMemMoveI64NodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], sourceSection);
+        } else {
+            throw new LLVMParserException("Illegal number of arguments to @llvm.memmove.*: " + args.length);
+        }
+    }
+
     protected LLVMExpressionNode getLLVMBuiltin(FunctionDeclaration declaration, LLVMExpressionNode[] args, int callerArgumentCount, LLVMSourceLocation sourceSection) {
 
         switch (declaration.getName()) {
             case "@llvm.memset.p0i8.i32":
             case "@llvm.memset.p0i8.i64":
-                return LLVMMemSetNodeGen.create(createMemSet(), args[1], args[2], args[3], args[4], args[5], sourceSection);
+                return createMemsetIntrinsic(args, sourceSection);
             case "@llvm.assume":
                 return LLVMAssumeNodeGen.create(args[1], sourceSection);
             case "@llvm.clear_cache": // STUB
@@ -1591,7 +1625,7 @@ public class BasicNodeFactory implements NodeFactory {
                 return CountLeadingZeroesI64NodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.memcpy.p0i8.p0i8.i64":
             case "@llvm.memcpy.p0i8.p0i8.i32":
-                return LLVMMemCopyNodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], args[5], sourceSection);
+                return createMemcpyIntrinsic(args, sourceSection);
             case "@llvm.ctpop.i32":
                 return CountSetBitsI32NodeGen.create(args[1], sourceSection);
             case "@llvm.ctpop.i64":
@@ -1625,7 +1659,7 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.bswap.v4i64":
                 return LLVMByteSwapI64VectorNodeGen.create(4, args[1], sourceSection);
             case "@llvm.memmove.p0i8.p0i8.i64":
-                return LLVMMemMoveI64NodeGen.create(createMemMove(), args[1], args[2], args[3], args[4], args[5], sourceSection);
+                return createMemmoveIntrinsic(args, sourceSection);
             case "@llvm.pow.f32":
                 return LLVMPowNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.pow.f64":
