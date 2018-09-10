@@ -268,8 +268,9 @@ def ctw(args, extraVMarguments=None):
     elif not configArgs:
         vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
-    # suppress menubar and dock when running on Mac
-    vmargs = ['-Djava.awt.headless=true'] + vmargs
+    if mx.get_os() == 'darwin':
+        # suppress menubar and dock when running on Mac
+        vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     if args.cp:
         cp = os.path.abspath(args.cp)
@@ -1143,10 +1144,7 @@ def makegraaljdk(args):
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
         if args.license:
-            dst_licence = join(dstJdk, 'LICENSE')
-            if exists(dst_licence):
-                mx.rmtree(dst_licence)
-            shutil.copy(args.license, dst_licence)
+            shutil.copy(args.license, join(dstJdk, 'LICENSE'))
         if args.bootstrap:
             with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
                 mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
