@@ -50,13 +50,17 @@ abstract class ToHostNode extends Node {
 
     /** Subtype or lossless conversion to primitive type (incl. unboxing). */
     static final int STRICT = 0;
-    /** Wrapping or array conversion; int to char. */
+    /** Wrapping (Map, List) or array conversion; int to char. */
     static final int LOOSE = 1;
+    /** Wrap executable into functional interface proxy. */
+    static final int FUNCTION_PROXY = 2;
+    /** Wrap object with members into arbitrary interface proxy. */
+    static final int OBJECT_PROXY = 3;
     /** Lossy conversion to String. */
-    static final int COERCE = 2;
+    static final int COERCE = 4;
     /** Host object to interface proxy conversion. */
-    static final int HOST_PROXY = 3;
-    static final int[] PRIORITIES = {STRICT, LOOSE, COERCE, HOST_PROXY};
+    static final int HOST_PROXY = 5;
+    static final int[] PRIORITIES = {STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY, COERCE, HOST_PROXY};
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
@@ -186,24 +190,22 @@ abstract class ToHostNode extends Node {
                 return primitive.hasSize(tValue);
             } else if (targetType == Map.class) {
                 return primitive.hasKeys(tValue);
-            } else if (targetType == Function.class) {
-                return isExecutable(tValue) || isInstantiable(tValue) || (TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, tValue));
             } else if (targetType.isArray()) {
-                return primitive.hasKeys(tValue);
+                return primitive.hasSize(tValue);
             } else if (priority < HOST_PROXY && HostObject.isInstance(tValue)) {
                 return false;
             } else {
                 if (TruffleOptions.AOT) {
                     // support Function also with AOT
-                    if (targetType == Function.class) {
+                    if (priority >= FUNCTION_PROXY && targetType == Function.class) {
                         return isExecutable(tValue) || isInstantiable(tValue);
                     } else {
                         return false;
                     }
                 } else {
-                    if (HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
+                    if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
                         return true;
-                    } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
+                    } else if (priority >= OBJECT_PROXY && targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
                         return true;
                     } else {
                         return false;

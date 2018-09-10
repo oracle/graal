@@ -1185,11 +1185,12 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
             other_comp_names += [c.short_name for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
-        main_comp_name = installable.main_component.dir_name
+        self.main_comp_dir_name = installable.main_component.dir_name
         version = _suite.release_version()
 
-        name = '_'.join([main_comp_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
-        base_dir = './{comp_name}-{version}-{os}-{arch}/'.format(comp_name=main_comp_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
+        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
+        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=self.main_comp_dir_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
+        base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 
         def is_jar_distribution(val):
@@ -1279,6 +1280,21 @@ def get_final_graalvm_distribution():
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
+
+
+def get_standalone_distribution(comp_dir_name):
+    """
+    :type comp_dir_name: str
+    :rtype: GraalVmStandaloneComponent
+    """
+    standalones = _get_dists(GraalVmStandaloneComponent)
+    if standalones:
+        for standalone in standalones:
+            if standalone.main_comp_dir_name == comp_dir_name:
+                return standalone
+        mx.abort("Cannot find a standalone with dir_name '{}'.\nAvailable standalones:\n{}".format(comp_dir_name, '\n'.join((('- ' + s.main_comp_dir_name for s in standalones)))))
+    else:
+        mx.abort('No standalones available. Did you forget to dynamically import a component?')
 
 
 def get_lib_polyglot_project():
@@ -1505,6 +1521,11 @@ def graalvm_home():
     return join(_graalvm_dist.output, _graalvm_dist.jdk_base)
 
 
+def standalone_home(comp_dir_name):
+    _standalone_dist = get_standalone_distribution(comp_dir_name)
+    return join(_standalone_dist.output, _standalone_dist.base_dir_name)
+
+
 def log_graalvm_dist_name(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
@@ -1524,6 +1545,14 @@ def log_graalvm_home(args):
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
     _ = parser.parse_args(args)
     mx.log(graalvm_home())
+
+
+def log_standalone_home(args):
+    """print the GraalVM standalone home dir"""
+    parser = ArgumentParser(prog='mx standalone-home', description='Print the standalone home directory')
+    parser.add_argument('comp_dir_name', action='store', help='component dir name', metavar='<comp_dir_name>')
+    args = parser.parse_args(args)
+    mx.log(standalone_home(args.comp_dir_name))
 
 
 def graalvm_show(args):
@@ -1554,7 +1583,7 @@ def graalvm_show(args):
     else:
         mx.log("No library")
 
-    installables = [d for d in _suite.dists if isinstance(d, GraalVmInstallableComponent)]
+    installables = _get_dists(GraalVmInstallableComponent)
     if installables:
         mx.log("Installables:")
         for i in installables:
@@ -1562,13 +1591,21 @@ def graalvm_show(args):
     else:
         mx.log("No installable")
 
-    standalones = [d for d in _suite.dists if isinstance(d, GraalVmStandaloneComponent)]
+    standalones = _get_dists(GraalVmStandaloneComponent)
     if standalones:
         mx.log("Standalones:")
         for s in standalones:
             mx.log(" - {}".format(s))
     else:
         mx.log("No standalone")
+
+
+def  _get_dists(dist_class):
+    """
+    :type dist_class: mx.Distribution
+    :rtype: list[mx.Distribution]
+    """
+    return [d for d in _suite.dists if isinstance(d, dist_class)]
 
 
 def _env_var_to_bool(name, default='false'):
@@ -1664,4 +1701,5 @@ mx.update_commands(_suite, {
     'graalvm-version': [log_graalvm_version, ''],
     'graalvm-home': [log_graalvm_home, ''],
     'graalvm-show': [graalvm_show, ''],
+    'standalone-home': [log_standalone_home, 'comp-dir-name'],
 })

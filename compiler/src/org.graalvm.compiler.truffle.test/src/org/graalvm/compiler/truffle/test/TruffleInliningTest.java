@@ -215,7 +215,7 @@ public abstract class TruffleInliningTest {
                     if (target == null) {
                         throw new IllegalStateException("Call to undefined target: " + instruction.target);
                     }
-                    OptimizedDirectCallNode callNode = new OptimizedDirectCallNode(GraalTruffleRuntime.getRuntime(), target);
+                    OptimizedDirectCallNode callNode = new OptimizedDirectCallNode(target);
                     callSites.add(callNode);
                     for (int i = 0; i < instruction.count; i++) {
                         Integer[] args = {0};

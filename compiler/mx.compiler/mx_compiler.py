@@ -380,6 +380,8 @@ class UnitTestRun:
 
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
+            if suite == 'truffle' and mx.get_os() == 'windows':
+                continue  # necessary until Truffle is fully supported (GR-7941)
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
@@ -1061,6 +1063,7 @@ def makegraaljdk(args):
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
     parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
+    parser.add_argument('-l', '--license', action='store', help='path to the license file', metavar='<path>')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1127,7 +1130,7 @@ def makegraaljdk(args):
         for line in out.lines:
             m = pattern.match(line)
             if m:
-                with open(join(jvmlibDir, 'vm.properties'), 'w') as fp:
+                with open(join(jvmlibDir, 'vm.properties'), 'wb') as fp:
                     # Modify VM name in `java -version` to be Graal along
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
@@ -1139,6 +1142,11 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
+        if args.license:
+            dst_licence = join(dstJdk, 'LICENSE')
+            if exists(dst_licence):
+                mx.rmtree(dst_licence)
+            shutil.copy(args.license, dst_licence)
         if args.bootstrap:
             with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
                 mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
@@ -1348,6 +1356,18 @@ def updategraalinopenjdk(args):
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
 
 
+original_build = mx.command_function('build')
+
+
+def build(cmd_args, parser=None):
+    no_native = []
+    if mx.get_os() == 'windows':
+        # necessary until Truffle is fully supported (GR-7941)
+        mx.log('Building of native projects is disabled on Windows.')
+        no_native = ['--no-native']
+    original_build(no_native + cmd_args, parser)
+
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
     name='Graal compiler',
@@ -1381,6 +1401,7 @@ mx.update_commands(_suite, {
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
+    'build': [build, ''],
 })
 
 def mx_post_parse_cmd_line(opts):

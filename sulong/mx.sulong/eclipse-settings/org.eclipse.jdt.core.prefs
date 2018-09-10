@@ -1,0 +1,2 @@
+org.eclipse.jdt.core.compiler.problem.missingOverrideAnnotationForInterfaceMethodImplementation=enabled
+org.eclipse.jdt.core.compiler.maxProblemPerUnit=1000

@@ -81,7 +81,7 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
                 sValue.setRoot(root);
             }
 
-            assert !ClassInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass()) ||
+            assert !ClassInitializationFeature.singleton().shouldInitializeAtRuntime(field.getDeclaringClass()) ||
                             value.isDefaultForKind() : "Fields in classes that are marked for initialization at run time must not be constant folded, unless they are not written in the static initializer, i.e., have the default value";
 
             result = b.getGraph().unique(result);

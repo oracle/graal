@@ -46,6 +46,7 @@ class VmGateTasks:
     graal_js = 'graal-js'
     graal_nodejs = 'graal-nodejs'
     truffleruby = 'truffleruby'
+    truffleruby_standalone = 'truffleruby-standalone'
     ruby = 'ruby'
     fastr = 'fastr'
     graalpython = 'graalpython'

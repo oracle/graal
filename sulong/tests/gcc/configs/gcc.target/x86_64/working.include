@@ -1,0 +1,12 @@
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_bitfields.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_basic_array_size_and_align.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_basic_alignment.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_basic_union_size_and_align.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_3_element_struct_and_unions.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_basic_struct_size_and_align.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_basic_sizes.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-6.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/callabi/func-1.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_complex_returning.c
+gcc-5.2.0/gcc/testsuite/gcc.target/x86_64/abi/test_varargs.c

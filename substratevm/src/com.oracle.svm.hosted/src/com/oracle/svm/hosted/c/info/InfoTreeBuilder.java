@@ -591,7 +591,7 @@ public class InfoTreeBuilder {
             name = "int";
         }
         EnumInfo enumInfo = new EnumInfo(name, type);
-        ClassInitializationFeature.forceInitializeHosted(type);
+        ClassInitializationFeature.singleton().forceInitializeHosted(type);
 
         for (ResolvedJavaField field : type.getStaticFields()) {
             assert Modifier.isStatic(field.getModifiers());

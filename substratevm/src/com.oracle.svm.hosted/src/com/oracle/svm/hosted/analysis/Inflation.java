@@ -136,32 +136,41 @@ public class Inflation extends BigBang {
     private void checkType(AnalysisType type) {
         SVMHost svmHost = (SVMHost) hostVM;
 
+        DynamicHub hub = svmHost.dynamicHub(type);
+        if (hub.getGenericInfo() == null) {
+            fillGenericInfo(type, hub);
+        }
+        if (hub.getAnnotatedSuperInfo() == null) {
+            fillAnnotatedSuperInfo(type, hub);
+        }
+
         if (type.getJavaKind() == JavaKind.Object) {
             if (type.isArray() && (type.isInstantiated() || type.isInTypeCheck())) {
-                svmHost.dynamicHub(type).getComponentHub().setArrayHub(svmHost.dynamicHub(type));
+                hub.getComponentHub().setArrayHub(hub);
             }
 
             try {
                 AnalysisType enclosingType = type.getEnclosingType();
                 if (enclosingType != null) {
-                    svmHost.dynamicHub(type).setEnclosingClass(svmHost.dynamicHub(enclosingType));
+                    hub.setEnclosingClass(svmHost.dynamicHub(enclosingType));
                 }
             } catch (UnsupportedFeatureException ex) {
                 getUnsupportedFeatures().addMessage(type.toJavaName(true), null, ex.getMessage(), null, ex);
             }
 
-            fillGenericInfo(type);
-            fillInterfaces(type);
+            if (hub.getInterfacesEncoding() == null) {
+                fillInterfaces(type, hub);
+            }
 
             /*
              * Support for Java annotations.
              */
-            svmHost.dynamicHub(type).setAnnotationsEncoding(encodeAnnotations(metaAccess, type.getAnnotations(), svmHost.dynamicHub(type).getAnnotationsEncoding()));
+            hub.setAnnotationsEncoding(encodeAnnotations(metaAccess, type.getAnnotations(), hub.getAnnotationsEncoding()));
 
             /*
              * Support for Java enumerations.
              */
-            if (type.getSuperclass() != null && type.getSuperclass().equals(metaAccess.lookupJavaType(Enum.class)) && svmHost.dynamicHub(type).getEnumConstantsShared() == null) {
+            if (type.getSuperclass() != null && type.getSuperclass().equals(metaAccess.lookupJavaType(Enum.class)) && hub.getEnumConstantsShared() == null) {
                 /*
                  * We want to retrieve the enum constant array that is maintained as a private
                  * static field in the enumeration class. We do not want a copy because that would
@@ -196,7 +205,7 @@ public class Inflation extends BigBang {
                     enumConstants = (Enum[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
                     assert enumConstants != null;
                 }
-                svmHost.dynamicHub(type).setEnumConstants(enumConstants);
+                hub.setEnumConstants(enumConstants);
             }
         }
     }
@@ -268,10 +277,7 @@ public class Inflation extends BigBang {
         }
     }
 
-    private void fillGenericInfo(AnalysisType type) {
-        SVMHost svmHost = (SVMHost) hostVM;
-        DynamicHub hub = svmHost.dynamicHub(type);
-
+    private void fillGenericInfo(AnalysisType type, DynamicHub hub) {
         Class<?> javaClass = type.getJavaClass();
 
         TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
@@ -279,6 +285,10 @@ public class Inflation extends BigBang {
         Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
         Type genericSuperClass = javaClass.getGenericSuperclass();
         hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
+    }
+
+    private void fillAnnotatedSuperInfo(AnalysisType type, DynamicHub hub) {
+        Class<?> javaClass = type.getJavaClass();
 
         AnnotatedType annotatedSuperclass = javaClass.getAnnotatedSuperclass();
         AnnotatedType[] annotatedInterfaces = Arrays.stream(javaClass.getAnnotatedInterfaces())
@@ -327,9 +337,8 @@ public class Inflation extends BigBang {
     /**
      * Fill array returned by Class.getInterfaces().
      */
-    private void fillInterfaces(AnalysisType type) {
+    private void fillInterfaces(AnalysisType type, DynamicHub hub) {
         SVMHost svmHost = (SVMHost) hostVM;
-        DynamicHub hub = svmHost.dynamicHub(type);
 
         AnalysisType[] aInterfaces = type.getInterfaces();
         if (aInterfaces.length == 0) {

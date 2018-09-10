@@ -297,6 +297,10 @@ public class Socket {
     public static native int AF_UNSPEC();
 
     @CConstant
+    @Platforms(Platform.DARWIN.class)
+    public static native int AF_LINK();
+
+    @CConstant
     public static native int AF_LOCAL();
 
     @CConstant
@@ -765,6 +769,10 @@ public class Socket {
 
     @CConstant
     public static native long SIOCGIFBRDADDR();
+
+    @CConstant
+    @Platforms(Platform.LINUX.class)
+    public static native int SIOCGIFHWADDR();
 
     @CConstant
     public static native long SIOCGIFNETMASK();
