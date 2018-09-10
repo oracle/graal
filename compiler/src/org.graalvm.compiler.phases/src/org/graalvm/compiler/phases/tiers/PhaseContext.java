@@ -55,11 +55,6 @@ public class PhaseContext {
         this.foreignCalls = foreignCalls;
     }
 
-    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer, Replacements replacements,
-                    StampProvider stampProvider) {
-        this(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, null);
-    }
-
     public PhaseContext(Providers providers) {
         this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider(),
                         providers.getForeignCalls());
