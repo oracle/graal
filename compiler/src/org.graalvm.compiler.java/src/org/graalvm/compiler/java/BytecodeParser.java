@@ -4112,6 +4112,11 @@ public class BytecodeParser implements GraphBuilderContext {
             return;
         }
         ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+        if (resolvedType.isAbstract() || resolvedType.isInterface()) {
+            handleUnresolvedNewInstance(type);
+            return;
+        }
+
         ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (!resolvedType.isInitialized() && classInitializationPlugin == null) {
             handleUnresolvedNewInstance(type);
