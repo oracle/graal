@@ -143,8 +143,8 @@ public class WindowsUtils {
     }
 
     private static long performanceFrequency = 0L;
-    public static long NANOSECS_PER_SEC = 1000000000L;
-    public static int NANOSECS_PER_MILLISEC = 1000000;
+    public static final long NANOSECS_PER_SEC = 1000000000L;
+    public static final int NANOSECS_PER_MILLISEC = 1000000;
 
     /** Retrieve a nanosecond counter for elapsed time measurement. */
     @Uninterruptible(reason = "Called from uninterruptible code.")

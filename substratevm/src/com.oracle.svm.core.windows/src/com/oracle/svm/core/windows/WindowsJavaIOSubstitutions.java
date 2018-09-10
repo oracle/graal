@@ -69,7 +69,7 @@ final class Target_java_io_FileDescriptor {
 @Platforms(WINDOWS.class)
 final class Target_java_io_FileOutputStream {
 
-    /** Temp fix to enable running tests */
+    /** Temp fix to enable running tests. */
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
         WindowsUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
