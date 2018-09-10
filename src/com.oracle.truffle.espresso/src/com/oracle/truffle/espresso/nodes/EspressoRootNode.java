@@ -297,8 +297,10 @@ public class EspressoRootNode extends RootNode {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     public Object execute(VirtualFrame frame) {
         // TODO(peterssen): Inline this object.
+
+
         BytecodeStream bs = new BytecodeStream(method.getCode());
-        bs.setBCI(0);
+        int curBCI = 0;
 
         // slots = locals... + stack
 
@@ -309,7 +311,7 @@ public class EspressoRootNode extends RootNode {
 
         loop: while (true) {
             try {
-                switch (bs.currentBC()) {
+                switch (bs.currentBC(curBCI)) {
                     case NOP:
                         break;
                     case ACONST_NULL:
@@ -358,30 +360,30 @@ public class EspressoRootNode extends RootNode {
                         stack.pushDouble(1.0D);
                         break;
                     case BIPUSH:
-                        stack.pushInt(bs.readByte());
+                        stack.pushInt(bs.readByte(curBCI));
                         break;
                     case SIPUSH:
-                        stack.pushInt(bs.readShort());
+                        stack.pushInt(bs.readShort(curBCI));
                         break;
                     case LDC:
                     case LDC_W:
                     case LDC2_W:
-                        pushPoolConstant(stack, bs.readCPI());
+                        pushPoolConstant(stack, bs.readCPI(curBCI));
                         break;
                     case ILOAD:
-                        stack.pushInt(frame.getInt(locals[bs.readLocalIndex()]));
+                        stack.pushInt(frame.getInt(locals[bs.readLocalIndex(curBCI)]));
                         break;
                     case LLOAD:
-                        stack.pushLong(frame.getLong(locals[bs.readLocalIndex()]));
+                        stack.pushLong(frame.getLong(locals[bs.readLocalIndex(curBCI)]));
                         break;
                     case FLOAD:
-                        stack.pushFloat(frame.getFloat(locals[bs.readLocalIndex()]));
+                        stack.pushFloat(frame.getFloat(locals[bs.readLocalIndex(curBCI)]));
                         break;
                     case DLOAD:
-                        stack.pushDouble(frame.getDouble(locals[bs.readLocalIndex()]));
+                        stack.pushDouble(frame.getDouble(locals[bs.readLocalIndex(curBCI)]));
                         break;
                     case ALOAD:
-                        stack.pushObject(frame.getObject(locals[bs.readLocalIndex()]));
+                        stack.pushObject(frame.getObject(locals[bs.readLocalIndex(curBCI)]));
                         break;
                     case ILOAD_0:
                         stack.pushInt(frame.getInt(locals[0]));
@@ -468,19 +470,19 @@ public class EspressoRootNode extends RootNode {
                         stack.pushInt(vm.getArrayShort(stack.popInt(), stack.popObject()));
                         break;
                     case ISTORE:
-                        frame.setInt(locals[bs.readLocalIndex()], stack.popInt());
+                        frame.setInt(locals[bs.readLocalIndex(curBCI)], stack.popInt());
                         break;
                     case LSTORE:
-                        frame.setLong(locals[bs.readLocalIndex()], stack.popLong());
+                        frame.setLong(locals[bs.readLocalIndex(curBCI)], stack.popLong());
                         break;
                     case FSTORE:
-                        frame.setFloat(locals[bs.readLocalIndex()], stack.popFloat());
+                        frame.setFloat(locals[bs.readLocalIndex(curBCI)], stack.popFloat());
                         break;
                     case DSTORE:
-                        frame.setDouble(locals[bs.readLocalIndex()], stack.popDouble());
+                        frame.setDouble(locals[bs.readLocalIndex(curBCI)], stack.popDouble());
                         break;
                     case ASTORE:
-                        frame.setObject(locals[bs.readLocalIndex()], stack.popObject());
+                        frame.setObject(locals[bs.readLocalIndex(curBCI)], stack.popObject());
                         break;
                     case ISTORE_0:
                         frame.setInt(locals[0], stack.popInt());
@@ -702,7 +704,7 @@ public class EspressoRootNode extends RootNode {
                         stack.pushLong(stack.popLong() ^ stack.popLong());
                         break;
                     case IINC:
-                        iinc(locals, frame, bs);
+                        iinc(locals, frame, bs, curBCI);
                         break;
                     case I2L:
                         stack.pushLong(stack.popInt());
@@ -766,106 +768,106 @@ public class EspressoRootNode extends RootNode {
                         break;
                     case IFEQ:
                         if (stack.popInt() == 0) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFNE:
                         if (stack.popInt() != 0) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFLT:
                         if (stack.popInt() < 0) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFGE:
                         if (stack.popInt() >= 0) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFGT:
                         if (stack.popInt() > 0) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFLE:
                         if (stack.popInt() <= 0) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ICMPEQ:
                         if (stack.popInt() == stack.popInt()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ICMPNE:
                         if (stack.popInt() != stack.popInt()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ICMPLT:
                         if (stack.popInt() > stack.popInt()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ICMPGE:
                         if (stack.popInt() <= stack.popInt()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ICMPGT:
                         if (stack.popInt() < stack.popInt()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ICMPLE:
                         if (stack.popInt() >= stack.popInt()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ACMPEQ:
                         if (stack.popObject() == stack.popObject()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IF_ACMPNE:
                         if (stack.popObject() != stack.popObject()) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case GOTO:
                     case GOTO_W:
-                        bs.setBCI(bs.readBranchDest());
+                        curBCI = bs.readBranchDest(curBCI);
                         continue loop;
                     case JSR:
                     case JSR_W:
-                        stack.pushInt(bs.currentBCI());
-                        bs.setBCI(bs.readBranchDest());
+                        stack.pushInt(bs.currentBCI(curBCI));
+                        curBCI = bs.readBranchDest(curBCI);
                         continue loop;
                     case RET:
-                        bs.setBCI(frame.getInt(locals[bs.readLocalIndex()]));
+                        curBCI = frame.getInt(locals[bs.readLocalIndex(curBCI)]);
                         continue loop;
                     case TABLESWITCH:
                         // TODO(peterssen): Inline this.
-                        tableSwitch(stack, bs);
+                        curBCI = tableSwitch(stack, bs, curBCI);
                         continue loop;
                     case LOOKUPSWITCH:
-                        lookupSwitch(stack, bs);
+                        curBCI = lookupSwitch(stack, bs, curBCI);
                         continue loop;
                     case IRETURN:
                         return exitMethodAndReturn(stack.popInt());
@@ -880,38 +882,38 @@ public class EspressoRootNode extends RootNode {
                     case RETURN:
                         return exitMethodAndReturn();
                     case GETSTATIC:
-                        getField(stack, resolveField(bs.currentBC(), bs.readCPI()), true);
+                        getField(stack, resolveField(bs.currentBC(curBCI), bs.readCPI(curBCI)), true);
                         break;
                     case PUTSTATIC:
-                        putField(stack, resolveField(bs.currentBC(), bs.readCPI()), true);
+                        putField(stack, resolveField(bs.currentBC(curBCI), bs.readCPI(curBCI)), true);
                         break;
                     case GETFIELD:
-                        getField(stack, resolveField(bs.currentBC(), bs.readCPI()), false);
+                        getField(stack, resolveField(bs.currentBC(curBCI), bs.readCPI(curBCI)), false);
                         break;
                     case PUTFIELD:
-                        putField(stack, resolveField(bs.currentBC(), bs.readCPI()), false);
+                        putField(stack, resolveField(bs.currentBC(curBCI), bs.readCPI(curBCI)), false);
                         break;
                     case INVOKEVIRTUAL:
-                        invokeVirtual(stack, resolveMethod(bs.currentBC(), bs.readCPI()));
+                        invokeVirtual(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKESPECIAL:
-                        invokeSpecial(stack, resolveMethod(bs.currentBC(), bs.readCPI()));
+                        invokeSpecial(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKESTATIC:
-                        invokeStatic(stack, resolveMethod(bs.currentBC(), bs.readCPI()));
+                        invokeStatic(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKEINTERFACE:
-                        invokeInterface(stack, resolveInterfaceMethod(bs.currentBC(), bs.readCPI()));
+                        invokeInterface(stack, resolveInterfaceMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case NEW:
-                        stack.pushObject(allocateInstance(resolveType(bs.currentBC(), bs.readCPI())));
+                        stack.pushObject(allocateInstance(resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI))));
                         break;
                     case NEWARRAY:
-                        stack.pushObject(vm.allocateNativeArray(bs.readByte(), stack.popInt()));
+                        stack.pushObject(vm.allocateNativeArray(bs.readByte(curBCI), stack.popInt()));
                         break;
                     case ANEWARRAY:
                         stack.pushObject(
-                                        allocateArray(resolveType(bs.currentBC(), bs.readCPI()), stack.popInt()));
+                                        allocateArray(resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI)), stack.popInt()));
                         break;
                     case ARRAYLENGTH:
                         stack.pushInt(vm.arrayLength(nullCheck(stack.popObject())));
@@ -920,11 +922,11 @@ public class EspressoRootNode extends RootNode {
                         throw new EspressoException((StaticObject) stack.popObject());
                     case CHECKCAST:
                         // TODO(peterssen): Implement check cast for arrays and primitive arrays.
-                        stack.pushObject(checkCast(stack.popObject(), resolveType(bs.currentBC(), bs.readCPI())));
+                        stack.pushObject(checkCast(stack.popObject(), resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI))));
                         break;
                     case INSTANCEOF:
                         stack.pushInt(
-                                        instanceOf(stack.popObject(), resolveType(bs.currentBC(), bs.readCPI())) ? 1 : 0);
+                                        instanceOf(stack.popObject(), resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI))) ? 1 : 0);
                         break;
                     case MONITORENTER:
                         vm.monitorEnter(stack.popObject());
@@ -939,18 +941,18 @@ public class EspressoRootNode extends RootNode {
                     case MULTIANEWARRAY:
                         stack.pushObject(
                                         allocateMultiArray(stack,
-                                                        resolveType(bs.currentBC(), bs.readCPI()),
-                                                        bs.readUByte(bs.currentBCI() + 3)));
+                                                        resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI)),
+                                                        bs.readUByte(bs.currentBCI(curBCI) + 3)));
                         break;
                     case IFNULL:
                         if (stack.popObject() == StaticObject.NULL) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFNONNULL:
                         if (stack.popObject() != StaticObject.NULL) {
-                            bs.setBCI(bs.readBranchDest());
+                            curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
@@ -963,10 +965,10 @@ public class EspressoRootNode extends RootNode {
             } catch (FrameSlotTypeException e) {
                 throw new RuntimeException(e);
             } catch (EspressoException e) {
-                ExceptionHandler handler = resolveExceptionHandlers(bs.currentBCI(), e.getException());
+                ExceptionHandler handler = resolveExceptionHandlers(bs.currentBCI(curBCI), e.getException());
                 if (handler != null) {
                     stack.pushObject(e.getException());
-                    bs.setBCI(handler.getHandlerBCI());
+                    curBCI = handler.getHandlerBCI();
                     continue loop; // skip bs.next()
                 } else {
                     throw e;
@@ -975,7 +977,7 @@ public class EspressoRootNode extends RootNode {
                 // TODO(peterssen): Shape-shift into GUEST exception.
                 throw e;
             }
-            bs.next();
+            curBCI = bs.next(curBCI);
         }
     }
 
@@ -1167,9 +1169,9 @@ public class EspressoRootNode extends RootNode {
         return vm.instanceOf(instance, typeToCheck);
     }
 
-    private void iinc(FrameSlot[] locals, VirtualFrame frame, BytecodeStream bs) throws FrameSlotTypeException {
-        int index = bs.readLocalIndex();
-        frame.setInt(locals[index], frame.getInt(locals[index]) + bs.readIncrement());
+    private void iinc(FrameSlot[] locals, VirtualFrame frame, BytecodeStream bs, int curBCI) throws FrameSlotTypeException {
+        int index = bs.readLocalIndex(curBCI);
+        frame.setInt(locals[index], frame.getInt(locals[index]) + bs.readIncrement(curBCI));
     }
 
     private static Object exitMethodAndReturn(Object result) {
@@ -1249,8 +1251,8 @@ public class EspressoRootNode extends RootNode {
         return value >>> bits;
     }
 
-    private void lookupSwitch(OperandStack stack, BytecodeStream bs) {
-        bs.setBCI(lookupSearch(new BytecodeLookupSwitch(bs, bs.currentBCI()), stack.popInt()));
+    private int lookupSwitch(OperandStack stack, BytecodeStream bs, int curBCI) {
+        return lookupSearch(new BytecodeLookupSwitch(bs, bs.currentBCI(curBCI)), stack.popInt());
     }
 
     /**
@@ -1274,16 +1276,16 @@ public class EspressoRootNode extends RootNode {
         return switchHelper.defaultTarget(); // key not found.
     }
 
-    private void tableSwitch(OperandStack stack, BytecodeStream bs) {
-        BytecodeTableSwitch switchHelper = new BytecodeTableSwitch(bs, bs.currentBCI());
+    private int tableSwitch(OperandStack stack, BytecodeStream bs, int curBCI) {
+        BytecodeTableSwitch switchHelper = new BytecodeTableSwitch(bs, bs.currentBCI(curBCI));
         int low = switchHelper.lowKey();
         int high = switchHelper.highKey();
         assert low <= high;
         int index = stack.popInt();
         if (index < low || index > high) {
-            bs.setBCI(switchHelper.defaultTarget());
+            return switchHelper.defaultTarget();
         } else {
-            bs.setBCI(switchHelper.targetAt(index - low));
+            return switchHelper.targetAt(index - low);
         }
     }
 

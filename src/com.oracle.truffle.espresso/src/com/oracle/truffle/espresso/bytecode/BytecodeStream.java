@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.bytecode;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * A utility class that makes iterating over bytecodes and reading operands simpler and less error
@@ -31,29 +32,24 @@ import com.oracle.truffle.api.CompilerDirectives;
  */
 public final class BytecodeStream {
 
-    //@CompilerDirectives.CompilationFinal(dimensions = 1)
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private final byte[] code;
-
-    private int opcode;
-    private int curBCI;
-    private int nextBCI;
 
     /**
      * Creates a new {@code BytecodeStream} for the specified bytecode.
      *
      * @param code the array of bytes that contains the bytecode
      */
-    public BytecodeStream(byte[] code) {
+    public BytecodeStream(final byte[] code) {
         assert code != null;
         this.code = code;
-        setBCI(0);
     }
 
     /**
      * Advances to the next bytecode.
      */
-    public void next() {
-        setBCI(nextBCI);
+    public int next(int curBCI) {
+        return nextBCI(curBCI);
     }
 
     /**
@@ -61,8 +57,12 @@ public final class BytecodeStream {
      *
      * @return the next bytecode index
      */
-    public int nextBCI() {
-        return nextBCI;
+    public int nextBCI(int curBCI) {
+        if (curBCI < code.length) {
+            return curBCI + lengthOf(curBCI);
+        } else {
+            return curBCI;
+        }
     }
 
     /**
@@ -70,7 +70,7 @@ public final class BytecodeStream {
      *
      * @return the current bytecode index
      */
-    public int currentBCI() {
+    public int currentBCI(int curBCI) {
         return curBCI;
     }
 
@@ -89,7 +89,8 @@ public final class BytecodeStream {
      *
      * @return the current opcode; {@link Bytecodes#END} if at or beyond the end of the code
      */
-    public int currentBC() {
+    public int currentBC(int curBCI) {
+        int opcode = opcode(curBCI);
         if (opcode == Bytecodes.WIDE) {
             return Bytes.beU1(code, curBCI + 1);
         } else {
@@ -103,9 +104,9 @@ public final class BytecodeStream {
      *
      * @return the index of the local variable
      */
-    public int readLocalIndex() {
+    public int readLocalIndex(int curBCI) {
         // read local variable index for load/store
-        if (opcode == Bytecodes.WIDE) {
+        if (opcode(curBCI) == Bytecodes.WIDE) {
             return Bytes.beU2(code, curBCI + 2);
         }
         return Bytes.beU1(code, curBCI + 1);
@@ -116,9 +117,9 @@ public final class BytecodeStream {
      *
      * @return the delta for the {@code IINC}
      */
-    public int readIncrement() {
+    public int readIncrement(int curBCI) {
         // read the delta for the iinc bytecode
-        if (opcode == Bytecodes.WIDE) {
+        if (opcode(curBCI) == Bytecodes.WIDE) {
             return Bytes.beS2(code, curBCI + 4);
         }
         return Bytes.beS1(code, curBCI + 2);
@@ -129,8 +130,9 @@ public final class BytecodeStream {
      *
      * @return the destination bytecode index
      */
-    public int readBranchDest() {
+    public int readBranchDest(int curBCI) {
         // reads the destination for a branch bytecode
+        int opcode = opcode(curBCI);
         if (opcode == Bytecodes.GOTO_W || opcode == Bytecodes.JSR_W) {
             return curBCI + Bytes.beS4(code, curBCI + 1);
         } else {
@@ -164,8 +166,8 @@ public final class BytecodeStream {
      *
      * @return the constant pool index
      */
-    public char readCPI() {
-        if (opcode == Bytecodes.LDC) {
+    public char readCPI(int curBCI) {
+        if (opcode(curBCI) == Bytecodes.LDC) {
             return (char) Bytes.beU1(code, curBCI + 1);
         }
         return (char) Bytes.beU2(code, curBCI + 1);
@@ -176,8 +178,8 @@ public final class BytecodeStream {
      *
      * @return the constant pool index
      */
-    public int readCPI4() {
-        assert opcode == Bytecodes.INVOKEDYNAMIC;
+    public int readCPI4(int curBCI) {
+        assert opcode(curBCI) == Bytecodes.INVOKEDYNAMIC;
         return Bytes.beS4(code, curBCI + 1);
     }
 
@@ -186,7 +188,7 @@ public final class BytecodeStream {
      *
      * @return the byte
      */
-    public byte readByte() {
+    public byte readByte(int curBCI) {
         return code[curBCI + 1];
     }
 
@@ -195,36 +197,27 @@ public final class BytecodeStream {
      *
      * @return the short value
      */
-    public short readShort() {
+    public short readShort(int curBCI) {
         return (short) Bytes.beS2(code, curBCI + 1);
     }
 
-    /**
-     * Sets the bytecode index to the specified value. If {@code bci} is beyond the end of the
-     * array, {@link #currentBC} will return {@link Bytecodes#END} and other methods may throw
-     * {@link ArrayIndexOutOfBoundsException}.
-     *
-     * @param bci the new bytecode index
-     */
-    public void setBCI(int bci) {
-        curBCI = bci;
+    public int opcode(int curBCI) {
         if (curBCI < code.length) {
-            opcode = Bytes.beU1(code, bci);
+            int opcode = Bytes.beU1(code, curBCI);
             assert opcode < Bytecodes.BREAKPOINT : "illegal bytecode";
-            nextBCI = bci + lengthOf();
+            return opcode;
         } else {
-            opcode = Bytecodes.END;
-            nextBCI = curBCI;
+            return Bytecodes.END;
         }
     }
 
     /**
      * Gets the length of the current bytecode.
      */
-    private int lengthOf() {
-        int length = Bytecodes.lengthOf(opcode);
+    private int lengthOf(int curBCI) {
+        int length = Bytecodes.lengthOf(opcode(curBCI));
         if (length == 0) {
-            switch (opcode) {
+            switch (opcode(curBCI)) {
                 case Bytecodes.TABLESWITCH: {
                     return new BytecodeTableSwitch(this, curBCI).size();
                 }
@@ -242,9 +235,14 @@ public final class BytecodeStream {
                     }
                 }
                 default:
-                    throw new Error("unknown variable-length bytecode: " + opcode);
+                    throw error("unknown variable-length bytecode: " + opcode(curBCI));
             }
         }
         return length;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static EspressoError error(String msg) {
+        throw EspressoError.shouldNotReachHere(msg);
     }
 }
