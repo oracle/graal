@@ -12,7 +12,7 @@ import com.oracle.truffle.espresso.types.TypeDescriptors;
 public class OperandStack {
 
     private final Object[] stack;
-    // private final byte[] stackTag;
+    private final byte[] stackTag;
     private int stackSize;
 
     private static boolean isEspressoReference(Object instance) {
@@ -21,7 +21,7 @@ public class OperandStack {
 
     public OperandStack(int maxStackSize) {
         this.stack = new Object[maxStackSize];
-        //this.stackTag = new byte[maxStackSize];
+        this.stackTag = new byte[maxStackSize];
         this.stackSize = 0;
     }
 
@@ -36,41 +36,40 @@ public class OperandStack {
     public void pushObject(Object value) {
         assert value != null;
         assert isEspressoReference(value);
-        //stackTag[stackSize] = (byte) FrameSlotKind.Object.ordinal();
+        stackTag[stackSize] = (byte) FrameSlotKind.Object.ordinal();
         stack[stackSize++] = value;
     }
 
     public void pushInt(int value) {
-        //stackTag[stackSize] = (byte) FrameSlotKind.Int.ordinal();
+        stackTag[stackSize] = (byte) FrameSlotKind.Int.ordinal();
         stack[stackSize++] = value;
     }
 
     public void pushIllegal() {
-        //stackTag[stackSize] = (byte) FrameSlotKind.Illegal.ordinal();
+        stackTag[stackSize] = (byte) FrameSlotKind.Illegal.ordinal();
         stack[stackSize++] = null;
     }
 
     public void pushLong(long value) {
         pushIllegal();
-        //stackTag[stackSize] = (byte) FrameSlotKind.Long.ordinal();
+        stackTag[stackSize] = (byte) FrameSlotKind.Long.ordinal();
         stack[stackSize++] = value;
     }
 
     public void pushFloat(float value) {
-        //stackTag[stackSize] = (byte) FrameSlotKind.Float.ordinal();
+        stackTag[stackSize] = (byte) FrameSlotKind.Float.ordinal();
         stack[stackSize++] = value;
     }
 
     public void pushDouble(double value) {
         pushIllegal();
-        //stackTag[stackSize] = (byte) FrameSlotKind.Double.ordinal();
+        stackTag[stackSize] = (byte) FrameSlotKind.Double.ordinal();
         stack[stackSize++] = value;
     }
 
     public FrameSlotKind peekTag() {
-        return null;
         // TODO(peterssen): Avoid recreating values() array.
-        // return FrameSlotKind.values()[(int) stackTag[stackSize - 1]];
+        return FrameSlotKind.values()[(int) stackTag[stackSize - 1]];
     }
 
     public Object peekObject() {
@@ -153,7 +152,7 @@ public class OperandStack {
 
     public void pushUnsafe1(Object value, FrameSlotKind kind) {
         // assert numberOfSlots(kind) == 1;
-        // stackTag[stackSize] = (byte) kind.ordinal();
+        stackTag[stackSize] = (byte) kind.ordinal();
         stack[stackSize++] = value;
     }
 
