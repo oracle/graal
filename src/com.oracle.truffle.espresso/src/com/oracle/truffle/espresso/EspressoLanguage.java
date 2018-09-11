@@ -31,6 +31,7 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import org.graalvm.options.OptionCategory;
@@ -55,6 +56,7 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.Utils;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
+import sun.launcher.LauncherHelper;
 
 @TruffleLanguage.Registration(name = "Java", version = "1.8", mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
@@ -151,20 +153,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         assert context.isInitialized();
 
-        Object classLoader = null;
         String className = source.getName();
-
-        String classDescriptor = MetaUtil.toInternalName(className);
-
-        // TODO(peterssen): Do not use system BCL.
-
         assert context.getAppClassLoader() != null && context.getAppClassLoader() != StaticObject.NULL;
 
         Klass mainClass = loadMainClass(context, LaunchMode.LM_CLASS, className).getMirror();
 
         EspressoError.guarantee(mainClass != null, "Error: Could not find or load main class %s", className);
 
-        MethodInfo mainMethod = mainClass.findDeclaredMethod("main", void.class, String[].class);
+        Meta.Method mainMethod = Meta.meta(mainClass).method("main", void.class, String[].class);
 
         EspressoError.guarantee(mainMethod != null,
                         "Error: Main method not found in class %s, please define the main method as:\n" +
@@ -172,7 +168,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                         className);
 
         assert mainMethod.isPublic() && mainMethod.isStatic();
-        return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod));
+        return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod.rawMethod()));
     }
 
     /*
@@ -180,11 +176,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
      * details refer to the java implementation.
      */
     private StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
-        Klass launcherHelperKlass = context.getRegistries().resolve(context.getTypeDescriptors().make("Lsun/launcher/LauncherHelper;"), null);
-        MethodInfo checkAndLoadMain = launcherHelperKlass.findMethod("checkAndLoadMain",
-                        context.getSignatureDescriptors().make("(ZILjava/lang/String;)Ljava/lang/Class;"));
-        StaticObjectClass mainClass = (StaticObjectClass) checkAndLoadMain.getCallTarget().call(true, mode.ordinal(), context.getMeta().toGuest(name));
-        return mainClass;
+        assert context.isInitialized();
+        Meta meta = context.getMeta();
+        Meta.Klass launcherHelperKlass = meta.knownKlass(LauncherHelper.class);
+        return (StaticObjectClass) launcherHelperKlass
+                .staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class)
+                .invokeDirect(true, mode.ordinal(), meta.toGuest(name));
     }
 
     @Override
