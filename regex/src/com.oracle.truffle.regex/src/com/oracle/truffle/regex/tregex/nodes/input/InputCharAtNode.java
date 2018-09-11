@@ -56,6 +56,9 @@ public abstract class InputCharAtNode extends Node {
             Object c = ForeignAccess.sendRead(readNode, input, index);
             if (c instanceof Character) {
                 return (char) c;
+            } else if (c instanceof Number) {
+                assert (int)c < Character.MAX_VALUE;
+                return (char) (int)c;
             }
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.raise(new Object[]{c});
