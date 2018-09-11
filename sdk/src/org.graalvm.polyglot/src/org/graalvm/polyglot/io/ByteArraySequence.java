@@ -51,7 +51,7 @@ final class ByteArraySequence implements ByteSequence {
     private final int start;
     private final int length;
 
-    /** Cache the hash code for the byte array sequences */
+    /** Cache the hash code for the byte array sequences. */
     private int hash; // Default to 0
 
     ByteArraySequence(byte[] buffer, int start, int length) {
