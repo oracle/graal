@@ -72,7 +72,7 @@ public class AArch64GraphBuilderPlugins {
                 // This is temporarily disabled until we implement correct emitting of the CAS
                 // instructions of the proper width.
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, bytecodeProvider, explicitUnsafeNullChecks,
-                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+                                new JavaKind[]{JavaKind.Byte, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }
@@ -174,7 +174,7 @@ public class AArch64GraphBuilderPlugins {
             unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
         } else {
             r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
+            unsafeJavaKinds = new JavaKind[]{JavaKind.Byte, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
         }
 
         for (JavaKind kind : unsafeJavaKinds) {

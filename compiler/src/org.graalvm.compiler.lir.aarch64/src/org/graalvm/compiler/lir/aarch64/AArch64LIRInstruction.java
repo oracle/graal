@@ -28,6 +28,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.vm.ci.aarch64.AArch64Kind;
 
 public abstract class AArch64LIRInstruction extends LIRInstruction {
     protected AArch64LIRInstruction(LIRInstructionClass<? extends AArch64LIRInstruction> c) {
@@ -40,4 +41,18 @@ public abstract class AArch64LIRInstruction extends LIRInstruction {
     }
 
     protected abstract void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm);
+
+    /**
+     * Aarch64 does not support sub-word registers. Converts small integer kinds to DWORD.
+     */
+    protected static int convertToRegSize(AArch64Kind kind) {
+        switch (kind) {
+            case BYTE:
+            case WORD:
+                return AArch64Kind.DWORD.getSizeInBytes() * Byte.SIZE;
+            default:
+                return kind.getSizeInBytes() * Byte.SIZE;
+        }
+    }
+
 }

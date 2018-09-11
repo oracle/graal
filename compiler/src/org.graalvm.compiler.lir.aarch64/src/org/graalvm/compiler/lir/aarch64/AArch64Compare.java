@@ -72,7 +72,8 @@ public class AArch64Compare {
      * @param y integer value to compare. May not be null.
      */
     public static void gpCompare(AArch64MacroAssembler masm, Value x, Value y) {
-        final int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        final int size = AArch64LIRInstruction.convertToRegSize((AArch64Kind) x.getPlatformKind());
+
         if (isRegister(y)) {
             masm.cmp(size, asRegister(x), asRegister(y));
         } else {
@@ -136,7 +137,8 @@ public class AArch64Compare {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert isRegister(x);
-            int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            final int size = convertToRegSize((AArch64Kind) x.getPlatformKind());
+
             if (isRegister(y)) {
                 masm.fcmp(size, asRegister(x), asRegister(y));
                 // There is no condition code for "EQ || unordered" nor one for "NE && unordered",

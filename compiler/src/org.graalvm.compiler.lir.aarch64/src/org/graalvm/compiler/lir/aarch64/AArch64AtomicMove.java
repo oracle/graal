@@ -56,14 +56,16 @@ public class AArch64AtomicMove {
     public static class CompareAndSwapOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CompareAndSwapOp> TYPE = LIRInstructionClass.create(CompareAndSwapOp.class);
 
+        private final AArch64Kind accessKind;
         @Def protected AllocatableValue resultValue;
         @Alive protected Value expectedValue;
         @Alive protected AllocatableValue newValue;
         @Alive protected AllocatableValue addressValue;
         @Temp protected AllocatableValue scratchValue;
 
-        public CompareAndSwapOp(AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
+        public CompareAndSwapOp(AArch64Kind kind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch) {
             super(TYPE);
+            this.accessKind = kind;
             this.resultValue = result;
             this.expectedValue = expectedValue;
             this.newValue = newValue;
@@ -73,17 +75,17 @@ public class AArch64AtomicMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            AArch64Kind kind = (AArch64Kind) expectedValue.getPlatformKind();
-            assert kind.isInteger();
-            final int size = kind.getSizeInBytes() * Byte.SIZE;
+            assert accessKind.isInteger();
+            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int regsize = convertToRegSize(accessKind);
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
             if (AArch64LIRFlagsVersioned.useLSE(masm.target.arch)) {
                 Register expected = asRegister(expectedValue);
-                masm.mov(size, result, expected);
-                masm.cas(size, result, newVal, address, true /* acquire */, true /* release */);
+                masm.mov(regsize, result, expected);
+                masm.cas(regsize, result, newVal, address, true /* acquire */, true /* release */);
                 AArch64Compare.gpCompare(masm, resultValue, expectedValue);
             } else {
                 // We could avoid using a scratch register here, by reusing resultValue for the
@@ -134,6 +136,7 @@ public class AArch64AtomicMove {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert accessKind.isInteger();
             final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+            final int regsize = convertToRegSize(accessKind);
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
@@ -145,9 +148,9 @@ public class AArch64AtomicMove {
                 Register scratch1 = scratchRegister1.getRegister();
                 if (LIRValueUtil.isConstantValue(deltaValue)) {
                     long delta = LIRValueUtil.asConstantValue(deltaValue).getJavaConstant().asLong();
-                    masm.add(size, scratch1, result, delta);
+                    masm.add(regsize, scratch1, result, delta);
                 } else { // must be a register then
-                    masm.add(size, scratch1, result, asRegister(deltaValue));
+                    masm.add(regsize, scratch1, result, asRegister(deltaValue));
                 }
                 try (ScratchRegister scratchRegister2 = masm.getScratchRegister()) {
                     Register scratch2 = scratchRegister2.getRegister();

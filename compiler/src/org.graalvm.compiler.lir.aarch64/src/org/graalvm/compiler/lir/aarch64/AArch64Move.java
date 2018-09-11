@@ -409,7 +409,8 @@ public class AArch64Move {
             return;
         }
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
-        int size = kind.getSizeInBytes() * Byte.SIZE;
+        final int size = AArch64LIRInstruction.convertToRegSize(kind);
+
         if (kind.isInteger()) {
             masm.mov(size, dst, src);
         } else {

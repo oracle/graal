@@ -248,6 +248,8 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeGetAndAddShort");
         }
         if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+            testGraph("unsafeGetAndAddByte");
+            testGraph("unsafeGetAndAddShort");
             testGraph("unsafeGetAndAddInt");
             testGraph("unsafeGetAndAddLong");
         }
@@ -305,6 +307,9 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeGetAndSetShort");
         }
         if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+            testGraph("unsafeGetAndSetBoolean");
+            testGraph("unsafeGetAndSetByte");
+            testGraph("unsafeGetAndSetShort");
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
             testGraph("unsafeGetAndSetObject");
