@@ -25,15 +25,10 @@ package com.oracle.truffle.espresso;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -42,33 +37,40 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.Utils;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
+
 import sun.launcher.LauncherHelper;
 
-@TruffleLanguage.Registration(name = "Java", version = "1.8", mimeType = EspressoLanguage.MIME_TYPE)
+@TruffleLanguage.Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final OptionKey<String> CLASSPATH = new OptionKey<>("");
     public static final String CLASSPATH_NAME = "java.classpath";
+
+    public static final String ID = "java";
+    public static final String NAME = "Java";
+    public static final String VERSION = "1.8";
+    public static final String MIME_TYPE = "application/x-java";
+
     public static final String CLASSPATH_HELP = "A " + File.pathSeparator + " separated list of directories, JAR archives, and ZIP archives to search for class files.";
 
-    public static final String BOOT_CLASSPATH_NAME = "boot.classpath";
+    public static final String BOOT_CLASSPATH_NAME = "java.bootclasspath";
     public static final OptionKey<String> BOOT_CLASSPATH = new OptionKey<>("");
 
-    public static final String MIME_TYPE = "application/x-java";
+
     public static final String FILE_EXTENSION = ".class";
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
@@ -82,7 +84,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected OptionDescriptors getOptionDescriptors() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
         options.add(OptionDescriptor.newBuilder(CLASSPATH, CLASSPATH_NAME).help(CLASSPATH_HELP).category(OptionCategory.USER).build());
-        // options.add(OptionDescriptor.newBuilder(BOOT_CLASSPATH, BOOT_CLASSPATH_NAME).category(OptionCategory.EXPERT).build());
+        options.add(OptionDescriptor.newBuilder(BOOT_CLASSPATH, BOOT_CLASSPATH_NAME).category(OptionCategory.USER).build());
         return OptionDescriptors.create(options);
     }
 
@@ -123,7 +125,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.setClasspath(new Classpath(classpathValue));
 
         // TODO(peterssen): Investigate boot classpath whereabouts/sources.
-        String bootClasspathValue = System.getProperty("sun.boot.class.path");
+        String bootClasspathValue = options.get(BOOT_CLASSPATH);
+        if (bootClasspathValue == null) {
+            bootClasspathValue = System.getProperty("sun.boot.class.path");
+        }
         assert bootClasspathValue != null;
 
         context.setBootClasspath(new Classpath(bootClasspathValue));
@@ -175,7 +180,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
      * Loads a class and verifies that the main class is present and it is ok to call it for more
      * details refer to the java implementation.
      */
-    private StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
+    private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
         Meta.Klass launcherHelperKlass = meta.knownKlass(LauncherHelper.class);

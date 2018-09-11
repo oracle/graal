@@ -134,6 +134,11 @@ public final class Meta {
     }
 
     @CompilerDirectives.TruffleBoundary
+    public Meta.Klass loadKlass(String className, Object classLoader) {
+        return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(className)), classLoader));
+    }
+
+    @CompilerDirectives.TruffleBoundary
     public static String toHost(StaticObject str) {
         assert str != null;
         if (str == StaticObject.NULL) {
@@ -185,6 +190,12 @@ public final class Meta {
         if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
             return hostObject;
         }
+
+        if (Arrays.stream(JavaKind.values()).anyMatch(c -> c.toBoxedJavaClass() == hostObject.getClass())) {
+            // boxed value
+            return hostObject;
+        }
+
         throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
     }
 
@@ -200,6 +211,7 @@ public final class Meta {
         if (guestObject == StaticObject.VOID) {
             return null;
         }
+
         // primitive array
         if (guestObject.getClass().isArray() && guestObject.getClass().getComponentType().isPrimitive()) {
             return guestObject;
@@ -208,6 +220,11 @@ public final class Meta {
             if (((StaticObject) guestObject).getKlass() == STRING.klass) {
                 return toHost((StaticObject) guestObject);
             }
+        }
+
+        if (Arrays.stream(JavaKind.values()).anyMatch(c -> c.toBoxedJavaClass() == guestObject.getClass())) {
+            // boxed value
+            return guestObject;
         }
 
         throw EspressoError.shouldNotReachHere(guestObject + " cannot be converted to host world");
@@ -231,6 +248,18 @@ public final class Meta {
         public Meta.Klass getSuperclass() {
             com.oracle.truffle.espresso.impl.Klass superclass = klass.getSuperclass();
             return superclass != null ? meta(superclass) : null;
+        }
+
+        public Meta.Method[] methods(boolean includeInherited) {
+            return methodStream(includeInherited).toArray(Meta.Method[]::new);
+        }
+
+        private Stream<Meta.Method> methodStream(boolean includeInherited) {
+            Stream<Meta.Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(Meta::meta);
+            if (includeInherited && getSuperclass() != null) {
+                methods = Stream.concat(methods, getSuperclass().methodStream(includeInherited));
+            }
+            return methods;
         }
 
         public Meta.Klass getSupertype() {
@@ -450,6 +479,11 @@ public final class Meta {
             return method;
         }
 
+        public Meta.Method.WithInstance asStatic() {
+            assert isStatic();
+            return forInstance(method.getDeclaringClass().getStatics());
+        }
+
         /**
          * Invoke guest method, parameters and return value are converted to host world. Primitives,
          * primitive arrays are shared, and are passed verbatim, conversions are provided for String
@@ -459,10 +493,10 @@ public final class Meta {
         @CompilerDirectives.TruffleBoundary
         public Object invoke(Object self, Object... parameters) {
             assert parameters.length == method.getSignature().getParameterCount(!method.isStatic());
-            assert !isStatic() || self == null;
+            assert !isStatic() || ((StaticObjectImpl) self).isStatic();
             Meta meta = method.getContext().getMeta();
             if (isStatic()) {
-                Object[] args = new Object[parameters.length + 1];
+                Object[] args = new Object[parameters.length];
                 for (int i = 1; i < args.length; ++i)
                     args[i] = meta.toGuest(parameters[i]);
                 return meta.toHost(method.getCallTarget().call(parameters));

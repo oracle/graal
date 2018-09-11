@@ -59,6 +59,7 @@ suite = {
             "dependencies" : [
                 "com.oracle.truffle.espresso",
                 "com.oracle.truffle.espresso.launcher",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
             "javaCompliance" : "1.8+",
