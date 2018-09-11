@@ -190,7 +190,7 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
     LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegionAllocator uniquesRegionAllocator,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame);
+                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame, FrameSlot loopSuccessorSlot);
 
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, FrameDescriptor frameDescriptor, String name, String originalName,
                     int argumentCount, Source bcSource, LLVMSourceLocation location);
@@ -249,4 +249,9 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMObjectReadNode createGlobalContainerReadNode();
 
     LLVMObjectWriteNode createGlobalContainerWriteNode();
+
+    LLVMControlFlowNode createLoop(LLVMExpressionNode body, int[] successorIDs);
+
+    LLVMExpressionNode createLoopDispatchNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> list, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller,
+                    int headerId, int[] indexMapping, int[] successors, FrameSlot successorSlot);
 }
