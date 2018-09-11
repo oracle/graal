@@ -151,7 +151,7 @@ public interface NodeFactory {
     LLVMExpressionNode createStructureConstantNode(Type structureType, GetStackSpaceFactory getStackSpaceFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
     LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegionAllocator uniquesRegionAllocator,
-                    LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor);
+                    LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor, FrameSlot loopSuccessorSlot);
 
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, FrameDescriptor frameDescriptor, String name, String originalName, int argumentCount, Source bcSource,
                     LLVMSourceLocation location);
@@ -186,4 +186,8 @@ public interface NodeFactory {
     LLVMExpressionNode createStackSave();
 
     LLVMExpressionNode createStackRestore(LLVMExpressionNode stackPointer);
+
+    LLVMControlFlowNode createLoop(LLVMExpressionNode body, int[] successorIDs);
+
+    LLVMExpressionNode createLoopDispatchNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> list, int headerId, int[] indexMapping, int[] successors, FrameSlot successorSlot);
 }
