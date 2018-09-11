@@ -707,8 +707,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
 
             contexts.clear();
-            for (Instrument instrument : idToPublicInstrument.values()) {
-                PolyglotInstrument instrumentImpl = (PolyglotInstrument) getAPIAccess().getImpl(instrument);
+            for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
                 try {
                     instrumentImpl.notifyClosing();
                 } catch (Throwable e) {
@@ -717,8 +716,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     }
                 }
             }
-            for (Instrument instrument : idToPublicInstrument.values()) {
-                PolyglotInstrument instrumentImpl = (PolyglotInstrument) getAPIAccess().getImpl(instrument);
+            for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
                 try {
                     instrumentImpl.ensureClosed();
                 } catch (Throwable e) {
