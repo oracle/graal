@@ -196,7 +196,10 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
-      "uses" : ["org.graalvm.compiler.serviceprovider.JMXService"],
+      "uses" : [
+        "org.graalvm.compiler.serviceprovider.JMXService",
+        "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "9+",
       "checkPackagePrefix" : "false",
@@ -444,7 +447,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
       ],
-
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
