@@ -558,7 +558,9 @@ public final class CPUSampler implements Closeable {
             StackTraceEntry[] strace = stack.getStack();
             if (strace != null && strace.length > 0) {
                 assert !stacks.containsKey(stack.getThread());
-                stacks.put(stack.getThread(), Collections.unmodifiableList(Arrays.asList(strace)));
+                final List<StackTraceEntry> stackTraceEntries = Arrays.asList(strace);
+                Collections.reverse(stackTraceEntries);
+                stacks.put(stack.getThread(), Collections.unmodifiableList(stackTraceEntries));
             }
         }
         return Collections.unmodifiableMap(stacks);

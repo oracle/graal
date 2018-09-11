@@ -117,8 +117,8 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         }, (samples) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, RootTag.class);
             assertEntry(iterator, "", 5, StatementTag.class);
+            assertEntry(iterator, "", 0, RootTag.class);
             assertFalse(iterator.hasNext());
         }, true);
     }
@@ -143,9 +143,9 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         }, (samples) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, RootTag.class);
-            assertEntry(iterator, "baz", 66, RootTag.class);
             assertEntry(iterator, "bar", 16, RootTag.class);
+            assertEntry(iterator, "baz", 66, RootTag.class);
+            assertEntry(iterator, "", 0, RootTag.class);
             assertFalse(iterator.hasNext());
         }, false);
     }
@@ -160,11 +160,11 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         }, (samples) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, RootTag.class);
-            assertEntry(iterator, "baz", 58, RootTag.class);
-            assertEntry(iterator, "baz", 63, StatementTag.class);
-            assertEntry(iterator, "bar", 16, RootTag.class);
             assertEntry(iterator, "bar", 21, StatementTag.class);
+            assertEntry(iterator, "bar", 16, RootTag.class);
+            assertEntry(iterator, "baz", 63, StatementTag.class);
+            assertEntry(iterator, "baz", 58, RootTag.class);
+            assertEntry(iterator, "", 0, RootTag.class);
             assertFalse(iterator.hasNext());
         }, false);
     }
@@ -190,9 +190,9 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
             for (Entry<Thread, List<StackTraceEntry>> entry : samples.entrySet()) {
                 String threadName = entry.getKey().getName();
                 Iterator<StackTraceEntry> iterator = entry.getValue().iterator();
-                assertEntry(iterator, "", 0, RootTag.class);
-                assertEntry(iterator, threadName + "_baz", 72, RootTag.class);
                 assertEntry(iterator, threadName + "_bar", 19, RootTag.class);
+                assertEntry(iterator, threadName + "_baz", 72, RootTag.class);
+                assertEntry(iterator, "", 0, RootTag.class);
                 assertFalse(iterator.hasNext());
             }
         }, false);
