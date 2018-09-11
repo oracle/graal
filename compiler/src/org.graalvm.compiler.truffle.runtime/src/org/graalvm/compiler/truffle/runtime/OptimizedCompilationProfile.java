@@ -282,6 +282,10 @@ public final class OptimizedCompilationProfile {
         callAndLoopCount += count;
     }
 
+    void reportCompilationIgnored() {
+        compilationFailed = true;
+    }
+
     void reportInvalidated() {
         invalidationCount++;
         int reprofile = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
@@ -312,13 +316,12 @@ public final class OptimizedCompilationProfile {
     boolean interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++callCount;
         int intAndLoopCallCount = ++callAndLoopCount;
-        if (!callTarget.isCompiling() && !compilationFailed) {
-            // Check if call target is hot enough to compile, but took not too long to get hot.
-            int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
-            int callAndLoopThreshold = compilationCallAndLoopThreshold;
-            if ((intAndLoopCallCount >= callAndLoopThreshold && intCallCount >= callThreshold) || callThreshold == 0) {
-                return callTarget.compile(!multiTierEnabled);
-            }
+        // Check if call target is hot enough to compile, but took not too long to get hot.
+        int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
+        if (callThreshold == 0 || (intCallCount >= callThreshold //
+                        && intAndLoopCallCount >= compilationCallAndLoopThreshold //
+                        && !compilationFailed && !callTarget.isCompiling())) {
+            return callTarget.compile(!multiTierEnabled);
         }
         return false;
     }
