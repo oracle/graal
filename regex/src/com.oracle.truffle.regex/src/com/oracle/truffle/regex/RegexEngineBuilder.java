@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
 /**
@@ -78,7 +79,8 @@ public class RegexEngineBuilder implements RegexLanguageObject {
         @Resolve(message = "EXECUTE")
         abstract static class RegexEngineBuilderExecuteNode extends Node {
 
-            @Child private Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
+            @Child private Node isExecutableNode = insert(Message.IS_EXECUTABLE.createNode());
+            @Child private ExpectStringNode expectOptionsNode = insert(ExpectStringNode.create());
 
             public Object access(RegexEngineBuilder receiver, Object[] args) {
                 if (args.length > 2) {
@@ -86,10 +88,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                 }
                 RegexOptions options = RegexOptions.DEFAULT;
                 if (args.length >= 1) {
-                    if (!(args[0] instanceof String)) {
-                        throw UnsupportedTypeException.raise(args);
-                    }
-                    options = RegexOptions.parse((String) args[0]);
+                    options = RegexOptions.parse(expectOptionsNode.execute(args[0]));
                 }
                 TruffleObject fallbackCompiler = null;
                 if (args.length >= 2) {
