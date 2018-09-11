@@ -293,6 +293,9 @@ public final class LLVMControlFlowGraph {
     }
 
     private class ControlFlowBailoutException extends Exception {
+
+        private static final long serialVersionUID = 1L;
+
         ControlFlowBailoutException(String string) {
             super(string);
         }
