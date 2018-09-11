@@ -49,7 +49,7 @@ public class Process {
      * Thread Creation
      */
     @CFunction
-    public static native long _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,
+    public static native WinBase.HANDLE _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,
                     PointerBase arglist, int initflag, CIntPointer thrdaddr);
 
     @CConstant
@@ -59,7 +59,7 @@ public class Process {
     public static native int STACK_SIZE_PARAM_IS_A_RESERVATION();
 
     @CFunction
-    public static native int ResumeThread(int osThreadHandle);
+    public static native int ResumeThread(WinBase.HANDLE osThreadHandle);
 
     @CFunction
     public static native int SwitchToThread();

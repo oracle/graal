@@ -277,4 +277,11 @@ public class WinBase {
      */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void QueryPerformanceFrequency(CLongPointer counter);
+
+    /**
+     * CloseHandle
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int CloseHandle(HANDLE hFile);
+
 }

@@ -76,11 +76,6 @@ public final class WindowsJavaThreads extends JavaThreads {
         return (WindowsJavaThreads) JavaThreads.singleton();
     }
 
-    @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
-    private static Target_java_lang_Thread toTarget(Thread thread) {
-        return Target_java_lang_Thread.class.cast(thread);
-    }
-
     @Platforms(HOSTED_ONLY.class)
     WindowsJavaThreads() {
     }
@@ -104,17 +99,13 @@ public final class WindowsJavaThreads extends JavaThreads {
         }
 
         CIntPointer osThreadID = StackValue.get(CIntPointer.class);
-        long osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
-        setOSThread(thread, osThreadID.read(), osThreadHandle);
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
+        if (osThreadHandle.rawValue() != 0) {
+            startData.setOSThreadHandle(osThreadHandle);
 
-        // Start the thread running
-        Process.ResumeThread((int) osThreadHandle);
-    }
-
-    private static void setOSThread(Thread thread, int osThreadID, long osThreadHandle) {
-        toTarget(thread).hasOSThread = true;
-        toTarget(thread).osThreadID = osThreadID;
-        toTarget(thread).osThreadHandle = osThreadHandle;
+            // Start the thread running
+            Process.ResumeThread(osThreadHandle);
+        }
     }
 
     /**
@@ -138,6 +129,12 @@ public final class WindowsJavaThreads extends JavaThreads {
 
         @RawField
         void setThreadHandle(ObjectHandle handle);
+
+        @RawField
+        WinBase.HANDLE getOSThreadHandle();
+
+        @RawField
+        void setOSThreadHandle(WinBase.HANDLE osHandle);
 
         @RawField
         Isolate getIsolate();
@@ -164,6 +161,7 @@ public final class WindowsJavaThreads extends JavaThreads {
     @CEntryPointOptions(prologue = OSThreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static WordBase osThreadStartRoutine(ThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
+        WinBase.HANDLE osThreadHandle = data.getOSThreadHandle();
         UnmanagedMemory.free(data);
 
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
@@ -177,9 +175,6 @@ public final class WindowsJavaThreads extends JavaThreads {
          */
         ObjectHandles.getGlobal().destroy(threadHandle);
 
-        /* Complete the initialization of the thread, now that it is (nearly) running. */
-        singleton().setNativeName(thread.getName());
-
         singleton().noteThreadStart(thread);
 
         try {
@@ -189,6 +184,7 @@ public final class WindowsJavaThreads extends JavaThreads {
         } finally {
             exit(thread);
             singleton().noteThreadFinish(thread);
+            WinBase.CloseHandle(osThreadHandle);
         }
 
         return WordFactory.nullPointer();
@@ -213,20 +209,6 @@ public final class WindowsJavaThreads extends JavaThreads {
             nonDaemonThreads.decrementAndGet();
         }
     }
-}
-
-@TargetClass(Thread.class)
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_lang_Thread {
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    boolean hasOSThread;
-
-    /** Every thread started by {@link WindowsJavaThreads#start0} has an OS thread handle and id. */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    long osThreadHandle;
-
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    int osThreadID;
 }
 
 @Platforms(Platform.WINDOWS.class)
