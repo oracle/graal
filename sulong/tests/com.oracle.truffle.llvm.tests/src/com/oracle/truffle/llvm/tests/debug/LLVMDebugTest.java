@@ -79,6 +79,7 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
             configs.put("testObjectPointer.cpp", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         }
+        configs.put("testLoop", new String[]{BC_O0, BC_MEM2REG});
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
     }
 
