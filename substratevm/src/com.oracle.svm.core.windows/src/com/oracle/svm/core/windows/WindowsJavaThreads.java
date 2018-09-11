@@ -25,7 +25,6 @@
 package com.oracle.svm.core.windows;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -50,9 +49,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -99,7 +95,8 @@ public final class WindowsJavaThreads extends JavaThreads {
         }
 
         CIntPointer osThreadID = StackValue.get(CIntPointer.class);
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag,
+                        osThreadID);
         if (osThreadHandle.rawValue() != 0) {
             startData.setOSThreadHandle(osThreadHandle);
 
