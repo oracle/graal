@@ -37,8 +37,8 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -171,18 +171,14 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
         successorExecutionCount[successorIndex]++;
     }
 
-    private static final class NoPhiNode extends LLVMStatementNode {
-        @Override
-        public void execute(VirtualFrame frame) {
-        }
-    }
-
     private static final class LazyBlock extends LLVMBasicBlockNode {
 
+        // explicitly not an @Child to prevent Truffle from inlining the node and thereby causing an
+        // unnecessarily large AST
         private final LLVMBasicBlockNode materializedBlock;
 
         private LazyBlock(LLVMBasicBlockNode materializedBlock) {
-            super(new LLVMStatementNode[0], LLVMBrUnconditionalNode.create(materializedBlock.getBlockId(), new NoPhiNode(), null), materializedBlock.getBlockId(), materializedBlock.getBlockName());
+            super(LLVMStatementNode.NO_STATEMENTS, new LLVMUnreachableNode(), materializedBlock.getBlockId(), materializedBlock.getBlockName());
             this.materializedBlock = materializedBlock;
         }
 
