@@ -68,7 +68,10 @@ final class DefaultVirtualFrame implements VirtualFrame {
         // read size only once
         final int size = descriptor.getSize();
         this.locals = new Object[size];
-        Arrays.fill(locals, descriptor.getDefaultValue());
+        Object defaultValue = descriptor.getDefaultValue();
+        if (defaultValue != null) {
+            Arrays.fill(locals, defaultValue);
+        }
         this.tags = new byte[size];
     }
 
