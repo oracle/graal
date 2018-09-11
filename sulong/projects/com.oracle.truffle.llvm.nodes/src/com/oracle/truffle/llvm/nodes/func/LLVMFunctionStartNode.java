@@ -48,8 +48,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMFunctionStartNode extends RootNode {
 
+    private static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
+
     @Child private LLVMExpressionNode node;
-    @CompilationFinal(dimensions = 1) FrameSlot[] frameSlotsToInitialize;
+    @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlotsToInitialize;
     private final String name;
     private final int explicitArgumentsCount;
     private final DebugInformation debugInformation;
@@ -61,7 +63,7 @@ public class LLVMFunctionStartNode extends RootNode {
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
         this.name = name;
-        this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+        this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(NO_SLOTS);
     }
 
     @Override

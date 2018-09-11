@@ -95,6 +95,9 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
             CompilerAsserts.partialEvaluationConstant(basicBlockIndex);
             LLVMBasicBlockNode bb = bodyNodes[basicBlockIndex];
 
+            // lazily insert the basic block into the AST
+            bb = bb.initialize();
+
             // execute all statements
             bb.execute(frame);
 
