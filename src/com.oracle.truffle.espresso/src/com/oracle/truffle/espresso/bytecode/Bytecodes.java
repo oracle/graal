@@ -1,5 +1,3 @@
-package com.oracle.truffle.espresso.bytecode;
-
 /*
  * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -23,7 +21,7 @@ package com.oracle.truffle.espresso.bytecode;
  * questions.
  */
 
-import com.oracle.truffle.api.CompilerDirectives;
+package com.oracle.truffle.espresso.bytecode;
 
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.ASSOCIATIVE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.BRANCH;
@@ -39,6 +37,8 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.TRAP;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Definitions of the standard Java bytecodes defined by
@@ -350,29 +350,25 @@ public class Bytecodes {
      * An array that maps from a bytecode value to a {@link String} for the corresponding
      * instruction mnemonic.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static final String[] nameArray = new String[256];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final String[] nameArray = new String[256];
 
     /**
      * An array that maps from a bytecode value to the set of {@link Flags} for the corresponding
      * instruction.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static final int[] flagsArray = new int[256];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final int[] flagsArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the length in bytes for the corresponding
      * instruction.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static final int[] lengthArray = new int[256];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final int[] lengthArray = new int[256];
 
     /**
      * An array that maps from a bytecode value to the number of slots pushed on the stack by the
      * corresponding instruction.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static final int[] stackEffectArray = new int[256];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private static final int[] stackEffectArray = new int[256];
 
     // Checkstyle: stop
     // @formatter:off
