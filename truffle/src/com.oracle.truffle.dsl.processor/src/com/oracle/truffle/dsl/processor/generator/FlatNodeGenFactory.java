@@ -201,7 +201,7 @@ class FlatNodeGenFactory {
         this.state = new StateBitSet(objects.toArray(new Object[0]));
         this.exclude = new ExcludeBitSet(reachableSpecializationsArray);
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
-        this.needsLocking = exclude.computeStateLength() != 0 || reachableSpecializations.stream().anyMatch((s) -> s.hasMultipleInstances());
+        this.needsLocking = exclude.computeStateLength() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
     }
 
     private static String createSpecializationTypeName(SpecializationData s) {
@@ -1120,21 +1120,21 @@ class FlatNodeGenFactory {
         CodeExecutableElement method = frameState.createMethod(modifiers(PRIVATE), returnType, "executeAndSpecialize", frame);
         final CodeTreeBuilder builder = method.createBuilder();
         boolean reportPolymorphism = shouldReportPolymorphism(node, reachableSpecializations);
-        if (reportPolymorphism) {
-            generateSaveOldPolymorphismState(builder, frameState);
-        }
         if (needsLocking) {
             builder.declaration(context.getType(Lock.class), "lock", "getLock()");
             builder.declaration(context.getType(boolean.class), "hasLock", "true");
             builder.statement("lock.lock()");
         }
-        if (needsLocking || reportPolymorphism) {
-            builder.startTryBlock();
-        }
 
         builder.tree(state.createLoad(frameState));
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
+        }
+        if (reportPolymorphism) {
+            generateSaveOldPolymorphismState(builder, frameState);
+        }
+        if (needsLocking || reportPolymorphism) {
+            builder.startTryBlock();
         }
 
         FrameState originalFrameState = frameState.copy();
