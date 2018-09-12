@@ -149,8 +149,6 @@ public class Target_java_util_zip_ZipFile {
         return maybeNull((byte[]) ZipFileFunctions.GET_ENTRY_BYTES.invokeStatic(jzentry, type));
     }
 
-
-
     @Intrinsic
     public static @Type(String.class) Object getZipMessage(long jzfile) {
         String result = (String) ZipFileFunctions.GET_ZIP_MESSAGE.invokeStatic(jzfile);

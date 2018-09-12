@@ -654,7 +654,7 @@ public class EspressoRootNode extends RootNode {
                         stack.pushLong(remLong(stack.popLong(), stack.popLong()));
                         break;
                     case FREM:
-                        stack.pushFloat(remFloat(stack.popFloat(), stack.popLong()));
+                        stack.pushFloat(remFloat(stack.popFloat(), stack.popFloat()));
                         break;
                     case DREM:
                         stack.pushDouble(remDouble(stack.popDouble(), stack.popDouble()));
@@ -1177,7 +1177,6 @@ public class EspressoRootNode extends RootNode {
         } else if (constant instanceof ClassConstant) {
             Klass klass = ((ClassConstant) constant).resolve(getConstantPool(), cpi);
             stack.pushObject(klass.mirror());
-            // throw new UnsupportedOperationException("Constant " + constant + " not supported");
         }
     }
 
@@ -1279,7 +1278,7 @@ public class EspressoRootNode extends RootNode {
     /**
      * Binary search implementation for the lookup switch.
      */
-    private int lookupSearch(BytecodeLookupSwitch switchHelper, int key) {
+    private static int lookupSearch(BytecodeLookupSwitch switchHelper, int key) {
         int low = 0;
         int high = switchHelper.numberOfCases() - 1;
         while (low <= high) {
@@ -1297,7 +1296,7 @@ public class EspressoRootNode extends RootNode {
         return switchHelper.defaultTarget(); // key not found.
     }
 
-    private int tableSwitch(OperandStack stack, BytecodeStream bs, int curBCI) {
+    private static int tableSwitch(OperandStack stack, BytecodeStream bs, int curBCI) {
         BytecodeTableSwitch switchHelper = new BytecodeTableSwitch(bs, bs.currentBCI(curBCI));
         int low = switchHelper.lowKey();
         int high = switchHelper.highKey();

@@ -109,7 +109,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         // classpath provenance order:
         // (1) the -cp command line option
-        if (classpathValue == null) {
+        if (classpathValue.equals("")) {
             // (2) the property java.class.path
             classpathValue = System.getProperty("java.class.path");
             if (classpathValue == null) {
@@ -126,7 +126,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         // TODO(peterssen): Investigate boot classpath whereabouts/sources.
         String bootClasspathValue = options.get(BOOT_CLASSPATH);
-        if (bootClasspathValue == null) {
+        if (bootClasspathValue.equals("")) {
             bootClasspathValue = System.getProperty("sun.boot.class.path");
         }
         assert bootClasspathValue != null;

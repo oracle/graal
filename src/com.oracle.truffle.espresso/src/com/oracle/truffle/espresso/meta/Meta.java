@@ -1,5 +1,8 @@
 package com.oracle.truffle.espresso.meta;
 
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -8,7 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -16,13 +18,11 @@ import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
-
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -119,6 +119,12 @@ public final class Meta {
         return clazz.getClassLoader() == null;
     }
 
+    public EspressoException throwEx(java.lang.Class<?> clazz) {
+        StaticObject ex = exceptionKlass(clazz).allocateInstance();
+        meta(ex).method("<init>", void.class).invokeDirect();
+        throw new EspressoException(ex);
+    }
+
     @CompilerDirectives.TruffleBoundary
     public Klass exceptionKlass(java.lang.Class<?> exceptionClass) {
         assert isKnownClass(exceptionClass);
@@ -180,7 +186,7 @@ public final class Meta {
         }
     }
 
-    public Object toGuest(Object hostObject) {
+    public Object toGuestBoxed(Object hostObject) {
         if (hostObject == null) {
             return StaticObject.NULL;
         }
@@ -197,6 +203,66 @@ public final class Meta {
         }
 
         throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
+    }
+
+    public Object toGuest(Object hostObject) {
+        if (hostObject == null) {
+            return StaticObject.NULL;
+        }
+        if (hostObject instanceof String) {
+            return toGuest((String) hostObject);
+        }
+        if (hostObject instanceof StaticObject || (hostObject.getClass().isArray() && hostObject.getClass().getComponentType().isPrimitive())) {
+            return hostObject;
+        }
+
+        throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
+    }
+
+    public Object toHostBoxed(Object guestObject, JavaKind kind) {
+        if (guestObject == null) {
+            return null;
+        }
+        if (guestObject == StaticObject.NULL) {
+            return null;
+        }
+        if (guestObject == StaticObject.VOID) {
+            return null;
+        }
+
+        // primitive array
+        if (guestObject.getClass().isArray() && guestObject.getClass().getComponentType().isPrimitive()) {
+            return guestObject;
+        }
+        if (guestObject instanceof StaticObject) {
+            assert kind.isObject();
+            if (((StaticObject) guestObject).getKlass() == STRING.klass) {
+                return toHost((StaticObject) guestObject);
+            }
+        }
+
+        if (Arrays.stream(JavaKind.values()).anyMatch(c -> c.toBoxedJavaClass() == guestObject.getClass())) {
+            // boxed value
+            return toKind(guestObject, kind);
+        }
+        throw EspressoError.shouldNotReachHere(guestObject + " cannot be converted to host world");
+    }
+
+    private static Object toKind(Object boxed, JavaKind kind) {
+        if (kind.getStackKind() != kind) {
+            assert kind.getStackKind() == JavaKind.Int;
+            assert boxed.getClass() == Integer.class;
+            switch (kind) {
+                case Boolean:
+                    int v = (int) boxed;
+                    assert v == 0 || v == 1;
+                    return v != 0;
+                case Byte: return (byte) (int) boxed;
+                case Char: return (char) (int) boxed;
+                case Short: return (short) (int) boxed;
+            }
+        }
+        return boxed;
     }
 
     public Object toHost(Object guestObject) {
@@ -221,12 +287,6 @@ public final class Meta {
                 return toHost((StaticObject) guestObject);
             }
         }
-
-        if (Arrays.stream(JavaKind.values()).anyMatch(c -> c.toBoxedJavaClass() == guestObject.getClass())) {
-            // boxed value
-            return guestObject;
-        }
-
         throw EspressoError.shouldNotReachHere(guestObject + " cannot be converted to host world");
     }
 
@@ -276,10 +336,9 @@ public final class Meta {
             return getSuperclass();
         }
 
-
         /**
-         * Determines if this type is either the same as, or is a superclass or superinterface of, the
-         * type represented by the specified parameter. This method is identical to
+         * Determines if this type is either the same as, or is a superclass or superinterface of,
+         * the type represented by the specified parameter. This method is identical to
          * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
          */
         public boolean isAssignableFrom(Meta.Klass other) {
@@ -287,6 +346,11 @@ public final class Meta {
             if (this.rawKlass() == other.rawKlass()) {
                 return true;
             }
+
+            if (this.isArray() && other.isArray()) {
+                return getComponentType().isAssignableFrom(other.getComponentType());
+            }
+
             if (isInterface()) {
                 return other.getInterfacesStream(true).anyMatch(i -> i.rawKlass() == this.rawKlass());
             }
@@ -299,7 +363,8 @@ public final class Meta {
         @CompilerDirectives.TruffleBoundary
         private boolean isPrimaryType() {
             assert !isPrimitive();
-            if (isArray()) return getElementalType().isPrimaryType();
+            if (isArray())
+                return getElementalType().isPrimaryType();
             return !isInterface();
         }
 
@@ -327,11 +392,14 @@ public final class Meta {
         }
 
         @CompilerDirectives.TruffleBoundary
-        private Stream<Meta.Klass> getInterfacesStream(boolean includeSuperclasses) {
+        private Stream<Meta.Klass> getInterfacesStream(boolean includeInherited) {
             Stream<Meta.Klass> interfaces = Stream.of(klass.getInterfaces()).map(Meta::meta);
             Meta.Klass superclass = getSuperclass();
-            if (includeSuperclasses && superclass != null) {
-                interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeSuperclasses));
+            if (includeInherited && superclass != null) {
+                interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeInherited));
+            }
+            if (includeInherited) {
+                interfaces = interfaces.flatMap(i -> Stream.concat(Stream.of(i), i.getInterfacesStream(includeInherited)));
             }
             return interfaces;
         }
@@ -344,6 +412,10 @@ public final class Meta {
         public StaticObject allocateInstance() {
             assert !klass.isArray();
             return klass.getContext().getVm().newObject(klass);
+        }
+
+        public String getName() {
+            return MetaUtil.internalNameToJava(klass.getName(), true, true);
         }
 
         public boolean isArray() {
@@ -491,22 +563,26 @@ public final class Meta {
          * widening nor narrowing.
          */
         @CompilerDirectives.TruffleBoundary
-        public Object invoke(Object self, Object... parameters) {
-            assert parameters.length == method.getSignature().getParameterCount(!method.isStatic());
+        public Object invoke(Object self, Object... args) {
+            assert args.length == method.getSignature().getParameterCount(!method.isStatic());
             assert !isStatic() || ((StaticObjectImpl) self).isStatic();
             Meta meta = method.getContext().getMeta();
+
+            final Object[] filteredArgs;
             if (isStatic()) {
-                Object[] args = new Object[parameters.length];
-                for (int i = 1; i < args.length; ++i)
-                    args[i] = meta.toGuest(parameters[i]);
-                return meta.toHost(method.getCallTarget().call(parameters));
+                filteredArgs = new Object[args.length];
+                for (int i = 0; i < filteredArgs.length; ++i) {
+                    filteredArgs[i] = meta.toGuestBoxed(args[i]);
+                }
             } else {
-                Object[] args = new Object[parameters.length + 1];
-                for (int i = 1; i < args.length; ++i)
-                    args[i] = meta.toGuest(parameters[i]);
-                args[0] = meta.toGuest(self);
-                return meta.toHost(method.getCallTarget().call(args));
+                filteredArgs = new Object[args.length + 1];
+                filteredArgs[0] = meta.toGuestBoxed(self);
+                for (int i = 1; i < filteredArgs.length; ++i) {
+                    filteredArgs[i] = meta.toGuestBoxed(args[i - 1]);
+                }
             }
+
+            return meta.toHostBoxed(method.getCallTarget().call(filteredArgs), method.getSignature().resultKind());
         }
 
         /**
@@ -514,17 +590,17 @@ public final class Meta {
          * casting based on the method's signature, widening nor narrowing.
          */
         @CompilerDirectives.TruffleBoundary
-        public Object invokeDirect(Object self, Object... parameters) {
+        public Object invokeDirect(Object self, Object... args) {
             assert !isStatic() || ((StaticObjectImpl) self).isStatic();
             if (isStatic()) {
-                assert parameters.length == method.getSignature().getParameterCount(!method.isStatic());
-                return method.getCallTarget().call(parameters);
-            } else {
-                assert parameters.length + 1 /* self */ == method.getSignature().getParameterCount(!method.isStatic());
-                Object[] args = new Object[parameters.length + 1];
-                System.arraycopy(parameters, 0, args, 1, parameters.length);
-                args[0] = self;
+                assert args.length == method.getSignature().getParameterCount(!method.isStatic());
                 return method.getCallTarget().call(args);
+            } else {
+                assert args.length + 1 /* self */ == method.getSignature().getParameterCount(!method.isStatic());
+                Object[] fullArgs = new Object[args.length + 1];
+                System.arraycopy(args, 0, fullArgs, 1, args.length);
+                fullArgs[0] = self;
+                return method.getCallTarget().call(fullArgs);
             }
         }
 
@@ -562,13 +638,13 @@ public final class Meta {
             }
 
             @CompilerDirectives.TruffleBoundary
-            public Object invoke(Object... parameters) {
-                return Method.this.invoke(instance, parameters);
+            public Object invoke(Object... args) {
+                return Method.this.invoke(instance, args);
             }
 
             @CompilerDirectives.TruffleBoundary
-            public Object invokeDirect(Object... parameters) {
-                return Method.this.invokeDirect(instance, parameters);
+            public Object invokeDirect(Object... args) {
+                return Method.this.invokeDirect(instance, args);
             }
         }
     }
