@@ -470,9 +470,13 @@ public final class Meta {
 
         public Meta.Method method(String name, Class<?> returnType, Class<?>... parameterTypes) {
             SignatureDescriptor target = klass.getContext().getSignatureDescriptors().create(returnType, parameterTypes);
-
-            return new Meta.Method(
-                            Arrays.stream(klass.getDeclaredMethods()).filter(m -> m.getName().equals(name) && m.getSignature().equals(target)).findFirst().orElse(null));
+            MethodInfo found = Arrays.stream(klass.getDeclaredMethods()).filter(m -> m.getName().equals(name) && m.getSignature().equals(target)).findFirst().orElse(null);
+            if (found == null) {
+                if (getSuperclass() != null) {
+                    return getSuperclass().method(name, returnType, parameterTypes);
+                }
+            }
+            return found == null ? null : new Meta.Method(found);
         }
 
         public com.oracle.truffle.espresso.impl.Klass rawKlass() {

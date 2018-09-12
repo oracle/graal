@@ -79,14 +79,17 @@ public class Target_java_lang_Thread {
     }
 
     @Intrinsic
+    public static boolean holdsLock(Object object) {
+        return Thread.holdsLock(object);
+    }
+
+    @Intrinsic
     public static void sleep(long millis) {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Meta meta = Utils.getContext().getMeta();
-            StaticObject ex = meta.exceptionKlass(InterruptedException.class).allocateInstance();
-            meta(ex).method("<init>", void.class).invokeDirect();
-            throw new EspressoException(ex);
+            throw meta.throwEx(InterruptedException.class);
         }
     }
 }

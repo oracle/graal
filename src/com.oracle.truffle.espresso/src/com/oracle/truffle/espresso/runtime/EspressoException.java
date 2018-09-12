@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.espresso.meta.Meta;
+
 public class EspressoException extends RuntimeException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
@@ -32,6 +34,11 @@ public class EspressoException extends RuntimeException {
         // TODO(peterssen): Check that exception is a real exception object (e.g. exception
         // instanceof Exception)
         this.exception = exception;
+    }
+
+    @Override
+    public String getMessage() {
+        return Meta.toHost((StaticObject) Meta.meta(exception).method("getMessage", String.class).invokeDirect());
     }
 
     public StaticObject getException() {
