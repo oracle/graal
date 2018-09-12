@@ -313,10 +313,10 @@ public class OptimizedCompilationProfile {
     @CompilerDirectives.TruffleBoundary
     final boolean lowTierCall(OptimizedCallTarget callTarget) {
         int callCount = ++lowTierCallCount;
-        if (callCount >= compilationCallThreshold && !callTarget.isCompiling() && !compilationFailed) {
+        if (callCount >= compilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
             long adaptiveCallThreshold = getAdaptiveCallThreshold(callCount);
             if (callCount >= adaptiveCallThreshold) {
-                // TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + ", qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
+                // TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + "(of " + compilationCallAndLoopThreshold + "), qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
                 return callTarget.compile();
             }
         }
@@ -324,7 +324,7 @@ public class OptimizedCompilationProfile {
     }
 
     private long getAdaptiveCallThreshold(int callCount) {
-        if (callCount >= adaptiveCallThreshold || callCount % 500 == 0) {
+        if (callCount % 500 == 0) {
             adaptiveCallThreshold = compilationCallAndLoopThreshold + compilationThresholdPenalty();
         }
         return adaptiveCallThreshold;
@@ -340,21 +340,20 @@ public class OptimizedCompilationProfile {
     @SuppressWarnings("try")
     final boolean interpreterCall(OptimizedCallTarget callTarget) {
         if (lowTierEnabled) {
-            if (CompilerDirectives.inLowTier()) {
-                TTY.println("In low-tier compiled code. " + callTarget);
-            } else if (!CompilerDirectives.inInterpreter()) {
-                TTY.println("In high-tier compiled code. " + callTarget);
-            }
+            // if (CompilerDirectives.inLowTier()) {
+            //     TTY.println("In low-tier compiled code. " + callTarget);
+            // } else if (!CompilerDirectives.inInterpreter()) {
+            //     TTY.println("In high-tier compiled code. " + callTarget);
+            // }
             int intCallCount = ++interpreterCallCount;
             int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
                 // check if call target is hot enough to get compiled, but took not too long to get hot
-                // if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
                 if ((intAndLoopCallCount >= lowTierCompilationCallAndLoopThreshold && intCallCount >= lowTierCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
                                 TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                    // if (CompilerDirectives.inInterpreter()) {
-                    //     TTY.println("In interpreter, about to compile: " + callTarget);
-                    // }
+                    // TTY.println("In interpreter, about to compile low tier: " + callTarget +
+                    //                 ", cc: " + intCallCount + " (of " + lowTierCompilationCallThreshold + "), ccl: " + intAndLoopCallCount + " (of " + lowTierCompilationCallAndLoopThreshold + ")" +
+                    //                 ", qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
                     try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowTierCompilation, true, TruffleCompilerOptions.TruffleLowTierProfiling, false)) {
                         return callTarget.compile();
                     }
