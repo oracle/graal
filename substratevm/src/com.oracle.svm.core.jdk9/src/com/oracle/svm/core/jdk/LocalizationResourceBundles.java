@@ -77,15 +77,14 @@ public class LocalizationResourceBundles extends LocalizationSupport {
         final ResourceBundle collationDataBundle = jreLocaleData.getCollationData(defaultLocale);
         localizationSupport.addBundleToCache(collationDataKey, collationDataBundle);
         /* FormatData. */
+        /*
+         * jreLocaleData.getDateFormatData and jreLocaleData.getNumberFormatData use the same
+         * resource bundle, so I only need to get one of them.
+         */
         final String formatDataKey = jreLocaleProviderAdapterType.getTextResourcesPackage() + ".FormatData";
         final ResourceBundle formatDataBundle = jreLocaleData.getDateFormatData(defaultLocale);
         localizationSupport.addBundleToCache(formatDataKey, formatDataBundle);
-        /* This seems to duplicate the key for `getDateFormatData`. */
-        @SuppressWarnings({"unused"})
-        final String numberFormatDataKey = jreLocaleProviderAdapterType.getTextResourcesPackage() + ".FormatData";
-        final ResourceBundle numberFormatDataBundle = jreLocaleData.getNumberFormatData(defaultLocale);
-        localizationSupport.addBundleToCache(numberFormatDataKey, numberFormatDataBundle);
-        /* This FormatData uses a different LocaleProviderAdapterType. */
+        /* The CLDR FormatData uses a different LocaleProviderAdapterType. */
         final LocaleProviderAdapter.Type cldrLocaleProviderAdapterType = LocaleProviderAdapter.Type.CLDR;
         final LocaleData cldrLocaleData = new LocaleData(cldrLocaleProviderAdapterType);
         final String cldrFormatDataKey = cldrLocaleProviderAdapterType.getTextResourcesPackage() + ".FormatData";
