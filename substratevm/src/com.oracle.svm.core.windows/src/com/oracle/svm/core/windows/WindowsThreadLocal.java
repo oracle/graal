@@ -22,47 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows.headers;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+package com.oracle.svm.core.windows;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.windows.headers.Process;
 
-@Platforms(Platform.WINDOWS.class)
-public class WindowsDirectives implements CContext.Directives {
+public final class WindowsThreadLocal<T extends WordBase> {
 
-    private static final String[] windowsLibs = new String[]{
-                    "<windows.h>",
-                    "<process.h>",
-                    "<stdio.h>",
-                    "<stdlib.h>",
-                    "<string.h>",
-                    "<io.h>"
-    };
+    private int tlsIndex;
 
-    @Override
-    public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public WindowsThreadLocal() {
     }
 
-    @Override
-    public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            List<String> result = new ArrayList<>(Arrays.asList(windowsLibs));
-            return result;
-        } else {
-            throw VMError.shouldNotReachHere("Unsupported OS");
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    public void initialize() {
+        tlsIndex = Process.TlsAlloc();
     }
 
-    @Override
-    public List<String> getMacroDefinitions() {
-        return Arrays.asList("_WIN64");
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public T get() {
+        return Process.TlsGetValue(tlsIndex);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void set(T value) {
+        WindowsVMLockSupport.checkResult(Process.TlsSetValue(tlsIndex, value), "Process.tlsSetValue");
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void destroy() {
+        WindowsVMLockSupport.checkResult(Process.TlsFree(tlsIndex), "Process.TlsFree");
     }
 }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -33,7 +34,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.windows.headers.FileAPI;
 
+import java.io.FileOutputStream;
 import java.io.FileDescriptor;
+import java.io.IOException;
 
 @TargetClass(java.io.FileDescriptor.class)
 @Platforms(WINDOWS.class)
@@ -59,6 +62,17 @@ final class Target_java_io_FileDescriptor {
         FileDescriptor desc = new FileDescriptor();
         KnownIntrinsics.unsafeCast(desc, Target_java_io_FileDescriptor.class).handle = set(handle);
         return (desc);
+    }
+}
+
+@TargetClass(java.io.FileOutputStream.class)
+@Platforms(WINDOWS.class)
+final class Target_java_io_FileOutputStream {
+
+    /** Temp fix to enable running tests. */
+    @Substitute
+    protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
+        WindowsUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 }
 
