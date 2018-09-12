@@ -60,10 +60,7 @@ public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
 
     @Specialization
     protected boolean doPointerCase(LLVMNativePointer a) {
-        if (derefHandleProfile.profile(!getLLVMMemoryCached().isDerefHandleMemory(a))) {
-            return true;
-        }
-        return commonHandleProfile.profile(!getLLVMMemoryCached().isCommonHandleMemory(a));
+        return derefHandleProfile.profile(!getLLVMMemoryCached().isDerefHandleMemory(a)) && commonHandleProfile.profile(!getLLVMMemoryCached().isCommonHandleMemory(a));
     }
 
     @Specialization

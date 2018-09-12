@@ -117,14 +117,16 @@ public final class LLVMNativeMemory extends LLVMMemory {
             derefHandleContainer.free(address);
         } else if (handleContainer.accept(address)) {
             handleContainer.free(address);
+        } else {
+            try {
+                unsafe.freeMemory(address);
+            } catch (Throwable e) {
+                // this avoids unnecessary exception edges in the compiled code
+                CompilerDirectives.transferToInterpreter();
+                throw e;
+            }
         }
-        try {
-            unsafe.freeMemory(address);
-        } catch (Throwable e) {
-            // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
-            throw e;
-        }
+
     }
 
     @Override
@@ -609,7 +611,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
     @Override
     public boolean isCommonHandleMemory(LLVMNativePointer addr) {
-        return isDerefHandleMemory(addr.asNative());
+        return isCommonHandleMemory(addr.asNative());
     }
 
     /**
