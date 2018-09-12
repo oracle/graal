@@ -132,7 +132,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private ResolvedJavaMethod integerNumberOfLeadingZerosMethod;
 
     private HashSet<ResolvedJavaMethod> neverInlineSet = new HashSet<>();
-    private List<ResolvedJavaMethod> noCheckedExceptionsList = new ArrayList<>();
+    private HashSet<ResolvedJavaMethod> noCheckedExceptionsSet = new HashSet<>();
 
     private GraphBuilderPhase builderPhase;
 
@@ -177,25 +177,25 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
             Method unsafeObjectFieldOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
             unsafeObjectFieldOffsetFieldMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectFieldOffset);
-            noCheckedExceptionsList.add(unsafeObjectFieldOffsetFieldMethod);
+            noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
             if (!GraalServices.Java8OrEarlier) {
                 /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
-                noCheckedExceptionsList.add(unsafeObjectFieldOffsetClassStringMethod);
+                noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
                 neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
             }
 
             Method unsafeArrayBaseOffset = unsafeClass.getMethod("arrayBaseOffset", java.lang.Class.class);
             unsafeArrayBaseOffsetMethod = originalMetaAccess.lookupJavaMethod(unsafeArrayBaseOffset);
-            noCheckedExceptionsList.add(unsafeArrayBaseOffsetMethod);
+            noCheckedExceptionsSet.add(unsafeArrayBaseOffsetMethod);
             neverInlineSet.add(unsafeArrayBaseOffsetMethod);
 
             Method unsafeArrayIndexScale = unsafeClass.getMethod("arrayIndexScale", java.lang.Class.class);
             unsafeArrayIndexScaleMethod = originalMetaAccess.lookupJavaMethod(unsafeArrayIndexScale);
-            noCheckedExceptionsList.add(unsafeArrayIndexScaleMethod);
+            noCheckedExceptionsSet.add(unsafeArrayIndexScaleMethod);
             neverInlineSet.add(unsafeArrayIndexScaleMethod);
 
             Method integerNumberOfLeadingZeros = java.lang.Integer.class.getMethod("numberOfLeadingZeros", int.class);
@@ -891,7 +891,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          * Replace the InvokeWithExceptionNode with InvokeNode.
          */
         for (InvokeWithExceptionNode invoke : graph.getNodes().filter(InvokeWithExceptionNode.class)) {
-            if (noCheckedExceptionsList.contains(invoke.callTarget().targetMethod())) {
+            if (noCheckedExceptionsSet.contains(invoke.callTarget().targetMethod())) {
                 InvokeNode replacement = invoke.graph().add(new InvokeNode(invoke.callTarget(), invoke.bci(), invoke.stamp(NodeView.DEFAULT)));
                 replacement.setStateAfter(invoke.stateAfter());
 
