@@ -78,7 +78,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
      * warmed up interpreter all specialization paths are taken.
      */
     @Setup
-    public static void setupInterpreterProfile() {
+    public void setupInterpreterProfile() {
         for (int i = 0; i < 100; i++) {
             DSLNode node = createNode();
             node.execute(42L);
