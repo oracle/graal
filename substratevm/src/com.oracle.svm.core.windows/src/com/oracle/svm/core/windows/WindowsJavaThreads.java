@@ -97,12 +97,11 @@ public final class WindowsJavaThreads extends JavaThreads {
         CIntPointer osThreadID = StackValue.get(CIntPointer.class);
         WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag,
                         osThreadID);
-        if (osThreadHandle.rawValue() != 0) {
-            startData.setOSThreadHandle(osThreadHandle);
+        VMError.guarantee(osThreadHandle.rawValue() != 0, "Could not create thread");
+        startData.setOSThreadHandle(osThreadHandle);
 
-            // Start the thread running
-            Process.ResumeThread(osThreadHandle);
-        }
+        // Start the thread running
+        Process.ResumeThread(osThreadHandle);
     }
 
     /**
