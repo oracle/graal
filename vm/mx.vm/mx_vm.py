@@ -30,6 +30,8 @@ import fcntl
 import os
 import pprint
 import json
+import re
+import subprocess
 
 from abc import ABCMeta
 from argparse import ArgumentParser
@@ -72,6 +74,9 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     support_distributions=['vm:VM_GRAALVM_SUPPORT']
 ))
 
+anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
+openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
+graalvm_version_regex = re.compile(r'.*\n.*\nGraalVM (?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
     __metaclass__ = ABCMeta
@@ -89,6 +94,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         base_dir = base_dir or '.'
         _src_jdk_base, _jdk_dir = _get_jdk_dir()
         _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
+
         if base_dir != '.':
             self.jdk_base = '/'.join([base_dir, _src_jdk_base]) if _src_jdk_base and _src_jdk_base != '.' else base_dir
         else:
@@ -146,6 +152,11 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             _layout.setdefault(dest, []).extend(src)
 
         if is_graalvm:
+            if stage1:
+                # 1. we do not want a GraalVM to be used as base-JDK
+                # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the Graal compiler is a registered component
+                check_versions(join(_jdk_dir, _src_jdk_base), anyjdk_version_regex, graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
+
             # Add base JDK
             exclude_base = _jdk_dir
             if _src_jdk_base != '.':
@@ -1628,6 +1639,39 @@ def _str_to_bool(val):
     elif low_val in ('true', '1', 'yes'):
         return True
     return val
+
+
+def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_graalvm, check_jvmci):
+    """
+    :type jdk_dir: str
+    :type jdk_version_regex: typing.Pattern
+    :type graalvm_version_regex: typing.Pattern
+    :type expect_graalvm: bool
+    :type check_jvmci: bool
+    """
+    check_env = "Please check the value of the 'JAVA_HOME' environment variable, your mx 'env' files, and the documentation of this suite"
+
+    out = mx.OutputCapture()
+    java = join(jdk_dir, 'bin', 'java')
+    if check_jvmci and mx.run([java, '-XX:+JVMCIPrintProperties'], nonZeroIsFatal=False, out=out, err=out):
+        mx.log_error(out.data)
+        mx.abort("'{}' is not a JVMCI-enabled JDK ('java -XX:+JVMCIPrintProperties' fails).\n{}.".format(jdk_dir, check_env))
+
+    out = subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT).rstrip()
+
+    match = jdk_version_regex.match(out)
+    if match is None:
+        mx.abort("'{}' has an unexpected version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, jdk_version_regex.pattern))
+    elif not match.group('jvm_version').startswith("1.8.0"):
+        mx.abort("GraalVM requires a JDK8 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n{}.".format(jdk_dir, match.group('jvm_version'), out, check_env))
+
+    match = graalvm_version_regex.match(out)
+    if expect_graalvm and match is None:
+        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}").format(jdk_dir, out, graalvm_version_regex.pattern)
+    elif expect_graalvm and match.group('graalvm_version') != _suite.release_version():
+        mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(match.group('graalvm_version'), _suite.release_version()))
+    elif not expect_graalvm and match:
+        mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk_dir, check_env))
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
