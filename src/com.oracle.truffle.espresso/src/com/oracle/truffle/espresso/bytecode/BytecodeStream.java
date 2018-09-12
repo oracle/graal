@@ -32,8 +32,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  */
 public final class BytecodeStream {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private final byte[] code;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] code;
 
     /**
      * Creates a new {@code BytecodeStream} for the specified bytecode.

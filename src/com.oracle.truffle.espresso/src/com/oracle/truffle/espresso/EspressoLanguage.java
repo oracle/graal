@@ -70,7 +70,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String BOOT_CLASSPATH_NAME = "java.bootclasspath";
     public static final OptionKey<String> BOOT_CLASSPATH = new OptionKey<>("");
 
-
     public static final String FILE_EXTENSION = ".class";
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
@@ -184,9 +183,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         assert context.isInitialized();
         Meta meta = context.getMeta();
         Meta.Klass launcherHelperKlass = meta.knownKlass(LauncherHelper.class);
-        return (StaticObjectClass) launcherHelperKlass
-                .staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class)
-                .invokeDirect(true, mode.ordinal(), meta.toGuest(name));
+        return (StaticObjectClass) launcherHelperKlass.staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class).invokeDirect(true, mode.ordinal(), meta.toGuest(name));
     }
 
     @Override

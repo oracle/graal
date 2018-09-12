@@ -47,8 +47,7 @@ public final class MethodInfo implements ModifiersProvider {
     private final String name;
     private final SignatureDescriptor signature;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private final byte[] code;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] code;
 
     private final int maxStackSize;
     private final int maxLocals;
@@ -173,8 +172,7 @@ public final class MethodInfo implements ModifiersProvider {
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private Klass[] parameterTypes;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] parameterTypes;
 
     public Klass[] getParameterTypes() {
         if (parameterTypes == null) {

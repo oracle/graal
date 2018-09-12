@@ -96,7 +96,6 @@ import sun.misc.Unsafe;
 
 public class InterpreterToVM {
 
-
     private static Unsafe hostUnsafe;
 
     static {
@@ -327,7 +326,6 @@ public class InterpreterToVM {
     }
 
     // region Get (array) operations
-
 
     public int getArrayInt(int index, Object arr) {
         return ((int[]) arr)[index];

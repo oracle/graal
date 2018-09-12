@@ -35,6 +35,7 @@ public class InnerClassesAttribute extends AttributeInfo {
         public final int outerClassIndex;
         public final int innerNameIndex;
         public final int innerClassAccessFlags;
+
         public Entry(int innerClassIndex, int outerClassIndex, int innerNameIndex, int innerClassAccessFlags) {
             this.innerClassIndex = innerClassIndex;
             this.outerClassIndex = outerClassIndex;
@@ -42,6 +43,7 @@ public class InnerClassesAttribute extends AttributeInfo {
             this.innerClassAccessFlags = innerClassAccessFlags;
         }
     }
+
     private final Entry[] entries;
 
     public List<Entry> entries() {

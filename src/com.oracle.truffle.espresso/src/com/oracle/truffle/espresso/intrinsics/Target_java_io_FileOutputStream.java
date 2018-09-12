@@ -38,8 +38,6 @@ public class Target_java_io_FileOutputStream {
         /* nop */
     }
 
-
-
     @Intrinsic(hasReceiver = true)
     public static void writeBytes(StaticObject self, byte[] bytes, int offset, int len, boolean append) {
         int fd = (int) meta((StaticObject) meta(self).field("fd").get()).field("fd").get();

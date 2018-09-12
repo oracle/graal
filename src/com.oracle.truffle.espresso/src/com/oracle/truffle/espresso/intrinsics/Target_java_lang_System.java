@@ -95,23 +95,17 @@ public class Target_java_lang_System {
 
     @Intrinsic
     public static void setIn0(@Type(InputStream.class) StaticObjectImpl in) {
-        Utils.getContext().getMeta().knownKlass(System.class)
-                .staticField("in")
-                .set(in);
+        Utils.getContext().getMeta().knownKlass(System.class).staticField("in").set(in);
     }
 
     @Intrinsic
     public static void setOut0(@Type(PrintStream.class) StaticObject out) {
-        Utils.getContext().getMeta().knownKlass(System.class)
-                .staticField("out")
-                .set(out);
+        Utils.getContext().getMeta().knownKlass(System.class).staticField("out").set(out);
     }
 
     @Intrinsic
     public static void setErr0(@Type(PrintStream.class) StaticObject err) {
-        Utils.getContext().getMeta().knownKlass(System.class)
-                .staticField("err")
-                .set(err);
+        Utils.getContext().getMeta().knownKlass(System.class).staticField("err").set(err);
     }
 
     @Intrinsic

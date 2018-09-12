@@ -69,8 +69,8 @@ public class Target_java_lang_ClassLoader {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject defineClass0(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
-                                                                    @Type(ProtectionDomain.class) Object pd) {
-        ClasspathFile cpf =  new ClasspathFile(b, null, Meta.toHost(name));
+                    @Type(ProtectionDomain.class) Object pd) {
+        ClasspathFile cpf = new ClasspathFile(b, null, Meta.toHost(name));
         ClassfileParser parser = new ClassfileParser(self, new ClassfileStream(b, off, len, cpf), Meta.toHost(name), null, Utils.getContext());
 
         // TODO(peterssen): Propagate errors to the guest.
@@ -81,7 +81,7 @@ public class Target_java_lang_ClassLoader {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject defineClass1(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
-                                                                     @Type(ProtectionDomain.class) Object pd, @Type(String.class) StaticObject source) {
+                    @Type(ProtectionDomain.class) Object pd, @Type(String.class) StaticObject source) {
         return defineClass0(self, name, b, off, len, pd);
     }
 }

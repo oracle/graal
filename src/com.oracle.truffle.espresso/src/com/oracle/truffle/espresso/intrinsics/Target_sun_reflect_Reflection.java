@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 public class Target_sun_reflect_Reflection {
     @Intrinsic
     public static @Type(Class.class) StaticObject getCallerClass() {
-        // TODO(peterssen):
         final int[] depth = new int[]{0};
         CallTarget caller = Truffle.getRuntime().iterateFrames(
                         frameInstance -> (depth[0]++ <= 1) ? null : frameInstance.getCallTarget());

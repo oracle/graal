@@ -162,10 +162,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void launch(Builder contextBuilder) {
-        contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[mainClassArgs.size()]))
-                .in(System.in)
-                .out(System.out)
-                .err(System.err);
+        contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[mainClassArgs.size()])).in(System.in).out(System.out).err(System.err);
 
         if (classPathString != null) {
             contextBuilder.option("java.classpath", classPathString);

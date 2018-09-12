@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.runtime.Utils;
 public class Target_java_lang_reflect_Array {
 
     @Intrinsic
-    public static Object newArray(@Type(Class.class) StaticObjectClass componentType, int length) { // throws NegativeArraySizeException
+    public static Object newArray(@Type(Class.class) StaticObjectClass componentType, int length) {
         return Utils.getContext().getVm().newArray(componentType.getMirror(), length);
     }
 }

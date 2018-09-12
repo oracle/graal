@@ -202,7 +202,7 @@ public class Target_sun_misc_Unsafe {
     public static void putObjectVolatile(Object self, Object holder, long offset, Object value) {
         if (holder instanceof StaticObjectArray) {
             hostUnsafe.putObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset, value);
-            return ;
+            return;
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.

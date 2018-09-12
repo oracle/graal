@@ -270,8 +270,7 @@ public class EspressoRootNode extends RootNode {
     private final MethodInfo method;
     private final InterpreterToVM vm;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private final FrameSlot[] locals;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
 
     private final FrameSlot stackSlot;
 

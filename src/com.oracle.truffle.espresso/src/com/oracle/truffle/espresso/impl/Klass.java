@@ -343,8 +343,6 @@ public abstract class Klass implements ModifiersProvider {
         return null;
     }
 
-
-
     public TypeDescriptor getTypeDescriptor() {
         return getContext().getTypeDescriptors().make(getName());
     }

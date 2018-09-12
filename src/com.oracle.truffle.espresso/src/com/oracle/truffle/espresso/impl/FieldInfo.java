@@ -43,8 +43,7 @@ public class FieldInfo implements ModifiersProvider {
     private final int offset;
     private final short index;
 
-    @CompilerDirectives.CompilationFinal
-    private Klass type;
+    @CompilerDirectives.CompilationFinal private Klass type;
 
     /**
      * This value contains all flags as stored in the VM including internal ones.

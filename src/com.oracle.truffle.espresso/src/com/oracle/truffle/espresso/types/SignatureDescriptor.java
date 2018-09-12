@@ -49,8 +49,7 @@ public final class SignatureDescriptor extends Descriptor {
     /**
      * The parameter types in this signature followed by the return type.
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private final TypeDescriptor[] components;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final TypeDescriptor[] components;
     private final int numberOfSlots;
 
     /**

@@ -182,17 +182,17 @@ public final class PrimitiveKlass extends Klass {
 
         throw EspressoError.unimplemented();
 
-// if (elementType.getName().startsWith("Ljava/")) {
-// // Classes in a java.* package can only be defined by the
-// // boot class loader. This is enforced by ClassLoader.preDefineClass()
-// assert mirror().getClassLoader() == null;
-// return true;
-// }
+        // if (elementType.getName().startsWith("Ljava/")) {
+        // // Classes in a java.* package can only be defined by the
+        // // boot class loader. This is enforced by ClassLoader.preDefineClass()
+        // assert mirror().getClassLoader() == null;
+        // return true;
+        // }
 
-// ClassLoader thisCl = mirror().getClassLoader();
-// ClassLoader accessingClassCl = ((HotSpotResolvedObjectTypeImpl)
-// accessingClass).mirror().getClassLoader();
-// return thisCl == accessingClassCl;
+        // ClassLoader thisCl = mirror().getClassLoader();
+        // ClassLoader accessingClassCl = ((HotSpotResolvedObjectTypeImpl)
+        // accessingClass).mirror().getClassLoader();
+        // return thisCl == accessingClassCl;
     }
 
     @Override
