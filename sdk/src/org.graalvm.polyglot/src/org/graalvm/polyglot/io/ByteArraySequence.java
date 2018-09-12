@@ -127,7 +127,11 @@ final class ByteArraySequence implements ByteSequence {
             h = 1;
             int i = start;
             for (; i + 3 < end; i += 4) {
-                h = 31 * h + (buffer[i] | buffer[i + 1] << 8 | buffer[i + 2] << 16 | buffer[i + 3] << 24);
+                int h0 = buffer[i + 0] & 0xff << 0;
+                int h1 = buffer[i + 1] & 0xff << 8;
+                int h2 = buffer[i + 2] & 0xff << 16;
+                int h3 = buffer[i + 3] & 0xff << 24;
+                h = 31 * h + (h0 | h1 | h2 | h3);
             }
             for (; i < end; i++) {
                 h = 31 * h + buffer[i];
