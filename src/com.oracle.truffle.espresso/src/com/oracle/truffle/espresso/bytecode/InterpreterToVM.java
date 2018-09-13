@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.bytecode;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -43,12 +41,12 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.EspressoIntrinsics;
 import com.oracle.truffle.espresso.intrinsics.Intrinsic;
+import com.oracle.truffle.espresso.intrinsics.Surrogate;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_Console;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileDescriptor;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileInputStream;
@@ -78,6 +76,7 @@ import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM;
+import com.oracle.truffle.espresso.intrinsics.Target_sun_nio_fs_UnixNativeDispatcher;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeConstructorAccessorImpl;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection;
 import com.oracle.truffle.espresso.intrinsics.Type;
@@ -86,12 +85,12 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.runtime.Utils;
+
 import sun.misc.Unsafe;
 
 public class InterpreterToVM {
@@ -140,6 +139,7 @@ public class InterpreterToVM {
                     Target_sun_misc_Unsafe.class,
                     Target_sun_misc_URLClassPath.class,
                     Target_sun_misc_VM.class,
+                    Target_sun_nio_fs_UnixNativeDispatcher.class,
                     Target_sun_reflect_NativeConstructorAccessorImpl.class,
                     Target_sun_reflect_Reflection.class);
 
@@ -262,7 +262,6 @@ public class InterpreterToVM {
         } else {
             className = MetaUtil.toInternalName(annotatedClass.getName());
         }
-
         for (Method method : clazz.getDeclaredMethods()) {
             Intrinsic intrinsic = method.getAnnotation(Intrinsic.class);
             if (intrinsic == null) {
@@ -277,7 +276,12 @@ public class InterpreterToVM {
                 String parameterTypeName;
                 Type annotatedType = parameter.getAnnotatedType().getAnnotation(Type.class);
                 if (annotatedType != null) {
-                    parameterTypeName = annotatedType.value().getName();
+                    Surrogate surrogate = annotatedType.value().getAnnotation(Surrogate.class);
+                    if (surrogate != null) {
+                        parameterTypeName = surrogate.value();
+                    } else {
+                        parameterTypeName = annotatedType.value().getName();
+                    }
                 } else {
                     parameterTypeName = parameter.getType().getName();
                 }
@@ -288,7 +292,12 @@ public class InterpreterToVM {
             Type annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Type.class);
             String returnTypeName;
             if (annotatedReturnType != null) {
-                returnTypeName = annotatedReturnType.value().getName();
+                Surrogate surrogate = annotatedReturnType.value().getAnnotation(Surrogate.class);
+                if (surrogate != null) {
+                    returnTypeName = surrogate.value();
+                } else {
+                    returnTypeName = annotatedReturnType.value().getName();
+                }
             } else {
                 returnTypeName = method.getReturnType().getName();
             }
@@ -304,21 +313,20 @@ public class InterpreterToVM {
     }
 
     private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
-        if (EspressoOptions.INTRINSICS_VIA_REFLECTION) {
-            return new IntrinsicReflectionRootNode(language, method);
-        } else {
-            MethodHandle handle;
-            try {
-                handle = MethodHandles.publicLookup().unreflect(method);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-            return new IntrinsicRootNode(language, handle);
-        }
+// if (EspressoOptions.INTRINSICS_VIA_REFLECTION) {
+        return new IntrinsicReflectionRootNode(language, method);
+// } else {
+// MethodHandle handle;
+// try {
+// handle = MethodHandles.publicLookup().unreflect(method);
+// } catch (IllegalAccessException e) {
+// throw new RuntimeException(e);
+// }
+// return new IntrinsicRootNode(language, handle);
+// }
     }
 
     public void registerIntrinsic(String clazz, String methodName, String signature, CallTarget intrinsic) {
-
         MethodKey key = new MethodKey(clazz, methodName, signature);
         assert !intrinsics.containsKey(key) : key + " intrinsic is already registered";
         assert intrinsic != null;
@@ -406,12 +414,12 @@ public class InterpreterToVM {
     // region Monitor enter/exit
     public void monitorEnter(Object obj) {
         // TODO(peterssen): Nop for single-threaded language.
-        hostUnsafe.monitorEnter(obj);
+        //hostUnsafe.monitorEnter(obj);
     }
 
     public void monitorExit(Object obj) {
         // TODO(peterssen): Nop for single-threaded language.
-        hostUnsafe.monitorExit(obj);
+        //hostUnsafe.monitorExit(obj);
     }
     // endregion
 

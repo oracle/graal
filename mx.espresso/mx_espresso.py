@@ -22,10 +22,12 @@
 #
 
 import mx
+import mx_sdk
 import os
 import subprocess
 
 from mx_gate import Task, add_gate_runner
+from mx_unittest import unittest
 
 _suite = mx.suite('espresso')
 _root = os.path.join(_suite.dir, "java/")
@@ -40,16 +42,16 @@ def testEspresso(args):
     _testEspresso(args)
 
 
-def benchEspresso(args):
-    _runBenchmarks(args, runEspresso, [])
-
-
-def benchBaselineJavaServer(args):
-    _runBenchmarks(args, mx.run_java, ['-server'])
-
-
-def benchBaselineJavaClient(args):
-    _runBenchmarks(args, mx.run_java, ['-client'])
+# def benchEspresso(args):
+#     _runBenchmarks(args, runEspresso, [])
+#
+#
+# def benchBaselineJavaServer(args):
+#     _runBenchmarks(args, mx.run_java, ['-server'])
+#
+#
+# def benchBaselineJavaClient(args):
+#     _runBenchmarks(args, mx.run_java, ['-client'])
 
 def _runEspresso(args, verbose):
     vmArgs, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
@@ -130,16 +132,37 @@ def executeGate():
     Executes custom Tasks from Espresso with a 'mx gate'
     """
     tasks = []
-    with Task('TestEspresso', tasks) as t:
+    with Task('UnitTests', tasks) as t:
         if t:
-            testEspresso([''])
+            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Espresso',
+    short_name='java',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=[
+        'espresso:ESPRESSO',
+    ],
+    support_distributions=[
+        'espresso:ESPRESSO_SUPPORT',
+    ],
+    launcher_configs=[
+        mx_sdk.LanguageLauncherConfig(
+            destination='bin/<exe:espresso>',
+            jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
+            main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
+            build_args=['--language:java']
+        )
+    ],
+))
 
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
     'espresso': [runEspresso, ''],
     'espresso-test': [testEspresso, ''],
-    'espresso-bench': [benchEspresso, ''],
-    'espresso-bench-server': [benchBaselineJavaServer, ''],
-    'espresso-bench-client': [benchBaselineJavaClient, ''],
+    # 'espresso-bench': [benchEspresso, ''],
+    # 'espresso-bench-server': [benchBaselineJavaServer, ''],
+    # 'espresso-bench-client': [benchBaselineJavaClient, ''],
 })

@@ -95,7 +95,6 @@ public class Target_java_util_zip_ZipFile {
     @Intrinsic
     public static long getNextEntry(long jzfile, int i) {
         return (long) ZipFileFunctions.GET_NEXT_ENTRY.invokeStatic(jzfile, i);
-
     }
 
     @Intrinsic

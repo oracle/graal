@@ -1366,9 +1366,7 @@ public class EspressoRootNode extends RootNode {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = method.getDeclaringClass().getContext().getMeta();
-            StaticObject nullPointerEx = meta.exceptionKlass(NullPointerException.class).allocateInstance();
-            Meta.meta(nullPointerEx).method("<init>", void.class).invokeDirect();
-            throw new EspressoException(nullPointerEx);
+            throw meta.throwEx(NullPointerException.class);
         }
         return value;
     }

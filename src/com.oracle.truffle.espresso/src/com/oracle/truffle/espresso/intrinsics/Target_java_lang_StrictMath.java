@@ -29,4 +29,19 @@ public class Target_java_lang_StrictMath {
     public static double log(double a) {
         return StrictMath.log(a);
     }
+
+    @Intrinsic
+    public static double sin(double a) {
+        return StrictMath.sin(a);
+    }
+
+    @Intrinsic
+    public static double cos(double a) {
+        return StrictMath.cos(a);
+    }
+
+    @Intrinsic
+    public static double sqrt(double a) {
+        return StrictMath.sqrt(a);
+    }
 }

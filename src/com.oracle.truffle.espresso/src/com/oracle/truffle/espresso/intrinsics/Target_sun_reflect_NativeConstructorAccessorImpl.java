@@ -44,6 +44,7 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
         assert parameters == StaticObject.NULL || (((StaticObjectArray) parameters)).getWrapped().length == 0;
 
         StaticObjectClass clazz = (StaticObjectClass) meta(constructor).field("clazz").get();
+        clazz.getMirror().initialize();
         String className = clazz.getMirror().getName();
 
         StaticObject instance = Utils.getVm().newObject(Utils.getContext().getRegistries().resolve(Utils.getContext().getTypeDescriptors().make(className), null));

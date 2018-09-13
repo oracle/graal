@@ -22,12 +22,14 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public class IntrinsicReflectionRootNode extends RootNode {
@@ -45,11 +47,16 @@ public class IntrinsicReflectionRootNode extends RootNode {
             return callIntrinsic(frame.getArguments());
         } catch (EspressoException wrapped) {
             throw wrapped;
+        } catch (InvocationTargetException e) {
+            if (e.getTargetException() instanceof EspressoException) {
+                throw (EspressoException) e.getTargetException();
+            } else {
+                throw new RuntimeException(e.getTargetException());
+            }
         } catch (Throwable throwable) {
             CompilerDirectives.transferToInterpreter();
             // Non-espresso exceptions cannot escape to the guest.
-            throw new RuntimeException(throwable);
-            // throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(throwable);
         }
     }
 

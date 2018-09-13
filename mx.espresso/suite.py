@@ -41,6 +41,16 @@ suite = {
             "javaCompliance" : "1.8+",
             "checkstyleVersion" : "8.8",
         },
+            
+        "com.oracle.truffle.espresso.overlay" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+            ],
+            "javaCompliance" : "1.8+",
+            "checkstyleVersion" : "8.8",
+            "checkPackagePrefix" : "false",
+        },
 
         "com.oracle.truffle.espresso.launcher" : {
             "subDir" : "src",
@@ -58,7 +68,6 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.espresso",
-                "com.oracle.truffle.espresso.launcher",
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
@@ -74,11 +83,24 @@ suite = {
             "subDir" : "src",
             "dependencies" : [
                 "com.oracle.truffle.espresso",
-                "com.oracle.truffle.espresso.test"
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
             ],
+        },
+
+        "ESPRESSO_TESTS" : {
+            "subDir" : "src",
+            "dependencies" : [
+                "com.oracle.truffle.espresso.test"
+            ],
+            "distDependencies" : [
+                "espresso:ESPRESSO",
+                "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "mx:JUNIT",
+            ],
+            "testDistribution" : True,
         },
 
         "ESPRESSO_LAUNCHER" : {
@@ -94,5 +116,28 @@ suite = {
             "description" : "Espresso launcher using the polyglot API.",
             "allowsJavadocWarnings": True,
         },
+            
+        "ESPRESSO_OVERLAY" : {
+            "subDir" : "src",
+            "dependencies" : [
+                "com.oracle.truffle.espresso.overlay"
+            ],
+            "distDependencies" : [
+            ],
+            "description" : "Espresso overlay distribution for the GraalVM",
+        },            
+
+        "ESPRESSO_SUPPORT" : {
+            "native" : True,
+            "description" : "Espresso support distribution for the GraalVM",
+            "layout" : {
+                "./": [
+                    "file:mx.espresso/native-image.properties",
+                    "file:mx.espresso/reflectconfig.json",
+                ],
+            },
+        },
+                
+
     }
 }

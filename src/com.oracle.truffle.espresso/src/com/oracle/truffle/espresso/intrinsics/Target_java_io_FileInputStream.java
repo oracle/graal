@@ -48,28 +48,21 @@ public class Target_java_io_FileInputStream {
 
     @Intrinsic(hasReceiver = true)
     public static void open0(StaticObject self, @Type(String.class) StaticObject name) {
-        // throws
-        // FileNotFoundException;
         try {
             FileInputStream fis = new FileInputStream(Meta.toHost(name));
             FileDescriptor fd = fis.getFD();
             int fakeFd = fdCount.incrementAndGet();
             fdMap.put(fakeFd, fd);
             meta((StaticObject) meta(self).field("fd").get()).field("fd").set(fakeFd);
-
-        } catch (FileNotFoundException e) {
-            Meta meta = meta(self).getMeta();
-            throw meta.throwEx(FileNotFoundException.class);
         } catch (IOException e) {
-            Meta meta = meta(self).getMeta();
-            throw meta.throwEx(IOException.class);
+            throw meta(self).getMeta().throwEx(e.getClass());
         }
     }
 
     @Intrinsic(hasReceiver = true)
     public static int readBytes(StaticObject self, byte b[], int off, int len) {
         // throws IOException;
-        int fakeFd = (int) meta((StaticObject) meta(self).field("fd").get()).field("fd").get();
+        int fakeFd = getFileDescriptor(self);
         try {
             // read from stdin
             if (fakeFd == 0) {
@@ -80,15 +73,14 @@ public class Target_java_io_FileInputStream {
                 return fis.read(b, off, len);
             }
         } catch (IOException e) {
-            Meta meta = meta(self).getMeta();
-            throw meta.throwEx(IOException.class);
+            throw meta(self).getMeta().throwEx(e.getClass());
         }
     }
 
     @Intrinsic(hasReceiver = true)
     public static int available0(StaticObject self) {
         // throws IOException;
-        int fakeFd = (int) meta((StaticObject) meta(self).field("fd").get()).field("fd").get();
+        int fakeFd = getFileDescriptor(self);
         try {
             // read from stdin
             if (fakeFd == 0) {
@@ -99,15 +91,14 @@ public class Target_java_io_FileInputStream {
                 return fis.available();
             }
         } catch (IOException e) {
-            Meta meta = meta(self).getMeta();
-            throw meta.throwEx(IOException.class);
+            throw meta(self).getMeta().throwEx(e.getClass());
         }
     }
 
     @Intrinsic(hasReceiver = true)
     public static void close0(StaticObject self) {
         // throws IOException;
-        int fakeFd = (int) meta((StaticObject) meta(self).field("fd").get()).field("fd").get();
+        int fakeFd = getFileDescriptor(self);
         try {
             // read from stdin
             if (fakeFd == 0) {
@@ -118,8 +109,11 @@ public class Target_java_io_FileInputStream {
             // fis.close();
             // }
         } catch (IOException e) {
-            Meta meta = meta(self).getMeta();
-            throw meta.throwEx(IOException.class);
+            throw meta(self).getMeta().throwEx(e.getClass());
         }
+    }
+
+    private static int getFileDescriptor(StaticObject self) {
+        return (int) meta((StaticObject) meta(self).field("fd").get()).field("fd").get();
     }
 }

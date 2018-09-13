@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 
@@ -31,11 +33,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 import com.oracle.truffle.espresso.runtime.Utils;
 
 import sun.misc.Unsafe;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_sun_misc_Unsafe {
@@ -215,5 +216,33 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static void ensureClassInitialized(Object self, @Type(Class.class) StaticObjectClass clazz) {
         clazz.getMirror().initialize();
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static void copyMemory(Object self, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
+        if (bytes == 0) {
+            return;
+        }
+        hostUnsafe.copyMemory(unwrap(srcBase), srcOffset, unwrap(destBase), destOffset, bytes);
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static void putByte(Object self, long offset, byte value) {
+        hostUnsafe.putByte(offset, value);
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static void putByte(Object self, Object object, long offset, byte value) {
+        hostUnsafe.putByte(unwrap(object), offset, value);
+    }
+
+    private static Object unwrap(Object obj) {
+        if (obj == StaticObject.NULL) {
+            return null;
+        }
+        if (obj instanceof StaticObjectWrapper) {
+            obj = ((StaticObjectWrapper) obj).getWrapped();
+        }
+        return obj;
     }
 }

@@ -52,8 +52,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 
-import sun.launcher.LauncherHelper;
-
 @TruffleLanguage.Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
@@ -182,7 +180,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
-        Meta.Klass launcherHelperKlass = meta.knownKlass(LauncherHelper.class);
+        Meta.Klass launcherHelperKlass = meta.loadKlass("sun.launcher.LauncherHelper", null);
         return (StaticObjectClass) launcherHelperKlass.staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class).invokeDirect(true, mode.ordinal(), meta.toGuest(name));
     }
 
