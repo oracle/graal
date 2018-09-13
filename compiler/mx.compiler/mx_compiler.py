@@ -904,17 +904,16 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
-class GraalArchiveParticipant:
 
+class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
+
     def __init__(self, dist, isTest=False):
         self.dist = dist
         self.isTest = isTest
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
-        self.versionedServices = {}
-        self.arc = arc
 
     def __add__(self, arcname, contents):
         m = GraalArchiveParticipant.providersRE.match(arcname)
@@ -934,7 +933,7 @@ class GraalArchiveParticipant:
                         self.services.setdefault(service, []).append(provider)
                     else:
                         # Versioned service
-                        services = self.versionedServices.setdefault(version, {})
+                        services = self.services.setdefault(int(version), {})
                         services.setdefault(service, []).append(provider)
             return True
         elif arcname.endswith('_OptionDescriptors.class'):
@@ -952,11 +951,8 @@ class GraalArchiveParticipant:
         return False
 
     def __closing__(self):
-        for version, services in self.versionedServices.iteritems():
-            for service, providers in services.iteritems():
-                arcname = 'META-INF/versions/{}/META-INF/services/{}'.format(version, service)
-                # Convert providers to a set before printing to remove duplicates
-                self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)) + '\n')
+        pass
+
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
