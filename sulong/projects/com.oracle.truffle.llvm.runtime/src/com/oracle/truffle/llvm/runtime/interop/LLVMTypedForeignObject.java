@@ -172,13 +172,13 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         }
     }
 
-    static class ForeignReadNode extends LLVMObjectReadNode {
+    static class ForeignReadNode extends LLVMNode implements LLVMObjectReadNode {
 
         @Child LLVMInteropReadNode read = LLVMInteropReadNode.create();
         @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
         @Override
-        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) throws InteropException {
+        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
             return read.execute(getType.execute(object), object.getForeign(), offset, type);
         }
@@ -189,14 +189,14 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         }
     }
 
-    static class ForeignWriteNode extends LLVMObjectWriteNode {
+    static class ForeignWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         @Child LLVMInteropWriteNode write = LLVMInteropWriteNode.create();
         @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
         @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
         @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) throws InteropException {
+        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
             Object escapedValue = dataEscape.executeWithTarget(value);
             write.execute(getType.execute(object), object.getForeign(), offset, escapedValue);

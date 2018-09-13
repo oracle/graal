@@ -31,18 +31,20 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
     private final LLVMSourceLocation source;
     @CompilationFinal private LLVMMemory llvmMemory;
-    @Child private LLVMForeignWriteNode foreignWriteNode;
+    @Child protected LLVMObjectWriteNode foreignWriteNode;
 
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
 
@@ -63,12 +65,16 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         return derefHandleGetReceiverNode;
     }
 
-    protected LLVMForeignWriteNode getForeignWriteNode(ForeignToLLVMType type) {
+    protected LLVMObjectWriteNode getForeignWriteNode() {
         if (foreignWriteNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            foreignWriteNode = insert(LLVMForeignWriteNodeGen.create(type));
+            foreignWriteNode = (LLVMObjectWriteNode) insert((Node) LLVMObjectAccessFactory.createWrite());
         }
         return foreignWriteNode;
+    }
+
+    protected static LLVMObjectWriteNode createForeignWrite() {
+        return LLVMObjectAccessFactory.createWrite();
     }
 
     protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
