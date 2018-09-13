@@ -158,13 +158,18 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
      * both pointers do not point to the same object.
      */
     abstract static class LLVMManagedCompareNode extends LLVMNode {
+        private static final long TYPICAL_POINTER = 0x00007f0000000000L;
+
         abstract boolean execute(Object a, LLVMObjectNativeLibrary libA, Object b, LLVMObjectNativeLibrary libB, NativePointerCompare op);
 
         @Specialization(guards = {"pointToSameObject.execute(a, b)"})
         protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
                         LLVMManagedPointer b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB, NativePointerCompare op,
                         @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject) {
-            return op.compare(a.getOffset(), b.getOffset());
+            // when comparing pointers to the same object, it is not sufficient to simply compare
+            // the offsets if we have an unsigned comparison and one of the offsets is negative. So,
+            // we add a "typical" pointer value to both offsets and compare the resulting values.
+            return op.compare(TYPICAL_POINTER + a.getOffset(), TYPICAL_POINTER + b.getOffset());
         }
 
         @Specialization(guards = "!pointToSameObject.execute(a, b)")
@@ -180,7 +185,7 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMObjectNativeLibrary libA,
                         LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMObjectNativeLibrary libB, NativePointerCompare op,
                         @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject) {
-            return op.compare(a.getOffset(), b.getOffset());
+            return op.compare(TYPICAL_POINTER + a.getOffset(), TYPICAL_POINTER + b.getOffset());
         }
 
         @Specialization(guards = "!pointToSameObject.execute(a, b)")
