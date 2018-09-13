@@ -74,7 +74,8 @@ public final class Sulong extends LLVMLanguage {
 
     static {
         configurations.add(new BasicConfiguration());
-        for (Configuration f : ServiceLoader.load(Configuration.class)) {
+        ClassLoader cl = Sulong.class.getClassLoader();
+        for (Configuration f : ServiceLoader.load(Configuration.class, cl)) {
             configurations.add(f);
         }
     }
