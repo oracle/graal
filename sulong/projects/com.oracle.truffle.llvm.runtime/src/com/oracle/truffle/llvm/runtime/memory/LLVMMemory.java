@@ -174,15 +174,11 @@ public abstract class LLVMMemory {
 
     public abstract void fullFence();
 
-    public abstract LLVMNativePointer allocateHandle(boolean autoDeref);
+    public abstract long allocateHandle(boolean autoDeref);
 
-    public abstract boolean isDerefHandleMemory(LLVMNativePointer addr);
+    public abstract boolean isHandleMemory(long addr);
 
     public abstract boolean isDerefHandleMemory(long addr);
-
-    public abstract boolean isCommonHandleMemory(LLVMNativePointer addr);
-
-    public abstract boolean isCommonHandleMemory(long addr);
 
     @ValueType
     public static final class CMPXCHGI8 {
@@ -259,4 +255,5 @@ public abstract class LLVMMemory {
             return swap;
         }
     }
+
 }

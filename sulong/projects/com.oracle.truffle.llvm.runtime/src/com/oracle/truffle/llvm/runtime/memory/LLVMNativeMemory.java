@@ -38,6 +38,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -52,7 +53,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     private static final long DEREF_HANDLE_SPACE_START = 0x8000000000000000L;
     public static final long DEREF_HANDLE_SPACE_END = 0xC000000000000000L;
     private static final long HANDLE_SPACE_START = DEREF_HANDLE_SPACE_END;
-    private static final long HANDLE_SPACE_END = 0xFFFFFFFFFFFFFFFFL;
+    private static final long HANDLE_SPACE_END = 0;
 
     private static final Unsafe unsafe = getUnsafe();
 
@@ -155,7 +156,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public LLVMNativePointer allocateHandle(boolean autoDeref) {
+    public long allocateHandle(boolean autoDeref) {
         if (autoDeref) {
             noDerefHandleAssumption.invalidate();
             return derefHandleContainer.allocate();
@@ -609,31 +610,20 @@ public final class LLVMNativeMemory extends LLVMMemory {
         unsafe.fullFence();
     }
 
-    @Override
-    public boolean isCommonHandleMemory(LLVMNativePointer addr) {
-        return isCommonHandleMemory(addr.asNative());
-    }
-
     /**
-     * A fast check (a bounds check, i.e., two compares) if the provided address is within the
-     * common handle space.
+     * A fast check if the provided address is within the handle space.
      */
     @Override
-    public boolean isCommonHandleMemory(long addr) {
-        return handleContainer.accept(addr);
-    }
-
-    @Override
-    public boolean isDerefHandleMemory(LLVMNativePointer addr) {
-        return isDerefHandleMemory(addr.asNative());
+    public boolean isHandleMemory(long addr) {
+        return addr < HANDLE_SPACE_END;
     }
 
     /**
-     * A fast check (just one compare) if the provided address is within the deref handle space.
+     * A fast check if the provided address is within the auto-deref handle space.
      */
     @Override
     public boolean isDerefHandleMemory(long addr) {
-        return !noDerefHandleAssumption.isValid() && derefHandleContainer.accept(addr);
+        return derefHandleContainer.accept(addr);
     }
 
     public static long getDerefHandleObjectMask() {
@@ -645,16 +635,16 @@ public final class LLVMNativeMemory extends LLVMMemory {
         protected final long rangeEnd;
         protected final long objectSize;
 
-        private long derefSpaceTop;
+        private long top;
         private FreeListNode freeList;
 
         private final Object freeListLock = new Object();
-        private final Object derefSpaceTopLock = new Object();
+        private final Object topLock = new Object();
 
         HandleContainer(long startAddr, long endAddr, long objectSize) {
             this.rangeStart = startAddr;
             this.rangeEnd = endAddr;
-            this.derefSpaceTop = startAddr;
+            this.top = startAddr;
 
             assert isPowerOfTwo(objectSize);
             this.objectSize = objectSize;
@@ -672,22 +662,22 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
         abstract boolean accept(long address);
 
-        LLVMNativePointer allocate() {
+        long allocate() {
 
             // preferably consume from free list
             synchronized (freeListLock) {
                 if (freeList != null) {
                     FreeListNode n = freeList;
                     freeList = n.next;
-                    return LLVMNativePointer.create(n.address);
+                    return n.address;
                 }
             }
 
-            synchronized (derefSpaceTopLock) {
-                LLVMNativePointer addr = LLVMNativePointer.create(derefSpaceTop);
-                assert derefSpaceTop >= rangeStart;
-                derefSpaceTop += objectSize;
-                if (!accept(derefSpaceTop)) {
+            synchronized (topLock) {
+                long addr = top;
+                assert top >= rangeStart;
+                top += objectSize;
+                if (!accept(top)) {
                     CompilerDirectives.transferToInterpreter();
                     throw new OutOfMemoryError();
                 }
@@ -696,8 +686,8 @@ public final class LLVMNativeMemory extends LLVMMemory {
         }
 
         boolean isAllocated(long address) {
-            synchronized (derefSpaceTopLock) {
-                if (address > derefSpaceTop) {
+            synchronized (topLock) {
+                if (!(address >= rangeStart && address < top)) {
                     return false;
                 }
             }
@@ -712,8 +702,11 @@ public final class LLVMNativeMemory extends LLVMMemory {
             return true;
         }
 
+        @TruffleBoundary
         void free(long address) {
-            assert isAllocated(address) : "double-free of " + Long.toHexString(address);
+            if (!isAllocated(address)) {
+                throw new IllegalStateException("double-free of " + Long.toHexString(address));
+            }
             synchronized (freeListLock) {
                 // We need to mask because we allow creating handles with an offset.
                 freeList = new FreeListNode(address & ~getObjectMask(), freeList);
@@ -729,7 +722,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
         }
     }
 
-    static final class DerefHandleContainer extends HandleContainer {
+    private static final class DerefHandleContainer extends HandleContainer {
 
         DerefHandleContainer(long startAddr, long endAddr, long objectSize) {
             super(startAddr, endAddr, objectSize);
@@ -742,7 +735,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
     }
 
-    static final class CommonHandleContainer extends HandleContainer {
+    private static final class CommonHandleContainer extends HandleContainer {
 
         CommonHandleContainer(long startAddr, long endAddr, long objectSize) {
             super(startAddr, endAddr, objectSize);
