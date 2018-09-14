@@ -37,11 +37,11 @@ final class ToHostPrimitiveNode extends Node {
     private static final float FLOAT_MAX_SAFE_INTEGER = 16777215f; // 2 ** 24 - 1
     private static final int INT_MAX_SAFE_FLOAT = 16777215; // 2 ** 24 - 1
 
-    @Child Node isNullNode;
-    @Child Node isBoxedNode;
-    @Child Node hasKeysNode;
-    @Child Node hasSizeNode;
-    @Child Node unboxNode;
+    @Child private Node isNullNode;
+    @Child private Node isBoxedNode;
+    @Child private Node hasKeysNode;
+    @Child private Node hasSizeNode;
+    @Child private Node unboxNode;
 
     private ToHostPrimitiveNode() {
         this.isNullNode = Message.IS_NULL.createNode();

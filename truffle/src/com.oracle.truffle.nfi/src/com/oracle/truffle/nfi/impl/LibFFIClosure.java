@@ -114,7 +114,7 @@ final class LibFFIClosure implements TruffleObject {
     private static final class CallClosureNode extends Node {
 
         private final TruffleObject receiver;
-        @Child Node messageNode;
+        @Child private Node messageNode;
 
         @Children final ClosureArgumentNode[] argNodes;
 
@@ -214,7 +214,8 @@ final class LibFFIClosure implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "checkIsNull(isNull, str)")
-        protected Object unboxNull(TruffleObject str, @Cached("createIsNull()") Node isNull) {
+        protected Object unboxNull(TruffleObject str,
+                        @Cached("createIsNull()") Node isNull) {
             return null;
         }
 
@@ -224,7 +225,9 @@ final class LibFFIClosure implements TruffleObject {
         }
 
         @Specialization(guards = "checkNeedUnbox(str)")
-        protected Object unboxBoxed(TruffleObject str, @Cached("createUnbox()") Node unbox, @Cached("createRecursive()") UnboxStringNode recursive) {
+        protected Object unboxBoxed(TruffleObject str,
+                        @Cached("createUnbox()") Node unbox,
+                        @Cached("createRecursive()") UnboxStringNode recursive) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, str);
                 return recursive.execute(unboxed);
@@ -257,8 +260,8 @@ final class LibFFIClosure implements TruffleObject {
 
     private static final class StringRetClosureRootNode extends RootNode {
 
-        @Child CallClosureNode callClosure;
-        @Child UnboxStringNode unboxString;
+        @Child private CallClosureNode callClosure;
+        @Child private UnboxStringNode unboxString;
 
         private StringRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
             super(null);

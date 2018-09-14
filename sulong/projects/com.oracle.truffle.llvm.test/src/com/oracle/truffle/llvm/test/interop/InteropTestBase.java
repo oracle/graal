@@ -91,7 +91,7 @@ public class InteropTestBase {
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
-            execute = Message.EXECUTE.createNode();
+            this.execute = Message.EXECUTE.createNode();
         }
 
         @Override

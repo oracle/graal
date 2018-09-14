@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 import java.io.PrintStream;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -153,18 +152,18 @@ public abstract class LLVMNode extends Node {
         return a == b;
     }
 
-    @TruffleBoundary
     protected static Node createIsNull() {
+        CompilerAsserts.neverPartOfCompilation();
         return Message.IS_NULL.createNode();
     }
 
-    @TruffleBoundary
     protected static Node createIsBoxed() {
+        CompilerAsserts.neverPartOfCompilation();
         return Message.IS_BOXED.createNode();
     }
 
-    @TruffleBoundary
     protected static Node createUnbox() {
+        CompilerAsserts.neverPartOfCompilation();
         return Message.UNBOX.createNode();
     }
 }
