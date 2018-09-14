@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -212,9 +213,11 @@ public final class Value {
      * <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public boolean hasMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
         return impl.hasMember(receiver, identifier);
     }
 
@@ -225,9 +228,11 @@ public final class Value {
      * @throws UnsupportedOperationException if the value {@link #hasMembers() has no members} or
      *             the given identifier exists but is not readable.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public Value getMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
         return impl.getMember(receiver, identifier);
     }
 
@@ -257,9 +262,11 @@ public final class Value {
      *             members}, the key does not exist and new members cannot be added, or the existing
      *             member is not modifiable.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public void putMember(String identifier, Object value) {
+        Objects.requireNonNull(identifier, "identifier");
         impl.putMember(receiver, identifier, value);
     }
 
@@ -271,9 +278,11 @@ public final class Value {
      *             members} or if the key {@link #hasMember(String) exists} but cannot be removed.
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public boolean removeMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
         return impl.removeMember(receiver, identifier);
     }
 
@@ -301,6 +310,7 @@ public final class Value {
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be executed.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the arguments array is null.
      * @see #executeVoid(Object...)
      * @since 1.0
      */
@@ -322,6 +332,7 @@ public final class Value {
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be executed.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the arguments array is null.
      * @see #execute(Object...)
      * @since 1.0
      */
@@ -353,9 +364,11 @@ public final class Value {
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be instantiated.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the arguments array is null.
      * @since 1.0
      */
     public Value newInstance(Object... arguments) {
+        Objects.requireNonNull(arguments, "arguments");
         return impl.newInstance(receiver, arguments);
     }
 
@@ -836,9 +849,11 @@ public final class Value {
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
+     * @throws NullPointerException if the target type is null.
      * @since 1.0
      */
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
+        Objects.requireNonNull(targetType, "targetType");
         if (targetType == Value.class) {
             return targetType.cast(this);
         }
@@ -860,10 +875,12 @@ public final class Value {
      * assert javaList.get(0).equals("foo");
      * </pre>
      *
+     * @throws NullPointerException if the target type is null.
      * @see #as(Class)
      * @since 1.0
      */
     public <T> T as(TypeLiteral<T> targetType) {
+        Objects.requireNonNull(targetType, "targetType");
         return impl.as(receiver, targetType);
     }
 
