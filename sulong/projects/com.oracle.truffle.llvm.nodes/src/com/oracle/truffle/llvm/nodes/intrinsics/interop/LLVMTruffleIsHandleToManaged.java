@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -47,9 +46,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
-
-    private final ConditionProfile canBeDerefHandleProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile canBeCommonHandleProfile = ConditionProfile.createBinaryProfile();
 
     @CompilationFinal private ContextReference<LLVMContext> contextRef;
     @CompilationFinal private LLVMMemory memory;
@@ -84,7 +80,7 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             memory = getLLVMMemory();
         }
-        return canBeDerefHandleProfile.profile(memory.isDerefHandleMemory(a)) || canBeCommonHandleProfile.profile(memory.isCommonHandleMemory(a));
+        return memory.isHandleMemory(a.asNative());
     }
 
     @Fallback

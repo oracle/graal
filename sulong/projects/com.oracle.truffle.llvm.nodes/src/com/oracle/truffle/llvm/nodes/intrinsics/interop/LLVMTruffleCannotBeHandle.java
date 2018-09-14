@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -45,22 +44,16 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
 
-    private final ConditionProfile derefHandleProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile commonHandleProfile = ConditionProfile.createBinaryProfile();
-
     @CompilationFinal private LLVMMemory llvmMemory;
 
     @Specialization
     protected boolean doLongCase(long a) {
-        if (derefHandleProfile.profile(!getLLVMMemoryCached().isDerefHandleMemory(a))) {
-            return true;
-        }
-        return commonHandleProfile.profile(!getLLVMMemoryCached().isCommonHandleMemory(a));
+        return !getLLVMMemoryCached().isHandleMemory(a);
     }
 
     @Specialization
     protected boolean doPointerCase(LLVMNativePointer a) {
-        return derefHandleProfile.profile(!getLLVMMemoryCached().isDerefHandleMemory(a)) && commonHandleProfile.profile(!getLLVMMemoryCached().isCommonHandleMemory(a));
+        return doLongCase(a.asNative());
     }
 
     @Specialization
