@@ -509,36 +509,27 @@ public final class LLVMContext {
     }
 
     public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
-        return getHandle(memory, object, false);
+        return getHandle(memory, object, false).copy();
     }
 
     public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
-        return getHandle(memory, object, true);
+        return getHandle(memory, object, true).copy();
     }
 
+    @TruffleBoundary
     private LLVMNativePointer getHandle(LLVMMemory memory, TruffleObject object, boolean autoDeref) {
         synchronized (handlesLock) {
-            Handle handle = getHandle(object);
+            Handle handle = handleFromManaged.get(object);
             if (handle == null) {
-                LLVMNativePointer allocatedMemory = memory.allocateHandle(autoDeref);
+                LLVMNativePointer allocatedMemory = LLVMNativePointer.create(memory.allocateHandle(autoDeref));
                 handle = new Handle(allocatedMemory, object);
-                putHandle(object, handle, allocatedMemory);
+                handleFromManaged.put(object, handle);
+                handleFromPointer.put(allocatedMemory, handle);
             }
 
             handle.refcnt++;
-            return handle.pointer.copy();
+            return handle.pointer;
         }
-    }
-
-    @TruffleBoundary
-    private void putHandle(TruffleObject object, Handle handle, LLVMNativePointer allocatedMemory) {
-        handleFromManaged.put(object, handle);
-        handleFromPointer.put(allocatedMemory, handle);
-    }
-
-    @TruffleBoundary
-    private Handle getHandle(TruffleObject object) {
-        return handleFromManaged.get(object);
     }
 
     @TruffleBoundary
