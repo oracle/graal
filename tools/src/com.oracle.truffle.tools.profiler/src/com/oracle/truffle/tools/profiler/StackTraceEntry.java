@@ -173,7 +173,7 @@ public final class StackTraceEntry {
         LanguageInfo languageInfo = getInstrumentedNode().getRootNode().getLanguageInfo();
         String declaringClass;
         if (languageInfo != null) {
-            declaringClass = "<" + languageInfo.getId() + ">";
+            declaringClass = languageInfo.getId();
         } else {
             declaringClass = "";
         }
