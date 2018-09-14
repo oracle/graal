@@ -48,7 +48,7 @@ try (Scope s = debug.scope("CodeInstall", method)) {
 }
 ```
 
-The `debug.log` statement will send output to the console if `CodeInstall` is matched by the `-Dgraal.Log` option. The matching logic for this option is described in [DebugFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`, `-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
+The `debug.log` statement will send output to the console if `CodeInstall` is matched by the `-Dgraal.Log` option. The matching logic for this option is implemented in [DebugFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82) and documented in the [Dump help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/DumpHelp.txt). As mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`, `-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
 
 Since `DebugContext` objects are thread local, they need to be passed around as parameters.
 For convenience, they may be available from objects such as a `Graph` or a `Node` but care needs to be taken when such objects can be exposed to multiple threads.
@@ -170,7 +170,7 @@ to obtain per-method metric values.
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`, `-Dgraal.Time`, or `-Dgraal.TrackMemUse`) can generate a lot of output. Typically, you are only interesting in compiler output related to a single or few methods. In this case, use the `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is described in [MethodFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92).
+Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`, `-Dgraal.Time`, or `-Dgraal.TrackMemUse`) can generate a lot of output. Typically, you are only interesting in compiler output related to a single or few methods. In this case, use the `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is described in [MethodFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92) and documented in the [MethodFilter help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/MethodFilterHelp.txt).
 
 ## Metric filtering
 
