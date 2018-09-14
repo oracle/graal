@@ -2061,8 +2061,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movq(Register dst, Register src) {
-        assert inRC(CPU, dst);
-        assert inRC(CPU, src);
+        assert inRC(CPU, dst) && inRC(CPU, src);
         prefixq(dst, src);
         emitByte(0x8B);
         emitModRM(dst, src);
@@ -2508,21 +2507,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPMOVZXBW xmm1, xmm2/m64
 
     public final void pmovzxbw(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX);
         assert inRC(XMM, dst);
-        // Code: VEX.128.66.0F38.WIG 30 /r
-        simdPrefix(dst, Register.None, src, PD, P_0F38, false);
-        emitByte(0x30);
-        emitOperandHelper(dst, src, 0);
+        VexRMOp.VPMOVZXBW.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void pmovzxbw(Register dst, Register src) {
-        assert supports(CPUFeature.AVX);
         assert inRC(XMM, dst) && inRC(XMM, src);
-        // Code: VEX.128.66.0F38.WIG 30 /r
-        simdPrefix(dst, Register.None, src, PD, P_0F38, false);
-        emitByte(0x30);
-        emitModRM(dst, src);
+        VexRMOp.VPMOVZXBW.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void push(Register src) {
@@ -2737,11 +2728,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: SHLX r32a, r/m32, r32b
 
     public final void shlxl(Register dst, Register src1, Register src2) {
-        assert supports(CPUFeature.BMI2);
-        // Code: VEX.NDS.LZ.66.0F38.W0 F7 /r
-        simdPrefix(dst, src2, src1, PD, P_0F38, false);
-        emitByte(0xF7);
-        emitModRM(dst, src1);
+        VexGeneralPurposeRMVOp.SHLX.emit(this, AVXSize.DWORD, dst, src1, src2);
     }
 
     public final void shrl(Register dst, int imm8) {
