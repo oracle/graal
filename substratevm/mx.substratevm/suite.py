@@ -221,7 +221,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
                 "com.oracle.svm.reflect",
-                "com.oracle.svm.jni",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",

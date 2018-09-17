@@ -31,11 +31,13 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -62,25 +64,38 @@ final class Target_java_net_URL {
 class JavaNetFeature implements Feature {
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(URLProtocolsSupport.class, new URLProtocolsSupport());
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
+        JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
+            boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
+            VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
+        });
+
         String optionValue = SubstrateOptions.EnableURLProtocols.getValue();
         if (optionValue.isEmpty()) {
             return;
         }
+
         String[] protocols = optionValue.split(",");
         for (String protocol : protocols) {
             if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
                 printWarning("The URL protocol " + protocol + " is enabled by default. " +
                                 "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");
-            } else if (JavaNetSubstitutions.supportedProtocols.contains(protocol)) {
-                JavaNetSubstitutions.addURLStreamHandler(protocol);
-            } else if (JavaNetSubstitutions.unsupportedProtocols.contains(protocol)) {
-                printWarning("The URL protocol " + protocol + " is not currently supported." +
-                                System.lineSeparator() + JavaNetSubstitutions.supportedProtocols());
+            } else if (JavaNetSubstitutions.onDemandProtocols.contains(protocol)) {
+                boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
+                VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
             } else {
                 printWarning("The URL protocol " + protocol + " is not tested and might not work as expected." +
                                 System.lineSeparator() + JavaNetSubstitutions.supportedProtocols());
-                JavaNetSubstitutions.addURLStreamHandler(protocol);
+                boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
+                if (!registered) {
+                    printWarning("Registering the " + protocol + " URL protocol failed. " +
+                                    "It will not be available at runtime." + System.lineSeparator());
+                }
             }
         }
     }
@@ -92,44 +107,55 @@ class JavaNetFeature implements Feature {
     }
 }
 
+class URLProtocolsSupport {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void put(String protocol, URLStreamHandler urlStreamHandler) {
+        ImageSingletons.lookup(URLProtocolsSupport.class).imageHandlers.put(protocol, urlStreamHandler);
+    }
+
+    static URLStreamHandler get(String protocol) {
+        return ImageSingletons.lookup(URLProtocolsSupport.class).imageHandlers.get(protocol);
+    }
+
+    private final HashMap<String, URLStreamHandler> imageHandlers = new HashMap<>();
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class JavaNetSubstitutions {
 
-    private static final String FILE_PROTOCOL = "file";
-    private static final String HTTP_PROTOCOL = "http";
-    private static final String HTTPS_PROTOCOL = "https";
+    public static final String FILE_PROTOCOL = "file";
+    public static final String HTTP_PROTOCOL = "http";
+    public static final String HTTPS_PROTOCOL = "https";
 
-    static List<String> defaultProtocols = Arrays.asList(FILE_PROTOCOL);
-    static List<String> supportedProtocols = Arrays.asList(HTTP_PROTOCOL);
-    static List<String> unsupportedProtocols = Arrays.asList(HTTPS_PROTOCOL);
+    static final List<String> defaultProtocols = Collections.singletonList(FILE_PROTOCOL);
+    static final List<String> onDemandProtocols = Arrays.asList(HTTP_PROTOCOL, HTTPS_PROTOCOL);
 
-    private static final HashMap<String, URLStreamHandler> imageHandlers = new HashMap<>();
     static final String enableProtocolsOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableURLProtocols, "");
 
-    static {
-        defaultProtocols.forEach(protocol -> addURLStreamHandler(protocol));
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    static void addURLStreamHandler(String protocol) {
+    static boolean addURLStreamHandler(String protocol) {
         try {
             Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
             method.setAccessible(true);
-            imageHandlers.put(protocol, (URLStreamHandler) method.invoke(null, protocol));
+            URLStreamHandler handler = (URLStreamHandler) method.invoke(null, protocol);
+            if (handler != null) {
+                URLProtocolsSupport.put(protocol, handler);
+                return true;
+            }
+            return false;
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException ex) {
             throw new Error(ex);
         }
     }
 
     static URLStreamHandler getURLStreamHandler(String protocol) {
-        URLStreamHandler result = JavaNetSubstitutions.imageHandlers.get(protocol);
+        URLStreamHandler result = URLProtocolsSupport.get(protocol);
         if (result == null) {
-            if (supportedProtocols.contains(protocol)) {
+            if (onDemandProtocols.contains(protocol)) {
                 unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
                                 " is supported but not enabled by default. It must be enabled by adding the " + enableProtocolsOption + protocol +
                                 " option to the native-image command.");
-            } else if (JavaNetSubstitutions.unsupportedProtocols.contains(protocol)) {
-                unsupported("The URL protocol " + protocol + " is not currently supported. " + supportedProtocols());
             } else {
                 unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
                                 " is not tested and might not work as expected. It can be enabled by adding the " + enableProtocolsOption + protocol +
@@ -145,6 +171,6 @@ public final class JavaNetSubstitutions {
 
     static String supportedProtocols() {
         return "Supported URL protocols enabled by default: " + String.join(",", JavaNetSubstitutions.defaultProtocols) +
-                        ". Additional supported URL protocols: " + String.join(",", JavaNetSubstitutions.supportedProtocols) + ".";
+                        ". Supported URL protocols available on demand: " + String.join(",", JavaNetSubstitutions.onDemandProtocols) + ".";
     }
 }
