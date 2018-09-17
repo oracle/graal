@@ -45,7 +45,7 @@ public final class SulongEngineOption {
 
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
-    public static final OptionKey<String> CONFIGURATION = new OptionKey<>("basic");
+    public static final OptionKey<String> CONFIGURATION = new OptionKey<>("native");
     public static final String CONFIGURATION_NAME = "llvm.configuration";
     public static final String CONFIGURATION_INFO = "Sulongs configuration (default=basic).";
 
