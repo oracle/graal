@@ -23,15 +23,10 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
-
-import java.io.IOException;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_java_lang_Thread {
@@ -39,7 +34,7 @@ public class Target_java_lang_Thread {
     // TODO(peterssen): Remove single thread shim, support real threads.
     @Intrinsic
     public static @Type(Thread.class) StaticObject currentThread() {
-        EspressoContext context = Utils.getContext();
+        EspressoContext context = EspressoLanguage.getCurrentContext();
         if (context.getMainThread() == null) {
             Meta meta = context.getMeta();
             Meta.Klass threadGroupKlass = meta.knownKlass(ThreadGroup.class);
@@ -88,7 +83,7 @@ public class Target_java_lang_Thread {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
-            Meta meta = Utils.getContext().getMeta();
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
             throw meta.throwEx(InterruptedException.class);
         }
     }

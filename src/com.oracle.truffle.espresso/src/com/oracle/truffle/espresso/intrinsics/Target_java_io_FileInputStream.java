@@ -26,15 +26,13 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
 
 @EspressoIntrinsics
 public class Target_java_io_FileInputStream {
@@ -66,7 +64,7 @@ public class Target_java_io_FileInputStream {
         try {
             // read from stdin
             if (fakeFd == 0) {
-                return Utils.getContext().in().read(b, off, len);
+                return EspressoLanguage.getCurrentContext().in().read(b, off, len);
             }
             FileDescriptor fd = fdMap.get(fakeFd);
             try (FileInputStream fis = new FileInputStream(fd)) {
@@ -84,7 +82,7 @@ public class Target_java_io_FileInputStream {
         try {
             // read from stdin
             if (fakeFd == 0) {
-                return Utils.getContext().in().available();
+                return EspressoLanguage.getCurrentContext().in().available();
             }
             FileDescriptor fd = fdMap.get(fakeFd);
             try (FileInputStream fis = new FileInputStream(fd)) {
@@ -102,7 +100,7 @@ public class Target_java_io_FileInputStream {
         try {
             // read from stdin
             if (fakeFd == 0) {
-                Utils.getContext().in().close();
+                EspressoLanguage.getCurrentContext().in().close();
             }
             // FileDescriptor fd = fdMap.get(fakeFd);
             // try (FileInputStream fis = new FileInputStream(fd)) {

@@ -218,4 +218,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public SignatureDescriptors getSignatureDescriptors() {
         return signatureDescriptors;
     }
+
+    public static EspressoContext getCurrentContext() {
+        return getCurrentContext(EspressoLanguage.class);
+    }
 }

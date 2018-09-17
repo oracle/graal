@@ -34,32 +34,33 @@ public class EspressoError extends Error {
 
     private static final long serialVersionUID = 2625263796982958128L;
 
-    @CompilerDirectives.TruffleBoundary
     public static RuntimeException unimplemented() {
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError("unimplemented");
     }
 
-    @CompilerDirectives.TruffleBoundary
     public static RuntimeException unimplemented(String msg) {
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError("unimplemented: %s", msg);
     }
 
-    @CompilerDirectives.TruffleBoundary
     public static RuntimeException shouldNotReachHere() {
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError("should not reach here");
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError("should not reach here: %s", msg);
     }
 
-    @CompilerDirectives.TruffleBoundary
     public static RuntimeException shouldNotReachHere(Throwable cause) {
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError(cause);
     }
 
-    @CompilerDirectives.TruffleBoundary
     public static RuntimeException unexpected(String msg, Throwable cause) {
+        CompilerDirectives.transferToInterpreter();
         throw new EspressoError(msg, cause);
     }
 

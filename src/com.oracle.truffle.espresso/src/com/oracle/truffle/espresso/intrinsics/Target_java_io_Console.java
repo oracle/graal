@@ -26,8 +26,8 @@ import java.io.Console;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
 
 @EspressoIntrinsics
 public class Target_java_io_Console {
@@ -69,7 +69,7 @@ public class Target_java_io_Console {
 
     @Intrinsic
     public static @Type(String.class) StaticObject encoding() {
-        return Utils.getContext().getMeta().toGuest((String) ConsoleFunctions.ENCODING.invokeStatic());
+        return EspressoLanguage.getCurrentContext().getMeta().toGuest((String) ConsoleFunctions.ENCODING.invokeStatic());
     }
 
     @Intrinsic

@@ -570,7 +570,7 @@ public class InterpreterToVM {
         // the constants for the cpi are loosely defined and no real cpi indices.
 
         if (length < 0) {
-            throw Utils.getContext().getMeta().throwEx(NegativeArraySizeException.class);
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
 
         switch (jvmPrimitiveType) {

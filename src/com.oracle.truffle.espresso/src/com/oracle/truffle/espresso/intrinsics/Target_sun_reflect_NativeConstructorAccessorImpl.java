@@ -23,16 +23,16 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.lang.reflect.Constructor;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.runtime.Utils;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_sun_reflect_NativeConstructorAccessorImpl {
@@ -47,8 +47,8 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
         clazz.getMirror().initialize();
         String className = clazz.getMirror().getName();
 
-        StaticObject instance = Utils.getVm().newObject(Utils.getContext().getRegistries().resolve(Utils.getContext().getTypeDescriptors().make(className), null));
-        MethodInfo emptyConstructor = instance.getKlass().findDeclaredConcreteMethod("<init>", Utils.getContext().getSignatureDescriptors().make("()V"));
+        StaticObject instance = Utils.getVm().newObject(EspressoLanguage.getCurrentContext().getRegistries().resolve(EspressoLanguage.getCurrentContext().getTypeDescriptors().make(className), null));
+        MethodInfo emptyConstructor = instance.getKlass().findDeclaredConcreteMethod("<init>", EspressoLanguage.getCurrentContext().getSignatureDescriptors().make("()V"));
         emptyConstructor.getCallTarget().call(instance);
         return instance;
     }

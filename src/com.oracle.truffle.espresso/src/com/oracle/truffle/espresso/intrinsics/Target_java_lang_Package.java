@@ -26,9 +26,9 @@ package com.oracle.truffle.espresso.intrinsics;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
 
 @EspressoIntrinsics
 public class Target_java_lang_Package {
@@ -64,6 +64,6 @@ public class Target_java_lang_Package {
     @Intrinsic
     public static @Type(String.class) Object getSystemPackage0(@Type(String.class) StaticObject name) {
         String result = (String) PackageFunctions.GET_SYSTEM_PACKAGE0.invokeStatic(Meta.toHost(name));
-        return Utils.getContext().getMeta().toGuest(result);
+        return EspressoLanguage.getCurrentContext().getMeta().toGuest(result);
     }
 }

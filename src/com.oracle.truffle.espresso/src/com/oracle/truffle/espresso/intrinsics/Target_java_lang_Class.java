@@ -29,6 +29,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -46,7 +47,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.Utils;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 
@@ -57,7 +57,7 @@ public class Target_java_lang_Class {
                     @Type(String.class) StaticObject name) {
 
         String hostName = MetaUtil.toInternalName(Meta.toHost(name));
-        return Utils.getContext().getRegistries().resolve(TypeDescriptors.forPrimitive(JavaKind.fromTypeString(hostName)), null).mirror();
+        return EspressoLanguage.getCurrentContext().getRegistries().resolve(TypeDescriptors.forPrimitive(JavaKind.fromTypeString(hostName)), null).mirror();
     }
 
     @Intrinsic(hasReceiver = true)
@@ -73,7 +73,7 @@ public class Target_java_lang_Class {
                     @Type(Class.class) StaticObject caller) {
 
         assert loader != null;
-        EspressoContext context = Utils.getContext();
+        EspressoContext context = EspressoLanguage.getCurrentContext();
 
         String typeDesc = Meta.toHost(name);
         if (typeDesc.contains(".")) {
@@ -102,7 +102,7 @@ public class Target_java_lang_Class {
     public static @Type(String.class) StaticObject getName0(@Type(Class.class) StaticObjectClass self) {
         String name = self.getMirror().getName();
         // Class name is stored in internal form.
-        return Utils.getContext().getMeta().toGuest(MetaUtil.internalNameToJava(name, true, true));
+        return EspressoLanguage.getCurrentContext().getMeta().toGuest(MetaUtil.internalNameToJava(name, true, true));
     }
 
     @Intrinsic(hasReceiver = true)
@@ -120,7 +120,7 @@ public class Target_java_lang_Class {
     public static @Type(Field[].class) StaticObject getDeclaredFields0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
         final FieldInfo[] fields = Arrays.stream(self.getMirror().getDeclaredFields()).filter(f -> (!publicOnly || f.isPublic())).toArray(FieldInfo[]::new);
 
-        EspressoContext context = Utils.getContext();
+        EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
 
         Meta.Klass fieldKlass = meta.knownKlass(java.lang.reflect.Field.class);
@@ -143,7 +143,7 @@ public class Target_java_lang_Class {
         final MethodInfo[] constructors = Arrays.stream(self.getMirror().getDeclaredConstructors()).filter(m -> m.getName().equals("<init>") && (!publicOnly || m.isPublic())).toArray(
                         MethodInfo[]::new);
 
-        Meta meta = Utils.getContext().getMeta();
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         Meta.Klass constructorKlass = meta.knownKlass(Constructor.class);
 
         StaticObject arr = (StaticObject) constructorKlass.allocateArray(constructors.length, i -> {
@@ -215,8 +215,8 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Object[].class) StaticObject getEnclosingMethod0(StaticObjectClass self) {
-        Meta meta = Utils.getContext().getMeta();
-        InterpreterToVM vm = Utils.getContext().getVm();
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getVm();
         if (self.getMirror() instanceof ObjectKlass) {
             EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirror()).getEnclosingMethod();
             if (enclosingMethodAttr == null) {

@@ -23,16 +23,13 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
-import com.oracle.truffle.espresso.runtime.Utils;
-
-import java.util.Arrays;
 
 @EspressoIntrinsics
 public class Target_java_lang_Object {
@@ -50,7 +47,7 @@ public class Target_java_lang_Object {
         if (self instanceof StaticObject) {
             return ((StaticObject) self).getKlass().mirror();
         }
-        Meta meta = Utils.getContext().getMeta();
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (self instanceof int[]) {
             return meta.INT.array().rawKlass().mirror();
         } else if (self instanceof byte[]) {

@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import java.security.ProtectionDomain;
+
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -32,11 +35,7 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.Utils;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
-import com.sun.org.apache.bcel.internal.classfile.ClassParser;
-
-import java.security.ProtectionDomain;
 
 @EspressoIntrinsics
 public class Target_java_lang_ClassLoader {
@@ -47,9 +46,9 @@ public class Target_java_lang_ClassLoader {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) Object findLoadedClass0(Object self, @Type(String.class) StaticObject name) {
-        EspressoContext context = Utils.getContext();
+        EspressoContext context = EspressoLanguage.getCurrentContext();
         TypeDescriptor type = context.getTypeDescriptors().make(Meta.toHost(name));
-        Klass klass = Utils.getContext().getRegistries().findLoadedClass(type, self);
+        Klass klass = EspressoLanguage.getCurrentContext().getRegistries().findLoadedClass(type, self);
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -58,9 +57,9 @@ public class Target_java_lang_ClassLoader {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) Object findBootstrapClass(Object self, @Type(String.class) StaticObject name) {
-        EspressoContext context = Utils.getContext();
+        EspressoContext context = EspressoLanguage.getCurrentContext();
         TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Meta.toHost(name)));
-        Klass klass = Utils.getContext().getRegistries().resolve(type, null);
+        Klass klass = EspressoLanguage.getCurrentContext().getRegistries().resolve(type, null);
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -71,7 +70,7 @@ public class Target_java_lang_ClassLoader {
     public static @Type(Class.class) StaticObject defineClass0(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
                     @Type(ProtectionDomain.class) Object pd) {
         ClasspathFile cpf = new ClasspathFile(b, null, Meta.toHost(name));
-        ClassfileParser parser = new ClassfileParser(self, new ClassfileStream(b, off, len, cpf), Meta.toHost(name), null, Utils.getContext());
+        ClassfileParser parser = new ClassfileParser(self, new ClassfileStream(b, off, len, cpf), Meta.toHost(name), null, EspressoLanguage.getCurrentContext());
 
         // TODO(peterssen): Propagate errors to the guest.
         // Class parsing should be moved to ClassRegistry.
