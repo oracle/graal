@@ -19,6 +19,9 @@ include "tools/ci.hocon"
 #Regex
 include "regex/ci.hocon"
 
+#Sulong
+include "sulong/ci.hocon"
+
 #Examples
 #Examples gate also disabled.
 #include "examples/ci.hocon"

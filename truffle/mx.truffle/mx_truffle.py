@@ -563,7 +563,7 @@ def create_sl_parser(args=None, out=None):
 
 def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None):
     """create the DSL expression parser using antlr"""
-    grammar_dir = mx.project(grammar_project).source_dirs()[0] + "/" + grammar_package.replace(".", "/") + "/"
+    grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
     mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
     for filename in [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]:
         with open(filename, 'r') as content_file:

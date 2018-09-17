@@ -34,7 +34,6 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +69,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -125,10 +125,14 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
     private final List<ResolvedJavaType> supressWarnings;
 
-    private ResolvedJavaMethod unsafeObjectFieldOffsetMethod;
+    private ResolvedJavaMethod unsafeObjectFieldOffsetFieldMethod;
+    private ResolvedJavaMethod unsafeObjectFieldOffsetClassStringMethod;
     private ResolvedJavaMethod unsafeArrayBaseOffsetMethod;
     private ResolvedJavaMethod unsafeArrayIndexScaleMethod;
     private ResolvedJavaMethod integerNumberOfLeadingZerosMethod;
+
+    private HashSet<ResolvedJavaMethod> neverInlineSet = new HashSet<>();
+    private HashSet<ResolvedJavaMethod> noCheckedExceptionsSet = new HashSet<>();
 
     private GraphBuilderPhase builderPhase;
 
@@ -153,30 +157,62 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
             Method fieldSetAccessible = Field.class.getMethod("setAccessible", boolean.class);
             fieldSetAccessibleMethod = originalMetaAccess.lookupJavaMethod(fieldSetAccessible);
+            neverInlineSet.add(fieldSetAccessibleMethod);
 
             Method fieldGet = Field.class.getMethod("get", Object.class);
             fieldGetMethod = originalMetaAccess.lookupJavaMethod(fieldGet);
+            neverInlineSet.add(fieldGetMethod);
 
-            Method unsafeObjectFieldOffset = sun.misc.Unsafe.class.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
-            unsafeObjectFieldOffsetMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectFieldOffset);
+            Class<?> unsafeClass;
 
-            Method unsafeArrayBaseOffset = sun.misc.Unsafe.class.getMethod("arrayBaseOffset", java.lang.Class.class);
+            try {
+                if (GraalServices.Java8OrEarlier) {
+                    unsafeClass = Class.forName("sun.misc.Unsafe");
+                } else {
+                    unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
+                }
+            } catch (ClassNotFoundException cnfe) {
+                throw VMError.shouldNotReachHere(cnfe);
+            }
+
+            Method unsafeObjectFieldOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
+            unsafeObjectFieldOffsetFieldMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectFieldOffset);
+            noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
+            neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
+
+            if (!GraalServices.Java8OrEarlier) {
+                /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
+                Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
+                unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
+                noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
+                neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
+            }
+
+            Method unsafeArrayBaseOffset = unsafeClass.getMethod("arrayBaseOffset", java.lang.Class.class);
             unsafeArrayBaseOffsetMethod = originalMetaAccess.lookupJavaMethod(unsafeArrayBaseOffset);
+            noCheckedExceptionsSet.add(unsafeArrayBaseOffsetMethod);
+            neverInlineSet.add(unsafeArrayBaseOffsetMethod);
 
-            Method unsafeArrayIndexScale = sun.misc.Unsafe.class.getMethod("arrayIndexScale", java.lang.Class.class);
+            Method unsafeArrayIndexScale = unsafeClass.getMethod("arrayIndexScale", java.lang.Class.class);
             unsafeArrayIndexScaleMethod = originalMetaAccess.lookupJavaMethod(unsafeArrayIndexScale);
+            noCheckedExceptionsSet.add(unsafeArrayIndexScaleMethod);
+            neverInlineSet.add(unsafeArrayIndexScaleMethod);
 
             Method integerNumberOfLeadingZeros = java.lang.Integer.class.getMethod("numberOfLeadingZeros", int.class);
             integerNumberOfLeadingZerosMethod = originalMetaAccess.lookupJavaMethod(integerNumberOfLeadingZeros);
+            neverInlineSet.add(integerNumberOfLeadingZerosMethod);
 
             Method atomicIntegerFieldUpdaterNewUpdater = java.util.concurrent.atomic.AtomicIntegerFieldUpdater.class.getMethod("newUpdater", Class.class, String.class);
             atomicIntegerFieldUpdaterNewUpdaterMethod = originalMetaAccess.lookupJavaMethod(atomicIntegerFieldUpdaterNewUpdater);
+            neverInlineSet.add(atomicIntegerFieldUpdaterNewUpdaterMethod);
 
             Method atomicLongFieldUpdaterNewUpdater = java.util.concurrent.atomic.AtomicLongFieldUpdater.class.getMethod("newUpdater", Class.class, String.class);
             atomicLongFieldUpdaterNewUpdaterMethod = originalMetaAccess.lookupJavaMethod(atomicLongFieldUpdaterNewUpdater);
+            neverInlineSet.add(atomicLongFieldUpdaterNewUpdaterMethod);
 
             Method atomicReferenceFieldUpdaterNewUpdater = java.util.concurrent.atomic.AtomicReferenceFieldUpdater.class.getMethod("newUpdater", Class.class, Class.class, String.class);
             atomicReferenceFieldUpdaterNewUpdaterMethod = originalMetaAccess.lookupJavaMethod(atomicReferenceFieldUpdaterNewUpdater);
+            neverInlineSet.add(atomicReferenceFieldUpdaterNewUpdaterMethod);
 
         } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere(e);
@@ -184,23 +220,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         /*
          * Create the GraphBuilderPhase which builds the graph for the static initializers.
-         * 
+         *
          * The builder phase will inline the first level callees to detect cases where the offset
          * computation is performed by methods that wrap over the unsafe API. There are two
          * exceptions:
-         * 
+         *
          * 1. Don't inline the invokes that we are trying to match.
-         * 
+         *
          * 2. Don't inline Atomic*FieldUpdater.newUpdater() methods as they lead to false errors.
          * These methods reach calls to Unsafe.objectFieldOffset() whose value is recomputed by
          * RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset.
          */
-        ResolvedJavaMethod[] neverInline = {
-                        fieldSetAccessibleMethod, fieldGetMethod,
-                        unsafeObjectFieldOffsetMethod, unsafeArrayBaseOffsetMethod, unsafeArrayIndexScaleMethod,
-                        integerNumberOfLeadingZerosMethod,
-                        atomicIntegerFieldUpdaterNewUpdaterMethod, atomicLongFieldUpdaterNewUpdaterMethod, atomicReferenceFieldUpdaterNewUpdaterMethod};
-        StaticInitializerInlineInvokePlugin inlineInvokePlugin = new StaticInitializerInlineInvokePlugin(neverInline);
+        StaticInitializerInlineInvokePlugin inlineInvokePlugin = new StaticInitializerInlineInvokePlugin(neverInlineSet);
 
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
@@ -277,8 +308,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
                 for (Invoke invoke : clinitGraph.getInvokes()) {
                     if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                        if (isInvokeTo(invoke, unsafeObjectFieldOffsetMethod)) {
-                            processUnsafeObjectFieldOffsetInvoke(hostType, invoke);
+                        if (isInvokeTo(invoke, unsafeObjectFieldOffsetFieldMethod)) {
+                            processUnsafeObjectFieldOffsetFieldInvoke(hostType, invoke);
+                        } else if (isInvokeTo(invoke, unsafeObjectFieldOffsetClassStringMethod)) {
+                            processUnsafeObjectFieldOffsetClassStringInvoke(hostType, invoke);
                         } else if (isInvokeTo(invoke, unsafeArrayBaseOffsetMethod)) {
                             processUnsafeArrayBaseOffsetInvoke(hostType, invoke);
                         } else if (isInvokeTo(invoke, unsafeArrayIndexScaleMethod)) {
@@ -294,12 +327,12 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     /**
-     * Process call to {@link sun.misc.Unsafe#objectFieldOffset(Field)}. The matching logic below
+     * Process call to <code>Unsafe.objectFieldOffset(Field)</code>. The matching logic below
      * applies to the following code pattern:
-     * 
+     *
      * <code> static final long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(X.class.getDeclaredField("f")); </code>
      */
-    private void processUnsafeObjectFieldOffsetInvoke(ResolvedJavaType type, Invoke unsafeObjectFieldOffsetInvoke) {
+    private void processUnsafeObjectFieldOffsetFieldInvoke(ResolvedJavaType type, Invoke unsafeObjectFieldOffsetInvoke) {
         List<String> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> targetFieldHolder = null;
@@ -315,8 +348,55 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 targetFieldName = field.getName();
             }
         } else {
-            unsuccessfulReasons.add("The argument of Unsafe.objectFieldOffset() is not a constant field.");
+            unsuccessfulReasons.add("The argument of Unsafe.objectFieldOffset(Field) is not a constant field.");
         }
+        processUnsafeObjectFieldOffsetInvoke(type, unsafeObjectFieldOffsetInvoke, unsuccessfulReasons, targetFieldHolder, targetFieldName);
+    }
+
+    /**
+     * Process call to <code>Unsafe.objectFieldOffset(Class<?> class, String name)</code>. The
+     * matching logic below applies to the following code pattern:
+     *
+     * <code> static final long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(X.class, "f"); </code>
+     */
+    private void processUnsafeObjectFieldOffsetClassStringInvoke(ResolvedJavaType type, Invoke unsafeObjectFieldOffsetInvoke) {
+        List<String> unsuccessfulReasons = new ArrayList<>();
+
+        Class<?> targetFieldHolder = null;
+        String targetFieldName = null;
+
+        ValueNode classArgument = unsafeObjectFieldOffsetInvoke.callTarget().arguments().get(1);
+        if (classArgument.isConstant()) {
+            Class<?> clazz = snippetReflection.asObject(Class.class, classArgument.asJavaConstant());
+            if (clazz == null) {
+                unsuccessfulReasons.add("The Class argument of Unsafe.objectFieldOffset(Class, String) is a null constant.");
+            } else {
+                targetFieldHolder = clazz;
+            }
+        } else {
+            unsuccessfulReasons.add("The Class argument of Unsafe.objectFieldOffset(Class, String) is not a constant class.");
+        }
+
+        ValueNode nameArgument = unsafeObjectFieldOffsetInvoke.callTarget().arguments().get(2);
+        if (nameArgument.isConstant()) {
+            String fieldName = snippetReflection.asObject(String.class, nameArgument.asJavaConstant());
+            if (fieldName == null) {
+                unsuccessfulReasons.add("The String argument of Unsafe.objectFieldOffset(Class, String) is a null String.");
+            } else {
+                targetFieldName = fieldName;
+            }
+        } else {
+            unsuccessfulReasons.add("The name argument of Unsafe.objectFieldOffset(Class, String) is not a constant String.");
+        }
+        processUnsafeObjectFieldOffsetInvoke(type, unsafeObjectFieldOffsetInvoke, unsuccessfulReasons, targetFieldHolder, targetFieldName);
+    }
+
+    private void processUnsafeObjectFieldOffsetInvoke(
+                    ResolvedJavaType type,
+                    Invoke unsafeObjectFieldOffsetInvoke,
+                    List<String> unsuccessfulReasons,
+                    Class<?> targetFieldHolder,
+                    String targetFieldName) {
 
         /*
          * If the value returned by the call to Unsafe.objectFieldOffset() is stored into a field
@@ -341,8 +421,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     /**
-     * Process call to {@link sun.misc.Unsafe#arrayBaseOffset(Class)}. The matching logic below
-     * applies to the following code pattern:
+     * Process call to <code>Unsafe.arrayBaseOffset(Class)</code>. The matching logic below applies
+     * to the following code pattern:
      *
      * <code> static final long arrayBaseOffsets = Unsafe.getUnsafe().arrayBaseOffset(byte[].class); </code>
      */
@@ -378,8 +458,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     /**
-     * Process call to {@link sun.misc.Unsafe#arrayIndexScale(Class)}. The matching logic below
-     * applies to the following code pattern:
+     * Process call to <code>Unsafe.arrayIndexScale(Class)</code>. The matching logic below applies
+     * to the following code pattern:
      *
      * <code> static final long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class); </code>
      */
@@ -431,16 +511,16 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
     /**
      * Process array index shift computation which usually follows a call to
-     * {@link sun.misc.Unsafe#arrayIndexScale(Class)}. The matching logic below applies to the
-     * following code pattern:
+     * <code>Unsafe.arrayIndexScale(Class)</code>. The matching logic below applies to the following
+     * code pattern:
      *
-     * <code> 
-     *      static final long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class); 
+     * <code>
+     *      static final long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class);
      *      static final long byteArrayIndexShift;
      *      static {
      *          if ((byteArrayIndexScale & (byteArrayIndexScale - 1)) != 0) {
-     *              throw new Error("data type scale not a power of two"); 
-     *          } 
+     *              throw new Error("data type scale not a power of two");
+     *          }
      *          byteArrayIndexShift = 31 - Integer.numberOfLeadingZeros(byteArrayIndexScale);
      *      }
      * </code>
@@ -468,15 +548,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
     /**
      * Process array index shift computation which usually follows a call to
-     * {@link sun.misc.Unsafe#arrayIndexScale(Class)}. The matching logic below applies to the
-     * following code pattern:
+     * <code>Unsafe.arrayIndexScale(Class)</code>. The matching logic below applies to the following
+     * code pattern:
      *
-     * <code> 
+     * <code>
      *      static final long byteArrayIndexShift;
      *      static {
-     *          long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class); 
+     *          long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class);
      *          if ((byteArrayIndexScale & (byteArrayIndexScale - 1)) != 0) {
-     *              throw new Error("data type scale not a power of two"); 
+     *              throw new Error("data type scale not a power of two");
      *          }
      *          byteArrayIndexShift = 31 - Integer.numberOfLeadingZeros(byteArrayIndexScale);
      *      }
@@ -811,9 +891,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          * Replace the InvokeWithExceptionNode with InvokeNode.
          */
         for (InvokeWithExceptionNode invoke : graph.getNodes().filter(InvokeWithExceptionNode.class)) {
-            if (invoke.callTarget().targetMethod().equals(unsafeObjectFieldOffsetMethod) ||
-                            invoke.callTarget().targetMethod().equals(unsafeArrayBaseOffsetMethod) ||
-                            invoke.callTarget().targetMethod().equals(unsafeArrayIndexScaleMethod)) {
+            if (noCheckedExceptionsSet.contains(invoke.callTarget().targetMethod())) {
                 InvokeNode replacement = invoke.graph().add(new InvokeNode(invoke.callTarget(), invoke.bci(), invoke.stamp(NodeView.DEFAULT)));
                 replacement.setStateAfter(invoke.stateAfter());
 
@@ -827,6 +905,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     private static boolean isInvokeTo(Invoke invoke, ResolvedJavaMethod method) {
+        if (method == null) {
+            return false;
+        }
         ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
         return method.equals(targetMethod);
     }
@@ -838,8 +919,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         private final HashSet<ResolvedJavaMethod> neverInline;
 
-        StaticInitializerInlineInvokePlugin(ResolvedJavaMethod[] neverInline) {
-            this.neverInline = new HashSet<>(Arrays.asList(neverInline));
+        StaticInitializerInlineInvokePlugin(HashSet<ResolvedJavaMethod> neverInline) {
+            this.neverInline = neverInline;
         }
 
         @Override

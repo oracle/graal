@@ -86,8 +86,9 @@ public class OptimizedCompilationProfile {
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.compilationCallThreshold = Math.min(callThreshold, callAndLoopThreshold);
-        this.compilationCallAndLoopThreshold = callAndLoopThreshold;
+        boolean compileImmediately = TruffleCompilerOptions.getValue(TruffleCompileImmediately);
+        this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
+        this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         this.timestamp = System.nanoTime();
     }
 
@@ -290,8 +291,8 @@ public class OptimizedCompilationProfile {
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
         if (!callTarget.isCompiling() && !compilationFailed) {
             // check if call target is hot enough to get compiled, but took not too long to get hot
-            if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                            TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
+            int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
+            if ((intCallCount >= callThreshold && intAndLoopCallCount >= compilationCallAndLoopThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
                 return callTarget.compile();
             }
         }
@@ -376,6 +377,9 @@ public class OptimizedCompilationProfile {
     }
 
     private void ensureProfiling(int calls, int callsAndLoop) {
+        if (this.compilationCallThreshold == 0) { // TruffleCompileImmediately
+            return;
+        }
         int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
         if (increaseCallAndLoopThreshold > 0) {
             this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;
