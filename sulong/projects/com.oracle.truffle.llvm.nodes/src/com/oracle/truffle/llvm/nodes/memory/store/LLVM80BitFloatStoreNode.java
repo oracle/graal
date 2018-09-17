@@ -65,7 +65,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
         assert bytes.length == LLVM80BitFloat.BYTE_WIDTH;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < LLVM80BitFloat.BYTE_WIDTH; i++) {
-            getForeignWriteNode(ForeignToLLVMType.I8).execute(currentPtr, bytes[i]);
+            getForeignWriteNode().executeWrite(currentPtr.getObject(), currentPtr.getOffset(), bytes[i], ForeignToLLVMType.I8);
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
     }

@@ -60,14 +60,9 @@ public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
         return address.getI32(memory);
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I32);
-    }
-
     @Specialization
     protected int doI32Managed(LLVMManagedPointer addr) {
-        return (int) getForeignReadNode().execute(addr);
+        return (int) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I32);
     }
 
     @Specialization

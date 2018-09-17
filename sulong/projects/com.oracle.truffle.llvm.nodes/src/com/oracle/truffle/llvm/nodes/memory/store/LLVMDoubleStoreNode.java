@@ -68,7 +68,7 @@ public abstract class LLVMDoubleStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doOpManaged(LLVMManagedPointer address, double value) {
-        getForeignWriteNode(ForeignToLLVMType.DOUBLE).execute(address, value);
+        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.DOUBLE);
     }
 
     @Specialization

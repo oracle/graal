@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -43,6 +42,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
@@ -133,7 +133,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         }
     }
 
-    static class ManagedReadNode extends LLVMObjectReadNode {
+    static class ManagedReadNode extends LLVMNode implements LLVMObjectReadNode {
 
         @Override
         public boolean canAccess(Object obj) {
@@ -141,14 +141,14 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         }
 
         @Override
-        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) throws InteropException {
+        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) {
             assert offset % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES == 0 : "invalid offset";
             long idx = offset / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
             return ((ManagedMallocObject) obj).get((int) idx);
         }
     }
 
-    static class ManagedWriteNode extends LLVMObjectWriteNode {
+    static class ManagedWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         @Override
         public boolean canAccess(Object obj) {
@@ -156,7 +156,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         }
 
         @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) throws InteropException {
+        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
             assert offset % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES == 0 : "invalid offset";
             long idx = offset / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
             ((ManagedMallocObject) obj).set((int) idx, value);

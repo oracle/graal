@@ -40,7 +40,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
@@ -51,9 +50,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectRead
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.CachedReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.CachedWriteNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.DynamicObjectReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.DynamicObjectWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.GetWriteIdentifierNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.UseLLVMObjectAccessNodeGen;
 
 public abstract class LLVMObjectAccessFactory {
 
@@ -65,7 +63,7 @@ public abstract class LLVMObjectAccessFactory {
         return CachedWriteNodeGen.create();
     }
 
-    abstract static class CachedReadNode extends LLVMObjectReadNode {
+    abstract static class CachedReadNode extends LLVMNode implements LLVMObjectReadNode {
 
         static final int TYPE_LIMIT = 8;
 
@@ -77,183 +75,123 @@ public abstract class LLVMObjectAccessFactory {
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
         protected Object doRead(Object obj, long offset, ForeignToLLVMType type,
                         @Cached("createReadNode(obj)") LLVMObjectReadNode impl) {
-            try {
-                return impl.executeRead(obj, offset, type);
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
-            }
+            return impl.executeRead(obj, offset, type);
         }
 
         protected LLVMObjectReadNode createReadNode(Object obj) {
             if (obj instanceof LLVMObjectAccess) {
                 return ((LLVMObjectAccess) obj).createReadNode();
             } else if (obj instanceof DynamicObject) {
-                return DynamicObjectReadNodeGen.create();
-            } else {
-                return new FallbackReadNode(false);
+                DynamicObject dynamicObject = (DynamicObject) obj;
+                ObjectType objectType = dynamicObject.getShape().getObjectType();
+                if (objectType instanceof LLVMObjectAccess) {
+                    return ((LLVMObjectAccess) objectType).createReadNode();
+                }
             }
+
+            return new FallbackReadNode();
         }
     }
 
-    abstract static class DynamicObjectReadNode extends LLVMObjectReadNode {
-
-        static final int TYPE_LIMIT = 8;
-
-        @Override
-        public boolean canAccess(Object obj) {
-            return obj instanceof DynamicObject;
-        }
-
-        @Specialization(guards = "object.getShape() == cachedShape")
-        protected Object doCachedShape(DynamicObject object, long offset, ForeignToLLVMType type,
-                        @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
-                        @Cached("createReadNode(cachedShape)") LLVMObjectReadNode impl) {
-            return doRead(object, offset, type, impl);
-        }
-
-        @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        protected Object doRead(DynamicObject object, long offset, ForeignToLLVMType type,
-                        @Cached("createReadNode(object.getShape())") LLVMObjectReadNode impl) {
-            try {
-                return impl.executeRead(object, offset, type);
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
-            }
-        }
-
-        LLVMObjectReadNode createReadNode(Shape shape) {
-            ObjectType objectType = shape.getObjectType();
-            if (objectType instanceof LLVMObjectAccess) {
-                return ((LLVMObjectAccess) objectType).createReadNode();
-            } else {
-                return new FallbackReadNode(true);
-            }
-        }
-    }
-
-    static class FallbackReadNode extends LLVMObjectReadNode {
+    static class FallbackReadNode extends LLVMNode implements LLVMObjectReadNode {
 
         @Child private Node read = Message.READ.createNode();
         @Child private ToLLVM toLLVM = ToLLVMNodeGen.create();
-
-        private final boolean acceptDynamicObject;
-
-        FallbackReadNode(boolean acceptDynamicObject) {
-            this.acceptDynamicObject = acceptDynamicObject;
-        }
+        @Child private UseLLVMObjectAccessNode useLLVMObjectAccess = UseLLVMObjectAccessNodeGen.create();
 
         @Override
         public boolean canAccess(Object obj) {
-            if (acceptDynamicObject) {
-                return !(((DynamicObject) obj).getShape().getObjectType() instanceof LLVMObjectAccess);
-            } else {
-                return obj instanceof TruffleObject && !(obj instanceof LLVMObjectAccess) && !(obj instanceof DynamicObject);
-            }
+            return !useLLVMObjectAccess.executeWithTarget(obj);
         }
 
         @Override
-        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) throws InteropException {
-            Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, offset / type.getSizeInBytes());
-            return toLLVM.executeWithType(foreign, null, type);
+        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) {
+            try {
+                Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, offset / type.getSizeInBytes());
+                return toLLVM.executeWithType(foreign, null, type);
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw e.raise();
+            }
         }
     }
 
-    abstract static class CachedWriteNode extends LLVMObjectWriteNode {
+    abstract static class UseLLVMObjectAccessNode extends LLVMNode {
+        public abstract boolean executeWithTarget(Object obj);
+
+        @Specialization(guards = {"obj.getClass() == cachedClass", "!isDynamicObject(cachedClass)"})
+        protected boolean doNonDynamicObjectCached(@SuppressWarnings("unused") Object obj,
+                        @Cached("obj.getClass()") Class<?> cachedClass) {
+            return LLVMObjectAccess.class.isAssignableFrom(cachedClass);
+        }
+
+        @Specialization(guards = {"cachedObjectTypeClass == obj.getShape().getObjectType().getClass()"})
+        protected boolean doDynamicObjectCached(@SuppressWarnings("unused") DynamicObject obj,
+                        @Cached("obj.getShape().getObjectType().getClass()") Class<?> cachedObjectTypeClass) {
+            return LLVMObjectAccess.class.isAssignableFrom(cachedObjectTypeClass);
+        }
+
+        @Specialization(replaces = {"doNonDynamicObjectCached", "doDynamicObjectCached"})
+        protected boolean uncached(Object obj) {
+            return obj instanceof LLVMObjectAccess || obj instanceof DynamicObject && ((DynamicObject) obj).getShape().getObjectType() instanceof LLVMObjectAccess;
+        }
+
+        protected boolean isDynamicObject(Class<?> clazz) {
+            return DynamicObject.class.isAssignableFrom(clazz);
+        }
+    }
+
+    abstract static class CachedWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         static final int TYPE_LIMIT = 8;
 
         @Override
         public boolean canAccess(Object obj) {
-            return obj instanceof LLVMObjectAccess || obj instanceof TruffleObject;
+            return obj instanceof TruffleObject;
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
         protected void doWrite(Object obj, long offset, Object value, ForeignToLLVMType type,
                         @Cached("createWriteNode(obj)") LLVMObjectWriteNode impl) {
-            try {
-                impl.executeWrite(obj, offset, value, type);
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
-            }
+            impl.executeWrite(obj, offset, value, type);
         }
 
         LLVMObjectWriteNode createWriteNode(Object obj) {
             if (obj instanceof LLVMObjectAccess) {
                 return ((LLVMObjectAccess) obj).createWriteNode();
             } else if (obj instanceof DynamicObject) {
-                return DynamicObjectWriteNodeGen.create();
-            } else {
-                return new FallbackWriteNode(false);
+                DynamicObject dynamicObject = (DynamicObject) obj;
+                ObjectType objectType = dynamicObject.getShape().getObjectType();
+                if (objectType instanceof LLVMObjectAccess) {
+                    return ((LLVMObjectAccess) objectType).createWriteNode();
+                }
             }
+
+            return new FallbackWriteNode();
         }
     }
 
-    abstract static class DynamicObjectWriteNode extends LLVMObjectWriteNode {
-
-        static final int TYPE_LIMIT = 8;
-
-        @Override
-        public boolean canAccess(Object obj) {
-            return obj instanceof DynamicObject;
-        }
-
-        @Specialization(guards = "object.getShape() == cachedShape")
-        protected void doCachedShape(DynamicObject object, long offset, Object value, ForeignToLLVMType type,
-                        @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
-                        @Cached("createWriteNode(cachedShape)") LLVMObjectWriteNode impl) {
-            doWrite(object, offset, value, type, impl);
-        }
-
-        @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        protected void doWrite(DynamicObject object, long offset, Object value, ForeignToLLVMType type,
-                        @Cached("createWriteNode(object.getShape())") LLVMObjectWriteNode impl) {
-            try {
-                impl.executeWrite(object, offset, value, type);
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
-            }
-        }
-
-        LLVMObjectWriteNode createWriteNode(Shape shape) {
-            ObjectType objectType = shape.getObjectType();
-            if (objectType instanceof LLVMObjectAccess) {
-                return ((LLVMObjectAccess) objectType).createWriteNode();
-            } else {
-                return new FallbackWriteNode(true);
-            }
-        }
-    }
-
-    static class FallbackWriteNode extends LLVMObjectWriteNode {
-
+    static class FallbackWriteNode extends LLVMNode implements LLVMObjectWriteNode {
         @Child private Node write = Message.WRITE.createNode();
         @Child private GetWriteIdentifierNode getWriteIdentifier = GetWriteIdentifierNodeGen.create();
         @Child private LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
-
-        private final boolean acceptDynamicObject;
-
-        FallbackWriteNode(boolean acceptDynamicObject) {
-            this.acceptDynamicObject = acceptDynamicObject;
-        }
+        @Child private UseLLVMObjectAccessNode useLLVMObjectAccess = UseLLVMObjectAccessNodeGen.create();
 
         @Override
         public boolean canAccess(Object obj) {
-            if (acceptDynamicObject) {
-                return !(((DynamicObject) obj).getShape().getObjectType() instanceof LLVMObjectAccess);
-            } else {
-                return obj instanceof TruffleObject && !(obj instanceof LLVMObjectAccess) && !(obj instanceof DynamicObject);
-            }
+            return !useLLVMObjectAccess.executeWithTarget(obj);
         }
 
         @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) throws InteropException {
+        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
             long identifier = getWriteIdentifier.execute(offset, value);
             Object escaped = dataEscape.executeWithTarget(value);
-            ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
+            try {
+                ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw e.raise();
+            }
         }
     }
 

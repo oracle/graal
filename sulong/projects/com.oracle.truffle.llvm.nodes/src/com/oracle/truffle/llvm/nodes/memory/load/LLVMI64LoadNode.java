@@ -60,14 +60,9 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
         return address.getI64(memory);
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I64);
-    }
-
     @Specialization
     protected Object doI64Managed(LLVMManagedPointer addr) {
-        return getForeignReadNode().execute(addr);
+        return getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I64);
     }
 
     @Specialization
