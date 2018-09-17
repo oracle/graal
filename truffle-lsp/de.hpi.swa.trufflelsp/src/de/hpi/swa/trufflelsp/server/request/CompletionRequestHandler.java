@@ -28,6 +28,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -64,6 +65,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
+    private static final Node INVOKE = Message.createInvoke(0).createNode();
 
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
@@ -335,7 +337,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
 
         if (documentation == null) {
-            documentation = scopeInformation;
+            documentation = escapeMarkdown(scopeInformation);
         }
 
         SourceSection section = SourceUtils.findSourceLocation(env, langId, value);
@@ -347,10 +349,13 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         }
 
         MarkupContent markup = new MarkupContent();
-        // TODO(ds) need to escape markdown string, e.g. double underscores
         markup.setValue(documentation);
         markup.setKind("markdown");
         return markup;
+    }
+
+    public String escapeMarkdown(String original) {
+        return original.replaceAll("__", "\\\\_\\\\_");
     }
 
     public String createCompletionDetail(Object key, Object obj, String langId) {
@@ -368,14 +373,26 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
         if (truffleObj != null && key != null) {
             try {
-                Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj, key);
-                List<Object> nameAndParams = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
-
-                detailText += nameAndParams.stream().reduce("", (a, b) -> a.toString() + b.toString());
-            } catch (InteropException e) {
-                if (!(e instanceof UnsupportedMessageException)) {
-                    e.printStackTrace(err);
+                Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj);
+                if (signature instanceof TruffleObject) {
+                    try {
+                        Object formattedString = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format");
+                        detailText = formattedString.toString();
+                    } catch (InteropException e) {
+                        // Fallback if no format method is provided. Simply create a comma separated
+                        // list of parameters.
+                        boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, (TruffleObject) signature);
+                        if (hasSize) {
+                            List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
+                            if (params != null) {
+                                detailText += "Parameters: " + params.stream().reduce("", (a, b) -> a.toString() + (a.toString().isEmpty() ? "" : ", ") + b.toString());
+                            }
+                        }
+                    }
                 }
+            } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+            } catch (InteropException e) {
+                e.printStackTrace(err);
             }
         }
 
