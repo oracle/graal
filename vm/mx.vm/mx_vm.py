@@ -508,8 +508,9 @@ class SvmSupport(object):
         return SvmSupport._debug_supported
 
 
-def _get_svm_support():
-    return SvmSupport(mx.suite('substratevm', fatalIfMissing=False))
+def _get_svm_support(fatalIfMissing=False):
+    """:type fatalIfMissing: bool"""
+    return SvmSupport(mx.suite('substratevm', fatalIfMissing=fatalIfMissing))
 
 
 class GraalVmNativeProperties(mx.Project):
@@ -1477,21 +1478,48 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_distribution(get_stage1_graalvm_distribution())
 
 
-def has_svm_launcher(component):
-    """:type component: mx.GraalVmComponent | str"""
-    component = get_component(component) if isinstance(component, str) else component
-    return _get_svm_support().is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
+def has_svm_launcher(component, fatalIfMissing=False):
+    """
+    :type component: mx_sdk.GraalVmComponent | str
+    :type fatalIfMissing: bool
+    :rtype: bool
+    """
+    component = get_component(component, fatalIfMissing) if isinstance(component, str) else component
+    result = _get_svm_support(fatalIfMissing).is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
+    if fatalIfMissing and not result:
+        hint = None
+        if _has_forced_launchers(component):
+            hint = "Are you forcing bash launchers?"
+        elif not bool(component.launcher_configs):
+            hint = "Does '{}' register launcher configs?".format(component.name)
+        mx.abort("'{}' does not have a native launcher.".format(component.name) + ("\n" + hint if hint else ""))
+    return result
+
+
+def has_svm_launchers(components, fatalIfMissing=False):
+    """
+    :type components: list[mx_sdk.GraalVmComponent | str]
+    :type fatalIfMissing: bool
+    :rtype: bool
+    """
+    return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
 def has_svm_polyglot_lib():
     return _get_svm_support().is_supported() and _with_polyglot_lib_project()
 
 
-def get_component(name):
-    """:type name: str"""
+def get_component(name, fatalIfMissing=False):
+    """
+    :type name: str
+    :type fatalIfMissing: bool
+    :rtype: mx_sdk.GraalVmComponent | None
+    """
     for c in mx_sdk.graalvm_components():
         if c.short_name == name or c.name == name:
             return c
+    if fatalIfMissing:
+        mx.abort("'{}' is not registered as GraalVM component. Did you forget to dynamically import it?".format(name))
     return None
 
 
@@ -1499,17 +1527,16 @@ def has_component(name, fatalIfMissing=False):
     """
     :type name: str
     :type fatalIfMissing: bool
+    :rtype: bool
     """
-    result = get_component(name)
-    if fatalIfMissing and not result:
-        mx.abort("'{}' is not registered as GraalVM component. Did you forget to dynamically import it?".format(name))
-    return result
+    return get_component(name, fatalIfMissing) is not None
 
 
 def has_components(names, fatalIfMissing=False):
     """
     :type names: list[str]
     :type fatalIfMissing: bool
+    :rtype: bool
     """
     return all((has_component(name, fatalIfMissing=fatalIfMissing) for name in names))
 
@@ -1528,9 +1555,12 @@ def graalvm_version():
     return _suite.release_version()
 
 
-def graalvm_home():
+def graalvm_home(fatalIfMissing=False):
     _graalvm_dist = get_final_graalvm_distribution()
-    return join(_graalvm_dist.output, _graalvm_dist.jdk_base)
+    _graalvm_home = join(_graalvm_dist.output, _graalvm_dist.jdk_base)
+    if fatalIfMissing and not exists(_graalvm_home):
+        mx.abort("GraalVM home '{}' does not exist. Did you forget to build with this set of dynamic imports and mx options?".format(_graalvm_home))
+    return _graalvm_home
 
 
 def standalone_home(comp_dir_name):
@@ -1730,7 +1760,7 @@ def _disable_installable(component):
 
 
 def _has_forced_launchers(component, forced=None):
-    """:type component: mx.GraalVmComponent"""
+    """:type component: mx_sdk.GraalVmComponent"""
     for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config, forced):
             return True
