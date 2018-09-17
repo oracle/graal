@@ -28,13 +28,10 @@ meth public abstract void onEnter(com.oracle.truffle.api.instrumentation.Allocat
 meth public abstract void onReturnValue(com.oracle.truffle.api.instrumentation.AllocationEvent)
 
 CLSS public final com.oracle.truffle.api.instrumentation.AllocationReporter
-fld public final static java.lang.String PROPERTY_ACTIVE = "active"
 fld public final static long SIZE_UNKNOWN = -9223372036854775808
 meth public boolean isActive()
-meth public void addPropertyChangeListener(java.beans.PropertyChangeListener)
 meth public void onEnter(java.lang.Object,long,long)
 meth public void onReturnValue(java.lang.Object,long,long)
-meth public void removePropertyChangeListener(java.beans.PropertyChangeListener)
 supr java.lang.Object
 hfds language,listeners,listenersNotChangedAssumption,propSupport,valueCheck
 
