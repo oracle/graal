@@ -49,7 +49,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
-    private static final String EXPECTED_RESULT = "narf";
+    static final String EXPECTED_RESULT = "narf";
 
     @SuppressWarnings({"static-method", "unused"})
     public static final class HttpServer {

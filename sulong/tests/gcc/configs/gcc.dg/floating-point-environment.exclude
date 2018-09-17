@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/c99-math-double-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/c99-math-float-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/c99-math-long-double-1.c
+gcc-5.2.0/gcc/testsuite/

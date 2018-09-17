@@ -26,11 +26,13 @@ package com.oracle.truffle.tools.profiler;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
@@ -209,9 +211,8 @@ public final class CPUSampler implements Closeable {
 
     private TimerTask samplerTask;
 
-    private ShadowStack shadowStack;
-
-    private EventBinding<?> stacksBinding;
+    private volatile ShadowStack shadowStack;
+    private volatile EventBinding<?> stacksBinding;
 
     private final Map<Thread, ProfilerNode<Payload>> rootNodes = new HashMap<>();
 
@@ -297,7 +298,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void setMode(Mode mode) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         this.mode = mode;
     }
 
@@ -308,7 +309,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void setPeriod(long samplePeriod) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         if (samplePeriod < 1) {
             throw new IllegalArgumentException(String.format("Invalid sample period %s.", samplePeriod));
         }
@@ -331,7 +332,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void setDelay(long delay) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         this.delay = delay;
     }
 
@@ -343,7 +344,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void setStackLimit(int stackLimit) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         if (stackLimit < 1) {
             throw new IllegalArgumentException(String.format("Invalid stack limit %s.", stackLimit));
         }
@@ -366,7 +367,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public synchronized void setFilter(SourceSectionFilter filter) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         this.filter = filter;
     }
 
@@ -378,7 +379,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.31
      */
     public synchronized void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         this.delaySamplingUntilNonInternalLangInit = delaySamplingUntilNonInternalLangInit;
     }
 
@@ -440,7 +441,7 @@ public final class CPUSampler implements Closeable {
         }
     };
 
-    Function<Payload, Payload> copyPayload = new Function<Payload, Payload>() {
+    private final Function<Payload, Payload> copyPayload = new Function<Payload, Payload>() {
         @Override
         public Payload apply(Payload sourcePayload) {
             Payload destinationPayload = new Payload();
@@ -477,7 +478,7 @@ public final class CPUSampler implements Closeable {
     public synchronized void clearData() {
         samplesTaken.set(0);
         for (ProfilerNode<Payload> node : rootNodes.values()) {
-            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            Map<StackTraceEntry, ProfilerNode<Payload>> rootChildren = node.children;
             if (rootChildren != null) {
                 rootChildren.clear();
             }
@@ -491,14 +492,14 @@ public final class CPUSampler implements Closeable {
     public synchronized boolean hasData() {
         boolean hasData = false;
         for (ProfilerNode<Payload> node : rootNodes.values()) {
-            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            Map<StackTraceEntry, ProfilerNode<Payload>> rootChildren = node.children;
             hasData = hasData || (rootChildren != null && !rootChildren.isEmpty());
         }
         return hasData;
     }
 
     /**
-     * Closes the sampler for fuhrer use, deleting all the gathered data.
+     * Closes the sampler for further use, deleting all the gathered data.
      *
      * @since 0.30
      */
@@ -512,7 +513,6 @@ public final class CPUSampler implements Closeable {
     /**
      * @return Whether or not timestamp information for the element at the top of the stack for each
      *         sample is gathered
-     *
      * @since 0.30
      */
     public boolean isGatherSelfHitTimes() {
@@ -524,12 +524,68 @@ public final class CPUSampler implements Closeable {
      * for each sample.
      *
      * @param gatherSelfHitTimes new value for whether or not to gather timestamps
-     *
      * @since 0.30
      */
     public synchronized void setGatherSelfHitTimes(boolean gatherSelfHitTimes) {
-        verifyConfigAllowed();
+        enterChangeConfig();
         this.gatherSelfHitTimes = gatherSelfHitTimes;
+    }
+
+    /**
+     * Sample all threads and gather their current stack trace entries. The returned map and lists
+     * are unmodifiable and represent atomic snapshots of the stack at the time when this method was
+     * invoked. Only active threads are sampled. A thread is active if it has at least one entry on
+     * the stack. The sampling is initialized if this method is invoked for the first time or
+     * reinitialized if the configuration changes.
+     *
+     * @since 1.0
+     */
+    public Map<Thread, List<StackTraceEntry>> takeSample() {
+        ShadowStack localShadowStack = shadowStack;
+        if (localShadowStack == null) {
+            localShadowStack = initializeShadowStack();
+        }
+        if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
+            return Collections.emptyMap();
+        }
+        assert localShadowStack != null;
+        Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
+        for (ShadowStack.ThreadLocalStack stack : localShadowStack.getStacks()) {
+            if (stack.hasStackOverflowed()) {
+                stackOverflowed = true;
+                continue;
+            }
+            StackTraceEntry[] strace = stack.getStack();
+            if (strace != null && strace.length > 0) {
+                assert !stacks.containsKey(stack.getThread());
+                final List<StackTraceEntry> stackTraceEntries = Arrays.asList(strace);
+                Collections.reverse(stackTraceEntries);
+                stacks.put(stack.getThread(), Collections.unmodifiableList(stackTraceEntries));
+            }
+        }
+        return Collections.unmodifiableMap(stacks);
+    }
+
+    static Map<Thread, StackTraceElement[]> toStackTraceElement(Map<Thread, List<StackTraceEntry>> sample) {
+        Map<Thread, StackTraceElement[]> converted = new HashMap<>();
+        for (Entry<Thread, List<StackTraceEntry>> entry : sample.entrySet()) {
+            converted.put(entry.getKey(), (StackTraceElement[]) entry.getValue().stream().map((e) -> e.toStackTraceElement()).toArray());
+        }
+        return converted;
+    }
+
+    private synchronized ShadowStack initializeShadowStack() {
+        ShadowStack localShadowStack = shadowStack;
+        if (localShadowStack == null) {
+            assert stacksBinding == null;
+            SourceSectionFilter f = this.filter;
+            if (f == null) {
+                f = DEFAULT_FILTER;
+            }
+            this.shadowStack = localShadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter(), TruffleLogger.getLogger(CPUSamplerInstrument.ID));
+            this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
+        }
+        return localShadowStack;
     }
 
     private void resetSampling() {
@@ -539,29 +595,18 @@ public final class CPUSampler implements Closeable {
         if (!collecting || closed) {
             return;
         }
-
         if (samplerThread == null) {
             samplerThread = new Timer("Sampling thread", true);
         }
-
-        SourceSectionFilter f = this.filter;
-        if (f == null) {
-            f = DEFAULT_FILTER;
-        }
         this.stackOverflowed = false;
-        this.shadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter(), TruffleLogger.getLogger(CPUSamplerInstrument.ID));
-        this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
-
+        initializeShadowStack();
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, delay, period);
-
     }
 
     private static SourceSectionFilter combine(SourceSectionFilter filter, Mode mode) {
         List<Class<?>> tags = new ArrayList<>();
-        if (mode == Mode.EXCLUDE_INLINED_ROOTS || mode == Mode.ROOTS) {
-            tags.add(StandardTags.RootTag.class);
-        }
+        tags.add(StandardTags.RootTag.class);
         if (mode == Mode.STATEMENTS) {
             tags.add(StandardTags.StatementTag.class);
         }
@@ -570,13 +615,7 @@ public final class CPUSampler implements Closeable {
 
     private void cleanup() {
         assert Thread.holdsLock(this);
-        if (stacksBinding != null) {
-            stacksBinding.dispose();
-            stacksBinding = null;
-        }
-        if (shadowStack != null) {
-            shadowStack = null;
-        }
+        invalidateStack();
         if (samplerTask != null) {
             samplerTask.cancel();
             samplerTask = null;
@@ -587,12 +626,31 @@ public final class CPUSampler implements Closeable {
         }
     }
 
-    private void verifyConfigAllowed() {
+    private void enterChangeConfig() {
         assert Thread.holdsLock(this);
         if (closed) {
             throw new IllegalStateException("CPUSampler is already closed.");
         } else if (collecting) {
             throw new IllegalStateException("Cannot change sampler configuration while collecting. Call setCollecting(false) to disable collection first.");
+        }
+        invalidateStack();
+    }
+
+    private void invalidateStack() {
+        ShadowStack localShadowStack = this.shadowStack;
+        if (localShadowStack != null) {
+            synchronized (this) {
+                localShadowStack = this.shadowStack;
+                if (localShadowStack != null) {
+                    if (stacksBinding != null) {
+                        stacksBinding.dispose();
+                        stacksBinding = null;
+                    }
+                    shadowStack = null;
+                } else {
+                    assert stacksBinding == null;
+                }
+            }
         }
     }
 
@@ -634,20 +692,20 @@ public final class CPUSampler implements Closeable {
                 // nothing on the stack
                 return false;
             }
-            final ShadowStack.ThreadLocalStack.CorrectedStackInfo correctedStackInfo = ShadowStack.ThreadLocalStack.CorrectedStackInfo.build(stack);
-            if (correctedStackInfo == null || correctedStackInfo.getLength() == 0) {
+            StackTraceEntry[] stackFrames = stack.getStack();
+            if (stackFrames == null || stackFrames.length == 0) {
                 return false;
             }
             synchronized (CPUSampler.this) {
                 // now traverse the stack and insert the path into the tree
                 ProfilerNode<Payload> treeNode = threadNode;
-                for (int i = 0; i < correctedStackInfo.getLength(); i++) {
-                    SourceLocation location = correctedStackInfo.getStack()[i];
-                    boolean isCompiled = correctedStackInfo.getCompiledStack()[i];
+                for (int i = 0; i < stackFrames.length; i++) {
+                    StackTraceEntry location = stackFrames[i];
+                    boolean isCompiled = location.isCompiled();
 
                     treeNode = addOrUpdateChild(treeNode, location);
                     Payload payload = treeNode.getPayload();
-                    if (i == correctedStackInfo.getLength() - 1) {
+                    if (i == stackFrames.length - 1) {
                         // last element is counted as self time
                         if (isCompiled) {
                             payload.selfCompiledHitCount++;
@@ -669,7 +727,7 @@ public final class CPUSampler implements Closeable {
             return true;
         }
 
-        private ProfilerNode<Payload> addOrUpdateChild(ProfilerNode<Payload> treeNode, SourceLocation location) {
+        private ProfilerNode<Payload> addOrUpdateChild(ProfilerNode<Payload> treeNode, StackTraceEntry location) {
             ProfilerNode<Payload> child = treeNode.findChild(location);
             if (child == null) {
                 Payload payload = new Payload();
@@ -688,6 +746,7 @@ public final class CPUSampler implements Closeable {
             }
         });
     }
+
 }
 
 class CPUSamplerSnippets {

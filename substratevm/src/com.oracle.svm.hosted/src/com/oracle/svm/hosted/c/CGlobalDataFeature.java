@@ -90,6 +90,10 @@ public class CGlobalDataFeature implements GraalFeature {
         });
     }
 
+    public CGlobalDataInfo getCGlobalDataInfo(CGlobalDataImpl<?> data) {
+        return map.get(data);
+    }
+
     public CGlobalDataInfo registerAsAccessed(CGlobalData<?> obj) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
         assert !isLayouted() || map.containsKey(data) : "CGlobalData instance must have been discovered/registered before or during analysis";

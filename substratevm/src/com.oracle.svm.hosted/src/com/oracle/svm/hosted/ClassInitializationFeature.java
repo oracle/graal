@@ -41,7 +41,6 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.ClassInitializationInfo;
@@ -50,7 +49,6 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -108,7 +106,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
      */
     private UnsupportedFeatures unsupportedFeatures;
 
-    private static ClassInitializationFeature singleton() {
+    public static ClassInitializationFeature singleton() {
         return (ClassInitializationFeature) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
 
@@ -116,24 +114,24 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
      * Returns true if the provided class should be initialized at runtime, i.e., has
      * {@link InitKind#RERUN} or {@link InitKind#DELAY}.
      */
-    public static boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
+    public boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
         AnalysisType aType = toAnalysisType(type);
-        return singleton().computeInitKindAndMaybeInitializeClass(aType.getJavaClass()) != InitKind.EAGER;
+        return computeInitKindAndMaybeInitializeClass(aType.getJavaClass()) != InitKind.EAGER;
     }
 
     /**
      * Initializes the class during image building, unless initialization must be delayed to
      * runtime.
      */
-    public static void maybeInitializeHosted(ResolvedJavaType type) {
-        singleton().computeInitKindAndMaybeInitializeClass(toAnalysisType(type).getJavaClass());
+    public void maybeInitializeHosted(ResolvedJavaType type) {
+        computeInitKindAndMaybeInitializeClass(toAnalysisType(type).getJavaClass());
     }
 
     /**
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    public static void forceInitializeHosted(ResolvedJavaType type) {
+    public void forceInitializeHosted(ResolvedJavaType type) {
         forceInitializeHosted(toAnalysisType(type).getJavaClass());
     }
 
@@ -141,8 +139,8 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    public static void forceInitializeHosted(Class<?> clazz) {
-        InitKind initKind = singleton().computeInitKindAndMaybeInitializeClass(clazz);
+    public void forceInitializeHosted(Class<?> clazz) {
+        InitKind initKind = computeInitKindAndMaybeInitializeClass(clazz);
         if (initKind == InitKind.DELAY) {
             throw UserError.abort("Cannot delay running the class initializer because class must be initialized for internal purposes: " + clazz.getTypeName());
         }
@@ -190,7 +188,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
          * initialized during image building got initialized. We want to fail as early as possible,
          * even though we cannot pinpoint the exact time and reason why initialization happened.
          */
-        checkDelayedInitialization(access.getUniverse());
+        checkDelayedInitialization();
 
         for (AnalysisType type : access.getUniverse().getTypes()) {
             if (type.isInTypeCheck() || type.isInstantiated()) {
@@ -210,13 +208,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess a) {
-        AfterImageWriteAccessImpl access = (AfterImageWriteAccessImpl) a;
-
         /*
          * This is the final time to check if any class that must not have been initialized during
          * image building got initialized.
          */
-        checkDelayedInitialization(access.getUniverse().getBigBang().getUniverse());
+        checkDelayedInitialization();
     }
 
     private Object checkImageHeapInstance(Object obj) {
@@ -230,17 +226,20 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         return obj;
     }
 
-    private void checkDelayedInitialization(AnalysisUniverse universe) {
-        for (AnalysisType type : universe.getTypes()) {
-            if (type.isInTypeCheck() || type.isInstantiated()) {
-                if (computeInitKindAndMaybeInitializeClass(type.getJavaClass()) == InitKind.DELAY && !UnsafeAccess.UNSAFE.shouldBeInitialized(type.getJavaClass())) {
-                    throw UserError.abort("Class that is marked for delaying initialzation to runtime got initialized during image building: " + type.toJavaName(true));
-                }
+    private void checkDelayedInitialization() {
+        /*
+         * We check all registered classes here, regardless if the AnalysisType got actually marked
+         * as used. Class initialization can have side effects on other classes without the class
+         * being used itself, e.g., a class initializer can write a static field in another class.
+         */
+        for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
+            if (entry.getValue() == InitKind.DELAY && !UnsafeAccess.UNSAFE.shouldBeInitialized(entry.getKey())) {
+                throw UserError.abort("Class that is marked for delaying initialzation to runtime got initialized during image building: " + entry.getKey().getTypeName());
             }
         }
     }
 
-    private static ClassInitializationInfo buildClassInitializationInfo(DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
+    private ClassInitializationInfo buildClassInitializationInfo(DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
         ClassInitializationInfo info;
         if (shouldInitializeAtRuntime(type)) {
             AnalysisMethod classInitializer = type.getClassInitializer();

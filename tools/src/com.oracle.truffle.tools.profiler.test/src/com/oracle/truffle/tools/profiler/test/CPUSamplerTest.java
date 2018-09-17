@@ -77,7 +77,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertFalse(sampler.hasData());
 
         for (int i = 0; i < executionCount; i++) {
-            execute(defaultSourceForSampling);
+            eval(defaultSourceForSampling);
         }
 
         Assert.assertNotEquals(0, sampler.getSampleCount());
@@ -109,7 +109,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
         for (int i = 0; i < executionCount; i++) {
-            execute(defaultSourceForSampling);
+            eval(defaultSourceForSampling);
         }
 
         Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
@@ -157,7 +157,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
         for (int i = 0; i < executionCount; i++) {
-            execute(defaultRecursiveSourceForSampling);
+            eval(defaultRecursiveSourceForSampling);
         }
 
         Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
@@ -197,7 +197,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         sampler.setStackLimit(2);
         sampler.setCollecting(true);
         for (int i = 0; i < executionCount; i++) {
-            execute(defaultSourceForSampling);
+            eval(defaultSourceForSampling);
         }
         Assert.assertTrue(sampler.hasStackOverflowed());
     }
@@ -455,7 +455,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             @Override
             public void run() {
                 for (int i = 0; i < executionCount; i++) {
-                    execute(defaultSourceForSampling);
+                    eval(defaultSourceForSampling);
                 }
             }
         };
@@ -463,7 +463,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             @Override
             public void run() {
                 for (int i = 0; i < executionCount; i++) {
-                    execute(defaultRecursiveSourceForSampling);
+                    eval(defaultRecursiveSourceForSampling);
                 }
             }
         };
@@ -517,7 +517,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
             @Override
             public void run() {
                 for (int i = 0; i < executionCount; i++) {
-                    execute(defaultSourceForSampling);
+                    eval(defaultSourceForSampling);
                 }
             }
         };
@@ -558,14 +558,17 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
-    public void testThreadSafe() {
+    public void testThreadSafe() throws InterruptedException {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
                 while (true) {
-                    execute(defaultSourceForSampling);
+                    eval(defaultSourceForSampling);
+                    if (Thread.interrupted()) {
+                        break;
+                    }
                 }
             }
         };
@@ -585,6 +588,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         } finally {
             execThread.interrupt();
         }
+        execThread.join(1000);
 
     }
 

@@ -1673,6 +1673,40 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testAccessInternalInstruments() {
+        Instrument instrument = engine.getInstruments().get("testAccessInstruments");
+        TestAccessInstruments access = instrument.lookup(TestAccessInstruments.class);
+        InstrumentInfo internalInfo = access.env.getInstruments().get("testAccessInternalInstruments");
+        assertNotNull(internalInfo);
+        TestAccessInternalInstruments internal = access.env.lookup(internalInfo, TestAccessInternalInstruments.class);
+        teardown();
+        assertEquals("CFD", internal.onCallsLogger.toString());
+    }
+
+    @Registration(id = "testAccessInternalInstruments", internal = true, services = TestAccessInternalInstruments.class)
+    public static class TestAccessInternalInstruments extends TruffleInstrument {
+
+        StringBuilder onCallsLogger = new StringBuilder();
+
+        @Override
+        protected void onCreate(final Env env) {
+            onCallsLogger.append("C");
+            env.registerService(this);
+        }
+
+        @Override
+        protected void onFinalize(Env env) {
+            onCallsLogger.append("F");
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+            onCallsLogger.append("D");
+        }
+
+    }
+
+    @Test
     public void testAccessInstrumentFromLanguage() {
         context.initialize(InstrumentationTestLanguage.ID);
         TruffleLanguage.Env env = InstrumentationTestLanguage.currentEnv();
