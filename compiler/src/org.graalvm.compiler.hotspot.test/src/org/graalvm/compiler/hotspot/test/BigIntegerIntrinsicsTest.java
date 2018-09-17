@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * via BigInteger.multiply() and .modPow(). Note that the actual substitution
  * is not tested per se (only execution based on admissible intrinsics).
  *
- */// @formatter:off
+ */
 public final class BigIntegerIntrinsicsTest extends MethodSubstitutionTest {
 
     static final int N = 100;
@@ -67,7 +67,7 @@ public final class BigIntegerIntrinsicsTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
         TestIntrinsic tin = new TestIntrinsic("testMultiplyAux", javaclass,
-                                              "multiply", BigInteger.class);
+                        "multiply", BigInteger.class);
 
         for (int i = 0; i < N; i++) {
 
@@ -94,14 +94,14 @@ public final class BigIntegerIntrinsicsTest extends MethodSubstitutionTest {
 
         // Intrinsic must be available.
         org.junit.Assume.assumeTrue(config.useMulAddIntrinsic() ||
-                                    config.useSquareToLenIntrinsic());
+                        config.useSquareToLenIntrinsic());
         // Test case is (currently) AMD64 only.
         org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
 
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
         TestIntrinsic tin = new TestIntrinsic("testMultiplyAux", javaclass,
-                                              "multiply", BigInteger.class);
+                        "multiply", BigInteger.class);
 
         for (int i = 0; i < N; i++) {
 
@@ -127,14 +127,14 @@ public final class BigIntegerIntrinsicsTest extends MethodSubstitutionTest {
 
         // Intrinsic must be available.
         org.junit.Assume.assumeTrue(config.useMontgomeryMultiplyIntrinsic() ||
-                                    config.useMontgomerySquareIntrinsic());
+                        config.useMontgomerySquareIntrinsic());
         // Test case is (currently) AMD64 only.
         org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
 
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 
         TestIntrinsic tin = new TestIntrinsic("testMontgomeryAux", javaclass,
-                                              "modPow", BigInteger.class, BigInteger.class);
+                        "modPow", BigInteger.class, BigInteger.class);
 
         for (int i = 0; i < N; i++) {
 
@@ -149,7 +149,8 @@ public final class BigIntegerIntrinsicsTest extends MethodSubstitutionTest {
 
             assertDeepEquals(res1, res2);
 
-            // Invoke BigInteger testMontgomeryAux(BigInteger, BigExp, BigInteger) through code handle.
+            // Invoke BigInteger testMontgomeryAux(BigInteger, BigExp, BigInteger) through code
+            // handle.
             BigInteger res3 = (BigInteger) tin.invokeCode(big1, bigTwo, big2);
 
             assertDeepEquals(res1, res3);
@@ -198,11 +199,10 @@ public final class BigIntegerIntrinsicsTest extends MethodSubstitutionTest {
         // Private data section:
         private ResolvedJavaMethod javamethod;
         private ResolvedJavaMethod testmethod;
-        private InstalledCode      testcode;
+        private InstalledCode testcode;
     }
 
-    private static GraalHotSpotVMConfig config =
-        ((HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class)).getVMConfig();
+    private static GraalHotSpotVMConfig config = ((HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class)).getVMConfig();
 
     private static BigInteger bigTwo = BigInteger.valueOf(2);
     private static Random rnd = new Random(17);
