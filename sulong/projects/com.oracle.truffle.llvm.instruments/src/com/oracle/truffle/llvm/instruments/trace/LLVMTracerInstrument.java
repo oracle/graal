@@ -35,6 +35,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -51,8 +52,8 @@ public final class LLVMTracerInstrument extends TruffleInstrument {
     static final String ID = "TraceLLVM";
     static final String NAME = "LLVMTracerInstrument";
 
-    @Option(name = "", category = OptionCategory.DEBUG, help = "Enable tracing of executed instructions (defaults to \'stdout\', can be set to \'stderr\').") static final OptionKey<String> TRACELLVM = new OptionKey<>(
-                    String.valueOf("stdout"));
+    @Option(name = "", category = OptionCategory.DEBUG, help = "Enable tracing of executed instructions (defaults to \'stdout\', can be set to \'stderr\').") //
+    static final OptionKey<String> TRACELLVM = new OptionKey<>(String.valueOf("stdout"));
 
     private PrintStream traceTarget;
 
@@ -75,6 +76,7 @@ public final class LLVMTracerInstrument extends TruffleInstrument {
     }
 
     @Override
+    @TruffleBoundary
     protected void onDispose(Env env) {
         traceTarget.flush();
 
@@ -100,6 +102,7 @@ public final class LLVMTracerInstrument extends TruffleInstrument {
 
     private static final String FILE_TARGET_PREFIX = "file://";
 
+    @TruffleBoundary
     private static PrintStream createTargetStream(TruffleInstrument.Env env, String target) {
         if (target == null) {
             throw new IllegalArgumentException("Target for trace unspecified!");

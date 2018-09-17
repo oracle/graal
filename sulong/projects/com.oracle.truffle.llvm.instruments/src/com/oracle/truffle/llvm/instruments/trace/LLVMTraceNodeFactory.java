@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.instruments.trace;
 import java.io.PrintStream;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -64,6 +65,7 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
             return new StatementTrace(traceContext, traceTarget, toTraceLine(eventContext.getInstrumentedSourceSection(), true));
 
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Unknown node for tracing: " + eventContext.getInstrumentedNode());
         }
     }
@@ -94,6 +96,8 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
     private static final class TraceContext {
 
+        static final String STACK_DEPTH_INDENT = ">>";
+
         private int stackDepth = 0;
 
         private void enterFunction() {
@@ -106,10 +110,6 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
         private int getStackDepth() {
             return stackDepth;
-        }
-
-        static String getTracePrefix() {
-            return ">>";
         }
     }
 
@@ -127,7 +127,7 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         void trace(String message) {
             out.print("[lli] ");
             for (int i = 0; i < context.getStackDepth(); i++) {
-                out.print(TraceContext.getTracePrefix());
+                out.print(TraceContext.STACK_DEPTH_INDENT);
             }
             out.print(' ');
             out.println(message);
@@ -172,10 +172,15 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
             this.exceptionPrefix = "Exceptionally leaving " + functionName;
         }
 
+        @TruffleBoundary
+        private void traceFunctionArgs(Object[] arguments) {
+            trace(enterPrefix + Arrays.toString(arguments));
+        }
+
         @Override
         protected void onEnter(VirtualFrame frame) {
             getTraceContext().enterFunction();
-            trace(enterPrefix + Arrays.toString(frame.getArguments()));
+            traceFunctionArgs(frame.getArguments());
             flushTraceBuffer();
         }
 
