@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.bytecode;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -41,6 +43,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -85,6 +88,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
@@ -313,17 +317,17 @@ public class InterpreterToVM {
     }
 
     private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
-// if (EspressoOptions.INTRINSICS_VIA_REFLECTION) {
-        return new IntrinsicReflectionRootNode(language, method);
-// } else {
-// MethodHandle handle;
-// try {
-// handle = MethodHandles.publicLookup().unreflect(method);
-// } catch (IllegalAccessException e) {
-// throw new RuntimeException(e);
-// }
-// return new IntrinsicRootNode(language, handle);
-// }
+        if (EspressoOptions.INTRINSICS_VIA_REFLECTION) {
+            return new IntrinsicReflectionRootNode(language, method);
+        } else {
+            MethodHandle handle;
+            try {
+                handle = MethodHandles.publicLookup().unreflect(method);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            return new IntrinsicRootNode(language, handle);
+        }
     }
 
     public void registerIntrinsic(String clazz, String methodName, String signature, CallTarget intrinsic) {
@@ -414,12 +418,12 @@ public class InterpreterToVM {
     // region Monitor enter/exit
     public void monitorEnter(Object obj) {
         // TODO(peterssen): Nop for single-threaded language.
-        //hostUnsafe.monitorEnter(obj);
+        hostUnsafe.monitorEnter(obj);
     }
 
     public void monitorExit(Object obj) {
         // TODO(peterssen): Nop for single-threaded language.
-        //hostUnsafe.monitorExit(obj);
+        hostUnsafe.monitorExit(obj);
     }
     // endregion
 
