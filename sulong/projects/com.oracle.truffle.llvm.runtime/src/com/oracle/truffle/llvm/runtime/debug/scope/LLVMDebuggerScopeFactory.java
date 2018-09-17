@@ -40,11 +40,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugGenericValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugVector;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugGenericValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -74,6 +74,15 @@ public final class LLVMDebuggerScopeFactory {
         return null;
     }
 
+    private static LLVMDebuggerValue asIRValue(Object type, Object value) {
+        final LLVMDebugManagedValue irValue = LLVMDebugManagedValue.create(type, value);
+        if (irValue != null) {
+            return irValue;
+        }
+
+        return new LLVMDebugGenericValue(value, type);
+    }
+
     @TruffleBoundary
     private static LLVMDebuggerScopeEntries getIRLevelEntries(Frame frame) {
         if (frame == null || frame.getFrameDescriptor().getSlots().isEmpty()) {
@@ -82,20 +91,17 @@ public final class LLVMDebuggerScopeFactory {
 
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            final Object slotValue = frame.getValue(slot);
-            LLVMDebuggerValue debuggerValue = LLVMDebugVector.create(slot.getInfo(), slotValue);
-            if (debuggerValue == null) {
-                debuggerValue = new LLVMDebugGenericValue(frame.getValue(slot), slot.getInfo());
-            }
-            entries.add(String.valueOf(slot.getIdentifier()), debuggerValue);
+            final String identifier = String.valueOf(slot.getIdentifier());
+            final LLVMDebuggerValue value = asIRValue(slot.getInfo(), frame.getValue(slot));
+            entries.add(identifier, value);
         }
 
         return entries;
     }
 
     @TruffleBoundary
-    private static LLVMDebuggerValue asValue(LLVMGlobal global) {
-        return new LLVMDebugGenericValue(String.valueOf(global.getTarget()), String.valueOf(global.getPointeeType()));
+    private static LLVMDebuggerValue asIrGlobalValue(LLVMGlobal global) {
+        return asIRValue(global.getPointeeType(), global.getTarget());
     }
 
     @TruffleBoundary
@@ -103,7 +109,7 @@ public final class LLVMDebuggerScopeFactory {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
-                entries.add(symbol.getName(), asValue(symbol.asGlobalVariable()));
+                entries.add(symbol.getName(), asIrGlobalValue(symbol.asGlobalVariable()));
             }
         }
         return entries;
@@ -113,7 +119,7 @@ public final class LLVMDebuggerScopeFactory {
     private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMSourceLocation.TextModule irScope) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
-            entries.add(global.getName(), asValue(global));
+            entries.add(global.getName(), asIrGlobalValue(global));
         }
         return entries;
     }
