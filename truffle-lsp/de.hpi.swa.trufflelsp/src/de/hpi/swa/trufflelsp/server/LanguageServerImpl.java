@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.Supplier;
 
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.CodeLens;
@@ -178,7 +179,8 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
         Future<List<? extends Location>> future = truffleAdapter.definition(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
                         position.getPosition().getCharacter());
-        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, Collections.emptyList()));
+        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        return CompletableFuture.supplyAsync(supplier);
     }
 
     @Override
@@ -200,12 +202,13 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
         Future<List<? extends SymbolInformation>> future = truffleAdapter.documentSymbol(URI.create(params.getTextDocument().getUri()));
-        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, Collections.emptyList()));
+        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        return CompletableFuture.supplyAsync(supplier);
     }
 
     @Override
     public CompletableFuture<List<? extends Command>> codeAction(CodeActionParams params) {
-        return CompletableFuture.completedFuture(Collections.emptyList());
+        return CompletableFuture.completedFuture(new ArrayList<>());
     }
 
     @Override
