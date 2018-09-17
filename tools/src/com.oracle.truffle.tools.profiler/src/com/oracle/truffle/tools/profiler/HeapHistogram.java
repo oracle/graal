@@ -69,7 +69,7 @@ public class HeapHistogram implements Closeable {
 
     private Map<String, MetaObjInfo> heapInfo;
 
-    private ReferenceQueue<Object> rq;
+    private ReferenceQueue<Object> referenceQueue;
 
     private Map<Object,ObjLivenessWeakRef> objSet;
 
@@ -78,7 +78,7 @@ public class HeapHistogram implements Closeable {
     HeapHistogram(TruffleInstrument.Env env) {
         this.env = env;
         heapInfo = new HashMap<>();
-        rq = new ReferenceQueue<>();
+        referenceQueue = new ReferenceQueue<>();
         objSet = new WeakHashMap<>();
         refThread = new ReferenceManagerThread();
 
@@ -208,7 +208,7 @@ public class HeapHistogram implements Closeable {
     public void clearData() {
         synchronized (heapInfo) {
             heapInfo = new HashMap<>();
-            rq = new ReferenceQueue<>();
+            referenceQueue = new ReferenceQueue<>();
             objSet = new WeakHashMap<>();
         }
     }
@@ -300,7 +300,7 @@ public class HeapHistogram implements Closeable {
                     if (info != null) {
                         long size = getAddedSize(event);
                         info.addInstanceWithSize(size);
-                        ObjLivenessWeakRef ref = new ObjLivenessWeakRef(event.getValue(), rq, info, size);
+                        ObjLivenessWeakRef ref = new ObjLivenessWeakRef(event.getValue(), referenceQueue, info, size);
                         objSet.put(event.getValue(), ref);
                     }
                 }
@@ -365,7 +365,7 @@ public class HeapHistogram implements Closeable {
 
     }
 
-    static class MetaObjInfo {
+    private static class MetaObjInfo {
 
         private long allocatedInstances;
         private long liveInstances;
@@ -455,7 +455,7 @@ public class HeapHistogram implements Closeable {
         public void run() {
             while (!terminated) {
                 try {
-                    ObjLivenessWeakRef wr = (ObjLivenessWeakRef)rq.remove(200);
+                    ObjLivenessWeakRef wr = (ObjLivenessWeakRef) referenceQueue.remove(200);
 
                     if (wr != null && !terminated) {
                         signalObjGC(wr);

@@ -42,7 +42,7 @@ import org.graalvm.polyglot.Instrument;
  *
  * @author Tomas Hurka
  */
-@TruffleInstrument.Registration(id = HeapHistogramInstrument.ID, name = "Heap Histogram", version = "0.1", services = {HeapHistogram.class})
+@TruffleInstrument.Registration(id = HeapHistogramInstrument.ID, name = "Heap Histogram", version = HeapHistogramInstrument.VERSION, services = {HeapHistogram.class})
 public class HeapHistogramInstrument extends TruffleInstrument {
 
     /**
@@ -58,8 +58,9 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      *
      * @since 0.30
      */
-    public static final String ID = "heaphisto";
-    private HeapHistogram histo;
+    public static final String ID = "heaphistogram";
+    static final String VERSION = "0.1.0";
+    private HeapHistogram histogram;
     private static ProfilerToolFactory<HeapHistogram> factory;
     private static Map<Env, HeapHistogram> envs = new HashMap<>();
 
@@ -112,12 +113,12 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      */
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
-        histo = factory.create(env);
+        histogram = factory.create(env);
         if (env.getOptions().get(HeapHistogramInstrument.ENABLED)) {
-            histo.setCollecting(true);
+            histogram.setCollecting(true);
         }
-        env.registerService(histo);
-        envs.put(env, histo);
+        env.registerService(histogram);
+        envs.put(env, histogram);
     }
 
     /**
@@ -137,7 +138,7 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      */
     @Override
     protected void onDispose(TruffleInstrument.Env env) {
-        histo.close();
+        histogram.close();
         envs.remove(env);
     }
 
