@@ -148,10 +148,6 @@ public class HeapHistogram implements Closeable {
         return HeapHistogramInstrument.getHistogram(engine);
     }
 
-    public static Set<HeapHistogram> getAllHeapHistogramInstances() {
-        return HeapHistogramInstrument.getAllHeapHistograms();
-    }
-
     /**
      * Controls whether the tracer is collecting data or not.
      *

@@ -28,10 +28,6 @@ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import com.oracle.truffle.tools.profiler.HeapHistogram;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -62,7 +58,6 @@ public class HeapHistogramInstrument extends TruffleInstrument {
     static final String VERSION = "0.1.0";
     private HeapHistogram histogram;
     private static ProfilerToolFactory<HeapHistogram> factory;
-    private static Map<Env, HeapHistogram> envs = new HashMap<>();
 
     /**
      * Sets the factory which instantiates the {@link HeapHistogram}.
@@ -101,10 +96,6 @@ public class HeapHistogramInstrument extends TruffleInstrument {
         return instrument.lookup(HeapHistogram.class);
     }
 
-    public static Set<HeapHistogram> getAllHeapHistograms() {
-        return new HashSet<>(envs.values());
-    }
-
     /**
      * Called to create the Instrument.
      *
@@ -118,7 +109,6 @@ public class HeapHistogramInstrument extends TruffleInstrument {
             histogram.setCollecting(true);
         }
         env.registerService(histogram);
-        envs.put(env, histogram);
     }
 
     /**
@@ -139,7 +129,6 @@ public class HeapHistogramInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(TruffleInstrument.Env env) {
         histogram.close();
-        envs.remove(env);
     }
 
     @Option(name = "", help = "Enable the Heap Histogram.", category = OptionCategory.USER)
