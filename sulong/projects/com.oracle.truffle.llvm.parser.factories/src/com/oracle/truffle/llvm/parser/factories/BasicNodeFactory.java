@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
@@ -383,6 +384,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
@@ -2186,6 +2188,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMStatementNode createDebugTrap(LLVMSourceLocation location) {
         return new LLVMDebugTrapNode(location);
+    }
+
+    @Override
+    public TruffleObject toGenericDebuggerValue(Object llvmType, Object value) {
+        return LLVMDebugManagedValue.create(llvmType, value);
     }
 
     @Override

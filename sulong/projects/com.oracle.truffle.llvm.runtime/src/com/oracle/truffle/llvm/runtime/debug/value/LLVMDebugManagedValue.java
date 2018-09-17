@@ -30,13 +30,23 @@
 package com.oracle.truffle.llvm.runtime.debug.value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
 
-    private LLVMDebugManagedValue() {
+    private final Object llvmType;
+
+    private LLVMDebugManagedValue(Object llvmType) {
+        this.llvmType = llvmType;
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object getMetaObject() {
+        return llvmType != null ? String.valueOf(llvmType) : "";
     }
 
     public static LLVMDebugManagedValue create(Object llvmType, Object value) {
@@ -53,21 +63,27 @@ public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
                 elements[i] = String.valueOf(vector.getElement(i));
             }
             return new GenericVector(llvmType, elements, String.valueOf(vector.getElementType()));
+
+        } else {
+            return new Generic(llvmType, value);
         }
-        return null;
     }
 
     private static final class Pointer extends LLVMDebugManagedValue {
 
         private static final String VALUE = "<managed pointer>";
-        private static final String[] DEFAULT_KEYS = new String[] {"<target>"};
+        private static final String[] DEFAULT_KEYS = new String[]{"<target>"};
 
-        private final Object llvmType;
         private final LLVMManagedPointer pointer;
 
         private Pointer(Object llvmType, LLVMManagedPointer pointer) {
-            this.llvmType = llvmType;
+            super(llvmType);
             this.pointer = pointer;
+        }
+
+        @Override
+        public String toString() {
+            return VALUE;
         }
 
         @TruffleBoundary
@@ -75,7 +91,7 @@ public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
             if (pointer.getOffset() == 0) {
                 return DEFAULT_KEYS;
             } else {
-                return new String[] {"<target (offset " + pointer.getOffset() + " ignored)>"};
+                return new String[]{"<target (offset " + pointer.getOffset() + " ignored)>"};
             }
         }
 
@@ -94,36 +110,17 @@ public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
             assert getTargetKeys()[0].equals(key);
             return pointer.getObject();
         }
-
-        @Override
-        @TruffleBoundary
-        public Object getMetaObject() {
-            return String.valueOf(llvmType);
-        }
-
-        @Override
-        public String toString() {
-            return VALUE;
-        }
     }
 
     private static final class GenericVector extends LLVMDebugManagedValue {
-        private static final String NO_TYPE = "";
 
-        private final Object llvmType;
         private final String elementType;
         private final String[] vector;
 
         private GenericVector(Object llvmType, String[] vector, String elementType) {
-            this.llvmType = llvmType;
+            super(llvmType);
             this.elementType = elementType;
             this.vector = vector;
-        }
-
-        @TruffleBoundary
-        @Override
-        public Object getMetaObject() {
-            return llvmType == null ? NO_TYPE : String.valueOf(llvmType);
         }
 
         @Override
@@ -153,14 +150,54 @@ public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
         @Override
         @TruffleBoundary
         protected Object getElementForDebugger(String key) {
+            int i;
+
             try {
-                int i = Integer.parseInt(key);
-                if (i < vector.length) {
-                    return new LLVMDebugGenericValue(vector[i], elementType);
-                }
-            } catch (Exception ignored) {
+                i = Integer.parseInt(key);
+            } catch (NumberFormatException nfe) {
+                throw new IllegalArgumentException("Vector has no member named " + key);
             }
-            return null;
+
+            if (i < vector.length) {
+                return new Generic(elementType, vector[i]);
+            }
+
+            throw new IllegalArgumentException("Cannot access index " + i + " in vector of length " + vector.length);
         }
+    }
+
+    private static final class Generic extends LLVMDebugManagedValue {
+
+        private static final String[] INTEROP_KEYS = new String[]{"<value>"};
+
+        private final Object value;
+
+        private Generic(Object llvmType, Object value) {
+            super(llvmType);
+            this.value = value;
+        }
+
+        @Override
+        @TruffleBoundary
+        public String toString() {
+            return String.valueOf(value);
+        }
+
+        @Override
+        protected int getElementCountForDebugger() {
+            return getKeysForDebugger().length;
+        }
+
+        @Override
+        protected String[] getKeysForDebugger() {
+            return value instanceof TruffleObject ? INTEROP_KEYS : NO_KEYS;
+        }
+
+        @Override
+        protected Object getElementForDebugger(String key) {
+            assert INTEROP_KEYS[0].equals(key);
+            return value;
+        }
+
     }
 }
