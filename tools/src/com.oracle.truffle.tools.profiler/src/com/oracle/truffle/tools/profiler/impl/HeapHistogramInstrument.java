@@ -24,18 +24,18 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.tools.profiler.CPUTracer;
-import com.oracle.truffle.tools.profiler.HeapHistogram;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.tools.profiler.HeapHistogram;
+
 /**
- *
+ * // TODO Javadoc
  * @author Tomas Hurka
  */
 @TruffleInstrument.Registration(id = HeapHistogramInstrument.ID, name = "Heap Histogram", version = HeapHistogramInstrument.VERSION, services = {HeapHistogram.class})
@@ -44,15 +44,15 @@ public class HeapHistogramInstrument extends TruffleInstrument {
     /**
      * Default constructor.
      *
-     * @since 0.30
+     * @since 1.0
      */
     public HeapHistogramInstrument() {
     }
 
     /**
-     * A string used to identify the tracer, i.e. as the name of the tool.
+     * A string used to identify the heap histogram.
      *
-     * @since 0.30
+     * @since 1.0
      */
     public static final String ID = "heaphistogram";
     static final String VERSION = "0.1.0";
@@ -63,7 +63,7 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      * Sets the factory which instantiates the {@link HeapHistogram}.
      *
      * @param factory the factory which instantiates the {@link HeapHistogram}.
-     * @since 0.30
+     * @since 1.0
      */
     public static void setFactory(ProfilerToolFactory<HeapHistogram> factory) {
         if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
@@ -83,10 +83,10 @@ public class HeapHistogramInstrument extends TruffleInstrument {
     }
 
     /**
-     * Does a lookup in the runtime instruments of the engine and returns an
-     * instance of the {@link CPUTracer}.
+     * Does a lookup in the runtime instruments of the engine and returns an instance of the
+     * {@link HeapHistogram}.
      *
-     * @since 0.33
+     * @since 1.0
      */
     public static HeapHistogram getHistogram(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
@@ -100,7 +100,7 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      * Called to create the Instrument.
      *
      * @param env environment information for the instrument
-     * @since 0.30
+     * @since 1.0
      */
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
@@ -113,7 +113,7 @@ public class HeapHistogramInstrument extends TruffleInstrument {
 
     /**
      * @return A list of the options provided by the {@link HeapHistogram}.
-     * @since 0.30
+     * @since 1.0
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -124,14 +124,15 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      * Called when the Instrument is to be disposed.
      *
      * @param env environment information for the instrument
-     * @since 0.30
+     * @since 1.0
      */
     @Override
     protected void onDispose(TruffleInstrument.Env env) {
         histogram.close();
     }
 
-    @Option(name = "", help = "Enable the Heap Histogram.", category = OptionCategory.USER)
-    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    // TODO make sure the help stresses that this does not produce output and another tool
+    // (VisualVM) is needed
+    @Option(name = "", help = "Enable the Heap Histogram.", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
 }

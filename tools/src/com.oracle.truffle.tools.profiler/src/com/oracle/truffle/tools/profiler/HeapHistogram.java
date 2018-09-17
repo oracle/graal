@@ -24,6 +24,17 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.io.Closeable;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+import org.graalvm.polyglot.Engine;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -36,19 +47,9 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.profiler.impl.HeapHistogramInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-import java.io.Closeable;
-import java.lang.ref.PhantomReference;
-import java.lang.ref.ReferenceQueue;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
-import org.graalvm.polyglot.Engine;
 
 /**
- *
+ * // TODO: Javadoc
  * @author Tomas Hurka
  */
 public class HeapHistogram implements Closeable {
@@ -138,10 +139,10 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Finds {@link MemoryTracer} associated with given engine.
+     * Finds {@link HeapHistogram} associated with given engine.
      *
      * @param engine the engine to find debugger for
-     * @return an instance of associated {@link MemoryTracer}
+     * @return an instance of associated {@link HeapHistogram}
      * @since 1.0
      */
     public static HeapHistogram find(Engine engine) {
@@ -149,10 +150,10 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Controls whether the tracer is collecting data or not.
+     * Controls whether the {@link HeapHistogram} is collecting data or not.
      *
      * @param collecting the new state of the histogram.
-     * @since 0.30
+     * @since 1.0
      */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
@@ -165,16 +166,16 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * @return whether or not the sampler is currently collecting data.
-     * @since 0.30
+     * @return whether or not the {@link HeapHistogram} is currently collecting data.
+     * @since 1.0
      */
     public synchronized boolean isCollecting() {
         return collecting;
     }
 
     /**
-     * @return The roots of the trees representing the profile of the execution.
-     * @since 0.30
+     * @return The histogram of the current state of the heap.
+     * @since 1.0
      */
     public Map<String, Object>[] getHeapHistogram() {
         MetaObjInfo heap[];
@@ -197,9 +198,9 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Erases all the data gathered by the heap histogram.
+     * Erases all the data gathered by the {@link HeapHistogram}.
      *
-     * @since 0.30
+     * @since 1.0
      */
     public void clearData() {
         synchronized (heapInfo) {
@@ -210,8 +211,8 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * @return whether or not the sampler has collected any data so far.
-     * @since 0.30
+     * @return whether or not the {@link HeapHistogram} has collected any data so far.
+     * @since 1.0
      */
     public boolean hasData() {
         synchronized (heapInfo) {
@@ -220,10 +221,10 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Closes the heap histogram for further use, deleting all the gathered
+     * Closes the {@link HeapHistogram} for further use, deleting all the gathered
      * data.
      *
-     * @since 0.30
+     * @since 1.0
      */
     @Override
     public void close() {
