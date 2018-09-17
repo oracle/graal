@@ -19,27 +19,27 @@ A Java bytecode interpreter on top of [Truffle](https://github.com/oracle/graal/
 
 ### Run _Espresso_ as a pure interpreter _~60s_
 ```bash
-mx espresso -cp mxbuild/dists/espresso.jar com.oracle.truffle.espresso.TestMain
+mx espresso -cp mxbuild/dists/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ### Java equivalent _~1s_
 ```bash
-java -cp mxbuild/dists/espresso.jar com.oracle.truffle.espresso.TestMain
+java -cp mxbuild/dists/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ### Run _Espresso_ + Truffle PE _~6s_
 ```bash
-mx --dy /compiler --jdk jvmci espresso -cp mxbuild/dists/espresso.jar com.oracle.truffle.espresso.TestMain
+mx --dy /compiler --jdk jvmci espresso -cp mxbuild/dists/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ### Terminal Tetris
 ```bash
-mx espresso -cp mxbuild/dists/espresso.jar com.oracle.truffle.espresso.Tetris
+mx espresso -cp mxbuild/dists/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
 ```
 
 ## Dumping IGV graphs
 ```bash
-mx -v --dy /compiler --jdk jvmci -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso -cp  mxbuild/dists/espresso.jar com.oracle.truffle.espresso.TestMain
+mx -v --dy /compiler --jdk jvmci -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso -cp  mxbuild/dists/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ### Run _Espresso_ tests _~20s_

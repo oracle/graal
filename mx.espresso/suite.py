@@ -63,6 +63,14 @@ suite = {
             "checkstyleVersion" : "8.8",
         },
 
+        "com.oracle.truffle.espresso.playground" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [                
+            ],
+            "javaCompliance" : "1.8+",
+        },
+
         "com.oracle.truffle.espresso.test" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -137,7 +145,16 @@ suite = {
                 ],
             },
         },
-                
+        
+        "ESPRESSO_PLAYGROUND" : {
+            "subDir" : "src",
+            "dependencies" : [
+                "com.oracle.truffle.espresso.playground"
+            ],
+            "distDependencies" : [
+            ],
+            "description" : "Espresso experiments",
+        },            
 
     }
 }
