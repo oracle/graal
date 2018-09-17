@@ -47,6 +47,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -62,6 +64,7 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleMessageTransportHandler;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -192,15 +195,17 @@ public abstract class TruffleInstrument {
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
+        private final MessageTransport.Interceptor messageInterceptor;
         OptionValues options;
         InstrumentClientInstrumenter instrumenter;
         private List<Object> services;
 
-        Env(Object vm, OutputStream out, OutputStream err, InputStream in) {
+        Env(Object vm, OutputStream out, OutputStream err, InputStream in, MessageTransport.Interceptor messageInterceptor) {
             this.vmObject = vm;
             this.in = in;
             this.err = err;
             this.out = out;
+            this.messageInterceptor = messageInterceptor;
         }
 
         Object getVMObject() {
@@ -248,6 +253,31 @@ public abstract class TruffleInstrument {
          */
         public OutputStream err() {
             return err;
+        }
+
+        /**
+         * Returns a handler of message transport provided by {@link MessageTransport}. A message
+         * transport abstracts message communication with a peer at an URL. Before an instrument
+         * establishes a connection to an URL that uses a message protocol, check the result of this
+         * method to see if there's a provider of the message transport registered already. If a
+         * non-null handler is returned, use that handler instead of a direct URL connection. When
+         * {@link org.graalvm.polyglot.io.MessageTransport.Interceptor.VetoException} is thrown, the
+         * connection needs to be abandoned.
+         *
+         * @param uri the URI to connect to, in case of server it's the URI of server socket
+         * @param server <code>true</code> when URI points to a server endpoint, <code>true</code>
+         *            when URI denotes a remote client
+         * @return the handler of message transport, or <code>null</code> when no handler is
+         *         available
+         * @throws MessageTransport.Interceptor.VetoException if transport to the URI is not allowed
+         * @since 1.0
+         */
+        public TruffleMessageTransportHandler getMessageTransportHandler(URI uri, boolean server) throws MessageTransport.Interceptor.VetoException {
+            if (messageInterceptor.handle(uri, server)) {
+                return AccessorInstrumentHandler.langAccess().createMessageHandler(uri, server, messageInterceptor);
+            } else {
+                return null;
+            }
         }
 
         /**

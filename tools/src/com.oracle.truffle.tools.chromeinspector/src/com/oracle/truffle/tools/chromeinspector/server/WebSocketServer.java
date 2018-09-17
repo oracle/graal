@@ -70,7 +70,7 @@ import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
  * <a href="https://chromium.googlesource.com/v8/v8/+/master/src/inspector/js_protocol.json">Chrome
  * inspector protocol</a>.
  */
-public final class WebSocketServer extends NanoWSD {
+public final class WebSocketServer extends NanoWSD implements InspectorServer {
 
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 

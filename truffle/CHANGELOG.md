@@ -12,6 +12,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecated FrameDescriptor#shallowCopy (deprecated since 1.0.0 RC3).
 * Removed deprecated FrameSlot#getFrameDescriptor (deprecated since 1.0.0 RC3).
 
+* Added `TruffleMessageTransportHandler` to handle transport of messages to a peer URI.
+
 ## Version 1.0.0 RC6
 
 * Added support for byte based sources:

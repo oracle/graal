@@ -52,6 +52,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
 import java.io.File;
@@ -290,6 +291,7 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean useSystemProperties = true;
         private boolean boundEngine;
+        private MessageTransport.Interceptor messageInterceptor;
         private Handler customLogHandler;
 
         Builder() {
@@ -399,6 +401,21 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Take over transport of message communication with a peer. Provide a
+         * {@link org.graalvm.polyglot.io.MessageTransport.Interceptor interceptor} of message
+         * transport to replace a direct connection to a peer URI.
+         *
+         * @param interceptor an implementation of message transport interceptor
+         * @see MessageTransport
+         * @since 1.0
+         */
+        public Builder messageTransportInterceptor(final MessageTransport.Interceptor interceptor) {
+            Objects.requireNonNull(interceptor, "Interceptor must be non null.");
+            this.messageInterceptor = interceptor;
+            return this;
+        }
+
+        /**
          * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
          * using the {@link #options(java.util.Map) Engine's options}. The level option key has the
          * following format: {@code log.languageId.loggerName.level} or
@@ -435,8 +452,25 @@ public final class Engine implements AutoCloseable {
             if (loadedImpl == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
+            if (messageInterceptor == null) {
+                messageInterceptor = new EmptyInterceptor();
+            }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, boundEngine, customLogHandler);
+                            false, 0, useSystemProperties, boundEngine, messageInterceptor, customLogHandler);
+        }
+
+    }
+
+    private static final class EmptyInterceptor implements MessageTransport.Interceptor {
+
+        @Override
+        public boolean handle(URI uri, boolean server) throws VetoException {
+            return false;
+        }
+
+        @Override
+        public MessageTransport.MessageHandler onOpen(URI uri, boolean server, MessageTransport transport) {
+            throw new IllegalStateException("Not expected to be called.");
         }
 
     }
@@ -614,7 +648,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport.Interceptor messageInterceptor, Handler logHandler) {
             throw noPolyglotImplementationFound();
         }
 

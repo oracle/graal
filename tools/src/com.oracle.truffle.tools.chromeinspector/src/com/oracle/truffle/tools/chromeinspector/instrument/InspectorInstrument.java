@@ -29,15 +29,21 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleMessageTransportHandler;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -45,9 +51,9 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
+import com.oracle.truffle.tools.chromeinspector.server.InspectorServer;
+import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Chrome inspector as an instrument.
@@ -222,7 +228,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final class Server {
 
-        private WebSocketServer wss;
+        private InspectorServer wss;
         private final String wsspath;
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
@@ -238,12 +244,23 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, err);
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher);
-            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
-            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
-            info.println("To start debugging, open the following URL in Chrome:");
-            info.println("    " + address);
-            info.flush();
+            URI wsuri;
+            try {
+                wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), path, null, null);
+            } catch (URISyntaxException ex) {
+                throw new IOException(ex);
+            }
+            TruffleMessageTransportHandler messageHandler = getServerMessageHandler(env, wsuri);
+            if (messageHandler == null) {
+                wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher);
+                String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
+                info.println("Debugger listening on port " + wss.getListeningPort() + ".");
+                info.println("To start debugging, open the following URL in Chrome:");
+                info.println("    " + address);
+                info.flush();
+            } else {
+                wss = new WSInterceptorServer(wsuri, messageHandler, executionContext, debugBreak, connectionWatcher);
+            }
             if (debugBreak || waitAttached) {
                 final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();
                 final AtomicBoolean disposeBinding = new AtomicBoolean(false);
@@ -295,6 +312,14 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (disposeBinding.get()) {
                     execEnter.get().dispose();
                 }
+            }
+        }
+
+        private static TruffleMessageTransportHandler getServerMessageHandler(Env env, URI uri) throws IOException {
+            try {
+                return env.getMessageTransportHandler(uri, true);
+            } catch (MessageTransport.Interceptor.VetoException vex) {
+                throw new IOException(vex.getLocalizedMessage());
             }
         }
 

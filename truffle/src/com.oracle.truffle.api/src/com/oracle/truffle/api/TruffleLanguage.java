@@ -69,6 +69,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -2540,6 +2541,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public File asFile(TruffleFile file) {
             return new FileAdapter(file);
+        }
+
+        @Override
+        public TruffleMessageTransportHandler createMessageHandler(URI uri, boolean server, MessageTransport.Interceptor messageInterceptor) {
+            return new TruffleMessageTransportHandler(uri, server, messageInterceptor);
         }
 
         @Override
