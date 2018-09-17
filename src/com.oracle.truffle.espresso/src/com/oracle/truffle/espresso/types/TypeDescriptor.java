@@ -34,7 +34,6 @@ public final class TypeDescriptor extends Descriptor {
         super(string);
     }
 
-    @CompilerDirectives.TruffleBoundary
     public static String stringToJava(String string) {
         switch (string.charAt(0)) {
             // @formatter: off
