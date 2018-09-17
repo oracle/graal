@@ -154,6 +154,7 @@ suite = {
             "distDependencies" : [
             ],
             "description" : "Espresso experiments",
+            "checkstyleVersion" : "8.8",
         },            
 
     }

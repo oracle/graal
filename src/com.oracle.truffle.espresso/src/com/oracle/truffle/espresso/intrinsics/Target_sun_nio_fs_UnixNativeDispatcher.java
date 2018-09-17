@@ -142,16 +142,16 @@ public class Target_sun_nio_fs_UnixNativeDispatcher {
             try {
                 Class<?> clazz = Class.forName("sun.nio.fs.UnixNativeDispatcher");
                 Class<?>[] filteredParams = Stream.of(parameterTypes).map(c -> {
-                            Surrogate surrogate = c.getAnnotation(Surrogate.class);
-                            if (surrogate == null) {
-                                return c;
-                            }
-                            try {
-                                return Class.forName(surrogate.value());
-                            } catch (ClassNotFoundException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }).toArray(Class<?>[]::new);
+                    Surrogate surrogate = c.getAnnotation(Surrogate.class);
+                    if (surrogate == null) {
+                        return c;
+                    }
+                    try {
+                        return Class.forName(surrogate.value());
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).toArray(Class<?>[]::new);
                 this.method = clazz.getDeclaredMethod(name, filteredParams);
                 this.method.setAccessible(true);
             } catch (NoSuchMethodException | ClassNotFoundException e) {
