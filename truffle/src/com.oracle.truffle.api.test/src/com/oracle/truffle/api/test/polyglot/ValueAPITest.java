@@ -1065,6 +1065,21 @@ public class ValueAPITest {
         assertFalse(rv.removeMember("notAMember"));
     }
 
+    @Test
+    public void testNullError() {
+        Value members = context.asValue(new MembersAndArrayAndExecutableAndInstantiable());
+        assertFails(() -> members.putMember(null, "value"), NullPointerException.class, "identifier");
+        assertFails(() -> members.getMember(null), NullPointerException.class, "identifier");
+        assertFails(() -> members.hasMember(null), NullPointerException.class, "identifier");
+        assertFails(() -> members.removeMember(null), NullPointerException.class, "identifier");
+
+        assertFails(() -> members.execute((Object[]) null), NullPointerException.class, null);
+        assertFails(() -> members.executeVoid((Object[]) null), NullPointerException.class, null);
+        assertFails(() -> members.newInstance((Object[]) null), NullPointerException.class, null);
+        assertFails(() -> members.as((Class<?>) null), NullPointerException.class, null);
+        assertFails(() -> members.as((TypeLiteral<?>) null), NullPointerException.class, null);
+    }
+
     @FunctionalInterface
     public interface ExecutableInterface {
 
@@ -1171,7 +1186,7 @@ public class ValueAPITest {
             if (!hostExceptionType.isInstance(e)) {
                 throw new AssertionError(e.getClass().getName() + ":" + e.getMessage(), e);
             }
-            if (!message.equals(e.getMessage())) {
+            if (message != null && !message.equals(e.getMessage())) {
                 ComparisonFailure f = new ComparisonFailure(null, message, e.getMessage());
                 f.initCause(e);
                 throw f;
