@@ -735,19 +735,19 @@ public class EspressoRootNode extends RootNode {
                         stack.pushLong(stack.popInt());
                         break;
                     case I2F:
-                        stack.pushFloat(stack.popInt());
+                        stack.pushFloat((float) stack.popInt());
                         break;
                     case I2D:
-                        stack.pushDouble(stack.popInt());
+                        stack.pushDouble((double) stack.popInt());
                         break;
                     case L2I:
                         stack.pushInt((int) stack.popLong());
                         break;
                     case L2F:
-                        stack.pushFloat(stack.popLong());
+                        stack.pushFloat((float) stack.popLong());
                         break;
                     case L2D:
-                        stack.pushDouble(stack.popLong());
+                        stack.pushDouble((double) stack.popLong());
                         break;
                     case F2I:
                         stack.pushInt((int) stack.popFloat());
@@ -756,7 +756,7 @@ public class EspressoRootNode extends RootNode {
                         stack.pushLong((long) stack.popFloat());
                         break;
                     case F2D:
-                        stack.pushDouble(stack.popFloat());
+                        stack.pushDouble((double) stack.popFloat());
                         break;
                     case D2I:
                         stack.pushInt((int) stack.popDouble());
@@ -1236,36 +1236,36 @@ public class EspressoRootNode extends RootNode {
         return exitMethodAndReturn(StaticObject.VOID);
     }
 
-    private static int divInt(int dividend, int divisor) {
-        return divisor / dividend;
+    private static int divInt(int divisor, int dividend) {
+        return dividend / divisor;
     }
 
-    private static long divLong(long dividend, long divisor) {
-        return divisor / dividend;
+    private static long divLong(long divisor, long dividend) {
+        return dividend / divisor;
     }
 
-    private static float divFloat(float dividend, float divisor) {
-        return divisor / dividend;
+    private static float divFloat(float divisor, float dividend) {
+        return dividend / divisor;
     }
 
-    private static double divDouble(double dividend, double divisor) {
-        return divisor / dividend;
+    private static double divDouble(double divisor, double dividend) {
+        return dividend / divisor;
     }
 
-    private static int remInt(int dividend, int divisor) {
-        return divisor % dividend;
+    private static int remInt(int divisor, int dividend) {
+        return dividend % divisor;
     }
 
-    private static long remLong(long dividend, long divisor) {
-        return divisor % dividend;
+    private static long remLong(long divisor, long dividend) {
+        return dividend % divisor;
     }
 
     private static float remFloat(float dividend, float divisor) {
-        return divisor % dividend;
+        return dividend % divisor;
     }
 
-    private static double remDouble(double dividend, double divisor) {
-        return divisor % dividend;
+    private static double remDouble(double divisor, double dividend) {
+        return dividend % divisor;
     }
 
     private static int shiftLeftInt(int bits, int value) {
