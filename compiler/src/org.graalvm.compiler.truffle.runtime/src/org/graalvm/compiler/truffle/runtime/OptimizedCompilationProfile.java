@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionValues;
 
@@ -302,7 +303,6 @@ public class OptimizedCompilationProfile {
         ensureProfiling(1, replaceBackoff);
     }
 
-    private Random random = new Random();
     @CompilerDirectives.TruffleBoundary
     final boolean lowGradeCall(OptimizedCallTarget callTarget) {
         int callCount = ++lowGradeCallCount;
