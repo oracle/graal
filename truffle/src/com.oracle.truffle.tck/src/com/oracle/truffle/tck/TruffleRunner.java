@@ -113,7 +113,7 @@ import org.junit.runners.model.TestClass;
  */
 public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
-    private static final TruffleTestInvoker<?> truffleTestInvoker = TruffleTestInvoker.create();
+    private static final TruffleTestInvoker<?, ?> truffleTestInvoker = TruffleTestInvoker.create();
 
     /**
      * A parameter annotated with {@link Inject} specifies the {@link RootNode} of the test AST.
@@ -285,7 +285,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         @Override
         protected Statement methodInvoker(FrameworkMethod method, Object test) {
-            Statement ret = truffleTestInvoker.createStatement(getName(), method, test);
+            Statement ret = truffleTestInvoker.createStatement(getTestClass().getJavaClass().getSimpleName() + "#" + testName(method), method, test);
             if (ret == null) {
                 ret = super.methodInvoker(method, test);
             }
@@ -327,7 +327,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object test) {
-        Statement ret = truffleTestInvoker.createStatement(testName(method), method, test);
+        Statement ret = truffleTestInvoker.createStatement(getTestClass().getJavaClass().getSimpleName() + "#" + testName(method), method, test);
         if (ret == null) {
             ret = super.methodInvoker(method, test);
         }

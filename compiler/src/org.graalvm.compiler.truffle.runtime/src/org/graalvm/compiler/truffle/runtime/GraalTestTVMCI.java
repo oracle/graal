@@ -24,40 +24,89 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.graphio.GraphOutput;
 
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.Closeable;
+import java.io.IOException;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.truffle.runtime.GraalTestTVMCI.GraalTestContext;
 
-final class GraalTestTVMCI extends TVMCI.Test<OptimizedCallTarget> {
+final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTarget> {
 
     private final GraalTruffleRuntime truffleRuntime;
+
+    static final class GraalTestContext implements Closeable {
+
+        private final DebugContext debug;
+        private final GraphOutput<Void, ?> output;
+
+        private static GraphOutput<Void, ?> beginGroup(DebugContext debug, String testName) {
+            GraphOutput<Void, ?> output = null;
+            try {
+                if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                    output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
+                    output.beginGroup(null, testName, testName, null, 0, DebugContext.addVersionProperties(null));
+                    return output;
+                }
+            } catch (IOException e) {
+                if (output != null) {
+                    output.close();
+                }
+            }
+            return null;
+        }
+
+        private GraalTestContext(String testName) {
+            this.debug = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+            this.output = beginGroup(this.debug, testName);
+        }
+
+        @Override
+        public void close() throws IOException {
+            try {
+                if (output != null) {
+                    try {
+                        output.endGroup();
+                    } finally {
+                        output.close();
+                    }
+                }
+            } finally {
+                debug.close();
+            }
+        }
+    }
 
     GraalTestTVMCI(GraalTruffleRuntime truffleRuntime) {
         this.truffleRuntime = truffleRuntime;
     }
 
     @Override
-    public OptimizedCallTarget createTestCallTarget(RootNode testNode) {
+    protected GraalTestContext createTestContext(String testName) {
+        return new GraalTestContext(testName);
+    }
+
+    @Override
+    public OptimizedCallTarget createTestCallTarget(GraalTestContext testContext, RootNode testNode) {
         return (OptimizedCallTarget) truffleRuntime.createCallTarget(testNode);
     }
 
     @SuppressWarnings("try")
     @Override
-    public void finishWarmup(OptimizedCallTarget callTarget, String testName) {
-        OptionValues options = TruffleCompilerOptions.getOptions();
-        DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+    public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
         TruffleCompiler compiler = truffleRuntime.getTruffleCompiler();
-        TruffleInlining inliningDecision = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-        try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(callTarget))) {
-            compiler.doCompile(debug, null, options, callTarget, inliningDecision, null, null);
-        } catch (Throwable e) {
-            throw debug.handle(e);
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
+        try (Scope s = testContext.debug.scope("UnitTest")) {
+            truffleRuntime.doCompile(testContext.debug, compilationId, options, callTarget, null);
         }
     }
 }

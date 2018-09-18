@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.Closeable;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Objects;
@@ -61,15 +62,20 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
-    private final TVMCI.Test<CallTarget> testTvmci = new TVMCI.Test<CallTarget>() {
+    private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<Closeable, CallTarget>() {
 
         @Override
-        public CallTarget createTestCallTarget(RootNode testNode) {
+        protected Closeable createTestContext(String testName) {
+            return null;
+        }
+
+        @Override
+        public CallTarget createTestCallTarget(Closeable testContext, RootNode testNode) {
             return createCallTarget(testNode);
         }
 
         @Override
-        public void finishWarmup(CallTarget callTarget, String testName) {
+        public void finishWarmup(Closeable testContext, CallTarget callTarget) {
             // do nothing if we have no compiler
         }
     };

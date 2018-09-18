@@ -237,7 +237,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return tvmci;
     }
 
-    protected TVMCI.Test<?> getTestTvmci() {
+    protected TVMCI.Test<?, ?> getTestTvmci() {
         if (testTvmci == null) {
             synchronized (this) {
                 if (testTvmci == null) {
@@ -705,23 +705,28 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    @SuppressWarnings("try")
-    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
+    protected void doCompile(DebugContext debug, CompilationIdentifier compilationId, OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
-        try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
-            try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
-                maybeDumpTruffleTree(debug, options, callTarget, inlining);
-                compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
-            } catch (RuntimeException | Error e) {
-                throw e;
-            } catch (Throwable e) {
-                throw new InternalError(e);
-            }
+        try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+            maybeDumpTruffleTree(debug, options, callTarget, inlining);
+            compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new InternalError(e);
         }
         dequeueInlinedCallSites(inlining, callTarget);
+    }
+
+    @SuppressWarnings("try")
+    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
+        TruffleCompiler compiler = getTruffleCompiler();
+        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
+        try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
+            doCompile(debug, compilationId, options, callTarget, task);
+        }
     }
 
     @SuppressWarnings("try")
