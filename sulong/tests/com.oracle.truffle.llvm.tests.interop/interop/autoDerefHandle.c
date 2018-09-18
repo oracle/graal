@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.store;
+#include <polyglot.h>
+#include <truffle.h>
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
-import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+typedef int (*f_int)();
 
-public abstract class LLVMForeignWriteNode extends LLVMNode {
-    @Child private LLVMObjectWriteNode write;
+int32_t testAutoDerefHandle(void *managed0, void* managed1) {
+    void *handle0 = truffle_deref_handle_for_managed(managed0);
+    void *handle1 = truffle_deref_handle_for_managed(managed1);
+    void *handle2 = NULL;
 
-    private final ForeignToLLVMType type;
+    int32_t val0 = ((f_int) handle0)();
+    int32_t val1 = ((int32_t*)handle1)[0];
 
-    protected LLVMForeignWriteNode(ForeignToLLVMType type) {
-        this.write = LLVMObjectAccessFactory.createWrite();
-        this.type = type;
-    }
+    truffle_release_handle(handle0);
+    handle2 = truffle_deref_handle_for_managed(managed0);
 
-    public abstract void execute(LLVMManagedPointer addr, Object value);
+    int32_t val2 = ((f_int) handle2)();
 
-    @Specialization
-    protected void doForeignAccess(LLVMManagedPointer addr, Object value) {
-        try {
-            write.executeWrite(addr.getObject(), addr.getOffset(), value, type);
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw e.raise();
-        }
-    }
+    truffle_release_handle(handle1);
+    truffle_release_handle(handle2);
+
+    return val0 + val1 + val2;
+}
+
+int main() {
+    return 0;
 }

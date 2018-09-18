@@ -68,7 +68,7 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doOpManaged(LLVMManagedPointer address, float value) {
-        getForeignWriteNode(ForeignToLLVMType.FLOAT).execute(address, value);
+        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.FLOAT);
     }
 
     @Specialization

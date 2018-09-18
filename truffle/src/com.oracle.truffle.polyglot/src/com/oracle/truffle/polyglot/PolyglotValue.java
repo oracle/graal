@@ -345,17 +345,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
         CallTarget target = Truffle.getRuntime().createCallTarget(root);
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
-            assert verifyTypes(types);
             VMAccessor.SPI.initializeProfile(target, types);
         }
         return target;
-    }
-
-    private static boolean verifyTypes(Class<?>[] types) {
-        for (Class<?> type : types) {
-            assert type != null;
-        }
-        return true;
     }
 
     static PolyglotValue createInteropValueCache(PolyglotLanguageContext languageContext, TruffleObject receiver, Class<?> receiverType) {
@@ -1689,7 +1681,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{polyglot.receiverType, Long.class, Object.class};
+                return new Class<?>[]{polyglot.receiverType, Long.class, null};
             }
 
             @Override
@@ -1880,7 +1872,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{polyglot.receiverType, String.class, Object.class};
+                return new Class<?>[]{polyglot.receiverType, String.class, null};
             }
 
             @Override

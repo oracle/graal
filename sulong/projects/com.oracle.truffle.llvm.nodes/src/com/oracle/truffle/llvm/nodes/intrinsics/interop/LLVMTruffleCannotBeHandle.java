@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,51 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.load;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.IntValueProfile;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
 
-    private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
+    @CompilationFinal private LLVMMemory llvmMemory;
 
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected int doI32Native(LLVMNativePointer addr) {
-        return profile.profile(getLLVMMemoryCached().getI32(addr));
-    }
-
-    @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected int doI32DerefHandle(LLVMNativePointer addr) {
-        return doI32Managed(getDerefHandleGetReceiverNode().execute(addr));
+    @Specialization
+    protected boolean doLongCase(long a) {
+        return !getLLVMMemoryCached().isHandleMemory(a);
     }
 
     @Specialization
-    protected int doI32(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getI32(memory);
+    protected boolean doPointerCase(LLVMNativePointer a) {
+        return doLongCase(a.asNative());
     }
 
     @Specialization
-    protected int doI32Managed(LLVMManagedPointer addr) {
-        return (int) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I32);
-    }
-
-    @Specialization
-    protected int doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
-        if (addr.getValue() instanceof Long) {
-            return getLLVMMemoryCached().getI32((long) addr.getValue());
+    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        if (from.getValue() instanceof Long) {
+            return doLongCase((long) from.getValue());
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalAccessError("Cannot access address: " + addr.getValue());
+            return true;
         }
+    }
+
+    @Fallback
+    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
+        return true;
+    }
+
+    private LLVMMemory getLLVMMemoryCached() {
+        if (llvmMemory == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            llvmMemory = getLLVMMemory();
+        }
+        return llvmMemory;
     }
 }

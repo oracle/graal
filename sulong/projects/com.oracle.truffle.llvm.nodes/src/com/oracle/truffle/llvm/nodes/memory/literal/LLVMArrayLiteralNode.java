@@ -29,56 +29,37 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.literal;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
-public abstract class LLVMI1ArrayLiteralNode extends LLVMExpressionNode {
+public abstract class LLVMArrayLiteralNode extends LLVMExpressionNode {
 
     @Children private final LLVMExpressionNode[] values;
+    @Child private LLVMStoreNode write;
     private final int stride;
 
-    public LLVMI1ArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
+    public LLVMArrayLiteralNode(LLVMExpressionNode[] values, int stride, LLVMStoreNode write) {
         this.values = values;
         this.stride = stride;
+        this.write = write;
+    }
+
+    public LLVMExpressionNode[] getValues() {
+        return values;
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMNativePointer writeI1(VirtualFrame frame, LLVMNativePointer addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        long currentPtr = addr.asNative();
+    protected LLVMPointer foreignWrite(VirtualFrame frame, LLVMPointer addr) {
+        LLVMPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
-            boolean currentValue = LLVMTypesGen.asBoolean(values[i].executeGeneric(frame));
-            memory.putI1(currentPtr, currentValue);
-            currentPtr += stride;
-        }
-        return addr;
-    }
-
-    protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(ForeignToLLVMType.I1);
-    }
-
-    @Specialization
-    @ExplodeLoop
-    protected LLVMManagedPointer foreignWriteI1(VirtualFrame frame, LLVMManagedPointer addr,
-                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        LLVMManagedPointer currentPtr = addr;
-        for (int i = 0; i < values.length; i++) {
-            boolean currentValue = LLVMTypesGen.asBoolean(values[i].executeGeneric(frame));
-            foreignWrite.execute(currentPtr, currentValue);
+            write.executeWithTarget(currentPtr, values[i].executeGeneric(frame));
             currentPtr = currentPtr.increment(stride);
         }
         return addr;

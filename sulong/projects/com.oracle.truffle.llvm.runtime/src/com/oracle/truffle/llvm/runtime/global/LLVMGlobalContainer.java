@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -45,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -191,7 +191,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         return new LLVMGlobalContainerWriteNode();
     }
 
-    static class LLVMGlobalContainerReadNode extends LLVMObjectReadNode {
+    static class LLVMGlobalContainerReadNode extends LLVMNode implements LLVMObjectReadNode {
 
         @Child private LLVMToNativeNode toNative;
         @CompilationFinal private LLVMMemory memory;
@@ -202,7 +202,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         }
 
         @Override
-        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) throws InteropException {
+        public Object executeRead(Object obj, long offset, ForeignToLLVMType type) {
             LLVMGlobalContainer container = (LLVMGlobalContainer) obj;
 
             if (container.address == 0) {
@@ -249,7 +249,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         return String.format("LLVMGlobalContainer (address = 0x%x, contents = %s)", address, contents);
     }
 
-    static class LLVMGlobalContainerWriteNode extends LLVMObjectWriteNode {
+    static class LLVMGlobalContainerWriteNode extends LLVMNode implements LLVMObjectWriteNode {
         @Child private LLVMToNativeNode toNative;
         @CompilationFinal private LLVMMemory memory;
 
@@ -259,7 +259,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         }
 
         @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) throws InteropException {
+        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
             LLVMGlobalContainer container = (LLVMGlobalContainer) obj;
 
             if (container.address == 0) {

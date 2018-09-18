@@ -60,14 +60,9 @@ public abstract class LLVMDoubleLoadNode extends LLVMAbstractLoadNode {
         return doDoubleManaged(getDerefHandleGetReceiverNode().execute(addr));
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.DOUBLE);
-    }
-
     @Specialization
     protected double doDoubleManaged(LLVMManagedPointer addr) {
-        return (double) getForeignReadNode().execute(addr);
+        return (double) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.DOUBLE);
     }
 
     @Specialization

@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.phases.graph;
 
-import static org.graalvm.compiler.nodes.cfg.ControlFlowGraph.multiplyProbabilities;
+import static org.graalvm.compiler.nodes.cfg.ControlFlowGraph.multiplyRelativeFrequencies;
 
 import java.util.function.ToDoubleFunction;
 
@@ -44,11 +44,12 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StartNode;
 
 /**
- * Compute probabilities for fixed nodes on the fly and cache them at {@link AbstractBeginNode}s.
+ * Compute relative frequencies for fixed nodes on the fly and cache them at
+ * {@link AbstractBeginNode}s.
  */
-public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
+public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNode> {
 
-    private static final CounterKey computeNodeProbabilityCounter = DebugContext.counter("ComputeNodeProbability");
+    private static final CounterKey computeNodeRelativeFrequencyCounter = DebugContext.counter("ComputeNodeRelativeFrequency");
 
     private final EconomicMap<FixedNode, Double> cache = EconomicMap.create(Equivalence.IDENTITY);
 
@@ -66,19 +67,19 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
      * <p>
      * The thus found {@link AbstractBeginNode} is equi-probable with the {@link FixedNode} it was
      * obtained from. When computed for the first time (afterwards a cache lookup returns it) that
-     * probability is computed as follows, again depending on the begin-node's predecessor:
+     * relative frequency is computed as follows, again depending on the begin-node's predecessor:
      * <ul>
      * <li>No predecessor. In this case the begin-node is either:</li>
      * <ul>
-     * <li>a merge-node, whose probability adds up those of its forward-ends</li>
-     * <li>a loop-begin, with probability as above multiplied by the loop-frequency</li>
+     * <li>a merge-node, whose relative frequency adds up those of its forward-ends</li>
+     * <li>a loop-begin, with frequency as above multiplied by the loop-frequency</li>
      * </ul>
-     * <li>Control-split predecessor: probability of the branch times that of the control-split</li>
+     * <li>Control-split predecessor: frequency of the branch times that of the control-split</li>
      * </ul>
      * </p>
      *
      * <p>
-     * As an exception to all the above, a probability of 1 is assumed for a {@link FixedNode} that
+     * As an exception to all the above, a frequency of 1 is assumed for a {@link FixedNode} that
      * appears to be dead-code (ie, lacks a predecessor).
      * </p>
      *
@@ -86,7 +87,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
     @Override
     public double applyAsDouble(FixedNode node) {
         assert node != null;
-        computeNodeProbabilityCounter.increment(node.getDebug());
+        computeNodeRelativeFrequencyCounter.increment(node.getDebug());
 
         FixedNode current = findBegin(node);
         if (current == null) {
@@ -100,25 +101,25 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
             return cachedValue;
         }
 
-        double probability = 0.0;
+        double relativeFrequency = 0.0;
         if (current.predecessor() == null) {
             if (current instanceof AbstractMergeNode) {
-                probability = handleMerge(current, probability);
+                relativeFrequency = handleMerge(current, relativeFrequency);
             } else {
                 assert current instanceof StartNode;
-                probability = 1D;
+                relativeFrequency = 1D;
             }
         } else {
             ControlSplitNode split = (ControlSplitNode) current.predecessor();
-            probability = multiplyProbabilities(split.probability((AbstractBeginNode) current), applyAsDouble(split));
+            relativeFrequency = multiplyRelativeFrequencies(split.probability((AbstractBeginNode) current), applyAsDouble(split));
         }
-        assert !Double.isNaN(probability) && !Double.isInfinite(probability) : current + " " + probability;
-        cache.put(current, probability);
-        return probability;
+        assert !Double.isNaN(relativeFrequency) && !Double.isInfinite(relativeFrequency) : current + " " + relativeFrequency;
+        cache.put(current, relativeFrequency);
+        return relativeFrequency;
     }
 
-    private double handleMerge(FixedNode current, double probability) {
-        double result = probability;
+    private double handleMerge(FixedNode current, double relativeFrequency) {
+        double result = relativeFrequency;
         AbstractMergeNode currentMerge = (AbstractMergeNode) current;
         NodeInputList<EndNode> currentForwardEnds = currentMerge.forwardEnds();
         /*
@@ -129,7 +130,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
             result += applyAsDouble(endNode);
         }
         if (current instanceof LoopBeginNode) {
-            result = multiplyProbabilities(result, ((LoopBeginNode) current).loopFrequency());
+            result = multiplyRelativeFrequencies(result, ((LoopBeginNode) current).loopFrequency());
         }
         return result;
     }

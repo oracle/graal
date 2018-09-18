@@ -68,7 +68,7 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doOpManaged(LLVMManagedPointer address, boolean value) {
-        getForeignWriteNode(ForeignToLLVMType.I1).execute(address, value ? (byte) 1 : (byte) 0);
+        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.I1);
     }
 
     @Specialization

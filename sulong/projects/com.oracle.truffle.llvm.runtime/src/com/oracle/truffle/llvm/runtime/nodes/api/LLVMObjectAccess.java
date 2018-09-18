@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -48,12 +48,12 @@ public interface LLVMObjectAccess {
 
     LLVMObjectWriteNode createWriteNode();
 
-    abstract class LLVMObjectAccessNode extends LLVMNode {
+    interface LLVMObjectAccessNode extends NodeInterface {
 
-        public abstract boolean canAccess(Object obj);
+        boolean canAccess(Object obj);
     }
 
-    abstract class LLVMObjectReadNode extends LLVMObjectAccessNode {
+    interface LLVMObjectReadNode extends LLVMObjectAccessNode {
 
         /**
          * Do a native memory read on an object.
@@ -62,10 +62,10 @@ public interface LLVMObjectAccess {
          * @param offset the byte offset into the object
          * @return the read value
          */
-        public abstract Object executeRead(Object obj, long offset, ForeignToLLVMType type) throws InteropException;
+        Object executeRead(Object obj, long offset, ForeignToLLVMType type);
     }
 
-    abstract class LLVMObjectWriteNode extends LLVMObjectAccessNode {
+    interface LLVMObjectWriteNode extends LLVMObjectAccessNode {
 
         /**
          * Do a native memory write on an object.
@@ -74,6 +74,6 @@ public interface LLVMObjectAccess {
          * @param offset the byte offset into the object
          * @param value the written value
          */
-        public abstract void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) throws InteropException;
+        void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type);
     }
 }

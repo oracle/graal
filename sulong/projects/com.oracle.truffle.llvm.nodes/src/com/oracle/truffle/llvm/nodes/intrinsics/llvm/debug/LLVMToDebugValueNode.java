@@ -96,7 +96,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value) {
-        return executeWithTarget(value.getValue());
+        return new LLVMDebugBoxedPrimitive(value);
     }
 
     @Specialization

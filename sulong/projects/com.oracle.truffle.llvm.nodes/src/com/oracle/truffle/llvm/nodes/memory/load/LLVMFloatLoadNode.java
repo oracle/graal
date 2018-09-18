@@ -60,14 +60,9 @@ public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
         return doFloatManaged(getDerefHandleGetReceiverNode().execute(addr));
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.FLOAT);
-    }
-
     @Specialization
     protected float doFloatManaged(LLVMManagedPointer addr) {
-        return (float) getForeignReadNode().execute(addr);
+        return (float) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.FLOAT);
     }
 
     @Specialization

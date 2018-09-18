@@ -220,7 +220,7 @@ public final class MemoryTracer implements Closeable {
      */
     public synchronized void clearData() {
         for (ProfilerNode<Payload> node : rootNodes.values()) {
-            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            Map<StackTraceEntry, ProfilerNode<Payload>> rootChildren = node.children;
             if (rootChildren != null) {
                 rootChildren.clear();
             }
@@ -234,7 +234,7 @@ public final class MemoryTracer implements Closeable {
     public synchronized boolean hasData() {
         boolean hasData = false;
         for (ProfilerNode<Payload> node : rootNodes.values()) {
-            Map<SourceLocation, ProfilerNode<Payload>> rootChildren = node.children;
+            Map<StackTraceEntry, ProfilerNode<Payload>> rootChildren = node.children;
             hasData |= (rootChildren != null && !rootChildren.isEmpty());
         }
         return hasData;
@@ -289,7 +289,7 @@ public final class MemoryTracer implements Closeable {
      * @since 0.30
      */
     @Override
-    public void close() {
+    public synchronized void close() {
         assert Thread.holdsLock(this);
         if (stacksBinding != null) {
             stacksBinding.dispose();
@@ -340,8 +340,8 @@ public final class MemoryTracer implements Closeable {
         }
 
         boolean handleEvent(ShadowStack.ThreadLocalStack stack, AllocationEventInfo info) {
-            final ShadowStack.ThreadLocalStack.CorrectedStackInfo correctedStackInfo = ShadowStack.ThreadLocalStack.CorrectedStackInfo.build(stack);
-            if (correctedStackInfo == null) {
+            StackTraceEntry[] locations = stack.getStack();
+            if (locations == null) {
                 return false;
             }
             synchronized (MemoryTracer.this) {
@@ -352,8 +352,8 @@ public final class MemoryTracer implements Closeable {
                         return new ProfilerNode<>();
                     }
                 });
-                for (int i = 0; i < correctedStackInfo.getLength(); i++) {
-                    SourceLocation location = correctedStackInfo.getStack()[i];
+                for (int i = 0; i < locations.length; i++) {
+                    StackTraceEntry location = locations[i];
                     ProfilerNode<Payload> child = treeNode.findChild(location);
                     if (child == null) {
                         child = new ProfilerNode<>(treeNode, location, new Payload());

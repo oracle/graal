@@ -4484,6 +4484,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genPutStatic(JavaField field) {
+        int stackSizeBefore = frameState.stackSize();
         ValueNode value = frameState.pop(field.getJavaKind());
         ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, value);
         if (resolvedField == null) {
@@ -4496,7 +4497,10 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null && classInitializationPlugin.shouldApply(this, resolvedField.getDeclaringClass())) {
-            FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
+            JavaKind[] pushedSlotKinds = {field.getJavaKind()};
+            ValueNode[] pushedValues = {value};
+            FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, pushedSlotKinds, pushedValues);
+            assert stackSizeBefore == stateBefore.stackSize();
             classInitializationPlugin.apply(this, resolvedField.getDeclaringClass(), stateBefore);
         }
 

@@ -51,11 +51,6 @@ public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
         return doShortManaged(getDerefHandleGetReceiverNode().execute(addr));
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I16);
-    }
-
     @Specialization
     protected short doI16(LLVMVirtualAllocationAddress address,
                     @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
@@ -64,7 +59,7 @@ public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
 
     @Specialization
     protected short doShortManaged(LLVMManagedPointer addr) {
-        return (short) getForeignReadNode().execute(addr);
+        return (short) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I16);
     }
 
     @Specialization
