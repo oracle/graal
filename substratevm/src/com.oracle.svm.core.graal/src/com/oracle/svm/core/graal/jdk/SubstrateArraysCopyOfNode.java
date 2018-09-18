@@ -116,7 +116,7 @@ public final class SubstrateArraysCopyOfNode extends DeoptimizingFixedWithNextNo
 
         /* from index is always 0 for Arrays.copyOf. */
         ValueNode from = ConstantNode.forInt(0);
-        ResolvedJavaType newComponentType = tool.getConstantReflectionProvider().asJavaType(newArrayType.asConstant()).getComponentType();
+        ResolvedJavaType newComponentType = tool.getConstantReflection().asJavaType(newArrayType.asConstant()).getComponentType();
         GraphUtil.virtualizeArrayCopy(tool, original, originalLength, newLength, from, newComponentType, JavaKind.Object, graph(),
                         (componentType, length) -> new SubstrateVirtualArrayNode(componentType, length));
     }

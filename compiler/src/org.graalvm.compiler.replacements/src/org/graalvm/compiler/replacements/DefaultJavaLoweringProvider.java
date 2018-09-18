@@ -185,6 +185,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return target;
     }
 
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
     @Override
     @SuppressWarnings("try")
     public void lower(Node n, LoweringTool tool) {
@@ -459,10 +463,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             wordIndex = index;
         }
 
-        int shift = CodeUtil.log2(arrayScalingFactor(elementKind));
+        int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode scaledIndex = graph.unique(new LeftShiftNode(wordIndex, ConstantNode.forInt(shift, graph)));
 
-        int base = arrayBaseOffset(elementKind);
+        int base = metaAccess.getArrayBaseOffset(elementKind);
         ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordJavaKind, base, graph)));
 
         return graph.unique(new OffsetAddressNode(array, offset));
@@ -800,7 +804,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                     barrierType = fieldInitializationBarrier(entryKind);
                                 }
                             } else {
-                                address = createOffsetAddress(graph, newObject, arrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind));
+                                address = createOffsetAddress(graph, newObject, metaAccess.getArrayBaseOffset(entryKind) + i * metaAccess.getArrayIndexScale(entryKind));
                                 barrierType = arrayInitializationBarrier(entryKind);
                             }
                             if (address != null) {
@@ -1000,11 +1004,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public abstract int arrayLengthOffset();
 
-    @Override
-    public int arrayScalingFactor(JavaKind elementKind) {
-        return target.arch.getPlatformKind(elementKind).getSizeInBytes();
-    }
-
     public Stamp loadStamp(Stamp stamp, JavaKind kind) {
         return loadStamp(stamp, kind, true);
     }
@@ -1150,10 +1149,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = address.graph();
         ValueNode offset = ((OffsetAddressNode) address).getOffset();
 
-        int base = arrayBaseOffset(elementKind);
+        int base = metaAccess.getArrayBaseOffset(elementKind);
         ValueNode scaledIndex = graph.unique(new SubNode(offset, ConstantNode.forIntegerStamp(offset.stamp(NodeView.DEFAULT), base, graph)));
 
-        int shift = CodeUtil.log2(arrayScalingFactor(elementKind));
+        int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode ret = graph.unique(new RightShiftNode(scaledIndex, ConstantNode.forInt(shift, graph)));
         return IntegerConvertNode.convert(ret, StampFactory.forKind(JavaKind.Int), graph, NodeView.DEFAULT);
     }
