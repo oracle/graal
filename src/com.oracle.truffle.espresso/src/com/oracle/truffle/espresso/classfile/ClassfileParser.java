@@ -58,7 +58,7 @@ public class ClassfileParser {
     public static final int JAVA_10_VERSION = 54;
     public static final int JAVA_11_VERSION = 55;
 
-    private static final int MAJOR_VERSION_JAVA_MIN = JAVA_7_VERSION;
+    private static final int MAJOR_VERSION_JAVA_MIN = JAVA_6_VERSION;
     private static final int MAJOR_VERSION_JAVA_MAX = JAVA_11_VERSION;
 
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_5_VERSION;

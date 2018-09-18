@@ -44,4 +44,9 @@ public class Target_java_lang_StrictMath {
     public static double sqrt(double a) {
         return StrictMath.sqrt(a);
     }
+
+    @Intrinsic
+    public static double tan(double a) {
+        return StrictMath.tan(a);
+    }
 }

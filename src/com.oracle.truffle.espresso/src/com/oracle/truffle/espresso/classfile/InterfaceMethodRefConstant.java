@@ -41,10 +41,26 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
         }
     }
 
+
     static final class Unresolved extends MethodRefConstant.Unresolved implements InterfaceMethodRefConstant {
 
         public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
             super(declaringClass, name, signature);
+        }
+
+
+        private MethodInfo lookupMethod(Klass declaringInterface, String name, SignatureDescriptor signature) {
+            MethodInfo m = declaringInterface.findMethod(name, signature);
+            if (m != null) {
+                return m;
+            }
+            for (Klass i : declaringInterface.getInterfaces()) {
+                m = lookupMethod(i, name, signature);
+                if (m != null) {
+                    return m;
+                }
+            }
+            return null;
         }
 
         @Override
@@ -53,18 +69,10 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             assert declaringInterface.isInterface();
             String name = getName(pool, index);
             SignatureDescriptor signature = getSignature(pool, index);
-            MethodInfo m = declaringInterface.findMethod(name, signature);
+            MethodInfo m = lookupMethod(declaringInterface, name, signature);
             if (m != null) {
                 return m;
             }
-
-            for (Klass i : declaringInterface.getInterfaces()) {
-                m = i.findMethod(name, signature);
-                if (m != null) {
-                    return m;
-                }
-            }
-
             throw EspressoError.shouldNotReachHere(declaringInterface.toString() + "." + name + signature);
         }
     }

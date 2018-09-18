@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 
 @EspressoIntrinsics
 public class Target_java_lang_System {
@@ -142,5 +143,20 @@ public class Target_java_lang_System {
     @Intrinsic
     public static void loadLibrary(@Type(String.class) StaticObject libname) {
         /* nop */
+    }
+
+    @Intrinsic
+    public static int identityHashCode(Object object) {
+        return System.identityHashCode(unwrap(object));
+    }
+
+    private static Object unwrap(Object object) {
+        if (object == StaticObject.NULL) {
+            return null;
+        }
+        if (object instanceof StaticObjectWrapper) {
+            return ((StaticObjectWrapper) object).getWrapped();
+        }
+        return object;
     }
 }

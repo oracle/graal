@@ -51,6 +51,13 @@ public class ClassRegistries {
     }
 
     public Klass findLoadedClass(TypeDescriptor type, Object classLoader) {
+        if (type.isArray()) {
+            Klass pepe = findLoadedClass(type.getComponentType(), classLoader);
+            if (pepe != null) {
+                return pepe.getArrayClass();
+            }
+            return null;
+        }
         if (classLoader == null) {
             return bootClassRegistry.get(type);
         }

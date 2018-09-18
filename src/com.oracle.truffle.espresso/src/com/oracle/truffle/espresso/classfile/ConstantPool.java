@@ -141,12 +141,7 @@ public final class ConstantPool {
             switch (tag) {
                 case CLASS: {
                     int classNameIndex = stream.readU2();
-                    if (classNameIndex < i) {
-                        String className = entries[classNameIndex].toString();
-                        entries[i] = new ClassConstant.Unresolved(getContext().getTypeDescriptors().make(className));
-                    } else {
-                        entries[i] = new ClassConstant.Index(classNameIndex);
-                    }
+                    entries[i] = new ClassConstant.Index(classNameIndex);
                     break;
                 }
                 case STRING: {
