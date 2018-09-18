@@ -41,6 +41,10 @@ bool test_remove_array_element(void *array) {
     return polyglot_remove_array_element(array, 3);
 }
 
+bool test_has_member(void *object) {
+    return polyglot_has_member(object, "test");
+}
+
 void *test_host_interop() {
     return polyglot_java_type("java.math.BigInteger");
 }

@@ -1,5 +1,9 @@
 # Version 1.0.0 RC7
 
+New features:
+
+* New polyglot builtin `polyglot_has_member`.
+
 Changes:
 
 * Removed support for implicit polyglot types for local variables
