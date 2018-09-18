@@ -72,7 +72,6 @@ import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
@@ -115,10 +114,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
@@ -131,8 +127,6 @@ import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
@@ -153,29 +147,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         assert TruffleOptions.AOT : "Must be called only in AOT mode.";
         callMethods = null;
         truffleCompiler = null;
-    }
-
-    protected static class BackgroundCompileQueue {
-        private final ExecutorService compilationExecutor;
-
-        public BackgroundCompileQueue() {
-            CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread");
-
-            int selectedProcessors = TruffleCompilerOptions.getValue(TruffleCompilerThreads);
-            if (selectedProcessors == 0) {
-                // No manual selection made, check how many processors are available.
-                int availableProcessors = Runtime.getRuntime().availableProcessors();
-                if (availableProcessors >= 4) {
-                    selectedProcessors = 2;
-                }
-            }
-            selectedProcessors = Math.max(1, selectedProcessors);
-            compilationExecutor = Executors.newFixedThreadPool(selectedProcessors, factory);
-        }
-
-        public ExecutorService getCompilationExecutor() {
-            return compilationExecutor;
-        }
     }
 
     private Object cachedIncludesExcludes;
@@ -705,7 +676,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
+    public void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, TruffleInliningPolicy.getInliningPolicy(options));
@@ -768,40 +739,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressWarnings("try")
     public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
-        BackgroundCompileQueue l = getCompileQueue();
-        final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
-        final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
-        CancellableCompileTask cancellable = new CancellableCompileTask();
-        // try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-        //     if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-        //         TTY.println("submitting htc...: " + optimizedCallTarget);
-        //     }
-        // }
-        cancellable.setFuture(l.compilationExecutor.submit(new Runnable() {
-            @Override
-            public void run() {
-                OptimizedCallTarget callTarget = weakCallTarget.get();
-                try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                    // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-                    //     TTY.println("submitted htc: " + optimizedCallTarget + ", " + callTarget);
-                    // }
-                    if (callTarget != null) {
-                        // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-                        //     TTY.println("ehm.. if: " + optimizedCallTarget + ", " + callTarget + ", " + optionOverrides);
-                        // }
-                        OptionValues options = getOptions();
-                        doCompile(options, callTarget, cancellable);
-                    }
-                } finally {
-                    if (callTarget != null) {
-                        callTarget.resetCompilationTask();
-                    }
-                }
-            }
-        }));
-        // task and future must never diverge from each other
-        assert cancellable.future != null;
-        return cancellable;
+        BackgroundCompileQueue queue = getCompileQueue();
+        return queue.submitCompilationRequest(this, optimizedCallTarget);
     }
 
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
@@ -889,12 +828,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public int getCompilationQueueSize() {
-        ExecutorService executor = getCompileQueue().compilationExecutor;
-        if (executor instanceof ThreadPoolExecutor) {
-            return ((ThreadPoolExecutor) executor).getQueue().size();
-        } else {
-            return 0;
-        }
+        return getCompileQueue().getQueueSize();
     }
 
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
