@@ -82,6 +82,7 @@ public abstract class DSLExpression {
         ExpressionLexer lexer = new ExpressionLexer(CharStreams.fromString(input));
         TokenStream tokens = new CommonTokenStream(lexer);
         ExpressionParser parser = new ExpressionParser(tokens);
+        parser.setBuildParseTree(false);
         lexer.removeErrorListeners();
         parser.removeErrorListeners();
         lexer.addErrorListener(DSLErrorListener.INSTANCE);
