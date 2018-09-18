@@ -12,6 +12,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
@@ -31,11 +33,11 @@ public class LSPFileSystem implements FileSystem {
 
     static final String FILE_SCHEME = "file";
 
-    public static FileSystem newFullIOFileSystem(Path userDir, VirtualLanguageServerFileProvider fileProvider) {
-        return newFileSystem(findDefaultFileSystemProvider(), userDir, fileProvider);
+    public static FileSystem newReadOnlyFileSystem(Path userDir, VirtualLanguageServerFileProvider fileProvider) {
+        return newReadOnlyFileSystem(findDefaultFileSystemProvider(), userDir, fileProvider);
     }
 
-    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
+    static FileSystem newReadOnlyFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
         return new LSPFileSystem(fileSystemProvider, userDir, fileProvider);
     }
 
@@ -85,9 +87,12 @@ public class LSPFileSystem implements FileSystem {
 
     @Override
     public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-// if (fileProvider.isVirtualFile(path)) {
-// return;
-// }
+        if (modes.contains(AccessMode.WRITE)) {
+            throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
+        }
+        if (modes.contains(AccessMode.EXECUTE) && !delegate.readAttributes(resolveRelative(path), BasicFileAttributes.class, linkOptions).isDirectory()) {
+            throw new AccessDeniedException(path.toString(), null, "Execution not allowed. Read-only file-system.");
+        }
 
         if (isFollowLinks(linkOptions)) {
             delegate.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[modes.size()]));
@@ -100,29 +105,35 @@ public class LSPFileSystem implements FileSystem {
 
     @Override
     public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-        delegate.createDirectory(resolveRelative(dir), attrs);
+        throw new AccessDeniedException(dir.toString(), null, "Read-only file-system");
     }
 
     @Override
     public void delete(Path path) throws IOException {
-        delegate.delete(resolveRelative(path));
+        throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
     }
 
     @Override
     public void copy(Path source, Path target, CopyOption... options) throws IOException {
-        delegate.copy(resolveRelative(source), resolveRelative(target), options);
+        throw new AccessDeniedException(source.toString(), target.toString(), "Read-only file-system");
     }
 
     @Override
     public void move(Path source, Path target, CopyOption... options) throws IOException {
-        delegate.move(resolveRelative(source), resolveRelative(target), options);
+        throw new AccessDeniedException(source.toString(), target.toString(), "Read-only file-system");
     }
 
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
         final Path resolved = resolveRelative(path);
 
-        final String text = this.fileProvider.getSourceText(resolved);
+        for (OpenOption option : options) {
+            if (!(option instanceof StandardOpenOption && option.equals(StandardOpenOption.READ))) {
+                throw new AccessDeniedException(resolved.toString(), null, "Read-only file-system");
+            }
+        }
+
+        final String text = fileProvider.getSourceText(resolved);
         if (text != null) {
             final byte[] bytes = text.getBytes();
             return new SeekableByteChannel() {
@@ -136,11 +147,11 @@ public class LSPFileSystem implements FileSystem {
                 }
 
                 public int write(ByteBuffer src) throws IOException {
-                    throw new AccessDeniedException(resolved.toString(), null, "Is in memory truffle read-only file");
+                    throw new AccessDeniedException(resolved.toString(), null, "Read-only file-system");
                 }
 
                 public SeekableByteChannel truncate(long size) throws IOException {
-                    throw new AccessDeniedException(resolved.toString(), null, "Is in memory truffle read-only file");
+                    throw new AccessDeniedException(resolved.toString(), null, "Read-only file-system");
                 }
 
                 public long size() throws IOException {
@@ -182,12 +193,12 @@ public class LSPFileSystem implements FileSystem {
 
     @Override
     public void createLink(Path link, Path existing) throws IOException {
-        delegate.createLink(resolveRelative(link), resolveRelative(existing));
+        throw new AccessDeniedException(link.toString(), null, "Read-only file-system");
     }
 
     @Override
     public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-        delegate.createSymbolicLink(resolveRelative(link), resolveRelative(target), attrs);
+        throw new AccessDeniedException(link.toString(), null, "Read-only file-system");
     }
 
     @Override
@@ -202,7 +213,7 @@ public class LSPFileSystem implements FileSystem {
 
     @Override
     public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-        delegate.setAttribute(resolveRelative(path), attribute, value, options);
+        throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
     }
 
     @Override

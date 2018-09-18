@@ -47,7 +47,7 @@ public abstract class TruffleLSPTest {
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);
-        contextBuilder.fileSystem(LSPFileSystem.newFullIOFileSystem(Paths.get("."), lspFileProvider));
+        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(Paths.get("."), lspFileProvider));
         contextBuilder.engine(engine);
         context = contextBuilder.build();
         context.enter();

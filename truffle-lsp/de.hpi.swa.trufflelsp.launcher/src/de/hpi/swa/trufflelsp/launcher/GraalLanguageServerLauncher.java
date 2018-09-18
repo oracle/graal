@@ -71,7 +71,7 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
         Instrument instrument = engine.getInstruments().get("lsp");
         VirtualLanguageServerFileProvider lspFileProvider = instrument.lookup(VirtualLanguageServerFileProvider.class);
 
-        contextBuilder.fileSystem(LSPFileSystem.newFullIOFileSystem(userDir, lspFileProvider));
+        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(userDir, lspFileProvider));
         contextBuilder.engine(engine);
 
         ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
