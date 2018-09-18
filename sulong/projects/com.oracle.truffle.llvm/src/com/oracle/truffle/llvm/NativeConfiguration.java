@@ -47,11 +47,11 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
-public final class BasicConfiguration implements Configuration {
+public final class NativeConfiguration implements Configuration {
 
     @Override
     public String getConfigurationName() {
-        return "basic";
+        return "native";
     }
 
     @Override
