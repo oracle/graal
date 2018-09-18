@@ -47,6 +47,7 @@ import mx_gate
 import mx_sdk
 import mx_subst
 import mx_vm_gate
+import mx_vm_benchmark
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -1769,6 +1770,10 @@ def _has_forced_launchers(component, forced=None):
 
 def _include_sources():
     return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
+
+
+def mx_post_parse_cmd_line(args):
+    mx_vm_benchmark.register_graalvm_vms()
 
 
 mx.update_commands(_suite, {

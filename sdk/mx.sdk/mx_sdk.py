@@ -47,6 +47,7 @@ import mx_subst
 
 from mx_gate import Task
 from mx_unittest import unittest
+from mx_benchmark import VmRegistry
 
 _suite = mx.suite('sdk')
 
