@@ -3244,15 +3244,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     @Override
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
-        // @formatter:off
         assert op == 0xE8 // call
-            || op == 0x00 // jump table entry
-            || op == 0xE9 // jmp
-            || op == 0xEB // short jmp
-            || (op & 0xF0) == 0x70 // short jcc
-            || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
+                        || op == 0x00 // jump table entry
+                        || op == 0xE9 // jmp
+                        || op == 0xEB // short jmp
+                        || (op & 0xF0) == 0x70 // short jcc
+                        || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
         : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
-        // @formatter:on
 
         if (op == 0x00) {
             int offsetToJumpTableBase = getShort(branch + 1);

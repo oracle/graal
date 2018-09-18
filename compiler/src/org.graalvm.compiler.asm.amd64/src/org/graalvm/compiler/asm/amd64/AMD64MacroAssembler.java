@@ -345,28 +345,24 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         addq(AMD64.rsp, AMD64Kind.DOUBLE.getSizeInBytes());
     }
 
-    // @formatter:off
     // Allow typical assembly language label name scheme (L_<name>).
-    // Checkstyle: stop
 
-    /* Compress a UTF16 string which de facto is a Latin1 string into a byte array
-     * representation (buffer).
+    /**
+     * Compress a UTF16 string which de facto is a Latin1 string into a byte array representation
+     * (buffer).
      *
-     *   src   (rsi) the start address of source char[] to be compressed
-     *   dst   (rdi) the start address of destination byte[] vector
-     *   len   (rdx) the length
-     *   vtmp1 (xmm)
-     *   vtmp2 (xmm)
-     *   vtmp3 (xmm)
-     *   vtmp4 (xmm)
-     *   tmp   (gpr)
-     *   res   (rax) the result code (length on success, zero otherwise)
+     * @param src (rsi) the start address of source char[] to be compressed
+     * @param dst (rdi) the start address of destination byte[] vector
+     * @param len (rdx) the length
+     * @param vtmp1 (xmm) temporary xmm register
+     * @param vtmp2 (xmm) temporary xmm register
+     * @param vtmp3 (xmm) temporary xmm register
+     * @param vtmp4 (xmm) temporary xmm register
+     * @param tmp (gpr) temporary gpr register
+     * @param res (rax) the result code (length on success, zero otherwise)
      */
-    public void charArrayCompress(Register src,   Register dst,   Register len,
-                                  Register vtmp1, Register vtmp2,
-                                  Register vtmp3, Register vtmp4,
-                                  Register tmp,   Register res) {
-
+    public void charArrayCompress(Register src, Register dst, Register len, Register vtmp1, Register vtmp2,
+                    Register vtmp3, Register vtmp4, Register tmp, Register res) {
         assert vtmp1.getRegisterCategory().equals(AMD64.XMM);
         assert vtmp2.getRegisterCategory().equals(AMD64.XMM);
         assert vtmp3.getRegisterCategory().equals(AMD64.XMM);
@@ -382,8 +378,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         push(len);      // Save length for return.
 
         if (supports(CPUFeature.AVX512BW) &&
-            supports(CPUFeature.AVX512VL) &&
-            supports(CPUFeature.BMI2)) {
+                        supports(CPUFeature.AVX512VL) &&
+                        supports(CPUFeature.BMI2)) {
 
             Label L_restore_k1_return_zero = new Label();
             Label L_avx_post_alignment = new Label();
@@ -420,7 +416,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
             kmovd(k1, res);
             evmovdqu16(vtmp1, k1, new AMD64Address(src));
-            evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /*le*/);
+            evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /* le */);
             ktestd(k2, k1);
             jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
 
@@ -449,7 +445,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             // writing 256-bit compressed ditto.
             bind(L_avx512_loop);
             evmovdqu16(vtmp1, new AMD64Address(src, tmp, Scale.Times2));
-            evpcmpuw(k2, vtmp1, vtmp2, 2 /*le*/);
+            evpcmpuw(k2, vtmp1, vtmp2, 2 /* le */);
             kortestd(k2, k2);
             jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
 
@@ -474,7 +470,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
             kmovd(k1, res);
             evmovdqu16(vtmp1, k1, new AMD64Address(src));
-            evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /*le*/);
+            evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /* le */);
             ktestd(k2, k1);
             jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
 
@@ -514,8 +510,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             // Test and compress 16 chars per iteration, reading 128-bit vectors and
             // writing 64-bit compressed ditto.
             bind(L_sse_loop);
-            movdqu(vtmp2, new AMD64Address(src, res, Scale.Times2));        // load 1st 8 characters
-            movdqu(vtmp3, new AMD64Address(src, res, Scale.Times2, 16));    // load next 8 characters
+            movdqu(vtmp2, new AMD64Address(src, res, Scale.Times2));     // load 1st 8 characters
+            movdqu(vtmp3, new AMD64Address(src, res, Scale.Times2, 16)); // load next 8 characters
             por(vtmp4, vtmp2);
             por(vtmp4, vtmp3);
             ptest(vtmp4, vtmp1);        // Check for Unicode chars in vector.
@@ -575,23 +571,22 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         // If compression failed, return 0.
         bind(L_return_zero);
         xorl(res, res);
-        addq(rsp, 8 /*wordSize*/);
+        addq(rsp, 8 /* wordSize */);
 
         bind(L_done);
     }
 
-    /* Inflate a Latin1 string using a byte[] array representation into a UTF16
-     * string using a char[] array representation.
+    /**
+     * Inflate a Latin1 string using a byte[] array representation into a UTF16 string using a
+     * char[] array representation.
      *
-     *   src    (rsi) the start address of source byte[] to be inflated
-     *   dst    (rdi) the start address of destination char[] array
-     *   len    (rdx) the length
-     *   vtmp   (xmm)
-     *   tmp    (gpr)
+     * @param src (rsi) the start address of source byte[] to be inflated
+     * @param dst (rdi) the start address of destination char[] array
+     * @param len (rdx) the length
+     * @param vtmp (xmm) temporary xmm register
+     * @param tmp (gpr) temporary gpr register
      */
-    public void byteArrayInflate(Register src,  Register dst, Register len,
-                                 Register vtmp, Register tmp) {
-
+    public void byteArrayInflate(Register src, Register dst, Register len, Register vtmp, Register tmp) {
         assert vtmp.getRegisterCategory().equals(AMD64.XMM);
 
         Label L_done = new Label();
@@ -602,8 +597,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         assert len.number != tmp.number;
 
         if (supports(CPUFeature.AVX512BW) &&
-            supports(CPUFeature.AVX512VL) &&
-            supports(CPUFeature.BMI2)) {
+                        supports(CPUFeature.AVX512VL) &&
+                        supports(CPUFeature.BMI2)) {
 
             // If the length of the string is less than 16, we chose not to use the
             // AVX512 instructions.
@@ -758,7 +753,4 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         bind(L_done);
     }
 
-    // Checkstyle: resume
-
-    // @formatter:on
 }

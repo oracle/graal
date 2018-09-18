@@ -77,9 +77,8 @@ public class AMD64StringUTF16Substitutions {
         return result;
     }
 
-    // @formatter:off
-
-    /* java.lang.StringUTF16.compress([CI[BII)I
+    /*-
+     * java.lang.StringUTF16.compress([CI[BII)I
      *
      * @HotSpotIntrinsicCandidate
      * public static int compress(char[] src, int src_indx, byte[] dst, int dst_indx, int len)
@@ -92,18 +91,10 @@ public class AMD64StringUTF16Substitutions {
         assert ndx1 + len < src.length;
         assert ndx2 + len < dst.length;
 
-        // Checkstyle: stop
-        Pointer srcptr = Word.objectToTrackedPointer(src)
-                             .add(charArrayBaseOffset(INJECTED))
-                             .add(ndx1 * charArrayIndexScale(INJECTED));
-        Pointer dstptr = Word.objectToTrackedPointer(dst)
-                             .add(byteArrayBaseOffset(INJECTED))
-                             .add(ndx2 * byteArrayIndexScale(INJECTED));
-        // Checkstyle: resume
+        Pointer srcptr = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(ndx1 * charArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(ndx2 * byteArrayIndexScale(INJECTED));
         return AMD64StringUTF16CompressNode.compress(srcptr, dstptr, len);
     }
-
-    // @formatter:on
 
     @Fold
     protected static int charArrayBaseOffset(@InjectedParameter ArrayOffsetProvider aop) {
