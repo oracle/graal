@@ -53,7 +53,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     private static final long DEREF_HANDLE_SPACE_START = 0x8000000000000000L;
     public static final long DEREF_HANDLE_SPACE_END = 0xC000000000000000L;
     private static final long HANDLE_SPACE_START = DEREF_HANDLE_SPACE_END;
-    private static final long HANDLE_SPACE_END = 0;
+    private static final long HANDLE_SPACE_END = 0xD000000000000000L;
 
     private static final Unsafe unsafe = getUnsafe();
 
