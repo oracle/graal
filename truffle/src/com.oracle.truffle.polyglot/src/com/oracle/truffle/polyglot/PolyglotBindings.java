@@ -234,7 +234,8 @@ final class PolyglotBindings implements TruffleObject {
             @TruffleBoundary
             Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 String identifier = expectIdentifier(arguments, offset, Message.REMOVE);
-                return map.remove(identifier);
+                Value ret = map.remove(identifier);
+                return ret != null;
             }
         }
 
