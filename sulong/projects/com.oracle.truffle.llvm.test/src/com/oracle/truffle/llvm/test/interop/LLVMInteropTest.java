@@ -1154,6 +1154,24 @@ public class LLVMInteropTest {
     }
 
     @Test
+    public void testAutoDerefHandle() throws Exception {
+        try (Runner runner = new Runner("autoDerefHandle")) {
+            runner.run();
+            Value testHandleFromNativeCallback = runner.findGlobalSymbol("testAutoDerefHandle");
+            ProxyExecutable proxyExecutable = new ProxyExecutable() {
+                @Override
+                public Object execute(Value... t) {
+                    return 13;
+                }
+            };
+
+            Object intArray = runner.context.asValue(new int[]{7});
+            Value ret = testHandleFromNativeCallback.execute(proxyExecutable, intArray);
+            Assert.assertEquals(33, ret.asInt());
+        }
+    }
+
+    @Test
     public void testPointerThroughNativeCallback() throws Exception {
         try (Runner runner = new Runner("pointerThroughNativeCallback")) {
             int result = runner.run();

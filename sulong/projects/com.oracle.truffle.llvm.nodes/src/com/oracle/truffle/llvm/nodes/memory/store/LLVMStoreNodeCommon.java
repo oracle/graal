@@ -78,11 +78,11 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
     }
 
     protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
-        return getLLVMMemoryCached().isDerefMemory(addr);
+        return getLLVMMemoryCached().isDerefHandleMemory(addr.asNative());
     }
 
     protected boolean isAutoDerefHandle(long addr) {
-        return getLLVMMemoryCached().isDerefMemory(addr);
+        return getLLVMMemoryCached().isDerefHandleMemory(addr);
     }
 
     protected final LLVMMemory getLLVMMemoryCached() {
