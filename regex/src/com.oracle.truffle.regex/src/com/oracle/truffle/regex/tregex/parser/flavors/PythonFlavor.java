@@ -91,6 +91,9 @@ public final class PythonFlavor implements RegexFlavor {
 
         private static final CompilationFinalBitSet WHITESPACE = CompilationFinalBitSet.valueOf(' ', '\t', '\n', '\r', '\u000b', '\f');
 
+        CodePointSet XID_START = UnicodeCharacterProperties.getProperty("XID_Start").copy().addRange(new CodePointRange('_'));
+        CodePointSet XID_CONTINUE = UnicodeCharacterProperties.getProperty("XID_Continue");
+
         private final String inPattern;
         private final String inFlags;
         private final PythonREMode mode;
@@ -1020,6 +1023,18 @@ public final class PythonFlavor implements RegexFlavor {
         }
 
         private boolean checkGroupName(String groupName) {
+            if (groupName.isEmpty()) {
+                return false;
+            }
+            for (int i = 0; i < groupName.length(); i = groupName.offsetByCodePoints(i, 1)) {
+                int ch = groupName.codePointAt(i);
+                if (i == 0 && !XID_START.contains(ch)) {
+                    return false;
+                }
+                if (i > 0 && !XID_CONTINUE.contains(ch)) {
+                    return false;
+                }
+            }
             return true;
         }
 
