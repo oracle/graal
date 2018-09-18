@@ -343,8 +343,14 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
             Future<Boolean> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
             return CompletableFuture.supplyAsync(() -> {
-                waitForResultAndHandleExceptions(future);
-                client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
+                Boolean result = waitForResultAndHandleExceptions(future, Boolean.FALSE);
+                if (result) {
+                    client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
+                    Future<?> futureShowCoverage = truffleAdapter.showCoverage(URI.create(uri));
+                    waitForResultAndHandleExceptions(futureShowCoverage);
+                } else {
+                    client.showMessage(new MessageParams(MessageType.Error, "Coverage analysis failed."));
+                }
                 return new Object();
             });
         } else if (SHOW_COVERAGE.equals(params.getCommand())) {

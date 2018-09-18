@@ -107,8 +107,6 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
 
             surrogateOfOpendFile.setCoverageAnalysisDone(true);
 
-            showCoverageWithEnteredContext(uri);
-
             return Boolean.TRUE;
         } catch (DiagnosticsNotification e) {
             throw e;
