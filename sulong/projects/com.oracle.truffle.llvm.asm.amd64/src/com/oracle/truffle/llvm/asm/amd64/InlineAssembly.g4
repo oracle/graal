@@ -214,6 +214,7 @@ zero_op :
   | 'stosw'
   | 'stosd'
   | 'stosq'
+  | 'pause'
   )                                              { factory.createOperation($op.getText()); }
   ;
 

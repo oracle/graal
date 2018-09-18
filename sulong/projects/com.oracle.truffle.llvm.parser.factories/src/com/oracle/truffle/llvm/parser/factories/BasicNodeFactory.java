@@ -1374,6 +1374,9 @@ public class BasicNodeFactory implements NodeFactory {
                 case DOUBLE:
                     store = LLVMDoubleStoreNodeGen.create(null, null);
                     break;
+                case X86_FP80:
+                    store = LLVM80BitFloatStoreNodeGen.create(null, null);
+                    break;
                 default:
                     throw new AssertionError(llvmType);
             }
