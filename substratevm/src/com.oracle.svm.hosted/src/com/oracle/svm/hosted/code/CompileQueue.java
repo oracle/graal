@@ -1035,6 +1035,11 @@ public class CompileQueue {
      * feature for testing. Note that usually all image compiled methods cannot deoptimize.
      */
     protected boolean canDeoptForTesting(HostedMethod method) {
+        if (method.getName().equals("<clinit>")) {
+            /* Cannot deoptimize into static initializers. */
+            return false;
+        }
+
         if (method.getAnnotation(DeoptTest.class) != null) {
             return true;
         }

@@ -22,13 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jni.hosted;
+package com.oracle.svm.hosted.jni;
 
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -60,7 +61,7 @@ public final class JNIRuntimeAccess {
 
     private static JNIRuntimeAccessibilitySupport getSupport() {
         if (!ImageSingletons.contains(JNIRuntimeAccessibilitySupport.class)) {
-            throw UserError.abort("Support for JNI is not enabled. The option " + SubstrateOptionsParser.HOSTED_OPTION_PREFIX + JNIFeature.Options.JNI + " must be set.");
+            throw UserError.abort("Support for JNI is not enabled. The option " + SubstrateOptionsParser.HOSTED_OPTION_PREFIX + SubstrateOptions.JNI + " must be set.");
         }
         return ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
     }
