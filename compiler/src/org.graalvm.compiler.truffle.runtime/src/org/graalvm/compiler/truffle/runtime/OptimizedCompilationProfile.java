@@ -27,14 +27,11 @@ package org.graalvm.compiler.truffle.runtime;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileImmediately;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTier;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGrade;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getCurrentOptionOverrides;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -42,11 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import com.oracle.truffle.api.TruffleRuntime;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
@@ -69,12 +62,12 @@ public class OptimizedCompilationProfile {
     private int interpreterCallAndLoopCount;
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
-    private int lowTierCallCount;
-    private int lowTierCallAndLoopCount;
+    private int lowGradeCallCount;
+    private int lowGradeCallAndLoopCount;
     private long adaptiveCallThreshold;
-    private int lowTierCompilationCallThreshold;
-    private int lowTierCompilationCallAndLoopThreshold;
-    private boolean lowTierEnabled;
+    private int lowGradeCompilationCallThreshold;
+    private int lowGradeCompilationCallAndLoopThreshold;
+    private boolean lowGradeEnabled;
     private boolean compileImmediately;
 
     private long timestamp;
@@ -101,17 +94,17 @@ public class OptimizedCompilationProfile {
     public OptimizedCompilationProfile(OptionValues options) {
         int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
-        int lowTierCallThreshold = TruffleCompilerOptions.getValue(TruffleLowTierMinInvokeThreshold);
-        int lowTierCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.LowTierCompilationThreshold);
+        int lowGradeCallThreshold = TruffleCompilerOptions.getValue(TruffleLowGradeMinInvokeThreshold);
+        int lowGradeCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.LowGradeCompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
         this.compilationCallThreshold = Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = callAndLoopThreshold;
-        this.lowTierCompilationCallThreshold = Math.min(lowTierCallThreshold, lowTierCallAndLoopThreshold);
-        this.lowTierCompilationCallAndLoopThreshold = lowTierCallAndLoopThreshold;
+        this.lowGradeCompilationCallThreshold = Math.min(lowGradeCallThreshold, lowGradeCallAndLoopThreshold);
+        this.lowGradeCompilationCallAndLoopThreshold = lowGradeCallAndLoopThreshold;
         this.adaptiveCallThreshold = compilationCallAndLoopThreshold;
         this.timestamp = System.nanoTime();
-        this.lowTierEnabled = TruffleCompilerOptions.getValue(TruffleLowTier);
+        this.lowGradeEnabled = TruffleCompilerOptions.getValue(TruffleLowGrade);
         this.compileImmediately = TruffleCompilerOptions.getValue(TruffleCompileImmediately);
     }
 
@@ -183,7 +176,7 @@ public class OptimizedCompilationProfile {
     void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
-            if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
+            if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
                 initializeProfiledArgumentTypes(args);
             }
         } else {
@@ -224,7 +217,7 @@ public class OptimizedCompilationProfile {
 
     final void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (CompilerDirectives.inInterpreterOrLowTierWithProfiling() && returnTypeAssumption == null) {
+        if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
             if (TruffleCompilerOptions.getValue(TruffleReturnTypeSpeculation)) {
@@ -311,12 +304,12 @@ public class OptimizedCompilationProfile {
 
     private Random random = new Random();
     @CompilerDirectives.TruffleBoundary
-    final boolean lowTierCall(OptimizedCallTarget callTarget) {
-        int callCount = ++lowTierCallCount;
+    final boolean lowGradeCall(OptimizedCallTarget callTarget) {
+        int callCount = ++lowGradeCallCount;
         if (callCount >= compilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
             long adaptiveCallThreshold = getAdaptiveCallThreshold(callCount);
             if (callCount >= adaptiveCallThreshold) {
-                // TTY.println("Compiling the high tier! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + "(of " + compilationCallAndLoopThreshold + "), qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
+                // TTY.println("Compiling the high grade! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + "(of " + compilationCallAndLoopThreshold + "), qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
                 return callTarget.compile();
             }
         }
@@ -339,22 +332,22 @@ public class OptimizedCompilationProfile {
 
     @SuppressWarnings("try")
     final boolean interpreterCall(OptimizedCallTarget callTarget) {
-        if (lowTierEnabled) {
-            // if (CompilerDirectives.inLowTier()) {
-            //     TTY.println("In low-tier compiled code. " + callTarget);
+        if (lowGradeEnabled) {
+            // if (CompilerDirectives.inLowGrade()) {
+            //     TTY.println("In low-grade compiled code. " + callTarget);
             // } else if (!CompilerDirectives.inInterpreter()) {
-            //     TTY.println("In high-tier compiled code. " + callTarget);
+            //     TTY.println("In high-grade compiled code. " + callTarget);
             // }
             int intCallCount = ++interpreterCallCount;
             int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
                 // check if call target is hot enough to get compiled, but took not too long to get hot
-                if ((intAndLoopCallCount >= lowTierCompilationCallAndLoopThreshold && intCallCount >= lowTierCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
+                if ((intAndLoopCallCount >= lowGradeCompilationCallAndLoopThreshold && intCallCount >= lowGradeCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
                                 TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                    // TTY.println("In interpreter, about to compile low tier: " + callTarget +
-                    //                 ", cc: " + intCallCount + " (of " + lowTierCompilationCallThreshold + "), ccl: " + intAndLoopCallCount + " (of " + lowTierCompilationCallAndLoopThreshold + ")" +
+                    // TTY.println("In interpreter, about to compile low grade: " + callTarget +
+                    //                 ", cc: " + intCallCount + " (of " + lowGradeCompilationCallThreshold + "), ccl: " + intAndLoopCallCount + " (of " + lowGradeCompilationCallAndLoopThreshold + ")" +
                     //                 ", qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
-                    try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowTierCompilation, true, TruffleCompilerOptions.TruffleLowTierProfiling, false)) {
+                    try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowGradeCompilation, true, TruffleCompilerOptions.TruffleLowGradeProfiling, false)) {
                         return callTarget.compile();
                     }
                 }

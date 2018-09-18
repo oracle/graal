@@ -132,7 +132,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
@@ -773,7 +773,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask();
         // try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-        //     if (!TruffleLowTierCompilation.getValue(getOptions())) {
+        //     if (!TruffleLowGradeCompilation.getValue(getOptions())) {
         //         TTY.println("submitting htc...: " + optimizedCallTarget);
         //     }
         // }
@@ -782,11 +782,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                    // if (!TruffleLowTierCompilation.getValue(getOptions())) {
+                    // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
                     //     TTY.println("submitted htc: " + optimizedCallTarget + ", " + callTarget);
                     // }
                     if (callTarget != null) {
-                        // if (!TruffleLowTierCompilation.getValue(getOptions())) {
+                        // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
                         //     TTY.println("ehm.. if: " + optimizedCallTarget + ", " + callTarget + ", " + optionOverrides);
                         // }
                         OptionValues options = getOptions();

@@ -24,34 +24,15 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
-import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
-import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
-import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
-import static org.graalvm.compiler.phases.OptimisticOptimizations.ALL;
-import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.RemoveNeverExecutedCode;
-import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
-import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
-import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleEnableInfopoints;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExcludeAssertions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBoundaries;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
@@ -68,7 +49,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -96,15 +76,33 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CompilationRequest;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
+import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
+import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
+import static org.graalvm.compiler.phases.OptimisticOptimizations.ALL;
+import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.RemoveNeverExecutedCode;
+import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
+import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
+import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleEnableInfopoints;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExcludeAssertions;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBoundaries;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
@@ -119,9 +117,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     protected final Suites suites;
     protected final GraphBuilderConfiguration config;
     protected final LIRSuites lirSuites;
-    protected final Providers lowTierProviders;
-    protected final Suites lowTierSuites;
-    protected final LIRSuites lowTierLirSuites;
+    protected final Providers lowGradeProviders;
+    protected final Suites lowGradeSuites;
+    protected final LIRSuites lowGradeLirSuites;
     protected final PartialEvaluator partialEvaluator;
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
@@ -133,7 +131,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     UseTypeCheckedInlining,
                     UseTypeCheckHints);
 
-    public TruffleCompilerImpl(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, Suites lowTierSuites, LIRSuites lowTierLirSuites, Providers lowTierProviders, SnippetReflectionProvider snippetReflection) {
+    public TruffleCompilerImpl(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, Suites lowGradeSuites, LIRSuites lowGradeLirSuites, Providers lowGradeProviders, SnippetReflectionProvider snippetReflection) {
         this.backend = backend;
         this.snippetReflection = snippetReflection;
         this.providers = backend.getProviders();
@@ -151,9 +149,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                         BytecodeExceptionMode.ExplicitOnly);
 
         this.partialEvaluator = createPartialEvaluator();
-        this.lowTierProviders = lowTierProviders;
-        this.lowTierSuites = lowTierSuites;
-        this.lowTierLirSuites = lowTierLirSuites;
+        this.lowGradeProviders = lowGradeProviders;
+        this.lowGradeSuites = lowGradeSuites;
+        this.lowGradeLirSuites = lowGradeLirSuites;
     }
 
     private ResolvedJavaType[] getSkippedExceptionTypes(TruffleCompilerRuntime runtime) {
@@ -351,7 +349,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     TruffleCompilerListener listener) {
         final CompilationPrinter printer = CompilationPrinter.begin(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
-        // if (!TruffleLowTierCompilation.getValue(getOptions())) {
+        // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
         //     TTY.println("htc: " + compilable);
         // }
 
@@ -433,11 +431,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             Suites selectedSuites = suites;
             LIRSuites selectedLirSuites = lirSuites;
             Providers selectedProviders = providers;
-            // TTY.println(TruffleCompilerOptions.TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions()));
-            if (TruffleCompilerOptions.TruffleLowTierCompilation.getValue(TruffleCompilerOptions.getOptions())) {
-                selectedSuites = lowTierSuites;
-                selectedLirSuites = lowTierLirSuites;
-                selectedProviders = lowTierProviders;
+            // TTY.println(TruffleCompilerOptions.TruffleLowGradeCompilation.getValue(TruffleCompilerOptions.getOptions()));
+            if (TruffleLowGradeCompilation.getValue(TruffleCompilerOptions.getOptions())) {
+                selectedSuites = lowGradeSuites;
+                selectedLirSuites = lowGradeLirSuites;
+                selectedProviders = lowGradeProviders;
             }
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
             result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites, selectedLirSuites, compilationResult,
@@ -454,7 +452,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             InstalledCode installedCode = createInstalledCode(compilable);
 
             // Invalidate the old code if it was compiled in low tier, and this is a high tier compilation.
-            if (!TruffleLowTierCompilation.getValue(getOptions())) {
+            if (!TruffleLowGradeCompilation.getValue(getOptions())) {
                 // TTY.println("Invalidating low tier stuff: " + name);
                 compilable.invalidateCode();
             }

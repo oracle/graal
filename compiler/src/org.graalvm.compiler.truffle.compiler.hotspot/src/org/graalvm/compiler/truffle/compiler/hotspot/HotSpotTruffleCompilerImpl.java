@@ -24,20 +24,18 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
-import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
-import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-
-import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCICompiler;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -47,7 +45,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
-import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
@@ -82,16 +79,15 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleInstalledCode;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import jdk.vm.ci.hotspot.HotSpotNmethod;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.runtime.JVMCICompiler;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+
+import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
+import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
+import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
 public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implements HotSpotTruffleCompiler {
 
@@ -114,19 +110,19 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         EconomyCompilerConfigurationFactory economyConfigurationFactory = new EconomyCompilerConfigurationFactory();
         CompilerConfiguration compilerConfiguration = economyConfigurationFactory.createCompilerConfiguration();
         HotSpotBackendFactory backendFactory = economyConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
-        HotSpotBackend lowTierBackend = backendFactory.createBackend((HotSpotGraalRuntimeProvider) runtime.getGraalRuntime(), compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
-        Suites lowTierSuites = lowTierBackend.getSuites().getDefaultSuites(options);
-        LIRSuites lowTierLirSuites = lowTierBackend.getSuites().getDefaultLIRSuites(options);
-        Providers lowTierProviders = lowTierBackend.getProviders();
-        lowTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
+        HotSpotBackend lowGradeBackend = backendFactory.createBackend((HotSpotGraalRuntimeProvider) runtime.getGraalRuntime(), compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
+        Suites lowGradeSuites = lowGradeBackend.getSuites().getDefaultSuites(options);
+        LIRSuites lowGradeLirSuites = lowGradeBackend.getSuites().getDefaultLIRSuites(options);
+        Providers lowGradeProviders = lowGradeBackend.getProviders();
+        lowGradeBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
 
-        return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, lowTierSuites, lowTierLirSuites, lowTierProviders, snippetReflection);
+        return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, lowGradeSuites, lowGradeLirSuites, lowGradeProviders, snippetReflection);
     }
 
     private HotSpotTruffleCompilerImpl(HotSpotGraalRuntimeProvider hotspotGraalRuntime, TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend,
-                    Suites lowTierSuites, LIRSuites lowTierLirSuites, Providers lowTierProviders,
+                    Suites lowGradeSuites, LIRSuites lowGradeLirSuites, Providers lowGradeProviders,
                     SnippetReflectionProvider snippetReflection) {
-        super(runtime, plugins, suites, lirSuites, backend, lowTierSuites, lowTierLirSuites, lowTierProviders, snippetReflection);
+        super(runtime, plugins, suites, lirSuites, backend, lowGradeSuites, lowGradeLirSuites, lowGradeProviders, snippetReflection);
         this.hotspotGraalRuntime = hotspotGraalRuntime;
         installTruffleCallBoundaryMethods();
     }
@@ -265,7 +261,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
-        return new HotSpotTruffleInstalledCode(compilable, TruffleCompilerOptions.TruffleLowTierCompilation.getValue(getOptions()));
+        return new HotSpotTruffleInstalledCode(compilable, TruffleCompilerOptions.TruffleLowGradeCompilation.getValue(getOptions()));
     }
 
     @Override

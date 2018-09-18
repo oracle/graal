@@ -47,12 +47,12 @@ public final class OptimizedLoopNode extends LoopNode {
         int loopCount = 0;
         try {
             while (repeatingNode.executeRepeating(frame)) {
-                if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
+                if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
                     loopCount++;
                 }
             }
         } finally {
-            if (CompilerDirectives.inInterpreterOrLowTierWithProfiling()) {
+            if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
                 reportLoopCount(this, loopCount);
             }
         }

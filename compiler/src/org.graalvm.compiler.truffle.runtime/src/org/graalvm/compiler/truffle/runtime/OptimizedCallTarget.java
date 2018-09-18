@@ -73,7 +73,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingDumpDecisions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowTierCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingMaxPropagationDepth;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
@@ -258,10 +258,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
-        if (CompilerDirectives.inLowTier()) {
-            getCompilationProfile().lowTierCall(this);
+        if (CompilerDirectives.inLowGrade()) {
+            getCompilationProfile().lowGradeCall(this);
         }
-        // if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inLowTier()) {
+        // if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inLowGrade()) {
         //     printYerself();
         // }
         Object[] args = originalArguments;
@@ -330,7 +330,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
     public final boolean compile() {
-        if (isValidLowTierOrHighTier()) return true;
+        if (isValidLowGradeOrHighGrade()) return true;
         if (!isCompiling()) {
             if (!runtime().acceptForCompilation(getRootNode())) {
                 return false;
@@ -340,7 +340,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (isValidLowTierOrHighTier()) {
+                if (isValidLowGradeOrHighGrade()) {
                     return true;
                 }
                 if (this.compilationProfile == null) {
@@ -364,10 +364,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    private boolean isValidLowTierOrHighTier() {
-        if (TruffleCompilerOptions.TruffleLowTier.getValue(getOptions())) {
+    private boolean isValidLowGradeOrHighGrade() {
+        if (TruffleCompilerOptions.TruffleLowGrade.getValue(getOptions())) {
             // We should still complete the high-tier compilation request if low-tier code was installed.
-            if ((TruffleLowTierCompilation.getValue(getOptions()) && isValid()) || isValidHighTier()) {
+            if ((TruffleLowGradeCompilation.getValue(getOptions()) && isValid()) || isValidHighTier()) {
                 return true;
             }
         } else {
