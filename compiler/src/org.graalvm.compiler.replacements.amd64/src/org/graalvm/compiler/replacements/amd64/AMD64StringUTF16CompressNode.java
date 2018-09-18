@@ -81,12 +81,8 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        // @formatter:off
         // Model write access via 'dst' using:
-        return new LocationIdentity[] {
-                NamedLocationIdentity.getArrayLocation(JavaKind.Byte)
-        };
-        // @formatter:on
+        return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
     }
 
     @Override

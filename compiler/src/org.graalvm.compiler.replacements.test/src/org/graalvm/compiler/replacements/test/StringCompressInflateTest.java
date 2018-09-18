@@ -59,9 +59,11 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringLatin1");
         Class<?> testclass = AMD64StringLatin1InflateNode.class;
 
+        // @formatter:off
         TestMethods tms = new TestMethods("testInflate", javaclass,
-                        "inflate", byte[].class, int.class,
-                        char[].class, int.class, int.class);
+                                              "inflate", byte[].class, int.class,
+                                                         char[].class, int.class, int.class);
+        // @formatter:on
 
         tms.testSubstitution(testclass);
 
@@ -79,8 +81,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             for (int j = 0; j < i; j++) {
 
                 assert (dst[j] & 0xff00) == 0;
-                assert (32 <= dst[j] && dst[j] <= 126) ||
-                                (160 <= dst[j] && dst[j] <= 255);
+                assert (32 <= dst[j] && dst[j] <= 126) || (160 <= dst[j] && dst[j] <= 255);
                 assert ((byte) dst[j] == src[j]);
             }
 
@@ -98,8 +99,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             for (int j = 0; j < i; j++) {
 
                 assert (inflate1[j] & 0xff00) == 0;
-                assert (32 <= inflate1[j] && inflate1[j] <= 126) ||
-                                (160 <= inflate1[j] && inflate1[j] <= 255);
+                assert (32 <= inflate1[j] && inflate1[j] <= 126) || (160 <= inflate1[j] && inflate1[j] <= 255);
             }
 
             assertDeepEquals(dst, inflate1);
@@ -112,8 +112,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
     }
 
     @Test
-    public void testStringUTF16Compress() throws ClassNotFoundException,
-                    UnsupportedEncodingException {
+    public void testStringUTF16Compress() throws ClassNotFoundException, UnsupportedEncodingException {
 
         // StringUTF16.compress introduced in Java 9.
         org.junit.Assume.assumeFalse(Java8OrEarlier);
@@ -122,10 +121,11 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
         Class<?> testclass = AMD64StringUTF16CompressNode.class;
-
+        // @formatter:off
         TestMethods tms = new TestMethods("testCompress", javaclass,
-                        "compress", char[].class, int.class,
-                        byte[].class, int.class, int.class);
+                                              "compress", char[].class, int.class,
+                                                          byte[].class, int.class, int.class);
+        // @formatter:on
         tms.testSubstitution(testclass);
 
         for (int i = 0; i < N; i++) {
@@ -209,10 +209,12 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         }
 
         // Private data section:
+        // @formatter:off
         private ResolvedJavaMethod javamethod;
         private ResolvedJavaMethod testmethod;
-        private StructuredGraph testgraph;
-        private InstalledCode testcode;
+        private StructuredGraph    testgraph;
+        private InstalledCode      testcode;
+        // @formatter:on
     }
 
     private static byte[] fillLatinBytes(byte[] v) {

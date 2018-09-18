@@ -51,10 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
 public final class AMD64StringLatin1InflateNode extends FixedWithNextNode
                 implements LIRLowerable, MemoryCheckpoint.Multi, MemoryAccess {
 
-    // @formatter:off
-    public static final NodeClass<AMD64StringLatin1InflateNode>
-            TYPE = NodeClass.create(AMD64StringLatin1InflateNode.class);
-    // @formatter:on
+    public static final NodeClass<AMD64StringLatin1InflateNode> TYPE = NodeClass.create(AMD64StringLatin1InflateNode.class);
 
     @Input private ValueNode src;
     @Input private ValueNode dst;
@@ -83,12 +80,8 @@ public final class AMD64StringLatin1InflateNode extends FixedWithNextNode
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        // @formatter:off
         // Model write access via 'dst' using:
-        return new LocationIdentity[] {
-                NamedLocationIdentity.getArrayLocation(JavaKind.Char)
-        };
-        // @formatter:on
+        return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(JavaKind.Char)};
     }
 
     @Override

@@ -43,12 +43,11 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
-// @formatter:off
-
 @Opcode("AMD64_STRING_COMPRESS")
 public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64StringUTF16CompressOp> TYPE = LIRInstructionClass.create(AMD64StringUTF16CompressOp.class);
 
+    // @formatter:off
     @Def({REG})   private Value rres;
     @Alive({REG}) private Value rsrc;
     @Alive({REG}) private Value rdst;
@@ -59,9 +58,9 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
     @Temp({REG})  private Value vtmp3;
     @Temp({REG})  private Value vtmp4;
     @Temp({REG})  private Value rtmp5;
+    // @formatter:on
 
-    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool,
-                                      Value res, Value src, Value dst, Value len) {
+    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, Value res, Value src, Value dst, Value len) {
         super(TYPE);
 
         assert asRegister(src).equals(rsi);
