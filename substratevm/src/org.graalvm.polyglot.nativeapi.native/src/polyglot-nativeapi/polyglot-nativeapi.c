@@ -39,7 +39,7 @@ struct __graal_isolatethread_t;
 typedef struct __graal_isolatethread_t graal_isolatethread_t;
 
 /* Parameters for the creation of a new isolate. */
-enum { __graal_create_isolate_params_varsion = 1 };
+enum { __graal_create_isolate_params_version = 1 };
 struct __graal_create_isolate_params_t {
     int version;                                /* Version of this struct */
 
