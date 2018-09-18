@@ -2048,9 +2048,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void movq(Register dst, AMD64Address src, boolean force4BytesDisplacement) {
         if (inRC(XMM, dst)) {
             // Insn: MOVQ xmm, r/m64
-            // Code: 66 REX.W 0F 6E /r
-            simdPrefix(dst, Register.None, src, PD, P_0F, true);
-            emitByte(0x6E);
+            // Code: F3 0F 7E /r
+            // An alternative instruction would be 66 REX.W 0F 6E /r. We prefer the REX.W free
+            // format, because it would allow us to emit 2-bytes-prefixed vex-encoding instruction
+            // when applicable.
+            simdPrefix(dst, Register.None, src, SS, P_0F, false);
+            emitByte(0x7E);
             emitOperandHelper(dst, src, force4BytesDisplacement, 0);
         } else {
             // gpr version of movq
@@ -2070,9 +2073,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void movq(AMD64Address dst, Register src) {
         if (inRC(XMM, src)) {
             // Insn: MOVQ r/m64, xmm
-            // Code: 66 REX.W 0F 7E /r
-            simdPrefix(src, Register.None, dst, PD, P_0F, true);
-            emitByte(0x7E);
+            // Code: 66 0F D6 /r
+            // An alternative instruction would be 66 REX.W 0F 7E /r. We prefer the REX.W free
+            // format, because it would allow us to emit 2-bytes-prefixed vex-encoding instruction
+            // when applicable.
+            simdPrefix(src, Register.None, dst, PD, P_0F, false);
+            emitByte(0xD6);
             emitOperandHelper(src, dst, 0);
         } else {
             // gpr version of movq
@@ -2507,13 +2513,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPMOVZXBW xmm1, xmm2/m64
 
     public final void pmovzxbw(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.SSE4_1);
         assert inRC(XMM, dst);
-        VexRMOp.VPMOVZXBW.emit(this, AVXSize.XMM, dst, src);
+        simdPrefix(dst, Register.None, src, PD, P_0F38, false);
+        emitByte(0x30);
+        emitOperandHelper(dst, src, 0);
     }
 
     public final void pmovzxbw(Register dst, Register src) {
+        assert supports(CPUFeature.SSE4_1);
         assert inRC(XMM, dst) && inRC(XMM, src);
-        VexRMOp.VPMOVZXBW.emit(this, AVXSize.XMM, dst, src);
+        simdPrefix(dst, Register.None, src, PD, P_0F38, false);
+        emitByte(0x30);
+        emitModRM(dst, src);
     }
 
     public final void push(Register src) {
