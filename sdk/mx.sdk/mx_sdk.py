@@ -47,9 +47,14 @@ import mx_subst
 
 from mx_gate import Task
 from mx_unittest import unittest
-from mx_benchmark import VmRegistry
 
 _suite = mx.suite('sdk')
+
+graalvm_hostvm_configs = [
+    ('jvm', [], ['--jvm'], 50),
+    ('native', [], ['--native'], 100)
+]
+
 
 def _sdk_gate_runner(args, tasks):
     with Task('SDK UnitTests', tasks, tags=['test']) as t:
@@ -63,6 +68,16 @@ mx_gate.add_gate_runner(_suite, _sdk_gate_runner)
 def javadoc(args):
     """build the Javadoc for all API packages"""
     mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + args)
+
+
+def add_graalvm_hostvm_config(name, java_args=None, lang_args=None, priority=0):
+    """
+    :type name: str
+    :type java_args: list[str] | None
+    :type lang_args: list[str] | None
+    :type priority: int
+    """
+    graalvm_hostvm_configs.append((name, java_args, lang_args, priority))
 
 
 class AbstractNativeImageConfig(object):
