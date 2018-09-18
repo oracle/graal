@@ -36,7 +36,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.ForeignGetTypeNodeGen;
@@ -47,10 +49,11 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.spi.GetDynamicType;
 
 @ValueType
-public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
+public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject, LLVMObjectNativeLibrary.Provider {
 
     private final TruffleObject foreign;
     private final LLVMInteropType.Structured type;
@@ -206,5 +209,61 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         public boolean canAccess(Object obj) {
             return obj instanceof LLVMTypedForeignObject;
         }
+    }
+
+    private static final class LLVMTypedForeignObjectNativeLibrary extends LLVMObjectNativeLibrary {
+
+        @Child private Node isPointer = Message.IS_POINTER.createNode();
+        @Child private Node isNull = Message.IS_NULL.createNode();
+        @Child private Node asPointer = Message.AS_POINTER.createNode();
+        @Child private Node toNative = Message.TO_NATIVE.createNode();
+
+        @Override
+        public boolean guard(Object obj) {
+            return obj instanceof LLVMTypedForeignObject;
+        }
+
+        @Override
+        public boolean isPointer(Object obj) {
+            LLVMTypedForeignObject receiver = (LLVMTypedForeignObject) obj;
+            return ForeignAccess.sendIsPointer(isPointer, receiver.getForeign());
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            LLVMTypedForeignObject receiver = (LLVMTypedForeignObject) obj;
+            return ForeignAccess.sendIsNull(isNull, receiver.getForeign());
+        }
+
+        @Override
+        public long asPointer(Object obj) {
+            LLVMTypedForeignObject receiver = (LLVMTypedForeignObject) obj;
+            try {
+                return ForeignAccess.sendAsPointer(asPointer, receiver.getForeign());
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw ex.raise();
+            }
+        }
+
+        @Override
+        public Object toNative(Object obj) throws InteropException {
+            LLVMTypedForeignObject receiver = (LLVMTypedForeignObject) obj;
+            try {
+                Object nativized = ForeignAccess.sendToNative(toNative, receiver.getForeign());
+                if (nativized != receiver.getForeign()) {
+                    return LLVMTypedForeignObject.create((TruffleObject) nativized, receiver.getType());
+                }
+                return receiver;
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw ex.raise();
+            }
+        }
+    }
+
+    @Override
+    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
+        return new LLVMTypedForeignObjectNativeLibrary();
     }
 }

@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeFactoryFactory.CachedAsPointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeFactoryFactory.CachedIsNullNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeFactoryFactory.CachedIsPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeFactoryFactory.CachedToNativeNodeGen;
 
@@ -73,7 +74,7 @@ abstract class LLVMObjectNativeFactory {
         return new CachingLibrary();
     }
 
-    private static class LongLibrary extends LLVMObjectNativeLibrary {
+    private static final class LongLibrary extends LLVMObjectNativeLibrary {
         @Override
         public boolean guard(Object obj) {
             return obj instanceof Long;
@@ -82,6 +83,11 @@ abstract class LLVMObjectNativeFactory {
         @Override
         public boolean isPointer(Object obj) {
             return true;
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            return ((long) obj) == 0;
         }
 
         @Override
@@ -95,9 +101,10 @@ abstract class LLVMObjectNativeFactory {
         }
     }
 
-    private static class FallbackLibrary extends LLVMObjectNativeLibrary {
+    private static final class FallbackLibrary extends LLVMObjectNativeLibrary {
 
         @Child private Node isPointer;
+        @Child private Node isNull;
         @Child private Node asPointer;
         @Child private Node toNative;
 
@@ -123,6 +130,15 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Override
+        public boolean isNull(Object obj) {
+            if (isNull == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isNull = insert(Message.IS_NULL.createNode());
+            }
+            return ForeignAccess.sendIsNull(isNull, (TruffleObject) obj);
+        }
+
+        @Override
         public long asPointer(Object obj) throws InteropException {
             if (asPointer == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -141,7 +157,7 @@ abstract class LLVMObjectNativeFactory {
         }
     }
 
-    private static class UnsupportedLibrary extends LLVMObjectNativeLibrary {
+    private static final class UnsupportedLibrary extends LLVMObjectNativeLibrary {
 
         @Override
         public boolean guard(Object obj) {
@@ -150,6 +166,11 @@ abstract class LLVMObjectNativeFactory {
 
         @Override
         public boolean isPointer(Object obj) {
+            return false;
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
             return false;
         }
 
@@ -164,9 +185,10 @@ abstract class LLVMObjectNativeFactory {
         }
     }
 
-    private static class CachingLibrary extends LLVMObjectNativeLibrary {
+    private static final class CachingLibrary extends LLVMObjectNativeLibrary {
 
         @Child private CachedIsPointerNode isPointer;
+        @Child private CachedIsNullNode isNull;
         @Child private CachedAsPointerNode asPointer;
         @Child private CachedToNativeNode toNative;
 
@@ -182,6 +204,15 @@ abstract class LLVMObjectNativeFactory {
                 isPointer = insert(CachedIsPointerNodeGen.create());
             }
             return isPointer.execute(obj);
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            if (isNull == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isNull = insert(CachedIsNullNodeGen.create());
+            }
+            return isNull.execute(obj);
         }
 
         @Override
@@ -219,6 +250,25 @@ abstract class LLVMObjectNativeFactory {
         protected boolean slowpath(Object obj) {
             LLVMObjectNativeLibrary lib = createCached(obj);
             return isPointer(obj, lib);
+        }
+    }
+
+    abstract static class CachedIsNullNode extends LLVMNode {
+
+        static final int TYPE_LIMIT = 8;
+
+        abstract boolean execute(Object obj);
+
+        @Specialization(limit = "TYPE_LIMIT", guards = "lib.guard(obj)")
+        protected boolean isNull(Object obj,
+                        @Cached("createCached(obj)") LLVMObjectNativeLibrary lib) {
+            return lib.isNull(obj);
+        }
+
+        @Specialization(replaces = "isNull")
+        protected boolean slowpath(Object obj) {
+            LLVMObjectNativeLibrary lib = createCached(obj);
+            return isNull(obj, lib);
         }
     }
 
