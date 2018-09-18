@@ -52,10 +52,7 @@ import jdk.vm.ci.meta.Value;
 public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
                 implements LIRLowerable, MemoryCheckpoint.Multi, MemoryAccess {
 
-    // @formatter:off
-    public static final NodeClass<AMD64StringUTF16CompressNode>
-            TYPE = NodeClass.create(AMD64StringUTF16CompressNode.class);
-    // @formatter:on
+    public static final NodeClass<AMD64StringUTF16CompressNode> TYPE = NodeClass.create(AMD64StringUTF16CompressNode.class);
 
     @Input private ValueNode src;
     @Input private ValueNode dst;

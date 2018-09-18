@@ -899,7 +899,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.test",
-        "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.replacements.amd64",
       ],
       "annotationProcessors" : [

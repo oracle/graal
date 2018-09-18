@@ -2045,18 +2045,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         movq(dst, src, false);
     }
 
-    public final void movq(Register dst, AMD64Address src, boolean wide) {
+    public final void movq(Register dst, AMD64Address src, boolean force4BytesDisplacement) {
         if (inRC(XMM, dst)) {
             // Insn: MOVQ xmm, r/m64
             // Code: 66 REX.W 0F 6E /r
             simdPrefix(dst, Register.None, src, PD, P_0F, true);
             emitByte(0x6E);
-            emitOperandHelper(dst, src, wide, 0);
+            emitOperandHelper(dst, src, force4BytesDisplacement, 0);
         } else {
             // gpr version of movq
             prefixq(src, dst);
             emitByte(0x8B);
-            emitOperandHelper(dst, src, wide, 0);
+            emitOperandHelper(dst, src, force4BytesDisplacement, 0);
         }
     }
 

@@ -38,12 +38,10 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-// @formatter:off
-
 /**
- * Test intrinsic/node substitutions for (innate) methods StringLatin1.inflate
- * and StringUTF16.compress provided by {@link AMD64StringLatin1Substitutions}
- * and {@link AMD64StringUTF16Substitutions}.
+ * Test intrinsic/node substitutions for (innate) methods StringLatin1.inflate and
+ * StringUTF16.compress provided by {@link AMD64StringLatin1Substitutions} and
+ * {@link AMD64StringUTF16Substitutions}.
  */
 @AddExports({"java.base/java.lang"})
 public final class StringCompressInflateTest extends MethodSubstitutionTest {
@@ -51,8 +49,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
     static final int N = 1000;
 
     @Test
-    public void testStringLatin1Inflate() throws ClassNotFoundException,
-                                                 UnsupportedEncodingException {
+    public void testStringLatin1Inflate() throws ClassNotFoundException, UnsupportedEncodingException {
 
         // StringLatin1.inflate introduced in Java 9.
         org.junit.Assume.assumeFalse(Java8OrEarlier);
@@ -63,8 +60,8 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> testclass = AMD64StringLatin1InflateNode.class;
 
         TestMethods tms = new TestMethods("testInflate", javaclass,
-                                              "inflate", byte[].class, int.class,
-                                                         char[].class, int.class, int.class);
+                        "inflate", byte[].class, int.class,
+                        char[].class, int.class, int.class);
 
         tms.testSubstitution(testclass);
 
@@ -83,7 +80,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
                 assert (dst[j] & 0xff00) == 0;
                 assert (32 <= dst[j] && dst[j] <= 126) ||
-                      (160 <= dst[j] && dst[j] <= 255);
+                                (160 <= dst[j] && dst[j] <= 255);
                 assert ((byte) dst[j] == src[j]);
             }
 
@@ -102,7 +99,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
                 assert (inflate1[j] & 0xff00) == 0;
                 assert (32 <= inflate1[j] && inflate1[j] <= 126) ||
-                      (160 <= inflate1[j] && inflate1[j] <= 255);
+                                (160 <= inflate1[j] && inflate1[j] <= 255);
             }
 
             assertDeepEquals(dst, inflate1);
@@ -116,7 +113,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
     @Test
     public void testStringUTF16Compress() throws ClassNotFoundException,
-                                                 UnsupportedEncodingException {
+                    UnsupportedEncodingException {
 
         // StringUTF16.compress introduced in Java 9.
         org.junit.Assume.assumeFalse(Java8OrEarlier);
@@ -127,8 +124,8 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> testclass = AMD64StringUTF16CompressNode.class;
 
         TestMethods tms = new TestMethods("testCompress", javaclass,
-                                              "compress", char[].class, int.class,
-                                                          byte[].class, int.class, int.class);
+                        "compress", char[].class, int.class,
+                        byte[].class, int.class, int.class);
         tms.testSubstitution(testclass);
 
         for (int i = 0; i < N; i++) {
@@ -169,7 +166,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
             javamethod = getResolvedJavaMethod(javaclass, javamname, params);
             testmethod = getResolvedJavaMethod(testmname);
-            testgraph  = testGraph(testmname, javamname);
+            testgraph = testGraph(testmname, javamname);
 
             assert javamethod != null;
             assert testmethod != null;
@@ -214,8 +211,8 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         // Private data section:
         private ResolvedJavaMethod javamethod;
         private ResolvedJavaMethod testmethod;
-        private StructuredGraph    testgraph;
-        private InstalledCode      testcode;
+        private StructuredGraph testgraph;
+        private InstalledCode testcode;
     }
 
     private static byte[] fillLatinBytes(byte[] v) {
