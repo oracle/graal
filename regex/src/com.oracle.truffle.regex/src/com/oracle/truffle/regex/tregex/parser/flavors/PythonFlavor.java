@@ -34,11 +34,9 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.math.BigInteger;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -52,6 +50,11 @@ public final class PythonFlavor implements RegexFlavor {
 
     public static final PythonFlavor STR_INSTANCE = new PythonFlavor(PythonREMode.Str);
     public static final PythonFlavor BYTES_INSTANCE = new PythonFlavor(PythonREMode.Bytes);
+
+    public static final CompilationFinalBitSet SYNTAX_CHARACTERS =
+            CompilationFinalBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+    public static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS =
+            CompilationFinalBitSet.valueOf('\\', ']', '-');
 
     private final PythonREMode mode;
 
@@ -156,15 +159,15 @@ public final class PythonFlavor implements RegexFlavor {
             }
         }
 
-        private void emit(String patternBits) {
+        private void emitSnippet(String snippet) {
             if (!silent) {
-                outPattern.append(patternBits);
+                outPattern.append(snippet);
             }
         }
 
-        private void emit(int codePoint) {
+        private void emitRawCodepoint(int codepoint) {
             if (!silent) {
-                outPattern.appendCodePoint(codePoint);
+                outPattern.appendCodePoint(codepoint);
             }
         }
 
@@ -268,7 +271,7 @@ public final class PythonFlavor implements RegexFlavor {
                 alternative();
 
                 if (consumingLookahead("|")) {
-                    emit("|");
+                    emitSnippet("|");
                 } else {
                     break;
                 }
@@ -290,18 +293,18 @@ public final class PythonFlavor implements RegexFlavor {
             switch (curChar()) {
                 case 'A':
                     advance();
-                    emit("^");
+                    emitSnippet("^");
                     return true;
                 case 'Z':
                     advance();
-                    emit("$");
+                    emitSnippet("$");
                     return true;
                 case 'b':
                     advance();
                     if (getFlags().isUnicode()) {
                         // TODO: handle Python's unicode-aware \b
                     } else {
-                        emit("\\b");
+                        emitSnippet("\\b");
                     }
                     return true;
                 case 'B':
@@ -309,7 +312,7 @@ public final class PythonFlavor implements RegexFlavor {
                     if (getFlags().isUnicode()) {
                         // TODO: handle Python's unicode-aware \B
                     } else {
-                        emit("\\B");
+                        emitSnippet("\\B");
                     }
                     return true;
                 default:
@@ -317,76 +320,105 @@ public final class PythonFlavor implements RegexFlavor {
             }
         }
 
-        private void emitCharSet(CodePointSet charSet) {
-            // TODO: Can we drop support for non-unicode patterns?
-            for (CodePointRange range : charSet.getRanges()) {
-                if (range.isSingle()) {
-                    int codePoint = range.lo;
-                    if (isUnicodePattern()) {
-                        emit("\\u{" + Integer.toHexString(codePoint) + "}");
+        private void emitCharNoCasing(int codepoint, boolean inCharClass) {
+            CompilationFinalBitSet syntaxChars = inCharClass ? CHAR_CLASS_SYNTAX_CHARACTERS : SYNTAX_CHARACTERS;
+            if (syntaxChars.get(codepoint)) {
+                emitSnippet("\\");
+            }
+            emitRawCodepoint(codepoint);
+        }
+
+        private void emitChar(int codepoint) {
+            emitChar(codepoint, false);
+        }
+
+        private void emitChar(int codepoint, boolean inCharClass) {
+            if (!silent) {
+                if (getFlags().isIgnoreCase()) {
+                    CodePointSet caseClosure = caseFold(CodePointSet.create(codepoint));
+                    if (inCharClass) {
+                        emitCharSetNoCasing(caseClosure);
                     } else {
-                        if (codePoint <= 0xFFFF) {
-                            emit("\\u" + Integer.toHexString(codePoint));
-                        } // else: character not matchable in non-unicode regular expressions
+                        emitSnippet("[");
+                        emitCharSetNoCasing(caseClosure);
+                        emitSnippet("]");
                     }
                 } else {
-                    if (isUnicodePattern()) {
-                        emit("\\u{" + Integer.toHexString(range.lo) + "}-\\u{" + Integer.toHexString(range.hi) + "}");
-                    } else {
-                        if (range.lo <= 0xFFFF) {
-                            int hi = Math.min(range.hi, 0xFFFF);
-                            emit("\\u" + Integer.toHexString(range.lo) + "-\\u" + Integer.toHexString(hi));
-                        } // else: characters not matchable in non-unicode regular expressions
-                    }
+                    emitCharNoCasing(codepoint, inCharClass);
                 }
             }
         }
 
+        private void emitString(String string) {
+            for (int i = 0; i < string.length(); i = string.offsetByCodePoints(i, 1)) {
+                emitChar(string.codePointAt(i));
+            }
+        }
+
+        private void emitCharSetNoCasing(CodePointSet charSet) {
+            for (CodePointRange range : charSet.getRanges()) {
+                if (range.isSingle()) {
+                    emitCharNoCasing(range.lo, true);
+                } else {
+                    emitCharNoCasing(range.lo, true);
+                    emitSnippet("-");
+                    emitCharNoCasing(range.hi, true);
+                }
+            }
+        }
+
+        private void emitCaseFoldClosure(CodePointSet charSet) {
+            if (!silent) {
+                CodePointSet closedSet = caseFold(charSet);
+                CodePointSet complement = closedSet.createIntersection(charSet.createInverse());
+                emitCharSetNoCasing(complement);
+            }
+        }
+
+        private CodePointSet caseFold(CodePointSet charSet) {
+            throw new UnsupportedRegexException("case folding not yet implemented");
+        }
+
         private boolean categoryEscape(boolean inCharClass) {
+            // TODO: Check with asserts that these character classes are closed on case folding.
             switch (curChar()) {
                 case 'd':
                     advance();
                     if (getFlags().isUnicode()) {
-                        // The 'u' flag in Python is only permitted in 'str' patterns, which we translate
-                        // into Unicode ECMAScript patterns.
-                        assert isUnicodePattern();
                         // Python accepts characters with the Numeric_Type=Decimal property.
                         // As of Unicode 11.0.0, these happen to be exactly the characters
                         // in the Decimal_Number General Category.
                         String charSet = "\\p{General_Category=Decimal_Number}";
-                        emit(inCharClass ? charSet : "[" + charSet + "]");
+                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
                     } else {
-                        emit("\\d");
+                        emitSnippet("\\d");
                     }
                     return true;
                 case 'D':
                     advance();
                     if (getFlags().isUnicode()) {
-                        assert isUnicodePattern();
                         String charSet = "\\P{General_Category=Decimal_Number}";
-                        emit(inCharClass ? charSet : "[" + charSet + "]");
+                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
                     } else {
-                        emit("\\D");
+                        emitSnippet("\\D");
                     }
                     return true;
                 case 's':
                     advance();
                     if (getFlags().isUnicode()) {
-                        assert isUnicodePattern();
                         // Python accepts characters with either the Space_Separator General Category
                         // or one of the WS, B or S Bidi_Classes. A close analogue available in
                         // ECMAScript regular expressions is the White_Space Unicode property,
                         // which is only missing the characters \x1c-\x1f (as of Unicode 11.0.0).
                         String charSet = "\\p{White_Space}\\x1c-\\x1f";
-                        emit(inCharClass ? charSet : "[" + charSet + "]");
+                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
                     } else {
-                        emit("\\s");
+                        emitSnippet("\\s");
                     }
                     return true;
                 case 'S':
                     advance();
                     if (getFlags().isUnicode()) {
-                        assert isUnicodePattern();
                         if (inCharClass) {
                             // We are inside a character class and so we cannot add all the characters
                             // in \P{White_Space} and then subtract \x1c-\x1f. Therefore, we will
@@ -394,19 +426,18 @@ public final class PythonFlavor implements RegexFlavor {
                             CodePointSet unicodeSpaces = UnicodeCharacterProperties.getProperty("White_Space");
                             CodePointSet pythonSpaces = unicodeSpaces.addRange(new CodePointRange('\u001c', '\u001f'));
                             CodePointSet complement = pythonSpaces.createInverse();
-                            emitCharSet(complement);
+                            emitCharSetNoCasing(complement);
                         } else {
                             String charSet = "\\p{White_Space}\\x1c-\\x1f";
-                            emit("[^" + charSet + "]");
+                            emitSnippet("[^" + charSet + "]");
                         }
                     } else {
-                        emit("\\S");
+                        emitSnippet("\\S");
                     }
                     return true;
                 case 'w':
                     advance();
                     if (getFlags().isUnicode()) {
-                        assert isUnicodePattern();
                         // As alphabetic characters, Python accepts those in the general category L.
                         // As numeric, it takes any character with either Numeric_Type=Decimal,
                         // Numeric_Type=Digit or Numeric_Type=Numeric. As of Unicode 11.0.0, this
@@ -423,30 +454,29 @@ public final class PythonFlavor implements RegexFlavor {
                         String alpha = "\\p{General_Category=Letter}";
                         String numeric = "\\p{General_Category=Number}\\uf96b\\uf973\\uf978\\uf9b2\\uf9d1\\uf9d3\\uf9fd\\u{2f890}";
                         String charSet = alpha + numeric + "_";
-                        emit(inCharClass ? charSet : "[" + charSet + "]");
+                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
                     } else {
-                        emit("\\w");
+                        emitSnippet("\\w");
                     }
                     return true;
                 case 'W':
                     advance();
                     if (getFlags().isUnicode()) {
-                        assert isUnicodePattern();
                         if (inCharClass) {
                             CodePointSet alpha = UnicodeCharacterProperties.getProperty("General_Category=Letter");
                             CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
                             CodePointSet numeric = UnicodeCharacterProperties.getProperty("General_Category=Number").addSet(numericExtras);
                             CodePointSet pythonWordChars = alpha.addSet(numeric).addRange(new CodePointRange('_'));
                             CodePointSet complement = pythonWordChars.createInverse();
-                            emitCharSet(complement);
+                            emitCharSetNoCasing(complement);
                         } else {
                             String alpha = "\\p{General_Category=Letter}";
                             String numeric = "\\p{General_Category=Number}\\uf96b\\uf973\\uf978\\uf9b2\\uf9d1\\uf9d3\\uf9fd\\u{2f890}";
                             String charSet = alpha + numeric + "_";
-                            emit("[^" + charSet + "]");
+                            emitSnippet("[^" + charSet + "]");
                         }
                     } else {
-                        emit("\\W");
+                        emitSnippet("\\W");
                     }
                     return true;
                 default:
@@ -454,43 +484,49 @@ public final class PythonFlavor implements RegexFlavor {
             }
         }
 
-        private int characterEscape() {
+        private int characterEscape(boolean inCharClass) {
             switch (curChar()) {
                 case 'a':
                     advance();
-                    emit("\\x07");
+                    emitChar('\u0007', inCharClass);
                     return '\u0007';
+                case 'b':
+                    advance();
+                    emitChar('\b', inCharClass);
+                    return '\b';
                 case 'f':
                     advance();
-                    emit("\\f");
+                    emitChar('\f', inCharClass);
                     return '\f';
                 case 'n':
                     advance();
-                    emit("\\n");
+                    emitChar('\n', inCharClass);
                     return '\n';
                 case 'r':
                     advance();
-                    emit("\\r");
+                    emitChar('\r', inCharClass);
                     return '\r';
                 case 't':
                     advance();
-                    emit("\\t");
+                    emitChar('\t', inCharClass);
                     return '\t';
                 case 'v':
                     advance();
-                    emit("\\x0b");
+                    emitChar('\u000b', inCharClass);
                     return '\u000b';
                 case '\\':
                     advance();
-                    emit("\\\\");
+                    emitChar('\\', inCharClass);
                     return '\\';
                 case 'x': {
+                    advance();
                     String code = getUpTo(2, PythonFlavorProcessor::isHexDigit);
                     if (code.length() < 2) {
                         throw syntaxErrorAtRel("incomplete escape \\x" + code, 2 + code.length());
                     }
-                    emit("\\x" + code);
-                    return Integer.parseInt(code, 16);
+                    int codepoint = Integer.parseInt(code, 16);
+                    emitChar(codepoint, inCharClass);
+                    return codepoint;
                 }
                 case 'u':
                 case 'U':
@@ -517,11 +553,7 @@ public final class PythonFlavor implements RegexFlavor {
                             if (codePoint > 0x10FFFF) {
                                 throw syntaxErrorAtRel("unicode escape value \\" + escapeLead + code + " outside of range 0-0x10FFFF", 2 + code.length());
                             }
-                            // We are working with a 'str' pattern, therefore the resulting ECMAScript
-                            // pattern will be have the unicode flag and we can use the \\u{xxxxx}
-                            // escape syntax. This ensures we get the correct semantics w.r.t.
-                            // surrogates.
-                            emit("\\u{" + Integer.toHexString(codePoint) + "}");
+                            emitChar(codePoint, inCharClass);
                             return codePoint;
                         } catch (NumberFormatException e) {
                             throw syntaxErrorAtRel("bad escape \\" + escapeLead + code, 2 + code.length());
@@ -541,12 +573,14 @@ public final class PythonFlavor implements RegexFlavor {
                         // expressions. To avoid confusion, we generate a non-ambiguous hex escape
                         // that works correctly both in unicode (str) and non-unicode (bytes)
                         // regular expressions.
-                        emit("\\x" + Integer.toHexString(codePoint));
+                        emitChar(codePoint, inCharClass);
                         return codePoint;
                     } else if (isAsciiLetter(curChar())) {
-                        throw syntaxErrorAtRel("bad escape \\" + curChar(), 1);
+                        throw syntaxErrorAtRel("bad escape \\" + new String(Character.toChars(curChar())), 1);
                     } else {
-                        return consumeChar();
+                        int ch = consumeChar();
+                        emitChar(ch, inCharClass);
+                        return ch;
                     }
             }
         }
@@ -571,7 +605,7 @@ public final class PythonFlavor implements RegexFlavor {
                 if (getFlags().isIgnoreCase()) {
                     bailOut("case insensitive backreferences not supported");
                 } else {
-                    emit("\\" + number);
+                    emitSnippet("\\" + number);
                 }
                 return true;
             } else {
@@ -626,7 +660,7 @@ public final class PythonFlavor implements RegexFlavor {
                 lastTerm = TermCategory.Atom;
                 return;
             }
-            characterEscape();
+            characterEscape(false);
             lastTerm = TermCategory.Atom;
         }
 
@@ -634,7 +668,7 @@ public final class PythonFlavor implements RegexFlavor {
             if (categoryEscape(true)) {
                 return Optional.empty();
             }
-            return Optional.of(characterEscape());
+            return Optional.of(characterEscape(true));
         }
 
         private void alternative() {
@@ -664,13 +698,12 @@ public final class PythonFlavor implements RegexFlavor {
                     case '?':
                     case '{':
                         quantifier(ch);
-                        lastTerm = TermCategory.Quantifier;
                         break;
                     case '.':
                         if (getFlags().isDotAll()) {
-                            emit(".");
+                            emitSnippet(".");
                         } else {
-                            emit("[^\\n]");
+                            emitSnippet("[^\n]");
                         }
                         lastTerm = TermCategory.Atom;
                         break;
@@ -679,28 +712,27 @@ public final class PythonFlavor implements RegexFlavor {
                         break;
                     case '^':
                         if (getFlags().isMultiline()) {
-                            emit("(?:^|(?<=\\n))");
+                            emitSnippet("(?:^|(?<=\n))");
                         } else {
-                            emit("^");
+                            emitSnippet("^");
                         }
                         lastTerm = TermCategory.Assertion;
                         break;
                     case '$':
                         if (getFlags().isMultiline()) {
-                            emit("(?:$|(?=\\n))");
+                            emitSnippet("(?:$|(?=\n))");
                         } else {
-                            emit("(?:$|(?=\\n$))");
+                            emitSnippet("(?:$|(?=\n$))");
                         }
                         lastTerm = TermCategory.Assertion;
                         break;
                     case ']':
                     case '}':
-                        emit('\\');
-                        emit(ch);
+                        emitChar(ch);
                         lastTerm = TermCategory.Atom;
                         break;
                     default:
-                        emit(ch);
+                        emitChar(ch);
                         lastTerm = TermCategory.Atom;
                 }
             }
@@ -739,7 +771,7 @@ public final class PythonFlavor implements RegexFlavor {
                                                     throw syntaxErrorHere("cannot refer to group defined in the same lookbehind subpattern");
                                                 }
                                             }
-                                            emit("\\" + groupNumber);
+                                            emitSnippet("\\" + groupNumber);
                                             lastTerm = TermCategory.Atom;
                                         } else {
                                             throw syntaxErrorAtRel("unknown group name " + groupName, groupName.length() + 1);
@@ -806,6 +838,9 @@ public final class PythonFlavor implements RegexFlavor {
                                 } else {
                                     try {
                                         groupNumber = Integer.parseInt(groupId);
+                                        if (groupNumber < 0) {
+                                            throw new NumberFormatException("negative group number");
+                                        }
                                     } catch (NumberFormatException e) {
                                         throw syntaxErrorAtRel("bad character in group name " + groupId, groupId.length() + 1);
                                     }
@@ -944,13 +979,13 @@ public final class PythonFlavor implements RegexFlavor {
 
         private void lookahead(boolean positive, int position) {
             if (positive) {
-                emit("(?=");
+                emitSnippet("(?=");
             } else {
-                emit("(?!");
+                emitSnippet("(?!");
             }
             disjunction();
             if (consumingLookahead(")")) {
-                emit(")");
+                emitSnippet(")");
             } else {
                 throw syntaxErrorAtAbs("missing ), unterminated subpattern", position);
             }
@@ -959,15 +994,15 @@ public final class PythonFlavor implements RegexFlavor {
 
         private void lookbehind(boolean positive) {
             if (positive) {
-                emit("(?<=");
+                emitSnippet("(?<=");
             } else {
-                emit("(?<!");
+                emitSnippet("(?<!");
             }
             lookbehindStack.push(new Lookbehind(groups + 1));
             disjunction();
             lookbehindStack.pop();
             if (consumingLookahead(")")) {
-                emit(")");
+                emitSnippet(")");
             } else {
                 throw syntaxErrorAtAbs("missing ), unterminated subpattern", position);
             }
@@ -992,9 +1027,9 @@ public final class PythonFlavor implements RegexFlavor {
             if (capturing) {
                 groups++;
                 groupStack.push(new Group(groups));
-                emit("(");
+                emitSnippet("(");
             } else {
-                emit("(?:");
+                emitSnippet("(?:");
             }
             optName.ifPresent(name -> {
                 if (namedCaptureGroups == null) {
@@ -1007,13 +1042,14 @@ public final class PythonFlavor implements RegexFlavor {
             });
             disjunction();
             if (consumingLookahead(")")) {
-                emit(")");
+                emitSnippet(")");
             } else {
                 throw syntaxErrorAtAbs("missing ), unterminated subpattern", start);
             }
             if (capturing) {
                 groupStack.pop();
             }
+            lastTerm = TermCategory.Atom;
         }
 
         private void mustHaveMore() {
@@ -1042,7 +1078,9 @@ public final class PythonFlavor implements RegexFlavor {
             int start = position - 1;
             if (ch == '{') {
                 if (consumingLookahead("}")) {
-                    emit("\\{\\}");
+                    emitChar('{');
+                    emitChar('}');
+                    lastTerm = TermCategory.Atom;
                     return;
                 } else if (consumingLookahead(",}")) {
                     // Python interprets A{,} as A*, whereas ECMAScript does not accept such a range
@@ -1066,16 +1104,17 @@ public final class PythonFlavor implements RegexFlavor {
                     upperBound = lowerBound;
                 }
                 if (!consumingLookahead("}")) {
-                    emit("\\{");
-                    emit(inPattern.substring(start + 1, position));
+                    emitChar('{');
+                    emitString(inPattern.substring(start + 1, position));
+                    lastTerm = TermCategory.Atom;
                     return;
                 }
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxErrorAtAbs("min repeat greater than max repeat", start);
                 }
-                emit(inPattern.substring(start, position));
+                emitSnippet(inPattern.substring(start, position));
             } else {
-                emit(new String(Character.toChars(ch)));
+                emitSnippet(new String(Character.toChars(ch)));
             }
 
             switch (lastTerm) {
@@ -1086,16 +1125,17 @@ public final class PythonFlavor implements RegexFlavor {
                     throw syntaxErrorAtAbs("multiple repeat", start);
                 case Atom:
                     if (consumingLookahead("?")) {
-                        emit("?");
+                        emitSnippet("?");
                     }
+                    lastTerm = TermCategory.Quantifier;
             }
         }
 
         private void charClass() {
-            emit("[");
+            emitSnippet("[");
             int start = position - 1;
             if (consumingLookahead("^")) {
-                emit("^");
+                emitSnippet("^");
             }
             int firstPosInside = position;
             classBody: while (true) {
@@ -1108,10 +1148,10 @@ public final class PythonFlavor implements RegexFlavor {
                 switch (ch) {
                     case ']':
                         if (position == firstPosInside + 1) {
-                            emit("\\]");
+                            emitChar(']');
                             lowerBound = Optional.of((int)']');
                         } else {
-                            emit("]");
+                            emitSnippet("]");
                             break classBody;
                         }
                         break;
@@ -1119,11 +1159,11 @@ public final class PythonFlavor implements RegexFlavor {
                         lowerBound = classEscape();
                         break;
                     default:
-                        emit(ch);
+                        emitChar(ch);
                         lowerBound = Optional.of(ch);
                 }
                 if (consumingLookahead("-")) {
-                    emit("-");
+                    emitSnippet("-");
                     if (atEnd()) {
                         throw syntaxErrorAtAbs("unterminated character set", start);
                     }
@@ -1131,18 +1171,23 @@ public final class PythonFlavor implements RegexFlavor {
                     ch = consumeChar();
                     switch (ch) {
                         case ']':
-                            emit("]");
+                            emitSnippet("]");
                             break classBody;
                         case '\\':
                             upperBound = classEscape();
                             break;
                         default:
-                            emit(ch);
+                            emitChar(ch);
                             upperBound = Optional.of(ch);
                     }
                     if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
                         throw syntaxErrorAtAbs("bad character range " + inPattern.substring(rangeStart, position), rangeStart);
                     }
+                    if (getFlags().isIgnoreCase()) {
+                        emitCaseFoldClosure(CodePointSet.create(new CodePointRange(lowerBound.get(), upperBound.get())));
+                    }
+                } else if (getFlags().isIgnoreCase() && lowerBound.isPresent()) {
+                    emitCaseFoldClosure(CodePointSet.create(lowerBound.get()));
                 }
             }
         }
