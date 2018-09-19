@@ -573,9 +573,12 @@ public abstract class Message {
      * </pre>
      *
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
-     * created for this message should yield value of {@link Boolean}. If the object responds with
-     * {@link Boolean#TRUE}, the object can be accessed by {@link #AS_POINTER} message.
+     * created for this message should yield a {@link Boolean}. If the object responds with
+     * {@link Boolean#TRUE}, the object can be accessed by the {@link #AS_POINTER} message. An
+     * object that responds with {@link Boolean#TRUE} to {@link #IS_POINTER} <b>MUST</b> also
+     * implement {@link #TO_NATIVE}, which should just return the receiver.
      *
+     * <p>
      * It is expected that objects should only return {@link Boolean#TRUE} here if the native
      * pointer value corresponding to this object already exists, and obtaining it is a cheap
      * operation. If an object can be transformed to a pointer representation, but this hasn't
