@@ -316,9 +316,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
         symlink_or_copy(option_properties, target_path)
 
 flag_suitename_map = collections.OrderedDict([
-    ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
     ('js', ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
-    ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON_GRAALVM_SUPPORT', 'GRAALPYTHON-ZIP'])),
     ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))  # JLINE?
 ])
 
@@ -541,7 +539,6 @@ GraalTags = Tags([
     'test',
     'maven',
     'js',
-    'python',
 ])
 
 @contextmanager
@@ -616,11 +613,6 @@ def svm_gate_body(args, tasks):
                 js = build_js(native_image, debug_gr_8964=debug_gr_8964)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
-
-        with Task('Python', tasks, tags=[GraalTags.python]) as t:
-            if t:
-                python = build_python(native_image, debug_gr_8964=debug_gr_8964)
-                test_python_smoke([python])
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
@@ -728,33 +720,6 @@ def test_run(cmds, expected_stdout, timeout=10):
         mx.abort('Error: stdout does not match expected_stdout')
     return (returncode, stdoutdata, stderrdata)
 
-def build_python(native_image, debug_gr_8964=False):
-    truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # python depends on sulong
-    truffle_language_ensure('python', debug_gr_8964=debug_gr_8964)
-    return native_image(['--language:python', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
-
-def test_python_smoke(args):
-    """
-    Just a smoke test for now.
-    """
-    if len(args) != 1:
-        mx.abort('mx svm_test_python <python_svm_image_path>')
-
-    out = mx.OutputCapture()
-    err = mx.OutputCapture()
-    expected_output = "Hello from Python"
-    with tempfile.NamedTemporaryFile() as f:
-        f.write("print('%s')\n" % expected_output)
-        f.flush()
-        os.system("ls -l %s" % args[0])
-        os.system("ls -l %s" % f.name)
-        exitcode = mx.run([args[0], f.name], nonZeroIsFatal=False, out=out, err=err)
-        if exitcode != 0:
-            mx.abort("Python binary failed to execute: out=" + out.data+ " err=" + err.data)
-        if out.data != expected_output + "\n":
-            mx.abort("Python smoke test failed")
-        mx.log("Python binary says: " + out.data)
-
 mx_gate.add_gate_runner(suite, svm_gate_body)
 
 def cinterfacetutorial(native_image, args=None):
@@ -841,21 +806,6 @@ def native_image_context_run(func, func_args=None):
     func_args = [] if func_args is None else func_args
     with native_image_context() as native_image:
         func(native_image, func_args)
-
-def fetch_languages(args, early_exit=True):
-    if args:
-        requested = collections.OrderedDict()
-        for arg in args:
-            language_flag, version_info = extract_target_name(arg, 'language')
-            if language_flag:
-                version = version_info.partition('version=')[2] if version_info else None
-                requested[language_flag] = version
-    else:
-        requested = collections.OrderedDict((lang, None) for lang in flag_suitename_map)
-
-    for language_flag in requested:
-        version = requested[language_flag]
-        truffle_language_ensure(language_flag, version, early_exit=early_exit)
 
 def deploy_native_image_maven_plugin(svmVersion, action='install'):
     # Create native-image-maven-plugin pom with correct version info from template
@@ -981,7 +931,6 @@ mx.update_commands(suite, {
     'build': [build, ''],
     'helloworld' : [lambda args: native_image_context_run(helloworld, args), ''],
     'cinterfacetutorial' : [lambda args: native_image_context_run(cinterfacetutorial, args), ''],
-    'fetch-languages': [lambda args: fetch_languages(args, early_exit=False), ''],
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
     'maven-plugin-install': [maven_plugin_install, ''],
