@@ -130,6 +130,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeF
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_MovmskpdNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_MissingBuiltin;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorCmpNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinNodeGen;
@@ -1784,7 +1785,7 @@ public class BasicNodeFactory implements NodeFactory {
             case "@llvm.x86.sse2.movmsk.pd":
                 return LLVMX86_MovmskpdNodeGen.create(args[1], sourceSection);
             default:
-                throw new IllegalStateException("Missing LLVM builtin: " + declaration.getName());
+                return LLVMX86_MissingBuiltin.create(sourceSection, declaration.getName());
         }
     }
 
