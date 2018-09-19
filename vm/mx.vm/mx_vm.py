@@ -990,7 +990,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         self.svm_support = svm_support
 
     def build(self):
-        build_args = self.get_build_args(prepare=False)
+        build_args = self.get_build_args()
         output_file = self.subject.output_file()
         mx.ensure_dir_exists(dirname(output_file))
 
@@ -1009,7 +1009,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         if exists(command_file):
             with open(command_file) as f:
                 previous_build_args = [l.rstrip('\r\n') for l in f.readlines()]
-        args = self.get_build_args(prepare=True)
+        args = self.get_build_args()
         if previous_build_args != args:
             mx.logv("{} != {}".format(previous_build_args, args))
             return 'image command changed'
@@ -1018,7 +1018,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
     def _get_command_file(self):
         return self.subject.output_file() + '.cmd'
 
-    def get_build_args(self, prepare=True):
+    def get_build_args(self):
         version = _suite.release_version()
         build_args = [
             '-Dorg.graalvm.version={}'.format(version),
@@ -1026,7 +1026,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         ]
         if _debug_images():
             build_args += ['-ea', '-H:-AOTInline']
-        if not prepare and self.svm_support.is_debug_supported():
+        if self.svm_support.is_debug_supported():
             build_args += ['-g']
         if self.subject.deps:
             build_args += ['-cp', mx.classpath(self.subject.native_image_jar_distributions)]
@@ -1045,9 +1045,9 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
 
 
 class GraalVmSVMLauncherBuildTask(GraalVmSVMNativeImageBuildTask):
-    def get_build_args(self, prepare=True):
+    def get_build_args(self):
         main_class = self.subject.native_image_config.main_class
-        return super(GraalVmSVMLauncherBuildTask, self).get_build_args(prepare=prepare) + [main_class]
+        return super(GraalVmSVMLauncherBuildTask, self).get_build_args() + [main_class]
 
 
 class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
