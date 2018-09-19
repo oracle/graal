@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -266,8 +266,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return load.executeWithTarget(addr);
         }
 
-        @TruffleBoundary
         protected LLVMLoadPointerVectorNode createLoadPointerVector() {
+            CompilerAsserts.neverPartOfCompilation();
             return LLVMLoadPointerVectorNodeGen.create(null, getVectorLength());
         }
     }
@@ -330,8 +330,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
             return LLVMPointerVector.create(vector);
         }
 
-        @TruffleBoundary
         protected LLVMToPointerNode[] createToPointerNodes() {
+            CompilerAsserts.neverPartOfCompilation();
             LLVMToPointerNode[] result = new LLVMToPointerNode[getVectorLength()];
             for (int i = 0; i < result.length; i++) {
                 result[i] = LLVMToPointerNodeGen.create();

@@ -44,7 +44,7 @@ public class LLVMTypedForeignObjectMessageResolution {
     @Resolve(message = "IS_POINTER")
     public abstract static class ForeignIsPointer extends Node {
 
-        @Child Node isPointer = Message.IS_POINTER.createNode();
+        @Child private Node isPointer = Message.IS_POINTER.createNode();
 
         protected boolean access(LLVMTypedForeignObject receiver) {
             return ForeignAccess.sendIsPointer(isPointer, receiver.getForeign());
@@ -54,7 +54,7 @@ public class LLVMTypedForeignObjectMessageResolution {
     @Resolve(message = "AS_POINTER")
     public abstract static class ForeignAsPointer extends Node {
 
-        @Child Node asPointer = Message.AS_POINTER.createNode();
+        @Child private Node asPointer = Message.AS_POINTER.createNode();
 
         protected long access(LLVMTypedForeignObject receiver) {
             try {
@@ -69,7 +69,7 @@ public class LLVMTypedForeignObjectMessageResolution {
     @Resolve(message = "TO_NATIVE")
     public abstract static class ForeignToNative extends Node {
 
-        @Child Node toNative = Message.TO_NATIVE.createNode();
+        @Child private Node toNative = Message.TO_NATIVE.createNode();
 
         protected Object access(LLVMTypedForeignObject receiver) {
             try {
@@ -88,7 +88,7 @@ public class LLVMTypedForeignObjectMessageResolution {
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNull extends Node {
 
-        @Child Node isNull = Message.IS_NULL.createNode();
+        @Child private Node isNull = Message.IS_NULL.createNode();
 
         protected boolean access(LLVMTypedForeignObject receiver) {
             return ForeignAccess.sendIsNull(isNull, receiver.getForeign());

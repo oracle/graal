@@ -141,7 +141,7 @@ public class NFIAPITest {
 
         protected SendExecuteNode(TruffleObject receiver) {
             this.receiver = receiver;
-            execute = Message.EXECUTE.createNode();
+            this.execute = Message.EXECUTE.createNode();
         }
 
         @Override

@@ -87,7 +87,6 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
         }
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createForeignToLLVM() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
     }
