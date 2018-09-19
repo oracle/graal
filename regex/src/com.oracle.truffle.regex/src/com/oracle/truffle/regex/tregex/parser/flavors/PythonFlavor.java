@@ -51,11 +51,6 @@ public final class PythonFlavor implements RegexFlavor {
     public static final PythonFlavor STR_INSTANCE = new PythonFlavor(PythonREMode.Str);
     public static final PythonFlavor BYTES_INSTANCE = new PythonFlavor(PythonREMode.Bytes);
 
-    public static final CompilationFinalBitSet SYNTAX_CHARACTERS =
-            CompilationFinalBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
-    public static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS =
-            CompilationFinalBitSet.valueOf('\\', ']', '-');
-
     private final PythonREMode mode;
 
     private PythonFlavor(PythonREMode mode) {
@@ -68,6 +63,97 @@ public final class PythonFlavor implements RegexFlavor {
     }
 
     private static final class PythonFlavorProcessor implements RegexFlavorProcessor {
+
+        public static final CompilationFinalBitSet SYNTAX_CHARACTERS =
+                CompilationFinalBitSet.valueOf('^', '$', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
+        public static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS =
+                CompilationFinalBitSet.valueOf('\\', ']', '-');
+
+        /**
+         * Maps Python's predefined Unicode character classes (d, D, s, S, w, W) to equivalent
+         * expressions in ECMAScript regular expressions. The results are not wrapped in brackets
+         * and can therefore be directly pasted in to character classes (e.g. when translating
+         * [\s,.:]).
+         *
+         * This map is partial. If no replacement exists, a set from
+         * {@link #UNICODE_CHAR_CLASS_SETS} has to be listed out explicitly instead.
+         */
+        public static final Map<Character, String> UNICODE_CHAR_CLASS_REPLACEMENTS;
+        /**
+         * Maps Python's predefined Unicode character classes to sets containing the characters
+         * to be matched.
+         */
+        public static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
+
+        static {
+            UNICODE_CHAR_CLASS_REPLACEMENTS = new HashMap<>();
+            UNICODE_CHAR_CLASS_SETS = new HashMap<>();
+
+            // Digits: \\d
+            // Python accepts characters with the Numeric_Type=Decimal property.
+            // As of Unicode 11.0.0, these happen to be exactly the characters
+            // in the Decimal_Number General Category.
+            UNICODE_CHAR_CLASS_REPLACEMENTS.put('d', "\\p{General_Category=Decimal_Number}");
+
+            // Non-digits: \\D
+            UNICODE_CHAR_CLASS_REPLACEMENTS.put('D', "\\P{General_Category=Decimal_Number}");
+
+            // \\d and \\D as CodePointSets (currently not needed, included for consistency)
+            CodePointSet decimals = UnicodeCharacterProperties.getProperty("General_Category=Decimal_Number");
+            CodePointSet nonDecimals = decimals.createInverse();
+            UNICODE_CHAR_CLASS_SETS.put('d', decimals);
+            UNICODE_CHAR_CLASS_SETS.put('D', nonDecimals);
+
+            // Spaces: \\s
+            // Python accepts characters with either the Space_Separator General Category
+            // or one of the WS, B or S Bidi_Classes. A close analogue available in
+            // ECMAScript regular expressions is the White_Space Unicode property,
+            // which is only missing the characters \\u001c-\\u001f (as of Unicode 11.0.0).
+            UNICODE_CHAR_CLASS_REPLACEMENTS.put('s', "\\p{White_Space}\u001c-\u001f");
+
+            // Non-spaces: \\S
+            // If we are translating an occurrence of \\S inside a character class, we cannot
+            // use the negated Unicode character property \\P{White_Space}, because then we would
+            // need to subtract the code points \\u001c-\\u001f from the resulting character class,
+            // which is not possible in ECMAScript regular expressions. Therefore, we have to expand
+            // the definition of the White_Space property, do the set subtraction and then list the
+            // contents of the resulting set.
+            CodePointSet unicodeSpaces = UnicodeCharacterProperties.getProperty("White_Space");
+            CodePointSet spaces = unicodeSpaces.addRange(new CodePointRange('\u001c', '\u001f'));
+            CodePointSet nonSpaces = spaces.createInverse();
+            UNICODE_CHAR_CLASS_SETS.put('s', spaces);
+            UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
+
+            // Word characters: \\w
+            // As alphabetic characters, Python accepts those in the general category L.
+            // As numeric, it takes any character with either Numeric_Type=Decimal,
+            // Numeric_Type=Digit or Numeric_Type=Numeric. As of Unicode 11.0.0, this
+            // corresponds to the general category Number, along with the following
+            // code points:
+            // F96B;CJK COMPATIBILITY IDEOGRAPH-F96B;Lo;0;L;53C3;;;3;N;;;;;
+            // F973;CJK COMPATIBILITY IDEOGRAPH-F973;Lo;0;L;62FE;;;10;N;;;;;
+            // F978;CJK COMPATIBILITY IDEOGRAPH-F978;Lo;0;L;5169;;;2;N;;;;;
+            // F9B2;CJK COMPATIBILITY IDEOGRAPH-F9B2;Lo;0;L;96F6;;;0;N;;;;;
+            // F9D1;CJK COMPATIBILITY IDEOGRAPH-F9D1;Lo;0;L;516D;;;6;N;;;;;
+            // F9D3;CJK COMPATIBILITY IDEOGRAPH-F9D3;Lo;0;L;9678;;;6;N;;;;;
+            // F9FD;CJK COMPATIBILITY IDEOGRAPH-F9FD;Lo;0;L;4EC0;;;10;N;;;;;
+            // 2F890;CJK COMPATIBILITY IDEOGRAPH-2F890;Lo;0;L;5EFE;;;9;N;;;;;
+            String alphaStr = "\\p{General_Category=Letter}";
+            String numericStr = "\\p{General_Category=Number}\uf96b\uf973\uf978\uf9b2\uf9d1\uf9d3\uf9fd\\u{2f890}";
+            String wordCharsStr = alphaStr + numericStr + "_";
+            UNICODE_CHAR_CLASS_REPLACEMENTS.put('w', wordCharsStr);
+
+            // Non-word characters: \\W
+            // Similarly as for \\S, we will not be able to produce a replacement string for \\W.
+            // We will need to construct the set ourselves.
+            CodePointSet alpha = UnicodeCharacterProperties.getProperty("General_Category=Letter");
+            CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
+            CodePointSet numeric = UnicodeCharacterProperties.getProperty("General_Category=Number").addSet(numericExtras);
+            CodePointSet wordChars = alpha.addSet(numeric).addRange(new CodePointRange('_'));
+            CodePointSet nonWordChars = wordChars.createInverse();
+            UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
+            UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
+        }
 
         private enum TermCategory {
             Assertion,
@@ -302,7 +388,18 @@ public final class PythonFlavor implements RegexFlavor {
                 case 'b':
                     advance();
                     if (getFlags().isUnicode()) {
-                        // TODO: handle Python's unicode-aware \b
+                        // This is the snippet that we want to paste in, but with Python's
+                        // definitions of \\w and \\W:
+                        // "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)"
+                        emitSnippet("(?:^|(?<=[");
+                        emitCharSetNoCasing(UNICODE_CHAR_CLASS_SETS.get('W'));
+                        emitSnippet("]))(?=[");
+                        emitSnippet(UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
+                        emitSnippet("])|(?<=[");
+                        emitSnippet(UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
+                        emitSnippet("])(?:(?=[");
+                        emitCharSetNoCasing(UNICODE_CHAR_CLASS_SETS.get('W'));
+                        emitSnippet("])|$)");
                     } else {
                         emitSnippet("\\b");
                     }
@@ -310,7 +407,16 @@ public final class PythonFlavor implements RegexFlavor {
                 case 'B':
                     advance();
                     if (getFlags().isUnicode()) {
-                        // TODO: handle Python's unicode-aware \B
+                        // "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)"
+                        emitSnippet("(?:^|(?<=[");
+                        emitCharSetNoCasing(UNICODE_CHAR_CLASS_SETS.get('W'));
+                        emitSnippet("]))(?:(?=[");
+                        emitCharSetNoCasing(UNICODE_CHAR_CLASS_SETS.get('W'));
+                        emitSnippet("])|$)|(?<=[");
+                        emitSnippet(UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
+                        emitSnippet("])(?=[");
+                        emitSnippet(UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
+                        emitSnippet("])");
                     } else {
                         emitSnippet("\\B");
                     }
@@ -383,100 +489,33 @@ public final class PythonFlavor implements RegexFlavor {
             // TODO: Check with asserts that these character classes are closed on case folding.
             switch (curChar()) {
                 case 'd':
-                    advance();
-                    if (getFlags().isUnicode()) {
-                        // Python accepts characters with the Numeric_Type=Decimal property.
-                        // As of Unicode 11.0.0, these happen to be exactly the characters
-                        // in the Decimal_Number General Category.
-                        String charSet = "\\p{General_Category=Decimal_Number}";
-                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
-                    } else {
-                        emitSnippet("\\d");
-                    }
-                    return true;
                 case 'D':
-                    advance();
-                    if (getFlags().isUnicode()) {
-                        String charSet = "\\P{General_Category=Decimal_Number}";
-                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
-                    } else {
-                        emitSnippet("\\D");
-                    }
-                    return true;
                 case 's':
-                    advance();
-                    if (getFlags().isUnicode()) {
-                        // Python accepts characters with either the Space_Separator General Category
-                        // or one of the WS, B or S Bidi_Classes. A close analogue available in
-                        // ECMAScript regular expressions is the White_Space Unicode property,
-                        // which is only missing the characters \x1c-\x1f (as of Unicode 11.0.0).
-                        String charSet = "\\p{White_Space}\\x1c-\\x1f";
-                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
-                    } else {
-                        emitSnippet("\\s");
-                    }
-                    return true;
                 case 'S':
-                    advance();
-                    if (getFlags().isUnicode()) {
-                        if (inCharClass) {
-                            // We are inside a character class and so we cannot add all the characters
-                            // in \P{White_Space} and then subtract \x1c-\x1f. Therefore, we will
-                            // need to write out the definition of \P{White_Space} explicitly.
-                            CodePointSet unicodeSpaces = UnicodeCharacterProperties.getProperty("White_Space");
-                            CodePointSet pythonSpaces = unicodeSpaces.addRange(new CodePointRange('\u001c', '\u001f'));
-                            CodePointSet complement = pythonSpaces.createInverse();
-                            emitCharSetNoCasing(complement);
-                        } else {
-                            String charSet = "\\p{White_Space}\\x1c-\\x1f";
-                            emitSnippet("[^" + charSet + "]");
-                        }
-                    } else {
-                        emitSnippet("\\S");
-                    }
-                    return true;
                 case 'w':
-                    advance();
-                    if (getFlags().isUnicode()) {
-                        // As alphabetic characters, Python accepts those in the general category L.
-                        // As numeric, it takes any character with either Numeric_Type=Decimal,
-                        // Numeric_Type=Digit or Numeric_Type=Numeric. As of Unicode 11.0.0, this
-                        // corresponds to the general category Number, along with the following
-                        // code points:
-                        // F96B;CJK COMPATIBILITY IDEOGRAPH-F96B;Lo;0;L;53C3;;;3;N;;;;;
-                        // F973;CJK COMPATIBILITY IDEOGRAPH-F973;Lo;0;L;62FE;;;10;N;;;;;
-                        // F978;CJK COMPATIBILITY IDEOGRAPH-F978;Lo;0;L;5169;;;2;N;;;;;
-                        // F9B2;CJK COMPATIBILITY IDEOGRAPH-F9B2;Lo;0;L;96F6;;;0;N;;;;;
-                        // F9D1;CJK COMPATIBILITY IDEOGRAPH-F9D1;Lo;0;L;516D;;;6;N;;;;;
-                        // F9D3;CJK COMPATIBILITY IDEOGRAPH-F9D3;Lo;0;L;9678;;;6;N;;;;;
-                        // F9FD;CJK COMPATIBILITY IDEOGRAPH-F9FD;Lo;0;L;4EC0;;;10;N;;;;;
-                        // 2F890;CJK COMPATIBILITY IDEOGRAPH-2F890;Lo;0;L;5EFE;;;9;N;;;;;
-                        String alpha = "\\p{General_Category=Letter}";
-                        String numeric = "\\p{General_Category=Number}\\uf96b\\uf973\\uf978\\uf9b2\\uf9d1\\uf9d3\\uf9fd\\u{2f890}";
-                        String charSet = alpha + numeric + "_";
-                        emitSnippet(inCharClass ? charSet : "[" + charSet + "]");
-                    } else {
-                        emitSnippet("\\w");
-                    }
-                    return true;
                 case 'W':
+                    char className = (char) curChar();
                     advance();
                     if (getFlags().isUnicode()) {
                         if (inCharClass) {
-                            CodePointSet alpha = UnicodeCharacterProperties.getProperty("General_Category=Letter");
-                            CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
-                            CodePointSet numeric = UnicodeCharacterProperties.getProperty("General_Category=Number").addSet(numericExtras);
-                            CodePointSet pythonWordChars = alpha.addSet(numeric).addRange(new CodePointRange('_'));
-                            CodePointSet complement = pythonWordChars.createInverse();
-                            emitCharSetNoCasing(complement);
+                            if (UNICODE_CHAR_CLASS_REPLACEMENTS.containsKey(className)) {
+                                emitSnippet(UNICODE_CHAR_CLASS_REPLACEMENTS.get(className));
+                            } else {
+                                emitCharSetNoCasing(UNICODE_CHAR_CLASS_SETS.get(className));
+                            }
                         } else {
-                            String alpha = "\\p{General_Category=Letter}";
-                            String numeric = "\\p{General_Category=Number}\\uf96b\\uf973\\uf978\\uf9b2\\uf9d1\\uf9d3\\uf9fd\\u{2f890}";
-                            String charSet = alpha + numeric + "_";
-                            emitSnippet("[^" + charSet + "]");
+                            if (UNICODE_CHAR_CLASS_REPLACEMENTS.containsKey(className)) {
+                                emitSnippet("[" + UNICODE_CHAR_CLASS_REPLACEMENTS.get(className) + "]");
+                            } else if (UNICODE_CHAR_CLASS_REPLACEMENTS.containsKey(Character.toLowerCase(className))) {
+                                emitSnippet("[^" + UNICODE_CHAR_CLASS_REPLACEMENTS.get(Character.toLowerCase(className)) + "]");
+                            } else {
+                                emitSnippet("[");
+                                emitCharSetNoCasing(UNICODE_CHAR_CLASS_SETS.get(className));
+                                emitSnippet("]");
+                            }
                         }
                     } else {
-                        emitSnippet("\\W");
+                        emitSnippet("\\" + className);
                     }
                     return true;
                 default:
