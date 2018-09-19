@@ -140,21 +140,4 @@ public final class FrameSlot implements Cloneable {
         CompilerAsserts.neverPartOfCompilation("do not call FrameSlot.toString from compiled code");
         return "[" + index + "," + identifier + "," + kind + "]";
     }
-
-    /**
-     * Frame descriptor this slot is associated with. When the slot was shared using
-     * {@link FrameDescriptor#shallowCopy()} it returns the original {@link FrameDescriptor}.
-     *
-     * @return instance of descriptor that {@link FrameDescriptor#addFrameSlot(java.lang.Object)
-     *         created} the slot
-     * @since 0.8 or earlier
-     * @deprecated in 1.0 without direct replacement. When {@link FrameDescriptor#shallowCopy()} is
-     *             removed the frame slot will always belong only to the descriptor which created
-     *             it.
-     */
-    @Deprecated
-    public FrameDescriptor getFrameDescriptor() {
-        return this.descriptor;
-    }
-
 }

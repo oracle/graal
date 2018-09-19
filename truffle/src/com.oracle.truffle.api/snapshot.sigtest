@@ -547,8 +547,6 @@ meth public abstract {com.oracle.truffle.api.frame.FrameInstanceVisitor%0} visit
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlot
 intf java.lang.Cloneable
-meth public com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlotKind getKind()
  anno 0 java.lang.Deprecated()
 meth public int getIndex()
