@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC7
+
+* Removed deprecated FrameDescriptor#shallowCopy (deprecated since 1.0.0 RC3).
+
 ## Version 1.0.0 RC6
 
 * Added support for byte based sources:

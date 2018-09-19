@@ -503,8 +503,6 @@ intf java.lang.Cloneable
 meth public com.oracle.truffle.api.Assumption getNotInFrameAssumption(java.lang.Object)
 meth public com.oracle.truffle.api.Assumption getVersion()
 meth public com.oracle.truffle.api.frame.FrameDescriptor copy()
-meth public com.oracle.truffle.api.frame.FrameDescriptor shallowCopy()
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot addFrameSlot(java.lang.Object)
 meth public com.oracle.truffle.api.frame.FrameSlot addFrameSlot(java.lang.Object,com.oracle.truffle.api.frame.FrameSlotKind)
 meth public com.oracle.truffle.api.frame.FrameSlot addFrameSlot(java.lang.Object,java.lang.Object,com.oracle.truffle.api.frame.FrameSlotKind)

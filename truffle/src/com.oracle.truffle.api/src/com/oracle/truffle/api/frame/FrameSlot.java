@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.api.frame;
 
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
@@ -58,13 +55,6 @@ public final class FrameSlot implements Cloneable {
     private final Object info;
     private final int index;
     /*
-     * The sharedWith has to be precisely tracked per FrameSlot. If it was tracked in
-     * FrameDescriptor then it could cause large number of invalidations. When a single
-     * FrameDescriptor is used as a template and large number of FrameDescriptors is created based
-     * of it with shallowCopy, then any kind change in one of them would invalidate all of them.
-     */
-    Map<FrameDescriptor, Object> sharedWith;
-    /*
      * The FrameSlot cannot be made immutable by moving the kind field to FrameDescriptor, because
      * it would force getFrameSlotKind and setFrameSlotKind to check frameSlot removal which would
      * require locking the FrameDescriptor, instead of current simple read from the volatile kind
@@ -78,7 +68,6 @@ public final class FrameSlot implements Cloneable {
         this.info = info;
         this.index = index;
         this.kind = kind;
-        this.sharedWith = null;
     }
 
     /**
@@ -168,10 +157,4 @@ public final class FrameSlot implements Cloneable {
         return this.descriptor;
     }
 
-    void shareWith(FrameDescriptor frameDescriptor) {
-        if (sharedWith == null) {
-            sharedWith = new WeakHashMap<>();
-        }
-        sharedWith.put(frameDescriptor, null);
-    }
 }
