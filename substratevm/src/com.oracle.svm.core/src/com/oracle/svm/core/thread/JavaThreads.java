@@ -335,7 +335,7 @@ public abstract class JavaThreads {
     private static boolean tearDownIsolateThreads() {
         final Log trace = Log.noopLog().string("[JavaThreads.tearDownIsolateThreads:").newline().flush();
         /* Prevent new threads from starting. */
-        VMThreads.singleton().setTearingDown();
+        VMThreads.setTearingDown();
         /* Make a list of all the threads. */
         final ArrayList<Thread> threadList = new ArrayList<>();
         ThreadListOperation operation = new ThreadListOperation(threadList);
