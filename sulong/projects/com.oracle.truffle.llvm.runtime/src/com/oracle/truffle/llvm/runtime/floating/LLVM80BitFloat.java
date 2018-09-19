@@ -358,11 +358,11 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     }
 
     public boolean isPositiveInfinity() {
-        return this.equals(POSITIVE_INFINITY);
+        return POSITIVE_INFINITY.equals(this);
     }
 
     public boolean isNegativeInfinity() {
-        return equals(NEGATIVE_INFINITY);
+        return NEGATIVE_INFINITY.equals(this);
     }
 
     public boolean isInfinity() {
