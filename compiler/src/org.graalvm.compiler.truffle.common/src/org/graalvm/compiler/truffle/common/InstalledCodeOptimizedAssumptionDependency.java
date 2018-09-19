@@ -22,20 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot;
-
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+package org.graalvm.compiler.truffle.common;
 
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.runtime.JVMCI;
 
-public class HotSpotTruffleInstalledCode extends InstalledCode implements OptimizedAssumptionDependency {
+/**
+ * An {@link OptimizedAssumptionDependency} whose machine code is an {@link InstalledCode}.
+ */
+public class InstalledCodeOptimizedAssumptionDependency implements OptimizedAssumptionDependency {
+
+    private final InstalledCode installedCode;
     private final CompilableTruffleAST compilable;
+    private final boolean reachabilityDeterminesValidity;
 
-    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable) {
-        super(compilable == null ? null : compilable.getName());
+    public InstalledCodeOptimizedAssumptionDependency(InstalledCode installedCode, CompilableTruffleAST compilable, boolean reachabilityDeterminesValidity) {
+        this.installedCode = installedCode;
         this.compilable = compilable;
+        this.reachabilityDeterminesValidity = reachabilityDeterminesValidity;
     }
 
     @Override
@@ -45,13 +48,28 @@ public class HotSpotTruffleInstalledCode extends InstalledCode implements Optimi
 
     @Override
     public void invalidate() {
-        if (isValid()) {
-            JVMCI.getRuntime().getHostJVMCIBackend().getCodeCache().invalidateInstalledCode(this);
-        }
+        installedCode.invalidate();
+    }
+
+    @Override
+    public boolean isValid() {
+        return installedCode.isValid();
+    }
+
+    @Override
+    public boolean reachabilityDeterminesValidity() {
+        return reachabilityDeterminesValidity;
+    }
+
+    /**
+     * Gets the machine code whose validity is guarded by this object.
+     */
+    public InstalledCode getInstalledCode() {
+        return installedCode;
     }
 
     @Override
     public String toString() {
-        return compilable == null ? super.toString() : compilable.toString();
+        return compilable == null ? installedCode.toString() : compilable.toString();
     }
 }

@@ -70,7 +70,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleInstalledCode;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -244,15 +243,19 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
-        return new HotSpotTruffleInstalledCode(compilable);
+        return null;
     }
 
     @Override
-    protected void afterCodeInstallation(InstalledCode installedCode) {
-        if (installedCode instanceof HotSpotTruffleInstalledCode) {
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
+        return new HotSpotTruffleCompilationResult(compilationIdentifier, name, compilable);
+    }
+
+    @Override
+    protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
+        if (result instanceof HotSpotTruffleCompilationResult) {
             HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
-            HotSpotTruffleInstalledCode hotspotTruffleInstalledCode = (HotSpotTruffleInstalledCode) installedCode;
-            runtime.onCodeInstallation(hotspotTruffleInstalledCode);
+            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
         }
     }
 
@@ -271,5 +274,23 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             }
         }
         return true;
+    }
+
+    @Override
+    protected CompilableTruffleAST getCompilable(CompilationResult result) {
+        if (result instanceof HotSpotTruffleCompilationResult) {
+            return ((HotSpotTruffleCompilationResult) result).compilable;
+        }
+        return null;
+    }
+
+    private static final class HotSpotTruffleCompilationResult extends CompilationResult {
+
+        final CompilableTruffleAST compilable;
+
+        HotSpotTruffleCompilationResult(CompilationIdentifier compilationId, String name, CompilableTruffleAST compilable) {
+            super(compilationId, name);
+            this.compilable = compilable;
+        }
     }
 }

@@ -24,29 +24,30 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleInstalledCode;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.code.InstalledCode;
+
 /**
- * A HotSpot specific {@link OptimizedCallTarget} that whose machine code (if any) is represented by
- * an associated {@link HotSpotTruffleInstalledCode}.
+ * A HotSpot specific {@link OptimizedCallTarget} whose machine code (if any) is represented by an
+ * associated {@link InstalledCode}.
  */
 public class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     /**
      * This field is read by the code injected by {@code TruffleCallBoundaryInstrumentationFactory}
      * into a method annotated by {@link TruffleCallBoundary}.
      */
-    private HotSpotTruffleInstalledCode installedCode;
+    private InstalledCode installedCode;
 
-    public HotSpotOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode, HotSpotTruffleInstalledCode installedCode) {
+    public HotSpotOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode, InstalledCode installedCode) {
         super(sourceCallTarget, rootNode);
         this.installedCode = installedCode;
     }
 
-    public void setInstalledCode(HotSpotTruffleInstalledCode code) {
+    public void setInstalledCode(InstalledCode code) {
         installedCode = code;
     }
 

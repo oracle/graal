@@ -83,6 +83,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.InstalledCodeOptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
@@ -418,7 +419,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                         DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache());
                         DebugCloseable c = CompilationMemUse.start(debug)) {
 
-            CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
+            CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
             result = GraalCompiler.compileGraph(graph, graph.method(), providers, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), suites, lirSuites, compilationResult,
                             CompilationResultBuilderFactory.Default, false);
         } catch (Throwable e) {
@@ -450,9 +451,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         return true;
     }
 
-    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier) {
-        return new CompilationResult(compilationIdentifier, name);
-    }
+    /**
+     * Creates the {@link CompilationResult} to be used for a Truffle compilation.
+     */
+    protected abstract CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable);
 
     public abstract PhaseSuite<HighTierContext> createGraphBuilderSuite();
 
@@ -524,6 +526,16 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     }
 
     /**
+     * Gets the {@link CompilableTruffleAST} associated with {@code result}.
+     *
+     * @param result a {@link CompilationResult} that may have a non-null
+     *            {@link CompilableTruffleAST} associated with it
+     */
+    protected CompilableTruffleAST getCompilable(CompilationResult result) {
+        return null;
+    }
+
+    /**
      * Encapsulates custom tasks done before and after installing code that may completely or
      * partially be the result of compiling some Truffle AST.
      */
@@ -536,7 +548,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         private final List<Consumer<OptimizedAssumptionDependency>> optimizedAssumptions = new ArrayList<>();
 
         @Override
-        public void preProcess(CompilationResult result, InstalledCode predefinedInstalledCode) {
+        public void preProcess(CompilationResult result) {
             if (result == null || result.getAssumptions() == null) {
                 return;
             }
@@ -562,8 +574,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
 
         @Override
-        public void postProcess(InstalledCode installedCode) {
-            afterCodeInstallation(installedCode);
+        public void postProcess(CompilationResult compilationResult, InstalledCode installedCode) {
+            afterCodeInstallation(compilationResult, installedCode);
             if (!optimizedAssumptions.isEmpty()) {
                 OptimizedAssumptionDependency dependency;
                 if (installedCode instanceof OptimizedAssumptionDependency) {
@@ -571,27 +583,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                 } else if (installedCode instanceof OptimizedAssumptionDependency.Access) {
                     dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
                 } else {
-                    dependency = new OptimizedAssumptionDependency() {
-                        @Override
-                        public void invalidate() {
-                            installedCode.invalidate();
-                        }
-
-                        @Override
-                        public boolean isValid() {
-                            return installedCode.isValid();
-                        }
-
-                        @Override
-                        public boolean reachabilityDeterminesValidity() {
-                            return TruffleCompilerImpl.this.reachabilityDeterminesValidity(installedCode);
-                        }
-
-                        @Override
-                        public String toString() {
-                            return installedCode.toString();
-                        }
-                    };
+                    CompilableTruffleAST compilable = getCompilable(compilationResult);
+                    boolean reachabilityDeterminesValidity = TruffleCompilerImpl.this.reachabilityDeterminesValidity(installedCode);
+                    dependency = new InstalledCodeOptimizedAssumptionDependency(installedCode, compilable, reachabilityDeterminesValidity);
                 }
 
                 notifyAssumptions(dependency);
@@ -628,9 +622,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     /**
      * Notifies this object once {@code installedCode} has been installed in the code cache.
      *
+     * @param result the {@link CompilationResult result} of compilation
      * @param installedCode code that has just been installed in the code cache
      */
-    protected void afterCodeInstallation(InstalledCode installedCode) {
+    protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
     }
 
     private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
