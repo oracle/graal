@@ -97,6 +97,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEval;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotExportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromString;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotHasMemberNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotIsValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotJavaTypeNodeGen;
@@ -980,6 +981,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMTruffleHasKeysNodeGen.create(LLVMArgNodeGen.create(1));
+            }
+        });
+
+        add("@polyglot_has_member", new LLVMIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotHasMemberNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
 

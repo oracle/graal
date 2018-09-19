@@ -111,6 +111,36 @@ public class PolyglotBuiltinTest extends InteropTestBase {
         Assert.assertEquals("arr[3]", "<removed>", arr[3]);
     }
 
+    public static class TestHasMemberNode extends SulongTestNode {
+
+        public TestHasMemberNode() {
+            super(testLibrary, "test_has_member");
+        }
+    }
+
+    @Test
+    public void testHasMemberExisting(@Inject(TestHasMemberNode.class) CallTarget testHasMember) {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("test", new NullValue());
+
+        Object ret = testHasMember.call(new StructObject(map));
+        Assert.assertEquals("ret", true, ret);
+    }
+
+    @Test
+    public void testHasMemberNotExisting(@Inject(TestHasMemberNode.class) CallTarget testHasMember) {
+        HashMap<String, Object> map = new HashMap<>();
+
+        Object ret = testHasMember.call(new StructObject(map));
+        Assert.assertEquals("ret", false, ret);
+    }
+
+    @Test
+    public void testHasMemberNotAnObject(@Inject(TestHasMemberNode.class) CallTarget testHasMember) {
+        Object ret = testHasMember.call(new NullValue());
+        Assert.assertEquals("ret", false, ret);
+    }
+
     public static class TestHostInteropNode extends SulongTestNode {
 
         public TestHostInteropNode() {
