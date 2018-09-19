@@ -69,7 +69,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -151,12 +150,12 @@ public final class NativeImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
-    void alignPartitions(long pageSize) {
-        if (CommittedMemoryProvider.get().mapsImageHeap()) {
-            long relocatablePartitionOffset = readOnlyPrimitive.getSize() + readOnlyReference.getSize();
-            long padding = NumUtil.roundUp(relocatablePartitionOffset, pageSize) - relocatablePartitionOffset;
-            readOnlyPrimitive.incrementSize(padding);
-        }
+    void alignRelocatablePartition(long alignment) {
+        long relocatablePartitionOffset = readOnlyPrimitive.getSize() + readOnlyReference.getSize();
+        long beforeRelocPadding = NumUtil.roundUp(relocatablePartitionOffset, alignment) - relocatablePartitionOffset;
+        readOnlyPrimitive.incrementSize(beforeRelocPadding);
+        long afterRelocPadding = NumUtil.roundUp(readOnlyRelocatable.getSize(), alignment) - readOnlyRelocatable.getSize();
+        readOnlyRelocatable.incrementSize(afterRelocPadding);
     }
 
     private static Object readObjectField(HostedField field, JavaConstant receiver) {

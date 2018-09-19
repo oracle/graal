@@ -117,11 +117,4 @@ public interface CommittedMemoryProvider {
      */
     default void afterGarbageCollection(boolean completeCollection) {
     }
-
-    /**
-     * Maps image heap from the executable file.
-     */
-    default boolean mapsImageHeap() {
-        return false;
-    }
 }
