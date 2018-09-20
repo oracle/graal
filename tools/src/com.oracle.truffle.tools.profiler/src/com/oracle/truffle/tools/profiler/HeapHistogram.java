@@ -54,8 +54,6 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  */
 public class HeapHistogram implements Closeable {
 
-    private static final boolean DEBUG = false;
-
     private static final ThreadLocal<Boolean> inRuntime = new ThreadLocal<>();
 
     private volatile boolean nonInternalLanguageContextInitialized = false;
@@ -87,18 +85,15 @@ public class HeapHistogram implements Closeable {
         env.getInstrumenter().attachContextsListener(new ContextsListener() {
             @Override
             public void onContextCreated(TruffleContext context) {
-                if (DEBUG) System.out.println("onContextCreated " + context);
                 nonInternalLanguageContextInitialized = false;
             }
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                if (DEBUG) System.out.println("onLanguageContextCreated " + context + " " + language.getName());
             }
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                if (DEBUG) System.out.println("onLanguageContextInitialized " + context + " " + language.getName());
                 if (!language.isInternal()) {
                     nonInternalLanguageContextInitialized = true;
                 }
@@ -106,19 +101,16 @@ public class HeapHistogram implements Closeable {
 
             @Override
             public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                if (DEBUG) System.out.println("onLanguageContextFinalized " + context + " " + language.getName());
 
             }
 
             @Override
             public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-                if (DEBUG) System.out.println("onLanguageContextDisposed " + context + " " + language.getName());
 
             }
 
             @Override
             public void onContextClosed(TruffleContext context) {
-                if (DEBUG) System.out.println("onContextClosed " + context);
 
             }
         }, true);
@@ -338,17 +330,12 @@ public class HeapHistogram implements Closeable {
         }
 
         private String getMetaObjectString(AllocationEvent event) {
-            try {
                 LanguageInfo languageInfo = event.getLanguage();
                 Object metaObject = env.findMetaObject(languageInfo, event.getValue());
                 if (metaObject != null) {
                     return env.toString(languageInfo, metaObject);
                 }
                 return "null";
-            } catch (RuntimeException ex) {
-                System.out.print(".");
-            }
-            return null;
         }
 
         private boolean isRecursive() {
