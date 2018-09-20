@@ -30,7 +30,9 @@ import mx_vm
 import mx_subst
 from mx_gate import Task
 
+import os
 from os.path import join, exists
+import tempfile
 import functools
 from contextlib import contextmanager
 
@@ -45,6 +47,7 @@ class VmGateTasks:
     graal_nodejs = 'graal-nodejs'
     truffleruby = 'truffleruby'
     ruby = 'ruby'
+    python = 'python'
     fastr = 'fastr'
     graalpython = 'graalpython'
     integration = 'integration'
@@ -86,6 +89,7 @@ def gate_body(args, tasks):
 
     gate_sulong(tasks)
     gate_ruby(tasks)
+    gate_python(tasks)
 
 def graalvm_svm():
     """
@@ -135,3 +139,28 @@ def gate_ruby(tasks):
                 ruby_image = native_image(['--language:ruby', '-H:Path=' + ruby_bindir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
                 truffleruby_suite = mx.suite('truffleruby')
                 truffleruby_suite.extensions.ruby_testdownstream_aot([ruby_image, 'spec', 'release'])
+
+def gate_python(tasks):
+    def test_python_smoke(python_svm_image_path):
+        """
+        Just a smoke test for now.
+        """
+        out = mx.OutputCapture()
+        err = mx.OutputCapture()
+        expected_output = "Hello from Python"
+        with tempfile.NamedTemporaryFile() as f:
+            f.write("print('%s')\n" % expected_output)
+            f.flush()
+            os.system("ls -l %s" % python_svm_image_path)
+            os.system("ls -l %s" % f.name)
+            exitcode = mx.run([python_svm_image_path, f.name], nonZeroIsFatal=False, out=out, err=err)
+            if exitcode != 0:
+                mx.abort("Python binary failed to execute: out=" + out.data+ " err=" + err.data)
+            if out.data != expected_output + "\n":
+                mx.abort("Python smoke test failed")
+            mx.log("Python binary says: " + out.data)
+
+    with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
+        if t:
+            python_svm_image_path = join(mx_vm.graalvm_output(), 'bin', 'graalpython')
+            test_python_smoke(python_svm_image_path)
