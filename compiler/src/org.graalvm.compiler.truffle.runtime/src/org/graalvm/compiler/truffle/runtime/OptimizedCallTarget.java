@@ -104,6 +104,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
+
+    /**
+     * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
+     * being compiled}.<br/>
+     *
+     * It is only set to non-null in {@link #compile()} in a synchronized block. It is only
+     * {@linkplain #resetCompilationTask() set to null} by the compilation thread once the
+     * compilation is over.<br/>
+     *
+     * Note that {@link #resetCompilationTask()} waits for the field to have been set to a non-null
+     * value before resetting it.<br/>
+     *
+     * Once it has been set to a non-null value, the compilation <em>must</em> complete and call
+     * {@link #resetCompilationTask()} even if that compilation fails or is cancelled.
+     */
     private volatile CancellableCompileTask compilationTask;
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
@@ -660,6 +675,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compilationTask;
     }
 
+    /**
+     * This marks the end of the compilation.
+     *
+     * It should only ever be called by the thread that performed the compilation.
+     */
     public void resetCompilationTask() {
         /*
          * We synchronize because this is called from the compilation threads so we want to make
