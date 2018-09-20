@@ -422,7 +422,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         private LLVMDebugObject dereference() {
             // the pointer may change at runtime, so we cannot just cache the dereferenced object
-            if (pointerType == null || !pointerType.isSafeToDereference()) {
+            if (pointerType == null || (!pointerType.isSafeToDereference() && !value.isAlwaysSafeToDereference(offset))) {
                 return null;
             }
 

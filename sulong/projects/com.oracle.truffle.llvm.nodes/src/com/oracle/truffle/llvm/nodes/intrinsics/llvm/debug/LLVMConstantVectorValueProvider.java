@@ -81,7 +81,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -105,7 +105,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -134,7 +134,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -163,7 +163,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -192,7 +192,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -221,7 +221,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -245,7 +245,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -269,7 +269,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 

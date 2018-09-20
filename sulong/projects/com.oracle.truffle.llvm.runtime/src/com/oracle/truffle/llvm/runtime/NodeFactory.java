@@ -39,6 +39,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -217,6 +218,10 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
     LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal);
+
+    LLVMDebugValue.Builder createDebugDeclarationBuilder();
+
+    LLVMDebugValue.Builder createDebugValueBuilder();
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 

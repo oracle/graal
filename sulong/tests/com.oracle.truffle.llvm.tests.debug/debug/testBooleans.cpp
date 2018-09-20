@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,53 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+typedef struct {
+    bool a;
+    bool b;
+    bool c;
+    bool d;
+    bool e;
+    bool f;
+    bool g;
+    bool h;
+} BoolStruct;
 
-@FunctionalInterface
-public interface LLVMDebugBuilder {
+typedef struct {
+    bool a;
+    bool b;
+    bool c;
+    bool d;
+    bool e;
+    bool f;
+    bool g;
+    bool h;
+} __attribute__ ((packed)) PackedBoolStruct;
 
-    static LLVMDebugBuilder createDeclaration(NodeFactory nodeFactory) {
-        return nodeFactory::createDebugDeclarationBuilder;
-    }
+__attribute__((constructor)) int test()
+{
+    bool a = true;
+    bool b = false;
+    
+    BoolStruct bs;
+    bs.a = true;
+    bs.b = false;
+    bs.c = true;
+    bs.d = false;
+    bs.e = true;
+    bs.f = false;
+    bs.g = true;
+    bs.h = false;
 
-    static LLVMDebugBuilder createValue(NodeFactory nodeFactory) {
-        return nodeFactory::createDebugValueBuilder;
-    }
-
-    LLVMDebugValue.Builder createBuilder();
-
+    PackedBoolStruct pbs;
+    pbs.a = true;
+    pbs.b = false;
+    pbs.c = true;
+    pbs.d = false;
+    pbs.e = true;
+    pbs.f = false;
+    pbs.g = true;
+    pbs.h = false;
+    
+    return 0;
 }

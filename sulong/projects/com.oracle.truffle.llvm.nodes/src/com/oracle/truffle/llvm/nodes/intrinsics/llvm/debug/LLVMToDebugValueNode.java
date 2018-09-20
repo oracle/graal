@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -41,9 +43,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -95,14 +95,13 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value) {
-        return new LLVMDebugBoxedPrimitive(value);
+    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value, @Cached("getContextReference()") ContextReference<LLVMContext> contextRef) {
+        return new LLVMDebugBoxedPrimitive(contextRef.get(), value);
     }
 
     @Specialization
-    protected LLVMDebugValue fromAddress(LLVMNativePointer value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return new LLVMConstantValueProvider.Pointer(memory, value);
+    protected LLVMDebugValue fromPointer(LLVMPointer value, @Cached("getContextReference()") ContextReference<LLVMContext> contextRef) {
+        return new LLVMConstantValueProvider.Pointer(contextRef.get(), value);
     }
 
     @Specialization
@@ -166,19 +165,6 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value) {
-        final Object obj = value.getObject();
-        final long offset = value.getOffset();
-        if (offset == 0) {
-            final LLVMDebugValue unwrappedValue = executeWithTarget(obj);
-            if (unwrappedValue != LLVMDebugValue.UNAVAILABLE) {
-                return unwrappedValue;
-            }
-        }
-        return new LLVMConstantValueProvider.InteropValue(obj, offset);
-    }
-
-    @Specialization
     protected LLVMDebugValue fromGlobalContainer(LLVMGlobalContainer value) {
         if (value.isInNative()) {
             return executeWithTarget(LLVMNativePointer.create(value.getAddress()));
@@ -188,15 +174,14 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value, @Cached("getContextReference()") ContextReference<LLVMContext> contextRef) {
         LLVMGlobal global = value.getDescriptor();
         Object target = global.getTarget();
         if (!LLVMPointer.isInstance(target)) {
             // a non-pointer was stored as a pointer in this global
             return executeWithTarget(target);
         }
-        return new LLVMConstantGlobalValueProvider(memory, global, this);
+        return new LLVMConstantGlobalValueProvider(contextRef.get(), global, this);
     }
 
     @Fallback

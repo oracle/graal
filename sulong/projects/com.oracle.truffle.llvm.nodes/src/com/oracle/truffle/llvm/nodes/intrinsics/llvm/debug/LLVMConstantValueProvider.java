@@ -33,17 +33,17 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-abstract class LLVMConstantValueProvider implements LLVMDebugValue {
+public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
     @Override
     public Object readBoolean(long bitOffset) {
@@ -100,7 +100,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         return null;
     }
 
-    abstract Object getBaseValue();
+    protected abstract Object getBaseValue();
 
     @Override
     @TruffleBoundary
@@ -123,7 +123,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -165,7 +165,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -241,17 +241,17 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
     static final class Pointer extends LLVMConstantValueProvider {
 
-        private final LLVMNativePointer address;
-        private final LLVMMemory memory;
+        private final LLVMPointer pointer;
+        private final LLVMContext context;
 
-        Pointer(LLVMMemory memory, LLVMNativePointer address) {
-            this.memory = memory;
-            this.address = address;
+        Pointer(LLVMContext context, LLVMPointer pointer) {
+            this.context = context;
+            this.pointer = pointer;
         }
 
         @Override
-        Object getBaseValue() {
-            return address;
+        protected Object getBaseValue() {
+            return pointer;
         }
 
         @Override
@@ -259,25 +259,17 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
             return LLVMDebugTypeConstants.ADDRESS_SIZE - bits - bitOffset >= 0;
         }
 
-        private long asLong(long bitOffset) {
-            long valAsLong = address.asNative();
-            if (bitOffset != 0) {
-                valAsLong >>= bitOffset;
-            }
-            return valAsLong;
-        }
-
         @Override
         public Object readBoolean(long bitOffset) {
-            return !address.isNull();
+            return !pointer.isNull();
         }
 
         @Override
         @TruffleBoundary
         public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
-            if (canRead(bitOffset, bitSize)) {
+            if (canRead(bitOffset, bitSize) && LLVMNativePointer.isInstance(pointer)) {
                 final int shift = LLVMDebugTypeConstants.DOUBLE_SIZE - bitSize;
-                long asLong = asLong(bitOffset);
+                long asLong = LLVMNativePointer.cast(pointer).increment(bitOffset / Byte.SIZE).asNative();
                 if (shift > 0) {
                     asLong <<= shift;
                     asLong = signed ? asLong >> shift : asLong >>> shift;
@@ -297,7 +289,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @TruffleBoundary
         public Object readAddress(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
-                return address;
+                return pointer;
             } else {
                 return cannotInterpret(LLVMDebugTypeConstants.ADDRESS_NAME, bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
             }
@@ -305,13 +297,13 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         public Object computeAddress(long bitOffset) {
-            return address.increment(bitOffset / LLVMDebugTypeConstants.ADDRESS_SIZE);
+            return new LLVMPointerValueProvider(pointer, context).computeAddress(bitOffset);
         }
 
         @Override
         public LLVMDebugValue dereferencePointer(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
-                return new LLVMAllocationValueProvider(memory, address);
+                return new LLVMPointerValueProvider(pointer, context);
             } else {
                 return null;
             }
@@ -320,7 +312,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @Override
         public Object asInteropValue() {
             if (isInteropValue()) {
-                TruffleObject foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(address);
+                TruffleObject foreign = context.getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
                 if (foreign instanceof LLVMTypedForeignObject) {
                     return ((LLVMTypedForeignObject) foreign).getForeign();
                 }
@@ -330,7 +322,10 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         public boolean isInteropValue() {
-            return LLVMLanguage.getLLVMContextReference().get().isHandle(address);
+            if (LLVMNativePointer.isInstance(pointer)) {
+                return context.isHandle(LLVMNativePointer.cast(pointer));
+            }
+            return false;
         }
     }
 
@@ -343,7 +338,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -410,7 +405,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -501,7 +496,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return LLVM80BitFloat.toLLVMString(value);
         }
 
@@ -531,7 +526,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -564,7 +559,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         @TruffleBoundary
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             if (offset > 0) {
                 return String.format("offset %d in %s", offset, value);
             } else {

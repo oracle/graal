@@ -32,20 +32,20 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
+public final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
 
     private final LLVMGlobal global;
-    private final LLVMMemory memory;
+    private final LLVMContext context;
     private final LLVMDebugValue.Builder valueBuilder;
 
-    LLVMConstantGlobalValueProvider(LLVMMemory memory, LLVMGlobal global, Builder valueBuilder) {
-        this.memory = memory;
+    public LLVMConstantGlobalValueProvider(LLVMContext context, LLVMGlobal global, Builder valueBuilder) {
+        this.context = context;
         this.global = global;
         this.valueBuilder = valueBuilder;
     }
@@ -130,6 +130,12 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
     }
 
     @Override
+    public boolean isAlwaysSafeToDereference(long bitOffset) {
+        final LLVMDebugValue value = getCurrentValue();
+        return value != null && value.isAlwaysSafeToDereference(bitOffset);
+    }
+
+    @Override
     public LLVMDebugValue dereferencePointer(long bitOffset) {
         final LLVMDebugValue value = getCurrentValue();
         if (value != null) {
@@ -159,13 +165,13 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
 
     private LLVMDebugValue getCurrentValue() {
         if (isInNative(global)) {
-            return new LLVMAllocationValueProvider(memory, LLVMNativePointer.cast(global.getTarget()));
+            return new LLVMPointerValueProvider(LLVMNativePointer.cast(global.getTarget()), context);
         } else {
             return valueBuilder.build(global.getTarget());
         }
     }
 
-    public static boolean isInNative(LLVMGlobal global) {
+    private static boolean isInNative(LLVMGlobal global) {
         return LLVMNativePointer.isInstance(global.getTarget());
     }
 }

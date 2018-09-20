@@ -30,7 +30,9 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -38,27 +40,19 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValue.Builder {
 
     @Child protected Node isPointer = Message.IS_POINTER.createNode();
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
 
-    protected static boolean notLLVM(TruffleObject object) {
-        return LLVMExpressionNode.notLLVM(object);
-    }
-
-    private static LLVMDebugValue unavailable() {
-        // @llvm.dbg.declare is supposed to tell us the location of the variable in memory, there
-        // should never be a case where this cannot be resolved to a pointer. If it happens anyhow
-        // this is a safe default.
-        return LLVMDebugValue.UNAVAILABLE;
+    protected static boolean isPointer(Object object) {
+        return LLVMPointer.isInstance(object);
     }
 
     public abstract LLVMDebugValue executeWithTarget(Object value);
@@ -69,43 +63,37 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    protected LLVMDebugValue fromNativePointer(LLVMNativePointer address,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return new LLVMAllocationValueProvider(memory, address);
+    protected LLVMDebugValue fromPointer(LLVMPointer address, @Cached("getContextReference()") TruffleLanguage.ContextReference<LLVMContext> contextRef) {
+        return new LLVMPointerValueProvider(address, contextRef.get());
     }
 
     @Specialization
-    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive, @Cached("getContextReference()") TruffleLanguage.ContextReference<LLVMContext> contextRef) {
         if (boxedPrimitive.getValue() instanceof Long) {
-            return fromNativePointer(LLVMNativePointer.create((long) boxedPrimitive.getValue()), memory);
+            return fromPointer(LLVMNativePointer.create((long) boxedPrimitive.getValue()), contextRef);
         } else {
-            return unavailable();
+            return fromGenericObject(boxedPrimitive);
         }
     }
 
-    @Specialization(guards = "notLLVM(obj)")
-    protected LLVMDebugValue fromTruffleObject(TruffleObject obj,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    @Specialization(guards = "!isPointer(obj)")
+    protected LLVMDebugValue fromTruffleObject(TruffleObject obj, @Cached("getContextReference()") TruffleLanguage.ContextReference<LLVMContext> contextRef) {
         try {
             if (ForeignAccess.sendIsPointer(isPointer, obj)) {
                 final long rawAddress = ForeignAccess.sendAsPointer(asPointer, obj);
-                return fromNativePointer(LLVMNativePointer.create(rawAddress), memory);
+                return fromPointer(LLVMNativePointer.create(rawAddress), contextRef);
             }
         } catch (UnsupportedMessageException ignored) {
             CompilerDirectives.transferToInterpreter();
         }
-        return unavailable();
+        return fromGenericObject(obj);
     }
 
-    @Specialization(guards = {"obj.getOffset() == 0", "notLLVM(obj.getObject())"})
-    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer obj,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return fromTruffleObject(obj.getObject(), memory);
-    }
-
-    @Specialization
+    @Fallback
     protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object object) {
-        return unavailable();
+        // @llvm.dbg.declare is supposed to tell us the location of the variable in memory, there
+        // should never be a case where this cannot be resolved to a pointer. If it happens anyhow
+        // this is a safe default.
+        return LLVMDebugValue.UNAVAILABLE;
     }
 }
