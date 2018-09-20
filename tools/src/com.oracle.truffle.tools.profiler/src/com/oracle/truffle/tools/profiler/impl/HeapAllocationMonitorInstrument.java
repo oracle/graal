@@ -32,50 +32,51 @@ import org.graalvm.polyglot.Instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.tools.profiler.HeapHistogram;
+import com.oracle.truffle.tools.profiler.HeapAllocationMonitor;
 
 /**
  * // TODO Javadoc
+ * 
  * @author Tomas Hurka
  */
-@TruffleInstrument.Registration(id = HeapHistogramInstrument.ID, name = "Heap Histogram", version = HeapHistogramInstrument.VERSION, services = {HeapHistogram.class})
-public class HeapHistogramInstrument extends TruffleInstrument {
+@TruffleInstrument.Registration(id = HeapAllocationMonitorInstrument.ID, name = "Heap Allocation Monitor", version = HeapAllocationMonitorInstrument.VERSION, services = {HeapAllocationMonitor.class})
+public class HeapAllocationMonitorInstrument extends TruffleInstrument {
 
     /**
      * Default constructor.
      *
      * @since 1.0
      */
-    public HeapHistogramInstrument() {
+    public HeapAllocationMonitorInstrument() {
     }
 
     /**
-     * A string used to identify the heap histogram.
+     * A string used to identify the heap allocation monitor.
      *
      * @since 1.0
      */
-    public static final String ID = "heaphistogram";
+    public static final String ID = "heapallocmonitor";
     static final String VERSION = "0.1.0";
-    private HeapHistogram histogram;
-    private static ProfilerToolFactory<HeapHistogram> factory;
+    private HeapAllocationMonitor monitor;
+    private static ProfilerToolFactory<HeapAllocationMonitor> factory;
 
     /**
-     * Sets the factory which instantiates the {@link HeapHistogram}.
+     * Sets the factory which instantiates the {@link HeapAllocationMonitor}.
      *
-     * @param factory the factory which instantiates the {@link HeapHistogram}.
+     * @param factory the factory which instantiates the {@link HeapAllocationMonitor}.
      * @since 1.0
      */
-    public static void setFactory(ProfilerToolFactory<HeapHistogram> factory) {
+    public static void setFactory(ProfilerToolFactory<HeapAllocationMonitor> factory) {
         if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
             throw new IllegalArgumentException("Wrong factory: " + factory);
         }
-        HeapHistogramInstrument.factory = factory;
+        HeapAllocationMonitorInstrument.factory = factory;
     }
 
     static {
         // Be sure that the factory is initialized:
         try {
-            Class.forName(HeapHistogram.class.getName(), true, HeapHistogram.class.getClassLoader());
+            Class.forName(HeapAllocationMonitor.class.getName(), true, HeapAllocationMonitor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             // Can not happen
             throw new AssertionError();
@@ -84,16 +85,16 @@ public class HeapHistogramInstrument extends TruffleInstrument {
 
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link HeapHistogram}.
+     * {@link HeapAllocationMonitor}.
      *
      * @since 1.0
      */
-    public static HeapHistogram getHistogram(Engine engine) {
+    public static HeapAllocationMonitor getMonitor(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
         if (instrument == null) {
             throw new IllegalStateException("Heap Histogram is not installed.");
         }
-        return instrument.lookup(HeapHistogram.class);
+        return instrument.lookup(HeapAllocationMonitor.class);
     }
 
     /**
@@ -104,20 +105,20 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      */
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
-        histogram = factory.create(env);
-        if (env.getOptions().get(HeapHistogramInstrument.ENABLED)) {
-            histogram.setCollecting(true);
+        monitor = factory.create(env);
+        if (env.getOptions().get(HeapAllocationMonitorInstrument.ENABLED)) {
+            monitor.setCollecting(true);
         }
-        env.registerService(histogram);
+        env.registerService(monitor);
     }
 
     /**
-     * @return A list of the options provided by the {@link HeapHistogram}.
+     * @return A list of the options provided by the {@link HeapAllocationMonitor}.
      * @since 1.0
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return new HeapHistogramInstrumentOptionDescriptors();
+        return new HeapAllocationMonitorInstrumentOptionDescriptors();
     }
 
     /**
@@ -128,11 +129,12 @@ public class HeapHistogramInstrument extends TruffleInstrument {
      */
     @Override
     protected void onDispose(TruffleInstrument.Env env) {
-        histogram.close();
+        monitor.close();
     }
 
-    // TODO make sure the help stresses that this does not produce output and another tool
-    // (VisualVM) is needed
-    @Option(name = "", help = "Enable the Heap Histogram.", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-
+    // @formatter:off
+    @Option(name = "",
+            help = "Start the heap allocation monitor with the application. This produces no output but improves the precision of the data provided to third party tools.",
+            category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    // @formatter:on
 }

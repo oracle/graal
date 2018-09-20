@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.tools.profiler.impl.HeapAllocationMonitorInstrument;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -45,14 +46,14 @@ import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.tools.profiler.impl.HeapHistogramInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
 /**
  * // TODO: Javadoc
+ * 
  * @author Tomas Hurka
  */
-public class HeapHistogram implements Closeable {
+public class HeapAllocationMonitor implements Closeable {
 
     private static final ThreadLocal<Boolean> inRuntime = new ThreadLocal<>();
 
@@ -70,17 +71,16 @@ public class HeapHistogram implements Closeable {
 
     private ReferenceQueue<Object> referenceQueue;
 
-    private Map<Object,ObjLivenessWeakRef> objSet;
+    private Map<Object, ObjLivenessWeakRef> objSet;
 
     private ReferenceManagerThread refThread;
 
-    HeapHistogram(TruffleInstrument.Env env) {
+    HeapAllocationMonitor(TruffleInstrument.Env env) {
         this.env = env;
         heapInfo = new HashMap<>();
         referenceQueue = new ReferenceQueue<>();
         objSet = new WeakHashMap<>();
         refThread = new ReferenceManagerThread();
-
 
         env.getInstrumenter().attachContextsListener(new ContextsListener() {
             @Override
@@ -116,7 +116,7 @@ public class HeapHistogram implements Closeable {
         }, true);
     }
 
-    void resetHistogram() {
+    void resetMonitor() {
         assert Thread.holdsLock(this);
         if (activeBinding != null) {
             activeBinding.dispose();
@@ -131,34 +131,34 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Finds {@link HeapHistogram} associated with given engine.
+     * Finds {@link HeapAllocationMonitor} associated with given engine.
      *
      * @param engine the engine to find debugger for
-     * @return an instance of associated {@link HeapHistogram}
+     * @return an instance of associated {@link HeapAllocationMonitor}
      * @since 1.0
      */
-    public static HeapHistogram find(Engine engine) {
-        return HeapHistogramInstrument.getHistogram(engine);
+    public static HeapAllocationMonitor find(Engine engine) {
+        return HeapAllocationMonitorInstrument.getMonitor(engine);
     }
 
     /**
-     * Controls whether the {@link HeapHistogram} is collecting data or not.
+     * Controls whether the {@link HeapAllocationMonitor} is collecting data or not.
      *
-     * @param collecting the new state of the histogram.
+     * @param collecting the new state of the monitor.
      * @since 1.0
      */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
-            throw new IllegalStateException("Heap Histogram is already closed.");
+            throw new IllegalStateException("Heap Allocation Monitor is already closed.");
         }
         if (this.collecting != collecting) {
             this.collecting = collecting;
-            resetHistogram();
+            resetMonitor();
         }
     }
 
     /**
-     * @return whether or not the {@link HeapHistogram} is currently collecting data.
+     * @return whether or not the {@link HeapAllocationMonitor} is currently collecting data.
      * @since 1.0
      */
     public synchronized boolean isCollecting() {
@@ -166,7 +166,7 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * @return The histogram of the current state of the heap.
+     * @return The monitor of the current state of the heap.
      * @since 1.0
      */
     public Map<String, Object>[] getHeapHistogram() {
@@ -190,7 +190,7 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Erases all the data gathered by the {@link HeapHistogram}.
+     * Erases all the data gathered by the {@link HeapAllocationMonitor}.
      *
      * @since 1.0
      */
@@ -203,7 +203,7 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * @return whether or not the {@link HeapHistogram} has collected any data so far.
+     * @return whether or not the {@link HeapAllocationMonitor} has collected any data so far.
      * @since 1.0
      */
     public boolean hasData() {
@@ -213,8 +213,7 @@ public class HeapHistogram implements Closeable {
     }
 
     /**
-     * Closes the {@link HeapHistogram} for further use, deleting all the gathered
-     * data.
+     * Closes the {@link HeapAllocationMonitor} for further use, deleting all the gathered data.
      *
      * @since 1.0
      */
@@ -233,9 +232,9 @@ public class HeapHistogram implements Closeable {
     private void verifyConfigAllowed() {
         assert Thread.holdsLock(this);
         if (closed) {
-            throw new IllegalStateException("Heap Histogram is already closed.");
+            throw new IllegalStateException("Heap Allocation Monitor is already closed.");
         } else if (collecting) {
-            throw new IllegalStateException("Cannot change histogram configuration while collecting. Call setCollecting(false) to disable collection first.");
+            throw new IllegalStateException("Cannot change monitor configuration while collecting. Call setCollecting(false) to disable collection first.");
         }
     }
 
@@ -330,12 +329,12 @@ public class HeapHistogram implements Closeable {
         }
 
         private String getMetaObjectString(AllocationEvent event) {
-                LanguageInfo languageInfo = event.getLanguage();
-                Object metaObject = env.findMetaObject(languageInfo, event.getValue());
-                if (metaObject != null) {
-                    return env.toString(languageInfo, metaObject);
-                }
-                return "null";
+            LanguageInfo languageInfo = event.getLanguage();
+            Object metaObject = env.findMetaObject(languageInfo, event.getValue());
+            if (metaObject != null) {
+                return env.toString(languageInfo, metaObject);
+            }
+            return "null";
         }
 
         private boolean isRecursive() {
@@ -417,7 +416,7 @@ public class HeapHistogram implements Closeable {
 
         private void gcInstanceWithSize(long size) {
             liveInstances--;
-            liveBytes -=size;
+            liveBytes -= size;
         }
     }
 
@@ -455,10 +454,10 @@ public class HeapHistogram implements Closeable {
     }
 
     static {
-        HeapHistogramInstrument.setFactory(new ProfilerToolFactory<HeapHistogram>() {
+        HeapAllocationMonitorInstrument.setFactory(new ProfilerToolFactory<HeapAllocationMonitor>() {
             @Override
-            public HeapHistogram create(TruffleInstrument.Env env) {
-                return new HeapHistogram(env);
+            public HeapAllocationMonitor create(TruffleInstrument.Env env) {
+                return new HeapAllocationMonitor(env);
             }
         });
     }
