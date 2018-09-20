@@ -133,7 +133,7 @@ public class EconomicMapImplTest {
         Assert.assertTrue(set.add(newInteger(0)));
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "unused"})
     private static Integer newInteger(int value) {
         return new Integer(value);
     }

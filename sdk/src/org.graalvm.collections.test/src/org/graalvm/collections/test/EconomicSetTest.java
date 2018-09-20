@@ -161,7 +161,7 @@ public class EconomicSetTest {
         Assert.assertEquals(newInteger(9), finalList.get(0));
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "unused"})
     private static Integer newInteger(int value) {
         return new Integer(value);
     }
