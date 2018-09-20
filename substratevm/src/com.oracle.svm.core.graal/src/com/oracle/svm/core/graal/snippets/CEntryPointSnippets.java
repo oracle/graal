@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.windows;
+package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
@@ -67,8 +67,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -79,14 +77,9 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
-import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.windows.headers.LibC;
-import com.oracle.svm.core.windows.WindowsVMThreads;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -102,16 +95,16 @@ import com.oracle.svm.core.thread.VMThreads;
  * This code transitions thread states, handles when a safepoint is in progress, sets the thread
  * register (if multi-threaded), and sets the heap base register (if enabled).
  */
-public final class WindowsCEntryPointSnippets extends SubstrateTemplates implements Snippets {
+public final class CEntryPointSnippets extends SubstrateTemplates implements Snippets {
 
-    public static final SubstrateForeignCallDescriptor CREATE_ISOLATE = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "createIsolate", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor ATTACH_THREAD = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "attachThread", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor ENTER_ISOLATE_MT = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "enterIsolateMT", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor DETACH_THREAD_MT = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "detachThreadMT", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "reportException", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor IS_ATTACHED_MT = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "isAttachedMT", false, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(WindowsCEntryPointSnippets.class, "failFatally", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor CREATE_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "createIsolate", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor ATTACH_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "attachThread", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor ENTER_ISOLATE_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "enterIsolateMT", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor DETACH_THREAD_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "detachThreadMT", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "reportException", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor IS_ATTACHED_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "isAttachedMT", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "failFatally", false, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE_MT,
                     DETACH_THREAD_MT, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED_MT, FAIL_FATALLY};
@@ -172,7 +165,7 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
         if (MultiThreaded.getValue()) {
-            WindowsVMThreads.ensureInitialized();
+            VMThreads.ensureInitialized();
         }
         return attachThread(isolate.read(), vmThreadSize);
     }
@@ -200,16 +193,16 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
             setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
-            if (!WindowsVMThreads.isInitialized()) {
+            if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            IsolateThread thread = WindowsVMThreads.VMThreadTL.get();
+            IsolateThread thread = VMThreads.singleton().readIsolateThreadFromOSThreadLocal();
             if (VMThreads.isNullThread(thread)) { // not attached
-                thread = LibC.calloc(WordFactory.unsigned(1), WordFactory.unsigned(vmThreadSize));
+                thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
                 VMThreads.attachThread(thread);
                 // Store thread and isolate in thread-local variables.
-                WindowsVMThreads.VMThreadTL.set(thread);
-                WindowsVMThreads.IsolateTL.set(thread, isolate);
+                VMThreads.singleton().writeIsolateThreadToOSThreadLocal(thread);
+                VMThreads.IsolateTL.set(thread, isolate);
             }
             writeCurrentVMThread(thread);
         }
@@ -250,14 +243,14 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
 
             // clear references to thread to avoid unintended use
             writeCurrentVMThread(VMThreads.nullThread());
-            WindowsVMThreads.VMThreadTL.set(VMThreads.nullThread());
+            VMThreads.singleton().writeIsolateThreadToOSThreadLocal(VMThreads.nullThread());
 
             VMThreads.detachThread(thread);
         } catch (Throwable t) {
             result = CEntryPointErrors.UNSPECIFIED;
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
-            LibC.free(thread);
+            VMThreads.singleton().freeIsolateThread(thread);
         }
         return result;
     }
@@ -279,7 +272,7 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
         if (!success) {
             return CEntryPointErrors.UNSPECIFIED;
         }
-        WindowsVMThreads.finishTearDown();
+        VMThreads.singleton().tearDown();
         return Isolates.tearDownCurrent();
     }
 
@@ -311,10 +304,10 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
         if (UseHeapBaseRegister.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
-        if (!WindowsVMThreads.isInitialized()) {
+        if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
-        IsolateThread thread = WindowsVMThreads.VMThreadTL.get();
+        IsolateThread thread = VMThreads.singleton().readIsolateThreadFromOSThreadLocal();
         if (VMThreads.isNullThread(thread)) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
@@ -330,7 +323,7 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
                 return CEntryPointErrors.NULL_ARGUMENT;
             }
             writeCurrentVMThread(thread);
-            isolate = WindowsVMThreads.IsolateTL.get(thread);
+            isolate = VMThreads.IsolateTL.get(thread);
         } else { // single-threaded
             if (SpawnIsolates.getValue()) {
                 if (thread.isNull()) {
@@ -390,7 +383,7 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
         if (UseHeapBaseRegister.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
-        return WindowsVMThreads.isInitialized() && WindowsVMThreads.VMThreadTL.get().isNonNull();
+        return VMThreads.isInitialized() && VMThreads.singleton().readIsolateThreadFromOSThreadLocal().isNonNull();
     }
 
     @Snippet
@@ -398,26 +391,10 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
         runtimeCallFailFatally(FAIL_FATALLY, code, message);
     }
 
-    private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
-    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
-
-    /*
-     * @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION) public static native FILE
-     * fdopen(int fd, CCharPointer mode);
-     * 
-     * @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION) public static native int
-     * fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
-     */
-
     @Uninterruptible(reason = "Unknown thread state.")
-    @SuppressWarnings("unused")
     @SubstrateForeignCallTarget
     private static void failFatally(int code, CCharPointer message) {
-        /*
-         * FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get()); fprintfSD(stderr,
-         * FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
-         */
-        LibC.exit(code);
+        VMThreads.singleton().failFatally(code, message);
     }
 
     @SuppressWarnings("unused")
@@ -433,10 +410,10 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
     public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
-        new WindowsCEntryPointSnippets(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
+        new CEntryPointSnippets(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
     }
 
-    private WindowsCEntryPointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
+    private CEntryPointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
         super(options, factories, providers, snippetReflection);
@@ -447,10 +424,10 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
 
     protected class EnterLowering implements NodeLoweringProvider<CEntryPointEnterNode> {
 
-        private final SnippetInfo createIsolate = snippet(WindowsCEntryPointSnippets.class, "createIsolateSnippet");
-        private final SnippetInfo attachThread = snippet(WindowsCEntryPointSnippets.class, "attachThreadSnippet");
-        private final SnippetInfo enter = snippet(WindowsCEntryPointSnippets.class, "enterSnippet");
-        private final SnippetInfo enterThreadFromTL = snippet(WindowsCEntryPointSnippets.class, "enterIsolateSnippet");
+        private final SnippetInfo createIsolate = snippet(CEntryPointSnippets.class, "createIsolateSnippet");
+        private final SnippetInfo attachThread = snippet(CEntryPointSnippets.class, "attachThreadSnippet");
+        private final SnippetInfo enter = snippet(CEntryPointSnippets.class, "enterSnippet");
+        private final SnippetInfo enterThreadFromTL = snippet(CEntryPointSnippets.class, "enterIsolateSnippet");
 
         private final int vmThreadSize;
 
@@ -489,10 +466,10 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
     }
 
     protected class LeaveLowering implements NodeLoweringProvider<CEntryPointLeaveNode> {
-        private final SnippetInfo returnFromJavaToC = snippet(WindowsCEntryPointSnippets.class, "returnFromJavaToCSnippet");
-        private final SnippetInfo detachThread = snippet(WindowsCEntryPointSnippets.class, "detachThreadSnippet");
-        private final SnippetInfo reportException = snippet(WindowsCEntryPointSnippets.class, "reportExceptionSnippet");
-        private final SnippetInfo tearDownIsolate = snippet(WindowsCEntryPointSnippets.class, "tearDownIsolateSnippet");
+        private final SnippetInfo returnFromJavaToC = snippet(CEntryPointSnippets.class, "returnFromJavaToCSnippet");
+        private final SnippetInfo detachThread = snippet(CEntryPointSnippets.class, "detachThreadSnippet");
+        private final SnippetInfo reportException = snippet(CEntryPointSnippets.class, "reportExceptionSnippet");
+        private final SnippetInfo tearDownIsolate = snippet(CEntryPointSnippets.class, "tearDownIsolateSnippet");
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
@@ -520,8 +497,8 @@ public final class WindowsCEntryPointSnippets extends SubstrateTemplates impleme
     }
 
     protected class UtilityLowering implements NodeLoweringProvider<CEntryPointUtilityNode> {
-        private final SnippetInfo isAttached = snippet(WindowsCEntryPointSnippets.class, "isAttachedSnippet");
-        private final SnippetInfo failFatally = snippet(WindowsCEntryPointSnippets.class, "failFatallySnippet");
+        private final SnippetInfo isAttached = snippet(CEntryPointSnippets.class, "isAttachedSnippet");
+        private final SnippetInfo failFatally = snippet(CEntryPointSnippets.class, "failFatallySnippet");
 
         @Override
         public void lower(CEntryPointUtilityNode node, LoweringTool tool) {

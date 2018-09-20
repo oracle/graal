@@ -26,10 +26,13 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -60,6 +63,96 @@ public abstract class VMThreads {
 
     /** The next element in the linked list of {@link IsolateThread}s. */
     private static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord();
+
+    public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
+    private static final int STATE_UNINITIALIZED = 1;
+    private static final int STATE_INITIALIZING = 2;
+    private static final int STATE_INITIALIZED = 3;
+    private static final int STATE_TEARING_DOWN = 4;
+    private static final UninterruptibleUtils.AtomicInteger initializationState = new UninterruptibleUtils.AtomicInteger(STATE_UNINITIALIZED);
+
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    public static boolean isInitialized() {
+        return initializationState.get() >= STATE_INITIALIZED;
+    }
+
+    /** Is threading being torn down? */
+    @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
+    public static boolean isTearingDown() {
+        return initializationState.get() >= STATE_TEARING_DOWN;
+    }
+
+    /** Note that threading is being torn down. */
+    protected static void setTearingDown() {
+        initializationState.set(STATE_TEARING_DOWN);
+    }
+
+    /**
+     * Make sure the runtime is initialized for threading.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    public static void ensureInitialized() {
+        if (initializationState.compareAndSet(STATE_UNINITIALIZED, STATE_INITIALIZING)) {
+            /*
+             * We claimed the initialization lock, so we are now responsible for doing all the
+             * initialization.
+             */
+            singleton().initializeOnce();
+
+            initializationState.set(STATE_INITIALIZED);
+
+        } else {
+            /* Already initialized, or some other thread claimed the initialization lock. */
+            while (initializationState.get() < STATE_INITIALIZED) {
+                /* Busy wait until the other thread finishes the initialization. */
+            }
+        }
+    }
+
+    /**
+     * Invoked exactly once early during the startup of an isolate. Subclasses can perform
+     * initialization of native OS resources.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    protected abstract void initializeOnce();
+
+    /**
+     * Invoked exactly once late during the teardown of an isolate. Subclasses must free the native
+     * OS resources allocated in {@link #initializeOnce()}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code. Too late for safepoints.")
+    public abstract void tearDown();
+
+    /**
+     * Read the {@link IsolateThread} from an OS-specific thread local variable.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    public abstract IsolateThread readIsolateThreadFromOSThreadLocal();
+
+    /**
+     * Write the {@link IsolateThread} to an OS-specific thread local variable.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
+    public abstract void writeIsolateThreadToOSThreadLocal(IsolateThread thread);
+
+    /**
+     * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
+     * to 0.
+     */
+    @Uninterruptible(reason = "Thread state not set up.")
+    public abstract IsolateThread allocateIsolateThread(int isolateThreadSize);
+
+    /**
+     * Free the native memorry allocated by {@link #allocateIsolateThread}.
+     */
+    @Uninterruptible(reason = "Thread state not set up.")
+    public abstract void freeIsolateThread(IsolateThread thread);
+
+    /**
+     * Report a fatal error to the user and exit. This method must not return.
+     */
+    @Uninterruptible(reason = "Unknown thread state.")
+    public abstract void failFatally(int code, CCharPointer message);
 
     /** The value of a {@code null} {@link IsolateThread}. */
     @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -164,8 +257,6 @@ public abstract class VMThreads {
     /*
      * Access to platform-specific implementations.
      */
-
-    protected abstract void setTearingDown();
 
     /** A thread-local enum giving the thread status of a VMThread. And supporting methods. */
     public static class StatusSupport {

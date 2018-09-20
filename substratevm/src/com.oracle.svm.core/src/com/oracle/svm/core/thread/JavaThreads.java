@@ -48,9 +48,15 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -335,7 +341,7 @@ public abstract class JavaThreads {
     private static boolean tearDownIsolateThreads() {
         final Log trace = Log.noopLog().string("[JavaThreads.tearDownIsolateThreads:").newline().flush();
         /* Prevent new threads from starting. */
-        VMThreads.singleton().setTearingDown();
+        VMThreads.setTearingDown();
         /* Make a list of all the threads. */
         final ArrayList<Thread> threadList = new ArrayList<>();
         ThreadListOperation operation = new ThreadListOperation(threadList);
@@ -418,9 +424,88 @@ public abstract class JavaThreads {
         }
     }
 
-    protected abstract void start0(Thread thread, long stackSize);
+    @RawStructure
+    protected interface ThreadStartData extends PointerBase {
 
-    protected abstract void setNativeName(String name);
+        @RawField
+        ObjectHandle getThreadHandle();
+
+        @RawField
+        void setThreadHandle(ObjectHandle handle);
+
+        @RawField
+        Isolate getIsolate();
+
+        @RawField
+        void setIsolate(Isolate vm);
+    }
+
+    protected static void prepareStartData(Thread thread, ThreadStartData startData) {
+        startData.setIsolate(CEntryPointContext.getCurrentIsolate());
+        startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
+
+        if (!thread.isDaemon()) {
+            JavaThreads.singleton().signalNonDaemonThreadStart();
+        }
+    }
+
+    /**
+     * Start a new OS thread. The implementation must call {@link #prepareStartData} after
+     * preparations and before starting the thread. The new OS thread must call
+     * {@link #threadStartRoutine}.
+     */
+    protected abstract void doStartThread(Thread thread, long stackSize);
+
+    @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
+    protected static void threadStartRoutine(ObjectHandle threadHandle) {
+        Thread thread = ObjectHandles.getGlobal().get(threadHandle);
+
+        boolean status = singleton().assignJavaThread(thread, false);
+        VMError.guarantee(status, "currentThread already initialized");
+
+        /*
+         * Destroy the handle only after setting currentThread, since the lock used by destroy
+         * requires the current thread.
+         */
+        ObjectHandles.getGlobal().destroy(threadHandle);
+
+        singleton().noteThreadStart(thread);
+
+        try {
+            thread.run();
+        } catch (Throwable ex) {
+            dispatchUncaughtException(thread, ex);
+        } finally {
+            exit(thread);
+            singleton().noteThreadFinish(thread);
+        }
+    }
+
+    protected void noteThreadStart(Thread thread) {
+        totalThreads.incrementAndGet();
+        int lThreads = liveThreads.incrementAndGet();
+        peakThreads.set(Integer.max(peakThreads.get(), lThreads));
+        if (thread.isDaemon()) {
+            daemonThreads.incrementAndGet();
+        } else {
+            nonDaemonThreads.incrementAndGet();
+        }
+    }
+
+    protected void noteThreadFinish(Thread thread) {
+        liveThreads.decrementAndGet();
+        if (thread.isDaemon()) {
+            daemonThreads.decrementAndGet();
+        } else {
+            nonDaemonThreads.decrementAndGet();
+        }
+    }
+
+    /**
+     * Set the OS-level name of the thread. This functionality is optional, i.e., if the OS does not
+     * support thread names the implementation can remain empty.
+     */
+    protected abstract void setNativeName(Thread thread, String name);
 
     protected abstract void yield();
 
@@ -709,7 +794,7 @@ final class Target_java_lang_Thread {
          * child thread starts, or it could hang in case that the child thread is already dead.
          */
         threadStatus = ThreadStatus.RUNNABLE;
-        JavaThreads.singleton().start0(JavaThreads.fromTarget(this), chosenStackSize);
+        JavaThreads.singleton().doStartThread(JavaThreads.fromTarget(this), chosenStackSize);
     }
 
     @Substitute
@@ -737,7 +822,11 @@ final class Target_java_lang_Thread {
     @Substitute
     @SuppressWarnings({"static-method"})
     protected void setNativeName(String name) {
-        JavaThreads.singleton().setNativeName(name);
+        if (!SubstrateOptions.MultiThreaded.getValue()) {
+            return;
+        }
+
+        JavaThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
     }
 
     @Substitute
