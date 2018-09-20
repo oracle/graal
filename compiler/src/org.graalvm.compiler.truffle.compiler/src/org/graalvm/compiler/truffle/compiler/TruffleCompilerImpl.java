@@ -83,7 +83,6 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.InstalledCodeOptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
@@ -584,8 +583,34 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
                 } else {
                     CompilableTruffleAST compilable = getCompilable(compilationResult);
-                    boolean reachabilityDeterminesValidity = TruffleCompilerImpl.this.reachabilityDeterminesValidity(installedCode);
-                    dependency = new InstalledCodeOptimizedAssumptionDependency(installedCode, compilable, reachabilityDeterminesValidity);
+                    if (compilable instanceof OptimizedAssumptionDependency) {
+                        dependency = (OptimizedAssumptionDependency) compilable;
+                    } else {
+                        // This handles the case where a normal Graal compilation
+                        // inlines a call to a compile-time constant Truffle node.
+                        dependency = new OptimizedAssumptionDependency() {
+                            @Override
+                            public void invalidate() {
+                                installedCode.invalidate();
+                            }
+
+                            @Override
+                            public boolean isValid() {
+                                return installedCode.isValid();
+                            }
+
+                            @Override
+                            public boolean reachabilityDeterminesValidity() {
+                                return TruffleCompilerImpl.this.reachabilityDeterminesValidity(installedCode);
+                            }
+
+                            @Override
+                            public String toString() {
+                                return installedCode.toString();
+                            }
+
+                        };
+                    }
                 }
 
                 notifyAssumptions(dependency);

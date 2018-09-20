@@ -246,19 +246,6 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return null;
     }
 
-    @Override
-    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
-        return new HotSpotTruffleCompilationResult(compilationIdentifier, name, compilable);
-    }
-
-    @Override
-    protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
-        if (result instanceof HotSpotTruffleCompilationResult) {
-            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
-            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
-        }
-    }
-
     /**
      * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal remain valid and can
      * still be executed once the associated {@link HotSpotNmethod} object becomes unreachable. As
@@ -274,6 +261,19 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             }
         }
         return true;
+    }
+
+    @Override
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
+        return new HotSpotTruffleCompilationResult(compilationIdentifier, name, compilable);
+    }
+
+    @Override
+    protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
+        if (result instanceof HotSpotTruffleCompilationResult) {
+            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
+            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
+        }
     }
 
     @Override
