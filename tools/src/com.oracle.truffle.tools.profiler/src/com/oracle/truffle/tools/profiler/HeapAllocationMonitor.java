@@ -166,27 +166,15 @@ public class HeapAllocationMonitor implements Closeable {
     }
 
     /**
-     * @return The monitor of the current state of the heap.
-     * @since 1.0
+     * TODO
+     * @return
      */
-    public Map<String, Object>[] getHeapHistogram() {
+    public MetaObjInfo[] snapshot() {
         MetaObjInfo heap[];
-
         synchronized (heapInfo) {
             heap = heapInfo.values().toArray(new MetaObjInfo[0]);
         }
-        List<Map<String, Object>> heapHisto = new ArrayList<>(heap.length);
-        for (MetaObjInfo mi : heap) {
-            Map<String, Object> metaObjMap = new HashMap<>();
-            metaObjMap.put("language", mi.getLanguage());
-            metaObjMap.put("name", mi.getName());
-            metaObjMap.put("allocatedInstancesCount", mi.getAllocatedInstancesCount());
-            metaObjMap.put("bytes", mi.getBytes());
-            metaObjMap.put("liveInstancesCount", mi.getLiveInstancesCount());
-            metaObjMap.put("liveBytes", mi.getLiveBytes());
-            heapHisto.add(metaObjMap);
-        }
-        return heapHisto.toArray(new Map[0]);
+        return heap;
     }
 
     /**
@@ -346,78 +334,6 @@ public class HeapAllocationMonitor implements Closeable {
             return false;
         }
 
-    }
-
-    private static class MetaObjInfo {
-
-        private long allocatedInstances;
-        private long liveInstances;
-        private long bytes;
-        private long liveBytes;
-        final private String name;
-        final private String language;
-
-        MetaObjInfo(String l, String n) {
-            language = l;
-            name = n;
-        }
-
-        String getName() {
-            return name;
-        }
-
-        String getLanguage() {
-            return language;
-        }
-
-        long getAllocatedInstancesCount() {
-            return allocatedInstances;
-        }
-
-        public long getLiveInstancesCount() {
-            return liveInstances;
-        }
-
-        long getBytes() {
-            return bytes;
-        }
-
-        long getLiveBytes() {
-            return liveBytes;
-        }
-
-        @Override
-        public int hashCode() {
-            return getName().hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof MetaObjInfo) {
-                MetaObjInfo info = (MetaObjInfo) obj;
-                return getName().equals(info.getName()) && getLanguage().equals(info.getLanguage());
-            }
-            return false;
-        }
-
-        private void addInstanceWithSize(long addedSize) {
-            allocatedInstances++;
-            liveInstances++;
-            bytes += addedSize;
-            liveBytes += addedSize;
-        }
-
-        private void removeInstanceWithSize(long oldSize) {
-            allocatedInstances--;
-            liveInstances--;
-            bytes -= oldSize;
-            liveBytes -= oldSize;
-        }
-
-        private void gcInstanceWithSize(long size) {
-            liveInstances--;
-            liveBytes -= size;
-        }
     }
 
     private static class ObjLivenessWeakRef extends PhantomReference<Object> {
