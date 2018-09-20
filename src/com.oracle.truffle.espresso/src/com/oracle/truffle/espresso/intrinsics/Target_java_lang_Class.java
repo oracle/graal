@@ -106,8 +106,8 @@ public class Target_java_lang_Class {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(ClassLoader.class) StaticObject getClassLoader0(@Type(Class.class) StaticObject self) {
-        Object cl = self.getKlass().getClassLoader();
+    public static @Type(ClassLoader.class) StaticObject getClassLoader0(@Type(Class.class) StaticObjectClass self) {
+        Object cl = self.getMirror().getClassLoader();
         // Boot class loader.
         if (cl == null) {
             return StaticObject.NULL;
