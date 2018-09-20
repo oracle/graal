@@ -192,8 +192,9 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * @param context a custom debug context to use for the code installation
      * @return a reference to the compiled and ready-to-run installed code
      * @throws BailoutException if the code installation failed
-     * @throws IllegalArgumentException if {@code installedCode != null} and this object does not
-     *             support a predefined {@link InstalledCode} object
+     * @throws IllegalArgumentException if {@code installedCode != null} and this platform does not
+     *             {@linkplain CodeCacheProvider#installCode support} a predefined
+     *             {@link InstalledCode} object
      */
     @SuppressWarnings("try")
     public InstalledCode createInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult,
