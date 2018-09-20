@@ -495,12 +495,12 @@ class SvmSupport(object):
         if SvmSupport._debug_supported is None:
             out = mx.OutputCapture()
             err = mx.OutputCapture()
-            self.native_image(['-g', "Dummy"], "dummy", out=out, err=err, nonZeroIsFatal=False)
+            self.native_image(['-g', "BatteryHorseStapleCorrect"], "batteryhorsestaplecorrect", out=out, err=err, nonZeroIsFatal=False)
             if "Could not find option" in err.data:
                 SvmSupport._debug_supported = False
             elif "Error: Unrecognized option: -g" in err.data:
                 SvmSupport._debug_supported = False
-            elif "Main entry point class 'Dummy' not found" in err.data:
+            elif "Main entry point class 'BatteryHorseStapleCorrect' not found" in err.data:
                 SvmSupport._debug_supported = True
             else:
                 mx.abort("Could not figure out if 'native-image' supports '-g':\nout:\n{}\nerr:\n{}".format(out.data,
