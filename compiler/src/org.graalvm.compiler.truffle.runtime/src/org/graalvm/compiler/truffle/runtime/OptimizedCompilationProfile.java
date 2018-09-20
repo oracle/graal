@@ -64,7 +64,6 @@ public class OptimizedCompilationProfile {
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
     private int lowGradeCallCount;
-    private int lowGradeCallAndLoopCount;
     private long adaptiveCallThreshold;
     private int lowGradeCompilationCallThreshold;
     private int lowGradeCompilationCallAndLoopThreshold;
@@ -307,27 +306,10 @@ public class OptimizedCompilationProfile {
     final boolean lowGradeCall(OptimizedCallTarget callTarget) {
         int callCount = ++lowGradeCallCount;
         if (callCount >= compilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
-            long adaptiveCallThreshold = getAdaptiveCallThreshold(callCount);
-            if (callCount >= adaptiveCallThreshold) {
-                // TTY.println("Compiling the high grade! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + "(of " + compilationCallAndLoopThreshold + "), qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
-                return callTarget.compile();
-            }
+            // TTY.println("Compiling the high grade! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + "(of " + compilationCallAndLoopThreshold + "), qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
+            return callTarget.compile();
         }
         return false;
-    }
-
-    private long getAdaptiveCallThreshold(int callCount) {
-        if (callCount % 500 == 0) {
-            adaptiveCallThreshold = compilationCallAndLoopThreshold + compilationThresholdPenalty();
-        }
-        return adaptiveCallThreshold;
-    }
-
-    private long compilationThresholdPenalty() {
-        long penalty = 0;
-        int queueSize = GraalTruffleRuntime.getRuntime().getCompilationQueueSize();
-        penalty += 20000L * queueSize;
-        return penalty;
     }
 
     @SuppressWarnings("try")
