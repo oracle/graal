@@ -63,10 +63,9 @@ public class YoungGeneration extends Generation {
 
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Young generation: ").newline();
-        log.string("  ");
+        log.string("[Young generation: ").indent(true);
         getSpace().report(log, traceHeapChunks);
-        log.string("]");
+        log.redent(false).string("]");
         return log;
     }
 
