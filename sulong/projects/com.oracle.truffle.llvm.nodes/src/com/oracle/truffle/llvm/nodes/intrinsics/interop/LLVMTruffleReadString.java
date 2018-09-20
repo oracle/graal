@@ -38,16 +38,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
 
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-    protected Object cached(Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(id)") String cachedId) {
-        return cachedId;
-    }
-
-    @Specialization(replaces = "cached")
-    protected Object uncached(Object id,
+    @Specialization
+    protected Object doIntrinsic(Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr) {
         return readStr.executeWithTarget(id);
     }
