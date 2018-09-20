@@ -214,6 +214,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
                 preCodeInstallationTasks(tasks, compilationResult);
                 CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
                 installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
+                assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode;
             } catch (Throwable t) {
                 failCodeInstallationTasks(tasks, t);
                 throw t;
