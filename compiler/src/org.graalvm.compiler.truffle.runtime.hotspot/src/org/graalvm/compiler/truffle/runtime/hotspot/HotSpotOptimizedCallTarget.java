@@ -36,15 +36,22 @@ import jdk.vm.ci.code.InstalledCode;
  * associated {@link InstalledCode}.
  */
 public class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
+
+    /**
+     * Initial value for {@link #installedCode}.
+     */
+    private static final InstalledCode INVALID_CODE = new InstalledCode(null);
+
     /**
      * This field is read by the code injected by {@code TruffleCallBoundaryInstrumentationFactory}
-     * into a method annotated by {@link TruffleCallBoundary}.
+     * into a method annotated by {@link TruffleCallBoundary}. The injected code assumes this field
+     * is never null hence the use of {@link #INVALID_CODE}.
      */
     private InstalledCode installedCode;
 
-    public HotSpotOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode, InstalledCode installedCode) {
+    public HotSpotOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
-        this.installedCode = installedCode;
+        this.installedCode = INVALID_CODE;
     }
 
     public void setInstalledCode(InstalledCode code) {

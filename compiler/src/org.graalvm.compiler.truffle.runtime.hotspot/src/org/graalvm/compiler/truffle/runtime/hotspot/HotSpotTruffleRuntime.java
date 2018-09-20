@@ -176,7 +176,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
 
     @Override
     public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
-        return new HotSpotOptimizedCallTarget(source, rootNode, HotSpotTruffleCompiler.INVALID_CODE);
+        return new HotSpotOptimizedCallTarget(source, rootNode);
     }
 
     @Override
