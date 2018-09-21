@@ -135,7 +135,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             result = formatObjectImpl(memory, hub, size, constantSize, fillContents, false);
         } else {
-            result = callSlowNewInstance(SLOW_NEW_INSTANCE, hub.asClass());
+            result = callSlowNewInstance(SLOW_NEW_INSTANCE, DynamicHub.toClass(hub));
         }
 
         return PiNode.piCastToSnippetReplaceeStamp(result);
@@ -143,7 +143,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
     private static void checkHub(DynamicHub hub) {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, hub == null || !hub.isInstantiated())) {
-            callCheckDynamicHub(CHECK_DYNAMIC_HUB, hub.asClass());
+            callCheckDynamicHub(CHECK_DYNAMIC_HUB, DynamicHub.toClass(hub));
         }
     }
 
@@ -159,7 +159,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstantiated()) {
-            throw new IllegalArgumentException("Class " + hub.asClass().getCanonicalName() +
+            throw new IllegalArgumentException("Class " + DynamicHub.toClass(hub).getCanonicalName() +
                             " is instantiated reflectively but was never registered. Register the class by using " + runtimeReflectionTypeName);
         }
     }
@@ -195,7 +195,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             result = formatObjectImpl(memory, hub, size, true, fillContents, false);
         } else {
-            result = callSlowNewPinnedInstance(SLOW_NEW_PINNED_INSTANCE, pinnedAllocator, hub.asClass());
+            result = callSlowNewPinnedInstance(SLOW_NEW_PINNED_INSTANCE, pinnedAllocator, DynamicHub.toClass(hub));
         }
 
         return PiNode.piCastToSnippetReplaceeStamp(result);
@@ -229,7 +229,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
         Object result = fastNewArrayUninterruptibly(hub, length, layoutEncoding, fillContents, size);
         if (result == null) {
-            result = callSlowNewArray(SLOW_NEW_ARRAY, hub.asClass(), length);
+            result = callSlowNewArray(SLOW_NEW_ARRAY, DynamicHub.toClass(hub), length);
         }
         return result;
     }
@@ -279,7 +279,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             result = formatArrayImpl(memory, hub, length, layoutEncoding, size, fillContents, false, false);
         } else {
-            result = callSlowNewPinnedArray(SLOW_NEW_PINNED_ARRAY, pinnedAllocator, hub.asClass(), length);
+            result = callSlowNewPinnedArray(SLOW_NEW_PINNED_ARRAY, pinnedAllocator, DynamicHub.toClass(hub), length);
         }
 
         return PiArrayNode.piArrayCastToSnippetReplaceeStamp(result, length);
@@ -316,7 +316,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             dims.writeInt(i * sizeOfDimensionElement, dimensions[i], LocationIdentity.INIT_LOCATION);
         }
 
-        return callNewMultiArray(NEW_MULTI_ARRAY, hub.asClass(), rank, dims, counter);
+        return callNewMultiArray(NEW_MULTI_ARRAY, DynamicHub.toClass(hub), rank, dims, counter);
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -420,9 +420,9 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         } else {
             if (LayoutEncoding.isArray(layoutEncoding)) {
                 int length = KnownIntrinsics.readArrayLength(thisObj);
-                thatObject = callSlowNewArray(SLOW_NEW_ARRAY, hub.asClass(), length);
+                thatObject = callSlowNewArray(SLOW_NEW_ARRAY, DynamicHub.toClass(hub), length);
             } else {
-                thatObject = callSlowNewInstance(SLOW_NEW_INSTANCE, hub.asClass());
+                thatObject = callSlowNewInstance(SLOW_NEW_INSTANCE, DynamicHub.toClass(hub));
             }
         }
 
