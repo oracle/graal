@@ -141,26 +141,8 @@ def gate_ruby(tasks):
                 truffleruby_suite.extensions.ruby_testdownstream_aot([ruby_image, 'spec', 'release'])
 
 def gate_python(tasks):
-    def test_python_smoke(python_svm_image_path):
-        """
-        Just a smoke test for now.
-        """
-        out = mx.OutputCapture()
-        err = mx.OutputCapture()
-        expected_output = "Hello from Python"
-        with tempfile.NamedTemporaryFile() as f:
-            f.write("print('%s')\n" % expected_output)
-            f.flush()
-            os.system("ls -l %s" % python_svm_image_path)
-            os.system("ls -l %s" % f.name)
-            exitcode = mx.run([python_svm_image_path, f.name], nonZeroIsFatal=False, out=out, err=err)
-            if exitcode != 0:
-                mx.abort("Python binary failed to execute: out=" + out.data+ " err=" + err.data)
-            if out.data != expected_output + "\n":
-                mx.abort("Python smoke test failed")
-            mx.log("Python binary says: " + out.data)
-
     with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
         if t:
             python_svm_image_path = join(mx_vm.graalvm_output(), 'bin', 'graalpython')
-            test_python_smoke(python_svm_image_path)
+            python_suite = mx.suite("graalpython")
+            python_suite.extensions._python_svm_unittest(python_svm_image_path)
