@@ -238,7 +238,11 @@ def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
         sym_target = os.path.relpath(real_target_path, dirname(dest_path))
         if debug_gr_8964:
             mx.log('      symlink target: ' + sym_target)
-        os.symlink(sym_target, dest_path)
+        try:
+            os.symlink(sym_target, dest_path)
+        except AttributeError:
+            # no `symlink` on Windows
+            copy2(real_target_path, dest_path)
     else:
         # Else copy the file to so it can not change out from under me.
         if debug_gr_8964:
