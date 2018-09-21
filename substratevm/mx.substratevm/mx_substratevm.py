@@ -436,7 +436,13 @@ def layout_native_image_root(native_image_root):
     native_image_layout_dists(svm_subdir, librarySupportDistribution)
     native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
     for clibrary_path in clibrary_paths():
-        copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
+        from distutils.errors import DistutilsFileError  # pylint: disable=no-name-in-module
+        try:
+            copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
+        except DistutilsFileError:
+            # ignore until GR-7932 is resolved
+            pass
+
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True, debug_gr_8964=False):
     """
