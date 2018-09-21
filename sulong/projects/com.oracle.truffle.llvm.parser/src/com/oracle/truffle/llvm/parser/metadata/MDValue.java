@@ -65,9 +65,7 @@ public final class MDValue implements MDBaseNode {
 
     public static MDBaseNode create(long arg, IRScope scope) {
         final MDValue value = new MDValue();
-        scope.getSymbols().onParse((int) arg, s -> {
-            value.value = s;
-        });
+        scope.getSymbols().onParse((int) arg, s -> value.value = s);
         return value;
     }
 
@@ -75,5 +73,13 @@ public final class MDValue implements MDBaseNode {
         final MDValue value = new MDValue();
         value.value = symbol;
         return value;
+    }
+
+    public static SymbolImpl getIfInstance(MDBaseNode node) {
+        if (node instanceof MDValue) {
+            return ((MDValue) node).getValue();
+        } else {
+            return null;
+        }
     }
 }

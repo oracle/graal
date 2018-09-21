@@ -30,15 +30,18 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class MDSubrange implements MDBaseNode {
 
     private final long lowerBound;
-    private final long size;
 
-    private MDSubrange(long lowerBound, long size) {
+    private MDBaseNode count;
+
+    private MDSubrange(long lowerBound) {
         this.lowerBound = lowerBound;
-        this.size = size;
+        this.count = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -50,30 +53,50 @@ public final class MDSubrange implements MDBaseNode {
         return lowerBound;
     }
 
-    public long getSize() {
-        return size;
+    public MDBaseNode getCount() {
+        return count;
     }
 
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
+        if (count == oldValue) {
+            count = newValue;
+        }
     }
+
+    private static final int ARGINDEX_VERSION = 0;
+    private static final int VERSION_SHIFT = 1;
+    private static final long VERSION_MASK = 0b1;
 
     private static final int ARGINDEX_COUNT = 1;
     private static final int ARGINDEX_STARTFROM = 2;
 
-    public static MDSubrange create38(long[] args) {
-        final long count = args[ARGINDEX_COUNT];
+    public static MDSubrange createNewFormat(long[] args, MetadataValueList md) {
         final long startFrom = ParseUtil.unrotateSign(args[ARGINDEX_STARTFROM]);
-        return new MDSubrange(startFrom, count);
+        final MDSubrange subrange = new MDSubrange(startFrom);
+        final long version = (args[ARGINDEX_VERSION] >> VERSION_SHIFT) & VERSION_MASK;
+        if (version == 1) {
+            // in LLVM 7+ the "count" argument is a metadata node index
+            subrange.count = md.getNullable(args[ARGINDEX_COUNT], subrange);
+
+        } else {
+            // prior to LLVM 7, the "count argument is a primitive value
+            final long count = args[ARGINDEX_COUNT];
+            subrange.count = MDValue.create(new IntegerConstant(PrimitiveType.I64, count));
+        }
+
+        return subrange;
     }
 
     private static final int ARGINDEX_32_LOWERBOUND = 1;
     private static final int ARGINDEX_32_UPPERBOUND = 2;
 
-    public static MDSubrange create32(long[] args, Metadata md) {
+    public static MDSubrange createOldFormat(long[] args, Metadata md) {
         final long lowerBound = ParseUtil.asLong(args, ARGINDEX_32_LOWERBOUND, md);
         final long upperBound = ParseUtil.asLong(args, ARGINDEX_32_UPPERBOUND, md);
         final long size = upperBound - lowerBound + 1;
-        return new MDSubrange(lowerBound, size);
+        final MDSubrange subrange = new MDSubrange(lowerBound);
+        subrange.count = MDValue.create(new IntegerConstant(PrimitiveType.I64, size));
+        return subrange;
     }
 }
