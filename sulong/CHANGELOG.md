@@ -12,6 +12,7 @@ Changes:
   See [docs/INTEROP.md](docs/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
   for more details.
 * Support for IR-level tracing.
+* Preliminary support for LLVM 7.
 
 # Version 1.0.0 RC6
 

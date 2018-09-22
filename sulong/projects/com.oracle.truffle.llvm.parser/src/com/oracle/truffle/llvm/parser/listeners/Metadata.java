@@ -152,7 +152,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case SUBRANGE:
-                metadata.add(MDSubrange.create38(args));
+                metadata.add(MDSubrange.createNewFormat(args, metadata));
                 break;
 
             case ENUMERATOR:
@@ -369,7 +369,7 @@ public final class Metadata implements ParserListener {
                 }
 
                 case DW_TAG_SUBRANGE_TYPE:
-                    metadata.add(MDSubrange.create32(args, this));
+                    metadata.add(MDSubrange.createOldFormat(args, this));
                     break;
 
                 case DW_TAG_ENUMERATOR:

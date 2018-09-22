@@ -77,6 +77,7 @@ supportedLLVMVersions = [
     '4.0',
     '5.0',
     '6.0',
+    '7.0'
 ]
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
@@ -518,7 +519,7 @@ def getLLVMVersion(llvmProgram):
         return printLLVMVersion.group(3)
 
 # the makefiles do not check which version of clang they invoke
-clang_versions_need_optnone = ['5', '6']
+clang_versions_need_optnone = ['5', '6', '7']
 def getLLVMExplicitArgs(mainLLVMVersion):
     if mainLLVMVersion:
         for ver in clang_versions_need_optnone:

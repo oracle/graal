@@ -72,6 +72,8 @@ public final class DebugInfoFunctionProcessor {
     private static final int LLVM_DBG_DECLARE_LOCALREF_ARGINDEX = 1;
     private static final int LLVM_DBG_DECLARE_EXPR_ARGINDEX = 2;
 
+    private static final String LLVM_DBG_ADDR_NAME = "@llvm.dbg.addr";
+
     private static final String LLVM_DBG_VALUE_NAME = "@llvm.dbg.value";
 
     private static final int LLVM_DBG_VALUE_INDEX_ARGINDEX_OLD = 1;
@@ -185,6 +187,12 @@ public final class DebugInfoFunctionProcessor {
             if (callTarget instanceof FunctionDeclaration) {
                 switch (((FunctionDeclaration) callTarget).getName()) {
                     case LLVM_DBG_DECLARE_NAME:
+                        handleDebugIntrinsic(call, true);
+                        return;
+
+                    case LLVM_DBG_ADDR_NAME:
+                        // dbg.declare and dbg.addr have the same interface and, for our purposes,
+                        // the same semantics
                         handleDebugIntrinsic(call, true);
                         return;
 

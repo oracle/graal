@@ -623,7 +623,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
      */
     @Override
     public boolean isDerefHandleMemory(long addr) {
-        return derefHandleContainer.accept(addr);
+        return !noDerefHandleAssumption.isValid() && derefHandleContainer.accept(addr);
     }
 
     public static long getDerefHandleObjectMask() {
