@@ -593,7 +593,7 @@ public final class Meta {
          */
         @CompilerDirectives.TruffleBoundary
         public Object invoke(Object self, Object... args) {
-            assert args.length == method.getSignature().getParameterCount(!method.isStatic());
+            assert args.length == method.getSignature().getParameterCount(false);
             assert !isStatic() || ((StaticObjectImpl) self).isStatic();
             Meta meta = method.getContext().getMeta();
 
