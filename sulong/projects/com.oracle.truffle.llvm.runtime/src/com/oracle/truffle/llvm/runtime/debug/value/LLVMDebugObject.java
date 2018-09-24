@@ -34,6 +34,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
@@ -43,7 +44,9 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 /**
  * This class describes a source-level variable. Debuggers can use it to display the original
@@ -144,7 +147,34 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
     @Override
     @TruffleBoundary
     public String toString() {
-        return Objects.toString(getValue());
+        Object value = getValue();
+
+        if (LLVMManagedPointer.isInstance(value)) {
+            final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(value);
+            final Object target = managedPointer.getObject();
+
+            String targetString;
+            if (target instanceof LLVMGlobal) {
+                final LLVMGlobal global = (LLVMGlobal) target;
+                targetString = "LLVM global " + global.getName();
+
+            } else if (target instanceof LLVMFunctionDescriptor) {
+                final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) target;
+                targetString = "LLVM function " + function.getName();
+
+            }  else {
+                targetString = "<managed pointer>";
+            }
+
+            final long offset = managedPointer.getOffset();
+            if (offset != 0L) {
+                targetString = String.format("%s + %d byte%s", targetString, offset, offset == 1L ? "" : "s");
+            }
+
+            value = targetString;
+        }
+
+        return Objects.toString(value);
     }
 
     @Override
