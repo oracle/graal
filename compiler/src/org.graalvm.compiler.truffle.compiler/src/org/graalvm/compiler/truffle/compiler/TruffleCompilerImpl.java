@@ -349,9 +349,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     TruffleCompilerListener listener) {
         final CompilationPrinter printer = CompilationPrinter.begin(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
-        // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-        //     TTY.println("htc: " + compilable);
-        // }
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
@@ -431,7 +428,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             Suites selectedSuites = suites;
             LIRSuites selectedLirSuites = lirSuites;
             Providers selectedProviders = providers;
-            // TTY.println(TruffleCompilerOptions.TruffleLowGradeCompilation.getValue(TruffleCompilerOptions.getOptions()));
             if (TruffleLowGradeCompilation.getValue(TruffleCompilerOptions.getOptions())) {
                 selectedSuites = lowGradeSuites;
                 selectedLirSuites = lowGradeLirSuites;
@@ -453,7 +449,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
             // Invalidate the old code if it was compiled in low tier, and this is a high tier compilation.
             if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-                // TTY.println("Invalidating low tier stuff: " + name);
                 compilable.invalidateCode();
             }
 

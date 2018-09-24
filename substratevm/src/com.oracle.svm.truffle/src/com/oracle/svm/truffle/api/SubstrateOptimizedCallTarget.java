@@ -75,7 +75,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
-    public boolean isValidHighTier() {
+    public boolean isValidHighGrade() {
         throw GraalError.unimplemented();
     }
 

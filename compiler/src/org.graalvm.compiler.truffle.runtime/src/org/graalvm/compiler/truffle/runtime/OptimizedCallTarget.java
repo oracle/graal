@@ -358,7 +358,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private boolean isValidLowGradeOrHighGrade() {
         if (TruffleCompilerOptions.TruffleLowGrade.getValue(getOptions())) {
             // We should still complete the high-tier compilation request if low-tier code was installed.
-            if ((TruffleLowGradeCompilation.getValue(getOptions()) && isValid()) || isValidHighTier()) {
+            if ((TruffleLowGradeCompilation.getValue(getOptions()) && isValid()) || isValidHighGrade()) {
                 return true;
             }
         } else {
@@ -395,7 +395,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Determines if this call target has valid machine code attached to it.
      */
-    public abstract boolean isValidHighTier();
+    public abstract boolean isValidHighGrade();
 
     /**
      * Invalidates this call target by invalidating any machine code attached to it.

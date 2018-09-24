@@ -253,7 +253,6 @@ public abstract class PartialEvaluator {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
-//        debug.forceDump(graph, "PE");
 
         return graph;
     }
@@ -319,7 +318,7 @@ public abstract class PartialEvaluator {
                     }
 
                     lastDirectCallNode = (JavaConstant) arg0.asConstant();
-                } else if (original.equals(callDirectMethod) && lastDirectCallNode != null) {
+                } else if (original.equals(callDirectMethod)) {
                     TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), lastDirectCallNode);
                     lastDirectCallNode = null;
                     if (decision != null && decision.shouldInline()) {

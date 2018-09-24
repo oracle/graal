@@ -289,7 +289,7 @@ public final class CPUTracer implements Closeable {
 
         @Override
         protected void onEnter(VirtualFrame frame) {
-            if (CompilerDirectives.inInterpreterOrLowTier()) {
+            if (CompilerDirectives.inInterpreter()) {
                 payload.countInterpreted++;
             } else {
                 payload.countCompiled++;

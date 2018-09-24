@@ -56,8 +56,8 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget {
     }
 
     @Override
-    public boolean isValidHighTier() {
-        return installedCode.isValid() && !installedCode.isLowTier();
+    public boolean isValidHighGrade() {
+        return installedCode.isValid() && !installedCode.isLowGrade();
     }
 
     @Override
