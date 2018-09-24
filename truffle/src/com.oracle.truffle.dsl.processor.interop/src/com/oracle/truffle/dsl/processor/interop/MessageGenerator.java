@@ -79,8 +79,8 @@ abstract class MessageGenerator extends InteropNodeGenerator {
     public void appendGetName(Writer w) throws IOException {
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public String getName() {\n");
-        String rootName = "Interop::" + messageName + "::" + receiverClassName;
-        w.append(indent).append("            return \"").append(rootName).append("\";\n");
+        String rootName = "Interop::" + messageName + "::";
+        w.append(indent).append("            return \"").append(rootName).append("\" + " + receiverClassName + ".class.getName();\n");
         w.append(indent).append("        }\n\n");
     }
 
