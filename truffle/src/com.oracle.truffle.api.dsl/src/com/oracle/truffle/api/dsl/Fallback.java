@@ -91,7 +91,7 @@ import java.lang.annotation.Target;
  * @see NodeChild
  * @since 0.8 or earlier
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface Fallback {
 

@@ -240,7 +240,7 @@ import java.lang.annotation.Target;
  * @since 0.8 or earlier
  */
 // @formatter:on
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface Cached {
 

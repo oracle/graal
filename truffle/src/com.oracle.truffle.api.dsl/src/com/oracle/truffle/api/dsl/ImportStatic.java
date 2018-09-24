@@ -55,7 +55,7 @@ import java.lang.annotation.Target;
  * @see Cached
  * @since 0.8 or earlier
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface ImportStatic {
     /** @since 0.8 or earlier */
