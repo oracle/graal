@@ -23,18 +23,66 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
+import java.util.ArrayList;
+
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 
 @EspressoIntrinsics
 public class Target_java_lang_Throwable {
     @Intrinsic(hasReceiver = true)
     public static @Type(Throwable.class) StaticObject fillInStackTrace(@Type(Throwable.class) StaticObject self, int dummy) {
-        /* nop */
+        final ArrayList<FrameInstance> frames = new ArrayList<>(16);
+        Truffle.getRuntime().iterateFrames(frameInstance -> {
+            frames.add(frameInstance);
+            return null;
+        });
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        meta.THROWABLE.field("backtrace").set(self, new StaticObjectWrapper<>(meta.OBJECT.rawKlass(), frames.toArray(new FrameInstance[0])));
         return self;
     }
 
     @Intrinsic(hasReceiver = true)
-    public static int getStackTraceDepth(Object self) {
-        return 0;
+    public static int getStackTraceDepth(@Type(Throwable.class) StaticObject self) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Object backtrace = meta.THROWABLE.field("backtrace").get(self);
+        if (backtrace == StaticObject.NULL) {
+            return 0;
+        }
+        return ((StaticObjectWrapper<FrameInstance[]>) backtrace).getWrapped().length;
     }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(StackTraceElement.class) StaticObject getStackTraceElement(StaticObject self, int index) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
+        Object backtrace = meta.THROWABLE.field("backtrace").get(self);
+        FrameInstance[] frames = ((StaticObjectWrapper<FrameInstance[]>) backtrace).getWrapped();
+
+        FrameInstance frame = frames[index];
+
+        RootNode rootNode = ((RootCallTarget) frame.getCallTarget()).getRootNode();
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+            String className = meta(espressoRootNode.getMethod().getDeclaringClass()).getName();
+            meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class).invoke(
+                            className,
+                            espressoRootNode.getMethod().getName(),
+                            null, -1);
+        } else {
+            meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class).invoke(
+                            "UnknownIntrinsic", "unknownIntrinsic", null, -1);
+        }
+        return ste;
+    }
+
 }

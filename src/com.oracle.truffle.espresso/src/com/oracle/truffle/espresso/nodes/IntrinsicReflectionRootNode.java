@@ -46,15 +46,20 @@ public class IntrinsicReflectionRootNode extends RootNode {
         try {
             return callIntrinsic(frame.getArguments());
         } catch (EspressoException wrapped) {
+            CompilerDirectives.transferToInterpreter();
             throw wrapped;
         } catch (InvocationTargetException e) {
-            if (e.getTargetException() instanceof EspressoException) {
-                throw (EspressoException) e.getTargetException();
-            } else {
-                throw new RuntimeException(e.getTargetException());
-            }
-        } catch (Throwable throwable) {
             CompilerDirectives.transferToInterpreter();
+            Throwable inner = e.getTargetException();
+            if (inner instanceof EspressoException) {
+                throw (EspressoException) inner;
+            } else if (inner instanceof ArrayIndexOutOfBoundsException) {
+                throw (ArrayIndexOutOfBoundsException) inner;
+            } else if (inner instanceof StackOverflowError) {
+                throw (StackOverflowError) inner;
+            }
+            throw EspressoError.shouldNotReachHere(inner);
+        } catch (Throwable throwable) {
             // Non-espresso exceptions cannot escape to the guest.
             throw EspressoError.shouldNotReachHere(throwable);
         }

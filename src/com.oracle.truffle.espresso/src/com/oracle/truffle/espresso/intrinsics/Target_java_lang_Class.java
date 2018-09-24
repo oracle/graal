@@ -90,7 +90,7 @@ public class Target_java_lang_Class {
             }
             return klass.mirror();
         } catch (NoClassDefFoundError e) {
-            Meta.Klass classNotFoundExceptionKlass = context.getMeta().exceptionKlass(ClassNotFoundException.class);
+            Meta.Klass classNotFoundExceptionKlass = context.getMeta().throwableKlass(ClassNotFoundException.class);
             StaticObject ex = classNotFoundExceptionKlass.allocateInstance();
             meta(ex).method("<init>", void.class).invokeDirect();
             // TODO(peterssen): Add class name to exception message.

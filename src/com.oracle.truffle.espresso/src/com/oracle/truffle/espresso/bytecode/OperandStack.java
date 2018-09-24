@@ -404,4 +404,8 @@ public class OperandStack {
         assert isEspressoReference(receiver);
         return receiver;
     }
+
+    public void clear() {
+        stackSize = 0;
+    }
 }
