@@ -914,34 +914,34 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMWriteNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot, LLVMSourceLocation sourceSection) {
         if (llvmType instanceof VectorType) {
-            return LLVMWriteVectorNodeGen.create(result, slot, sourceSection);
+            return LLVMWriteVectorNodeGen.create(slot, sourceSection, result);
         } else if (llvmType instanceof PrimitiveType) {
             switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
                 case I1:
-                    return LLVMWriteI1NodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteI1NodeGen.create(slot, sourceSection, result);
                 case I8:
-                    return LLVMWriteI8NodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteI8NodeGen.create(slot, sourceSection, result);
                 case I16:
-                    return LLVMWriteI16NodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteI16NodeGen.create(slot, sourceSection, result);
                 case I32:
-                    return LLVMWriteI32NodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteI32NodeGen.create(slot, sourceSection, result);
                 case I64:
-                    return LLVMWriteI64NodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteI64NodeGen.create(slot, sourceSection, result);
                 case FLOAT:
-                    return LLVMWriteFloatNodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteFloatNodeGen.create(slot, sourceSection, result);
                 case DOUBLE:
-                    return LLVMWriteDoubleNodeGen.create(result, slot, sourceSection);
+                    return LLVMWriteDoubleNodeGen.create(slot, sourceSection, result);
                 case X86_FP80:
-                    return LLVMWrite80BitFloatingNodeGen.create(result, slot, sourceSection);
+                    return LLVMWrite80BitFloatingNodeGen.create(slot, sourceSection, result);
                 default:
                     throw new AssertionError(llvmType);
             }
         } else if (llvmType instanceof VariableBitWidthType) {
-            return LLVMWriteIVarBitNodeGen.create(result, slot, sourceSection);
+            return LLVMWriteIVarBitNodeGen.create(slot, sourceSection, result);
         } else if (llvmType instanceof PointerType || llvmType instanceof FunctionType) {
-            return LLVMWritePointerNodeGen.create(result, slot, sourceSection);
+            return LLVMWritePointerNodeGen.create(slot, sourceSection, result);
         } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
-            return LLVMWritePointerNodeGen.create(result, slot, sourceSection);
+            return LLVMWritePointerNodeGen.create(slot, sourceSection, result);
         }
         throw new AssertionError(llvmType);
     }
