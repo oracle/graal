@@ -24,15 +24,19 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1Substitutions;
-import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16Substitutions;
-import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1InflateNode;
-import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16CompressNode;
-import org.graalvm.compiler.test.AddExports;
-import org.junit.Test;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.UnsupportedEncodingException;
+
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1InflateNode;
+import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1Substitutions;
+import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16CompressNode;
+import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16Substitutions;
+import org.graalvm.compiler.test.AddExports;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
@@ -48,13 +52,15 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
     static final int N = 1000;
 
+    @Before
+    public void checkAMD64() {
+        assumeFalse(Java8OrEarlier);
+        // Test case is (currently) AMD64 only.
+        assumeTrue(getTarget().arch instanceof AMD64);
+    }
+
     @Test
     public void testStringLatin1Inflate() throws ClassNotFoundException, UnsupportedEncodingException {
-        // StringLatin1.inflate introduced in Java 9.
-        org.junit.Assume.assumeFalse(Java8OrEarlier);
-        // Test case is (currently) AMD64 only.
-        org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
-
         Class<?> javaclass = Class.forName("java.lang.StringLatin1");
         Class<?> testclass = AMD64StringLatin1InflateNode.class;
 
@@ -105,11 +111,6 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
     @Test
     public void testStringUTF16Compress() throws ClassNotFoundException, UnsupportedEncodingException {
-        // StringUTF16.compress introduced in Java 9.
-        org.junit.Assume.assumeFalse(Java8OrEarlier);
-        // Test case is (currently) AMD64 only.
-        org.junit.Assume.assumeTrue(getTarget().arch instanceof AMD64);
-
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
         Class<?> testclass = AMD64StringUTF16CompressNode.class;
         TestMethods tms = new TestMethods("testCompress", javaclass, "compress",

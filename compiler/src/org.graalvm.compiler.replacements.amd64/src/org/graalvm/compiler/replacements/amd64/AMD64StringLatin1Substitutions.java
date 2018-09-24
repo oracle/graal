@@ -24,12 +24,15 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -92,15 +95,31 @@ public class AMD64StringLatin1Substitutions {
      */
     @MethodSubstitution
     public static void inflate(byte[] src, int sndx, char[] dst, int dndx, int len) {
-        int ndx1 = Math.max(0, sndx);
-        int ndx2 = Math.max(0, dndx);
-
-        assert ndx1 + len < src.length;
-        assert ndx2 + len < dst.length;
+        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx + len > dst.length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+        }
 
         // Offset calc. outside of the actual intrinsic.
-        Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(ndx1 * byteArrayIndexScale(INJECTED));
-        Pointer dstptr = Word.objectToTrackedPointer(dst).add(charArrayBaseOffset(INJECTED)).add(ndx2 * charArrayIndexScale(INJECTED));
+        Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * byteArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst).add(charArrayBaseOffset(INJECTED)).add(dndx * charArrayIndexScale(INJECTED));
+        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len);
+    }
+
+    /*-
+     * java.lang.StringLatin1.inflate([BI[BII)V
+     *
+     * @HotSpotIntrinsicCandidate
+     * public static void inflate(byte[] src, int src_indx, byte[] dst, int dst_indx, int len)
+     */
+    @MethodSubstitution
+    public static void inflate(byte[] src, int sndx, byte[] dst, int dndx, int len) {
+        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx + len * 2 > dst.length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+        }
+
+        // Offset calc. outside of the actual intrinsic.
+        Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * byteArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * 2 * byteArrayBaseOffset(INJECTED));
         AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len);
     }
 

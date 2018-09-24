@@ -24,11 +24,14 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -85,14 +88,29 @@ public class AMD64StringUTF16Substitutions {
      */
     @MethodSubstitution
     public static int compress(char[] src, int sndx, byte[] dst, int dndx, int len) {
-        int ndx1 = Math.max(0, sndx);
-        int ndx2 = Math.max(0, dndx);
+        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx + len > dst.length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+        }
 
-        assert ndx1 + len < src.length;
-        assert ndx2 + len < dst.length;
+        Pointer srcptr = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(sndx * charArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * byteArrayIndexScale(INJECTED));
+        return AMD64StringUTF16CompressNode.compress(srcptr, dstptr, len);
+    }
 
-        Pointer srcptr = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(ndx1 * charArrayIndexScale(INJECTED));
-        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(ndx2 * byteArrayIndexScale(INJECTED));
+    /*-
+     * java.lang.StringUTF16.compress([BI[BII)I
+     *
+     * @HotSpotIntrinsicCandidate
+     * public static int compress(byte[] src, int src_indx, byte[] dst, int dst_indx, int len)
+     */
+    @MethodSubstitution
+    public static int compress(byte[] src, int sndx, byte[] dst, int dndx, int len) {
+        if (len < 0 || sndx < 0 || (sndx + len * 2 > src.length) || dndx < 0 || (dndx + len > dst.length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+        }
+
+        Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * 2 * byteArrayIndexScale(INJECTED));
+        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * byteArrayIndexScale(INJECTED));
         return AMD64StringUTF16CompressNode.compress(srcptr, dstptr, len);
     }
 
