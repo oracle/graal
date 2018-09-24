@@ -99,7 +99,7 @@ public final class AssertSnippets extends SubstrateTemplates implements Snippets
                      * type, which is not the case for types just checked by the assertions we
                      * introduce.
                      */
-                    return expectedHub.asClass().isAssignableFrom(object.getClass());
+                    return DynamicHub.toClass(expectedHub).isAssignableFrom(object.getClass());
                 }
             } else {
                 return true;

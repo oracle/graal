@@ -896,12 +896,12 @@ public final class Deoptimizer {
         if (LayoutEncoding.isArray(hub.getLayoutEncoding())) {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
-            obj = Array.newInstance(hub.getComponentHub().asClass(), length);
+            obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
             try {
-                obj = UnsafeAccess.UNSAFE.allocateInstance(hub.asClass());
+                obj = UnsafeAccess.UNSAFE.allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
