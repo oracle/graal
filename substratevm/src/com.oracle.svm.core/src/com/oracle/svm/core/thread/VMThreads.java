@@ -91,22 +91,23 @@ public abstract class VMThreads {
      * Make sure the runtime is initialized for threading.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static void ensureInitialized() {
+    public static boolean ensureInitialized() {
+        boolean result = true;
         if (initializationState.compareAndSet(STATE_UNINITIALIZED, STATE_INITIALIZING)) {
             /*
              * We claimed the initialization lock, so we are now responsible for doing all the
              * initialization.
              */
-            singleton().initializeOnce();
+            result = singleton().initializeOnce();
 
             initializationState.set(STATE_INITIALIZED);
-
         } else {
             /* Already initialized, or some other thread claimed the initialization lock. */
             while (initializationState.get() < STATE_INITIALIZED) {
                 /* Busy wait until the other thread finishes the initialization. */
             }
         }
+        return result;
     }
 
     /**
@@ -114,7 +115,7 @@ public abstract class VMThreads {
      * initialization of native OS resources.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    protected abstract void initializeOnce();
+    protected abstract boolean initializeOnce();
 
     /**
      * Invoked exactly once late during the teardown of an isolate. Subclasses must free the native

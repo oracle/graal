@@ -40,4 +40,5 @@ public interface CEntryPointErrors {
     int MAP_HEAP_FAILED = 8;
     int PROTECT_HEAP_FAILED = 9;
     int UNSUPPORTED_ISOLATE_PARAMETERS_VERSION = 10;
+    int THREAD_INITIALIZATION_FAILED = 11;
 }
