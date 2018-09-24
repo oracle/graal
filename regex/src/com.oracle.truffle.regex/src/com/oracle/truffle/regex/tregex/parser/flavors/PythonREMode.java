@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.oracle.truffle.regex.RegexSource;
-
-public final class PythonFlavor implements RegexFlavor {
-
-    public static final PythonFlavor STR_INSTANCE = new PythonFlavor(PythonREMode.Str);
-    public static final PythonFlavor BYTES_INSTANCE = new PythonFlavor(PythonREMode.Bytes);
-
-    private final PythonREMode mode;
-
-    private PythonFlavor(PythonREMode mode) {
-        this.mode = mode;
-    }
-
-    @Override
-    public RegexFlavorProcessor forRegex(RegexSource source) {
-        return new PythonFlavorProcessor(source, mode);
-    }
-
+public enum PythonREMode {
+    Str,
+    Bytes
 }

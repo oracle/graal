@@ -56,7 +56,7 @@ public class RegexSyntaxException extends RuntimeException {
 
     @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, String flags, String msg, int position) {
-        super(String.format(template, pattern, flags, position, msg));
+        super(String.format(templatePosition, pattern, flags, position, msg));
         this.reason = msg;
         this.regexSrc = new RegexSource(pattern, flags);
         this.position = position;
