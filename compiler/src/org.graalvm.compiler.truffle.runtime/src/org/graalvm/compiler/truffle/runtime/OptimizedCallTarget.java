@@ -46,7 +46,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -251,19 +250,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return callRoot(args);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    protected void printYerself() {
-        TTY.println("Opt compiled method called: " + this);
-    }
-
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
         if (CompilerDirectives.inLowGrade()) {
             getCompilationProfile().lowGradeCall(this);
         }
-        // if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inLowGrade()) {
-        //     printYerself();
-        // }
         Object[] args = originalArguments;
         OptimizedCompilationProfile profile = this.compilationProfile;
         if (CompilerDirectives.inCompiledCode() && profile != null) {

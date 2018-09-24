@@ -147,7 +147,7 @@ public abstract class ConditionProfile extends Profile {
                 if (t == 0) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
-                if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
+                if (CompilerDirectives.inInterpreter()) {
                     if (t < MAX_VALUE) {
                         trueCount = t + 1;
                     }
@@ -156,13 +156,13 @@ public abstract class ConditionProfile extends Profile {
                 if (f == 0) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
-                if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
+                if (CompilerDirectives.inInterpreter()) {
                     if (f < MAX_VALUE) {
                         falseCount = f + 1;
                     }
                 }
             }
-            if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
+            if (CompilerDirectives.inInterpreter()) {
                 // no branch probability calculation in the interpreter
                 return value;
             } else {

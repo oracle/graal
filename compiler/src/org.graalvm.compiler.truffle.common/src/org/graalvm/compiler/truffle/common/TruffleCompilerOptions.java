@@ -318,9 +318,6 @@ public class TruffleCompilerOptions {
     @Option(help = "Whether to enable economy-mode compilations.")
     public static final OptionKey<Boolean> TruffleLowGradeCompilation = new OptionKey<>(false);
 
-    @Option(help = "Whether to do profiling in low-grade compilations.")
-    public static final OptionKey<Boolean> TruffleLowGradeProfiling = new OptionKey<>(false);
-
     @Option(help = "Whether to use low-grade compilations before high-grade.")
     public static final OptionKey<Boolean> TruffleLowGrade = new OptionKey<>(false);
     // @formatter:on

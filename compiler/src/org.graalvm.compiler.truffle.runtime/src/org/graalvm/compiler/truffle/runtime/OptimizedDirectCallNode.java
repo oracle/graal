@@ -63,8 +63,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public Object call(Object[] arguments) {
-        if (CompilerDirectives.inInterpreterOrLowGrade()) {
-            // TODO: See why enabling this for low-grade leads to terrible performance in high-tier compilations.
+        if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall();
         }
         try {
@@ -149,7 +148,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
                 getCurrentCallTarget().incrementKnownCallSites();
             }
         }
-        if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
+        if (CompilerDirectives.inInterpreter()) {
             TruffleSplittingStrategy.beforeCall(this, runtime.getTvmci());
         }
     }

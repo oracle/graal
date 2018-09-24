@@ -37,9 +37,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionValues;
 
@@ -176,7 +174,7 @@ public class OptimizedCompilationProfile {
     void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
-            if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling()) {
+            if (CompilerDirectives.inInterpreter()) {
                 initializeProfiledArgumentTypes(args);
             }
         } else {
@@ -217,7 +215,7 @@ public class OptimizedCompilationProfile {
 
     final void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
-        if (CompilerDirectives.inInterpreterOrLowGradeWithProfiling() && returnTypeAssumption == null) {
+        if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
             if (TruffleCompilerOptions.getValue(TruffleReturnTypeSpeculation)) {
@@ -315,24 +313,16 @@ public class OptimizedCompilationProfile {
     @SuppressWarnings("try")
     final boolean interpreterCall(OptimizedCallTarget callTarget) {
         if (lowGradeEnabled) {
-            // if (CompilerDirectives.inLowGrade()) {
-            //     TTY.println("In low-grade compiled code. " + callTarget);
-            // } else if (!CompilerDirectives.inInterpreter()) {
-            //     TTY.println("In high-grade compiled code. " + callTarget);
-            // }
             int intCallCount = ++interpreterCallCount;
             int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
-                // check if call target is hot enough to get compiled, but took not too long to get hot
-                if ((intAndLoopCallCount >= lowGradeCompilationCallAndLoopThreshold && intCallCount >= lowGradeCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                                TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                    // TTY.println("In interpreter, about to compile low grade: " + callTarget +
-                    //                 ", cc: " + intCallCount + " (of " + lowGradeCompilationCallThreshold + "), ccl: " + intAndLoopCallCount + " (of " + lowGradeCompilationCallAndLoopThreshold + ")" +
-                    //                 ", qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
-                    try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowGradeCompilation, true, TruffleCompilerOptions.TruffleLowGradeProfiling, false)) {
-                        return callTarget.compile();
+                    // Check if call target is hot enough to get compiled, but took not too long to get hot.
+                    if ((intAndLoopCallCount >= lowGradeCompilationCallAndLoopThreshold && intCallCount >= lowGradeCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
+                                    TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
+                        try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowGradeCompilation, true)) {
+                            return callTarget.compile();
+                        }
                     }
-                }
             }
             return false;
         } else {

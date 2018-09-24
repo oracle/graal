@@ -101,19 +101,6 @@ public final class CompilerDirectives {
     }
 
     /**
-     * This call is equivalent to calling {@code inInterpreter() || inLowGrade()}.
-     */
-    public static boolean inInterpreterOrLowGrade() {
-        return true;
-    }
-
-    /**
-     * This call returns true in the interpreter or a low grade compilation that does profiling.
-     */
-    public static boolean inInterpreterOrLowGradeWithProfiling() {
-        return true;
-    }
-    /**
      * Returns a boolean value indicating whether the method is executed in the compiled code.
      *
      * @return {@code false} when executed in the interpreter, {@code true} in compiled code.

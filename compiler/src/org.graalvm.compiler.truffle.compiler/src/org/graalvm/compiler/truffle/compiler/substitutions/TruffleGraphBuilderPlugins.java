@@ -102,7 +102,6 @@ import java.util.concurrent.Callable;
 
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeProfiling;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
@@ -202,20 +201,6 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(TruffleLowGradeCompilation.getValue(getOptions())));
-                return true;
-            }
-        });
-        r.register0("inInterpreterOrLowGrade", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(TruffleLowGradeCompilation.getValue(getOptions())));
-                return true;
-            }
-        });
-        r.register0("inInterpreterOrLowGradeWithProfiling", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(TruffleLowGradeProfiling.getValue(getOptions())));
                 return true;
             }
         });
