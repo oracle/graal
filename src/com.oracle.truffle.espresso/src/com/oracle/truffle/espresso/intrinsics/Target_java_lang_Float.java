@@ -29,4 +29,9 @@ public class Target_java_lang_Float {
     public static int floatToRawIntBits(float value) {
         return Float.floatToRawIntBits(value);
     }
+
+    @Intrinsic
+    public static float intBitsToFloat(int bits) {
+        return Float.intBitsToFloat(bits);
+    }
 }

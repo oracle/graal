@@ -156,4 +156,12 @@ public class StaticObjectImpl extends StaticObject {
         assert fields.containsKey(field.getName());
         fields.put(field.getName(), value);
     }
+
+    public void setHiddenField(String name, Object value) {
+        fields.putIfAbsent(name, value);
+    }
+
+    public Object getHiddenField(String name) {
+        return fields.get(name);
+    }
 }

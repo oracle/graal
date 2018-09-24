@@ -41,6 +41,7 @@ public class Target_java_lang_Thread {
             Meta.Klass threadKlass = meta.knownKlass(Thread.class);
             StaticObject mainThread = threadKlass.metaNew().fields(
                             Meta.Field.set("priority", 5),
+                            Meta.Field.set("name", meta.toGuest("mainThread")),
                             Meta.Field.set("group", threadGroupKlass.allocateInstance())).getInstance();
             context.setMainThread(mainThread);
         }

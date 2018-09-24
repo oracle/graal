@@ -38,6 +38,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
     public static void main(String[] args) {
@@ -162,7 +163,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void launch(Builder contextBuilder) {
-        contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[mainClassArgs.size()])).in(System.in).out(System.out).err(System.err);
+        //contextBuilder.arguments(getLanguageId(), vmArgs(-D... -XX:...)).in(System.in).out(System.out).err(System.err);
+        contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
 
         if (classPathString != null) {
             contextBuilder.option("java.classpath", classPathString);
@@ -192,8 +194,11 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     }
 
     private void eval(Context context) throws IOException {
+        // Source src = Source.newBuilder(getLanguageId(), "", "LauncherHelper").build();
         Source src = Source.newBuilder(getLanguageId(), "", mainClassName).build();
         context.eval(src);
+        //Value klass = context.eval(src);
+        //klass.getMember("loadAndSomething").execute(1, mainClassName).getMember("main").execute(mainClassArgs);
     }
 
     @Override

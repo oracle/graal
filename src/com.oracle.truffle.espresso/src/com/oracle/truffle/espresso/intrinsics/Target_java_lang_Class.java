@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -47,6 +48,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 
@@ -164,6 +166,46 @@ public class Target_java_lang_Class {
     }
 
     @Intrinsic(hasReceiver = true)
+    public static @Type(Method[].class) StaticObject getDeclaredMethods0(StaticObjectClass self, boolean publicOnly) {
+        final MethodInfo[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(m -> !publicOnly || m.isPublic()).toArray(
+                MethodInfo[]::new);
+
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+        Meta meta = context.getMeta();
+        Meta.Klass methodKlass = meta.knownKlass(Method.class);
+
+        StaticObject arr = (StaticObject) methodKlass.allocateArray(methods.length, i -> {
+            Meta.Method m = meta(methods[i]);
+
+            StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
+                    m.getParameterCount(),
+                    j -> m.getParameterTypes()[j].rawKlass().mirror());
+
+            StaticObjectImpl method = (StaticObjectImpl) methodKlass.metaNew().fields(
+                    Meta.Field.set("modifiers", m.getModifiers()),
+                    Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
+                    Meta.Field.set("slot", i),
+                    Meta.Field.set("name", context.getVm().intern(meta.toGuest(m.getName()))),
+                    Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
+
+            method.setHiddenField("$$method_info", m.rawMethod());
+            return method;
+        });
+
+        return arr;
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(Class[].class) StaticObject getInterfaces0(StaticObjectClass self) {
+        final Klass[] interfaces = Arrays.stream(self.getMirror().getInterfaces()).toArray(
+                Klass[]::new);
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta.Klass classKlass = meta.knownKlass(Class.class);
+        StaticObject arr = (StaticObject) classKlass.allocateArray(interfaces.length, i -> interfaces[i].mirror());
+        return arr;
+    }
+
+    @Intrinsic(hasReceiver = true)
     public static boolean isPrimitive(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().isPrimitive();
     }
@@ -175,14 +217,9 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static boolean isAssignableFrom(@Type(Class.class) StaticObjectClass self, @Type(Class.class) StaticObjectClass cls) {
-        Klass c = cls.getMirror();
-        while (c != null) {
-            if (c == self.getMirror()) {
-                return true;
-            }
-            c = c.getSuperclass();
-        }
-        return false;
+        Meta.Klass klass = Meta.meta(self.getMirror());
+        return klass.isAssignableFrom(Meta.meta(cls.getMirror()));
+
     }
 
     @Intrinsic(hasReceiver = true)
@@ -192,6 +229,9 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject getSuperclass(@Type(Class.class) StaticObjectClass self) {
+        if (self.getMirror().isInterface()) {
+            return StaticObject.NULL;
+        }
         Klass superclass = self.getMirror().getSuperclass();
         if (superclass == null) {
             return StaticObject.NULL;

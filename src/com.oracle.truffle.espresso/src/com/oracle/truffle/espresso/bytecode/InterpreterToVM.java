@@ -82,6 +82,7 @@ import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_nio_fs_UnixNativeDispatcher;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeConstructorAccessorImpl;
+import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -146,6 +147,7 @@ public class InterpreterToVM {
                     Target_sun_misc_VM.class,
                     Target_sun_nio_fs_UnixNativeDispatcher.class,
                     Target_sun_reflect_NativeConstructorAccessorImpl.class,
+                    Target_sun_reflect_NativeMethodAccessorImpl.class,
                     Target_sun_reflect_Reflection.class);
 
     private InterpreterToVM(EspressoLanguage language, List<Class<?>> intrinsics) {

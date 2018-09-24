@@ -396,7 +396,6 @@ public final class Meta {
             if (this.isArray() && other.isArray()) {
                 return getComponentType().isAssignableFrom(other.getComponentType());
             }
-
             if (isInterface()) {
                 return other.getInterfacesStream(true).anyMatch(i -> i.rawKlass() == this.rawKlass());
             }
@@ -646,9 +645,8 @@ public final class Meta {
          */
         @CompilerDirectives.TruffleBoundary
         public Object invokeDirect(Object self, Object... args) {
-            assert !isStatic() || ((StaticObjectImpl) self).isStatic();
             if (isStatic()) {
-                assert args.length == method.getSignature().getParameterCount(!method.isStatic());
+                assert args.length == method.getSignature().getParameterCount(false);
                 return method.getCallTarget().call(args);
             } else {
                 assert args.length + 1 /* self */ == method.getSignature().getParameterCount(!method.isStatic());

@@ -47,11 +47,11 @@ public final class EspressoModifiers {
 
     // TODO(peterssen): Initialize properly non-standard flags, all are set to 0.
     // @formatter:off
-    public static final int ANNOTATION = config().jvmAccAnnotation;
-    public static final int ENUM       = config().jvmAccEnum;
+    public static final int ANNOTATION = 0x00002000; // config().jvmAccAnnotation;
+    public static final int ENUM       = 0x00004000; // config().jvmAccEnum;
     public static final int VARARGS    = config().jvmAccVarargs;
     public static final int BRIDGE     = config().jvmAccBridge;
-    public static final int SYNTHETIC  = config().jvmAccSynthetic;
+    public static final int SYNTHETIC  = 0x00001000; // config().jvmAccSynthetic;
     // @formatter:on
 
     public static int jvmClassModifiers() {
