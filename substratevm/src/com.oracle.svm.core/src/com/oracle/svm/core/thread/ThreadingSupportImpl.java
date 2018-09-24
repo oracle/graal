@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
 import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -127,7 +128,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
         void evaluate(long timestamp, int value) {
-            if (isExecuting) { // recursively entered safepoint in callback
+            if (isExecuting || SnippetRuntime.isUnwindingForException()) {
+                /*
+                 * Avoid recursively entering the callback, or executing the callback while
+                 * currently unwinding the stack, the latter of which is particularly problematic
+                 * when the callback throws an exception itself.
+                 */
                 return;
             }
             assert VMThreads.StatusSupport.isStatusJava();
