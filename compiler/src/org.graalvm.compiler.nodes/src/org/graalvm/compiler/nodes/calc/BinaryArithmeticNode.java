@@ -153,7 +153,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         int bits = ((IntegerStamp) v1.stamp(view)).getBits();
         assert ((IntegerStamp) v2.stamp(view)).getBits() == bits;
         if (v2.isDefaultConstant()) {
-            // prefer a & ~(a>>31) to  a - (a & (a>>31))
+            // prefer a & ~(a>>31) to a - (a & (a>>31))
             return AndNode.create(v1, NotNode.create(RightShiftNode.create(v1, bits - 1, view)), view);
         } else {
             ValueNode t1 = sub(v1, v2, view);
