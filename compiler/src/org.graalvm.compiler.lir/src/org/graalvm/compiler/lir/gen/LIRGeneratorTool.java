@@ -293,5 +293,9 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         emitMove(result, input);
     }
 
+    /**
+     * Emits an instruction that prevents speculative execution from proceeding: no instruction
+     * after this fence will execute until all previous instructions have retired.
+     */
     void emitSpeculationFence();
 }
