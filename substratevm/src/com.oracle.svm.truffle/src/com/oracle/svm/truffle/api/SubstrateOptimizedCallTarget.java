@@ -76,7 +76,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public boolean isValidHighGrade() {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented("Low-grade compilation not yet supported in SVM.");
     }
 
     @Override

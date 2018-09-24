@@ -59,7 +59,6 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompiler(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
-        // TODO: Add low tier compilation to Substrate.
         super(runtime, plugins, suites, lirSuites, backend, null, null, null, snippetReflection);
     }
 
