@@ -201,6 +201,7 @@ import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SVMBytecodeAnalysisPolicy;
 import com.oracle.svm.hosted.analysis.SVMDefaultAnalysisPolicy;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
@@ -540,7 +541,7 @@ public class NativeImageGenerator {
                     SubstitutionProcessor substitutions = SubstitutionProcessor.chainUpInOrder(harnessSubstitutions, new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
                                     annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions, cEnumProcessor);
                     aUniverse = new AnalysisUniverse(svmHost, target, substitutions, originalMetaAccess, originalSnippetReflection, new SubstrateSnippetReflectionProvider());
-                    aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
+                    aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
 
                     // native libraries
                     AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(svmHost, aUniverse, originalProviders.getConstantReflection());
