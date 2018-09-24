@@ -265,12 +265,17 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @TruffleBoundary
         public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
             if (canRead(bitOffset, bitSize) && LLVMNativePointer.isInstance(pointer)) {
+                long asLong = LLVMNativePointer.cast(pointer).asNative();
+                if (bitOffset != 0) {
+                    asLong >>>= bitOffset;
+                }
+
                 final int shift = LLVMDebugTypeConstants.DOUBLE_SIZE - bitSize;
-                long asLong = LLVMNativePointer.cast(pointer).increment(bitOffset / Byte.SIZE).asNative();
                 if (shift > 0) {
                     asLong <<= shift;
                     asLong = signed ? asLong >> shift : asLong >>> shift;
                 }
+
                 if (signed) {
                     return BigInteger.valueOf(asLong);
                 } else {
