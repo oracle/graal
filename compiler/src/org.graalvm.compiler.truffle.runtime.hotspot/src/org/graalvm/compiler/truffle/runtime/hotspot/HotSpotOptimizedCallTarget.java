@@ -58,7 +58,7 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
-    public boolean reachabilityDeterminesValidity() {
+    public boolean soleExecutionEntryPoint() {
         // This relies on the check for a non-default nmethod in `setInstalledCode`
         return true;
     }

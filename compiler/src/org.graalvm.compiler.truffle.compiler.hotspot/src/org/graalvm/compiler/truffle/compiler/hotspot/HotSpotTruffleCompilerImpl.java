@@ -247,13 +247,13 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     /**
-     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal remain valid and can
-     * still be executed once the associated {@link HotSpotNmethod} object becomes unreachable. As
-     * such, these objects must remain strongly reachable from {@code OptimizedAssumption}s they
-     * depend on.
+     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal are executed through a
+     * {@code Method::_code} field pointing to them. That is, they can be executed even when the
+     * {@link HotSpotNmethod} created during code installation dies. As such, these objects must
+     * remain strongly reachable from {@code OptimizedAssumption}s they depend on.
      */
     @Override
-    protected boolean reachabilityDeterminesValidity(InstalledCode installedCode) {
+    protected boolean soleExecutionEntryPoint(InstalledCode installedCode) {
         if (installedCode instanceof HotSpotNmethod) {
             HotSpotNmethod nmethod = (HotSpotNmethod) installedCode;
             if (nmethod.isDefault()) {
