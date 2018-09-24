@@ -71,17 +71,17 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     private final BigBang bb;
 
     private final ConcurrentHashMap<ResolvedJavaType, LambdaSubstitutionType> typeSubstitutions;
-    private final Set<String> nameSet;
+    private final Set<String> uniqueLambdaProxyNames;
 
     static boolean isLambdaType(ResolvedJavaType type) {
         return type.isFinalFlagSet() &&
-                        type.getName().contains("/") && /* isVMAnonymousClass */
-                        lambdaMatcher(type.getName()).find();
+                type.getName().contains("/") && /* isVMAnonymousClass */
+                lambdaMatcher(type.getName()).find();
     }
 
     LambdaProxyRenamingSubstitutionProcessor(BigBang bigBang) {
         this.typeSubstitutions = new ConcurrentHashMap<>();
-        this.nameSet = new HashSet<>();
+        this.uniqueLambdaProxyNames = new HashSet<>();
         this.bb = bigBang;
     }
 
@@ -107,8 +107,8 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
         assert lambdaMatcher(lambdaType.getName()).find() : "Stable name should be created only for lambda types.";
         Matcher m = lambdaMatcher(lambdaType.getName());
         String stableTargetMethod = targetMethod.format("%H.%n(%P)%R").replaceAll("[$.()]", "_")
-                        .replaceAll("\\[]", "_arr")
-                        .replaceAll(", ", "_");
+                .replaceAll("\\[]", "_arr")
+                .replaceAll(", ", "_");
         return m.replaceFirst("\\$\\$Lambda\\$" + stableTargetMethod);
     }
 
@@ -133,26 +133,26 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
             if (!lambdaTargetInvokeOption.isPresent()) {
                 throw VMError.shouldNotReachHere("Lambda without a target invoke.");
             }
-            String stableName = createStableLambdaName(key, lambdaTargetInvokeOption.get().getTargetMethod());
-            return new LambdaSubstitutionType(key, findUniqueNameForSameTarget(stableName));
+            String lambdaTargetName = createStableLambdaName(key, lambdaTargetInvokeOption.get().getTargetMethod());
+            return new LambdaSubstitutionType(key, findUniqueLambdaProxyName(lambdaTargetName));
         });
     }
 
     /**
      * Finds a unique name for a lambda proxies with a same target originating from the same class.
      *
-     * NOTE: this is stable only in a single threaded build.
+     * NOTE: the name truly stable only in a single threaded build.
      */
-    private String findUniqueNameForSameTarget(String stableName) {
-        synchronized (nameSet) {
-            String newStableName = stableName;
-            CharSequence stableNameBase = stableName.subSequence(0, stableName.length() - 1);
+    private String findUniqueLambdaProxyName(String lambdaTargetName) {
+        synchronized (uniqueLambdaProxyNames) {
+            String newStableName = lambdaTargetName;
+            CharSequence stableNameBase = lambdaTargetName.subSequence(0, lambdaTargetName.length() - 1);
             int i = 1;
-            while (nameSet.contains(newStableName)) {
+            while (uniqueLambdaProxyNames.contains(newStableName)) {
                 newStableName = stableNameBase + "_" + i + ";";
                 i += 1;
             }
-            nameSet.add(stableName);
+            uniqueLambdaProxyNames.add(newStableName);
             return newStableName;
         }
     }
