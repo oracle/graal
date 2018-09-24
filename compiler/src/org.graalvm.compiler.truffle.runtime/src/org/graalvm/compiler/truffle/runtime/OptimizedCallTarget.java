@@ -321,7 +321,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
     public final boolean compile() {
-        if (isValidLowGradeOrHighGrade()) return true;
+        if (isValidLowGradeOrHighGrade())
+            return true;
         if (!isCompiling()) {
             if (!runtime().acceptForCompilation(getRootNode())) {
                 return false;
@@ -357,7 +358,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private boolean isValidLowGradeOrHighGrade() {
         if (TruffleCompilerOptions.TruffleLowGrade.getValue(getOptions())) {
-            // We should still complete the high-tier compilation request if low-tier code was installed.
+            // We should still complete the high-tier compilation request if low-tier code was
+            // installed.
             if ((TruffleLowGradeCompilation.getValue(getOptions()) && isValid()) || isValidHighGrade()) {
                 return true;
             }

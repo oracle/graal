@@ -131,7 +131,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     UseTypeCheckedInlining,
                     UseTypeCheckHints);
 
-    public TruffleCompilerImpl(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, Suites lowGradeSuites, LIRSuites lowGradeLirSuites, Providers lowGradeProviders, SnippetReflectionProvider snippetReflection) {
+    public TruffleCompilerImpl(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, Suites lowGradeSuites, LIRSuites lowGradeLirSuites,
+                    Providers lowGradeProviders, SnippetReflectionProvider snippetReflection) {
         this.backend = backend;
         this.snippetReflection = snippetReflection;
         this.providers = backend.getProviders();
@@ -434,8 +435,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                 selectedProviders = lowGradeProviders;
             }
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId());
-            result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites, selectedLirSuites, compilationResult,
-                            CompilationResultBuilderFactory.Default, false);
+            result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, backend, graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites, selectedLirSuites,
+                            compilationResult, CompilationResultBuilderFactory.Default, false);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -447,7 +448,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
             InstalledCode installedCode = createInstalledCode(compilable);
 
-            // Invalidate the old code if it was compiled in low tier, and this is a high tier compilation.
+            // Invalidate the old code if it was compiled in low tier, and this is a high tier
+            // compilation.
             if (!TruffleLowGradeCompilation.getValue(getOptions())) {
                 compilable.invalidateCode();
             }

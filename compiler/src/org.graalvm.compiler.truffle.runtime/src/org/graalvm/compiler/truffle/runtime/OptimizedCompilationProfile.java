@@ -308,7 +308,6 @@ public class OptimizedCompilationProfile {
     final boolean lowGradeCall(OptimizedCallTarget callTarget) {
         int callCount = ++lowGradeCallCount;
         if (callCount >= compilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
-            // TTY.println("Compiling the high grade! " + callTarget + ", " + System.identityHashCode(callTarget) + ", cc: " + callCount + "(of " + compilationCallAndLoopThreshold + "), qs: " + GraalTruffleRuntime.getRuntime().getCompilationQueueSize());
             return callTarget.compile();
         }
         return false;
@@ -320,20 +319,22 @@ public class OptimizedCompilationProfile {
             int intCallCount = ++interpreterCallCount;
             int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
-                    // Check if call target is hot enough to get compiled, but took not too long to get hot.
-                    if ((intAndLoopCallCount >= lowGradeCompilationCallAndLoopThreshold && intCallCount >= lowGradeCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                                    TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                        try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowGradeCompilation, true)) {
-                            return callTarget.compile();
-                        }
+                // Check if call target is hot enough to get compiled, but took not too long to get
+                // hot.
+                if ((intAndLoopCallCount >= lowGradeCompilationCallAndLoopThreshold && intCallCount >= lowGradeCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
+                                TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
+                    try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleLowGradeCompilation, true)) {
+                        return callTarget.compile();
                     }
+                }
             }
             return false;
         } else {
             int intCallCount = ++interpreterCallCount;
             int intAndLoopCallCount = ++interpreterCallAndLoopCount;
             if (!callTarget.isCompiling() && !compilationFailed) {
-                // check if call target is hot enough to get compiled, but took not too long to get hot
+                // check if call target is hot enough to get compiled, but took not too long to get
+                // hot
                 int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
                 if ((intCallCount >= callThreshold && intAndLoopCallCount >= compilationCallAndLoopThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
                     return callTarget.compile();

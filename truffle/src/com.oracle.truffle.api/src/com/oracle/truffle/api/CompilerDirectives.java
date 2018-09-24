@@ -108,9 +108,11 @@ public final class CompilerDirectives {
     }
 
     /**
-     * Returns a boolean value indicating whether the method is executed in the low-grade Truffle compilation.
+     * Returns a boolean value indicating whether the method is executed in the low-grade Truffle
+     * compilation.
      *
-     * @return {@code true} when executed in the low-grade Truffle compilation, {@code false} otherwise.
+     * @return {@code true} when executed in the low-grade Truffle compilation, {@code false}
+     *         otherwise.
      */
     public static boolean inLowGrade() {
         return false;
