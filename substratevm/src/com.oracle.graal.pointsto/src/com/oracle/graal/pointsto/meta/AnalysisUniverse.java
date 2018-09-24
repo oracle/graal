@@ -209,10 +209,6 @@ public class AnalysisUniverse implements Universe {
             throw AnalysisError.typeNotFound(type);
         }
 
-        if (!type.isArray() && !type.isPrimitive()) {
-            type.initialize();
-        }
-
         /*
          * We do not want multiple threads to create the AnalysisType simultaneously, because we
          * want a unique id number per type. So claim the type first, and only when the claim

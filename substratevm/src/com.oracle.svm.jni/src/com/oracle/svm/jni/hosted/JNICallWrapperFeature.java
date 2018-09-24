@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 import com.oracle.svm.jni.JNIThreadLocalEnvironmentFeature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;

@@ -16,7 +16,7 @@ benchCommon: ${linux-amd64} ${labsjdk8} {
   environment: {
     BENCH_RESULTS_FILE_PATH: "bench-results.json"
   },
-  targets: [weekly],
+  targets: [bench, weekly],
   timelimit: "1:00:00",
   setup : [
     ["cd", "./compiler"],

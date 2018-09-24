@@ -50,6 +50,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface;
 import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.VmPrimsJVM;
 import com.oracle.svm.core.posix.headers.ArpaInet;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Ioctl;
@@ -58,6 +59,7 @@ import com.oracle.svm.core.posix.headers.NetIf;
 import com.oracle.svm.core.posix.headers.NetinetIn;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Socket;
+import com.oracle.svm.core.posix.headers.Unistd;
 
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */
@@ -433,6 +435,114 @@ public class LinuxJavaNetNetworkInterface {
             // 1341 #endif
         }
 
+        @Override
+        // 1263 /*
+        // 1264  * Gets the Hardware address (usually MAC address) for the named interface.
+        // 1265  * On return puts the data in buf, and returns the length, in byte, of the
+        // 1266  * MAC address. Returns -1 if there is no hardware address on that interface.
+        // 1267  */
+        // 1268 static int getMacAddress
+        // 1269   (JNIEnv *env, const char *ifname, const struct in_addr *addr,
+        // 1270    unsigned char *buf)
+        // 1271 {
+        public int getMacAddress(CCharPointer ifname, NetinetIn.in_addr addr, CCharPointer buf) throws SocketException {
+            /* Get a CCharPointer from `ifname`. */
+            // 1272     struct ifreq ifr;
+            NetIf.ifreq ifr = StackValue.get(NetIf.ifreq.class);
+            // 1273     int i, sock;
+            int i;
+            int sock;
+            // 1274
+            // 1275     if ((sock = openSocketWithFallback(env, ifname)) < 0) {
+            if ((sock = openSocketWithFallback(ifname)) < 0) {
+                // 1276         return -1;
+                return -1;
+            }
+            // 1278
+            // 1279     memset((char *)&ifr, 0, sizeof(ifr));
+            LibC.memset(ifr, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetIf.ifreq.class)));
+            // 1280     strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name) - 1);
+            LibC.strncpy(ifr.ifr_name(), ifname, WordFactory.unsigned(NetIf.IF_NAMESIZE() - 1));
+            // 1281     if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
+            if (Ioctl.ioctl(sock, Socket.SIOCGIFHWADDR(), ifr) < 0) {
+                try {
+                    // 1282         NET_ThrowByNameWithLastError
+                    // 1283             (env, JNU_JAVANETPKG "SocketException", "ioctl(SIOCGIFHWADDR) failed");
+                    throw new SocketException(PosixUtils.lastErrorString("ioctl(SIOCGIFHWADDR) failed"));
+                } finally {
+                    Unistd.close(sock);
+                    // 1284         close(sock);
+                    /* Unreachable. */
+                    // 1285         return -1;
+                }
+            }
+            // 1287
+            // 1288     close(sock);
+            Unistd.close(sock);
+            // 1289     memcpy(buf, &ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
+            LibC.memcpy(buf, ifr.ifr_hwaddr().sa_data(), WordFactory.unsigned(NetIf.IFHWADDRLEN()));
+            // 1290
+            // 1291     // all bytes to 0 means no hardware address
+            // 1292     for (i = 0; i < IFHWADDRLEN; i++) {
+            for (i = 0; i < NetIf.IFHWADDRLEN(); i++) {
+                // 1293         if (buf[i] != 0)
+                if (buf.read(i) != 0) {
+                    // 1294             return IFHWADDRLEN;
+                    return NetIf.IFHWADDRLEN();
+                }
+            }
+            // 1296
+            // 1297     return -1;
+            return -1;
+        }
+
+        // 1089 #if defined(AF_INET6)
+        /* Pushing this #if inside the method body. */
+        // 1090 /*
+        // 1091  * Opens a socket for further ioctl calls. Tries AF_INET socket first and
+        // 1092  * if it fails return AF_INET6 socket.
+        // 1093  */
+        // 1094 static int openSocketWithFallback(JNIEnv *env, const char *ifname) {
+        @SuppressWarnings({"unused"})
+        static int openSocketWithFallback(CCharPointer ifname) throws SocketException {
+            if (IsDefined.socket_AF_INET6()) {
+                // 1095     int sock;
+                int sock;
+                // 1096
+                // 1097     if ((sock = JVM_Socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+                if ((sock = VmPrimsJVM.JVM_Socket(Socket.AF_INET(), Socket.SOCK_DGRAM(), 0)) < 0) {
+                    // 1098         if (errno == EPROTONOSUPPORT) {
+                    if (Errno.errno() == Errno.EPROTONOSUPPORT()) {
+                        // 1099             if ((sock = JVM_Socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+                        if ((sock = VmPrimsJVM.JVM_Socket(Socket.AF_INET6(), Socket.SOCK_DGRAM(), 0)) < 0) {
+                            // 1100                 NET_ThrowByNameWithLastError
+                            // 1101                     (env, JNU_JAVANETPKG "SocketException", "IPV6 Socket creation failed");
+                            throw new SocketException(PosixUtils.lastErrorString("IPV6 Socket creation failed"));
+                            // 1102                 return -1;
+                            /* Unreachable. */
+                        }
+                    } else { // errno is not NOSUPPORT
+                        // 1105             NET_ThrowByNameWithLastError
+                        // 1106                 (env, JNU_JAVANETPKG "SocketException", "IPV4 Socket creation failed");
+                        throw new SocketException(PosixUtils.lastErrorString("IPV4 Socket creation failed"));
+                        // 1107             return -1;
+                        /* Unreachable. */
+                    }
+                }
+                // 1110
+                // 1111     // Linux starting from 2.6.? kernel allows ioctl call with either IPv4 or
+                // 1112     // IPv6 socket regardless of type of address of an interface.
+                // 1113     return sock;
+                return sock;
+            } else {
+            // 1115 #else
+            // 1116 static int openSocketWithFallback(JNIEnv *env, const char *ifname) {
+            // 1117     return openSocket(env, AF_INET);
+            return JavaNetNetworkInterface.openSocket(Socket.AF_INET());
+            }
+            // 1119 #endif
+        }
+
         /** A Java representation of the information parsed from a line from /proc/net/if_inet6. */
         static class IfInet6Info {
 
@@ -518,7 +628,6 @@ public class LinuxJavaNetNetworkInterface {
                 trace.string("  .device: ").string(getDevice()).newline();
             }
         }
-
     }
 }
 

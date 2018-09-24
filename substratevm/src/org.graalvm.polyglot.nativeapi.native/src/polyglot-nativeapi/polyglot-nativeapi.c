@@ -39,8 +39,12 @@ struct __graal_isolatethread_t;
 typedef struct __graal_isolatethread_t graal_isolatethread_t;
 
 /* Parameters for the creation of a new isolate. */
+enum { __graal_create_isolate_params_version = 1 };
 struct __graal_create_isolate_params_t {
-    int dummy;
+    int version;                                /* Version of this struct */
+
+    /* Fields introduced in version 1 */
+    unsigned long reserved_address_space_size;  /* Size of address space to reserve */
 };
 
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;

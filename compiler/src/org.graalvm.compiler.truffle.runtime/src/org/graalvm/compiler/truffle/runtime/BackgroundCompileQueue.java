@@ -25,13 +25,11 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import java.lang.ref.WeakReference;
-import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -70,18 +68,11 @@ public class BackgroundCompileQueue {
         @Override
         public void run() {
             OptimizedCallTarget callTarget = weakCallTarget.get();
-            try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                // if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-                //     TTY.println("running htc: " + callTarget);
-                // } else {
-                //     TTY.println("running ltc: " + callTarget);
-                // }
-                if (callTarget != null) {
+            if (callTarget != null) {
+                try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
                     OptionValues options = getOptions();
                     runtime.doCompile(options, callTarget, cancellable);
-                }
-            } finally {
-                if (callTarget != null) {
+                } finally {
                     callTarget.resetCompilationTask();
                 }
             }
@@ -149,15 +140,8 @@ public class BackgroundCompileQueue {
     public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget) {
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask();
-        // try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-        //     if (!TruffleLowGradeCompilation.getValue(getOptions())) {
-        //         TTY.println("submitting htc...: " + optimizedCallTarget);
-        //     }
-        // }
         Request request = new Request(runtime, optionOverrides, optimizedCallTarget, cancellable);
         cancellable.setFuture(compilationExecutorService.submit(request));
-        // Task and future must never diverge from each other.
-        assert cancellable.future != null;
         return cancellable;
     }
 

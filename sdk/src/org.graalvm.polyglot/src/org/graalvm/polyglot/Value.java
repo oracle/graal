@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * The Universal Permissive License (UPL), Version 1.0
+ * 
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ * 
+ * (a) the Software, and
+ * 
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ * 
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ * 
+ * This license is subject to the following condition:
+ * 
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package org.graalvm.polyglot;
 
@@ -28,6 +44,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -212,9 +229,11 @@ public final class Value {
      * <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public boolean hasMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
         return impl.hasMember(receiver, identifier);
     }
 
@@ -225,9 +244,11 @@ public final class Value {
      * @throws UnsupportedOperationException if the value {@link #hasMembers() has no members} or
      *             the given identifier exists but is not readable.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public Value getMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
         return impl.getMember(receiver, identifier);
     }
 
@@ -257,9 +278,11 @@ public final class Value {
      *             members}, the key does not exist and new members cannot be added, or the existing
      *             member is not modifiable.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public void putMember(String identifier, Object value) {
+        Objects.requireNonNull(identifier, "identifier");
         impl.putMember(receiver, identifier, value);
     }
 
@@ -271,9 +294,11 @@ public final class Value {
      *             members} or if the key {@link #hasMember(String) exists} but cannot be removed.
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the identifier is null.
      * @since 1.0
      */
     public boolean removeMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
         return impl.removeMember(receiver, identifier);
     }
 
@@ -301,6 +326,7 @@ public final class Value {
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be executed.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the arguments array is null.
      * @see #executeVoid(Object...)
      * @since 1.0
      */
@@ -322,6 +348,7 @@ public final class Value {
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be executed.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the arguments array is null.
      * @see #execute(Object...)
      * @since 1.0
      */
@@ -353,9 +380,11 @@ public final class Value {
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be instantiated.
      * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the arguments array is null.
      * @since 1.0
      */
     public Value newInstance(Object... arguments) {
+        Objects.requireNonNull(arguments, "arguments");
         return impl.newInstance(receiver, arguments);
     }
 
@@ -836,9 +865,11 @@ public final class Value {
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
+     * @throws NullPointerException if the target type is null.
      * @since 1.0
      */
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
+        Objects.requireNonNull(targetType, "targetType");
         if (targetType == Value.class) {
             return targetType.cast(this);
         }
@@ -860,10 +891,12 @@ public final class Value {
      * assert javaList.get(0).equals("foo");
      * </pre>
      *
+     * @throws NullPointerException if the target type is null.
      * @see #as(Class)
      * @since 1.0
      */
     public <T> T as(TypeLiteral<T> targetType) {
+        Objects.requireNonNull(targetType, "targetType");
         return impl.as(receiver, targetType);
     }
 

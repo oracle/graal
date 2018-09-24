@@ -268,8 +268,9 @@ def ctw(args, extraVMarguments=None):
     elif not configArgs:
         vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
-    # suppress menubar and dock when running on Mac
-    vmargs = ['-Djava.awt.headless=true'] + vmargs
+    if mx.get_os() == 'darwin':
+        # suppress menubar and dock when running on Mac
+        vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     if args.cp:
         cp = os.path.abspath(args.cp)
@@ -380,6 +381,8 @@ class UnitTestRun:
 
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
+            if suite == 'truffle' and mx.get_os() == 'windows':
+                continue  # necessary until Truffle is fully supported (GR-7941)
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
@@ -901,17 +904,16 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
-class GraalArchiveParticipant:
 
+class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
+
     def __init__(self, dist, isTest=False):
         self.dist = dist
         self.isTest = isTest
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
-        self.versionedServices = {}
-        self.arc = arc
 
     def __add__(self, arcname, contents):
         m = GraalArchiveParticipant.providersRE.match(arcname)
@@ -931,7 +933,7 @@ class GraalArchiveParticipant:
                         self.services.setdefault(service, []).append(provider)
                     else:
                         # Versioned service
-                        services = self.versionedServices.setdefault(version, {})
+                        services = self.services.setdefault(int(version), {})
                         services.setdefault(service, []).append(provider)
             return True
         elif arcname.endswith('_OptionDescriptors.class'):
@@ -949,11 +951,8 @@ class GraalArchiveParticipant:
         return False
 
     def __closing__(self):
-        for version, services in self.versionedServices.iteritems():
-            for service, providers in services.iteritems():
-                arcname = 'META-INF/versions/{}/META-INF/services/{}'.format(version, service)
-                # Convert providers to a set before printing to remove duplicates
-                self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)) + '\n')
+        pass
+
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
@@ -1061,6 +1060,7 @@ def makegraaljdk(args):
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
     parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
+    parser.add_argument('-l', '--license', action='store', help='path to the license file', metavar='<path>')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1127,7 +1127,7 @@ def makegraaljdk(args):
         for line in out.lines:
             m = pattern.match(line)
             if m:
-                with open(join(jvmlibDir, 'vm.properties'), 'w') as fp:
+                with open(join(jvmlibDir, 'vm.properties'), 'wb') as fp:
                     # Modify VM name in `java -version` to be Graal along
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
@@ -1139,6 +1139,8 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
+        if args.license:
+            shutil.copy(args.license, join(dstJdk, 'LICENSE'))
         if args.bootstrap:
             with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
                 mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
@@ -1348,6 +1350,18 @@ def updategraalinopenjdk(args):
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
 
 
+original_build = mx.command_function('build')
+
+
+def build(cmd_args, parser=None):
+    no_native = []
+    if mx.get_os() == 'windows':
+        # necessary until Truffle is fully supported (GR-7941)
+        mx.log('Building of native projects is disabled on Windows.')
+        no_native = ['--no-native']
+    original_build(no_native + cmd_args, parser)
+
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
     name='Graal compiler',
@@ -1381,6 +1395,7 @@ mx.update_commands(_suite, {
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
+    'build': [build, ''],
 })
 
 def mx_post_parse_cmd_line(opts):

@@ -205,12 +205,12 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public boolean isInitialized() {
-        return true;
+        return hub.isInitialized();
     }
 
     @Override
     public void initialize() {
-        throw VMError.unimplemented();
+        hub.ensureInitialized();
     }
 
     @Override

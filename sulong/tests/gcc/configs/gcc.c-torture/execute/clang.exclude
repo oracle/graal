@@ -1,0 +1,15 @@
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20020107-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/961223-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/restrict-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/unroll-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/930526-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/bcp-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/loop-2c.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-8.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-7.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/980608-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20001121-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/p18298.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/fp-cmp-7.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/991014-1.c
+gcc-5.2.0/gcc/testsuite/c-c++-common/cpp/pr65238-1.c

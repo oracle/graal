@@ -73,6 +73,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
@@ -87,7 +88,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
@@ -105,7 +105,6 @@ import org.graalvm.util.CollectionsUtil;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -129,9 +128,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
 
@@ -271,7 +268,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        for (Annotation a : field.getAnnotations()) {
+        for (Annotation a : getAnnotations(field)) {
             if (a.annotationType() == Child.class) {
                 return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
             }
@@ -316,7 +313,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("deprecation")
     @Override
     public LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
-        ExplodeLoop explodeLoop = method.getAnnotation(ExplodeLoop.class);
+        ExplodeLoop explodeLoop = getAnnotation(ExplodeLoop.class, method);
         if (explodeLoop == null) {
             return LoopExplosionKind.NONE;
         }
@@ -450,7 +447,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(this, (OptimizedCallTarget) target);
+            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode((OptimizedCallTarget) target);
             TruffleSplittingStrategy.newDirectCallNodeCreated(directCallNode);
             return directCallNode;
         } else {
@@ -928,7 +925,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public boolean isValueType(ResolvedJavaType type) {
-        return type.getAnnotation(CompilerDirectives.ValueType.class) != null;
+        return getAnnotation(CompilerDirectives.ValueType.class, type) != null;
     }
 
     @Override
@@ -991,7 +988,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("deprecation")
     @Override
     public InlineInfo getInlineInfo(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
-        TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
+        TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
         if (truffleBoundary != null) {
             if (duringPartialEvaluation || !truffleBoundary.allowInlining()) {
                 // Since this method is invoked by the bytecode parser plugins, which can be invoked
@@ -1004,7 +1001,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
                 }
             }
-        } else if (original.getAnnotation(TruffleCallBoundary.class) != null) {
+        } else if (getAnnotation(TruffleCallBoundary.class, original) != null) {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineInfo.createStandardInlineInfo(original);
@@ -1012,7 +1009,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public boolean isTruffleBoundary(ResolvedJavaMethod method) {
-        return method.isAnnotationPresent(TruffleBoundary.class);
+        return getAnnotation(TruffleBoundary.class, method) != null;
     }
 
     public static class LazyFrameBoxingQuery {
@@ -1026,5 +1023,39 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
         static final Class<?> FrameBoxingClass = useFrameWithoutBoxing ? FrameWithoutBoxing.class : FrameWithBoxing.class;
         static final String FrameBoxingClassName = FrameBoxingClass.getName();
+    }
+
+    // https://bugs.openjdk.java.net/browse/JDK-8209535
+
+    private static PermanentBailoutException handleAnnotationFailure(NoClassDefFoundError e, String attemptedAction) {
+        throw new PermanentBailoutException(e, "Error while %s. " +
+                        "This usually means that the unresolved type is in the signature of some other " +
+                        "method or field in the same class. This can be resolved by modifying the relevant class path " +
+                        "or module path such that it includes the missing type.",
+                        attemptedAction);
+    }
+
+    private static Annotation[] getAnnotations(ResolvedJavaField element) {
+        try {
+            return element.getAnnotations();
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for annotations", element.format("%H.%n:%t")));
+        }
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaMethod method) {
+        try {
+            return annotationClass.cast(method.getAnnotation(annotationClass));
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", method.format("%H.%n(%p)"), annotationClass.getName()));
+        }
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaType type) {
+        try {
+            return annotationClass.cast(type.getAnnotation(annotationClass));
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", type.toJavaName(), annotationClass.getName()));
+        }
     }
 }

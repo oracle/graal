@@ -29,14 +29,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.ComparableWord;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
  * A pointer to the compiled code of a method.
  */
 public class MethodPointer implements CFunctionPointer {
 
-    private final HostedMethod method;
+    private final ResolvedJavaMethod method;
 
-    public static CFunctionPointer factory(HostedMethod method) {
+    public static CFunctionPointer factory(ResolvedJavaMethod method) {
         if (method == null) {
             return null;
         } else {
@@ -44,23 +46,23 @@ public class MethodPointer implements CFunctionPointer {
         }
     }
 
-    protected MethodPointer(HostedMethod method) {
+    protected MethodPointer(ResolvedJavaMethod method) {
         assert method != null;
         this.method = method;
     }
 
-    public HostedMethod getMethod() {
+    public ResolvedJavaMethod getMethod() {
         return method;
     }
 
     @Override
     public boolean isNull() {
-        return method == null;
+        return false;
     }
 
     @Override
     public boolean isNonNull() {
-        return method != null;
+        return true;
     }
 
     @Override

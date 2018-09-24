@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -71,6 +72,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.posix.JavaNetNetworkInterface.PlatformSupport;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
@@ -83,6 +85,7 @@ import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
 /** Dummy class to have a class with the file's name. */
@@ -2722,45 +2725,46 @@ final class Target_java_net_Inet4AddressImpl {
             throw new NullPointerException("host is null");
         }
         // 417     hostname = JNU_GetStringPlatformChars(env, host, JNI_FALSE);
-        try {
-            try (CCharPointerHolder hostname_Pin = CTypeConversion.toCString(host)) {
-                hostname = hostname_Pin.get();
-                // 418     CHECK_NULL_RETURN(hostname, NULL);
-                if (hostname.isNull()) {
-                    return null;
-                }
-                // 420     /* Try once, with our static buffer. */
-                // 421     memset(&hints, 0, sizeof(hints));
-                LibC.memset(hints, WordFactory.zero(), SizeOf.unsigned(Netdb.addrinfo.class));
-                // 422     hints.ai_flags = AI_CANONNAME;
-                hints.set_ai_flags(Netdb.AI_CANONNAME());
-                // 423     hints.ai_family = AF_INET;
-                hints.set_ai_family(Socket.AF_INET());
-                // 425 #ifdef __solaris__
-                // 426     /*
-                // 427      * Workaround for Solaris bug 4160367 - if a hostname contains a
-                // 428      * white space then 0.0.0.0 is returned
-                // 429      */
-                // 430     if (isspace((unsigned char)hostname[0])) {
-                // 431         JNU_ThrowByName(env, JNU_JAVANETPKG "UnknownHostException",
-                // 432                         (char *)hostname);
-                // 433         JNU_ReleaseStringPlatformChars(env, host, hostname);
-                // 434         return NULL;
-                // 435     }
-                // 436 #endif
-                // 438     error = getaddrinfo(hostname, NULL, &hints, &res);
-                error = Netdb.getaddrinfo(hostname, WordFactory.nullPointer(), hints, res_Pointer);
-                // 440     if (error) {
-                if (CTypeConversion.toBoolean(error)) {
-                    // 441         /* report error */
-                    // 442         ThrowUnknownHostExceptionWithGaiError(env, hostname, error);
-                    /* FIXME: Not implementing ThrowUnknownHostExceptionWithGaiError. */
-                    throw new UnknownHostException(host);
-                    // 443         JNU_ReleaseStringPlatformChars(env, host, hostname);
-                    /* Released when exiting CCharPointerHolder hostname_Pin block. */
-                    // 444         return NULL;
-                    /* Throws exception instead of returning. */
-                } else {
+        try (CCharPointerHolder hostname_Pin = CTypeConversion.toCString(host)) {
+            hostname = hostname_Pin.get();
+            // 418     CHECK_NULL_RETURN(hostname, NULL);
+            if (hostname.isNull()) {
+                return null;
+            }
+            // 420     /* Try once, with our static buffer. */
+            // 421     memset(&hints, 0, sizeof(hints));
+            LibC.memset(hints, WordFactory.zero(), SizeOf.unsigned(Netdb.addrinfo.class));
+            // 422     hints.ai_flags = AI_CANONNAME;
+            hints.set_ai_flags(Netdb.AI_CANONNAME());
+            // 423     hints.ai_family = AF_INET;
+            hints.set_ai_family(Socket.AF_INET());
+            // 425 #ifdef __solaris__
+            // 426     /*
+            // 427      * Workaround for Solaris bug 4160367 - if a hostname contains a
+            // 428      * white space then 0.0.0.0 is returned
+            // 429      */
+            // 430     if (isspace((unsigned char)hostname[0])) {
+            // 431         JNU_ThrowByName(env, JNU_JAVANETPKG "UnknownHostException",
+            // 432                         (char *)hostname);
+            // 433         JNU_ReleaseStringPlatformChars(env, host, hostname);
+            // 434         return NULL;
+            // 435     }
+            // 436 #endif
+            // 438     error = getaddrinfo(hostname, NULL, &hints, &res);
+            error = Netdb.getaddrinfo(hostname, WordFactory.nullPointer(), hints, res_Pointer);
+            // 440     if (error) {
+            if (CTypeConversion.toBoolean(error)) {
+                // 441         /* report error */
+                // 442         ThrowUnknownHostExceptionWithGaiError(env, hostname, error);
+                /* FIXME: Not implementing ThrowUnknownHostExceptionWithGaiError. */
+                throw new UnknownHostException(host);
+                // 443         JNU_ReleaseStringPlatformChars(env, host, hostname);
+                /* Released when exiting CCharPointerHolder hostname_Pin block. */
+                // 444         return NULL;
+                /* Throws exception instead of returning. */
+            } else {
+                /* Translate `goto cleanupAndReturn` as a finally block. */
+                try {
                     // 446         int i = 0;
                     int i = 0;
                     // 447         struct addrinfo *itr, *last = NULL, *iterator = res;
@@ -2862,28 +2866,28 @@ final class Target_java_net_Inet4AddressImpl {
                         iterator = iterator.ai_next();
                     }
                     return ret;
+                } finally {
+                    // 510  cleanupAndReturn:
+                    // 512         struct addrinfo *iterator, *tmp;
+                    Netdb.addrinfo iterator;
+                    Netdb.addrinfo tmp;
+                    // 513         iterator = resNew;
+                    iterator = resNew;
+                    // 514         while (iterator != NULL) {
+                    while (iterator.isNonNull()) {
+                        // 515             tmp = iterator;
+                        tmp = iterator;
+                        // 516             iterator = iterator->ai_next;
+                        iterator = iterator.ai_next();
+                        // 517             free(tmp);
+                        LibC.free(tmp);
+                    }
+                    // 519         JNU_ReleaseStringPlatformChars(env, host, hostname);
+                    /* Releasing `hostname` happens when I exit the `CCharPointerHolder hostname_Pin` try-block. */
+                    // 522     freeaddrinfo(res);
+                    Netdb.freeaddrinfo(res_Pointer.read());
                 }
             }
-        } finally {
-            // 510  cleanupAndReturn:
-            // 512         struct addrinfo *iterator, *tmp;
-            Netdb.addrinfo iterator;
-            Netdb.addrinfo tmp;
-            // 513         iterator = resNew;
-            iterator = resNew;
-            // 514         while (iterator != NULL) {
-            while (iterator.isNonNull()) {
-                // 515             tmp = iterator;
-                tmp = iterator;
-                // 516             iterator = iterator->ai_next;
-                iterator = iterator.ai_next();
-                // 517             free(tmp);
-                LibC.free(tmp);
-            }
-            // 519         JNU_ReleaseStringPlatformChars(env, host, hostname);
-            /* This happened when I exited the CCharPointerHolder hostname_Pin block. */
-            // 522     freeaddrinfo(res);
-            Netdb.freeaddrinfo(res_Pointer.read());
         }
     }
 
@@ -3865,6 +3869,106 @@ final class Target_java_net_NetworkInterface {
         //   407
         return obj;
     }
+
+    /*
+     * Translated from jdk8u/jdk/src/solaris/native/java/net/NetworkInterface.c
+     */
+    // 516 /*
+    // 517  * Class:     java_net_NetworkInterface
+    // 518  * Method:    getMacAddr0
+    // 519  * Signature: ([bLjava/lang/String;I)[b
+    // 520  */
+    // 521 JNIEXPORT jbyteArray JNICALL Java_java_net_NetworkInterface_getMacAddr0
+    // 522   (JNIEnv *env, jclass cls, jbyteArray addrArray, jstring name, jint index)
+    // 523 {
+    @Substitute
+    @SuppressWarnings({"unused"})
+    public static byte[] getMacAddr0(byte[] addrArray, String name, int index) throws SocketException {
+        /* Prepare for platform-specific code. */
+        final PlatformSupport platformSupport = ImageSingletons.lookup(JavaNetNetworkInterface.PlatformSupport.class);
+        // 524     jint addr;
+        int addr;
+        // 525     jbyte caddr[4];
+        CCharPointer caddr = StackValue.get(4, CCharPointer.class);
+        // 526     struct in_addr iaddr;
+        NetinetIn.in_addr iaddr = StackValue.get(NetinetIn.in_addr.class);
+        // 527     jbyteArray ret = NULL;
+        byte[] ret = null;
+        // 528     unsigned char mac[16];
+        CCharPointer mac = StackValue.get(16, CCharPointer.class);
+        // 529     int len;
+        int len;
+        // 530     jboolean isCopy;
+        boolean isCopy;
+        // 531     const char *name_utf;
+        byte[] name_utf;
+        // 532
+        // 533     if (name != NULL) {
+        if (name != null) {
+            // 534         name_utf = (*env)->GetStringUTFChars(env, name, &isCopy);
+            name_utf = Utf8.stringToUtf8(name, true);
+        } else {
+            // 536         JNU_ThrowNullPointerException(env, "network interface name is NULL");
+            throw new NullPointerException("network interface name is NULL");
+            // 537         return NULL;
+            /* Unreachable. */
+        }
+        // 539
+        // 540     if (name_utf == NULL) {
+        if (name_utf == null) {
+            // 541         if (!(*env)->ExceptionCheck(env))
+            // 542             JNU_ThrowOutOfMemoryError(env, NULL);
+            throw new OutOfMemoryError();
+            // 543         return NULL;
+            /* Unreachable. */
+        }
+        // 545
+        // 546     if (!IS_NULL(addrArray)) {
+        if (addrArray != null) {
+            // 547         (*env)->GetByteArrayRegion(env, addrArray, 0, 4, caddr);
+            VmPrimsJNI.GetByteArrayRegion(addrArray, 0, 4, caddr);
+            // 548         addr = ((caddr[0]<<24) & 0xff000000);
+            addr = ((caddr.read(0) << 24) & 0xff000000);
+            // 549         addr |= ((caddr[1] <<16) & 0xff0000);
+            addr |= ((caddr.read(1) << 16) & 0xff0000);
+            // 550         addr |= ((caddr[2] <<8) & 0xff00);
+            addr |= ((caddr.read(2) << 8) & 0xff00);
+            // 551         addr |= (caddr[3] & 0xff);
+            addr |= (caddr.read(3) & 0xff);
+            // 552         iaddr.s_addr = htonl(addr);
+            iaddr.set_s_addr(NetinetIn.htonl(addr));
+            // 553         len = getMacAddress(env, name_utf, &iaddr, mac);
+            try (PinnedObject name_utf_Pin = PinnedObject.create(name_utf)) {
+                CCharPointer name_utf_Pointer = name_utf_Pin.addressOfArrayElement(0);
+                len = platformSupport.getMacAddress(name_utf_Pointer, iaddr, mac);
+            }
+        } else {
+            // 555         len = getMacAddress(env, name_utf, NULL, mac);
+            try (PinnedObject name_utf_Pin = PinnedObject.create(name_utf)) {
+                CCharPointer name_utf_Pointer = name_utf_Pin.addressOfArrayElement(0);
+                len = platformSupport.getMacAddress(name_utf_Pointer, WordFactory.nullPointer(), mac);
+            }
+        }
+        // 557
+        // 558     if (len > 0) {
+        if (len > 0) {
+            // 559         ret = (*env)->NewByteArray(env, len);
+            ret = new byte[len];
+            // 560         if (!IS_NULL(ret)) {
+            if (ret != null) {
+                // 561             (*env)->SetByteArrayRegion(env, ret, 0, len, (jbyte *)(mac));
+                VmPrimsJNI.SetByteArrayRegion(ret, 0, len, mac);
+            }
+        }
+        // 564
+        // 565     // release the UTF string and interface list
+        // 566     (*env)->ReleaseStringUTFChars(env, name, name_utf);
+        /* Unneeded. */
+        // 567
+        // 568     return ret;
+        return ret;
+    }
+
 }
     // } Do not format quoted code: @formatter:on
 
@@ -3916,8 +4020,8 @@ final class Target_java_net_SocketInputStream {
     // 062                                             jobject fdObj, jbyteArray data,
     // 063                                             jint off, jint len, jint timeout)
     @Substitute
-    @SuppressWarnings({"static-method", "finally"})
-    private int socketRead0(FileDescriptor fdObj, byte[] data, int off, int lenArg, int timeout) throws IOException, OutOfMemoryError, sun.net.ConnectionResetException {
+    @SuppressWarnings({"static-method"})
+    private int socketRead0(FileDescriptor fdObj, byte[] data, int off, int lenArg, int timeout) throws IOException {
         int len = lenArg;
         // 065     char BUF[MAX_BUFFER_LEN];
         CCharPointer BUF = StackValue.get(JavaNetNetUtilMD.MAX_BUFFER_LEN(), CCharPointer.class);
@@ -4001,7 +4105,7 @@ final class Target_java_net_SocketInputStream {
                     } else if (nread == Target_jvm.JVM_IO_INTR()) {
                         // 118                 JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
                         // 119                             "Operation interrupted");
-                        throw new InterruptedException("Operation interrupted");
+                        throw new InterruptedIOException("Operation interrupted");
                     }
                 } finally {
                     // 121             if (bufP != BUF) {
@@ -4010,9 +4114,9 @@ final class Target_java_net_SocketInputStream {
                         LibC.free(bufP);
                         bufP = WordFactory.nullPointer();
                     }
-                    // 124             return -1;
-                    return -1;
                 }
+                // 124             return -1;
+                return -1;
             }
         }
         try {
@@ -4083,7 +4187,7 @@ final class Target_java_net_SocketOutputStream {
     // 064                                               jbyteArray data,
     // 065                                               jint off, jint len) {
     @Substitute
-    @SuppressWarnings({"static-method", "finally"})
+    @SuppressWarnings({"static-method"})
     private void socketWrite0(FileDescriptor fdObj, byte[] data, int offArg, int lenArg) throws IOException {
         /* Local variable copies rather than assign to formal parameter. */
         int off = offArg;
@@ -4147,44 +4251,37 @@ final class Target_java_net_SocketOutputStream {
                 VmPrimsJNI.GetByteArrayRegion(data, off, chunkLen, bufP);
                 // 106         while(llen > 0) {
                 while (llen > 0) {
-                    try {
-                        // 107             int n = NET_Send(fd, bufP + loff, llen, 0);
-                        int n = JavaNetNetUtilMD.NET_Send(fd, bufP.addressOf(loff), llen, 0);
-                        // 108             if (n > 0) {
-                        if (n > 0) {
-                            // 109                 llen -= n;
-                            llen -= n;
-                            // 110                 loff += n;
-                            loff += n;
-                            // 111                 continue;
-                            continue;
-                        }
-                        // 113             if (n == JVM_IO_INTR) {
-                        if (n == Target_jvm.JVM_IO_INTR()) {
-                            // 114                 JNU_ThrowByName(env, "java/io/InterruptedIOException", 0);
-                            throw new InterruptedIOException();
-                        } else {
-                            // 116                 if (errno == ECONNRESET) {
-                            if (Errno.errno() == Errno.ECONNRESET()) {
-                                // 117                     JNU_ThrowByName(env, "sun/net/ConnectionResetException",
-                                // 118                         "Connection reset");
-                                throw new sun.net.ConnectionResetException("Connection reset");
-                            } else {
-                                // 120                     NET_ThrowByNameWithLastError(env, "java/net/SocketException",
-                                // 121                         "Write failed");
-                                throw new SocketException(PosixUtils.lastErrorString("Write failed"));
-                            }
-                        }
-                    } finally {
-                        // 124             if (bufP != BUF) {
-                        if (bufP.notEqual(BUF) && bufP.isNonNull()) {
-                            // 125                 free(bufP);
-                            LibC.free(bufP);
-                            bufP = WordFactory.nullPointer();
-                        }
-                        // 127             return;
-                        return;
+                    // 107             int n = NET_Send(fd, bufP + loff, llen, 0);
+                    int n = JavaNetNetUtilMD.NET_Send(fd, bufP.addressOf(loff), llen, 0);
+                    // 108             if (n > 0) {
+                    if (n > 0) {
+                        // 109                 llen -= n;
+                        llen -= n;
+                        // 110                 loff += n;
+                        loff += n;
+                        // 111                 continue;
+                        continue;
                     }
+                    // 113             if (n == JVM_IO_INTR) {
+                    if (n == Target_jvm.JVM_IO_INTR()) {
+                        // 114                 JNU_ThrowByName(env, "java/io/InterruptedIOException", 0);
+                        throw new InterruptedIOException();
+                    } else {
+                        // 116                 if (errno == ECONNRESET) {
+                        if (Errno.errno() == Errno.ECONNRESET()) {
+                            // 117                     JNU_ThrowByName(env, "sun/net/ConnectionResetException",
+                            // 118                         "Connection reset");
+                            throw new sun.net.ConnectionResetException("Connection reset");
+                        } else {
+                            // 120                     NET_ThrowByNameWithLastError(env, "java/net/SocketException",
+                            // 121                         "Write failed");
+                            throw new SocketException(PosixUtils.lastErrorString("Write failed"));
+                        }
+                    }
+                    // 124             if (bufP != BUF) {
+                    // 125                 free(bufP);
+                    // 127             return;
+                    // Outer finally-block is doing the cleanup, no need to duplicate the code here
                 }
                 // 129         len -= chunkLen;
                 len -= chunkLen;
@@ -4259,7 +4356,6 @@ final class Target_java_net_PlainSocketImpl {
     /* Substitutions for native methods. */
 
     /* Do not re-format commented-out code: @formatter:off */
-    @SuppressWarnings("finally")
     @Substitute
     // 176 /*
     // 177  * Class:     java_net_PlainSocketImpl
@@ -4333,7 +4429,6 @@ final class Target_java_net_PlainSocketImpl {
                         // 221 close(fd);
                         Unistd.close(fd);
                         // 222 return;
-                        return;
                     }
                 }
             }

@@ -33,26 +33,29 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.windows.headers.LibC;
+
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
 class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override
     public <T extends PointerBase> T malloc(UnsignedWord size) {
-        return WordFactory.nullPointer();
+        return LibC.malloc(size);
     }
 
     @Override
     public <T extends PointerBase> T calloc(UnsignedWord size) {
-        return WordFactory.nullPointer();
+        return LibC.calloc(WordFactory.unsigned(1), size);
     }
 
     @Override
     public <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
-        return WordFactory.nullPointer();
+        return LibC.realloc(ptr, size);
     }
 
     @Override
     public void free(PointerBase ptr) {
+        LibC.free(ptr);
     }
 }
 
