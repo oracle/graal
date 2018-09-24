@@ -455,9 +455,7 @@ class AsmFactory {
                 statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 break;
             case "nop":
-                if ("rep".equals(currentPrefix)) {
-                    // TODO: pause
-                }
+            case "pause":
                 break;
             case "hlt":
                 // TODO: implement properly

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,21 +36,18 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
-import com.oracle.svm.core.graal.windows.WindowsCEntryPointSnippets;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
 @AutomaticFeature
-@Platforms({Platform.WINDOWS.class})
-public class WindowsCEntryPointFeature implements GraalFeature {
+public class CEntryPointFeature implements GraalFeature {
 
     private int vmThreadSize = -1;
 
@@ -74,14 +71,14 @@ public class WindowsCEntryPointFeature implements GraalFeature {
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        WindowsCEntryPointSnippets.registerLowerings(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
+        CEntryPointSnippets.registerLowerings(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
     }
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
 
-        WindowsCEntryPointSnippets.registerForeignCalls(runtimeConfig, providers, snippetReflection, foreignCalls, hosted);
+        CEntryPointSnippets.registerForeignCalls(runtimeConfig, providers, snippetReflection, foreignCalls, hosted);
     }
 
 }

@@ -198,7 +198,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
         }
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "unused"})
     public static boolean loadAgent(Path agent) throws Exception {
         String vmName = ManagementFactory.getRuntimeMXBean().getName();
         int p = vmName.indexOf('@');

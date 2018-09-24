@@ -226,7 +226,6 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
             return Message.EXECUTE.createNode();
         }
 
-        @TruffleBoundary
         protected ForeignToLLVM createToLLVMNode() {
             return getNodeFactory().createForeignToLLVM(ForeignToLLVM.convert(type.getReturnType()));
         }

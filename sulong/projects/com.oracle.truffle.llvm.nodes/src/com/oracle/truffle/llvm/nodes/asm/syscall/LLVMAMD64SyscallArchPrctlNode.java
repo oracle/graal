@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -63,8 +63,8 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
         return exec(code, addr, context, store);
     }
 
-    @TruffleBoundary
     protected LLVMPointerStoreNode createAddressStoreNode() {
+        CompilerAsserts.neverPartOfCompilation();
         return LLVMPointerStoreNodeGen.create(null, null);
     }
 

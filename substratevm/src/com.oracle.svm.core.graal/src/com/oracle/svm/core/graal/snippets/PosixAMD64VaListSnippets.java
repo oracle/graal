@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.windows;
+package com.oracle.svm.core.graal.snippets;
 
 import java.util.Map;
 
@@ -38,29 +38,28 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS_AMD64;
+import org.graalvm.nativeimage.Platform.DARWIN_AMD64;
+import org.graalvm.nativeimage.Platform.LINUX_AMD64;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
-class WindowsAMD64VaListSnippetsFeature implements GraalFeature {
+class PosixAMD64VaListSnippetsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(WINDOWS_AMD64.class);
+        return Platform.includedIn(LINUX_AMD64.class) || Platform.includedIn(DARWIN_AMD64.class);
     }
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        WindowsAMD64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        PosixAMD64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
     }
 }
 
@@ -111,7 +110,7 @@ class WindowsAMD64VaListSnippetsFeature implements GraalFeature {
  * <cite>Agner Fog: Calling conventions for different C++ compilers and operating systems (updated
  * 2017-05-01): 7. Function calling conventions.</cite>
  */
-final class WindowsAMD64VaListSnippets extends SubstrateTemplates implements Snippets {
+final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snippets {
 
     // (read above)
     private static final int GP_OFFSET_LOCATION = 0;
@@ -124,7 +123,7 @@ final class WindowsAMD64VaListSnippets extends SubstrateTemplates implements Sni
     private static final int OVERFLOW_ARG_AREA_ALIGNMENT = 8;
     private static final int REG_SAVE_AREA_LOCATION = 16;
 
-    private WindowsAMD64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
+    private PosixAMD64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
         super(options, factories, providers, snippetReflection);
     }
 
@@ -175,10 +174,10 @@ final class WindowsAMD64VaListSnippets extends SubstrateTemplates implements Sni
     public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
-        new WindowsAMD64VaListSnippets(options, factories, providers, snippetReflection, lowerings);
+        new PosixAMD64VaListSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 
-    private WindowsAMD64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+    private PosixAMD64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
         super(options, factories, providers, snippetReflection);
@@ -187,10 +186,10 @@ final class WindowsAMD64VaListSnippets extends SubstrateTemplates implements Sni
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
 
-        private final SnippetInfo vaArgDouble = snippet(WindowsAMD64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(WindowsAMD64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(WindowsAMD64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(WindowsAMD64VaListSnippets.class, "vaArgIntSnippet");
+        private final SnippetInfo vaArgDouble = snippet(PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
+        private final SnippetInfo vaArgFloat = snippet(PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
+        private final SnippetInfo vaArgLong = snippet(PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
+        private final SnippetInfo vaArgInt = snippet(PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
 
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {
