@@ -30,22 +30,19 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 
 final class LLVMDebugBoxedPrimitive implements LLVMDebugValue {
 
-    private final LLVMContext context;
     private final LLVMBoxedPrimitive boxedValue;
 
-    LLVMDebugBoxedPrimitive(LLVMContext context, LLVMBoxedPrimitive boxedValue) {
-        this.context = context;
+    LLVMDebugBoxedPrimitive(LLVMBoxedPrimitive boxedValue) {
         this.boxedValue = boxedValue;
     }
 
     private LLVMDebugValue unbox() {
-        final LLVMDebugValue.Builder builder = context.getNodeFactory().createDebugValueBuilder();
+        final LLVMDebugValue.Builder builder = LLVMDebuggerSupport.getNodeFactory().createDebugValueBuilder();
         return builder.build(boxedValue.getValue());
     }
 

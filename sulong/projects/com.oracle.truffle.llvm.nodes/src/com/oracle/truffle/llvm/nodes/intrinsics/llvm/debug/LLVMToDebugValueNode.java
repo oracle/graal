@@ -29,12 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -95,13 +92,13 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value, @Cached("getContextReference()") ContextReference<LLVMContext> contextRef) {
-        return new LLVMDebugBoxedPrimitive(contextRef.get(), value);
+    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value) {
+        return new LLVMDebugBoxedPrimitive(value);
     }
 
     @Specialization
-    protected LLVMDebugValue fromPointer(LLVMPointer value, @Cached("getContextReference()") ContextReference<LLVMContext> contextRef) {
-        return new LLVMConstantValueProvider.Pointer(contextRef.get(), value);
+    protected LLVMDebugValue fromPointer(LLVMPointer value) {
+        return new LLVMConstantValueProvider.Pointer(value);
     }
 
     @Specialization
@@ -174,14 +171,14 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value, @Cached("getContextReference()") ContextReference<LLVMContext> contextRef) {
+    protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value) {
         LLVMGlobal global = value.getDescriptor();
         Object target = global.getTarget();
         if (!LLVMPointer.isInstance(target)) {
             // a non-pointer was stored as a pointer in this global
             return executeWithTarget(target);
         }
-        return new LLVMConstantGlobalValueProvider(contextRef.get(), global, this);
+        return new LLVMConstantGlobalValueProvider(global);
     }
 
     @Fallback

@@ -33,7 +33,6 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
@@ -242,10 +241,8 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
     static final class Pointer extends LLVMConstantValueProvider {
 
         private final LLVMPointer pointer;
-        private final LLVMContext context;
 
-        Pointer(LLVMContext context, LLVMPointer pointer) {
-            this.context = context;
+        Pointer(LLVMPointer pointer) {
             this.pointer = pointer;
         }
 
@@ -297,13 +294,13 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         public Object computeAddress(long bitOffset) {
-            return new LLVMPointerValueProvider(pointer, context).computeAddress(bitOffset);
+            return new LLVMPointerValueProvider(pointer).computeAddress(bitOffset);
         }
 
         @Override
         public LLVMDebugValue dereferencePointer(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
-                return new LLVMPointerValueProvider(pointer, context);
+                return new LLVMPointerValueProvider(pointer);
             } else {
                 return null;
             }
@@ -312,7 +309,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @Override
         public Object asInteropValue() {
             if (isInteropValue()) {
-                TruffleObject foreign = context.getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
+                TruffleObject foreign = LLVMDebuggerSupport.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
                 if (foreign instanceof LLVMTypedForeignObject) {
                     return ((LLVMTypedForeignObject) foreign).getForeign();
                 }
@@ -323,7 +320,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @Override
         public boolean isInteropValue() {
             if (LLVMNativePointer.isInstance(pointer)) {
-                return context.isHandle(LLVMNativePointer.cast(pointer));
+                return LLVMDebuggerSupport.getContext().isHandle(LLVMNativePointer.cast(pointer));
             }
             return false;
         }

@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -41,13 +40,9 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
 
     private final LLVMGlobal global;
-    private final LLVMContext context;
-    private final LLVMDebugValue.Builder valueBuilder;
 
-    public LLVMConstantGlobalValueProvider(LLVMContext context, LLVMGlobal global, Builder valueBuilder) {
-        this.context = context;
+    public LLVMConstantGlobalValueProvider(LLVMGlobal global) {
         this.global = global;
-        this.valueBuilder = valueBuilder;
     }
 
     @Override
@@ -165,9 +160,9 @@ public final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
 
     private LLVMDebugValue getCurrentValue() {
         if (isInNative(global)) {
-            return new LLVMPointerValueProvider(LLVMNativePointer.cast(global.getTarget()), context);
+            return new LLVMPointerValueProvider(LLVMNativePointer.cast(global.getTarget()));
         } else {
-            return valueBuilder.build(global.getTarget());
+            return LLVMDebuggerSupport.getNodeFactory().createDebugValueBuilder().build(global.getTarget());
         }
     }
 

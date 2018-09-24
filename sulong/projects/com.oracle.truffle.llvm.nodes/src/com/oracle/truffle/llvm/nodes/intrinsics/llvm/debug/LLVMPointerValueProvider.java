@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
@@ -50,11 +49,9 @@ import java.math.BigInteger;
 public class LLVMPointerValueProvider implements LLVMDebugValue {
 
     private final LLVMPointer pointer;
-    private final LLVMContext context;
 
-    protected LLVMPointerValueProvider(LLVMPointer pointer, LLVMContext context) {
+    protected LLVMPointerValueProvider(LLVMPointer pointer) {
         this.pointer = pointer;
-        this.context = context;
     }
 
     protected LLVMPointer getPointer() {
@@ -87,7 +84,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
     private LLVMExpressionNode createLoadNode(Type loadType, int byteOffset) {
         assert byteOffset >= 0;
 
-        final NodeFactory nodeFactory = context.getNodeFactory();
+        final NodeFactory nodeFactory = LLVMDebuggerSupport.getNodeFactory();
         LLVMExpressionNode pointerNode = new ConstantNode(pointer);
 
         if (byteOffset != 0) {
@@ -424,7 +421,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
 
         final Object pointerRead = readAddress(bitOffset);
         if (LLVMPointer.isInstance(pointerRead)) {
-            return context.getNodeFactory().createDebugDeclarationBuilder().build(pointerRead);
+            return LLVMDebuggerSupport.getNodeFactory().createDebugDeclarationBuilder().build(pointerRead);
         }
 
         return null;

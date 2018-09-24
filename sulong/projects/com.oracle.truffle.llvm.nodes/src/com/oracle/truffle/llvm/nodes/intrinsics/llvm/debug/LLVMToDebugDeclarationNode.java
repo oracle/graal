@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -40,7 +38,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -63,25 +60,25 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    protected LLVMDebugValue fromPointer(LLVMPointer address, @Cached("getContextReference()") TruffleLanguage.ContextReference<LLVMContext> contextRef) {
-        return new LLVMPointerValueProvider(address, contextRef.get());
+    protected LLVMDebugValue fromPointer(LLVMPointer address) {
+        return new LLVMPointerValueProvider(address);
     }
 
     @Specialization
-    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive, @Cached("getContextReference()") TruffleLanguage.ContextReference<LLVMContext> contextRef) {
+    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive) {
         if (boxedPrimitive.getValue() instanceof Long) {
-            return fromPointer(LLVMNativePointer.create((long) boxedPrimitive.getValue()), contextRef);
+            return fromPointer(LLVMNativePointer.create((long) boxedPrimitive.getValue()));
         } else {
             return fromGenericObject(boxedPrimitive);
         }
     }
 
     @Specialization(guards = "!isPointer(obj)")
-    protected LLVMDebugValue fromTruffleObject(TruffleObject obj, @Cached("getContextReference()") TruffleLanguage.ContextReference<LLVMContext> contextRef) {
+    protected LLVMDebugValue fromTruffleObject(TruffleObject obj) {
         try {
             if (ForeignAccess.sendIsPointer(isPointer, obj)) {
                 final long rawAddress = ForeignAccess.sendAsPointer(asPointer, obj);
-                return fromPointer(LLVMNativePointer.create(rawAddress), contextRef);
+                return fromPointer(LLVMNativePointer.create(rawAddress));
             }
         } catch (UnsupportedMessageException ignored) {
             CompilerDirectives.transferToInterpreter();
