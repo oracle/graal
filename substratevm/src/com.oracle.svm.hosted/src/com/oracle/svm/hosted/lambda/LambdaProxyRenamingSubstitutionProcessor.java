@@ -75,8 +75,8 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
 
     static boolean isLambdaType(ResolvedJavaType type) {
         return type.isFinalFlagSet() &&
-                type.getName().contains("/") && /* isVMAnonymousClass */
-                lambdaMatcher(type.getName()).find();
+                        type.getName().contains("/") && /* isVMAnonymousClass */
+                        lambdaMatcher(type.getName()).find();
     }
 
     LambdaProxyRenamingSubstitutionProcessor(BigBang bigBang) {
@@ -107,8 +107,8 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
         assert lambdaMatcher(lambdaType.getName()).find() : "Stable name should be created only for lambda types.";
         Matcher m = lambdaMatcher(lambdaType.getName());
         String stableTargetMethod = targetMethod.format("%H.%n(%P)%R").replaceAll("[$.()]", "_")
-                .replaceAll("\\[]", "_arr")
-                .replaceAll(", ", "_");
+                        .replaceAll("\\[]", "_arr")
+                        .replaceAll(", ", "_");
         return m.replaceFirst("\\$\\$Lambda\\$" + stableTargetMethod);
     }
 
