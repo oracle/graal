@@ -36,6 +36,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_NFI",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance" : "1.8+",
@@ -66,9 +67,28 @@ suite = {
         "com.oracle.truffle.espresso.playground" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
+            "jniHeaders" : True,
             "dependencies" : [                
             ],
             "javaCompliance" : "1.8+",
+        },
+
+        "com.oracle.truffle.espresso.playground.native" : {
+            "subDir" : "src",
+            "native" : True,
+            "vpath" : True,
+            "results" : [
+              "bin/<lib:playground>",
+            ],
+            "buildDependencies" : [
+            ],
+            "buildEnv" : {
+              "TARGET" : "bin/<lib:playground>",
+              "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.espresso.playground>",
+              # "CPPFLAGS" : "-I<path:TRUFFLE_NFI_NATIVE>/include",
+              "OS" : "<os>",
+            },
+            "testProject" : True,
         },
 
         "com.oracle.truffle.espresso.test" : {
@@ -94,6 +114,7 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_NFI",
             ],
         },
 
@@ -154,8 +175,24 @@ suite = {
             "distDependencies" : [
             ],
             "description" : "Espresso experiments",
-            "checkstyleVersion" : "8.8",
+            "javaProperties" : {
+                "playground.library" : "<path:ESPRESSO_PLAYGROUND_NATIVE>/bin/<lib:playground>"
+            },
         },            
+
+        "ESPRESSO_PLAYGROUND_NATIVE" : {
+            "native" : True,
+            "relpath" : True,
+            "platformDependent" : True,
+            "platforms" : [
+                "linux-amd64",
+                "darwin-amd64",
+            ],
+            "output" : "<mxbuild>/playground-native",
+            "dependencies" : [
+                "com.oracle.truffle.espresso.playground.native",
+            ],
+        },
 
     }
 }
