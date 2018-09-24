@@ -23,21 +23,34 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.LineNumberTable;
 import com.oracle.truffle.espresso.meta.LocalVariableTable;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.JNINativeNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class MethodInfo implements ModifiersProvider {
 
@@ -137,6 +150,53 @@ public final class MethodInfo implements ModifiersProvider {
         throw EspressoError.unimplemented();
     }
 
+    private static NativeSimpleType kindToType(JavaKind kind) {
+        switch (kind) {
+            case Boolean:
+                return NativeSimpleType.UINT8; // ?
+            case Short:
+                return NativeSimpleType.SINT16;
+            case Char:
+                return NativeSimpleType.UINT16;
+            case Long:
+                return NativeSimpleType.SINT64;
+            case Float:
+                return NativeSimpleType.FLOAT;
+            case Double:
+                return NativeSimpleType.DOUBLE;
+            case Int:
+                return NativeSimpleType.SINT32;
+            case Byte:
+                return NativeSimpleType.SINT8;
+            case Void:
+                return NativeSimpleType.VOID;
+            case Object:
+                return NativeSimpleType.OBJECT;
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private static TruffleObject bind(TruffleObject library, Meta.Method m, String mangledName) {
+        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER); // Prepend
+                                                                                    // JNIEnv.
+        SignatureDescriptor signature = m.rawMethod().getSignature();
+        if (!m.isStatic()) {
+            sb.append(", ").append(NativeSimpleType.OBJECT); // this
+        }
+        int argCount = signature.getParameterCount(false);
+        for (int i = 0; i < argCount; ++i) {
+            sb.append(", ").append(kindToType(signature.getParameterKind(i)));
+        }
+        sb.append("):").append(kindToType(signature.resultKind()));
+        try {
+            TruffleObject fn = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, mangledName);
+            return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), fn, "bind", sb.toString());
+        } catch (UnsupportedTypeException | UnsupportedMessageException | UnknownIdentifierException | ArityException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
     @CompilerDirectives.TruffleBoundary
     public CallTarget getCallTarget() {
         // TODO(peterssen): Make lazy call target thread-safe.
@@ -146,9 +206,34 @@ public final class MethodInfo implements ModifiersProvider {
             if (redirectedMethod != null) {
                 callTarget = redirectedMethod;
             } else {
-                callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(getContext().getLanguage(), this, getContext().getVm()));
+                if (this.isNative()) {
+                    System.err.println("Linking native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getSignature());
+                    Meta meta = getContext().getMeta();
+                    Meta.Method.WithInstance findNative = meta.knownKlass(ClassLoader.class)
+                            .staticMethod("findNative", long.class, ClassLoader.class, String.class);
+
+                    // Lookup the short name first, otherwise lookup the long name (with signature).
+                    for (boolean withSignature: new boolean[]{false, true}) {
+                        String mangledName = Mangle.mangleMethod(meta(this), withSignature);
+                        long handle = (long) findNative.invoke(getDeclaringClass().getClassLoader(), mangledName);
+                        if (handle == 0) { // not found
+                            continue ;
+                        }
+                        TruffleObject library = getContext().getNativeLibraries().get(handle);
+                        TruffleObject nativeMethod = bind(library, meta(this), mangledName);
+                        callTarget = Truffle.getRuntime().createCallTarget(new JNINativeNode(getContext().getLanguage(), nativeMethod));
+                        break;
+                    }
+
+                    if (callTarget == null) {
+                        throw meta.throwEx(UnsatisfiedLinkError.class);
+                    }
+                } else {
+                    callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(getContext().getLanguage(), this, getContext().getVm()));
+                }
             }
         }
+
         return callTarget;
     }
 

@@ -37,6 +37,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 @EspressoIntrinsics
 public class Target_java_lang_ClassLoader {
     @Intrinsic
@@ -82,5 +84,10 @@ public class Target_java_lang_ClassLoader {
     public static @Type(Class.class) StaticObject defineClass1(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
                     @Type(ProtectionDomain.class) Object pd, @Type(String.class) StaticObject source) {
         return defineClass0(self, name, b, off, len, pd);
+    }
+
+    @Intrinsic
+    public static @Type(String.class) StaticObject findBuiltinLib(@Type(String.class) StaticObject name) {
+        return StaticObject.NULL;
     }
 }

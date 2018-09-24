@@ -27,13 +27,17 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.Properties;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_java_lang_System {
@@ -41,6 +45,7 @@ public class Target_java_lang_System {
     @Intrinsic
     public static void exit(int status) {
         // TODO(peterssen): Use TruffleException.
+
         System.exit(status);
     }
 
@@ -67,11 +72,14 @@ public class Target_java_lang_System {
                         "sun.boot.class.path",
 
                         // Needed during initSystemClass to initialize props.
-                        "file.encoding"
+                        "file.encoding",
+                        "java.library.path",
+                        "sun.boot.library.path",
+                        // TODO(peterssen): Remove, only for HelloJNI tests
+                        "playground.library"
         };
 
-        MethodInfo setProperty = props.getKlass().findDeclaredMethod("setProperty",
-                        Object.class, String.class, String.class);
+        Meta.Method.WithInstance setProperty = meta(props).method("setProperty", Object.class, String.class, String.class);
 
         for (String prop : importedProps) {
 
@@ -85,8 +93,10 @@ public class Target_java_lang_System {
                 guestPropValue = context.getMeta().toGuest(System.getProperty(prop));
             }
 
-            setProperty.getCallTarget().call(props, guestPropKey, guestPropValue);
+            setProperty.invokeDirect(guestPropKey, guestPropValue);
         }
+
+        setProperty.invoke("sun.misc.URLClassPath.debug", "true");
 
         return props;
     }
@@ -126,7 +136,6 @@ public class Target_java_lang_System {
 
     @Intrinsic
     public static long currentTimeMillis() {
-        // TODO(peterssen): Speed up time.
         return System.currentTimeMillis();
     }
 
@@ -141,8 +150,9 @@ public class Target_java_lang_System {
     }
 
     @Intrinsic
-    public static void loadLibrary(@Type(String.class) StaticObject libname) {
-        /* nop */
+    public static @Type(String.class) StaticObject mapLibraryName(@Type(String.class) StaticObject libname) {
+        String hostLibname = Meta.toHost(libname);
+        return meta(libname).getMeta().toGuest(System.mapLibraryName(hostLibname));
     }
 
     @Intrinsic

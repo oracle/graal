@@ -25,9 +25,12 @@ package com.oracle.truffle.espresso.runtime;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
@@ -57,6 +60,16 @@ public class EspressoContext {
     private Object appClassLoader;
     private Meta meta;
     private StaticObject mainThread;
+
+    private final ConcurrentHashMap<Long, TruffleObject> nativeLibraries =  new ConcurrentHashMap<>();
+    private final AtomicLong nativeHandleCount = new AtomicLong();
+
+    public long addNativeLibrary(TruffleObject library) {
+        long handle = nativeHandleCount.incrementAndGet();
+        assert !nativeLibraries.containsValue(library);
+        nativeLibraries.put(handle, library);
+        return handle;
+    }
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -222,5 +235,9 @@ public class EspressoContext {
 
     public Object getAppClassLoader() {
         return appClassLoader;
+    }
+
+    public ConcurrentHashMap<Long, TruffleObject> getNativeLibraries() {
+        return nativeLibraries;
     }
 }

@@ -57,6 +57,7 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileOutputStream;
 import com.oracle.truffle.espresso.intrinsics.Target_java_io_UnixFileSystem;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
+import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader_NativeLibrary;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Double;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Float;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
@@ -121,6 +122,7 @@ public class InterpreterToVM {
                     Target_java_io_UnixFileSystem.class,
                     Target_java_lang_Class.class,
                     Target_java_lang_ClassLoader.class,
+                    Target_java_lang_ClassLoader_NativeLibrary.class,
                     Target_java_lang_Double.class,
                     Target_java_lang_Float.class,
                     Target_java_lang_StrictMath.class,
@@ -264,7 +266,12 @@ public class InterpreterToVM {
             assert clazz.getSimpleName().startsWith("Target_");
             className = MetaUtil.toInternalName(clazz.getSimpleName().substring("Target_".length()).replace('_', '.'));
         } else {
-            className = MetaUtil.toInternalName(annotatedClass.getName());
+            Surrogate surrogate = annotatedClass.getAnnotation(Surrogate.class);
+            if (surrogate != null) {
+                className = MetaUtil.toInternalName(surrogate.value());
+            } else {
+                className = MetaUtil.toInternalName(annotatedClass.getName());
+            }
         }
         for (Method method : clazz.getDeclaredMethods()) {
             Intrinsic intrinsic = method.getAnnotation(Intrinsic.class);

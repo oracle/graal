@@ -37,11 +37,13 @@ public class Target_java_io_UnixFileSystem {
 
     enum UnixFileSystemFunctions {
         GET_BOOLEAN_ATTRIBUTES0("getBooleanAttributes0", File.class),
+        GET_LENGTH("getLength", File.class),
+        CANONICALIZE0("canonicalize0", String.class),
         GET_LAST_MODIFIED_TIME("getLastModifiedTime", File.class);
 
         UnixFileSystemFunctions(String name, Class<?>... parameterTypes) {
             try {
-                this.method = getUnixFs().getClass().getMethod(name, parameterTypes);
+                this.method = getUnixFs().getClass().getDeclaredMethod(name, parameterTypes);
                 this.method.setAccessible(true);
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException(e);
@@ -85,9 +87,11 @@ public class Target_java_io_UnixFileSystem {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(String.class) StaticObject canonicalize0(Object self, @Type(String.class) StaticObject path) {
+    public static @Type(String.class) StaticObject canonicalize0(StaticObject self, @Type(String.class) StaticObject path) {
         // TODO(peterssen): Implement path canonicalization.
-        return path;
+        Meta meta = meta(self).getMeta();
+        String canonPath = (String) UnixFileSystemFunctions.CANONICALIZE0.invoke(Meta.toHost(path));
+        return meta.toGuest(canonPath);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -98,6 +102,11 @@ public class Target_java_io_UnixFileSystem {
     @Intrinsic(hasReceiver = true)
     public static long getLastModifiedTime(Object self, @Type(File.class) StaticObject f) {
         return (long) UnixFileSystemFunctions.GET_LAST_MODIFIED_TIME.invoke(toHostFile(f));
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static long getLength(Object self, @Type(File.class) StaticObject f) {
+        return (long) UnixFileSystemFunctions.GET_LENGTH.invoke(toHostFile(f));
     }
 
     private static File toHostFile(StaticObject f) {

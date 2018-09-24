@@ -225,6 +225,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -240,6 +241,7 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
@@ -332,10 +334,6 @@ public class EspressoRootNode extends RootNode {
 
         loop: while (true) {
             try {
-                // Fail?
-                CompilerAsserts.partialEvaluationConstant(curBCI);
-                CompilerAsserts.partialEvaluationConstant(bs.currentBC(curBCI));
-
                 switch (bs.currentBC(curBCI)) {
                     case NOP:
                         break;
@@ -1127,16 +1125,9 @@ public class EspressoRootNode extends RootNode {
     }
 
     private void invoke(OperandStack stack, MethodInfo method, StaticObject receiver) {
-        // TODO(peterssen): Add intrinsics and native methods.
-        // System.err.println("Call: " + method.getDeclaringClass() + "." + method.getName());
         CallTarget redirectedMethod = vm.getIntrinsic(method);
         if (redirectedMethod != null) {
             invokeRedirectedMethodViaVM(stack, method, redirectedMethod);
-        } else if (Modifier.isNative(method.getModifiers())) {
-            JavaKind resultKind = method.getSignature().resultKind();
-            // assert resultKind.equals(JavaKind.Void) : method;
-            // TODO(peterssen): Do not ignore native methods returning void e.g. registerNatives ...
-            throw EspressoError.unimplemented("native method " + method.getDeclaringClass() + "." + method.getName());
         } else {
             Object[] arguments = stack.popArguments(method);
             CallTarget target = method.getCallTarget();
@@ -1317,17 +1308,29 @@ public class EspressoRootNode extends RootNode {
         return switchHelper.defaultTarget(); // key not found.
     }
 
+    @ExplodeLoop
     private static int tableSwitch(OperandStack stack, BytecodeStream bs, int curBCI) {
         BytecodeTableSwitch switchHelper = new BytecodeTableSwitch(bs, bs.currentBCI(curBCI));
         int low = switchHelper.lowKey();
+        CompilerAsserts.partialEvaluationConstant(low);
         int high = switchHelper.highKey();
+        CompilerAsserts.partialEvaluationConstant(high);
         assert low <= high;
         int index = stack.popInt();
-        if (index < low || index > high) {
-            return switchHelper.defaultTarget();
-        } else {
-            return switchHelper.targetAt(index - low);
+        for (int i = low; i <= high; ++i) {
+            if (i == index) {
+                CompilerAsserts.partialEvaluationConstant(switchHelper.targetAt(i - low));
+                return switchHelper.targetAt(i - low);
+            }
         }
+        CompilerAsserts.partialEvaluationConstant(switchHelper.defaultTarget());
+        return switchHelper.defaultTarget();
+
+//        if (index < low || index > high) {
+//            return switchHelper.defaultTarget();
+//        } else {
+//            return switchHelper.targetAt(index - low);
+//        }
     }
 
     private Object checkCast(Object instance, Klass typeToCheck) {
