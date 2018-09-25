@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToAddressNode extends LLVMExpressionNode {
+    public abstract Object executeWithTarget(Object from);
 
     @Specialization
     protected LLVMNativePointer doI1(boolean from) {
