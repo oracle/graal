@@ -32,7 +32,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -255,9 +254,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
+    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            super.finishCompilation(optimizedCallTarget, future, mayBeAsynchronous);
+            super.finishCompilation(optimizedCallTarget, task, mayBeAsynchronous);
         }
     }
 

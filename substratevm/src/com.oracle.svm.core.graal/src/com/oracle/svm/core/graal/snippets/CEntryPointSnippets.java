@@ -149,7 +149,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (MultiThreaded.getValue()) {
             writeCurrentVMThread(VMThreads.nullThread());
         }
-        return runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
+        int result = runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
+        if (MultiThreaded.getValue() && result == CEntryPointErrors.NO_ERROR) {
+            Safepoint.transitionNativeToJava();
+        }
+        return result;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")

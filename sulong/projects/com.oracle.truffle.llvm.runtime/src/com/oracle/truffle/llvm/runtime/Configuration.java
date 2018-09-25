@@ -29,13 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
 
 public interface Configuration {
 
-    String getConfigurationName();
+    boolean isActive(Env env);
 
     List<OptionDescriptor> getOptionDescriptors();
 

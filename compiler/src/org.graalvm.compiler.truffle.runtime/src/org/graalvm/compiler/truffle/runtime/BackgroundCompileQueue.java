@@ -70,8 +70,10 @@ public class BackgroundCompileQueue {
             OptimizedCallTarget callTarget = weakCallTarget.get();
             if (callTarget != null) {
                 try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                    OptionValues options = getOptions();
-                    runtime.doCompile(options, callTarget, cancellable);
+                    if (!cancellable.isCancelled()) {
+                        OptionValues options = getOptions();
+                        runtime.doCompile(options, callTarget, cancellable);
+                    }
                 } finally {
                     callTarget.resetCompilationTask();
                 }

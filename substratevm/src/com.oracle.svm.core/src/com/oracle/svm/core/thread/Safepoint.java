@@ -49,6 +49,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -231,12 +233,16 @@ public final class Safepoint {
         }
     }
 
-    @Uninterruptible(reason = "Must not contain safepoint checks.", calleeMustBe = false)
+    @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void freezeAtSafepoint() {
-        /* Grab the safepoint mutex, which will block me after a transition to native. */
-        getMutex().lock();
+        /* Transition to native */
+        CFunctionPrologueNode.cFunctionPrologue();
+        /* Grab the safepoint mutex, which will block me. */
+        getMutex().lockNoTransition();
         /* Then release the mutex when I resume from the safepoint. */
         getMutex().unlock();
+        /* Transition back to Java */
+        CFunctionEpilogueNode.cFunctionEpilogue();
     }
 
     /** Specific values for {@link #safepointRequested}. */
