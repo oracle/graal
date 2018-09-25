@@ -61,7 +61,7 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
 
     @Specialization
     protected LLVMDebugValue fromPointer(LLVMPointer address) {
-        return new LLVMPointerValueProvider(address);
+        return new LLDBMemoryValue(address);
     }
 
     @Specialization

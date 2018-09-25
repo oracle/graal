@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
+abstract class LLDBConstant implements LLVMDebugValue {
 
     @Override
     public Object readBoolean(long bitOffset) {
@@ -114,7 +114,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class Integer extends LLVMConstantValueProvider {
+    static final class Integer extends LLDBConstant {
 
         private final long size;
         private final long value;
@@ -158,7 +158,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class IVarBit extends LLVMConstantValueProvider {
+    static final class IVarBit extends LLDBConstant {
 
         private final LLVMIVarBit value;
 
@@ -241,7 +241,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class Pointer extends LLVMConstantValueProvider {
+    static final class Pointer extends LLDBConstant {
 
         private final LLVMPointer pointer;
 
@@ -263,7 +263,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @TruffleBoundary
         public String describeValue(long bitOffset, int bitSize) {
             final StringBuilder builder = new StringBuilder();
-            builder.append(new LLVMPointerValueProvider(pointer).computeAddress(0));
+            builder.append(new LLDBMemoryValue(pointer).computeAddress(0));
             if (bitOffset != 0 || bitSize != 0) {
                 builder.append("(");
                 if (bitSize == 1) {
@@ -330,7 +330,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         public Object computeAddress(long bitOffset) {
-            return new LLVMPointerValueProvider(pointer).computeAddress(bitOffset);
+            return new LLDBMemoryValue(pointer).computeAddress(bitOffset);
         }
 
         @Override
@@ -346,7 +346,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @Override
         public LLVMDebugValue dereferencePointer(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
-                return new LLVMPointerValueProvider(pointer);
+                return new LLDBMemoryValue(pointer);
             } else {
                 return null;
             }
@@ -358,7 +358,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
                 TruffleObject foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
-                    foreign = LLVMDebuggerSupport.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
+                    foreign = LLDBSupport.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
 
                 } else if (LLVMManagedPointer.isInstance(pointer)) {
                     foreign = LLVMManagedPointer.cast(pointer).getObject();
@@ -375,16 +375,16 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @TruffleBoundary
         public boolean isInteropValue() {
             if (LLVMNativePointer.isInstance(pointer)) {
-                return LLVMDebuggerSupport.getContext().isHandle(LLVMNativePointer.cast(pointer));
+                return LLDBSupport.getContext().isHandle(LLVMNativePointer.cast(pointer));
             } else if (LLVMManagedPointer.isInstance(pointer)) {
-                return !LLVMDebuggerSupport.pointsToObjectAccess(pointer);
+                return !LLDBSupport.pointsToObjectAccess(pointer);
             } else {
                 throw new IllegalStateException("Unsupported Pointer: " + pointer);
             }
         }
     }
 
-    static final class Float extends LLVMConstantValueProvider {
+    static final class Float extends LLDBConstant {
 
         private final float value;
 
@@ -451,7 +451,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class Double extends LLVMConstantValueProvider {
+    static final class Double extends LLDBConstant {
 
         private final double value;
 
@@ -538,7 +538,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class BigFloat extends LLVMConstantValueProvider {
+    static final class BigFloat extends LLDBConstant {
 
         private static boolean isValidBitsize(int bits) {
             return bits == LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL || bits == LLVMDebugTypeConstants.LLVM80BIT_SIZE_SUGGESTED;
@@ -572,7 +572,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class Function extends LLVMConstantValueProvider {
+    static final class Function extends LLDBConstant {
 
         private final LLVMFunctionDescriptor value;
 
@@ -601,7 +601,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
     }
 
-    static final class InteropValue extends LLVMConstantValueProvider {
+    static final class InteropValue extends LLDBConstant {
 
         private final Object value;
 

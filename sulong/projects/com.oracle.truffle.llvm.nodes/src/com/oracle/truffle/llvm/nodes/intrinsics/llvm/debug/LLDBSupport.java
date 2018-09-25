@@ -38,22 +38,22 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMDebuggerSupport {
+final class LLDBSupport {
 
-    private LLVMDebuggerSupport() {
+    private LLDBSupport() {
     }
 
-    public static LLVMContext getContext() {
+    static LLVMContext getContext() {
         return LLVMLanguage.getLLVMContextReference().get();
     }
 
-    public static NodeFactory getNodeFactory() {
+    static NodeFactory getNodeFactory() {
         final LLVMContext context = getContext();
         assert context != null;
         return context.getNodeFactory();
     }
 
-    public static boolean pointsToObjectAccess(LLVMPointer pointer) {
+    static boolean pointsToObjectAccess(LLVMPointer pointer) {
         if (!LLVMManagedPointer.isInstance(pointer)) {
             return false;
         }

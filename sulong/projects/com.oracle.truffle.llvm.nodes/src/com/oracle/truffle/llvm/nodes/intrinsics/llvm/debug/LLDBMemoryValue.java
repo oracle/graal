@@ -45,11 +45,11 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.math.BigInteger;
 
-public class LLVMPointerValueProvider implements LLVMDebugValue {
+final class LLDBMemoryValue implements LLVMDebugValue {
 
     private final LLVMPointer pointer;
 
-    public LLVMPointerValueProvider(LLVMPointer pointer) {
+    LLDBMemoryValue(LLVMPointer pointer) {
         this.pointer = pointer;
     }
 
@@ -81,7 +81,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
     }
 
     private Object loadValue(Type loadtype, int byteOffset) {
-        final LLVMLoadNode loadNode = LLVMDebuggerSupport.getNodeFactory().createLoad(loadtype, null);
+        final LLVMLoadNode loadNode = LLDBSupport.getNodeFactory().createLoad(loadtype, null);
         final LLVMPointer offsetPointer = pointer.increment(byteOffset);
         return loadNode.executeWithTarget(offsetPointer);
     }
@@ -394,7 +394,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
     public boolean isAlwaysSafeToDereference(long bitOffset) {
         final Object pointerRead = readAddress(bitOffset);
         if (LLVMManagedPointer.isInstance(pointerRead)) {
-            return LLVMDebuggerSupport.pointsToObjectAccess(LLVMManagedPointer.cast(pointerRead));
+            return LLDBSupport.pointsToObjectAccess(LLVMManagedPointer.cast(pointerRead));
         }
         return false;
     }
@@ -407,7 +407,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
 
         final Object pointerRead = readAddress(bitOffset);
         if (LLVMPointer.isInstance(pointerRead)) {
-            return LLVMDebuggerSupport.getNodeFactory().createDebugDeclarationBuilder().build(pointerRead);
+            return LLDBSupport.getNodeFactory().createDebugDeclarationBuilder().build(pointerRead);
         }
 
         return null;
@@ -416,7 +416,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
     @Override
     public boolean isInteropValue() {
         if (LLVMManagedPointer.isInstance(pointer)) {
-            return !LLVMDebuggerSupport.pointsToObjectAccess(LLVMManagedPointer.cast(pointer));
+            return !LLDBSupport.pointsToObjectAccess(LLVMManagedPointer.cast(pointer));
         }
         return false;
     }

@@ -64,37 +64,37 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromBoolean(boolean value) {
-        return new LLVMConstantValueProvider.Integer(LLVMDebugTypeConstants.BOOLEAN_SIZE, value ? 1L : 0L);
+        return new LLDBConstant.Integer(LLVMDebugTypeConstants.BOOLEAN_SIZE, value ? 1L : 0L);
     }
 
     @Specialization
     protected LLVMDebugValue fromByte(byte value) {
-        return new LLVMConstantValueProvider.Integer(Byte.SIZE, value);
+        return new LLDBConstant.Integer(Byte.SIZE, value);
     }
 
     @Specialization
     protected LLVMDebugValue fromShort(short value) {
-        return new LLVMConstantValueProvider.Integer(Short.SIZE, value);
+        return new LLDBConstant.Integer(Short.SIZE, value);
     }
 
     @Specialization
     protected LLVMDebugValue fromInt(int value) {
-        return new LLVMConstantValueProvider.Integer(Integer.SIZE, value);
+        return new LLDBConstant.Integer(Integer.SIZE, value);
     }
 
     @Specialization
     protected LLVMDebugValue fromLong(long value) {
-        return new LLVMConstantValueProvider.Integer(Long.SIZE, value);
+        return new LLDBConstant.Integer(Long.SIZE, value);
     }
 
     @Specialization
     protected LLVMDebugValue fromIVarBit(LLVMIVarBit value) {
-        return new LLVMConstantValueProvider.IVarBit(value);
+        return new LLDBConstant.IVarBit(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value) {
-        return new LLVMDebugBoxedPrimitive(value);
+        return new LLDBBoxedPrimitive(value);
     }
 
     @Specialization
@@ -106,67 +106,67 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
             }
         }
 
-        return new LLVMConstantValueProvider.Pointer(value);
+        return new LLDBConstant.Pointer(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromFunctionHandle(LLVMFunctionDescriptor value) {
-        return new LLVMConstantValueProvider.Function(value);
+        return new LLDBConstant.Function(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromFloat(float value) {
-        return new LLVMConstantValueProvider.Float(value);
+        return new LLDBConstant.Float(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromDouble(double value) {
-        return new LLVMConstantValueProvider.Double(value);
+        return new LLDBConstant.Double(value);
     }
 
     @Specialization
     protected LLVMDebugValue from80BitFloat(LLVM80BitFloat value) {
-        return new LLVMConstantValueProvider.BigFloat(value);
+        return new LLDBConstant.BigFloat(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromI1Vector(LLVMI1Vector value) {
-        return new LLVMConstantVectorValueProvider.I1(value);
+        return new LLDBVector.I1(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromI8Vector(LLVMI8Vector value) {
-        return new LLVMConstantVectorValueProvider.I8(value);
+        return new LLDBVector.I8(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromI16Vector(LLVMI16Vector value) {
-        return new LLVMConstantVectorValueProvider.I16(value);
+        return new LLDBVector.I16(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromI32Vector(LLVMI32Vector value) {
-        return new LLVMConstantVectorValueProvider.I32(value);
+        return new LLDBVector.I32(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromI64Vector(LLVMI64Vector value) {
-        return new LLVMConstantVectorValueProvider.I64(value);
+        return new LLDBVector.I64(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromFloatVector(LLVMFloatVector value) {
-        return new LLVMConstantVectorValueProvider.Float(value);
+        return new LLDBVector.Float(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromDoubleVector(LLVMDoubleVector value) {
-        return new LLVMConstantVectorValueProvider.Double(value);
+        return new LLDBVector.Double(value);
     }
 
     @Specialization
     protected LLVMDebugValue fromAddressVector(LLVMPointerVector value) {
-        return new LLVMConstantVectorValueProvider.Address(value);
+        return new LLDBVector.Address(value);
     }
 
     @Specialization
@@ -185,14 +185,14 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
         if (LLVMManagedPointer.isInstance(target)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
-            if (LLVMDebuggerSupport.pointsToObjectAccess(LLVMManagedPointer.cast(target))) {
-                return new LLVMPointerValueProvider(managedPointer);
+            if (LLDBSupport.pointsToObjectAccess(LLVMManagedPointer.cast(target))) {
+                return new LLDBMemoryValue(managedPointer);
             }
         } else if (!LLVMPointer.isInstance(target)) {
             // a non-pointer was stored as a pointer in this global
             return executeWithTarget(target);
         }
-        return new LLVMConstantGlobalValueProvider(global);
+        return new LLDBGlobalConstant(global);
     }
 
     @Fallback
