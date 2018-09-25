@@ -308,7 +308,7 @@ public class OptimizedCompilationProfile {
     final boolean firstTierCall(OptimizedCallTarget callTarget) {
         int callCount = ++firstTierCallCount;
         if (callCount >= compilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
-            return callTarget.compile();
+            return callTarget.compile(true);
         }
         return false;
     }
@@ -323,9 +323,7 @@ public class OptimizedCompilationProfile {
                 // hot.
                 if ((intAndLoopCallCount >= firstTierCompilationCallAndLoopThreshold && intCallCount >= firstTierCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
                                 TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                    try (TruffleCompilerOptions.TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFirstTierCompilation, true)) {
-                        return callTarget.compile();
-                    }
+                    return callTarget.compile(false);
                 }
             }
             return false;
@@ -337,7 +335,7 @@ public class OptimizedCompilationProfile {
                 // hot
                 int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
                 if ((intCallCount >= callThreshold && intAndLoopCallCount >= compilationCallAndLoopThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
-                    return callTarget.compile();
+                    return callTarget.compile(true);
                 }
             }
             return false;

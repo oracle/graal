@@ -221,7 +221,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
+    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         if (SubstrateUtil.HOSTED) {
             /*
              * Truffle code can run during image generation. But for now it is the easiest to not
@@ -234,7 +234,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            return super.submitForCompilation(optimizedCallTarget);
+            return super.submitForCompilation(optimizedCallTarget, lastTierCompilation);
         }
 
         try {

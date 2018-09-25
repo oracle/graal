@@ -194,6 +194,7 @@ public class TruffleGraphBuilderPlugins {
         r.register0("inFirstTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                // TODO: Pass the first tier compilation setting here.
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(TruffleFirstTierCompilation.getValue(getOptions())));
                 return true;
             }

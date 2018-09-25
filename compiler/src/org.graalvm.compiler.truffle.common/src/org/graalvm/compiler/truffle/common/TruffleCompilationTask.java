@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.common;
 
-import com.oracle.truffle.api.CompilerOptions;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.nodes.Cancellable;
 
-public interface TruffleInliningPolicy {
-
-    boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options);
-
-    double calculateScore(TruffleInliningProfile profile);
-
-    static TruffleInliningPolicy getInliningPolicy(OptionValues options) {
-        // TODO: Pass information about the current compilation task here.
-        if (TruffleCompilerOptions.TruffleFirstTierCompilation.getValue(options)) {
-            return new NoInliningPolicy();
-        } else {
-            return new DefaultInliningPolicy();
-        }
-    }
+/**
+ * Describes the state and the configuration of a Truffle compilation.
+ */
+public interface TruffleCompilationTask extends Cancellable {
+    /**
+     * Returns {@code true} if this is a last tier compilation.
+     */
+    boolean isLastTier();
 }

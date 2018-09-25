@@ -29,11 +29,16 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
-public final class CancellableCompileTask implements Cancellable {
+public final class CancellableCompileTask implements TruffleCompilationTask {
     private volatile Future<?> future;
     private volatile boolean cancelled;
+    private final boolean lastTierCompilation;
+
+    public CancellableCompileTask(boolean lastTierCompilation) {
+        this.lastTierCompilation = lastTierCompilation;
+    }
 
     // This cannot be done in the constructor because the CancellableCompileTask needs to be
     // passed down to the compiler through a Runnable inner class.
@@ -67,5 +72,9 @@ public final class CancellableCompileTask implements Cancellable {
             return true;
         }
         return false;
+    }
+
+    public boolean isLastTier() {
+        return lastTierCompilation;
     }
 }

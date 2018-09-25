@@ -86,8 +86,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         assertNotCompiled(returnTarget);
         returnTarget.call();
         value[0]++;
-        enterTarget.compile();
-        returnTarget.compile();
+        enterTarget.compile(true);
+        returnTarget.compile(true);
         assertCompiled(enterTarget);
         assertCompiled(returnTarget);
         long expectedCounters = allocCounter(value[0]);
@@ -114,8 +114,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
 
@@ -126,8 +126,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertNotCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
 
@@ -139,8 +139,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertNotCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
         }

@@ -25,8 +25,8 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import java.lang.ref.WeakReference;
@@ -39,7 +39,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFirstTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 
@@ -52,16 +51,16 @@ public class BackgroundCompileQueue {
         private final GraalTruffleRuntime runtime;
         private final OptionValues optionOverrides;
         private final WeakReference<OptimizedCallTarget> weakCallTarget;
-        private final Cancellable cancellable;
+        private final TruffleCompilationTask task;
         private final boolean isFirstTier;
 
-        public Request(GraalTruffleRuntime runtime, OptionValues optionOverrides, OptimizedCallTarget callTarget, Cancellable cancellable) {
+        public Request(GraalTruffleRuntime runtime, OptionValues optionOverrides, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
             this.id = idCounter.getAndIncrement();
             this.runtime = runtime;
             this.optionOverrides = optionOverrides;
             this.weakCallTarget = new WeakReference<>(callTarget);
-            this.cancellable = cancellable;
-            this.isFirstTier = optionOverrides != null && TruffleFirstTierCompilation.getValue(optionOverrides);
+            this.task = task;
+            this.isFirstTier = optionOverrides != null && !task.isLastTier();
         }
 
         @SuppressWarnings("try")
@@ -70,9 +69,9 @@ public class BackgroundCompileQueue {
             OptimizedCallTarget callTarget = weakCallTarget.get();
             if (callTarget != null) {
                 try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                    if (!cancellable.isCancelled()) {
+                    if (!task.isCancelled()) {
                         OptionValues options = getOptions();
-                        runtime.doCompile(options, callTarget, cancellable);
+                        runtime.doCompile(options, callTarget, task);
                     }
                 } finally {
                     callTarget.resetCompilationTask();
@@ -139,9 +138,9 @@ public class BackgroundCompileQueue {
         };
     }
 
-    public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget) {
+    public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
-        CancellableCompileTask cancellable = new CancellableCompileTask();
+        CancellableCompileTask cancellable = new CancellableCompileTask(lastTierCompilation);
         Request request = new Request(runtime, optionOverrides, optimizedCallTarget, cancellable);
         cancellable.setFuture(compilationExecutorService.submit(request));
         return cancellable;
