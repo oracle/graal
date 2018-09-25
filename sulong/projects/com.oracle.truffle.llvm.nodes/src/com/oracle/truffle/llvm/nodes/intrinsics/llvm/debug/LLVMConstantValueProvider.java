@@ -276,7 +276,7 @@ public abstract class LLVMConstantValueProvider implements LLVMDebugValue {
                 if (bitOffset == 1) {
                     builder.append("1 bit");
                 } else {
-                    builder.append(bitOffset).append(" bytes");
+                    builder.append(bitOffset).append(" bits");
                 }
                 builder.append(")");
             }
