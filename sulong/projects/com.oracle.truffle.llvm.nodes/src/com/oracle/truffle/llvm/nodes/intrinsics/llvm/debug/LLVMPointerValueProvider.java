@@ -31,12 +31,11 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -81,18 +80,10 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         return !pointer.isNull() && !isInteropValue();
     }
 
-    private LLVMExpressionNode createLoadNode(Type loadType, int byteOffset) {
-        assert byteOffset >= 0;
-
-        final NodeFactory nodeFactory = LLVMDebuggerSupport.getNodeFactory();
-        LLVMExpressionNode pointerNode = new ConstantNode(pointer);
-
-        if (byteOffset != 0) {
-            final LLVMExpressionNode offset = new ConstantNode(byteOffset);
-            pointerNode = nodeFactory.createTypedElementPointer(pointerNode, offset, 1, loadType);
-        }
-
-        return nodeFactory.createLoad(loadType, pointerNode);
+    private Object loadValue(Type loadtype, int byteOffset) {
+        final LLVMLoadNode loadNode = LLVMDebuggerSupport.getNodeFactory().createLoad(loadtype, null);
+        final LLVMPointer offsetPointer = pointer.increment(byteOffset);
+        return loadNode.executeWithTarget(offsetPointer);
     }
 
     @Override
@@ -102,27 +93,24 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         }
 
         if (isByteAligned(bitOffset)) {
-            final LLVMExpressionNode node = createLoadNode(PrimitiveType.I1, (int) (bitOffset / Byte.SIZE));
-            final boolean value;
-            try {
-                value = node.executeI1(null);
-            } catch (Throwable t) {
+            final Object value = loadValue(PrimitiveType.I1, (int) (bitOffset / Byte.SIZE));
+            if (value instanceof Boolean) {
+                return value;
+            } else if (value instanceof Number) {
+                return ((Number) value).longValue() != 0;
+            } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE);
             }
-            return value;
         }
 
-        final LLVMExpressionNode byteNode = createLoadNode(PrimitiveType.I8, (int) (bitOffset / Byte.SIZE));
-        final byte containingByte;
-        try {
-            containingByte = byteNode.executeI8(null);
-        } catch (Throwable t) {
-            return unavailable(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE);
+        final Object containingByte = loadValue(PrimitiveType.I8, (int) (bitOffset / Byte.SIZE));
+        if (containingByte instanceof Byte) {
+            final int shift = (int) bitOffset % Byte.SIZE;
+            final int shiftedByte = ((byte) containingByte) >> shift;
+            return (shiftedByte & 0b1) != 0;
         }
 
-        final int shift = (int) bitOffset % Byte.SIZE;
-        final int shiftedByte = containingByte >> shift;
-        return (shiftedByte & 0b1) != 0;
+        return unavailable(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE);
     }
 
     @Override
@@ -132,28 +120,24 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         }
 
         if (isByteAligned(bitOffset)) {
-            final LLVMExpressionNode node = createLoadNode(PrimitiveType.FLOAT, (int) (bitOffset / Byte.SIZE));
-            final float value;
-            try {
-                value = node.executeFloat(null);
-            } catch (Throwable t) {
+            final Object value = loadValue(PrimitiveType.FLOAT, (int) (bitOffset / Byte.SIZE));
+            if (value instanceof Float) {
+                return value;
+            } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
             }
-            return value;
         }
 
         final int alignedOffset = (int) (bitOffset / Byte.SIZE);
         long bits = 0;
         for (int i = 0; i < Float.BYTES + 1; i++) {
-            final LLVMExpressionNode byteNode = createLoadNode(PrimitiveType.I8, alignedOffset + i);
-            final byte byteValue;
-            try {
-                byteValue = byteNode.executeI8(null);
-            } catch (Throwable t) {
+            final Object byteValue = loadValue(PrimitiveType.I8, alignedOffset + i);
+            if (byteValue instanceof Byte) {
+                long shiftedByte = (long) ((byte) byteValue) << (Byte.SIZE * i);
+                bits |= shiftedByte;
+            } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
             }
-            long shiftedByte = (long) byteValue << (Byte.SIZE * i);
-            bits |= shiftedByte;
         }
 
         final int shift = (int) bitOffset % Byte.SIZE;
@@ -168,14 +152,12 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         }
 
         if (isByteAligned(bitOffset)) {
-            final LLVMExpressionNode node = createLoadNode(PrimitiveType.DOUBLE, (int) (bitOffset / Byte.SIZE));
-            final double value;
-            try {
-                value = node.executeDouble(null);
-            } catch (Throwable t) {
+            final Object value = loadValue(PrimitiveType.DOUBLE, (int) (bitOffset / Byte.SIZE));
+            if (value instanceof Double) {
+                return value;
+            } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE);
             }
-            return value;
         }
 
         final Object asBits = readBigInteger(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE, false);
@@ -194,14 +176,12 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         }
 
         if (isByteAligned(bitOffset)) {
-            final LLVMExpressionNode node = createLoadNode(PrimitiveType.X86_FP80, (int) (bitOffset / Byte.SIZE));
-            final LLVM80BitFloat value;
-            try {
-                value = node.executeLLVM80BitFloat(null);
-            } catch (Throwable t) {
+            final Object value = loadValue(PrimitiveType.X86_FP80, (int) (bitOffset / Byte.SIZE));
+            if (value instanceof LLVM80BitFloat) {
+                return value;
+            } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
             }
-            return value;
         }
 
         final Object asBits = readBigInteger(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL, false);
@@ -220,14 +200,12 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         }
 
         if (isByteAligned(bitOffset)) {
-            final LLVMExpressionNode node = createLoadNode(PointerType.VOID, (int) (bitOffset / Byte.SIZE));
-            final LLVMPointer value;
-            try {
-                value = node.executeLLVMPointer(null);
-            } catch (Throwable t) {
+            final Object value = loadValue(PointerType.VOID, (int) (bitOffset / Byte.SIZE));
+            if (LLVMPointer.isInstance(value)) {
+                return value;
+            } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
             }
-            return value;
         }
 
         final Object asBits = readBigInteger(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE, false);
@@ -301,66 +279,55 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         if (isByteAligned(bitOffset)) {
             switch (bitSize) {
                 case LLVMDebugTypeConstants.BYTE_SIZE: {
-                    final LLVMExpressionNode node = createLoadNode(PrimitiveType.I8, byteOffset);
-                    byte value;
-                    try {
-                        value = node.executeI8(null);
-                    } catch (Throwable t) {
+                    final Object value = loadValue(PrimitiveType.I8, byteOffset);
+                    if (value instanceof Byte) {
+                        return BigInteger.valueOf(signed ? (short) value : Byte.toUnsignedInt((byte) value));
+                    } else {
                         return unavailable(bitOffset, LLVMDebugTypeConstants.BYTE_SIZE);
                     }
-                    return BigInteger.valueOf(signed ? value : Byte.toUnsignedInt(value));
                 }
 
                 case LLVMDebugTypeConstants.SHORT_SIZE: {
-                    final LLVMExpressionNode node = createLoadNode(PrimitiveType.I16, byteOffset);
-                    short value;
-                    try {
-                        value = node.executeI16(null);
-                    } catch (Throwable t) {
+                    final Object value = loadValue(PrimitiveType.I16, byteOffset);
+                    if (value instanceof Short) {
+                        return BigInteger.valueOf(signed ? (short) value : Short.toUnsignedInt((short) value));
+                    } else {
                         return unavailable(bitOffset, LLVMDebugTypeConstants.SHORT_SIZE);
                     }
-                    return BigInteger.valueOf(signed ? value : Short.toUnsignedInt(value));
                 }
 
                 case LLVMDebugTypeConstants.INTEGER_SIZE: {
-                    final LLVMExpressionNode node = createLoadNode(PrimitiveType.I32, byteOffset);
-                    int value;
-                    try {
-                        value = node.executeI32(null);
-                    } catch (Throwable t) {
+                    final Object value = loadValue(PrimitiveType.I32, byteOffset);
+                    if (value instanceof Integer) {
+                        return BigInteger.valueOf(signed ? (int) value : Integer.toUnsignedLong((int) value));
+                    } else {
                         return unavailable(bitOffset, LLVMDebugTypeConstants.INTEGER_SIZE);
                     }
-                    return BigInteger.valueOf(signed ? value : Integer.toUnsignedLong(value));
                 }
 
                 case LLVMDebugTypeConstants.LONG_SIZE: {
-                    final LLVMExpressionNode node = createLoadNode(PrimitiveType.I64, byteOffset);
-                    long value;
-                    try {
-                        value = node.executeI64(null);
-                    } catch (Throwable t) {
+                    final Object value = loadValue(PrimitiveType.I64, byteOffset);
+                    if (value instanceof Long) {
+                        return signed ? BigInteger.valueOf((long) value) : new BigInteger(Long.toUnsignedString((long) value));
+                    } else {
                         return unavailable(bitOffset, LLVMDebugTypeConstants.LONG_SIZE);
                     }
-                    return signed ? BigInteger.valueOf(value) : new BigInteger(Long.toUnsignedString(value));
                 }
             }
         }
 
         final int alignedBitSize = bitSize + ((int) bitOffset % Byte.SIZE);
         final int alignedByteSize = ((alignedBitSize - 1) / Byte.SIZE) + 1;
-        final int alignedOffset = (int) (bitOffset / Byte.SIZE);
         final byte[] bytes = new byte[alignedByteSize];
 
         for (int i = 0; i < alignedByteSize; i++) {
-            final LLVMExpressionNode byteNode = createLoadNode(PrimitiveType.I8, alignedOffset + i);
-            final byte byteValue;
-            try {
-                byteValue = byteNode.executeI8(null);
-            } catch (Throwable t) {
-                return unavailable(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
+            final Object value = loadValue(PrimitiveType.I8, byteOffset + i);
+            if (value instanceof Byte) {
+                // BigInteger magnitudes are stored as Big-Endian
+                bytes[alignedByteSize - 1 - i] = (byte) value;
+            } else {
+                return unavailable(bitOffset, bitSize);
             }
-            // BigInteger magnitudes are stored as Big-Endian
-            bytes[alignedByteSize - 1 - i] = byteValue;
         }
 
         if (isAllZeros(bytes)) {
@@ -441,17 +408,4 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
         return (offset & (Byte.SIZE - 1)) == 0;
     }
 
-    private static final class ConstantNode extends LLVMExpressionNode {
-
-        private final Object value;
-
-        private ConstantNode(Object value) {
-            this.value = value;
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return value;
-        }
-    }
 }

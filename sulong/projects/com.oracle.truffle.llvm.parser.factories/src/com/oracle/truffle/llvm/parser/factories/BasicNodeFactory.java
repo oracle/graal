@@ -536,7 +536,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
+    public LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
         if (resolvedResultType instanceof VectorType) {
             return createLoadVector((VectorType) resolvedResultType, loadTarget, ((VectorType) resolvedResultType).getNumberOfElements());
         } else {
@@ -2324,7 +2324,7 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    private static LLVMExpressionNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
+    private static LLVMLoadNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
         if (resultType instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType).getPrimitiveKind()) {
                 case I1:
