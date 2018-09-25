@@ -284,7 +284,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
                 case LLVMDebugTypeConstants.BYTE_SIZE: {
                     final Object value = loadValue(PrimitiveType.I8, byteOffset);
                     if (value instanceof Byte) {
-                        return BigInteger.valueOf(signed ? (short) value : Byte.toUnsignedInt((byte) value));
+                        return BigInteger.valueOf(signed ? (byte) value : Byte.toUnsignedInt((byte) value));
                     } else {
                         return unavailable(bitOffset, LLVMDebugTypeConstants.BYTE_SIZE);
                     }
