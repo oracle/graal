@@ -18,7 +18,6 @@ gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-10b.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-16.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/i386-pf-athlon-1.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-12.c
-gcc-5.2.0/gcc/testsuite/gcc.misc-tests/arm-isr.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-9.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcov-14.c
 gcc-5.2.0/gcc/testsuite/gcc.misc-tests/bprob-1.c
