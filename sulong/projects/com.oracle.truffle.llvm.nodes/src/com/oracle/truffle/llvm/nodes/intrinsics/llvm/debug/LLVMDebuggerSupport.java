@@ -29,9 +29,14 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMDebuggerSupport {
 
@@ -46,5 +51,15 @@ public final class LLVMDebuggerSupport {
         final LLVMContext context = getContext();
         assert context != null;
         return context.getNodeFactory();
+    }
+
+    public static boolean pointsToObjectAccess(LLVMPointer pointer) {
+        if (!LLVMManagedPointer.isInstance(pointer)) {
+            return false;
+        }
+
+        final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(pointer);
+        final TruffleObject target = managedPointer.getObject();
+        return target instanceof DynamicObject && ((DynamicObject) target).getShape().getObjectType() instanceof LLVMObjectAccess;
     }
 }

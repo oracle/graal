@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -98,6 +99,13 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromPointer(LLVMPointer value) {
+        if (LLVMManagedPointer.isInstance(value) && LLVMManagedPointer.cast(value).getObject() instanceof LLVMGlobalContainer) {
+            final Object target = LLVMManagedPointer.cast(value).getObject();
+            if (target instanceof LLVMGlobalContainer) {
+                return fromGlobalContainer((LLVMGlobalContainer) target);
+            }
+        }
+
         return new LLVMConstantValueProvider.Pointer(value);
     }
 
@@ -174,7 +182,13 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value) {
         LLVMGlobal global = value.getDescriptor();
         Object target = global.getTarget();
-        if (!LLVMPointer.isInstance(target)) {
+
+        if (LLVMManagedPointer.isInstance(target)) {
+            final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
+            if (LLVMDebuggerSupport.pointsToObjectAccess(LLVMManagedPointer.cast(target))) {
+                return new LLVMPointerValueProvider(managedPointer);
+            }
+        } else if (!LLVMPointer.isInstance(target)) {
             // a non-pointer was stored as a pointer in this global
             return executeWithTarget(target);
         }

@@ -49,7 +49,7 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
 
     private final LLVMPointer pointer;
 
-    protected LLVMPointerValueProvider(LLVMPointer pointer) {
+    public LLVMPointerValueProvider(LLVMPointer pointer) {
         this.pointer = pointer;
     }
 
@@ -391,6 +391,15 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
     }
 
     @Override
+    public boolean isAlwaysSafeToDereference(long bitOffset) {
+        final Object pointerRead = readAddress(bitOffset);
+        if (LLVMManagedPointer.isInstance(pointerRead)) {
+            return LLVMDebuggerSupport.pointsToObjectAccess(LLVMManagedPointer.cast(pointerRead));
+        }
+        return false;
+    }
+
+    @Override
     public LLVMDebugValue dereferencePointer(long bitOffset) {
         if (!canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE) || !isByteAligned(bitOffset)) {
             return null;
@@ -406,7 +415,10 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
 
     @Override
     public boolean isInteropValue() {
-        return LLVMManagedPointer.isInstance(pointer);
+        if (LLVMManagedPointer.isInstance(pointer)) {
+            return !LLVMDebuggerSupport.pointsToObjectAccess(LLVMManagedPointer.cast(pointer));
+        }
+        return false;
     }
 
     @Override
