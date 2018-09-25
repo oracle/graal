@@ -43,7 +43,7 @@ public class CachingRegexEngine extends RegexEngine {
     // Compatibility for Graal.js. To be dropped once Graal.js switches to the other constructor.
     @Deprecated
     public CachingRegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
-        this(compiler, new RegexOptions(false, eagerCompilation));
+        this(compiler, RegexOptions.newBuilder().regressionTestMode(eagerCompilation).build());
     }
 
     @Override

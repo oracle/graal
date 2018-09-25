@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlagsMessageResolutionFactory.ReadCacheNodeGen;
 
 @MessageResolution(receiverType = PythonFlags.class)
-public class PythonFlagsMessageResolution {
+class PythonFlagsMessageResolution {
 
     static class PythonFlagsGetFlagNode {
 

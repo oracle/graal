@@ -28,6 +28,9 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.RegexSyntaxException;
 
+/**
+ * An immutable representation of a set of Python regular expression flags.
+ */
 public final class PythonFlags implements TruffleObject {
 
     private final int value;
@@ -39,7 +42,7 @@ public final class PythonFlags implements TruffleObject {
     public static final PythonFlags EMPTY_INSTANCE = new PythonFlags("");
     public static final PythonFlags TYPE_FLAGS_INSTANCE = new PythonFlags(TYPE_FLAGS);
 
-    PythonFlags(String source) {
+    public PythonFlags(String source) {
         int bits = 0;
         for (int i = 0; i < source.length(); i++) {
             bits |= maskForFlag(source.charAt(i));
@@ -60,22 +63,6 @@ public final class PythonFlags implements TruffleObject {
         return (this.value & maskForFlag(flagChar)) != 0;
     }
 
-    public boolean isVerbose() {
-        return hasFlag('x');
-    }
-
-    public boolean isUnicode() {
-        return hasFlag('u');
-    }
-
-    public boolean isDotAll() {
-        return hasFlag('s');
-    }
-
-    public boolean isMultiLine() {
-        return hasFlag('m');
-    }
-
     public boolean isIgnoreCase() {
         return hasFlag('i');
     }
@@ -84,8 +71,28 @@ public final class PythonFlags implements TruffleObject {
         return hasFlag('L');
     }
 
+    public boolean isMultiLine() {
+        return hasFlag('m');
+    }
+
+    public boolean isDotAll() {
+        return hasFlag('s');
+    }
+
+    public boolean isVerbose() {
+        return hasFlag('x');
+    }
+
+    public boolean isAscii() {
+        return hasFlag('a');
+    }
+
     public boolean isTemplate() {
         return hasFlag('t');
+    }
+
+    public boolean isUnicode() {
+        return hasFlag('u');
     }
 
     public PythonFlags addFlag(int flag) {
@@ -100,6 +107,11 @@ public final class PythonFlags implements TruffleObject {
         return new PythonFlags(this.value & ~otherFlags.value);
     }
 
+    /**
+     * Verifies that there is at most one type flag and that the type flag is compatible with the
+     * chosen regular expression mode. If a string pattern is used, ensures that the unicode flag is
+     * set by default.
+     */
     public PythonFlags fixFlags(PythonREMode mode) {
         switch (mode) {
             case Str:

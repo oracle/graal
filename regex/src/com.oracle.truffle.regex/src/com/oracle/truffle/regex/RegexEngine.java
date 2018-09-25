@@ -104,8 +104,8 @@ public class RegexEngine implements RegexLanguageObject {
         @Resolve(message = "EXECUTE")
         abstract static class RegexEngineExecuteNode extends Node {
 
-            @Child private ExpectStringNode expectPatternNode = insert(ExpectStringNode.create());
-            @Child private ExpectStringNode expectFlagsNode = insert(ExpectStringNode.create());
+            @Child private ExpectStringNode expectPatternNode = ExpectStringNode.create();
+            @Child private ExpectStringNode expectFlagsNode = ExpectStringNode.create();
 
             public Object access(RegexEngine receiver, Object[] args) {
                 if (!(args.length == 1 || args.length == 2)) {

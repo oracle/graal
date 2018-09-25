@@ -26,7 +26,16 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.regex.RegexSource;
 
+/**
+ * An implementation of a dialect (flavor) of regular expressions other than ECMAScript. The goal of
+ * a flavor implementation is to translate regular expressions written in one flavor of regex (e.g.
+ * Python) into equivalent regexes in ECMAScript.
+ */
 public interface RegexFlavor {
 
+    /**
+     * Given a {@link RegexSource}, returns a {@link RegexFlavorProcessor} that can be used to parse
+     * and translate the flavored regex into an ECMAScript regex.
+     */
     RegexFlavorProcessor forRegex(RegexSource source);
 }

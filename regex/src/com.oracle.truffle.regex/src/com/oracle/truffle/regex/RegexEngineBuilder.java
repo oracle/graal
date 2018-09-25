@@ -79,8 +79,8 @@ public class RegexEngineBuilder implements RegexLanguageObject {
         @Resolve(message = "EXECUTE")
         abstract static class RegexEngineBuilderExecuteNode extends Node {
 
-            @Child private Node isExecutableNode = insert(Message.IS_EXECUTABLE.createNode());
-            @Child private ExpectStringNode expectOptionsNode = insert(ExpectStringNode.create());
+            @Child private Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
+            @Child private ExpectStringNode expectOptionsNode = ExpectStringNode.create();
 
             public Object access(RegexEngineBuilder receiver, Object[] args) {
                 if (args.length > 2) {

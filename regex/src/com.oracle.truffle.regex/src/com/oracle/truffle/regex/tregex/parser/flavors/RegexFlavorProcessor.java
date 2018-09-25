@@ -31,15 +31,50 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 
 import java.util.Map;
 
+/**
+ * Allows the parsing and translating of a foreign regular expression into an ECMAScript regular
+ * expression.
+ * <p>
+ * After either {@link #validate} or {@link #toECMAScriptRegex} was called,
+ * {@link #getNamedCaptureGroups}, {@link #getFlags} and {@link #isUnicodePattern} can be called to
+ * extract extra information obtained during the parse.
+ */
 public interface RegexFlavorProcessor {
 
+    /**
+     * Runs the parser without trying to find an equivalent ECMAScript regex. Useful for early error
+     * detection.
+     * 
+     * @throws RegexSyntaxException when the pattern or the flags are not well-formed
+     */
     void validate() throws RegexSyntaxException;
 
+    /**
+     * Runs the parser and emits an equivalent ECMAScript regex.
+     * 
+     * @return an ECMAScript {@link RegexSource} compatible to the input one
+     * @throws RegexSyntaxException when the pattern or the flags are not well-formed
+     * @throws UnsupportedRegexException when the pattern cannot be translated to an equivalent
+     *             ECMAScript pattern
+     */
     RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException;
 
+    /**
+     * Returns a map from the names of capture groups to their indices. If the regular expression
+     * had no named capture groups, returns null.
+     */
     Map<String, Integer> getNamedCaptureGroups();
 
+    /**
+     * Returns a {@link TruffleObject} representing the compilation flags which were set for the
+     * regular expression. The returned object responds to 'READ' messages on names which correspond
+     * to the names of the flags as used in the language from which the flavor originates.
+     */
     TruffleObject getFlags();
 
+    /**
+     * Returns {@code true} if the generated ECMAScript pattern is a Unicode pattern (matches
+     * Unicode code points instead of UTF-16 code units).
+     */
     boolean isUnicodePattern();
 }

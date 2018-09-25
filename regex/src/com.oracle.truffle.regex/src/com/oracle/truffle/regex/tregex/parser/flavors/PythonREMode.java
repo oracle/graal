@@ -24,7 +24,22 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+/**
+ * The enumeration of different flavors of Python regular expressions.
+ * <p>
+ * In Python, the standard regular expression engine behaves differently based on whether the
+ * pattern is a 'str' (string) or a 'bytes' (immutable byte buffer) object. Since all regexes are
+ * represented as {@link String}s in TRegex, we cannot dispatch on the type of the pattern. Instead,
+ * we dispatch on values of this enumeration.
+ */
 public enum PythonREMode {
+    /**
+     * String-based patterns, where the Python regular expression was given as a 'str' object.
+     */
     Str,
+    /**
+     * Bytes-based (binary) patterns, where the Python regular expression was given as a 'bytes'
+     * object.
+     */
     Bytes
 }

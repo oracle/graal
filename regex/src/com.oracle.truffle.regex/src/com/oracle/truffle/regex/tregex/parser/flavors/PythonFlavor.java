@@ -26,6 +26,13 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.regex.RegexSource;
 
+/**
+ * An implementation of the Python regex flavor. Technically, this class provides an implementation
+ * for two regex flavors: 'str' regexes, which result from compiling string patterns, and 'bytes'
+ * patterns, which result from compiling binary (byte buffer) patterns.
+ * 
+ * @see PythonREMode
+ */
 public final class PythonFlavor implements RegexFlavor {
 
     public static final PythonFlavor STR_INSTANCE = new PythonFlavor(PythonREMode.Str);

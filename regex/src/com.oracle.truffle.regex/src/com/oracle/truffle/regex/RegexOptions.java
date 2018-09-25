@@ -45,8 +45,8 @@ public final class RegexOptions {
         this.flavor = flavor;
     }
 
-    public RegexOptions(boolean u180eWhitespace, boolean regressionTestMode) {
-        this((u180eWhitespace ? U180E_WHITESPACE : 0) | (regressionTestMode ? REGRESSION_TEST_MODE : 0), null);
+    public static Builder newBuilder() {
+        return new Builder();
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -149,5 +149,43 @@ public final class RegexOptions {
             sb.append("RegressionTestMode");
         }
         return sb.toString();
+    }
+
+    public static final class Builder {
+
+        private int options;
+        private RegexFlavor flavor;
+
+        private Builder() {
+            this.options = 0;
+            this.flavor = null;
+        }
+
+        public Builder u180eWhitespace(boolean enabled) {
+            updateOption(enabled, U180E_WHITESPACE);
+            return this;
+        }
+
+        public Builder regressionTestMode(boolean enabled) {
+            updateOption(enabled, REGRESSION_TEST_MODE);
+            return this;
+        }
+
+        public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {
+            this.flavor = flavor;
+            return this;
+        }
+
+        public RegexOptions build() {
+            return new RegexOptions(this.options, this.flavor);
+        }
+
+        private void updateOption(boolean enabled, int bitMask) {
+            if (enabled) {
+                this.options |= bitMask;
+            } else {
+                this.options &= ~bitMask;
+            }
+        }
     }
 }
