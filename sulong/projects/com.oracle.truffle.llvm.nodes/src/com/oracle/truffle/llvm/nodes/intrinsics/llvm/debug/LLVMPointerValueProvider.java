@@ -203,6 +203,9 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
             final Object value = loadValue(PointerType.VOID, (int) (bitOffset / Byte.SIZE));
             if (LLVMPointer.isInstance(value)) {
                 return value;
+            } else if (value instanceof Number) {
+                return LLVMNativePointer.create(((Number) value).longValue());
+
             } else {
                 return unavailable(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
             }
@@ -307,11 +310,18 @@ public class LLVMPointerValueProvider implements LLVMDebugValue {
 
                 case LLVMDebugTypeConstants.LONG_SIZE: {
                     final Object value = loadValue(PrimitiveType.I64, byteOffset);
+                    final long longValue;
                     if (value instanceof Long) {
-                        return signed ? BigInteger.valueOf((long) value) : new BigInteger(Long.toUnsignedString((long) value));
+                        longValue = (long) value;
+                    } else if (LLVMNativePointer.isInstance(value)) {
+                        longValue = LLVMNativePointer.cast(value).asNative();
+                    } else if (LLVMManagedPointer.isInstance(value)) {
+                        return "<managed pointer>";
                     } else {
                         return unavailable(bitOffset, LLVMDebugTypeConstants.LONG_SIZE);
                     }
+
+                    return signed ? BigInteger.valueOf(longValue) : new BigInteger(Long.toUnsignedString(longValue));
                 }
             }
         }
