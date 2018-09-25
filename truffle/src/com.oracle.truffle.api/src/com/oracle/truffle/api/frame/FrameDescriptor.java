@@ -336,27 +336,15 @@ public final class FrameDescriptor implements Cloneable {
                  * First, only invalidate before updating kind so it's impossible to read a new kind
                  * and old still valid assumption.
                  */
-                frameSlot.descriptor.version.invalidate();
-                if (frameSlot.sharedWith != null) {
-                    for (FrameDescriptor frameDescriptor : frameSlot.sharedWith.keySet()) {
-                        assert frameDescriptor.lock == lock;
-                        frameDescriptor.version.invalidate();
-                    }
-                }
+                version.invalidate();
                 frameSlot.kind = kind;
-                frameSlot.descriptor.version = createVersion();
-                if (frameSlot.sharedWith != null) {
-                    for (FrameDescriptor frameDescriptor : frameSlot.sharedWith.keySet()) {
-                        assert frameDescriptor.lock == lock;
-                        frameDescriptor.version = createVersion();
-                    }
-                }
+                version = createVersion();
             }
         }
     }
 
     private boolean checkFrameSlotOwnershipUnsafe(FrameSlot frameSlot) {
-        return frameSlot.descriptor == this || (frameSlot.sharedWith != null && frameSlot.sharedWith.containsKey(this));
+        return frameSlot.descriptor == this;
     }
 
     private boolean checkFrameSlotOwnership(FrameSlot frameSlot) {
@@ -494,31 +482,6 @@ public final class FrameDescriptor implements Cloneable {
                 FrameSlot slot = slots.get(i);
                 clonedFrameDescriptor.addFrameSlot(slot.getIdentifier(), slot.getInfo(), FrameSlotKind.Illegal);
             }
-            return clonedFrameDescriptor;
-        }
-    }
-
-    /**
-     * Shallow copy of the descriptor. Re-uses the existing slots in new descriptor. As a result, if
-     * you {@link FrameSlot#setKind(FrameSlotKind) change kind} of one of the slots it is changed in
-     * the original as well as in the shallow copy.
-     *
-     * @return new instance of a descriptor with copies of values from this one
-     * @since 0.8 or earlier
-     * @deprecated in 1.0 without replacement. The implementation is broken and would require a fix
-     *             that is too complex.
-     */
-    @Deprecated
-    public FrameDescriptor shallowCopy() {
-        CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
-        synchronized (lock) {
-            FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, lock);
-            clonedFrameDescriptor.slots.addAll(slots);
-            clonedFrameDescriptor.identifierToSlotMap.putAll(identifierToSlotMap);
-            for (FrameSlot slot : slots) {
-                slot.shareWith(clonedFrameDescriptor);
-            }
-            clonedFrameDescriptor.size = size;
             return clonedFrameDescriptor;
         }
     }
