@@ -50,6 +50,7 @@ import mx_testsuites
 
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
+from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
@@ -136,6 +137,47 @@ class TemporaryEnv(object):
         os.environ.update(self.old_env)
         self.old_env = None
 
+def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
+    if tags is None:
+        tags = [test_dist]
+    build_tags = ['build_' + t for t in tags]
+    run_tags = ['run_' + t for t in tags]
+    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
+        if t: mx_testsuites.compileTestSuite(test_dist, args)
+    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
+        if t: mx_testsuites.runTestSuite(test_dist, args, testClasses, vmArgs)
+
+def _sulong_gate_testsuite(title, test_suite, tasks, args, tags=None, testClasses=None, vmArgs=None):
+    if tags is None:
+        tags = [test_suite]
+    build_tags = ['build_' + t for t in tags]
+    run_tags = ['run_' + t for t in tags]
+    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
+        if t: mx_testsuites.compileTestSuite(test_suite, args)
+    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
+        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, vmArgs)
+
+def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
+    if tags is None:
+        tags = [test_suite]
+    if testClasses is None:
+        testClasses = [test_suite]
+    build_tags = ['build_' + t for t in tags]
+    run_tags = ['run_' + t for t in tags]
+    if not unittestArgs:
+        unittestArgs = []
+    with Task('Build' + title, tasks, tags=tags + build_tags) as t:
+        if t: mx_testsuites.compileTestSuite(test_suite, args)
+    with Task('Test' + title, tasks, tags=tags + run_tags) as t:
+        if t: mx_testsuites.run(unittestArgs, testClasses)
+
+def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses=None):
+    test_suite = 'SULONG_TEST_SUITES'
+    dist = mx.distribution(test_suite)
+    unittestArgs = [
+        "-Dsulongtest.testSuitePath=" + dist.get_output(),
+        ]
+    _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
 
 def _sulong_gate_runner(args, tasks):
     with TemporaryEnv():
@@ -145,40 +187,23 @@ def _sulong_gate_runner(args, tasks):
                     t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
         with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
             if t: clangformatcheck()
-        with Task('TestBenchmarks', tasks, tags=['benchmarks', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('shootout')
-        with Task('TestTypes', tasks, tags=['type', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('type')
-        with Task('TestPipe', tasks, tags=['pipe', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('pipe')
-        with Task('TestLLVM', tasks, tags=['llvm']) as t:
-            if t: mx_testsuites.runSuite('llvm')
-        with Task('TestNWCC', tasks, tags=['nwcc']) as t:
-            if t: mx_testsuites.runSuite('nwcc')
-        with Task('TestGCCParserTorture', tasks, tags=['parser']) as t:
-            if t: mx_testsuites.runSuite('parserTorture')
-        with Task('TestGCC_C', tasks, tags=['gcc_c']) as t:
-            if t: mx_testsuites.runSuite('gcc_c')
-        with Task('TestGCC_CPP', tasks, tags=['gcc_cpp']) as t:
-            if t: mx_testsuites.runSuite('gcc_cpp')
-        with Task('TestGCC_Fortran', tasks, tags=['gcc_fortran']) as t:
-            if t: mx_testsuites.runSuite('gcc_fortran')
-        with Task("TestSulong", tasks, tags=['sulong', 'sulongBasic']) as t:
-            if t: mx_unittest.unittest(['SulongSuite'])
-        with Task("TestInterop", tasks, tags=['interop', 'sulongBasic']) as t:
-            if t: mx_unittest.unittest(['com.oracle.truffle.llvm.test.interop'])
-        with Task("TestDebug", tasks, tags=['debug', 'sulongBasic']) as t:
-            if t: mx_unittest.unittest(['LLVMDebugTest'])
-        with Task("TestIRDebug", tasks, tags=['irdebug', 'sulongBasic']) as t:
-            if t: mx_unittest.unittest(['LLVMIRDebugTest'])
-        with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('assembly')
-        with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('args')
-        with Task('TestCallback', tasks, tags=['callback', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('callback')
-        with Task('TestVarargs', tasks, tags=['vaargs', 'sulongMisc']) as t:
-            if t: mx_testsuites.runSuite('vaargs')
+        _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
+        _sulong_gate_unittest('Types', 'com.oracle.truffle.llvm.types.test', tasks, args, tags=['type', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
+        _sulong_gate_unittest('Pipe', 'com.oracle.truffle.llvm.test', tasks, args, tags=['pipe', 'sulongMisc'], testClasses=['CaptureOutputTest'])
+        _sulong_gate_testsuite('LLVM', 'llvm', tasks, args)
+        _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args)
+        _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
+        _sulong_gate_testsuite('GCC_C', 'gcc_c', tasks, args)
+        _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args)
+        _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args)
+        _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic'])
+        _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.test.interop', tags=['interop', 'sulongBasic'])
+        _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic'])
+        _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic'])
+        _sulong_gate_sulongsuite_unittest('Assembly', tasks, args, testClasses='com.oracle.truffle.llvm.test.InlineAssemblyTest', tags=['assembly'])
+        _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
+        _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
+        _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
 
 add_gate_runner(_suite, _sulong_gate_runner)
 

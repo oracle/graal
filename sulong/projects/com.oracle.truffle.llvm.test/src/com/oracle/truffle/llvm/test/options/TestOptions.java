@@ -37,6 +37,8 @@ public final class TestOptions {
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
     public static final String TEST_SUITE_PATH = System.getProperty("sulongtest.testSuitePath");
+    public static final String TEST_SOURCE_PATH = System.getProperty("sulongtest.testSourcePath");
+    public static final String TEST_CONFIG_PATH = System.getProperty("sulongtest.testConfigPath");
 
     private static String[] getFileExtensions() {
         String property = System.getProperty("sulongtest.fileExtensionFilter");

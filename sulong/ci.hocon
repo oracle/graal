@@ -23,6 +23,7 @@ sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
     environment: {
         CPPFLAGS: "-g -I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+        LDFLAGS: "-L$LIBGMP/lib"
     }
 }
 
