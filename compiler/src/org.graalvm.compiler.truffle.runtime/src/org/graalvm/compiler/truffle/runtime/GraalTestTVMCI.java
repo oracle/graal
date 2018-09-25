@@ -66,6 +66,11 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
 
         private GraalTestContext(String testName) {
             this.debug = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+            /*
+             * Open a dump group around all compilations happening during the execution of a unit
+             * test. This group will contain one sub-group for every compiled CallTarget of the unit
+             * test.
+             */
             this.output = beginGroup(this.debug, testName);
         }
 

@@ -706,6 +706,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    /**
+     * Helper class that adds a "Truffle::method_name" group around all graph dumps of a single
+     * compilation, and makes sure the group is properly closed at the end of the compilation.
+     */
     private static final class OutputGroup implements Closeable {
 
         private final GraphOutput<Void, ?> output;
@@ -747,8 +751,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
         try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+            // Open the "Truffle::methodName" dump group if dumping is enabled.
             try (OutputGroup o = new OutputGroup(debug, callTarget)) {
+                // Create "AST" and "Call Tree" groups if dumping is enabled.
                 maybeDumpTruffleTree(debug, options, callTarget, inlining);
+                // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
                 compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
             }
         } catch (RuntimeException | Error e) {
@@ -757,6 +764,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             throw new InternalError(e);
         } finally {
             if (debug != null) {
+                /*
+                 * The graph dumping code of Graal might leave inlining dump groups open, in case
+                 * there are more graphs coming. Close these groups at the end of the compilation.
+                 */
                 debug.closeDumpHandlers(false);
             }
         }
