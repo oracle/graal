@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,21 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.graalvm.compiler.nodes.Cancellable;
 
 public final class CancellableCompileTask implements Cancellable {
     private volatile Future<?> future;
-    private boolean cancelled;
+    private volatile boolean cancelled;
 
     // This cannot be done in the constructor because the CancellableCompileTask needs to be
     // passed down to the compiler through a Runnable inner class.
     // This means it must be final and initialized before the future can be set.
-    public void setFuture(Future<?> future) {
+    void setFuture(Future<?> future) {
         synchronized (this) {
             if (this.future == null) {
                 this.future = future;
@@ -45,31 +48,24 @@ public final class CancellableCompileTask implements Cancellable {
         }
     }
 
-    public Future<?> getFuture() {
-        return future;
+    public void awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        future.get(timeout, unit);
+    }
+
+    public void awaitCompletion() throws ExecutionException, InterruptedException {
+        future.get();
     }
 
     @Override
-    public synchronized boolean isCancelled() {
-        assert !cancelled || future != null && future.isCancelled();
-        return cancelled;
+    public boolean isCancelled() {
+        return this.cancelled;
     }
 
-    public synchronized void cancel() {
+    public synchronized boolean cancel() {
         if (!cancelled) {
-            assert future != null;
             cancelled = true;
-            if (future != null) {
-                assert !future.isCancelled();
-                // should assert future.cancel(false)=true but future might already finished between
-                // the cancelled=true write and the call to cancel(false)
-                future.cancel(false);
-            }
+            return true;
         }
-    }
-
-    public boolean isRunning() {
-        assert future != null;
-        return !(future.isDone() || future.isCancelled());
+        return false;
     }
 }
