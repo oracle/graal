@@ -71,16 +71,15 @@ public class Target_java_lang_Throwable {
         FrameInstance frame = frames[index];
 
         RootNode rootNode = ((RootCallTarget) frame.getCallTarget()).getRootNode();
+        Meta.Method.WithInstance init = meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class);
         if (rootNode instanceof EspressoRootNode) {
             EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
             String className = meta(espressoRootNode.getMethod().getDeclaringClass()).getName();
-            meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class).invoke(
-                            className,
-                            espressoRootNode.getMethod().getName(),
-                            null, -1);
+            init.invoke(className, espressoRootNode.getMethod().getName(), null, -1);
         } else {
-            meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class).invoke(
-                            "UnknownIntrinsic", "unknownIntrinsic", null, -1);
+            // TODO(peterssen): Get access to the original (intrinsified) method and report
+            // properly.
+            init.invoke("UnknownIntrinsic", "unknownIntrinsic", null, -1);
         }
         return ste;
     }

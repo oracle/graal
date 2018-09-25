@@ -29,6 +29,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 
 import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -223,7 +224,7 @@ public class Target_sun_misc_Unsafe {
         if (bytes == 0) {
             return;
         }
-        hostUnsafe.copyMemory(unwrap(srcBase), srcOffset, unwrap(destBase), destOffset, bytes);
+        hostUnsafe.copyMemory(MetaUtil.unwrap(srcBase), srcOffset, MetaUtil.unwrap(destBase), destOffset, bytes);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -233,16 +234,6 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static void putByte(Object self, Object object, long offset, byte value) {
-        hostUnsafe.putByte(unwrap(object), offset, value);
-    }
-
-    private static Object unwrap(Object obj) {
-        if (obj == StaticObject.NULL) {
-            return null;
-        }
-        if (obj instanceof StaticObjectWrapper) {
-            obj = ((StaticObjectWrapper) obj).getWrapped();
-        }
-        return obj;
+        hostUnsafe.putByte(MetaUtil.unwrap(object), offset, value);
     }
 }
