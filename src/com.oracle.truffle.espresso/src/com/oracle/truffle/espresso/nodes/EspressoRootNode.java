@@ -284,7 +284,6 @@ public class EspressoRootNode extends RootNode {
         return getMethod().getDeclaringClass().getName() +
                         "." + getMethod().getName() +
                         " " + getMethod().getSignature().toString();
-
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -298,10 +297,6 @@ public class EspressoRootNode extends RootNode {
         FrameSlot[] slots = getFrameDescriptor().getSlots().toArray(new FrameSlot[0]);
         locals = Arrays.copyOf(slots, slots.length - 1);
         stackSlot = slots[slots.length - 1];
-    }
-
-    public InterpreterToVM getVm() {
-        return vm;
     }
 
     public MethodInfo getMethod() {
@@ -1089,7 +1084,8 @@ public class EspressoRootNode extends RootNode {
                     break;
                 case Void:
                 case Illegal:
-                    EspressoError.shouldNotReachHere();
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
             }
             n += expectedkind.getSlotCount();
         }
@@ -1097,7 +1093,6 @@ public class EspressoRootNode extends RootNode {
 
     private void invokeInterface(OperandStack stack, MethodInfo method) {
         resolveAndInvoke(stack, method);
-        // invoke(stack, method, null);
     }
 
     private void invokeSpecial(OperandStack stack, MethodInfo method) {
@@ -1173,7 +1168,7 @@ public class EspressoRootNode extends RootNode {
 
     @CompilerDirectives.TruffleBoundary
     private StaticObject allocateArray(Klass componentType, int length) {
-        // assert !componentType.isPrimitive();
+        assert !componentType.isPrimitive();
         return vm.newArray(componentType, length);
     }
 
