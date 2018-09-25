@@ -807,7 +807,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         @Override
         public void simdPrefix(Register reg, Register nds, AMD64Address rm, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
             assert reg.encoding < 16 : "encoding out of range: " + reg.encoding;
-            // XXX nds.encoding < 16 is checked by emitEVEX
+            assert nds.encoding < 16 : "encoding out of range: " + nds.encoding;
             emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(reg, rm), nds.isValid() ? nds.encoding : 0);
         }
 
@@ -815,7 +815,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         public void simdPrefix(Register dst, Register nds, Register src, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
             assert dst.encoding < 16 : "encoding out of range: " + dst.encoding;
             assert src.encoding < 16 : "encoding out of range: " + src.encoding;
-            // XXX nds.encoding < 16 is checked by emitEVEX
+            assert nds.encoding < 16 : "encoding out of range: " + nds.encoding;
             emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(dst, src), nds.isValid() ? nds.encoding : 0);
         }
     }

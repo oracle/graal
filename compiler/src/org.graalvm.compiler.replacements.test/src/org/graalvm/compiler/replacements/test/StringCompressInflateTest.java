@@ -79,7 +79,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             assert nil == null;
 
             // Perform a sanity check:
-            for (int j = 0; j < i; j++) {
+            for (int j = 0; j < i2sz(i); j++) {
                 assert (dst[j] & 0xff00) == 0;
                 assert (32 <= dst[j] && dst[j] <= 126) || (160 <= dst[j] && dst[j] <= 255);
                 assert ((byte) dst[j] == src[j]);
@@ -95,7 +95,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             char[] inflate1 = (char[]) tms.invokeTest(str);
 
             // Another sanity check:
-            for (int j = 0; j < i; j++) {
+            for (int j = 0; j < i2sz(i); j++) {
                 assert (inflate1[j] & 0xff00) == 0;
                 assert (32 <= inflate1[j] && inflate1[j] <= 126) || (160 <= inflate1[j] && inflate1[j] <= 255);
             }
@@ -104,8 +104,39 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
             // Invoke char[] testInflate(String) through code handle.
             char[] inflate2 = (char[]) tms.invokeCode(str);
-
             assertDeepEquals(dst, inflate2);
+        }
+    }
+
+    @Test
+    public void testStringLatin1InflateToByteArray() throws ClassNotFoundException {
+        Class<?> javaclass = Class.forName("java.lang.StringLatin1");
+
+        ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, int.class);
+        testGraph(caller, "inflate");
+
+        ResolvedJavaMethod inflate = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, byte[].class, int.class, int.class);
+        InstalledCode code = getCode(inflate);
+
+        for (int i = 0; i < N; i++) {
+            int length = i2sz(i);
+            byte[] src = fillLatinBytes(new byte[length]);
+
+            byte[] dst = new byte[length * 2];
+            invokeSafe(inflate, null, src, 0, dst, 0, length);
+
+            // Perform a sanity check:
+            for (int j = 0; j < i2sz(i); j++) {
+                assert (dst[j * 2 + 1]) == 0;
+                int c = dst[j * 2] & 0xFF;
+                assert (32 <= c && c <= 126) || (160 <= c && c <= 255);
+                assert (c == (src[j] & 0xFF));
+            }
+
+            byte[] dst2 = new byte[length * 2];
+            executeVarargsSafe(code, src, 0, dst2, 0, length);
+
+            assertDeepEquals(dst, dst2);
         }
     }
 
@@ -135,6 +166,37 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             String str2 = (String) tms.invokeCode(src);
 
             assertDeepEquals(dst, str2.getBytes("ISO8859_1"));
+        }
+    }
+
+    @Test
+    public void testStringUTF16CompressFromByteArray() throws ClassNotFoundException {
+        Class<?> javaclass = Class.forName("java.lang.StringUTF16");
+
+        ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "compress", byte[].class, int.class, int.class);
+        testGraph(caller, "compress");
+
+        ResolvedJavaMethod compress = getResolvedJavaMethod(javaclass, "compress", byte[].class, int.class, byte[].class, int.class, int.class);
+        InstalledCode code = getCode(compress);
+
+        for (int i = 0; i < N; i++) {
+            int length = i2sz(i);
+            byte[] src = fillLatinChars(new byte[length * 2]);
+
+            byte[] dst = new byte[length];
+            invokeSafe(compress, null, src, 0, dst, 0, length);
+
+            // Perform a sanity check:
+            for (int j = 0; j < i2sz(i); j++) {
+                int c = dst[j] & 0xFF;
+                assert (32 <= c && c <= 126) || (160 <= c && c <= 255);
+                assert (c == (src[j * 2] & 0xFF));
+            }
+
+            byte[] dst2 = new byte[length];
+            executeVarargsSafe(code, src, 0, dst2, 0, length);
+
+            assertDeepEquals(dst, dst2);
         }
     }
 
@@ -209,6 +271,14 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
     private static char[] fillLatinChars(char[] v) {
         for (int ch = 32, i = 0; i < v.length; i++) {
             v[i] = (char) (ch & 0xff);
+            ch = ch == 126 ? 160 : (ch == 255 ? 32 : ch + 1);
+        }
+        return v;
+    }
+
+    private static byte[] fillLatinChars(byte[] v) {
+        for (int ch = 32, i = 0; i < v.length; i += 2) {
+            v[i] = (byte) (ch & 0xff);
             ch = ch == 126 ? 160 : (ch == 255 ? 32 : ch + 1);
         }
         return v;
