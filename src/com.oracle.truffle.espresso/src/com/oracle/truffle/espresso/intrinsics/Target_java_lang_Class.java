@@ -64,7 +64,7 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static boolean desiredAssertionStatus(Object self) {
-        return true;
+        return false;
     }
 
     @Intrinsic
@@ -186,6 +186,7 @@ public class Target_java_lang_Class {
                     Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
                     Meta.Field.set("slot", i),
                     Meta.Field.set("name", context.getVm().intern(meta.toGuest(m.getName()))),
+                    Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
                     Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
             method.setHiddenField("$$method_info", m.rawMethod());

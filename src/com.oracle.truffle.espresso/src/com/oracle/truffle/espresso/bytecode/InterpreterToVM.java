@@ -74,7 +74,6 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_util_concurrent_atomic
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_Inflater;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_ZipFile;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_launcher_LauncherHelper;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
@@ -91,7 +90,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -139,7 +137,6 @@ public class InterpreterToVM {
                     Target_java_util_jar_JarFile.class,
                     Target_java_util_zip_Inflater.class,
                     Target_java_util_zip_ZipFile.class,
-                    Target_sun_launcher_LauncherHelper.class,
                     Target_sun_misc_Perf.class,
                     Target_sun_misc_Signal.class,
                     Target_sun_misc_Unsafe.class,
@@ -580,14 +577,11 @@ public class InterpreterToVM {
         }
     }
 
-    // TODO(peterssen): Move to InterpreterToVm.
     public static Object allocateNativeArray(byte jvmPrimitiveType, int length) {
         // the constants for the cpi are loosely defined and no real cpi indices.
-
         if (length < 0) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
-
         switch (jvmPrimitiveType) {
             case 4:
                 return new boolean[length];
@@ -640,8 +634,8 @@ public class InterpreterToVM {
 
     @CompilerDirectives.TruffleBoundary
     public StaticObject newObject(Klass klass) {
-        klass.initialize();
         assert klass != null && !klass.isArray();
+        klass.initialize();
         return new StaticObjectImpl(klass);
     }
 

@@ -597,6 +597,10 @@ public final class Meta {
             return method.getParameterCount();
         }
 
+        public Meta.Klass getReturnType() {
+            return meta(method.getReturnType());
+        }
+
         public Meta.Klass getDeclaringClass() {
             return meta(method.getDeclaringClass());
         }

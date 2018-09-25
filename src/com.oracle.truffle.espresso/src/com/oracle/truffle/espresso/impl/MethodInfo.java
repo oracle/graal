@@ -70,6 +70,9 @@ public final class MethodInfo implements ModifiersProvider {
     private final int modifiers;
 
     @CompilerDirectives.CompilationFinal private CallTarget callTarget;
+    @CompilerDirectives.CompilationFinal private Klass returnType;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] parameterTypes;
+
 
     MethodInfo(Klass declaringClass, String name, SignatureDescriptor signature,
                     byte[] code, int maxStackSize, int maxLocals, int modifiers,
@@ -257,8 +260,6 @@ public final class MethodInfo implements ModifiersProvider {
         return ((getModifiers() & mask) == Modifier.PUBLIC) && getDeclaringClass().isInterface();
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] parameterTypes;
-
     public Klass[] getParameterTypes() {
         if (parameterTypes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -269,6 +270,14 @@ public final class MethodInfo implements ModifiersProvider {
             }
         }
         return parameterTypes;
+    }
+
+    public Klass getReturnType() {
+        if (returnType == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            returnType = getContext().getRegistries().resolve(getSignature().getReturnTypeDescriptor(), getClassLoader());
+        }
+        return returnType;
     }
 
     public int getParameterCount() {
