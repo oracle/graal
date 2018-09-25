@@ -35,8 +35,10 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -614,6 +616,7 @@ public class Space {
     /** Copy an Object into the given memory. */
     private Object copyAlignedObject(Object originalObj) {
         VMOperation.guaranteeInProgress("Should only be called from the collector.");
+        assert copyAlignedObjectAssert(originalObj) : "Space.copyAlignedObject: originalObj hub fails to verify.";
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(originalObj);
         final Log trace = Log.noopLog().string("[SpaceImpl.copyAlignedObject:");
         trace.string("  originalObj: ").object(originalObj);
@@ -647,6 +650,22 @@ public class Space {
         setAlignedRememberedSet(copyObj);
         trace.string("  copyObj: ").object(copyObj).string("]").newline();
         return copyObj;
+    }
+
+    /** Assert that the hub of obj is well-formed. For GR-9912. */
+    private static boolean copyAlignedObjectAssert(Object obj) {
+        if (GCImpl.runtimeAssertions() && !HeapImpl.getHeapImpl().assertHubOfObject(obj)) {
+            final Log failureLog = Log.log().string("[Space.copyAlignedObjectAssert:").indent(true);
+            failureLog.string("  obj: ").hex(Word.objectToUntrackedPointer(obj)).indent(true);
+            final UnsignedWord header = ObjectHeader.readHeaderFromObject(obj);
+            final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
+            failureLog.string("  header: ").hex(header)
+                            .string("  hub: ").hex(Word.objectToUntrackedPointer(hub))
+                            .string("  headerBits: ").string(Heap.getHeap().getObjectHeader().toStringFromHeader(header)).indent(false);
+            failureLog.string("  hub fails to verify.]").indent(false);
+            return false;
+        }
+        return true;
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space, if necessary. */

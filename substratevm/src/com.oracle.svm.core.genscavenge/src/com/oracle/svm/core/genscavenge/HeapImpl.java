@@ -60,6 +60,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
@@ -591,6 +592,18 @@ public class HeapImpl extends Heap {
                 assert false;
             }
         }
+    }
+
+    /** For assertions: Verify that the hub is a reference to where DynamicHubs live in the heap. */
+    public boolean assertHub(DynamicHub hub) {
+        /* DynamicHubs live only in the read-only reference section of the image heap. */
+        return NativeImageInfo.isObjectInReadOnlyReferencePartition(hub);
+    }
+
+    /** For assertions: Verify the hub of the object. */
+    public boolean assertHubOfObject(Object obj) {
+        final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
+        return assertHub(hub);
     }
 
     /** State: The stack verifier. */
