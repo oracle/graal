@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,22 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import com.oracle.truffle.api.CompilerOptions;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
-public interface TruffleInliningPolicy {
-
-    boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options);
-
-    double calculateScore(TruffleInliningProfile profile);
-
-    static TruffleInliningPolicy getInliningPolicy(OptionValues options) {
-        if (TruffleCompilerOptions.TruffleFirstTierCompilation.getValue(options)) {
-            return new NoInliningPolicy();
-        } else {
-            return new DefaultInliningPolicy();
-        }
-    }
+/**
+ * Directives that influence the optimizations of the Truffle compiler.
+ */
+public class GraalCompilerDirectives {
+  /**
+   * Returns a boolean value indicating whether the method is executed in the first tier Truffle
+   * compilation.
+   *
+   * @see TruffleCompilerOptions#TruffleMultiTier
+   *
+   * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
+   *         otherwise.
+   */
+  public static boolean inFirstTier() {
+      return false;
+  }
 }

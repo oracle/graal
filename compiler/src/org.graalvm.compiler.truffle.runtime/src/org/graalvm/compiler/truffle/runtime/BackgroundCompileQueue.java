@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFirstTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 
@@ -53,7 +53,7 @@ public class BackgroundCompileQueue {
         private final OptionValues optionOverrides;
         private final WeakReference<OptimizedCallTarget> weakCallTarget;
         private final Cancellable cancellable;
-        private final boolean isLowGrade;
+        private final boolean isFirstTier;
 
         public Request(GraalTruffleRuntime runtime, OptionValues optionOverrides, OptimizedCallTarget callTarget, Cancellable cancellable) {
             this.id = idCounter.getAndIncrement();
@@ -61,7 +61,7 @@ public class BackgroundCompileQueue {
             this.optionOverrides = optionOverrides;
             this.weakCallTarget = new WeakReference<>(callTarget);
             this.cancellable = cancellable;
-            this.isLowGrade = optionOverrides != null && TruffleLowGradeCompilation.getValue(optionOverrides);
+            this.isFirstTier = optionOverrides != null && TruffleFirstTierCompilation.getValue(optionOverrides);
         }
 
         @SuppressWarnings("try")
@@ -82,15 +82,15 @@ public class BackgroundCompileQueue {
 
         @Override
         public int compareTo(Request that) {
-            if (this.isLowGrade != that.isLowGrade) {
-                return this.isLowGrade ? -1 : 1;
+            if (this.isFirstTier != that.isFirstTier) {
+                return this.isFirstTier ? -1 : 1;
             }
             return (int) (this.id - that.id);
         }
 
         @Override
         public String toString() {
-            return "Request(lo: " + isLowGrade + ", id: " + id + ", " + weakCallTarget + ")";
+            return "Request(lo: " + isFirstTier + ", id: " + id + ", " + weakCallTarget + ")";
         }
     }
 

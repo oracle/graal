@@ -76,7 +76,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleLowGradeCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFirstTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
 /**
@@ -122,6 +122,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * {@link #resetCompilationTask()} even if that compilation fails or is cancelled.
      */
     private volatile CancellableCompileTask compilationTask;
+
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewrite in this call target is performed. This
@@ -268,8 +269,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
-        if (CompilerDirectives.inLowGrade()) {
-            getCompilationProfile().lowGradeCall(this);
+        if (GraalCompilerDirectives.inFirstTier()) {
+            getCompilationProfile().firstTierCall(this);
         }
         Object[] args = originalArguments;
         OptimizedCompilationProfile profile = this.compilationProfile;
@@ -337,7 +338,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
     public final boolean compile() {
-        if (isValidLowGradeOrHighGrade())
+        if (isValidInLastTier())
             return true;
         if (!isCompiling()) {
             if (!runtime().acceptForCompilation(getRootNode())) {
@@ -348,7 +349,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (isValidLowGradeOrHighGrade()) {
+                if (isValidInLastTier()) {
                     return true;
                 }
                 if (this.compilationProfile == null) {
@@ -369,11 +370,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    private boolean isValidLowGradeOrHighGrade() {
-        if (TruffleCompilerOptions.TruffleLowGrade.getValue(getOptions())) {
+    private boolean isValidInLastTier() {
+        if (TruffleCompilerOptions.TruffleMultiTier.getValue(getOptions())) {
             // We should still complete the high-tier compilation request if low-tier code was
             // installed.
-            if ((TruffleLowGradeCompilation.getValue(getOptions()) && isValid()) || isValidHighGrade()) {
+            if ((TruffleFirstTierCompilation.getValue(getOptions()) && isValid()) || isValidLastTier()) {
                 return true;
             }
         } else {
@@ -402,9 +403,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract boolean isValid();
 
     /**
-     * Determines if this call target has valid machine code attached to it.
+     * Determines if this call target has valid machine code attached to it, and that this code
+     * was compiled in the last tier.
      */
-    public abstract boolean isValidHighGrade();
+    public abstract boolean isValidLastTier();
 
     /**
      * Invalidates this call target by invalidating any machine code attached to it.

@@ -28,7 +28,6 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
@@ -170,7 +169,7 @@ final class TruffleSplittingStrategy {
             return false;
         }
 
-        if (TruffleCompilerOptions.TruffleLowGrade.getValue(getOptions())) {
+        if (TruffleCompilerOptions.TruffleMultiTier.getValue(getOptions())) {
             return false;
         }
 

@@ -32,12 +32,12 @@ import jdk.vm.ci.runtime.JVMCI;
 
 public class HotSpotTruffleInstalledCode extends InstalledCode implements OptimizedAssumptionDependency {
     private final CompilableTruffleAST compilable;
-    private final boolean lowGrade;
+    private final boolean firstTier;
 
-    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable, boolean lowGrade) {
+    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable, boolean firstTier) {
         super(compilable == null ? null : compilable.getName());
         this.compilable = compilable;
-        this.lowGrade = lowGrade;
+        this.firstTier = firstTier;
     }
 
     @Override
@@ -46,12 +46,12 @@ public class HotSpotTruffleInstalledCode extends InstalledCode implements Optimi
     }
 
     /**
-     * Code installed by Truffle is low grade if it was produced in the low grade compilation mode.
+     * Returns true if this code was produced in the first tier compilation.
      *
-     * @see org.graalvm.compiler.truffle.common.TruffleCompilerOptions#TruffleLowGrade
+     * @see org.graalvm.compiler.truffle.common.TruffleCompilerOptions#TruffleMultiTier
      */
-    public boolean isLowGrade() {
-        return lowGrade;
+    public boolean isFirstTier() {
+        return firstTier;
     }
 
     @Override

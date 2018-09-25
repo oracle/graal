@@ -152,8 +152,8 @@ public class TruffleCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleMinInvokeThreshold = new OptionKey<>(3);
 
-    @Option(help = "Minimum number of calls before a call target is compiled in low grade", type = OptionType.Expert)
-    public static final OptionKey<Integer> TruffleLowGradeMinInvokeThreshold = new OptionKey<>(1);
+    @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleFirstTierMinInvokeThreshold = new OptionKey<>(1);
 
     @Option(help = "Delay compilation after an invalidation to allow for reprofiling", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleInvalidationReprofileCount = new OptionKey<>(3);
@@ -315,10 +315,10 @@ public class TruffleCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
 
-    @Option(help = "Whether to enable economy-mode compilations.")
-    public static final OptionKey<Boolean> TruffleLowGradeCompilation = new OptionKey<>(false);
+    @Option(help = "Controls whether the compilation should be done in the first tier mode. This option is internal.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleFirstTierCompilation = new OptionKey<>(false);
 
-    @Option(help = "Whether to use low-grade compilations before high-grade.")
-    public static final OptionKey<Boolean> TruffleLowGrade = new OptionKey<>(false);
+    @Option(help = "Whether to use multiple compilation tiers by default.")
+    public static final OptionKey<Boolean> TruffleMultiTier = new OptionKey<>(false);
     // @formatter:on
 }

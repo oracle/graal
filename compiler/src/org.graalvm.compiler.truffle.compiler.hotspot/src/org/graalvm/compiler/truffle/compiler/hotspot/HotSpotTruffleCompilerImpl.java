@@ -110,19 +110,19 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         EconomyCompilerConfigurationFactory economyConfigurationFactory = new EconomyCompilerConfigurationFactory();
         CompilerConfiguration compilerConfiguration = economyConfigurationFactory.createCompilerConfiguration();
         HotSpotBackendFactory backendFactory = economyConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
-        HotSpotBackend lowGradeBackend = backendFactory.createBackend((HotSpotGraalRuntimeProvider) runtime.getGraalRuntime(), compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
-        Suites lowGradeSuites = lowGradeBackend.getSuites().getDefaultSuites(options);
-        LIRSuites lowGradeLirSuites = lowGradeBackend.getSuites().getDefaultLIRSuites(options);
-        Providers lowGradeProviders = lowGradeBackend.getProviders();
-        lowGradeBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
+        HotSpotBackend firstTierBackend = backendFactory.createBackend((HotSpotGraalRuntimeProvider) runtime.getGraalRuntime(), compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
+        Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
+        LIRSuites firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
+        Providers firstTierProviders = firstTierBackend.getProviders();
+        firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
 
-        return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, lowGradeSuites, lowGradeLirSuites, lowGradeProviders, snippetReflection);
+        return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLirSuites, firstTierProviders, snippetReflection);
     }
 
     private HotSpotTruffleCompilerImpl(HotSpotGraalRuntimeProvider hotspotGraalRuntime, TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend,
-                    Suites lowGradeSuites, LIRSuites lowGradeLirSuites, Providers lowGradeProviders,
+                    Suites firstTierSuites, LIRSuites firstTierLirSuites, Providers firstTierProviders,
                     SnippetReflectionProvider snippetReflection) {
-        super(runtime, plugins, suites, lirSuites, backend, lowGradeSuites, lowGradeLirSuites, lowGradeProviders, snippetReflection);
+        super(runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLirSuites, firstTierProviders, snippetReflection);
         this.hotspotGraalRuntime = hotspotGraalRuntime;
         installTruffleCallBoundaryMethods();
     }
@@ -261,7 +261,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
-        return new HotSpotTruffleInstalledCode(compilable, TruffleCompilerOptions.TruffleLowGradeCompilation.getValue(getOptions()));
+        return new HotSpotTruffleInstalledCode(compilable, TruffleCompilerOptions.TruffleFirstTierCompilation.getValue(getOptions()));
     }
 
     @Override

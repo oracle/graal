@@ -54,7 +54,7 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> LowGradeCompilationThreshold = new OptionKey<>(100);
+    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
 
     @Option(help = "Maximum number of milliseconds between the first call and beeing queued for compilation of a guest language root. " +
                     "If the maximum queue time is exceeded then the compilation is deferred, ie. the invocation counter is reset. " +
