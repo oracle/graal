@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -99,34 +100,22 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         private final String intrinsicName;
         private final Map<FunctionType, RootCallTarget> overloadingMap;
         private final LLVMIntrinsicProvider provider;
-        private final boolean forceInline;
-        private final boolean forceSplit;
 
         public Intrinsic(LLVMIntrinsicProvider provider, String name) {
             this.intrinsicName = name;
             this.overloadingMap = new HashMap<>();
             this.provider = provider;
-            this.forceInline = provider.forceInline(name);
-            this.forceSplit = provider.forceSplit(name);
-        }
-
-        public boolean forceInline() {
-            return forceInline;
-        }
-
-        public boolean forceSplit() {
-            return forceSplit;
         }
 
         public RootCallTarget generateCallTarget(FunctionType type) {
-            return generate(type);
+            return generateTarget(type);
         }
 
         public RootCallTarget cachedCallTarget(FunctionType type) {
             if (exists(type)) {
                 return get(type);
             } else {
-                return generate(type);
+                return generateTarget(type);
             }
         }
 
@@ -140,12 +129,19 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             return overloadingMap.get(type);
         }
 
-        private RootCallTarget generate(FunctionType type) {
+        private RootCallTarget generateTarget(FunctionType type) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            RootCallTarget newTarget = provider.generateIntrinsic(intrinsicName, type);
+            RootCallTarget newTarget = provider.generateIntrinsicTarget(intrinsicName, type.getArgumentTypes().length);
             assert newTarget != null;
             overloadingMap.put(type, newTarget);
             return newTarget;
+        }
+
+        public LLVMExpressionNode generateNode(LLVMExpressionNode[] arguments) {
+            CompilerAsserts.neverPartOfCompilation();
+            LLVMExpressionNode node = provider.generateIntrinsicNode(intrinsicName, arguments);
+            assert node != null;
+            return node;
         }
     }
 

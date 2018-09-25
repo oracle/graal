@@ -234,22 +234,22 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
 
     public static final class LLVMFunctionInvokeNode extends LLVMInvokeNodeImpl {
 
-        @Child private LLVMExpressionNode functionNode;
         @Children private final LLVMExpressionNode[] argumentNodes;
+        @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
         @Child private LLVMLookupDispatchNode dispatchNode;
 
         public LLVMFunctionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                         int normalSuccessor, int unwindSuccessor,
                         LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
-            this.functionNode = functionNode;
             this.argumentNodes = argumentNodes;
+            this.dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
             this.dispatchNode = LLVMLookupDispatchNodeGen.create(type);
         }
 
         @Override
         public void execute(VirtualFrame frame) {
-            Object function = functionNode.executeGeneric(frame);
+            Object function = dispatchTargetNode.executeGeneric(frame);
             Object[] argValues = prepareArguments(frame);
             writeResult(frame, dispatchNode.executeDispatch(function, argValues));
         }

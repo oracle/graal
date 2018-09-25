@@ -111,8 +111,6 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createFunctionArgNode(int argIndex, Type paramType);
 
-    LLVMExpressionNode createFunctionArgNode(int argIndex);
-
     LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, LLVMSourceLocation sourceSection);
 
     LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, int normalIndex,

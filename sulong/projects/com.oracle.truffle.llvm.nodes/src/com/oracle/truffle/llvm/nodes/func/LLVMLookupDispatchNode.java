@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -41,94 +40,49 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen.LLVMLookupDispatchForeignNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
-    protected static final int INLINE_CACHE_SIZE = 5;
-
     protected final FunctionType type;
-    @CompilationFinal private LLVMMemory llvmMemory;
-
-    @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
 
     protected LLVMLookupDispatchNode(FunctionType type) {
         this.type = type;
     }
 
+    /**
+     * {@code function} is expected to be either {@link LLVMFunctionDescriptor},
+     * {@link LLVMTypedForeignObject} or {@link LLVMNativePointer}, and it needs to be resolved
+     * using {@link LLVMLookupDispatchTargetNode}.
+     */
     public abstract Object executeDispatch(Object function, Object[] arguments);
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null", "pointer.getOffset() == 0"})
-    protected static Object doDirectCached(@SuppressWarnings("unused") LLVMManagedPointer pointer, Object[] arguments,
-                    @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor,
+    @Specialization
+    protected static Object doDirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
-        return dispatchNode.executeDispatch(cachedDescriptor, arguments);
+        return dispatchNode.executeDispatch(function, arguments);
     }
 
-    @Specialization(guards = {"isFunctionDescriptor(pointer.getObject())", "pointer.getOffset() == 0"}, replaces = "doDirectCached")
-    protected static Object doDirect(LLVMManagedPointer pointer, Object[] arguments,
-                    @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
-        LLVMFunctionDescriptor descriptor = (LLVMFunctionDescriptor) pointer.getObject();
-        return dispatchNode.executeDispatch(descriptor, arguments);
-    }
-
-    @Specialization(guards = {"isForeignFunction(pointer.getObject())", "pointer.getOffset() == 0"})
-    protected Object doForeign(LLVMManagedPointer pointer, Object[] arguments,
+    @Specialization
+    protected Object doForeign(LLVMTypedForeignObject foreign, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
-        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) pointer.getObject();
         return lookupDispatchForeignNode.execute(foreign.getForeign(), foreign.getType(), arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor != null"})
-    protected static Object doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer, Object[] arguments,
-                    @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @Cached("lookupFunction(pointer)") LLVMFunctionDescriptor cachedDescriptor,
-                    @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
-        return dispatchNode.executeDispatch(cachedDescriptor, arguments);
-    }
-
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor == null"})
-    protected static Object doNativeFunctionCached(LLVMNativePointer pointer, Object[] arguments,
-                    @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                    @Cached("lookupFunction(pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
+    @Specialization
+    protected static Object doNativeFunction(LLVMNativePointer pointer, Object[] arguments,
                     @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
         return dispatchNode.executeDispatch(pointer, arguments);
-    }
-
-    @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", replaces = {"doHandleCached", "doNativeFunctionCached"})
-    protected Object doLookup(LLVMNativePointer pointer, Object[] arguments,
-                    @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode,
-                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNativeNode) {
-        LLVMFunctionDescriptor descriptor = lookupFunction(pointer);
-        if (descriptor != null) {
-            return dispatchNode.executeDispatch(descriptor, arguments);
-        } else {
-            return dispatchNativeNode.executeDispatch(pointer, arguments);
-        }
-    }
-
-    @Specialization(guards = "isAutoDerefHandle(pointer.asNative())")
-    protected Object doDerefHandle(LLVMNativePointer pointer, Object[] arguments,
-                    @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
-        LLVMManagedPointer foreignFunction = getDerefHandleGetReceiverNode().execute(pointer);
-        return doForeign(foreignFunction, arguments, lookupDispatchForeignNode);
-    }
-
-    protected LLVMFunctionDescriptor lookupFunction(LLVMNativePointer function) {
-        return getContextReference().get().getFunctionDescriptor(function);
     }
 
     protected LLVMDispatchNode createCachedDispatch() {
@@ -137,10 +91,6 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
     protected LLVMNativeDispatchNode createCachedNativeDispatch() {
         return LLVMNativeDispatchNodeGen.create(type);
-    }
-
-    protected static boolean isForeignFunction(TruffleObject object) {
-        return object instanceof LLVMTypedForeignObject;
     }
 
     abstract static class LLVMLookupDispatchForeignNode extends LLVMNode {
@@ -242,25 +192,5 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         public static LLVMLookupDispatchForeignNode create(FunctionType type) {
             return LLVMLookupDispatchForeignNodeGen.create(type);
         }
-    }
-
-    protected final LLVMMemory getLLVMMemoryCached() {
-        if (llvmMemory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            llvmMemory = getLLVMMemory();
-        }
-        return llvmMemory;
-    }
-
-    protected boolean isAutoDerefHandle(long addr) {
-        return getLLVMMemoryCached().isDerefHandleMemory(addr);
-    }
-
-    protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
-        if (derefHandleGetReceiverNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
-        }
-        return derefHandleGetReceiverNode;
     }
 }

@@ -106,12 +106,18 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      */
 
     protected DirectCallNode getIntrinsificationCallNode(Intrinsic intrinsic) {
-        RootCallTarget target = intrinsic.forceSplit() ? intrinsic.generateCallTarget(type) : intrinsic.cachedCallTarget(type);
+        RootCallTarget target = intrinsic.cachedCallTarget(type);
         DirectCallNode directCallNode = DirectCallNode.create(target);
-        if (intrinsic.forceInline()) {
-            directCallNode.forceInlining();
-        }
         return directCallNode;
+    }
+
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isIntrinsicFunction()"})
+    protected Object doDirectIntrinsicDirect(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] arguments,
+                    @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
+                    @Cached("getIntrinsificationCallNode(cachedFunction.getNativeIntrinsic())") DirectCallNode callNode) {
+        try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
+            return callNode.call(arguments);
+        }
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"function == cachedFunction", "cachedFunction.isIntrinsicFunction()"})

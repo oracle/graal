@@ -187,5 +187,20 @@ public abstract class LLVMX86_VectorMathNode {
             }
             return LLVMDoubleVector.create(new double[]{compareResult ? mask : 0f, v1.getValue(1)});
         }
+
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2", "predicate == cachedPredicate"}, limit = "cmpCnt")
+        protected LLVMDoubleVector doCmp(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") byte predicate,
+                        @SuppressWarnings("unused") @Cached("predicate") byte cachedPredicate,
+                        @Cached("getComparator(predicate)") Comparator comparator) {
+            double v11 = v1.getValue(0);
+            double v21 = v2.getValue(0);
+            boolean compareResult = comparator.pred.test(Double.compare(v11, v21));
+            if (comparator.ordered) {
+                compareResult = !Double.isNaN(v11) && !Double.isNaN(v21) && compareResult;
+            } else {
+                compareResult = Double.isNaN(v11) || Double.isNaN(v21) || compareResult;
+            }
+            return LLVMDoubleVector.create(new double[]{compareResult ? mask : 0f, v1.getValue(1)});
+        }
     }
 }
