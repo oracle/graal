@@ -134,7 +134,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
      */
     public int getCodeAddressOffset() {
         if (!codeAddressOffsetValid) {
-            VMError.shouldNotReachHere("method " + getName() + " has no code address offset set");
+            throw VMError.shouldNotReachHere(format("%H.%n(%p)") + ": has no code address offset set.");
         }
         return codeAddressOffset;
     }

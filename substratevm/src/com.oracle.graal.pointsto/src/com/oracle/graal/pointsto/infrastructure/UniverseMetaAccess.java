@@ -90,7 +90,7 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
     private ResolvedJavaType lookupJavaType0(Class<?> clazz) {
         ResolvedJavaType result = universe.lookup(wrapped.lookupJavaType(clazz));
         ResolvedJavaType existing = typeCache.put(clazz, result);
-        assert existing == null || existing.equals(result);
+        assert existing == null || existing.equals(result) : result + " already exists.";
         return result;
     }
 
