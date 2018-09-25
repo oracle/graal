@@ -34,6 +34,7 @@ suite = {
         "com.oracle.truffle.espresso" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
+            "jniHeaders" : True,
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
@@ -81,14 +82,31 @@ suite = {
               "bin/<lib:playground>",
             ],
             "buildDependencies" : [
+                "com.oracle.truffle.espresso.playground",
             ],
             "buildEnv" : {
               "TARGET" : "bin/<lib:playground>",
               "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.espresso.playground>",
-              # "CPPFLAGS" : "-I<path:TRUFFLE_NFI_NATIVE>/include",
               "OS" : "<os>",
             },
             "testProject" : True,
+        },
+
+        "com.oracle.truffle.espresso.native" : {
+            "subDir" : "src",
+            "native" : True,
+            "vpath" : True,
+            "results" : [
+                "bin/<lib:nespresso>",
+            ],
+            "buildDependencies" : [
+                "com.oracle.truffle.espresso",
+            ],
+            "buildEnv" : {
+                "TARGET" : "bin/<lib:nespresso>",
+                "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.espresso> -I<path:TRUFFLE_NFI_NATIVE>/include",
+                "OS" : "<os>",
+            },
         },
 
         "com.oracle.truffle.espresso.test" : {
@@ -116,6 +134,9 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
+            "javaProperties" : {
+                "nespresso.library" : "<path:ESPRESSO_NATIVE>/bin/<lib:nespresso>"
+            },
         },
 
         "ESPRESSO_TESTS" : {
@@ -191,6 +212,20 @@ suite = {
             "output" : "<mxbuild>/playground-native",
             "dependencies" : [
                 "com.oracle.truffle.espresso.playground.native",
+            ],
+        },
+
+        "ESPRESSO_NATIVE" : {
+            "native" : True,
+            "relpath" : True,
+            "platformDependent" : True,
+            "platforms" : [
+                "linux-amd64",
+                "darwin-amd64",
+            ],
+            "output" : "<mxbuild>/espresso-native",
+            "dependencies" : [
+                "com.oracle.truffle.espresso.native",
             ],
         },
 
