@@ -62,4 +62,29 @@ final class LLDBSupport {
         final TruffleObject target = managedPointer.getObject();
         return target instanceof DynamicObject && ((DynamicObject) target).getShape().getObjectType() instanceof LLVMObjectAccess;
     }
+
+    private static boolean isByteAligned(long bits) {
+        return (bits & (Byte.SIZE - 1)) == 0;
+    }
+
+    static String toSizeString(int bitSize) {
+        return toSizeString((long) bitSize);
+    }
+
+    static String toSizeString(long bitSize) {
+        if (bitSize == 0) {
+            return "0 bits";
+        } else if (bitSize == 1) {
+            return "1 bit";
+        } else if (!isByteAligned(bitSize)) {
+            return String.format("%d bits", bitSize);
+        }
+
+        final long byteSize = bitSize / Byte.SIZE;
+        if (byteSize == 1) {
+            return "1 byte";
+        } else {
+            return String.format("%d bytes", byteSize);
+        }
+    }
 }

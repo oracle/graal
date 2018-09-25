@@ -33,14 +33,12 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -107,8 +105,8 @@ abstract class LLDBConstant implements LLVMDebugValue {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        if (bitOffset >= 0 && bitSize >= 0) {
-            return String.format("%d bits at offset %d in %s", bitSize, bitOffset, getBaseValue());
+        if (bitOffset != 0 || bitSize != 0) {
+            return String.format("%s at offset %s in %s", LLDBSupport.toSizeString(bitSize), LLDBSupport.toSizeString(bitOffset), getBaseValue());
         } else {
             return String.valueOf(getBaseValue());
         }
@@ -262,25 +260,11 @@ abstract class LLDBConstant implements LLVMDebugValue {
         @Override
         @TruffleBoundary
         public String describeValue(long bitOffset, int bitSize) {
-            final StringBuilder builder = new StringBuilder();
-            builder.append(new LLDBMemoryValue(pointer).computeAddress(0));
+            String value = String.valueOf(new LLDBMemoryValue(pointer).computeAddress(0));
             if (bitOffset != 0 || bitSize != 0) {
-                builder.append("(");
-                if (bitSize == 1) {
-                    builder.append("1 bit");
-                } else {
-                    builder.append(bitSize).append("bits");
-                }
-
-                builder.append(", offset ");
-                if (bitOffset == 1) {
-                    builder.append("1 bit");
-                } else {
-                    builder.append(bitOffset).append(" bits");
-                }
-                builder.append(")");
+                value = String.format("%s at offset %s in %s", LLDBSupport.toSizeString(bitSize), LLDBSupport.toSizeString(bitOffset), value);
             }
-            return builder.toString();
+            return value;
         }
 
         @Override
@@ -335,12 +319,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
 
         @Override
         public boolean isAlwaysSafeToDereference(long bitOffset) {
-            if (LLVMManagedPointer.isInstance(pointer)) {
-                final TruffleObject target = LLVMManagedPointer.cast(pointer).getObject();
-                return target instanceof DynamicObject && ((DynamicObject) target).getShape().getObjectType() instanceof LLVMObjectAccess;
-            }
-
-            return false;
+            return LLDBSupport.pointsToObjectAccess(pointer);
         }
 
         @Override

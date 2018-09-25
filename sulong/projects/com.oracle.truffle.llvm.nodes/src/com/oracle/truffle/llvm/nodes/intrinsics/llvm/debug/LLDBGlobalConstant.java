@@ -70,7 +70,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        return String.format("%s (%d bits at offset %d bits)", global.getSourceName(), bitSize, bitOffset);
+        return String.format("%s (%s at offset %s)", global.getSourceName(), LLDBSupport.toSizeString(bitSize), LLDBSupport.toSizeString(bitOffset));
     }
 
     @Override

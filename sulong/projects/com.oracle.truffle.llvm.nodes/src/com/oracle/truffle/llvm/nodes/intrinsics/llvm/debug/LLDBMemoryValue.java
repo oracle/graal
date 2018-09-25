@@ -60,16 +60,10 @@ final class LLDBMemoryValue implements LLVMDebugValue {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        final StringBuilder builder = new StringBuilder();
-        if (isByteAligned(bitSize)) {
-            builder.append(bitSize / Byte.SIZE).append(" byte at ");
-        } else if (bitSize == 1) {
-            builder.append("first bit at ");
-        } else {
-            builder.append(String.valueOf(bitSize)).append(" bits at ");
-        }
-        builder.append(computeAddress(bitOffset));
-        return builder.toString();
+        String value = LLDBSupport.toSizeString(bitSize);
+        value += " at ";
+        value += computeAddress(bitOffset);
+        return value;
     }
 
     @Override
@@ -240,15 +234,7 @@ final class LLDBMemoryValue implements LLVMDebugValue {
         }
 
         if (LLVMManagedPointer.isInstance(pointer)) {
-            String address = "<managed pointer>";
-            if (bitOffset != 0) {
-                if (isByteAligned(bitOffset)) {
-                    address += " + " + (bitOffset / Byte.SIZE) + " byte";
-                } else {
-                    address += " + " + bitOffset + " bits";
-                }
-            }
-            return address;
+            return "<managed pointer>" + (bitOffset == 0 ? "" : " + " + LLDBSupport.toSizeString(bitOffset));
         }
 
         if (LLVMNativePointer.isInstance(pointer)) {
@@ -258,13 +244,7 @@ final class LLDBMemoryValue implements LLVMDebugValue {
                 nativePointer = nativePointer.increment(offset / Byte.SIZE);
                 offset = offset % Byte.SIZE;
             }
-
-            String address = nativePointer.toString();
-            if (offset != 0) {
-                address += " + " + offset + " bits";
-            }
-
-            return address;
+            return nativePointer.toString() + (offset == 0 ? "" : " + " + LLDBSupport.toSizeString(offset));
         }
 
         CompilerDirectives.transferToInterpreter();

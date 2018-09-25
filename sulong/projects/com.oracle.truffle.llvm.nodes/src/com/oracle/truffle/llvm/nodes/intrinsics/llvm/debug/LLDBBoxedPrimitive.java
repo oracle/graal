@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
@@ -79,14 +80,15 @@ final class LLDBBoxedPrimitive implements LLVMDebugValue {
     }
 
     @Override
+    @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
         final Object value = boxedValue.getValue();
         if (bitOffset == 0 && isMatchingSize(value, bitSize)) {
             return "<boxed value: " + value + ">";
         } else if (bitSize == 1) {
-            return "<bit at offset " + bitOffset + " in boxed value: " + value + ">";
+            return "<bit at offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + value + ">";
         } else {
-            return "<" + bitSize + " bits at offset " + bitOffset + " in boxed value: " + value + ">";
+            return "<" + LLDBSupport.toSizeString(bitSize) + " at offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + value + ">";
         }
     }
 
@@ -120,7 +122,7 @@ final class LLDBBoxedPrimitive implements LLVMDebugValue {
         if (bitOffset == 0) {
             return "<boxed value: " + boxedValue.getValue() + ">";
         } else {
-            return "<offset " + bitOffset + " in boxed value: " + boxedValue.getValue() + ">";
+            return "<offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + boxedValue.getValue() + ">";
         }
     }
 
