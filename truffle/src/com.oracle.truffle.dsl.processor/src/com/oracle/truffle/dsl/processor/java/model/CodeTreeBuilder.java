@@ -875,6 +875,9 @@ public class CodeTreeBuilder {
                 case TYPE:
                     write(ElementUtils.getSimpleName(e.getType()));
                     break;
+                case STATIC_METHOD_REFERENCE:
+                    write(ElementUtils.getSimpleName(e.getType()) + "." + e.getString());
+                    break;
                 default:
                     assert false;
                     return;
