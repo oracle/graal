@@ -50,9 +50,8 @@ public final class PosixVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Thread state not set up.")
     @Override
-    protected void initializeOnce() {
-        VMThreadTL.initialize();
-        PthreadVMLockSupport.initialize();
+    protected boolean initializeOnce() {
+        return VMThreadTL.initialize() && PthreadVMLockSupport.initialize();
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

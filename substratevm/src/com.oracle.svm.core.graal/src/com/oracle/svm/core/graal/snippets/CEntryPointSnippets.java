@@ -169,7 +169,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
         if (MultiThreaded.getValue()) {
-            VMThreads.ensureInitialized();
+            if (!VMThreads.ensureInitialized()) {
+                return CEntryPointErrors.THREAD_INITIALIZATION_FAILED;
+            }
         }
         return attachThread(isolate.read(), vmThreadSize);
     }
