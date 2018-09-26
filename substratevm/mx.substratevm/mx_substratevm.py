@@ -58,8 +58,10 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
-GRAAL_COMPILER_FLAGS = ['-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
-                        ]
+GRAAL_COMPILER_FLAGS = [
+    '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
+    '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
+]
 
 if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
