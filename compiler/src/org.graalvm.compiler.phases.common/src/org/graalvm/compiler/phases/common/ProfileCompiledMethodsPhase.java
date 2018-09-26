@@ -83,9 +83,6 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
  */
 public class ProfileCompiledMethodsPhase extends Phase {
 
-    private static final int MIN_WEIGHT = 0;
-    private static final int MAX_WEIGHT = 10000;
-
     private static final String GROUP_NAME = "~profiled weight";
     private static final String GROUP_NAME_WITHOUT = "~profiled weight (invoke-free sections)";
     private static final String GROUP_NAME_INVOKES = "~profiled invokes";
@@ -129,19 +126,11 @@ public class ProfileCompiledMethodsPhase extends Phase {
         for (Loop<Block> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
-        long increment = clampWeight((long) (getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency()));
+        long increment = DynamicCounterNode.clampIncrement((long) (getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency()));
         DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), increment, true, start.next());
         if (WITH_INVOKE_FREE_SECTIONS && !hasInvoke(blocks)) {
             DynamicCounterNode.addCounterBefore(GROUP_NAME_WITHOUT, sectionHead(start), increment, true, start.next());
         }
-    }
-
-    /**
-     * Clamps {@code weight} to a value between {@link #MIN_WEIGHT} and {@link #MAX_WEIGHT}. This
-     * mitigates the possibility of overflowing benchmark counters.
-     */
-    private static long clampWeight(long weight) {
-        return Math.min(Math.max(weight, MIN_WEIGHT), MAX_WEIGHT);
     }
 
     private static String sectionHead(Node node) {
