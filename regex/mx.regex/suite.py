@@ -71,6 +71,8 @@ suite = {
       "maven" : {
         "artifactId" : "truffle-regex",
       },
+      "description" : "Truffle regular expressions language.",
+      "allowsJavadocWarnings": True,
     },
 
     "TREGEX_UNIT_TESTS" : {
