@@ -225,6 +225,10 @@ public final class InspectServerSession {
                 json = cmd.getParams().getJSONObject();
                 resultParams = debugger.restartFrame(cmd.getId(), json.optString("callFrameId"), postProcessor);
                 break;
+            case "Debugger.setReturnValue":
+                json = cmd.getParams().getJSONObject();
+                debugger.setReturnValue(CallArgument.get(json.getJSONObject("newValue")));
+                break;
             case "Debugger.setVariableValue":
                 json = cmd.getParams().getJSONObject();
                 debugger.setVariableValue(

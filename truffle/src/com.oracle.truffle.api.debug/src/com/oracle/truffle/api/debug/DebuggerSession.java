@@ -766,17 +766,17 @@ public final class DebuggerSession implements Closeable {
     }
 
     @TruffleBoundary
-    void notifyCallback(DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
+    Object notifyCallback(DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     BreakpointConditionFailure conditionFailure) {
         ThreadSuspension suspensionDisabled = threadSuspensions.get();
         if (suspensionDisabled != null && !suspensionDisabled.enabled) {
-            return;
+            return returnValue;
         }
         // SuspensionFilter:
         if (source.isStepNode()) {
             if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
-                return;
+                return returnValue;
             }
         }
         Thread currentThread = Thread.currentThread();
@@ -786,14 +786,14 @@ public final class DebuggerSession implements Closeable {
                 trace("ignored suspended reason: recursive from source:%s context:%s location:%s", source, source.getContext(), source.getSuspendAnchors());
             }
             // avoid recursive suspensions in non legacy mode.
-            return;
+            return returnValue;
         }
 
         if (source.consumeIsDuplicate(this)) {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: duplicate from source:%s context:%s location:%s", source, source.getContext(), source.getSuspendAnchors());
             }
-            return;
+            return returnValue;
         }
 
         // only the first DebuggerNode for a source location and thread will reach here.
@@ -868,9 +868,11 @@ public final class DebuggerSession implements Closeable {
 
         boolean hitStepping = s.step(this, source.getContext(), suspendAnchor);
         boolean hitBreakpoint = breaks != null && !breaks.isEmpty();
+        Object newReturnValue = returnValue;
         if (hitStepping || hitBreakpoint) {
             s.consume();
-            doSuspend(SuspendedContext.create(source.getContext(), debugger.getEnv()), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks, breakpointFailures);
+            newReturnValue = doSuspend(SuspendedContext.create(source.getContext(), debugger.getEnv()), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks,
+                            breakpointFailures);
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSuspendAnchors());
@@ -879,6 +881,7 @@ public final class DebuggerSession implements Closeable {
         if (s.isKill()) {   // ComposedStrategy can become kill
             throw new KillException(source.getContext().getInstrumentedNode());
         }
+        return newReturnValue;
     }
 
     private static void clearFrame(RootNode root, MaterializedFrame frame) {
@@ -941,13 +944,14 @@ public final class DebuggerSession implements Closeable {
         doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
     }
 
-    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
+    private Object doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
         SuspendedEvent suspendedEvent;
+        Object newReturnValue;
         try {
             suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures);
             if (exception != null) {
@@ -958,6 +962,7 @@ public final class DebuggerSession implements Closeable {
                 callback.onSuspend(suspendedEvent);
             } finally {
                 currentSuspendedEventMap.remove(currentThread);
+                newReturnValue = suspendedEvent.getReturnObject();
                 /*
                  * In case the debug client did not behave and did store the suspended event.
                  */
@@ -970,7 +975,7 @@ public final class DebuggerSession implements Closeable {
 
         if (closed) {
             // session got closed in the meantime
-            return;
+            return newReturnValue;
         }
 
         SteppingStrategy strategy = suspendedEvent.getNextStrategy();
@@ -996,6 +1001,7 @@ public final class DebuggerSession implements Closeable {
             ((SteppingStrategy.Unwind) strategy).unwind = unwind;
             throw unwind;
         }
+        return newReturnValue;
     }
 
     private List<DebuggerNode> collectDebuggerNodes(DebuggerNode source, SuspendAnchor suspendAnchor) {
@@ -1144,7 +1150,11 @@ public final class DebuggerSession implements Closeable {
         @Override
         protected void onReturnValue(VirtualFrame frame, Object result) {
             if (stepping.get()) {
-                doStepAfter(frame.materialize(), result);
+                Object newResult = doStepAfter(frame.materialize(), result);
+                if (newResult != result) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getContext().createUnwind(new ChangedReturnInfo(newResult));
+                }
             }
         }
 
@@ -1175,12 +1185,13 @@ public final class DebuggerSession implements Closeable {
         }
 
         @TruffleBoundary
-        private void doStepAfter(MaterializedFrame frame, Object result) {
+        private Object doStepAfter(MaterializedFrame frame, Object result) {
             SuspendAnchor anchor = SuspendAnchor.AFTER;
             SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
             if (steppingStrategy != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
-                notifyCallback(this, frame, anchor, this, result, null, null);
+                return notifyCallback(this, frame, anchor, this, result, null, null);
             }
+            return result;
         }
 
         @Override
@@ -1239,7 +1250,11 @@ public final class DebuggerSession implements Closeable {
         private void doReturn(MaterializedFrame frame, Object result) {
             SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
             if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
-                notifyCallback(this, frame, SuspendAnchor.AFTER, null, result, null, null);
+                Object newResult = notifyCallback(this, frame, SuspendAnchor.AFTER, null, result, null, null);
+                if (newResult != result) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getContext().createUnwind(new ChangedReturnInfo(newResult));
+                }
             }
         }
 
