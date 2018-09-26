@@ -115,28 +115,23 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, int.class);
         testGraph(caller, "inflate");
 
-        ResolvedJavaMethod inflate = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, byte[].class, int.class, int.class);
-        InstalledCode code = getCode(inflate);
+        InstalledCode code = getCode(caller);
 
         for (int i = 0; i < N; i++) {
             int length = i2sz(i);
             byte[] src = fillLatinBytes(new byte[length]);
-
-            byte[] dst = new byte[length * 2];
-            invokeSafe(inflate, null, src, 0, dst, 0, length);
+            byte[] dst = (byte[]) invokeSafe(caller, null, src, 0, length);
 
             // Perform a sanity check:
-            for (int j = 0; j < i2sz(i); j++) {
+            for (int j = 0; j < length; j++) {
                 assert (dst[j * 2 + 1]) == 0;
                 int c = dst[j * 2] & 0xFF;
                 assert (32 <= c && c <= 126) || (160 <= c && c <= 255);
                 assert (c == (src[j] & 0xFF));
             }
 
-            byte[] dst2 = new byte[length * 2];
-            executeVarargsSafe(code, src, 0, dst2, 0, length);
-
-            assertDeepEquals(dst, dst2);
+            Object result = executeVarargsSafe(code, src, 0, length);
+            assertDeepEquals(dst, result);
         }
     }
 
@@ -176,27 +171,22 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "compress", byte[].class, int.class, int.class);
         testGraph(caller, "compress");
 
-        ResolvedJavaMethod compress = getResolvedJavaMethod(javaclass, "compress", byte[].class, int.class, byte[].class, int.class, int.class);
-        InstalledCode code = getCode(compress);
+        InstalledCode code = getCode(caller);
 
         for (int i = 0; i < N; i++) {
             int length = i2sz(i);
             byte[] src = fillLatinChars(new byte[length * 2]);
-
-            byte[] dst = new byte[length];
-            invokeSafe(compress, null, src, 0, dst, 0, length);
+            byte[] dst = (byte[]) invokeSafe(caller, null, src, 0, length);
 
             // Perform a sanity check:
-            for (int j = 0; j < i2sz(i); j++) {
+            for (int j = 0; j < length; j++) {
                 int c = dst[j] & 0xFF;
                 assert (32 <= c && c <= 126) || (160 <= c && c <= 255);
                 assert (c == (src[j * 2] & 0xFF));
             }
 
-            byte[] dst2 = new byte[length];
-            executeVarargsSafe(code, src, 0, dst2, 0, length);
-
-            assertDeepEquals(dst, dst2);
+            Object result = executeVarargsSafe(code, src, 0, length);
+            assertDeepEquals(dst, result);
         }
     }
 

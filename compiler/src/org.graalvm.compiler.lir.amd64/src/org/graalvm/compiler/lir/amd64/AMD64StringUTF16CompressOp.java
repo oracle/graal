@@ -113,19 +113,19 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
      * @param src (rsi) the start address of source char[] to be compressed
      * @param dst (rdi) the start address of destination byte[] vector
      * @param len (rdx) the length
-     * @param vtmp1 (xmm) temporary xmm register
-     * @param vtmp2 (xmm) temporary xmm register
-     * @param vtmp3 (xmm) temporary xmm register
-     * @param vtmp4 (xmm) temporary xmm register
+     * @param tmp1 (xmm) temporary xmm register
+     * @param tmp2 (xmm) temporary xmm register
+     * @param tmp3 (xmm) temporary xmm register
+     * @param tmp4 (xmm) temporary xmm register
      * @param tmp (gpr) temporary gpr register
      * @param res (rax) the result code (length on success, zero otherwise)
      */
-    public void charArrayCompress(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register vtmp1,
-                    Register vtmp2, Register vtmp3, Register vtmp4, Register tmp, Register res) {
-        assert vtmp1.getRegisterCategory().equals(AMD64.XMM);
-        assert vtmp2.getRegisterCategory().equals(AMD64.XMM);
-        assert vtmp3.getRegisterCategory().equals(AMD64.XMM);
-        assert vtmp4.getRegisterCategory().equals(AMD64.XMM);
+    private static void charArrayCompress(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register tmp1,
+                    Register tmp2, Register tmp3, Register tmp4, Register tmp, Register res) {
+        assert tmp1.getRegisterCategory().equals(AMD64.XMM);
+        assert tmp2.getRegisterCategory().equals(AMD64.XMM);
+        assert tmp3.getRegisterCategory().equals(AMD64.XMM);
+        assert tmp4.getRegisterCategory().equals(AMD64.XMM);
 
         Label labelReturnLength = new Label();
         Label labelReturnZero = new Label();
@@ -151,7 +151,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             // First check whether a character is compressible (<= 0xff).
             // Create mask to test for Unicode chars inside (zmm) vector.
             masm.movl(res, 0x00ff);
-            masm.evpbroadcastw(vtmp2, res);
+            masm.evpbroadcastw(tmp2, res);
 
             masm.kmovq(k3, k1);      // Save k1
 
@@ -174,12 +174,12 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             masm.notl(res);
 
             masm.kmovd(k1, res);
-            masm.evmovdqu16(vtmp1, k1, new AMD64Address(src));
-            masm.evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /* le */);
+            masm.evmovdqu16(tmp1, k1, new AMD64Address(src));
+            masm.evpcmpuw(k2, k1, tmp1, tmp2, 2 /* le */);
             masm.ktestd(k2, k1);
             masm.jcc(AMD64Assembler.ConditionFlag.CarryClear, labelRestoreK1ReturnZero);
 
-            masm.evpmovwb(new AMD64Address(dst), k1, vtmp1);
+            masm.evpmovwb(new AMD64Address(dst), k1, tmp1);
 
             masm.addq(src, tmp);
             masm.addq(src, tmp);
@@ -203,14 +203,14 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             // Test and compress 32 chars per iteration, reading 512-bit vectors and
             // writing 256-bit compressed ditto.
             masm.bind(labelAvx512Loop);
-            masm.evmovdqu16(vtmp1, new AMD64Address(src, tmp, AMD64Address.Scale.Times2));
-            masm.evpcmpuw(k2, vtmp1, vtmp2, 2 /* le */);
+            masm.evmovdqu16(tmp1, new AMD64Address(src, tmp, AMD64Address.Scale.Times2));
+            masm.evpcmpuw(k2, tmp1, tmp2, 2 /* le */);
             masm.kortestd(k2, k2);
             masm.jcc(AMD64Assembler.ConditionFlag.CarryClear, labelRestoreK1ReturnZero);
 
             // All 32 chars in the current vector (chunk) are valid for compression,
             // write truncated byte elements to memory.
-            masm.evpmovwb(new AMD64Address(dst, tmp, AMD64Address.Scale.Times1), vtmp1);
+            masm.evpmovwb(new AMD64Address(dst, tmp, AMD64Address.Scale.Times1), tmp1);
             masm.addq(tmp, 32);
             masm.jcc(AMD64Assembler.ConditionFlag.NotZero, labelAvx512Loop);
 
@@ -228,12 +228,12 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             masm.notl(res);
 
             masm.kmovd(k1, res);
-            masm.evmovdqu16(vtmp1, k1, new AMD64Address(src));
-            masm.evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /* le */);
+            masm.evmovdqu16(tmp1, k1, new AMD64Address(src));
+            masm.evpcmpuw(k2, k1, tmp1, tmp2, 2 /* le */);
             masm.ktestd(k2, k1);
             masm.jcc(AMD64Assembler.ConditionFlag.CarryClear, labelRestoreK1ReturnZero);
 
-            masm.evpmovwb(new AMD64Address(dst), k1, vtmp1);
+            masm.evpmovwb(new AMD64Address(dst), k1, tmp1);
 
             masm.kmovq(k1, k3);      // Restore k1
             masm.jmp(labelReturnLength);
@@ -257,9 +257,9 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             masm.andl(len, 16 - 1);
 
             // Compress 16 chars per iteration.
-            masm.movdl(vtmp1, tmp);
-            masm.pshufd(vtmp1, vtmp1, 0);    // Store Unicode mask in 'vtmp1'.
-            masm.pxor(vtmp4, vtmp4);
+            masm.movdl(tmp1, tmp);
+            masm.pshufd(tmp1, tmp1, 0);    // Store Unicode mask in 'vtmp1'.
+            masm.pxor(tmp4, tmp4);
 
             masm.leaq(src, new AMD64Address(src, res, AMD64Address.Scale.Times2));
             masm.leaq(dst, new AMD64Address(dst, res, AMD64Address.Scale.Times1));
@@ -269,19 +269,19 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             // Test and compress 16 chars per iteration, reading 128-bit vectors and
             // writing 64-bit compressed ditto.
             masm.bind(lSSELoop);
-            masm.movdqu(vtmp2, new AMD64Address(src, res, AMD64Address.Scale.Times2));     // load
-                                                                                           // 1st 8
-                                                                                           // characters
-            masm.movdqu(vtmp3, new AMD64Address(src, res, AMD64Address.Scale.Times2, 16)); // load
-                                                                                           // next 8
-                                                                                           // characters
-            masm.por(vtmp4, vtmp2);
-            masm.por(vtmp4, vtmp3);
-            masm.ptest(vtmp4, vtmp1);        // Check for Unicode chars in vector.
+            masm.movdqu(tmp2, new AMD64Address(src, res, AMD64Address.Scale.Times2));     // load
+                                                                                          // 1st 8
+                                                                                          // characters
+            masm.movdqu(tmp3, new AMD64Address(src, res, AMD64Address.Scale.Times2, 16)); // load
+                                                                                          // next 8
+                                                                                          // characters
+            masm.por(tmp4, tmp2);
+            masm.por(tmp4, tmp3);
+            masm.ptest(tmp4, tmp1);        // Check for Unicode chars in vector.
             masm.jcc(AMD64Assembler.ConditionFlag.NotZero, labelReturnZero);
 
-            masm.packuswb(vtmp2, vtmp3);     // Only ASCII chars; compress each to a byte.
-            masm.movdqu(new AMD64Address(dst, res, AMD64Address.Scale.Times1), vtmp2);
+            masm.packuswb(tmp2, tmp3);     // Only ASCII chars; compress each to a byte.
+            masm.movdqu(new AMD64Address(dst, res, AMD64Address.Scale.Times1), tmp2);
             masm.addq(res, 16);
             masm.jcc(AMD64Assembler.ConditionFlag.NotZero, lSSELoop);
 
@@ -293,15 +293,15 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
             masm.jccb(AMD64Assembler.ConditionFlag.Zero, labelCopyChars);
             masm.andl(len, 8 - 1);
 
-            masm.movdl(vtmp1, tmp);
-            masm.pshufd(vtmp1, vtmp1, 0);    // Store Unicode mask in 'vtmp1'.
-            masm.pxor(vtmp3, vtmp3);
+            masm.movdl(tmp1, tmp);
+            masm.pshufd(tmp1, tmp1, 0);    // Store Unicode mask in 'vtmp1'.
+            masm.pxor(tmp3, tmp3);
 
-            masm.movdqu(vtmp2, new AMD64Address(src));
-            masm.ptest(vtmp2, vtmp1);        // Check for Unicode chars in vector.
+            masm.movdqu(tmp2, new AMD64Address(src));
+            masm.ptest(tmp2, tmp1);        // Check for Unicode chars in vector.
             masm.jccb(AMD64Assembler.ConditionFlag.NotZero, labelReturnZero);
-            masm.packuswb(vtmp2, vtmp3);     // Only ASCII chars; compress each to a byte.
-            masm.movq(new AMD64Address(dst), vtmp2);
+            masm.packuswb(tmp2, tmp3);     // Only ASCII chars; compress each to a byte.
+            masm.movq(new AMD64Address(dst), tmp2);
             masm.addq(src, 16);
             masm.addq(dst, 8);
 

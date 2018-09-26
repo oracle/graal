@@ -97,7 +97,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
      * @param vtmp (xmm) temporary xmm register
      * @param tmp (gpr) temporary gpr register
      */
-    public void byteArrayInflate(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register vtmp, Register tmp) {
+     private static void byteArrayInflate(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register vtmp, Register tmp) {
         assert vtmp.getRegisterCategory().equals(AMD64.XMM);
 
         Label labelDone = new Label();
