@@ -28,7 +28,6 @@ import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.word.Word;
@@ -52,6 +51,21 @@ public class AMD64StringLatin1Substitutions {
     @Fold
     static int byteArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccess) {
         return metaAccess.getArrayBaseOffset(JavaKind.Byte);
+    }
+
+    @Fold
+    static int byteArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
+        return metaAccess.getArrayBaseOffset(JavaKind.Byte);
+    }
+
+    @Fold
+    static int charArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccess) {
+        return metaAccess.getArrayBaseOffset(JavaKind.Char);
+    }
+
+    @Fold
+    static int charArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
+        return metaAccess.getArrayIndexScale(JavaKind.Char);
     }
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
@@ -132,30 +146,5 @@ public class AMD64StringLatin1Substitutions {
         Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * 2 * byteArrayBaseOffset(INJECTED));
         AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len);
     }
-
-    @Fold
-    protected static int charArrayBaseOffset(@InjectedParameter ArrayOffsetProvider aop) {
-        return aop.arrayBaseOffset(JavaKind.Char);
-    }
-
-    @Fold
-    protected static int charArrayIndexScale(@InjectedParameter ArrayOffsetProvider aop) {
-        return aop.arrayScalingFactor(JavaKind.Char);
-    }
-
-    @Fold
-    protected static int byteArrayBaseOffset(@InjectedParameter ArrayOffsetProvider aop) {
-        return aop.arrayBaseOffset(JavaKind.Byte);
-    }
-
-    @Fold
-    protected static int byteArrayIndexScale(@InjectedParameter ArrayOffsetProvider aop) {
-        return aop.arrayScalingFactor(JavaKind.Byte);
-    }
-
-    /**
-     * Marker value for the {@link InjectedParameter} injected parameter.
-     */
-    private static final ArrayOffsetProvider INJECTED = null;
 
 }
