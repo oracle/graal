@@ -87,7 +87,7 @@ public abstract class LLVMSourceLocation {
     private final Kind kind;
     private final String name;
 
-    private LazySourceSection lazySourceSection;
+    private final LazySourceSection lazySourceSection;
     private SourceSection sourceSection;
 
     private LLVMSourceLocation(LLVMSourceLocation parent, Kind kind, String name, LazySourceSection lazySourceSection) {
