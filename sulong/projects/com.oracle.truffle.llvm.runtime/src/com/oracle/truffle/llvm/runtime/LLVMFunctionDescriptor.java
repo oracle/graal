@@ -364,7 +364,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return ((LLVMIRFunction) getFunction()).callTarget;
     }
 
-    public Intrinsic getNativeIntrinsic() {
+    public Intrinsic getIntrinsic() {
         getFunction().resolve(this);
         assert getFunction() instanceof IntrinsicFunction;
         return ((IntrinsicFunction) getFunction()).intrinsic;
