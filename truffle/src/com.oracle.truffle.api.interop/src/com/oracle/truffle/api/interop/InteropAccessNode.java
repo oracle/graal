@@ -198,7 +198,7 @@ abstract class InteropAccessNode extends Node {
     protected static Object doCached(TruffleObject receiver, Object[] arguments,
                     @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
                     @Cached("createInlinedCallNode(createMessageTarget(foreignAccess))") DirectCallNode sendMessageCall,
-                    @Cached("createInlinedCallNode(createCanHandleTarget(foreignAccess))") DirectCallNode canHandleCall) {
+                    @Cached("createCanHandleInlinedCallNode(foreignAccess, receiver)") DirectCallNode canHandleCall) {
         return sendMessageCall.call(arguments);
     }
 
@@ -222,18 +222,34 @@ abstract class InteropAccessNode extends Node {
     }
 
     @Specialization
-    protected Object doGeneric(TruffleObject receiver, Object[] arguments, @Cached("create()") IndirectCallNode indirectCall) {
+    protected Object doGeneric(TruffleObject receiver, Object[] arguments,
+                    @Cached("create()") IndirectCallNode indirectCall) {
         return indirectCall.call(createGenericMessageTarget(receiver), arguments);
     }
 
     @TruffleBoundary
-    protected CallTarget createCanHandleTarget(ForeignAccess access) {
-        return access != null ? access.checkLanguage() : null;
+    protected static DirectCallNode createCanHandleInlinedCallNode(ForeignAccess access, TruffleObject receiver) {
+        if (access != null) {
+            DirectCallNode callNode = createInlinedCallNode(access.checkLanguage());
+            assert acceptCached(receiver, access, callNode) : "foreign access for " + receiver.getClass() + " (" + access + ") does not handle its own objects";
+            return callNode;
+        } else {
+            return null;
+        }
     }
 
     @TruffleBoundary
     protected CallTarget createGenericMessageTarget(TruffleObject receiver) {
+        assert assertHandlesItself(receiver);
         return createMessageTarget(receiver.getForeignAccess());
+    }
+
+    private static boolean assertHandlesItself(TruffleObject receiver) {
+        if (receiver.getForeignAccess() != null) {
+            // to exercise the assertion in createCanHandleInlinedCallNode:
+            createCanHandleInlinedCallNode(receiver.getForeignAccess(), receiver);
+        }
+        return true;
     }
 
     protected CallTarget createMessageTarget(ForeignAccess fa) {
@@ -250,5 +266,4 @@ abstract class InteropAccessNode extends Node {
     public static InteropAccessNode create(Message message) {
         return InteropAccessNodeGen.create(message);
     }
-
 }
