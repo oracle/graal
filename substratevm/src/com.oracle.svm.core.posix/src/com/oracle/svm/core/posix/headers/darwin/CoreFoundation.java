@@ -79,6 +79,9 @@ public class CoreFoundation {
     @CFunction
     public static native void CFRelease(PointerBase cf);
 
+    @CFunction
+    public static native PointerBase CFRetain(PointerBase cf);
+
     public interface CFDictionaryRef extends PointerBase {
     }
 
