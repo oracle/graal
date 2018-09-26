@@ -60,6 +60,13 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
     }
 
     @Override
+    public boolean isInternal() {
+        // this is an artificial root node for an inline assembly block
+        // we don't want this to show up in stack traces
+        return true;
+    }
+
+    @Override
     public SourceSection getSourceSection() {
         if (source != null) {
             return source.getSourceSection();
