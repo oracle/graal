@@ -99,7 +99,7 @@ public class OptimizedCompilationProfile {
         boolean compileImmediately = TruffleCompilerOptions.getValue(TruffleCompileImmediately);
         this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
-        this.firstTierCompilationCallThreshold = Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
+        this.firstTierCompilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
         this.firstTierCompilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
         this.timestamp = System.nanoTime();
         this.multiTierEnabled = TruffleCompilerOptions.getValue(TruffleMultiTier);
@@ -315,31 +315,17 @@ public class OptimizedCompilationProfile {
 
     @SuppressWarnings("try")
     final boolean interpreterCall(OptimizedCallTarget callTarget) {
-        if (multiTierEnabled) {
-            int intCallCount = ++interpreterCallCount;
-            int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-            if (CompilerDirectives.inInterpreter() && !callTarget.isCompiling() && !compilationFailed) {
-                // Check if call target is hot enough to get compiled, but took not too long to get
-                // hot.
-                if ((intAndLoopCallCount >= firstTierCompilationCallAndLoopThreshold && intCallCount >= firstTierCompilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                                TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                    return callTarget.compile(false);
-                }
+        int intCallCount = ++interpreterCallCount;
+        int intAndLoopCallCount = ++interpreterCallAndLoopCount;
+        if (!callTarget.isCompiling() && !compilationFailed) {
+            // Check if call target is hot enough to compile, but took not too long to get hot.
+            int callAndLoopThreshold = multiTierEnabled ? firstTierCompilationCallAndLoopThreshold : compilationCallAndLoopThreshold;
+            int callThreshold = multiTierEnabled ? firstTierCompilationCallThreshold : compilationCallThreshold; // 0 if TruffleCompileImmediately
+            if ((intAndLoopCallCount >= callAndLoopThreshold && intCallCount >= callThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
+                return callTarget.compile(!multiTierEnabled);
             }
-            return false;
-        } else {
-            int intCallCount = ++interpreterCallCount;
-            int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-            if (!callTarget.isCompiling() && !compilationFailed) {
-                // check if call target is hot enough to get compiled, but took not too long to get
-                // hot
-                int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
-                if ((intCallCount >= callThreshold && intAndLoopCallCount >= compilationCallAndLoopThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
-                    return callTarget.compile(true);
-                }
-            }
-            return false;
         }
+        return false;
     }
 
     private boolean isDeferredCompile(OptimizedCallTarget target) {
