@@ -72,6 +72,12 @@ public class LLVMFunctionStartNode extends RootNode {
     }
 
     @Override
+    public boolean isInternal() {
+        // currently we never create internal LLVM sources, so we can take a shortcut here
+        return false;
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         nullStack(frame);
         Object result = node.executeGeneric(frame);
