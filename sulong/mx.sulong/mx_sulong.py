@@ -251,7 +251,13 @@ def runLLVMUnittests(unittest_runner):
     langhome = mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')
     libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_TEST_NATIVE>')
     libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs])
+    test_suite = 'SULONG_TEST_SUITES'
+    dist = mx.distribution(test_suite)
+    unittestArgs = [
+        "-Dsulongtest.testSuitePath=" + dist.get_output(),
+        ]
+    mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
+    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs] + unittestArgs)
 
 
 def clangformatcheck(args=None):
