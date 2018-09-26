@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
@@ -91,7 +92,7 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     @Override
     public boolean isValidLastTier() {
         InstalledCode code = installedCode;
-        return code.isValid() && !code.getName().endsWith("@1");
+        return code.isValid() && code.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
     }
 
     @Override
