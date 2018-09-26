@@ -42,7 +42,7 @@ public final class HybridBitSetMatcher extends ProfiledCharMatcher {
 
     /**
      * Constructs a new {@link HybridBitSetMatcher}.
-     * 
+     *
      * @param invert see {@link ProfiledCharMatcher}.
      * @param highBytes the respective high bytes of the bit sets.
      * @param bitSets the bit sets that match the low bytes if the character under inspection has
@@ -59,7 +59,7 @@ public final class HybridBitSetMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     protected boolean matchChar(char c) {
         final int highByte = highByte(c);
         for (int i = 0; i < highBytes.length; i++) {
