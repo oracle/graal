@@ -555,7 +555,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     private static void registerAbortIntrinsics() {
         add("@_gfortran_abort", (args, factory) -> LLVMAbortNodeGen.create());
         add("@signal", (args, factory) -> LLVMSignalNodeGen.create(args.get(1), args.get(2)));
-        add("@syscall", "@__syscall", (args, factory) -> new LLVMSyscall());
+        add("@syscall", "@__syscall", (args, factory) -> LLVMSyscall.create(argumentsArray(args, 1, args.size() - 1)));
     }
 
     private static void registerRustIntrinsics() {

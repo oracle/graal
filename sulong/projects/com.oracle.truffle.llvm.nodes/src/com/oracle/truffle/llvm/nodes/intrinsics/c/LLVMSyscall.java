@@ -29,58 +29,65 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallNode;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
-import com.oracle.truffle.llvm.nodes.func.LLVMOptionalArgNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMOptionalArgNode.Converter;
-import com.oracle.truffle.llvm.nodes.func.LLVMOptionalArgNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSyscallFactory.SyscallArgConverterNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public class LLVMSyscall extends LLVMIntrinsic {
-    @Child protected LLVMAMD64SyscallNode syscall;
-    @Child protected LLVMOptionalArgNode rax;
-    @Child protected LLVMOptionalArgNode rdi;
-    @Child protected LLVMOptionalArgNode rsi;
-    @Child protected LLVMOptionalArgNode rdx;
-    @Child protected LLVMOptionalArgNode r10;
-    @Child protected LLVMOptionalArgNode r8;
-    @Child protected LLVMOptionalArgNode r9;
+public abstract class LLVMSyscall {
 
-    public LLVMSyscall() {
-        Converter conv = new SyscallArgConverter();
-        rax = LLVMOptionalArgNodeGen.create(conv, 1, 0L);
-        rdi = LLVMOptionalArgNodeGen.create(conv, 2, 0L);
-        rsi = LLVMOptionalArgNodeGen.create(conv, 3, 0L);
-        rdx = LLVMOptionalArgNodeGen.create(conv, 4, 0L);
-        r10 = LLVMOptionalArgNodeGen.create(conv, 5, 0L);
-        r8 = LLVMOptionalArgNodeGen.create(conv, 6, 0L);
-        r9 = LLVMOptionalArgNodeGen.create(conv, 7, 0L);
-        syscall = LLVMAMD64SyscallNodeGen.create(rax, rdi, rsi, rdx, r10, r8, r9);
+    private LLVMSyscall() {
+        // private constructor
     }
 
-    private class SyscallArgConverter implements LLVMOptionalArgNode.Converter {
-        // sign extend all integer types to long
-        @Override
-        public Object convert(Object o) {
-            if (o == null) {
-                return (long) 0;
-            } else if (o instanceof Long) {
-                return o; // already a long
-            } else if (o instanceof Integer) {
-                return (long) (int) o;
-            } else if (o instanceof Short) {
-                return (long) (short) o;
-            } else if (o instanceof Byte) {
-                return (long) (byte) o;
-            } else {
-                return o;
-            }
+    public static LLVMExpressionNode create(LLVMExpressionNode[] arguments) {
+        assert arguments.length >= 1 && arguments.length <= 7;
+        LLVMExpressionNode[] args = new LLVMExpressionNode[7];
+        for (int i = 0; i < arguments.length; i++) {
+            args[i] = SyscallArgConverterNodeGen.create(arguments[i]);
         }
+        for (int i = arguments.length; i < args.length; i++) {
+            args[i] = new LLVMI64LiteralNode(0L);
+        }
+        return LLVMAMD64SyscallNodeGen.create(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return syscall.executeGeneric(frame);
+    @NodeChild(value = "value", type = LLVMExpressionNode.class)
+    static abstract class SyscallArgConverter extends LLVMExpressionNode {
+
+        @Specialization
+        protected static long convert(long value) {
+            return value;
+        }
+
+        @Specialization
+        protected static long convert(int value) {
+            return value;
+        }
+
+        @Specialization
+        protected static long convert(short value) {
+            return value;
+        }
+
+        @Specialization
+        protected static long convert(byte value) {
+            return value;
+        }
+
+        @Specialization
+        protected static LLVMPointer convert(LLVMPointer value) {
+            return value;
+        }
+
+        @Fallback
+        protected static Object convert(Object value) {
+            return value;
+        }
     }
 }
