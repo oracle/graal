@@ -143,18 +143,6 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${full_vm_build_linux} ${linux-deploy} ${gate_vm_linux} {
-    run: [
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
-      ${mx_vm_common} [build]
-      ${mx_vm_common}  ${maven_deploy_dry_run_vm}
-    ]
-    timelimit: "50:00"
-    name: gate-vm-build-linux-amd64
-  },
   ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
