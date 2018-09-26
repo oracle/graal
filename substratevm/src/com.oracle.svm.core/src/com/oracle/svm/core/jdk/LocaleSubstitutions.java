@@ -27,13 +27,10 @@ package com.oracle.svm.core.jdk;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.text.BreakIterator;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
@@ -238,45 +235,6 @@ final class Util_sun_util_locale_provider_LocaleProviderAdapter {
 final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
 }
 
-@TargetClass(java.util.TimeZone.class)
-final class Target_java_util_TimeZone {
-
-    @Substitute
-    private static TimeZone getDefaultRef() {
-        return Util_java_util_TimeZone.defaultZone;
-    }
-
-    @Substitute
-    private static void setDefault(TimeZone zone) {
-        Util_java_util_TimeZone.defaultZone = zone;
-    }
-
-    @Substitute
-    public static TimeZone getTimeZone(String id) {
-        for (TimeZone zone : Util_java_util_TimeZone.zones) {
-            if (zone.getID().equals(id)) {
-                return zone;
-            }
-        }
-        return Util_java_util_TimeZone.zones.get(0);
-    }
-}
-
-final class Util_java_util_TimeZone {
-
-    protected static final List<TimeZone> zones;
-    protected static TimeZone defaultZone = TimeZone.getDefault();
-
-    static {
-        defaultZone = TimeZone.getDefault();
-        zones = new ArrayList<>();
-        /* The first entry must be GMT, it is returned when no other match found. */
-        zones.add(TimeZone.getTimeZone("GMT"));
-        zones.add(TimeZone.getTimeZone("UTC"));
-        zones.add(defaultZone);
-    }
-}
-
 @TargetClass(sun.util.locale.provider.TimeZoneNameUtility.class)
 final class Target_sun_util_locale_provider_TimeZoneNameUtility {
 
@@ -362,7 +320,4 @@ final class Util_java_text_BreakIterator {
 /** Dummy class to have a class with the file's name. */
 public final class LocaleSubstitutions {
 
-    public static void registerTimeZone(TimeZone zone) {
-        Util_java_util_TimeZone.zones.add(zone);
-    }
 }
