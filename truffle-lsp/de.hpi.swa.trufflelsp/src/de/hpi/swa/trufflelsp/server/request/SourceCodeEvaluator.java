@@ -1,6 +1,8 @@
 package de.hpi.swa.trufflelsp.server.request;
 
 import java.net.URI;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,6 +22,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -130,29 +133,40 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
 
-        for (Node sibling : nearestNode.getParent().getChildren()) {
-            SourceSection siblingSection = sibling.getSourceSection();
-            if (siblingSection != null && siblingSection.isAvailable()) {
-                SourceLocation siblingLocation = SourceLocation.from(siblingSection);
-                if (textDocumentSurrogate.isLocationCovered(siblingLocation)) {
-                    List<CoverageData> coverageDataObjects = textDocumentSurrogate.getCoverageData(siblingLocation);
+        Node rootNode = ((InstrumentableNode) nearestNode).findNearestNodeAt(nearestNode.getSourceSection().getCharIndex(),
+                        new HashSet<>(Arrays.asList(StandardTags.RootTag.class)));
+        if (!(rootNode instanceof InstrumentableNode)) {
+            return EvaluationResult.createEvaluationSectionNotReached();
+        }
 
-                    final LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
-                    final String code = nearestNode.getSourceSection().getCharacters().toString();
-                    final Source inlineEvalSource = Source.newBuilder(code).name("inline eval").language(info.getId()).mimeType("content/unknown").cached(false).build();
-                    for (CoverageData coverageData : coverageDataObjects) {
-                        final ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
-                        final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
-                        coverageEventNode.insertOrReplaceChild(executableNode);
+        Node firstStatement = ((InstrumentableNode) rootNode).findNearestNodeAt(rootNode.getSourceSection().getCharIndex(),
+                        new HashSet<>(Arrays.asList(StandardTags.StatementTag.class)));
 
-                        try {
-                            System.out.println("Trying coverage-based eval...");
-                            Object result = executableNode.execute(coverageData.getFrame());
-                            return EvaluationResult.createResult(result);
-                        } catch (Exception e) {
-                        } finally {
-                            coverageEventNode.clearChild();
-                        }
+        if (!(firstStatement instanceof InstrumentableNode)) {
+            return EvaluationResult.createEvaluationSectionNotReached();
+        }
+
+        SourceSection siblingSection = firstStatement.getSourceSection();
+        if (siblingSection != null && siblingSection.isAvailable()) {
+            SourceLocation siblingLocation = SourceLocation.from(siblingSection);
+            if (textDocumentSurrogate.isLocationCovered(siblingLocation)) {
+                List<CoverageData> coverageDataObjects = textDocumentSurrogate.getCoverageData(siblingLocation);
+
+                final LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
+                final String code = nearestNode.getSourceSection().getCharacters().toString();
+                final Source inlineEvalSource = Source.newBuilder(code).name("inline eval").language(info.getId()).mimeType("content/unknown").cached(false).build();
+                for (CoverageData coverageData : coverageDataObjects) {
+                    final ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
+                    final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
+                    coverageEventNode.insertOrReplaceChild(executableNode);
+
+                    try {
+                        System.out.println("Trying coverage-based eval...");
+                        Object result = executableNode.execute(coverageData.getFrame());
+                        return EvaluationResult.createResult(result);
+                    } catch (Exception e) {
+                    } finally {
+                        coverageEventNode.clearChild();
                     }
                 }
             }
