@@ -271,8 +271,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.superHub = superType;
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
-        this.genericInfo = GenericInfo.forEmpty();
-        this.annotatedSuperInfo = AnnotatedSuperInfo.forEmpty();
         this.isStatic = isStatic;
         this.isSynthetic = isSynthetic;
         this.classloader = classLoader;
@@ -322,13 +320,28 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public GenericInfo getGenericInfo() {
+        return genericInfo;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setAnnotatedSuperInfo(AnnotatedSuperInfo annotatedSuperInfo) {
         this.annotatedSuperInfo = annotatedSuperInfo;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public AnnotatedSuperInfo getAnnotatedSuperInfo() {
+        return annotatedSuperInfo;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void setInterfacesEncoding(Object interfacesEncoding) {
         this.interfacesEncoding = interfacesEncoding;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Object getInterfacesEncoding() {
+        return interfacesEncoding;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -438,9 +451,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return KnownIntrinsics.unsafeCast(clazz, DynamicHub.class);
     }
 
+    /*
+     * Note that this method must be a static method and not an instance method, otherwise null
+     * values cannot be converted.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Class<?> asClass() {
-        return KnownIntrinsics.unsafeCast(this, Class.class);
+    public static Class<?> toClass(DynamicHub hub) {
+        return KnownIntrinsics.unsafeCast(hub, Class.class);
     }
 
     @Substitute
@@ -522,7 +539,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          * We do not do the check "this.getModifiers() & ANNOTATION) != 0" because we do not have
          * the full modifier bits.
          */
-        return isInterface() && getInterfaces().length == 1 && getInterfaces()[0].asClass() == Annotation.class;
+        return isInterface() && getInterfaces().length == 1 && DynamicHub.toClass(getInterfaces()[0]) == Annotation.class;
     }
 
     @Substitute

@@ -50,6 +50,7 @@ import com.oracle.svm.core.MemoryWalker.ImageCodeAccess;
 import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.GC;
@@ -113,6 +114,11 @@ public class HeapImpl extends Heap {
         this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
+        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
+            bootImageHeapBoundariesToLog(Log.log()).newline();
+            report(Log.log(), true).newline();
+            Log.log().newline();
+        });
     }
 
     @Fold
@@ -455,27 +461,28 @@ public class HeapImpl extends Heap {
         report(log, HeapPolicyOptions.TraceHeapChunks.getValue());
     }
 
-    public void report(Log log, boolean traceHeapChunks) {
+    public Log report(Log log, boolean traceHeapChunks) {
         final HeapImpl heap = HeapImpl.getHeapImpl();
-        log.newline().string("[Heap:").newline();
+        log.newline().string("[Heap:").indent(true);
         heap.getYoungGeneration().report(log, traceHeapChunks).newline();
         heap.getOldGeneration().report(log, traceHeapChunks).newline();
         HeapChunkProvider.get().report(log, traceHeapChunks);
-        log.string("]");
+        log.redent(false).string("]");
+        return log;
     }
 
     /** Print the boundaries of the native image heap partitions. */
     Log bootImageHeapBoundariesToLog(Log log) {
-        log.string("[Native image heap boundaries: ").newline();
-        log.string("  ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
+        log.string("[Native image heap boundaries: ").indent(true);
+        log.string("ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastReadOnlyPrimitiveObject)).newline();
-        log.string("  ReadOnly References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
+        log.string("ReadOnly References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastReadOnlyReferenceObject)).newline();
-        log.string("  Writable Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
+        log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastWritablePrimitiveObject)).newline();
-        log.string("  Writable References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritableReferenceObject)).string(" .. ").hex(
+        log.string("Writable References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritableReferenceObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastWritableReferenceObject));
-        log.string("]").newline();
+        log.redent(false).string("]");
         return log;
     }
 

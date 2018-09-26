@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.polyglot;
 
@@ -50,13 +66,17 @@ abstract class ToHostNode extends Node {
 
     /** Subtype or lossless conversion to primitive type (incl. unboxing). */
     static final int STRICT = 0;
-    /** Wrapping or array conversion; int to char. */
+    /** Wrapping (Map, List) or array conversion; int to char. */
     static final int LOOSE = 1;
+    /** Wrap executable into functional interface proxy. */
+    static final int FUNCTION_PROXY = 2;
+    /** Wrap object with members into arbitrary interface proxy. */
+    static final int OBJECT_PROXY = 3;
     /** Lossy conversion to String. */
-    static final int COERCE = 2;
+    static final int COERCE = 4;
     /** Host object to interface proxy conversion. */
-    static final int HOST_PROXY = 3;
-    static final int[] PRIORITIES = {STRICT, LOOSE, COERCE, HOST_PROXY};
+    static final int HOST_PROXY = 5;
+    static final int[] PRIORITIES = {STRICT, LOOSE, FUNCTION_PROXY, OBJECT_PROXY, COERCE, HOST_PROXY};
 
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
     @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
@@ -186,24 +206,22 @@ abstract class ToHostNode extends Node {
                 return primitive.hasSize(tValue);
             } else if (targetType == Map.class) {
                 return primitive.hasKeys(tValue);
-            } else if (targetType == Function.class) {
-                return isExecutable(tValue) || isInstantiable(tValue) || (TruffleOptions.AOT && ForeignAccess.sendHasKeys(hasKeysNode, tValue));
             } else if (targetType.isArray()) {
-                return primitive.hasKeys(tValue);
+                return primitive.hasSize(tValue);
             } else if (priority < HOST_PROXY && HostObject.isInstance(tValue)) {
                 return false;
             } else {
                 if (TruffleOptions.AOT) {
                     // support Function also with AOT
-                    if (targetType == Function.class) {
+                    if (priority >= FUNCTION_PROXY && targetType == Function.class) {
                         return isExecutable(tValue) || isInstantiable(tValue);
                     } else {
                         return false;
                     }
                 } else {
-                    if (HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
+                    if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
                         return true;
-                    } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
+                    } else if (priority >= OBJECT_PROXY && targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
                         return true;
                     } else {
                         return false;

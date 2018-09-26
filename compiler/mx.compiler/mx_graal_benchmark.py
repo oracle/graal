@@ -521,8 +521,11 @@ class AveragingBenchmarkMixin(object):
             resultIterations = self.getExtraIterationCount(lastIteration + 1)
             totalTimeForAverage = 0.0
             for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
-                result = next(result for result in warmupResults if result["metric.iteration"] == i)
-                totalTimeForAverage += result["metric.value"]
+                result = next((result for result in warmupResults if result["metric.iteration"] == i), None)
+                if result:
+                    totalTimeForAverage += result["metric.value"]
+                else:
+                    resultIterations -= 1
             averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
             averageResult["metric.value"] = totalTimeForAverage / resultIterations
             averageResult["metric.name"] = "time"

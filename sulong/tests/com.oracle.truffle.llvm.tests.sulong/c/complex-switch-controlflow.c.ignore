@@ -1,0 +1,97 @@
+/*
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+ * endorse or promote products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+int test(int a) {
+  int i;
+  int sum = 0;
+  for (i = 0; i < a; i++) {
+    int j = 0;
+    int x;
+    switch (i % 5) {
+    case 0:
+      switch (a % 3) {
+      case 0:
+        j += 3;
+        break;
+      case 1:
+        j = 7;
+        x = 4;
+        goto asdf;
+      case 2:
+        sum -= 11;
+        j++;
+      default:
+        j -= 3;
+      }
+    case 1:
+      j = 3;
+      x = -2;
+      goto asdf;
+    case 2:
+      if (j + i % 2 == 0) {
+        x = 12;
+      } else {
+        x = 2;
+        switch (i % 3) {
+        case 0:
+          x = 21;
+        case 1:
+          x += 4;
+        case 2:
+          goto asdf;
+        }
+      }
+      break;
+    case 3:
+      x = 43;
+      if (x - i) {
+        x++;
+        break;
+      }
+    case 4:
+      j++;
+      break;
+    default:
+      sum = 0;
+    }
+    sum += j;
+  asdf:
+    sum += 2 * j + x;
+  }
+  return sum;
+}
+
+int main() {
+  int i;
+  int sum = 0;
+  for (i = 0; i < 10000; i++) {
+    sum += test(i);
+  }
+  return sum == 1114580352;
+}

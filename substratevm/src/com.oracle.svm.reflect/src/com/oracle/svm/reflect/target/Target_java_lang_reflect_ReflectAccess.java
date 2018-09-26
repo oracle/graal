@@ -28,7 +28,6 @@ package com.oracle.svm.reflect.target;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 /**
  * These substitutions are needed to set the genericInfo field on Method, Field, Constructor. The
@@ -37,7 +36,7 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
  * propagate the genericInfo.
  */
 
-@TargetClass(className = "java.lang.reflect.ReflectAccess", onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(className = "java.lang.reflect.ReflectAccess")
 public final class Target_java_lang_reflect_ReflectAccess {
 
     @Substitute

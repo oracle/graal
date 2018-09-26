@@ -1,0 +1,6 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/divbyzero.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/pragma-re-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/20030309-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/20030213-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vla-15.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/float-exact-1.c

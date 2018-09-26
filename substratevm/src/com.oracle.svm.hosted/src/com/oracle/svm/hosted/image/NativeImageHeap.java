@@ -150,6 +150,14 @@ public final class NativeImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
+    void alignRelocatablePartition(long alignment) {
+        long relocatablePartitionOffset = readOnlyPrimitive.getSize() + readOnlyReference.getSize();
+        long beforeRelocPadding = NumUtil.roundUp(relocatablePartitionOffset, alignment) - relocatablePartitionOffset;
+        readOnlyPrimitive.incrementSize(beforeRelocPadding);
+        long afterRelocPadding = NumUtil.roundUp(readOnlyRelocatable.getSize(), alignment) - readOnlyRelocatable.getSize();
+        readOnlyRelocatable.incrementSize(afterRelocPadding);
+    }
+
     private static Object readObjectField(HostedField field, JavaConstant receiver) {
         return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
     }

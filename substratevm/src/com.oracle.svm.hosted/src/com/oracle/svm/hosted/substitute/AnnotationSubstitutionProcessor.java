@@ -246,7 +246,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * The annotatedClass is never used directly, i.e., never wrapped in an AnalysisType. So we
          * need to ensure manually here that its static initializer runs.
          */
-        ClassInitializationFeature.forceInitializeHosted(annotatedClass);
+        ClassInitializationFeature.singleton().forceInitializeHosted(annotatedClass);
 
         Delete deleteAnnotation = lookupAnnotation(annotatedClass, Delete.class);
         Substitute substituteAnnotation = lookupAnnotation(annotatedClass, Substitute.class);

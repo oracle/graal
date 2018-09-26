@@ -63,7 +63,7 @@ cd graal/compiler
 Changing to the `graal/compiler` directory informs mx that the focus of development (called the _primary suite_) is Graal.
 All subsequent mx commands should be executed from this directory.
 
-Here's the recipe for building and running Graal (if on Windows, replace mx with mx.cmd):
+Here's the recipe for building and running Graal:
 
 ```
 mx build
@@ -73,6 +73,10 @@ mx vm
 By default, Graal is only used for hosted compilation (i.e., the VM still uses C2 for compilation).
 To make the VM use Graal as the top tier JIT compiler, add the `-XX:+UseJVMCICompiler` option to the command line.
 To disable use of Graal altogether, use `-XX:-EnableJVMCI`.
+
+### Windows Specifics
+
+When applying above steps on Windows, replace `export` with `set`.
 
 ## IDE Configuration
 
@@ -120,6 +124,24 @@ You need to use the same JDK the [OTN](http://www.oracle.com/technetwork/oracle-
 The build step above should work on all [supported JDK 8 build platforms](https://wiki.openjdk.java.net/display/Build/Supported+Build+Platforms).
 It should also work on other platforms (such as Oracle Linux, CentOS and Fedora as described [here](http://mail.openjdk.java.net/pipermail/graal-dev/2015-December/004050.html)).
 If you run into build problems, send a message to the [Graal mailing list](http://mail.openjdk.java.net/mailman/listinfo/graal-dev).
+
+### Windows Specifics
+
+Building JDK requires some bash-like environment. Fortunately, the one that comes as a part of the standard
+*Git for Windows* installation will suffice, in which case you will just have to set `MKS_HOME` to point
+to the directory with Linux tools, e.g.:
+
+```
+set MKS_HOME=<GIT_DIR>\usr\bin
+```
+
+where `<GIT_DIR>` is a path to your Git installation directory. It is important that there are **NO**
+spaces in the path, otherwise the build will fail.
+
+You will also need an *MSVC 2010 SP1* compiler. The following tool chain is recommended:
+
+1. [Microsoft Windows SDK for Windows 7 and .NET Framework 4 (ISO)](https://www.microsoft.com/en-us/download/details.aspx?id=8442)
+2. [Microsoft Visual C++ 2010 Service Pack 1 Compiler Update for the Windows SDK 7.1](https://www.microsoft.com/en-us/download/details.aspx?id=4422)
 
 ## License
 

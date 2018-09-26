@@ -135,13 +135,18 @@ public final class PthreadVMLockSupport {
      * Must be called once early during startup, before any mutex or condition is used.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static void initialize() {
+    public static boolean initialize() {
         for (PthreadVMMutex mutex : ImageSingletons.lookup(PthreadVMLockSupport.class).mutexes) {
-            checkResult(Pthread.pthread_mutex_init(mutex.getStructPointer(), WordFactory.nullPointer()), "pthread_mutex_init");
+            if (Pthread.pthread_mutex_init(mutex.getStructPointer(), WordFactory.nullPointer()) != 0) {
+                return false;
+            }
         }
         for (PthreadVMCondition condition : ImageSingletons.lookup(PthreadVMLockSupport.class).conditions) {
-            checkResult(PthreadConditionUtils.initCondition(condition.getStructPointer()), "pthread_cond_init");
+            if (PthreadConditionUtils.initCondition(condition.getStructPointer()) != 0) {
+                return false;
+            }
         }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)

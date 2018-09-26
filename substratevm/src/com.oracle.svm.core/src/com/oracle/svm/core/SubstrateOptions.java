@@ -37,6 +37,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -54,6 +55,7 @@ public class SubstrateOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newValue < 1);
             SubstrateOptions.AOTInline.update(values, newValue > 0);
+            SubstrateOptions.AOTTrivialInline.update(values, newValue > 0);
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
             }
@@ -137,8 +139,46 @@ public class SubstrateOptions {
     @Option(help = "Prefix that is added to the names of API functions.")//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
 
-    @Option(help = "List of comma separated protocols to enable.")//
-    public static final HostedOptionKey<String> EnableURLProtocols = new HostedOptionKey<>("");
+    @APIOption(name = "enable-http", fixedValue = "http", customHelp = "enable http support in the generated image")//
+    @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
+    @APIOption(name = "enable-url-protocols")//
+    @Option(help = "List of comma separated URL protocols to enable.")//
+    public static final HostedOptionKey<String> EnableURLProtocols = new HostedOptionKey<String>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            String[] protocols = newValue.split(",");
+            for (String protocol : protocols) {
+                if (protocol.equals(JavaNetSubstitutions.HTTPS_PROTOCOL)) {
+                    EnableAllSecurityServices.update(values, true);
+                }
+            }
+        }
+    };
+
+    @APIOption(name = "enable-all-security-services")//
+    @Option(help = "Add all security service classes to the generated image.")//
+    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                /*
+                 * Some providers like SunEC and SunSASL are implemented in native libs. These
+                 * providers are added to the image when EnableAllSecurityServices is set. If they
+                 * are actually used at runtime the user must provide and load the native libs.
+                 */
+                JNI.update(values, true);
+            }
+        }
+    };
+
+    @Option(help = "Enable Java Native Interface (JNI) support.")//
+    public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(false);
+
+    @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
+    public static final HostedOptionKey<String> JNIConfigurationFiles = new HostedOptionKey<>("");
+
+    @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
+    public static final HostedOptionKey<String> JNIConfigurationResources = new HostedOptionKey<>("");
 
     /*
      * Object and array allocation options.
@@ -197,6 +237,9 @@ public class SubstrateOptions {
 
     @Option(help = "Perform method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
+
+    @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
+    public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);

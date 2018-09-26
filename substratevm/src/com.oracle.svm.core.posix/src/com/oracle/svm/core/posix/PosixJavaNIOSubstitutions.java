@@ -778,7 +778,6 @@ public final class PosixJavaNIOSubstitutions {
         // 233 Java_sun_nio_ch_Net_socket0(JNIEnv *env, jclass cl, jboolean preferIPv6,
         // 234                             jboolean stream, jboolean reuse)
         // 235 {
-        @SuppressWarnings("finally")
         @Substitute
         static int socket0(boolean preferIPv6, boolean stream, boolean reuse, @SuppressWarnings("unused") boolean fastLoopback) throws IOException {
             // 236     int fd;
@@ -817,7 +816,6 @@ public final class PosixJavaNIOSubstitutions {
                         // 258             close(fd);
                         Unistd.close(fd);
                         // 259             return -1;
-                        return -1;
                     }
                 }
             }
@@ -839,7 +837,6 @@ public final class PosixJavaNIOSubstitutions {
                         // 271             close(fd);
                         Unistd.close(fd);
                         // 272             return -1;
-                        return -1;
                     }
                 }
             }
@@ -866,7 +863,6 @@ public final class PosixJavaNIOSubstitutions {
                             // 285             close(fd);
                             Unistd.close(fd);
                             // 286             return -1;
-                            return -1;
                         }
                     }
                 }
@@ -892,7 +888,6 @@ public final class PosixJavaNIOSubstitutions {
                             // 300             close(fd);
                             Unistd.close(fd);
                             // 301             return -1;
-                            return -1;
                         }
                     }
                 }

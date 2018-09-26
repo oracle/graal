@@ -79,7 +79,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier) {
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
         return new SubstrateCompilationResult(compilationIdentifier, name);
     }
 

@@ -1,0 +1,100 @@
+#
+# Copyright (c) 2018, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 13 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%1" "48"
+
+
+STOP 14 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%2" "1"
+
+
+STOP 15 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%3" "49"
+
+
+STOP 16 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%4" "51"
+
+
+STOP 17 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%5" "51"
+
+
+STOP 18 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%6" "54"
+
+
+STOP 19 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float32 "float" "%7" "54.0"
+
+
+STOP 20 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float32 "float" "%8" "58.5"
+
+
+STOP 21 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%9" "58.5"
+
+
+STOP 22 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%10" "65.2"
+
+
+STOP 23 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%11" "8"
+
+
+STOP 24 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%12" "8.0"
+
+
+STOP 25 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%13" "73.2"
+
+
+STOP 26 CONTINUE "@test"
+    OPEN_SCOPE partial
+        MEMBER exact "x86_fp80" "%14" "0xK40059266666666666800"
+
+

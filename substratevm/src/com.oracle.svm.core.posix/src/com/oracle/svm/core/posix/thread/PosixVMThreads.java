@@ -26,73 +26,79 @@ package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posix.pthread.PthreadThreadLocal;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
 public final class PosixVMThreads extends VMThreads {
 
-    public static final PthreadThreadLocal<IsolateThread> VMThreadTL = new PthreadThreadLocal<>();
-    public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
-    private static final int STATE_UNINITIALIZED = 1;
-    private static final int STATE_INITIALIZING = 2;
-    private static final int STATE_INITIALIZED = 3;
-    private static final int STATE_TEARING_DOWN = 4;
-    private static final UninterruptibleUtils.AtomicInteger initializationState = new UninterruptibleUtils.AtomicInteger(STATE_UNINITIALIZED);
+    private static final PthreadThreadLocal<IsolateThread> VMThreadTL = new PthreadThreadLocal<>();
 
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static boolean isInitialized() {
-        return initializationState.get() >= STATE_INITIALIZED;
-    }
-
-    /** Is threading being torn down? */
-    @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
-    public static boolean isTearingDown() {
-        return initializationState.get() >= STATE_TEARING_DOWN;
-    }
-
+    @Uninterruptible(reason = "Thread state not set up.")
     @Override
-    /** Note that threading is being torn down. */
-    protected void setTearingDown() {
-        initializationState.set(STATE_TEARING_DOWN);
+    protected boolean initializeOnce() {
+        return VMThreadTL.initialize() && PthreadVMLockSupport.initialize();
     }
 
-    /**
-     * Make sure the runtime is initialized for threading.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static void ensureInitialized() {
-        if (initializationState.compareAndSet(STATE_UNINITIALIZED, STATE_INITIALIZING)) {
-            /*
-             * We claimed the initialization lock, so we are now responsible for doing all the
-             * initialization.
-             */
-            VMThreadTL.initialize();
-            PthreadVMLockSupport.initialize();
-
-            initializationState.set(STATE_INITIALIZED);
-
-        } else {
-            /* Already initialized, or some other thread claimed the initialization lock. */
-            while (initializationState.get() < STATE_INITIALIZED) {
-                /* Busy wait until the other thread finishes the initialization. */
-            }
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code. Too late for safepoints.")
-    public static void finishTearDown() {
+    @Uninterruptible(reason = "Thread state not set up.")
+    @Override
+    public void tearDown() {
         VMThreadTL.destroy();
+    }
+
+    @Uninterruptible(reason = "Thread state not set up.")
+    @Override
+    public IsolateThread readIsolateThreadFromOSThreadLocal() {
+        return VMThreadTL.get();
+    }
+
+    @Uninterruptible(reason = "Thread state not set up.")
+    @Override
+    public void writeIsolateThreadToOSThreadLocal(IsolateThread thread) {
+        VMThreadTL.set(thread);
+    }
+
+    @Uninterruptible(reason = "Thread state not set up.")
+    @Override
+    public IsolateThread allocateIsolateThread(int isolateThreadSize) {
+        return LibC.calloc(WordFactory.unsigned(1), WordFactory.unsigned(isolateThreadSize));
+    }
+
+    @Uninterruptible(reason = "Thread state not set up.")
+    @Override
+    public void freeIsolateThread(IsolateThread thread) {
+        LibC.free(thread);
+    }
+
+    @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION)
+    private static native FILE fdopen(int fd, CCharPointer mode);
+
+    @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION)
+    private static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
+
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
+
+    @Uninterruptible(reason = "Thread state not set up.")
+    @Override
+    public void failFatally(int code, CCharPointer message) {
+        FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get());
+        fprintfSD(stderr, FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
+        LibC.exit(code);
     }
 }
 

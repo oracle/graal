@@ -42,11 +42,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
     private final AnalysisUniverse universe;
     private final AnalysisConstantReflectionProvider constantReflection;
+    private final ClassInitializationFeature classInitializationFeature;
 
     public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection) {
         super(metaAccess);
         this.universe = universe;
         this.constantReflection = constantReflection;
+        this.classInitializationFeature = ClassInitializationFeature.singleton();
     }
 
     @Override
@@ -71,7 +73,7 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
 
     @Override
     protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        if (ClassInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        if (classInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             return false;
         }
         return super.isFinalField(field, tool);

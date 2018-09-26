@@ -30,9 +30,8 @@ package com.oracle.svm.reflect.target;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-@TargetClass(value = sun.misc.Unsafe.class, onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(value = sun.misc.Unsafe.class)
 @SuppressWarnings({"static-method"})
 public final class Target_sun_misc_Unsafe {
 

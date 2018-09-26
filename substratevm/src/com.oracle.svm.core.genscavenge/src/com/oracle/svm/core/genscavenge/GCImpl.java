@@ -345,7 +345,7 @@ public class GCImpl implements GC {
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapPolicy.getLargeArrayThreshold()).string("]").newline();
             if (HeapOptions.PrintHeapShape.getValue()) {
-                HeapImpl.getHeapImpl().bootImageHeapBoundariesToLog(verboseGCLog);
+                HeapImpl.getHeapImpl().bootImageHeapBoundariesToLog(verboseGCLog).newline();
             }
         }
 

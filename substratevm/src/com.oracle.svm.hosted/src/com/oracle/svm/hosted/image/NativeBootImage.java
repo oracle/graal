@@ -325,7 +325,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
     @Override
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
-
         try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
 
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
@@ -333,6 +332,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             final int textSectionSize = codeCache.getCodeCacheSize();
             final int roConstantsSize = codeCache.getAlignedConstantsSize();
             final int cglobalsSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
+
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
+                heap.alignRelocatablePartition(objectFile.getPageSize());
+            }
 
             long roSectionSize = roConstantsSize;
             long rwSectionSize = cglobalsSize;

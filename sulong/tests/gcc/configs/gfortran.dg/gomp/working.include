@@ -1,0 +1,14 @@
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr44085.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr62131.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr29759.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr48794.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/sharing-2.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/block-1.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/associate1.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/proc_ptr_2.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/free-2.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr48794-2.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr39152.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/pr47331.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/affinity-1.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/gomp/appendix-a/a.31.3.f90

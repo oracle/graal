@@ -489,7 +489,7 @@ public class InstalledCodeBuilder {
         return callTargetStart;
     }
 
-    protected Pointer allocateOSMemory(final UnsignedWord size, final boolean executable) {
+    private static Pointer allocateOSMemory(final UnsignedWord size, final boolean executable) {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
@@ -497,10 +497,13 @@ public class InstalledCodeBuilder {
         final Pointer result = CommittedMemoryProvider.get().allocate(size, CommittedMemoryProvider.UNALIGNED, executable);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
+        if (result.isNull()) {
+            throw new OutOfMemoryError();
+        }
         return result;
     }
 
-    protected void freeOSMemory(final Pointer start, final UnsignedWord size) {
+    private static void freeOSMemory(final Pointer start, final UnsignedWord size) {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);

@@ -1,0 +1,11 @@
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20040709-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/fprintf-chk-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/stdarg-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-10.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-14.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/vfprintf-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/vfprintf-chk-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/vprintf-chk-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/vprintf-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/printf-chk-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/stdarg-2.c

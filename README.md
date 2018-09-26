@@ -25,6 +25,8 @@ implemented with the instrumentation framework.
 compilation of Java applications under closed-world assumption into executable
 images or shared objects.
 
+* [Sulong](sulong/README.md) is an engine for running LLVM bitcode on GraalVM.
+
 * [TRegex](regex/README.md) is an implementation of regular expressions which leverages GraalVM for efficient compilation of automata.
 
 * [VM](vm/README.md) includes the components to build a modular GraalVM image.
@@ -36,17 +38,16 @@ GralVM allows running of following languages which are being developed and teste
 * [FastR](https://github.com/oracle/fastr) - R Language 3.4.0
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
 * [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.3.7
-* [Sulong](https://github.com/graalvm/sulong) - LLVM bitcode interpreter
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM.
 
 
 ## License
 
 Each GraalVM component is licensed:
-* [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under
-the [GPL 2 with Classpath exception](truffle/LICENSE.GPL.md).
+* [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under the [Universal Permissive License](truffle/LICENSE.md).
 * [Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md).
 * [TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
 * The [Graal compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).
 * [Substrate VM](/substratevm/) is licensed under the [GPL 2 with Classpath exception](substratevm/LICENSE.md).
+* [Sulong](/sulong/) is licensed under [3-clause BSD](sulong/LICENSE).
 * [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/GraalCE_license_3rd_party_license.txt).

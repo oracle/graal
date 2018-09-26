@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionValues;
@@ -80,14 +81,16 @@ public class OptimizedCompilationProfile {
     @CompilationFinal private Class<?> exceptionType;
 
     private volatile boolean compilationFailed;
+    @CompilationFinal private boolean callProfiled;
 
     public OptimizedCompilationProfile(OptionValues options) {
         int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.compilationCallThreshold = Math.min(callThreshold, callAndLoopThreshold);
-        this.compilationCallAndLoopThreshold = callAndLoopThreshold;
+        boolean compileImmediately = TruffleCompilerOptions.getValue(TruffleCompileImmediately);
+        this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
+        this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         this.timestamp = System.nanoTime();
     }
 
@@ -105,6 +108,7 @@ public class OptimizedCompilationProfile {
         } else {
             this.profiledArgumentTypes = argumentTypes;
             this.profiledArgumentTypesAssumption = createValidAssumption("Custom profiled argument types");
+            this.callProfiled = true;
         }
     }
 
@@ -251,8 +255,12 @@ public class OptimizedCompilationProfile {
     private Object[] castArgumentsImpl(Object[] originalArguments) {
         Class<?>[] types = profiledArgumentTypes;
         Object[] castArguments = new Object[types.length];
+        boolean isCallProfiled = callProfiled;
         for (int i = 0; i < types.length; i++) {
-            castArguments[i] = types[i] != null ? OptimizedCallTarget.unsafeCast(originalArguments[i], types[i], true, true, true) : originalArguments[i];
+            // callProfiled: only the receiver type is exact.
+            Class<?> targetType = types[i];
+            boolean exact = !isCallProfiled || i == 0;
+            castArguments[i] = targetType != null ? OptimizedCallTarget.unsafeCast(originalArguments[i], targetType, true, true, exact) : originalArguments[i];
         }
         return castArguments;
     }
@@ -290,8 +298,8 @@ public class OptimizedCompilationProfile {
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
         if (!callTarget.isCompiling() && !compilationFailed) {
             // check if call target is hot enough to get compiled, but took not too long to get hot
-            if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                            TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
+            int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
+            if ((intCallCount >= callThreshold && intAndLoopCallCount >= compilationCallAndLoopThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
                 return callTarget.compile();
             }
         }
@@ -356,9 +364,17 @@ public class OptimizedCompilationProfile {
         if (args.length != types.length) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        for (int j = 0; j < types.length; j++) {
-            // throws ClassCast on error
+        // receiver type is always non-null and exact
+        if (types[0] != args[0].getClass()) {
+            throw new ClassCastException();
+        }
+        // other argument types may be inexact
+        for (int j = 1; j < types.length; j++) {
+            if (types[j] == null) {
+                continue;
+            }
             types[j].cast(args[j]);
+            Objects.requireNonNull(args[j]);
         }
         return true;
     }
@@ -376,6 +392,9 @@ public class OptimizedCompilationProfile {
     }
 
     private void ensureProfiling(int calls, int callsAndLoop) {
+        if (this.compilationCallThreshold == 0) { // TruffleCompileImmediately
+            return;
+        }
         int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
         if (increaseCallAndLoopThreshold > 0) {
             this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;

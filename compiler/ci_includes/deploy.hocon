@@ -11,17 +11,20 @@ deploy-binaries-all-suites-no-rewrites : [
    ["export", "MX_URLREWRITES=$PREV_MX_URLREWRITES"]
 ]
 
-deploy-sdk-truffle-compiler-tools : ${compilerCommon} {
-  targets : [post-merge, deploy]
+deploy-sdk-truffle-compiler-tools-sulong : ${compilerCommon} {
+  packages: {
+    llvm: "==4.0.1"
+  }
+  environment: {
+    DYNAMIC_IMPORTS: "/tools,/sulong"
+  }
   run : [
-    # compiler depends on all suites we want to deploy, except tools
-    ["export", "DYNAMIC_IMPORTS=/tools"]
     ["mx", "--strict-compliance", "build"]
   ] ${deploy-binaries-all-suites} ${deploy-binaries-all-suites-no-rewrites}
+  targets : [post-merge, deploy]
 }
 
 builds += [
-  ${deploy-sdk-truffle-compiler-tools} ${linux-amd64} ${linux-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-linux-amd64"}
-  ${deploy-sdk-truffle-compiler-tools} ${darwin-amd64} ${darwin-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-darwin-amd64"}
-  ${deploy-sdk-truffle-compiler-tools} ${solaris-sparcv9} ${solaris-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-solaris-sparcv9"}
+  ${deploy-sdk-truffle-compiler-tools-sulong} ${linux-amd64} ${linux-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-linux-amd64"}
+  ${deploy-sdk-truffle-compiler-tools-sulong} ${darwin-amd64} ${darwin-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-darwin-amd64"}
 ]
