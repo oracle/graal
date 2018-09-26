@@ -136,7 +136,25 @@ final class OptionValuesImpl implements OptionValues {
 
     public void put(String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
-        values.put(descriptor.getKey(), descriptor.getKey().getType().convert(value));
+        OptionKey<?> optionKey = descriptor.getKey();
+        Object previousValue;
+        if (values.containsKey(optionKey)) {
+            previousValue = values.get(optionKey);
+        } else {
+            previousValue = optionKey.getDefaultValue();
+        }
+        String name = descriptor.getName();
+        String suffix = null;
+        switch (descriptor.getNamePredicate()) {
+            case PREFIX:
+                suffix = name.substring(name.length(), key.length());
+                break;
+            case EXACT:
+                break;
+            default:
+                throw new AssertionError("Unsupported predicate.");
+        }
+        values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {

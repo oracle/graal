@@ -47,7 +47,7 @@ import java.util.Objects;
  *
  * @since 19.0
  */
-public final class OptionKey<T> {
+public class OptionKey<T> {
 
     private final OptionType<T> type;
     private final T defaultValue;
@@ -84,7 +84,7 @@ public final class OptionKey<T> {
      *
      * @since 19.0
      */
-    public OptionType<T> getType() {
+    public final OptionType<T> getType() {
         return type;
     }
 
@@ -93,7 +93,7 @@ public final class OptionKey<T> {
      *
      * @since 19.0
      */
-    public T getDefaultValue() {
+    public final T getDefaultValue() {
         return defaultValue;
     }
 
@@ -102,7 +102,7 @@ public final class OptionKey<T> {
      *
      * @since 19.0
      */
-    public T getValue(OptionValues values) {
+    public final T getValue(OptionValues values) {
         return values.get(this);
     }
 
@@ -112,7 +112,7 @@ public final class OptionKey<T> {
      *
      * @since 19.0
      */
-    public boolean hasBeenSet(OptionValues values) {
+    public final boolean hasBeenSet(OptionValues values) {
         return values.hasBeenSet(this);
     }
 

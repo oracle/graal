@@ -76,6 +76,7 @@ import javax.tools.Diagnostic.Kind;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptor.NamePredicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
@@ -297,7 +298,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, annotation.namePredicate()));
         }
         return true;
     }
@@ -353,15 +354,36 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTreeBuilder builder = getMethod.createBuilder();
 
         String nameVariableName = getMethod.getParameters().get(0).getSimpleName().toString();
-        builder.startSwitch().string(nameVariableName).end().startBlock();
+
+        boolean elseIf = false;
         for (OptionInfo info : model.options) {
+            if (info.predicate != NamePredicate.PREFIX) {
+                continue;
+            }
+            elseIf = builder.startIf(elseIf);
+            builder.startCall(nameVariableName, "startsWith").doubleQuote(info.name).end();
+            builder.end().startBlock();
+            builder.startReturn().tree(createBuildOptionDescriptor(context, info)).end();
+            builder.end();
+        }
+
+        boolean startSwitch = false;
+        for (OptionInfo info : model.options) {
+            if (info.predicate != NamePredicate.EXACT) {
+                continue;
+            }
+            if (!startSwitch) {
+                builder.startSwitch().string(nameVariableName).end().startBlock();
+                startSwitch = true;
+            }
             builder.startCase().doubleQuote(info.name).end().startCaseBlock();
             builder.startReturn().tree(createBuildOptionDescriptor(context, info)).end();
             builder.end(); // case
         }
-        builder.end(); // block
+        if (startSwitch) {
+            builder.end(); // block
+        }
         builder.returnNull();
-
         descriptors.add(getMethod);
 
         CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
@@ -416,12 +438,13 @@ public class OptionProcessor extends AbstractProcessor {
         final String name;
         final String help;
         final boolean deprecated;
+        final NamePredicate predicate;
         final VariableElement field;
         final AnnotationMirror annotation;
         final OptionCategory category;
         final OptionStability stability;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability, NamePredicate namePredicate) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -429,6 +452,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.deprecated = deprecated;
             this.category = category;
             this.stability = stability;
+            this.predicate = namePredicate;
         }
 
         @Override

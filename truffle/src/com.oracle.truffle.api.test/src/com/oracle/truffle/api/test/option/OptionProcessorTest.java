@@ -47,10 +47,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptor.NamePredicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
@@ -191,6 +194,15 @@ public class OptionProcessorTest {
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         // A language option was set, not the instrument one. Instrument sees no option set:
         assertFalse(optionValues.hasSetOptions());
+
+    }
+
+    @Option.Group("prefix")
+    public static class Prefix {
+
+        @Option(help = "", category = OptionCategory.USER, namePredicate = NamePredicate.PREFIX) //
+        static final OptionKey<Map<String, String>> Prefix = new OptionKey<>(Collections.emptyMap());
+
     }
 
     @Option.Group("foobar")

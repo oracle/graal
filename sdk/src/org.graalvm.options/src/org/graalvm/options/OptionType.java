@@ -40,9 +40,12 @@
  */
 package org.graalvm.options;
 
+import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -53,8 +56,13 @@ import java.util.function.Function;
  */
 public final class OptionType<T> {
 
+    private static final Consumer<?> EMPTY_VALIDATOR = new Consumer<Object>() {
+        public void accept(Object t) {
+        }
+    };
+
     private final String name;
-    private final Function<String, T> stringConverter;
+    private final Converter<T> converter;
     private final Consumer<T> validator;
 
     /**
@@ -70,11 +78,20 @@ public final class OptionType<T> {
      * @since 19.0
      */
     public OptionType(String name, Function<String, T> stringConverter, Consumer<T> validator) {
+        this(name, new Converter<T>() {
+            @Override
+            public T convert(T previousValue, String key, String value) {
+                return stringConverter.apply(value);
+            }
+        }, validator);
+    }
+
+    private OptionType(String name, Converter<T> converter, Consumer<T> validator) {
         Objects.requireNonNull(name);
-        Objects.requireNonNull(stringConverter);
+        Objects.requireNonNull(converter);
         Objects.requireNonNull(validator);
         this.name = name;
-        this.stringConverter = stringConverter;
+        this.converter = converter;
         this.validator = validator;
     }
 
@@ -89,10 +106,7 @@ public final class OptionType<T> {
      * @since 19.0
      */
     public OptionType(String name, Function<String, T> stringConverter) {
-        this(name, stringConverter, new Consumer<T>() {
-            public void accept(T t) {
-            }
-        });
+        this(name, stringConverter, (Consumer<T>) EMPTY_VALIDATOR);
     }
 
     /**
@@ -139,8 +153,16 @@ public final class OptionType<T> {
      * @throws IllegalArgumentException if the value is invalid or cannot be converted.
      * @since 19.0
      */
+    @Deprecated
     public T convert(String value) {
-        T v = stringConverter.apply(value);
+        T v = converter.convert(null, null, value);
+        validate(v);
+        return v;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T convert(Object previousValue, String nameSuffix, String value) {
+        T v = converter.convert((T) previousValue, nameSuffix, value);
         validate(v);
         return v;
     }
@@ -229,6 +251,28 @@ public final class OptionType<T> {
         }));
     }
 
+    private static class ReadonlyPropertiesMap extends AbstractMap<String, String> {
+
+        final Map<String, String> backingMap;
+        final Map<String, String> readonlyMap;
+
+        ReadonlyPropertiesMap(Map<String, String> map) {
+            this.readonlyMap = Collections.unmodifiableMap(map);
+            this.backingMap = map;
+        }
+
+        @Override
+        public Set<Entry<String, String>> entrySet() {
+            return readonlyMap.entrySet();
+        }
+
+        @Override
+        public String get(Object key) {
+            return readonlyMap.get(key);
+        }
+
+    }
+
     /**
      * Returns the default option type for a given value. Returns <code>null</code> if no default
      * option type is available for the Java type of this value.
@@ -251,4 +295,10 @@ public final class OptionType<T> {
         return (OptionType<T>) DEFAULTTYPES.get(clazz);
     }
 
+    @FunctionalInterface
+    public interface Converter<T> {
+
+        T convert(T previousValue, String key, String value);
+
+    }
 }
