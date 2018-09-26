@@ -372,28 +372,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         }
 
         if (truffleObj != null && key != null) {
-            try {
-                Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj);
-                if (signature instanceof TruffleObject) {
-                    try {
-                        Object formattedString = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format");
-                        detailText = formattedString.toString();
-                    } catch (InteropException e) {
-                        // Fallback if no format method is provided. Simply create a comma separated
-                        // list of parameters.
-                        boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, (TruffleObject) signature);
-                        if (hasSize) {
-                            List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
-                            if (params != null) {
-                                detailText += "Parameters: " + params.stream().reduce("", (a, b) -> a.toString() + (a.toString().isEmpty() ? "" : ", ") + b.toString());
-                            }
-                        }
-                    }
-                }
-            } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-            } catch (InteropException e) {
-                e.printStackTrace(err);
-            }
+            String formattedSignature = getFormattedSignature(truffleObj);
+            detailText = formattedSignature != null ? formattedSignature : "";
         }
 
         if (!detailText.isEmpty()) {
@@ -408,6 +388,32 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         detailText += metaObjectString;
 
         return detailText;
+    }
+
+    public String getFormattedSignature(TruffleObject truffleObj) {
+        try {
+            Object signature = ForeignAccess.send(GET_SIGNATURE, truffleObj);
+            if (signature instanceof TruffleObject) {
+                try {
+                    Object formattedString = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format");
+                    return formattedString.toString();
+                } catch (InteropException e) {
+                    // Fallback if no format method is provided. Simply create a comma separated
+                    // list of parameters.
+                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, (TruffleObject) signature);
+                    if (hasSize) {
+                        List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
+                        if (params != null) {
+                            return "Parameters: " + params.stream().reduce("", (a, b) -> a.toString() + (a.toString().isEmpty() ? "" : ", ") + b.toString());
+                        }
+                    }
+                }
+            }
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (InteropException e) {
+            e.printStackTrace(err);
+        }
+        return null;
     }
 
     protected Object getMetaObject(String langId, Object object) {

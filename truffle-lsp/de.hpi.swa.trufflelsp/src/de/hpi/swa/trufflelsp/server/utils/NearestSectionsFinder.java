@@ -4,6 +4,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -23,8 +24,12 @@ public final class NearestSectionsFinder {
     }
 
     public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env) {
+        return findNearestNode(source, line, character, env, null);
+    }
+
+    public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env, Class<?> tag) {
         int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-        NearestNodeHolder nearestNodeHolder = findNearestNodeOneBased(oneBasedLineNumber, character, source, env);
+        NearestNodeHolder nearestNodeHolder = findNearestNodeOneBased(oneBasedLineNumber, character, source, env, tag);
 
         // TODO(ds) wrap debug printing
         Node nearestNode = nearestNodeHolder.getNearestNode();
@@ -35,8 +40,8 @@ public final class NearestSectionsFinder {
         return nearestNodeHolder;
     }
 
-    protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env) {
-        NearestSections nearestSections = getNearestSections(source, env, oneBasedLineNumber, column);
+    protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?> tag) {
+        NearestSections nearestSections = getNearestSections(source, env, oneBasedLineNumber, column, tag);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
         Node nearestNode;
@@ -88,45 +93,25 @@ public final class NearestSectionsFinder {
         return false;
     }
 
-    private static int fixColumn(Source source, int column, int boundLine) {
-        int boundColumn = column;
-        int maxColumn = source.getLineLength(boundLine) + 1;
-        if (boundColumn > maxColumn) {
-            boundColumn = maxColumn;
-        }
-        return boundColumn;
-    }
-
-    private static int fixLine(Source source, int line) {
-        int boundLine = line;
-        int maxLine = source.getLineCount();
-        if (boundLine > maxLine) {
-            boundLine = maxLine;
-        }
-        return boundLine;
-    }
-
     public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
-        int boundLine = fixLine(source, line);
-        int boundColumn = fixColumn(source, column, boundLine);
-        return getNearestSections(source, env, convertLineAndColumnToOffset(source, boundLine, boundColumn));
+        return getNearestSections(source, env, line, column, null);
     }
 
-    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset) {
+    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column, Class<?> tag) {
+        return getNearestSections(source, env, SourceUtils.convertLineAndColumnToOffset(source, line, column), tag);
+    }
+
+    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset, Class<?> tag) {
         NearestSections sectionsCollector = new NearestSections(offset);
+        Builder filter = SourceSectionFilter.newBuilder().sourceIs(source);
+        if (tag != null) {
+            filter.tagIs(tag);
+        }
         // All SourceSections of the Source are loaded already when the source was parsed
         env.getInstrumenter().attachLoadSourceSectionListener(
-                        SourceSectionFilter.newBuilder().sourceIs(source).build(),
+                        filter.build(),
                         sectionsCollector, true).dispose();
         return sectionsCollector;
-    }
-
-    public static int convertLineAndColumnToOffset(Source source, int line, int column) {
-        int offset = source.getLineStartOffset(line);
-        if (column > 0) {
-            offset += column - 1;
-        }
-        return offset;
     }
 
     public static class NearestSections implements LoadSourceSectionListener {

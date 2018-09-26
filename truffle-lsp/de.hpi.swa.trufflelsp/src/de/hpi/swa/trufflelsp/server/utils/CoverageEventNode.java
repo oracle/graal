@@ -17,13 +17,20 @@ import com.oracle.truffle.api.source.SourceSection;
 public class CoverageEventNode extends ExecutionEventNode {
 
     private final URI coverageUri;
+    private final Node instrumentedNode;
     private final SourceSection instrumentedSection;
     private final Function<URI, TextDocumentSurrogate> surrogateProvider;
+    private Node child;
 
-    public CoverageEventNode(SourceSection instrumentedSection, URI coverageUri, Function<URI, TextDocumentSurrogate> func) {
+    public CoverageEventNode(SourceSection instrumentedSection, Node instrumentedNode, URI coverageUri, Function<URI, TextDocumentSurrogate> func) {
         this.instrumentedSection = instrumentedSection;
+        this.instrumentedNode = instrumentedNode;
         this.coverageUri = coverageUri;
         this.surrogateProvider = func;
+    }
+
+    public Node getInstrumentedNode() {
+        return instrumentedNode;
     }
 
     @Override
@@ -54,7 +61,17 @@ public class CoverageEventNode extends ExecutionEventNode {
         surrogate.addLocationCoverage(SourceLocation.from(instrumentedSection), new CoverageData(coverageUri, frame, this));
     }
 
-    public void insertChild(Node node) {
-        insert(node);
+    public void insertOrReplaceChild(Node node) {
+        if (child != null) {
+            child.replace(node);
+        } else {
+            child = node;
+            insert(node);
+        }
+    }
+
+    public void clearChild() {
+        child.replace(new ExecutionEventNode() {
+        });
     }
 }

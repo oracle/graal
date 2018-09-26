@@ -11,8 +11,9 @@ import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Range;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -20,10 +21,10 @@ import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
+import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
-import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
 
 public class DefinitionRequestHandler extends AbstractRequestHandler {
 
@@ -41,19 +42,32 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         if (sourceWrapper.isParsingSuccessful()) {
             Source source = sourceWrapper.getSource();
-            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, SourceUtils.zeroBasedLineToOneBasedLine(line, source), character);
-            SourceSection containsSection = nearestSections.getContainsSourceSection();
-            InstrumentableNode containsNode = nearestSections.getContainsNode();
-            if (containsSection != null && containsNode != null) {
-                System.out.println(nearestSections.getContainsNode().getClass().getSimpleName() + " " + containsSection);
+            int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
+            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, oneBasedLineNumber, character, StandardTags.CallTag.class);
+            SourceSection definitionSearchSection = nearestSections.getContainsSourceSection();
+            InstrumentableNode definitionSearchNode = nearestSections.getContainsNode();
+            if (definitionSearchSection == null && nearestSections.getNextSourceSection() != null) {
+                SourceSection nextNodeSection = nearestSections.getNextSourceSection();
+                if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == character + 1) {
+                    // nextNodeSection is directly before the caret, so we use that one as fallback
+                    definitionSearchSection = nextNodeSection;
+                    definitionSearchNode = nearestSections.getNextNode();
+                }
+            }
+            if (definitionSearchSection != null) {
+                System.out.println(definitionSearchNode.getClass().getSimpleName() + " " + definitionSearchSection);
 
-                // First try: dynamic approach
                 System.out.println("Trying run-to-section eval...");
 
-                EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, (Node) containsNode);
+                SourceSectionFilter.Builder builder = SourceUtils.createSourceSectionFilter(surrogate, definitionSearchSection);
+                SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
+                SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
+// SourceSectionFilter inputFilter =
+// SourceSectionFilter.newBuilder().tagIs(StandardTags.CallTag.class).build();
+                EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, definitionSearchSection, eventFilter, inputFilter);
                 if (evalResult.isEvaluationDone() && !evalResult.isError()) {
                     SourceSection sourceSection = SourceUtils.findSourceLocation(env, surrogate.getLangId(), evalResult.getResult());
-                    if (sourceSection != null) {
+                    if (sourceSection != null && sourceSection.isAvailable()) {
                         Range range = SourceUtils.sourceSectionToRange(sourceSection);
                         String definitionUri;
                         if (!sourceSection.getSource().getURI().getScheme().equals("file")) {
@@ -67,34 +81,6 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
                         locations.add(new Location(definitionUri, range));
                     }
                 }
-
-// if (locations.isEmpty()) {
-// // Fallback: static approach
-// System.out.println("Trying static declaration search...");
-// env.getInstrumenter().attachLoadSourceSectionListener(
-// SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(DeclarationTag.class).build(),
-// new LoadSourceSectionListener() {
-//
-// public void onLoad(LoadSourceSectionEvent event) {
-// Node eventNode = event.getNode();
-// if (!(eventNode instanceof InstrumentableNode)) {
-// return;
-// }
-// InstrumentableNode instrumentableNode = (InstrumentableNode) eventNode;
-// Object declarationNodeObject = instrumentableNode.getNodeObject();
-// if (!(declarationNodeObject instanceof TruffleObject)) {
-// return;
-// }
-// Map<Object, Object> declarationMap = ObjectStructures.asMap(new MessageNodes(), (TruffleObject)
-// declarationNodeObject);
-// String declarationName = declarationMap.get(DeclarationTag.NAME).toString();
-// if (name.equals(declarationName)) {
-// Range range = TruffleAdapter.sourceSectionToRange(eventNode.getSourceSection());
-// locations.add(new Location(uri.toString(), range));
-// }
-// }
-// }, true).dispose();
-// }
             }
         }
         return locations;

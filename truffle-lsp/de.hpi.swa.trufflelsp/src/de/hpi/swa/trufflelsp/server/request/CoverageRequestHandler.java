@@ -92,7 +92,7 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
                                                         (_uri) -> new TextDocumentSurrogate(_uri, instrumentedNode.getRootNode().getLanguageInfo().getId(),
                                                                         env.getCompletionTriggerCharacters(instrumentedNode.getRootNode().getLanguageInfo().getId())));
 
-                                        return new CoverageEventNode(eventContext.getInstrumentedSourceSection(), runScriptUri, func);
+                                        return new CoverageEventNode(section, instrumentedNode, runScriptUri, func);
                                     } else {
                                         return new ExecutionEventNode() {
                                         };

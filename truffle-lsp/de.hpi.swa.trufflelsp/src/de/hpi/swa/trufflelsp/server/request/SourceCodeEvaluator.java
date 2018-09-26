@@ -20,7 +20,6 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -53,18 +52,6 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
 
     public SourceCodeEvaluator(TruffleInstrument.Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper executor) {
         super(env, uri2TextDocumentSurrogate, executor);
-    }
-
-    private static SourceSectionFilter createSourceSectionFilter(final URI uri, final SourceSection sourceSection, final String name) {
-        // @formatter:off
-        return SourceSectionFilter.newBuilder()
-//              .tagIs(StatementTag.class, ExpressionTag.class)
-                .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
-                .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
-                .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
-                .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
-                .sourceIs(source -> source.getURI().equals(uri) || source.getName().equals(name)).build();
-        // @formatter:on
     }
 
     public CallTarget parse(final TextDocumentSurrogate surrogate) throws DiagnosticsNotification {
@@ -156,15 +143,15 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                     for (CoverageData coverageData : coverageDataObjects) {
                         final ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
                         final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
-                        coverageEventNode.insertChild(executableNode);
-                        // TODO(ds) remove child after execution? There is no API for that?! ->
-                        // replace child!
+                        coverageEventNode.insertOrReplaceChild(executableNode);
 
                         try {
                             System.out.println("Trying coverage-based eval...");
                             Object result = executableNode.execute(coverageData.getFrame());
                             return EvaluationResult.createResult(result);
                         } catch (Exception e) {
+                        } finally {
+                            coverageEventNode.clearChild();
                         }
                     }
                 }
@@ -174,11 +161,17 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
     }
 
     public EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final Node nearestNode) throws DiagnosticsNotification {
-        if (!(nearestNode instanceof InstrumentableNode)) {
+        if (!(nearestNode instanceof InstrumentableNode) || !((InstrumentableNode) nearestNode).isInstrumentable()) {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
+
+        SourceSectionFilter eventFilter = SourceUtils.createSourceSectionFilter(surrogate, nearestNode.getSourceSection()).build();
+        return runToSectionAndEval(surrogate, nearestNode.getSourceSection(), eventFilter, null);
+    }
+
+    public EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final SourceSection sourceSection, SourceSectionFilter eventFilter, SourceSectionFilter inputFilter)
+                    throws DiagnosticsNotification {
         final URI uri = surrogate.getUri();
-        final SourceSection sourceSection = nearestNode.getSourceSection();
         Set<URI> coverageUris = surrogate.getCoverageUris(sourceSection);
         // TODO(ds) run code of all URIs?
         URI coverageUri = coverageUris == null ? null : coverageUris.stream().findFirst().orElseGet(() -> null);
@@ -201,12 +194,12 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         TextDocumentSurrogate surrogateOfTestFile = uri2TextDocumentSurrogate.computeIfAbsent(coverageUri,
                         (_uri) -> new TextDocumentSurrogate(_uri, surrogate.getLangId(), env.getCompletionTriggerCharacters(surrogate.getLangId())));
 
-        final String name = uri.getPath();
         final CallTarget callTarget = parse(surrogateOfTestFile);
+        final boolean isInputFilterDefined = inputFilter != null;
 
         EventBinding<ExecutionEventNodeFactory> binding = env.getInstrumenter().attachExecutionEventFactory(
-                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getSource()).build(),
-                        createSourceSectionFilter(coverageUri, sourceSection, name),
+                        eventFilter,
+                        inputFilter,
                         new ExecutionEventNodeFactory() {
                             StringBuilder indent = new StringBuilder("");
 
@@ -222,6 +215,10 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                                         indent.setLength(indent.length() - 2);
                                         System.out.println(indent + "onReturnValue " + context.getInstrumentedNode().getClass().getSimpleName() + " " +
                                                         sourceSectionFormat(context.getInstrumentedSourceSection()) + result);
+
+                                        if (!isInputFilterDefined) {
+                                            throw new EvaluationResultException(result);
+                                        }
                                     }
 
                                     @Override
@@ -248,13 +245,13 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                                                         env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(),
                                                                         inputValue));
                                         indent.append("  ");
-                                        if (inputContext.getInstrumentedSourceSection().equals(context.getInstrumentedSourceSection())) {
-                                            // This is a fix for GraalJS, because
-                                            // GraalJS provides the result of a previous execution
-                                            // again as input value which we are not interested in
-                                            // here. See class JSTaggedTargetableExecutionNode.
-                                            return;
-                                        }
+// if (inputContext.getInstrumentedSourceSection().equals(context.getInstrumentedSourceSection())) {
+// // This is a fix for GraalJS, because
+// // GraalJS provides the result of a previous execution
+// // again as input value which we are not interested in
+// // here. See class JSTaggedTargetableExecutionNode.
+// return;
+// }
 
                                         throw new EvaluationResultException(inputValue);
                                     }

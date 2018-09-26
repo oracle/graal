@@ -8,6 +8,8 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
@@ -156,5 +158,44 @@ public class SourceUtils {
             range = sourceSectionToRange(sourceLocation);
         }
         return range;
+    }
+
+    public static int convertLineAndColumnToOffset(Source source, int oneBasedLineNumber, int column) {
+        int boundLine = fixLine(source, oneBasedLineNumber);
+        int boundColumn = fixColumn(source, column, boundLine);
+        int offset = source.getLineStartOffset(boundLine);
+        if (boundColumn > 0) {
+            offset += boundColumn - 1;
+        }
+        return offset;
+    }
+
+    public static SourceSectionFilter.Builder createSourceSectionFilter(final TextDocumentSurrogate surrogate, SourceSection sourceSection) {
+        // @formatter:off
+        return SourceSectionFilter.newBuilder()
+                        .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
+                        .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
+                        .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
+                        .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
+                        .sourceIs(source -> source.getURI().equals(surrogate.getUri()) || source.getName().equals(surrogate.getUri().getPath()));
+        // @formatter:on
+    }
+
+    private static int fixColumn(Source source, int column, int boundLine) {
+        int boundColumn = column;
+        int maxColumn = source.getLineLength(boundLine) + 1;
+        if (boundColumn > maxColumn) {
+            boundColumn = maxColumn;
+        }
+        return boundColumn;
+    }
+
+    private static int fixLine(Source source, int line) {
+        int boundLine = line;
+        int maxLine = source.getLineCount();
+        if (boundLine > maxLine) {
+            boundLine = maxLine;
+        }
+        return boundLine;
     }
 }

@@ -10,6 +10,8 @@ import org.eclipse.lsp4j.ParameterInformation;
 import org.eclipse.lsp4j.SignatureHelp;
 import org.eclipse.lsp4j.SignatureInformation;
 
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -19,14 +21,15 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
-import de.hpi.swa.trufflelsp.server.utils.NearestNodeHolder;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
+import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
@@ -47,31 +50,35 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
         if (SourceUtils.isLineValid(line, source)) {
-            NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, originalCharacter, env);
-            Node nearestNode = nearestNodeHolder.getNearestNode();
-
-            EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, nearestNode);
-            if (evalResult.isEvaluationDone() && !evalResult.isError()) {
-                Object result = evalResult.getResult();
-                if (result instanceof TruffleObject) {
-                    try {
-                        Object signature = ForeignAccess.send(GET_SIGNATURE, (TruffleObject) result);
-                        String formattedSignature = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format").toString();
-                        List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
-                        SignatureInformation info = new SignatureInformation(formattedSignature);
-                        List<ParameterInformation> paramInfos = new ArrayList<>();
-                        for (Object param : params) {
-                            if (param instanceof TruffleObject) {
-                                Object formattedParam = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) param, "format");
-                                paramInfos.add(new ParameterInformation(formattedParam.toString()));
+            NearestSections sections = NearestSectionsFinder.getNearestSections(source, env, SourceUtils.zeroBasedLineToOneBasedLine(line, source), originalCharacter, StandardTags.CallTag.class);
+            SourceSection containsSection = sections.getContainsSourceSection();
+            if (containsSection != null) {
+                SourceSectionFilter.Builder builder = SourceUtils.createSourceSectionFilter(surrogate, containsSection);
+                SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
+                SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
+                EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, containsSection, eventFilter, inputFilter);
+                if (evalResult.isEvaluationDone() && !evalResult.isError()) {
+                    Object result = evalResult.getResult();
+                    if (result instanceof TruffleObject) {
+                        try {
+                            Object signature = ForeignAccess.send(GET_SIGNATURE, (TruffleObject) result);
+                            String formattedSignature = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format").toString();
+                            List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
+                            SignatureInformation info = new SignatureInformation(formattedSignature);
+                            List<ParameterInformation> paramInfos = new ArrayList<>();
+                            for (Object param : params) {
+                                if (param instanceof TruffleObject) {
+                                    Object formattedParam = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) param, "format");
+                                    paramInfos.add(new ParameterInformation(formattedParam.toString()));
+                                }
                             }
-                        }
-                        info.setParameters(paramInfos);
+                            info.setParameters(paramInfos);
 
-                        return new SignatureHelp(Arrays.asList(info), 0, 0);
-                    } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-                    } catch (InteropException e) {
-                        e.printStackTrace(err);
+                            return new SignatureHelp(Arrays.asList(info), 0, 0);
+                        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+                        } catch (InteropException e) {
+                            e.printStackTrace(err);
+                        }
                     }
                 }
             }
