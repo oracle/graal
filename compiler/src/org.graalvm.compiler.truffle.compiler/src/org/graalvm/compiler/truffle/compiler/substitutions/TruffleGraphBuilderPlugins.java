@@ -79,6 +79,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulHighNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
@@ -101,9 +102,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import static java.lang.Character.toUpperCase;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFirstTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 /**
@@ -189,13 +188,13 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerGraalCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
-        final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "com.oracle.compiler.truffle.runtime.GraalCompilerDirectives");
+        final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
         r.register0("inFirstTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                // TODO: Pass the first tier compilation setting here.
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(TruffleFirstTierCompilation.getValue(getOptions())));
+                boolean isFirstTier = b.getGraph().getCancellable() instanceof TruffleCompilationTask ? !((TruffleCompilationTask) b.getGraph().getCancellable()).isLastTier() : false;
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier));
                 return true;
             }
         });

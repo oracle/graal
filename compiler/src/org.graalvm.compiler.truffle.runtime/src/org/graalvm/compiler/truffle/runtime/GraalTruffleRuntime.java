@@ -348,6 +348,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         OptimizedDirectCallNode.class,
                         OptimizedAssumption.class,
                         CompilerDirectives.class,
+                        GraalCompilerDirectives.class,
                         CompilerAsserts.class,
                         ExactMath.class,
                         FrameDescriptor.class,
@@ -676,7 +677,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public void doCompile(OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask compilation) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
-        TruffleInlining inlining = new TruffleInlining(callTarget, TruffleInliningPolicy.getInliningPolicy(options));
+        TruffleInlining inlining = new TruffleInlining(callTarget, compilation.isLastTier() ? TruffleInliningPolicy.getInliningPolicy(options) : TruffleInliningPolicy.getNoInliningPolicy(options));
         CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
         try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
             try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {

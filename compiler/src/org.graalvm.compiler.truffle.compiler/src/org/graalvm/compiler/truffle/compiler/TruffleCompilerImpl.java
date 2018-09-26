@@ -101,7 +101,6 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExcludeAssertions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFirstTierCompilation;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 
 /**

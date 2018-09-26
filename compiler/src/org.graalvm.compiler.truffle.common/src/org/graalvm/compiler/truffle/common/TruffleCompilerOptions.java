@@ -315,9 +315,6 @@ public class TruffleCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
 
-    @Option(help = "Controls whether the compilation should be done in the first tier mode. This option is internal.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleFirstTierCompilation = new OptionKey<>(false);
-
     @Option(help = "Whether to use multiple compilation tiers by default.")
     public static final OptionKey<Boolean> TruffleMultiTier = new OptionKey<>(false);
     // @formatter:on
