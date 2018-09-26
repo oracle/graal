@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,75 @@
  * questions.
  */
 package org.graalvm.compiler.truffle.runtime;
+
+import static java.util.Collections.singletonList;
+import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
+import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
+import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
+
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandle;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Description;
+import org.graalvm.compiler.debug.DebugContext.Scope;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceCallTreeListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationFailureListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceInliningListener;
+import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.util.CollectionsUtil;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -57,6 +126,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
@@ -69,75 +139,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.nodes.Cancellable;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceCallTreeListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationFailureListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceInliningListener;
-import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
-import org.graalvm.graphio.GraphOutput;
-import org.graalvm.util.CollectionsUtil;
-
-import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.lang.invoke.MethodHandle;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-
-import static java.util.Collections.singletonList;
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
-import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
-import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
-import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
-import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -298,7 +299,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        for (Annotation a : field.getAnnotations()) {
+        for (Annotation a : getAnnotations(field)) {
             if (a.annotationType() == Child.class) {
                 return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
             }
@@ -343,7 +344,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("deprecation")
     @Override
     public LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
-        ExplodeLoop explodeLoop = method.getAnnotation(ExplodeLoop.class);
+        ExplodeLoop explodeLoop = getAnnotation(ExplodeLoop.class, method);
         if (explodeLoop == null) {
             return LoopExplosionKind.NONE;
         }
@@ -477,7 +478,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(this, (OptimizedCallTarget) target);
+            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode((OptimizedCallTarget) target);
             TruffleSplittingStrategy.newDirectCallNodeCreated(directCallNode);
             return directCallNode;
         } else {
@@ -773,81 +774,67 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         cancellable.setFuture(l.compilationExecutor.submit(new Runnable() {
             @Override
             public void run() {
+                // Note that this might run before `setFuture` above
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                        OptionValues options = TruffleCompilerOptions.getOptions();
-                        doCompile(options, callTarget, cancellable);
+                        if (!cancellable.isCancelled()) {
+                            OptionValues options = TruffleCompilerOptions.getOptions();
+                            doCompile(options, callTarget, cancellable);
+                        }
                     } finally {
                         callTarget.resetCompilationTask();
                     }
                 }
             }
         }));
-        // task and future must never diverge from each other
-        assert cancellable.future != null;
         return cancellable;
     }
 
-    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
+    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
         getListener().onCompilationQueued(optimizedCallTarget);
 
         if (!mayBeAsynchronous) {
             try {
-                waitForFutureAndKeepInterrupt(future);
+                uninterruptibleWaitForCompilation(task);
             } catch (ExecutionException e) {
                 if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
                     // silently ignored
                 }
-            } catch (CancellationException e) {
-                /*
-                 * Silently ignored as future might have undergone a "soft" cancel(false).
-                 */
             }
         }
     }
 
-    private static void waitForFutureAndKeepInterrupt(Future<?> future) throws ExecutionException {
+    private static void uninterruptibleWaitForCompilation(CancellableCompileTask task) throws ExecutionException {
         // We want to keep the interrupt bit if we are interrupted.
         // But we also want to maintain the semantics of foreground compilation:
         // waiting for the compilation to finish, even if it takes long,
         // so that compilation errors or effects are still properly waited for.
         boolean interrupted = false;
-        while (true) {
-            try {
-                future.get();
-                break;
-            } catch (InterruptedException e) {
-                interrupted = true;
+        try {
+            while (true) {
+                try {
+                    task.awaitCompletion();
+                    break;
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
             }
-        }
-        if (interrupted) {
-            Thread.currentThread().interrupt();
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
         CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null) {
-            Future<?> compilationFuture = task.getFuture();
-            if (compilationFuture != null && isCompiling(optimizedCallTarget)) {
-                optimizedCallTarget.resetCompilationTask();
-                /*
-                 * Cancellation of an installed task: There are two dimensions here: First we set
-                 * the cancel bit in the task, this allows the compiler to, cooperatively, stop
-                 * compilation and throw a non permanent bailout and then we cancel the future which
-                 * might have already stopped at that point in time.
-                 */
-                task.cancel();
-                // Either the task finished already, or it was cancelled.
-                boolean result = !task.isRunning();
-                if (result) {
-                    optimizedCallTarget.resetCompilationTask();
-                    getListener().onCompilationDequeued(optimizedCallTarget, source, reason);
-                }
-                return result;
+            if (task.cancel()) {
+                getListener().onCompilationDequeued(optimizedCallTarget, source, reason);
+                return true;
             }
         }
         return false;
@@ -855,14 +842,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
         CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
-        if (task != null) {
-            Future<?> compilationFuture = task.getFuture();
-            if (compilationFuture != null && isCompiling(optimizedCallTarget)) {
-                try {
-                    compilationFuture.get(timeout, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
-                    // ignore interrupted
-                }
+        if (task != null && !task.isCancelled()) {
+            try {
+                task.awaitCompletion(timeout, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                // ignore interrupted
             }
         }
 
@@ -883,18 +868,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
-        if (task != null) {
-            Future<?> compilationFuture = task.getFuture();
-            if (compilationFuture != null) {
-                if (compilationFuture.isCancelled() || compilationFuture.isDone()) {
-                    optimizedCallTarget.resetCompilationTask();
-                    return false;
-                }
-                return true;
-            }
-        }
-        return false;
+        return optimizedCallTarget.isCompiling();
     }
 
     /**
@@ -979,7 +953,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public boolean isValueType(ResolvedJavaType type) {
-        return type.getAnnotation(CompilerDirectives.ValueType.class) != null;
+        return getAnnotation(CompilerDirectives.ValueType.class, type) != null;
     }
 
     @Override
@@ -1042,7 +1016,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("deprecation")
     @Override
     public InlineInfo getInlineInfo(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
-        TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
+        TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
         if (truffleBoundary != null) {
             if (duringPartialEvaluation || !truffleBoundary.allowInlining()) {
                 // Since this method is invoked by the bytecode parser plugins, which can be invoked
@@ -1055,7 +1029,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
                 }
             }
-        } else if (original.getAnnotation(TruffleCallBoundary.class) != null) {
+        } else if (getAnnotation(TruffleCallBoundary.class, original) != null) {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineInfo.createStandardInlineInfo(original);
@@ -1063,7 +1037,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public boolean isTruffleBoundary(ResolvedJavaMethod method) {
-        return method.isAnnotationPresent(TruffleBoundary.class);
+        return getAnnotation(TruffleBoundary.class, method) != null;
     }
 
     public static class LazyFrameBoxingQuery {
@@ -1077,5 +1051,39 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
         static final Class<?> FrameBoxingClass = useFrameWithoutBoxing ? FrameWithoutBoxing.class : FrameWithBoxing.class;
         static final String FrameBoxingClassName = FrameBoxingClass.getName();
+    }
+
+    // https://bugs.openjdk.java.net/browse/JDK-8209535
+
+    private static PermanentBailoutException handleAnnotationFailure(NoClassDefFoundError e, String attemptedAction) {
+        throw new PermanentBailoutException(e, "Error while %s. " +
+                        "This usually means that the unresolved type is in the signature of some other " +
+                        "method or field in the same class. This can be resolved by modifying the relevant class path " +
+                        "or module path such that it includes the missing type.",
+                        attemptedAction);
+    }
+
+    private static Annotation[] getAnnotations(ResolvedJavaField element) {
+        try {
+            return element.getAnnotations();
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for annotations", element.format("%H.%n:%t")));
+        }
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaMethod method) {
+        try {
+            return annotationClass.cast(method.getAnnotation(annotationClass));
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", method.format("%H.%n(%p)"), annotationClass.getName()));
+        }
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaType type) {
+        try {
+            return annotationClass.cast(type.getAnnotation(annotationClass));
+        } catch (NoClassDefFoundError e) {
+            throw handleAnnotationFailure(e, String.format("querying %s for presence of a %s annotation", type.toJavaName(), annotationClass.getName()));
+        }
     }
 }

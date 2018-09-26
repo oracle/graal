@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,19 +37,18 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.CompilerCommandPlugin;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
 public final class RuntimeSupport {
 
     /** A list of startup hooks. */
-    private CopyOnWriteArrayList<Runnable> startupHooks;
+    private AtomicReference<Runnable[]> startupHooks;
 
     /** A list of shutdown hooks. */
-    private CopyOnWriteArrayList<Runnable> shutdownHooks;
+    private AtomicReference<Runnable[]> shutdownHooks;
 
     /** A list of tear down hooks. */
-    private CopyOnWriteArrayList<Runnable> tearDownHooks;
+    private AtomicReference<Runnable[]> tearDownHooks;
 
     /** A list of CompilerCommandPlugins. */
     private static final Comparator<CompilerCommandPlugin> PluginComparator = Comparator.comparing(CompilerCommandPlugin::name);
@@ -60,9 +59,9 @@ public final class RuntimeSupport {
     /** A constructor for the singleton instance. */
     private RuntimeSupport() {
         super();
-        startupHooks = new CopyOnWriteArrayList<>();
-        shutdownHooks = new CopyOnWriteArrayList<>();
-        tearDownHooks = new CopyOnWriteArrayList<>();
+        startupHooks = new AtomicReference<>();
+        shutdownHooks = new AtomicReference<>();
+        tearDownHooks = new AtomicReference<>();
         commandPlugins = new CopyOnWriteArrayList<>();
         commandPluginsSorted = false;
     }
@@ -81,10 +80,7 @@ public final class RuntimeSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addStartupHook(Runnable hook) {
-        if (startupHooks.contains(hook)) {
-            throw new IllegalArgumentException("StartupHook previously registered");
-        }
-        startupHooks.add(hook);
+        addHook(startupHooks, hook);
     }
 
     public void executeStartupHooks() {
@@ -93,10 +89,7 @@ public final class RuntimeSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addShutdownHook(Runnable hook) {
-        if (shutdownHooks.contains(hook)) {
-            throw new IllegalArgumentException("ShutdownHook previously registered");
-        }
-        shutdownHooks.add(hook);
+        addHook(shutdownHooks, hook);
     }
 
     /**
@@ -113,7 +106,7 @@ public final class RuntimeSupport {
      * @param tearDownHook hook to executed on isolate tear down.
      */
     public void addTearDownHook(Runnable tearDownHook) {
-        tearDownHooks.add(tearDownHook);
+        addHook(tearDownHooks, tearDownHook);
     }
 
     /**
@@ -126,24 +119,27 @@ public final class RuntimeSupport {
         executeHooks(getRuntimeSupport().tearDownHooks);
     }
 
-    private static void executeHooks(CopyOnWriteArrayList<Runnable> hooks) {
-        /* Iterate a snapshot of the hooks. */
-        final ListIterator<Runnable> hookIterator = hooks.listIterator();
-        final List<Throwable> hookExceptions = new ArrayList<>();
+    private static void addHook(AtomicReference<Runnable[]> hooksReference, Runnable newHook) {
+        Objects.requireNonNull(newHook);
 
-        while (hookIterator.hasNext()) {
-            final Runnable hook = hookIterator.next();
-            try {
-                hook.run();
-            } catch (Throwable ex) {
-                hookExceptions.add(ex);
+        Runnable[] existingHooks;
+        Runnable[] newHooks;
+        do {
+            existingHooks = hooksReference.get();
+            if (existingHooks != null) {
+                newHooks = Arrays.copyOf(existingHooks, existingHooks.length + 1);
+                newHooks[newHooks.length - 1] = newHook;
+            } else {
+                newHooks = new Runnable[]{newHook};
             }
-        }
+        } while (!hooksReference.compareAndSet(existingHooks, newHooks));
+    }
 
-        /* Report all hook exceptions, but do not re-throw. */
-        if (hookExceptions.size() > 0) {
-            for (Throwable ex : hookExceptions) {
-                ex.printStackTrace(Log.logStream());
+    private static void executeHooks(AtomicReference<Runnable[]> hooksReference) {
+        Runnable[] hooks = hooksReference.getAndSet(null);
+        if (hooks != null) {
+            for (Runnable hook : hooks) {
+                hook.run();
             }
         }
     }

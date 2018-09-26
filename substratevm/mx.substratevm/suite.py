@@ -59,7 +59,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
             "javaCompliance": "8",
-            "overlayTarget": "com.oracle.svm.core",
             "checkstyleVersion" : "8.8",
             "workingSets": "SVM",
         },
@@ -100,8 +99,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.windows",
+                "com.oracle.svm.core",
                 "compiler:GRAAL",
             ],
             "checkstyle": "com.oracle.svm.core",
@@ -222,7 +220,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
                 "com.oracle.svm.reflect",
-                "com.oracle.svm.jni",
+                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11750
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",
@@ -365,6 +363,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.truffle",
                 "truffle:TRUFFLE_NFI",
+                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11751
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "8+",
@@ -503,7 +502,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
             ],
             "overlaps" : [
-                "SVM_CORE"
+                "SVM_CORE", "SVM_HOSTED",
             ],
             "distDependencies": [
                 "SVM_HOSTED_NATIVE",
@@ -520,14 +519,30 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.svm.core",
-                "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.graal",
                 "com.oracle.svm.core.genscavenge",
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",
                 "compiler:GRAAL",
+            ],
+            "exclude": [
+            ]
+        },
+
+        "SVM_HOSTED": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.truffle",
+            ],
+            "distDependencies": [
+                "sdk:GRAAL_SDK",
+                "compiler:GRAAL",
+                "OBJECTFILE",
+                "POINTSTO",
+            ],
+            "overlaps" : [
+                "SVM_CORE",
             ],
             "exclude": [
             ]

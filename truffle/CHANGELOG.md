@@ -2,6 +2,12 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC7
+* Made all Truffle DSL annotations retention policy CLASS instead of RUNTIME. Reflecting DSL annotations at runtime is no longer possible. It is recommended to use `@Introspectable` instead. 
+
+* Removed deprecated FrameDescriptor#shallowCopy (deprecated since 1.0.0 RC3).
+* Removed deprecated FrameSlot#getFrameDescriptor (deprecated since 1.0.0 RC3).
+
 ## Version 1.0.0 RC6
 
 * Added support for byte based sources:

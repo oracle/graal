@@ -33,6 +33,8 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
@@ -259,12 +261,13 @@ public class GraalSupport {
     }
 
     public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method) {
-        EncodedGraph encodedGraph = encodedGraph(method, false); // XXX
+        EncodedGraph encodedGraph = encodedGraph(method, false);
         if (encodedGraph == null) {
             return null;
         }
 
-        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).name(name).method(method).compilationId(compilationId).build();
+        boolean isSubstitution = method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null;
+        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).name(name).method(method).compilationId(compilationId).setIsSubstitution(isSubstitution).build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);
         return graph;

@@ -31,10 +31,10 @@ suite = {
               "com.oracle.truffle.tools.chromeinspector.instrument to com.oracle.truffle.truffle_api"
             ],
             "javaCompliance" : "8+",
-            "checkstyle" : "com.oracle.truffle.api",
+            "checkstyleVersion" : "8.8",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
-            "license" : "GPLv2-CPE",
         },
         "com.oracle.truffle.tools.chromeinspector.test" : {
             "subDir" : "src",
@@ -46,22 +46,25 @@ suite = {
                 "mx:JUNIT",
             ],
             "javaCompliance" : "8+",
-            "checkstyle" : "com.oracle.truffle.tools.chromeinspector.test",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
-            "license" : "GPLv2-CPE",
         },
         "com.oracle.truffle.tools.profiler" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "dependencies" : ["truffle:TRUFFLE_API"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+                "TruffleJSON",
+                ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               "com.oracle.truffle.tools.profiler.impl to com.oracle.truffle.truffle_api",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyle" : "com.oracle.truffle.api",
+            "checkstyleVersion" : "8.8",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
@@ -74,7 +77,8 @@ suite = {
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyle" : "com.oracle.truffle.api",
+            "checkstyleVersion" : "8.8",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
@@ -112,21 +116,21 @@ suite = {
           "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-592.tar.gz"],
-            "sha1" : "2b5fee653a160f6a3a863527cd68e49b8566d978",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606.tar.gz"],
+            "sha1" : "4cb0f27e677582e760fdce1d71900048cb30c3e8",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-592-linux-amd64.tar.gz"],
-                        "sha1" : "725aeb7cdf1ed8c5272b2b4efd57101102676676",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606-linux-amd64.tar.gz"],
+                        "sha1" : "cbd7d1b4378f024a9fc5a71ac79ed90ad5f8a173",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-592-macosx-x86_64.tar.gz"],
-                        "sha1" : "8ae21feaa9960e583d8868b63ea1bc31a9ccf399",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606-macosx-x86_64.tar.gz"],
+                        "sha1" : "6e5a902272f1d10db9b16407fe1f6faf40ddd90b",
                     }
                 },
             }

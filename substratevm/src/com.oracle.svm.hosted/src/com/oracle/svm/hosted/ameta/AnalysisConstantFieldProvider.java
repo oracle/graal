@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -40,10 +41,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
     private final AnalysisUniverse universe;
+    private final AnalysisConstantReflectionProvider constantReflection;
+    private final ClassInitializationFeature classInitializationFeature;
 
-    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection) {
         super(metaAccess);
         this.universe = universe;
+        this.constantReflection = constantReflection;
+        this.classInitializationFeature = ClassInitializationFeature.singleton();
     }
 
     @Override
@@ -57,12 +62,20 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
             if (readableField.allowConstantFolding()) {
                 JavaConstant fieldValue = readableField.readValue(universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
-                    return analysisTool.foldConstant(universe.lookup(fieldValue));
+                    return analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
                 }
             }
             return null;
         }
 
         return super.readConstantField(field, analysisTool);
+    }
+
+    @Override
+    protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
+        if (classInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+            return false;
+        }
+        return super.isFinalField(field, tool);
     }
 }

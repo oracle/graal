@@ -39,11 +39,6 @@ public final class GenericInfo {
     private static final GenericInfo EMPTY_GENERIC_INFO = new GenericInfo(EMPTY_TYPE_VARIABLE_ARRAY, null, null);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static GenericInfo forEmpty() {
-        return EMPTY_GENERIC_INFO;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static GenericInfo factory(TypeVariable<?>[] typeParameters, Type[] genericInterfaces, Type genericSuperClass) {
         boolean hasTypeParameters = typeParameters.length > 0;
         boolean hasGenericInterfaces = genericInterfaces.length > 0 && !Arrays.stream(genericInterfaces).allMatch(Class.class::isInstance);

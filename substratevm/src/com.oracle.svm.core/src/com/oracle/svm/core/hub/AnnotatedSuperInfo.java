@@ -38,11 +38,6 @@ public final class AnnotatedSuperInfo {
     private static final AnnotatedSuperInfo EMPTY_ANNOTATED_SUPER_INFO = new AnnotatedSuperInfo(null, EMPTY_ANNOTATED_TYPE_ARRAY);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static AnnotatedSuperInfo forEmpty() {
-        return EMPTY_ANNOTATED_SUPER_INFO;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static AnnotatedSuperInfo factory(AnnotatedType annotatedSuperType, AnnotatedType[] annotatedInterfaces) {
         boolean hasAnnotatedSuperType = annotatedSuperType != null;
         boolean hasAnnotatedInterfaces = annotatedInterfaces != null && annotatedInterfaces.length > 0;

@@ -24,13 +24,19 @@
  */
 package com.oracle.svm.core.c.function;
 
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 /**
  * Parameters for the creation of an isolate.
  */
 @CStruct("graal_create_isolate_params_t")
 public interface CEntryPointCreateIsolateParameters extends PointerBase {
-    // for future use
+    @CField
+    int version();
+
+    @CField("reserved_address_space_size")
+    UnsignedWord reservedSpaceSize();
 }

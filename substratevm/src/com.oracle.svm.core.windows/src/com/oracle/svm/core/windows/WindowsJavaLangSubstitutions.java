@@ -37,19 +37,18 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_lang_System {
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    static volatile Console cons;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) static volatile Console cons;
 
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static long currentTimeMillis() {
-        return 0x12345678L;
+        return nanoTime() / WindowsUtils.NANOSECS_PER_MILLISEC;
     }
 
     @Substitute
-    @Uninterruptible(reason = "Does basic math after a simple system call")
-    private static long nanoTime() {
-        return 0x1234567812345678L;
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    protected static long nanoTime() {
+        return WindowsUtils.getNanoCounter();
     }
 
     @Substitute

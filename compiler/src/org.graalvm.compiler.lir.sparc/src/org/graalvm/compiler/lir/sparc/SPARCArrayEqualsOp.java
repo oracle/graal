@@ -80,8 +80,8 @@ public final class SPARCArrayEqualsOp extends SPARCLIRInstruction {
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
         this.kind = kind;
 
-        this.arrayBaseOffset = tool.getProviders().getArrayOffsetProvider().arrayBaseOffset(kind);
-        this.arrayIndexScale = tool.getProviders().getArrayOffsetProvider().arrayScalingFactor(kind);
+        this.arrayBaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind);
+        this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
         this.array1Value = array1;

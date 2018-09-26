@@ -81,8 +81,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         super(TYPE);
         this.kind = kind;
 
-        this.arrayBaseOffset = tool.getProviders().getArrayOffsetProvider().arrayBaseOffset(kind);
-        this.arrayIndexScale = tool.getProviders().getArrayOffsetProvider().arrayScalingFactor(kind);
+        this.arrayBaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind);
+        this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
         this.array1Value = array1;

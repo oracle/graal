@@ -49,6 +49,7 @@ import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -76,6 +77,12 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
 }
 
 class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
+
+    @Override
+    public void runStartupHooks() {
+        RuntimeSupport.getRuntimeSupport().executeStartupHooks();
+    }
+
     @Override
     public void set(String optionName, Object value) {
         if (setXOption(optionName)) {

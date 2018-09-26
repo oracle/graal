@@ -3,7 +3,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "1.0.0-rc6",
+  "version" : "1.0.0-rc7",
   "groupId" : "com.oracle.truffle",
   "url" : "http://www.graalvm.org/",
   "developer" : {

@@ -61,6 +61,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -180,6 +181,8 @@ public class GCImpl implements GC {
         this.watchersAfterTimer = new Timer("watchersAfter");
         this.mutatorTimer = new Timer("Mutator");
         this.walkRegisteredMemoryTimer = new Timer("walkRegisteredMemory");
+
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
     }
 
     /*
@@ -342,7 +345,7 @@ public class GCImpl implements GC {
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapPolicy.getLargeArrayThreshold()).string("]").newline();
             if (HeapOptions.PrintHeapShape.getValue()) {
-                HeapImpl.getHeapImpl().bootImageHeapBoundariesToLog(verboseGCLog);
+                HeapImpl.getHeapImpl().bootImageHeapBoundariesToLog(verboseGCLog).newline();
             }
         }
 
@@ -1627,8 +1630,12 @@ public class GCImpl implements GC {
         }
     }
 
-    @Override
-    public void printGCSummary() {
+    /* Invoked by a shutdown hook registered in the GCImpl constructor. */
+    private void printGCSummary() {
+        if (!SubstrateOptions.PrintGCSummary.getValue()) {
+            return;
+        }
+
         final Log log = Log.log();
         final String prefix = "PrintGCSummary: ";
 

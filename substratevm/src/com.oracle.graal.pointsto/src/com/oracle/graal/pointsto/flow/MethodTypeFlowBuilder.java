@@ -158,6 +158,14 @@ public class MethodTypeFlowBuilder {
         typeFlowGraphBuilder = new TypeFlowGraphBuilder(bb);
     }
 
+    public MethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+        this.bb = bb;
+        this.graph = graph;
+        this.method = (AnalysisMethod) graph.method();
+        this.methodFlow = method.getTypeFlow();
+        this.typeFlowGraphBuilder = null;
+    }
+
     @SuppressWarnings("try")
     private boolean parse() {
         OptionValues options = bb.getOptions();
@@ -201,12 +209,12 @@ public class MethodTypeFlowBuilder {
                 }
 
                 // Register used types and fields before canonicalization can optimize them.
-                registerUsedElements(bb, graph, methodFlow);
+                registerUsedElements();
 
                 new CanonicalizerPhase().apply(graph, new PhaseContext(bb.getProviders()));
 
                 // Do it again after canonicalization changed type checks and field accesses.
-                registerUsedElements(bb, graph, methodFlow);
+                registerUsedElements();
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -214,7 +222,7 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    public static void registerUsedElements(BigBang bb, StructuredGraph graph, MethodTypeFlow methodFlow) {
+    public void registerUsedElements() {
         for (Node n : graph.getNodes()) {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;

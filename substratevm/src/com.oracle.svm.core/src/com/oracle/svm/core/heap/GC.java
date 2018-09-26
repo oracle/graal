@@ -54,6 +54,4 @@ public interface GC {
 
     /** Get the list of GarbageCollectorMXBeans for this collector. */
     List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList();
-
-    void printGCSummary();
 }

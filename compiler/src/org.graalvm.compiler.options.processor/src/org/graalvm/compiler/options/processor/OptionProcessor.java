@@ -156,7 +156,7 @@ public class OptionProcessor extends AbstractProcessor {
         originatingElementsList.add(field);
         PackageElement enclosingPackage = null;
         while (enclosing != null) {
-            if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
+            if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE || enclosing.getKind() == ElementKind.ENUM) {
                 if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
                     String msg = String.format("Option field cannot be declared in a private %s %s", enclosing.getKind().name().toLowerCase(), enclosing);
                     processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);
@@ -167,6 +167,8 @@ public class OptionProcessor extends AbstractProcessor {
                 separator = ".";
             } else if (enclosing.getKind() == ElementKind.PACKAGE) {
                 enclosingPackage = (PackageElement) enclosing;
+            } else {
+                throw new InternalError("Unexpected enclosing element kind: " + enclosing.getKind());
             }
             enclosing = enclosing.getEnclosingElement();
         }

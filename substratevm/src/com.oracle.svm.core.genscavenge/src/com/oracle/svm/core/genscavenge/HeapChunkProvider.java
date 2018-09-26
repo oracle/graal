@@ -357,17 +357,21 @@ class HeapChunkProvider {
     }
 
     protected Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Unused:").newline();
-        log.string("  aligned: ").signed(bytesInUnusedAlignedChunks.get()).string("/").signed(bytesInUnusedAlignedChunks.get().unsignedDivide(HeapPolicy.getAlignedHeapChunkSize()));
+        log.string("[Unused:").indent(true);
+        log.string("aligned: ").signed(bytesInUnusedAlignedChunks.get())
+                        .string("/")
+                        .signed(bytesInUnusedAlignedChunks.get().unsignedDivide(HeapPolicy.getAlignedHeapChunkSize()));
         if (traceHeapChunks) {
             if (unusedAlignedChunks.get().isNonNull()) {
-                log.newline().string("  aligned chunks:");
+                log.newline().string("aligned chunks:").redent(true);
                 for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); aChunk.isNonNull(); aChunk = aChunk.getNext()) {
-                    log.string("  ").hex(aChunk).string(" (").hex(AlignedHeapChunk.getAlignedHeapChunkStart(aChunk)).string("-").hex(aChunk.getTop()).string(")");
+                    log.newline().hex(aChunk)
+                                    .string(" (").hex(AlignedHeapChunk.getAlignedHeapChunkStart(aChunk)).string("-").hex(aChunk.getTop()).string(")");
                 }
+                log.redent(false);
             }
         }
-        log.string("]");
+        log.redent(false).string("]");
         return log;
     }
 

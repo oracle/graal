@@ -38,7 +38,7 @@ import com.oracle.truffle.tools.profiler.MemoryTracer;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.1", services = {MemoryTracer.class})
+@TruffleInstrument.Registration(id = MemoryTracerInstrument.ID, name = "Memory Tracer", version = "0.2", services = {MemoryTracer.class})
 public class MemoryTracerInstrument extends TruffleInstrument {
 
     /**

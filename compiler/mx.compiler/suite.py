@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.180.0",
+  "mxversion" : "5.183.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -96,8 +96,8 @@ suite = {
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-543.zip"],
-      "sha1" : "39a1810b8443a64e5bcc431c78e56515109898b9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-619.zip"],
+      "sha1" : "7fa6906c7898e736396f7143a173c53ca4e2a831",
     },
 
     "JOL_CLI" : {
@@ -196,7 +196,10 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
-      "uses" : ["org.graalvm.compiler.serviceprovider.JMXService"],
+      "uses" : [
+        "org.graalvm.compiler.serviceprovider.JMXService",
+        "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "9+",
       "checkPackagePrefix" : "false",
@@ -227,8 +230,7 @@ suite = {
       "dependencies" : [
         "JVMCI_SERVICES",
         "JVMCI_API",
-        "sdk:GRAAL_SDK",
-        "org.graalvm.util",
+        "sdk:GRAAL_SDK"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "uses" : ["org.graalvm.compiler.options.OptionDescriptors"],
@@ -445,7 +447,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
       ],
-
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
@@ -1220,6 +1221,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.util",
         "org.graalvm.compiler.debug",
         "sdk:GRAAL_SDK",
       ],
@@ -1251,6 +1253,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
+        "org.graalvm.util",
         "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1553,7 +1556,6 @@ suite = {
 
     "GRAAL_GRAPHIO" : {
       "subDir" : "src",
-      "path" : "build/graal-graphio.jar",
       "dependencies" : ["org.graalvm.graphio"],
       "distDependencies" : [
       ],

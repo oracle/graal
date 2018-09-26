@@ -58,7 +58,9 @@ For executables, SVM supports Java main methods with a signature that takes the 
 public static void main(String[] arg) { /* ... */ }
 ```
 
-For shared libraries, SVM provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C. Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers). The first parameter of an entry point method has to be of type `IsolateThread` or `Isolate`. This parameter provides the current thread's execution context for the call. For example:
+For shared libraries, SVM provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C. Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers). 
+One of the parameters of an entry point method has to be of type `IsolateThread` or `Isolate`.
+This parameter provides the current thread's execution context for the call. For example:
 
 ```java
 @CEntryPoint static int add(IsolateThread thread, int a, int b) {

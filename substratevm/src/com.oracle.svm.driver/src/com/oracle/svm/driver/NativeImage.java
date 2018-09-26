@@ -79,7 +79,6 @@ import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
-import com.oracle.svm.jni.hosted.JNIFeature;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
 
@@ -140,13 +139,14 @@ public class NativeImage {
     static final String oHFeatures = oH(FeatureHandler.Options.Features);
     static final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
     static final String oHSubstitutionResources = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionResources);
+    static final String oHEnableUrlProtocols = oH(SubstrateOptions.EnableURLProtocols);
     static final String oHIncludeResourceBundles = oH(LocalizationSupport.Options.IncludeResourceBundles);
     static final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
     static final String oHReflectionConfigurationResources = oH(ReflectionFeature.Options.ReflectionConfigurationResources);
     static final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
     static final String oHDynamicProxyConfigurationResources = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationResources);
-    static final String oHJNIConfigurationFiles = oH(JNIFeature.Options.JNIConfigurationFiles);
-    static final String oHJNIConfigurationResources = oH(JNIFeature.Options.JNIConfigurationResources);
+    static final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
+    static final String oHJNIConfigurationResources = oH(SubstrateOptions.JNIConfigurationResources);
     static final String oHInterfacesForJNR = oH + "InterfacesForJNR=";
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
@@ -422,10 +422,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-server", "-d64", "-noverify");
         addImageBuilderJavaArgs("-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI");
 
-        // Same as GRAAL_COMPILER_FLAGS in mx.substratevm/mx_substratevm.py
-        int ciCompilerCount = Runtime.getRuntime().availableProcessors() <= 4 ? 2 : 4;
-        addImageBuilderJavaArgs("-XX:-UseJVMCIClassLoader", "-XX:+UseJVMCICompiler", "-Dgraal.CompileGraalWithC1Only=false", "-XX:CICompilerCount=" + ciCompilerCount);
-        addImageBuilderJavaArgs("-Dgraal.VerifyGraalGraphs=false", "-Dgraal.VerifyGraalGraphEdges=false", "-Dgraal.VerifyGraalPhasesSize=false", "-Dgraal.VerifyPhases=false");
+        addImageBuilderJavaArgs("-XX:-UseJVMCIClassLoader");
 
         addImageBuilderJavaArgs("-Dgraal.EagerSnippets=true");
 
@@ -650,6 +647,7 @@ public class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
+        consolidateListArgs(imageBuilderArgs, oHEnableUrlProtocols, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHIncludeResourceBundles, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHInterfacesForJNR, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", canonicalizedPathStr);

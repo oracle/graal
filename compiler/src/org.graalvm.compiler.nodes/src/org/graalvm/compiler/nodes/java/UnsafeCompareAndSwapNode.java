@@ -125,7 +125,7 @@ public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint imp
                 ValueNode expectedAlias = tool.getAlias(this.expected);
                 ValueNode newValueAlias = tool.getAlias(this.newValue);
 
-                LogicNode equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflectionProvider(), NodeView.DEFAULT);
+                LogicNode equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflection(), NodeView.DEFAULT);
                 if (equalsNode instanceof LogicConstantNode) {
 
                     boolean equals = ((LogicConstantNode) equalsNode).getValue();

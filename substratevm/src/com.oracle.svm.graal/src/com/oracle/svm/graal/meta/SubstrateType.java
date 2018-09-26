@@ -125,7 +125,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
      */
     @Override
     public final JavaKind getStorageKind() {
-        if (WordBase.class.isAssignableFrom(hub.asClass())) {
+        if (WordBase.class.isAssignableFrom(DynamicHub.toClass(hub))) {
             return FrameAccess.getWordKind();
         } else {
             return getJavaKind();
@@ -205,12 +205,12 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public boolean isInitialized() {
-        return true;
+        return hub.isInitialized();
     }
 
     @Override
     public void initialize() {
-        throw VMError.unimplemented();
+        hub.ensureInitialized();
     }
 
     @Override
@@ -242,7 +242,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
         if (uniqueConcreteImplementation == null) {
             return null;
         }
-        return SubstrateMetaAccess.singleton().lookupJavaType(uniqueConcreteImplementation.asClass());
+        return SubstrateMetaAccess.singleton().lookupJavaType(DynamicHub.toClass(uniqueConcreteImplementation));
     }
 
     @Override
@@ -294,7 +294,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public boolean isJavaLangObject() {
-        return hub.asClass() == Object.class;
+        return DynamicHub.toClass(hub) == Object.class;
     }
 
     @Override
@@ -366,17 +366,17 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public Annotation[] getAnnotations() {
-        return getHub().asClass().getAnnotations();
+        return DynamicHub.toClass(getHub()).getAnnotations();
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return getHub().asClass().getDeclaredAnnotations();
+        return DynamicHub.toClass(getHub()).getDeclaredAnnotations();
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return getHub().asClass().getAnnotation(annotationClass);
+        return DynamicHub.toClass(getHub()).getAnnotation(annotationClass);
     }
 
     @Override
@@ -439,7 +439,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public ResolvedJavaType getEnclosingType() {
-        Class<?> enclosingClass = hub.asClass().getEnclosingClass();
+        Class<?> enclosingClass = DynamicHub.toClass(hub).getEnclosingClass();
         if (enclosingClass == null) {
             return null;
         }
@@ -499,14 +499,14 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     @Override
     public com.oracle.truffle.api.nodes.NodeFieldAccessor getNodeClassField() {
         return SubstrateNodeFieldAccessor.fromSubstrateField(
-                        getNodeFields(field -> field.getDeclaringClass().getHub().asClass() == Node.class && field.getName().equals("nodeClass")).iterator().next());
+                        getNodeFields(field -> DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("nodeClass")).iterator().next());
     }
 
     @SuppressWarnings("deprecation")
     @Override
     public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getCloneableFields() {
         return nodeFieldIterableToArray(getNodeFields(field -> !SubstrateNodeFieldAccessor.isChildField(field) && !SubstrateNodeFieldAccessor.isChildrenField(field) &&
-                        NodeCloneable.class.isAssignableFrom(field.getType().getHub().asClass())));
+                        NodeCloneable.class.isAssignableFrom(DynamicHub.toClass(field.getType().getHub()))));
     }
 
     @SuppressWarnings("deprecation")
@@ -518,7 +518,8 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     @SuppressWarnings("deprecation")
     @Override
     public com.oracle.truffle.api.nodes.NodeFieldAccessor getParentField() {
-        return SubstrateNodeFieldAccessor.fromSubstrateField(getNodeFields(field -> field.getDeclaringClass().getHub().asClass() == Node.class && field.getName().equals("parent")).iterator().next());
+        return SubstrateNodeFieldAccessor
+                        .fromSubstrateField(getNodeFields(field -> DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("parent")).iterator().next());
     }
 
     @SuppressWarnings("deprecation")
@@ -550,8 +551,8 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Node> getType() {
-        assert Node.class.isAssignableFrom(getHub().asClass());
-        return (Class<? extends Node>) getHub().asClass();
+        assert Node.class.isAssignableFrom(DynamicHub.toClass(getHub()));
+        return (Class<? extends Node>) DynamicHub.toClass(getHub());
     }
 
     @Override
@@ -652,12 +653,12 @@ class SubstrateNodeFieldAccessor extends com.oracle.truffle.api.nodes.NodeFieldA
             /* For fields with a Word type, we have to return the primitive class. */
             return field.getType().getStorageKind().toJavaClass();
         } else {
-            return field.getType().getHub().asClass();
+            return DynamicHub.toClass(field.getType().getHub());
         }
     }
 
     static Class<?> makeDeclaringClass(SubstrateField field) {
-        return field.getDeclaringClass().getHub().asClass();
+        return DynamicHub.toClass(field.getDeclaringClass().getHub());
     }
 
     static long makeOffset(SubstrateField field) {
@@ -672,9 +673,9 @@ class SubstrateNodeFieldAccessor extends com.oracle.truffle.api.nodes.NodeFieldA
 
     static SubstrateNodeFieldAccessor fromSubstrateField(SubstrateField field) {
         com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind nodeFieldKind;
-        if (field.getDeclaringClass().getHub().asClass() == Node.class && field.getName().equals("parent")) {
+        if (DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("parent")) {
             nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.PARENT;
-        } else if (field.getDeclaringClass().getHub().asClass() == Node.class && field.getName().equals("nodeClass")) {
+        } else if (DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("nodeClass")) {
             nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.NODE_CLASS;
         } else if (SubstrateNodeFieldAccessor.isChildField(field)) {
             nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;

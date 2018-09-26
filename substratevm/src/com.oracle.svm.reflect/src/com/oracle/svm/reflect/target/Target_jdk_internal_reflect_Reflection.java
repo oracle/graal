@@ -29,9 +29,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "Reflection", onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "Reflection")
 public final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute

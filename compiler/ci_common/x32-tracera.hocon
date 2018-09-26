@@ -1,9 +1,0 @@
-x32.tracera: ${x32.default} {
-  environment : {
-    JVM_CONFIG  : ${jvm-config.default}"-tracera"
-  }
-}
-
-builds += [
-  ${x32.tracera} ${bench-renaissance-hwloc}  ${labsjdk8}  { targets : [bench, daily], name: "bench-compiler-renaissance-linux-x32-tracera" }
-]
