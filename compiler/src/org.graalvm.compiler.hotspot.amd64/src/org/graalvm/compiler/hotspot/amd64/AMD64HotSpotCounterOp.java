@@ -122,7 +122,7 @@ public class AMD64HotSpotCounterOp extends HotSpotCounterOp {
         } else {
             masm.addq(counterAddr, asRegister(incrementValue));
         }
-        if (BenchmarkCounters.Options.BenchmarkCountersDetectOverflow.getValue(crb.getOptions())) {
+        if (BenchmarkCounters.Options.AbortOnBenchmarkCounterOverflow.getValue(crb.getOptions())) {
             Label target = new Label();
             masm.jccb(AMD64Assembler.ConditionFlag.NoOverflow, target);
             crb.blockComment("[BENCHMARK COUNTER OVERFLOW]");

@@ -95,8 +95,8 @@ public class BenchmarkCounters {
         public static final OptionKey<Boolean> BenchmarkCountersDumpDynamic = new OptionKey<>(true);
         @Option(help = "Dump static counters", type = OptionType.Debug)
         public static final OptionKey<Boolean> BenchmarkCountersDumpStatic = new OptionKey<>(false);
-        @Option(help = "file:doc-files/BenchmarkCountersDetectOverflowHelp.txt", type = OptionType.Debug)
-        public static final OptionKey<Boolean> BenchmarkCountersDetectOverflow = new OptionKey<>(false);
+        @Option(help = "file:doc-files/AbortOnBenchmarkCounterOverflowHelp.txt", type = OptionType.Debug)
+        public static final OptionKey<Boolean> AbortOnBenchmarkCounterOverflow = new OptionKey<>(false);
         //@formatter:on
     }
 

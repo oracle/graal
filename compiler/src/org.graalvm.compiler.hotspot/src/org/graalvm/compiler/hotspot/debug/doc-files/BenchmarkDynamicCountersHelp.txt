@@ -22,3 +22,6 @@ The JVMCICounterSize value depends on the granularity of the profiling -
 10000 should be sufficient. Omit JVMCICountersExcludeCompiler to exclude
 counting allocations on the compiler threads.
 The counters can be further configured by the ProfileAllocationsContext option.
+
+We highly recommend the use of -Dgraal.AbortOnBenchmarkCounterOverflow=true to
+detect counter overflows eagerly.
