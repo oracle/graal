@@ -56,9 +56,9 @@ def run(vmArgs, unittests, extraOption=None, extraLibs=None):
 mx_subst.path_substitutions.register_no_arg('sulong_include', lambda: os.path.join(mx.suite('sulong').dir, 'include'))
 
 
-def compileTestSuite(testsuiteproject, args):
+def compileTestSuite(testsuiteproject, extra_build_args):
     defaultBuildArgs = ['--project', testsuiteproject]
-    mx.command_function('build')(defaultBuildArgs + args.extra_build_args)
+    mx.command_function('build')(defaultBuildArgs + extra_build_args)
 
 
 def runTestSuite(testsuiteproject, args, testClasses=None, vmArgs=None):

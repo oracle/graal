@@ -40,7 +40,6 @@ import mx_sdk
 import re
 import mx_benchmark
 import mx_sulong_benchmarks
-import mx_unittest
 import mx_buildtools
 
 from mx_unittest import add_config_participant
@@ -143,7 +142,7 @@ def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=
     build_tags = ['build_' + t for t in tags]
     run_tags = ['run_' + t for t in tags]
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_dist, args)
+        if t: mx_testsuites.compileTestSuite(test_dist, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
         if t: mx_testsuites.runTestSuite(test_dist, args, testClasses, vmArgs)
 
@@ -153,7 +152,7 @@ def _sulong_gate_testsuite(title, test_suite, tasks, args, tags=None, testClasse
     build_tags = ['build_' + t for t in tags]
     run_tags = ['run_' + t for t in tags]
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_suite, args)
+        if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
         if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, vmArgs)
 
@@ -167,7 +166,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
     if not unittestArgs:
         unittestArgs = []
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
-        if t: mx_testsuites.compileTestSuite(test_suite, args)
+        if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
         if t: mx_testsuites.run(unittestArgs, testClasses)
 
@@ -225,7 +224,13 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
         testName += '#test[' + test + ']'
     if unittestArgs is None:
         unittestArgs = []
-    mx_unittest.unittest(args + [testName] + unittestArgs)
+    test_suite = 'SULONG_TEST_SUITES'
+    dist = mx.distribution(test_suite)
+    unittestArgs += [
+        "-Dsulongtest.testSuitePath=" + dist.get_output(),
+        ]
+    mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
+    mx_testsuites.run(args + unittestArgs, testName)
 
 def _test_llvm_image(args):
     """run the SulongSuite tests on an AOT compiled lli image"""
