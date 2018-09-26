@@ -47,7 +47,7 @@ import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.JNINativeNode;
+import com.oracle.truffle.espresso.nodes.JniNativeNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
@@ -186,6 +186,8 @@ public final class MethodInfo implements ModifiersProvider {
         SignatureDescriptor signature = m.rawMethod().getSignature();
         if (!m.isStatic()) {
             sb.append(", ").append(NativeSimpleType.OBJECT); // this
+        } else {
+            sb.append(", ").append(NativeSimpleType.OBJECT); // clazz
         }
         int argCount = signature.getParameterCount(false);
         for (int i = 0; i < argCount; ++i) {
@@ -224,7 +226,7 @@ public final class MethodInfo implements ModifiersProvider {
                         }
                         TruffleObject library = getContext().getNativeLibraries().get(handle);
                         TruffleObject nativeMethod = bind(library, meta(this), mangledName);
-                        callTarget = Truffle.getRuntime().createCallTarget(new JNINativeNode(getContext().getLanguage(), nativeMethod));
+                        callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod));
                         break;
                     }
 

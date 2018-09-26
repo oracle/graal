@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.classfile.StringTable;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -63,6 +64,7 @@ public class EspressoContext {
 
     private final ConcurrentHashMap<Long, TruffleObject> nativeLibraries =  new ConcurrentHashMap<>();
     private final AtomicLong nativeHandleCount = new AtomicLong();
+    private JniEnv jniEnv;
 
     public long addNativeLibrary(TruffleObject library) {
         long handle = nativeHandleCount.incrementAndGet();
@@ -239,5 +241,12 @@ public class EspressoContext {
 
     public ConcurrentHashMap<Long, TruffleObject> getNativeLibraries() {
         return nativeLibraries;
+    }
+
+    public JniEnv getJniEnv() {
+        if (jniEnv == null) {
+            jniEnv = JniEnv.create();
+        }
+        return jniEnv;
     }
 }
