@@ -343,30 +343,30 @@ public class NativeImageCodeCache {
         dataSection.close();
     }
 
-    public void addConstantsToHeap(DebugContext debug) {
+    public void addConstantsToHeap() {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
                 JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                addConstantToHeap(debug, constant);
+                addConstantToHeap(constant);
             }
         }
         for (CompilationResult compilationResult : compilations.values()) {
             for (DataPatch patch : compilationResult.getDataPatches()) {
                 if (patch.reference instanceof ConstantReference) {
-                    addConstantToHeap(debug, ((ConstantReference) patch.reference).getConstant());
+                    addConstantToHeap(((ConstantReference) patch.reference).getConstant());
                 }
             }
         }
     }
 
-    private void addConstantToHeap(DebugContext debug, Constant constant) {
+    private void addConstantToHeap(Constant constant) {
         Object obj = SubstrateObjectConstant.asObject(constant);
 
         if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
             throw VMError.shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + obj.getClass().getName());
         }
 
-        imageHeap.addObject(debug, obj, false, false, constantReasons.get(constant));
+        imageHeap.addObject(obj, false, constantReasons.get(constant));
     }
 
     /**

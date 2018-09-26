@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.Replaced;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
@@ -56,7 +57,6 @@ import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateSignature;
 import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.graal.meta.UniqueStringTable;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -93,13 +93,13 @@ public class GraalObjectReplacer implements Function<Object, Object> {
     private final SubstrateConstantFieldProvider sConstantFieldProvider;
     private SubstrateGraalRuntime sGraalRuntime;
 
-    private final UniqueStringTable stringTable;
+    private final HostedStringDeduplication stringTable;
 
     public GraalObjectReplacer(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess) {
         this.aUniverse = aUniverse;
         this.aMetaAccess = aMetaAccess;
         this.sMetaAccess = new SubstrateMetaAccess();
-        this.stringTable = new UniqueStringTable();
+        this.stringTable = HostedStringDeduplication.singleton();
         this.sConstantReflectionProvider = new SubstrateConstantReflectionProvider(sMetaAccess);
         this.sConstantFieldProvider = new SubstrateConstantFieldProvider(aMetaAccess);
     }

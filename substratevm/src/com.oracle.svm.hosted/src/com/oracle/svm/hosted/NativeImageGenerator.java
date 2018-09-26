@@ -881,12 +881,12 @@ public class NativeImageGenerator {
                     try (StopTimer t = new Timer(imageName, "image").start()) {
 
                         // Start building the model of the native image heap.
-                        heap.addInitialObjects(debug);
+                        heap.addInitialObjects();
                         // Then build the model of the code cache, which can
                         // add objects to the native image heap.
-                        codeCache.addConstantsToHeap(debug);
+                        codeCache.addConstantsToHeap();
                         // Finish building the model of the native image heap.
-                        heap.addTrailingObjects(debug);
+                        heap.addTrailingObjects();
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));

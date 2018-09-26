@@ -265,8 +265,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic,
                     Target_java_lang_ClassLoader classLoader) {
-        /* Class names must be interned strings according to the Java spec. */
-        this.name = name.intern();
+        this.name = name;
         this.isLocalClass = isLocalClass;
         this.superHub = superType;
         this.componentHub = componentHub;
