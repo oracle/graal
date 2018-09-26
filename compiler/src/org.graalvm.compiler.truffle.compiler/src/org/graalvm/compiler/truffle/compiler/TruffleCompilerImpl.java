@@ -130,7 +130,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     UseTypeCheckHints);
 
     public TruffleCompilerImpl(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, Suites firstTierSuites, LIRSuites firstTierLirSuites,
-                               Providers firstTierProviders, SnippetReflectionProvider snippetReflection) {
+                    Providers firstTierProviders, SnippetReflectionProvider snippetReflection) {
         this.backend = backend;
         this.snippetReflection = snippetReflection;
         this.providers = backend.getProviders();
@@ -196,8 +196,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
     @Override
     @SuppressWarnings("try")
-    public void doCompile(DebugContext inDebug, CompilationIdentifier inCompilationId, OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, TruffleCompilationTask task,
-                          TruffleCompilerListener listener) {
+    public void doCompile(DebugContext inDebug, CompilationIdentifier inCompilationId, OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan,
+                    TruffleCompilationTask task,
+                    TruffleCompilerListener listener) {
         CompilationIdentifier compilationId = inCompilationId == null ? getCompilationIdentifier(compilable) : inCompilationId;
         DebugContext debug = inDebug == null ? openDebugContext(options, compilationId, compilable) : inDebug;
         try (DebugContext debugToClose = debug == inDebug ? null : debug;

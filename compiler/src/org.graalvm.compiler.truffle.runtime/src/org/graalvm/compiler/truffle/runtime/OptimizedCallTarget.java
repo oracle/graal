@@ -391,8 +391,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract boolean isValid();
 
     /**
-     * Determines if this call target has valid machine code attached to it, and that this code
-     * was compiled in the last tier.
+     * Determines if this call target has valid machine code attached to it, and that this code was
+     * compiled in the last tier.
      */
     public abstract boolean isValidLastTier();
 
@@ -687,7 +687,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * This marks the end of the compilation.
      *
-     * It may only ever be called by the thread that performed the compilation, and after the compilation is completely done (either successfully or not successfully).
+     * It may only ever be called by the thread that performed the compilation, and after the
+     * compilation is completely done (either successfully or not successfully).
      */
     public void resetCompilationTask() {
         /*
