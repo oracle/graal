@@ -383,10 +383,10 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
-                            "java/lang/StringLatin1.inflate([BI[CII)V",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
-                            "java/lang/StringUTF16.compress([CI[BII)I",
+                            "java/lang/StringLatin1.inflate([BI[CII)V",
                             "java/lang/StringUTF16.compress([BI[BII)I",
+                            "java/lang/StringUTF16.compress([CI[BII)I",
                             "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
                             "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
                             "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",
