@@ -58,7 +58,7 @@ public abstract class LLVMSyscall {
     }
 
     @NodeChild(value = "value", type = LLVMExpressionNode.class)
-    static abstract class SyscallArgConverter extends LLVMExpressionNode {
+    abstract static class SyscallArgConverter extends LLVMExpressionNode {
 
         @Specialization
         protected static long convert(long value) {

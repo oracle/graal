@@ -55,7 +55,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         @CompilationFinal private LLVMFunctionDescriptor builtinDescriptor;
         @Child private LLVMExpressionNode builtin;
 
-        public IntrinsicDispatch(LLVMFunctionDescriptor descriptor, LLVMExpressionNode[] argumentNodes) {
+        IntrinsicDispatch(LLVMFunctionDescriptor descriptor, LLVMExpressionNode[] argumentNodes) {
             this.builtinDescriptor = descriptor;
             this.builtin = descriptor.getNativeIntrinsic().generateNode(argumentNodes);
         }
