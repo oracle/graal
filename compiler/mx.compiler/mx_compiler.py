@@ -881,7 +881,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
 
 _JVMCI_JDK_TAG = 'jvmci'
 
-class GraalJVMCI9JDKConfig(mx.JDKConfig):
+class GraalJVMCIJDKConfig(mx.JDKConfig):
     """
     A JDKConfig that configures Graal as the JVMCI compiler.
     """
@@ -893,12 +893,10 @@ class GraalJVMCI9JDKConfig(mx.JDKConfig):
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
-        return GraalJVMCI9JDKConfig()
+        return GraalJVMCIJDKConfig()
 
     def description(self):
         return "JVMCI JDK with Graal"
-
-mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
 
 def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
@@ -1399,6 +1397,7 @@ mx.update_commands(_suite, {
 })
 
 def mx_post_parse_cmd_line(opts):
+    mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))

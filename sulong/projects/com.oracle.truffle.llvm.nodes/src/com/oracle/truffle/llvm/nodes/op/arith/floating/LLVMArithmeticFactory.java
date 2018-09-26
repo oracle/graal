@@ -80,7 +80,7 @@ public abstract class LLVMArithmeticFactory {
         }
 
         LLVMArithmeticOpNode createNode(Object x, Object y) {
-            if (x instanceof LLVMArithmetic && x.getClass().equals(y.getClass())) {
+            if (x instanceof LLVMArithmetic && x.getClass() == y.getClass()) {
                 return ((LLVMArithmetic) x).createAddNode();
             } else {
                 throw new AssertionError("unsupported operand types: " + x.getClass() + ", " + y.getClass());
@@ -106,7 +106,7 @@ public abstract class LLVMArithmeticFactory {
         }
 
         LLVMArithmeticOpNode createNode(Object x, Object y) {
-            if (x instanceof LLVMArithmetic && x.getClass().equals(y.getClass())) {
+            if (x instanceof LLVMArithmetic && x.getClass() == y.getClass()) {
                 return ((LLVMArithmetic) x).createSubNode();
             } else {
                 throw new AssertionError("unsupported operand types: " + x.getClass() + ", " + y.getClass());
@@ -132,7 +132,7 @@ public abstract class LLVMArithmeticFactory {
         }
 
         LLVMArithmeticOpNode createNode(Object x, Object y) {
-            if (x instanceof LLVMArithmetic && x.getClass().equals(y.getClass())) {
+            if (x instanceof LLVMArithmetic && x.getClass() == y.getClass()) {
                 return ((LLVMArithmetic) x).createMulNode();
             } else {
                 throw new AssertionError("unsupported operand types: " + x.getClass() + ", " + y.getClass());
@@ -158,7 +158,7 @@ public abstract class LLVMArithmeticFactory {
         }
 
         LLVMArithmeticOpNode createNode(Object x, Object y) {
-            if (x instanceof LLVMArithmetic && x.getClass().equals(y.getClass())) {
+            if (x instanceof LLVMArithmetic && x.getClass() == y.getClass()) {
                 return ((LLVMArithmetic) x).createDivNode();
             } else {
                 throw new AssertionError("unsupported operand types: " + x.getClass() + ", " + y.getClass());
@@ -184,7 +184,7 @@ public abstract class LLVMArithmeticFactory {
         }
 
         LLVMArithmeticOpNode createNode(Object x, Object y) {
-            if (x instanceof LLVMArithmetic && x.getClass().equals(y.getClass())) {
+            if (x instanceof LLVMArithmetic && x.getClass() == y.getClass()) {
                 return ((LLVMArithmetic) x).createRemNode();
             } else {
                 throw new AssertionError("unsupported operand types: " + x.getClass() + ", " + y.getClass());

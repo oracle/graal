@@ -77,8 +77,6 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
-
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
  * this is a Truffle AST that can be optimized via partial evaluation and compiled to machine code.
@@ -111,7 +109,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
      * being compiled}.<br/>
      *
-     * It is only set to non-null in {@link #compile()} in a synchronized block. It is only
+     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block. It is only
      * {@linkplain #resetCompilationTask() set to null} by the compilation thread once the
      * compilation is over.<br/>
      *
@@ -371,8 +369,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    private boolean isCurrentCompilationOverriding(boolean lastTierCompilation) {
-        return lastTierCompilation && !isValidLastTier();
+    private boolean isCurrentCompilationOverriding(boolean isLastTierCompilation) {
+        return isLastTierCompilation && !isValidLastTier();
     }
 
     public final boolean isCompiling() {
@@ -689,7 +687,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * This marks the end of the compilation.
      *
-     * It should only ever be called by the thread that performed the compilation.
+     * It may only ever be called by the thread that performed the compilation, and after the compilation is completely done (either successfully or not successfully).
      */
     public void resetCompilationTask() {
         /*

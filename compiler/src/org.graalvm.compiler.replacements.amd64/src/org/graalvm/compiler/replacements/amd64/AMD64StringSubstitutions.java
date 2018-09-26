@@ -29,7 +29,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
@@ -37,6 +36,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 // JaCoCo Exclude
 
@@ -47,17 +47,17 @@ import jdk.vm.ci.meta.JavaKind;
 public class AMD64StringSubstitutions {
 
     @Fold
-    static int charArrayBaseOffset(@InjectedParameter ArrayOffsetProvider arrayOffsetProvider) {
-        return arrayOffsetProvider.arrayBaseOffset(JavaKind.Char);
+    static int charArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccess) {
+        return metaAccess.getArrayBaseOffset(JavaKind.Char);
     }
 
     @Fold
-    static int charArrayIndexScale(@InjectedParameter ArrayOffsetProvider arrayOffsetProvider) {
-        return arrayOffsetProvider.arrayScalingFactor(JavaKind.Char);
+    static int charArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
+        return metaAccess.getArrayIndexScale(JavaKind.Char);
     }
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
-    static final ArrayOffsetProvider INJECTED = null;
+    static final MetaAccessProvider INJECTED = null;
 
     // Only exists in JDK <= 8
     @MethodSubstitution(isStatic = true, optional = true)

@@ -34,4 +34,11 @@ public interface TruffleCompilationTask extends Cancellable {
      * Returns {@code true} if this is a last tier compilation.
      */
     boolean isLastTier();
+
+    /**
+     * Returns {@code true} if this is a first tier compilation.
+     */
+    default boolean isFirstTier() {
+        return !isLastTier();
+    }
 }

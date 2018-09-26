@@ -38,6 +38,4 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
     abstract class Factory {
         public abstract HotSpotTruffleCompiler create(TruffleCompilerRuntime runtime);
     }
-
-    HotSpotTruffleInstalledCode INVALID_CODE = new HotSpotTruffleInstalledCode(null, false);
 }

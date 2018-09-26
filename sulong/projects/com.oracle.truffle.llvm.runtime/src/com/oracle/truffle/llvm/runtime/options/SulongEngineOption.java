@@ -130,14 +130,14 @@ public final class SulongEngineOption {
 
     public static List<String> getPolyglotOptionSearchPaths(TruffleLanguage.Env env) {
         String libraryPathOption = env.getOptions().get(LIBRARY_PATH);
-        String[] libraryPath = libraryPathOption.equals("") ? new String[0] : libraryPathOption.split(OPTION_ARRAY_SEPARATOR);
+        String[] libraryPath = "".equals(libraryPathOption) ? new String[0] : libraryPathOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(libraryPath);
     }
 
     public static List<String> getPolyglotOptionExternalLibraries(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         String librariesOption = env.getOptions().get(LIBRARIES);
-        String[] userLibraries = librariesOption.equals("") ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
+        String[] userLibraries = "".equals(librariesOption) ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(userLibraries);
     }
 }

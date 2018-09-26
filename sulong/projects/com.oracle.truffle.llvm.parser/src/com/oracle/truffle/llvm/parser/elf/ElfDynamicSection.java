@@ -124,7 +124,7 @@ public final class ElfDynamicSection {
 
     private static ElfSectionHeaderTable.Entry getDynamiSHEntry(ElfSectionHeaderTable sht) {
         for (ElfSectionHeaderTable.Entry e : sht.getEntries()) {
-            if (e.getName(sht).equals(".dynamic")) {
+            if (".dynamic".equals(e.getName(sht))) {
                 return e;
             }
         }

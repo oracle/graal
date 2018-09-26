@@ -79,9 +79,9 @@ public final class NativeConfiguration implements Configuration {
     @Override
     @SuppressWarnings("deprecation")
     public <E> E getCapability(Class<E> type) {
-        if (type.equals(LLVMMemory.class)) {
+        if (type == LLVMMemory.class) {
             return type.cast(LLVMNativeMemory.getInstance());
-        } else if (type.equals(UnsafeArrayAccess.class)) {
+        } else if (type == UnsafeArrayAccess.class) {
             return type.cast(UnsafeArrayAccess.getInstance());
         }
         return null;

@@ -477,4 +477,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public void emitPause() {
         append(new SPARCPauseOp());
     }
+
+    @Override
+    public void emitSpeculationFence() {
+        throw GraalError.unimplemented();
+    }
 }

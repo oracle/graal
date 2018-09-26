@@ -80,7 +80,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier) {
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
         return new SubstrateCompilationResult(compilationIdentifier, name);
     }
 
@@ -105,7 +105,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    protected InstalledCode createInstalledCode(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+    protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
         return new SubstrateTruffleInstalledCodeBridge((SubstrateOptimizedCallTarget) compilable);
     }
 }
