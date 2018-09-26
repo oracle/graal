@@ -28,11 +28,12 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(TOP)/../Makefile.common
 
 CXXFLAGS+=
 
 .PHONY: default
+default:
 
+include $(TOP)/../Makefile.common
 include ${TESTFILE}
 

@@ -28,14 +28,15 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
-include $(TOP)/../Makefile.common
 
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
 CXXFLAGS+=-std=c++11 -stdlib=libc++ -xc++ -include numeric
 CFLAGS+= -xc
 
 .PHONY: default
+default:
 
+include $(TOP)/../Makefile.common
 include ${TESTFILE}
 
 ifeq ($(OS), darwin)
