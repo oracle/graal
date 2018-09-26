@@ -44,6 +44,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
@@ -58,6 +60,7 @@ import java.lang.annotation.Target;
  *
  * @since 0.33
  */
+@Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 @Inherited
 public @interface ReportPolymorphism {
@@ -69,6 +72,7 @@ public @interface ReportPolymorphism {
      *
      * @since 0.33
      */
+    @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD, ElementType.TYPE})
     @Inherited
     @interface Exclude {

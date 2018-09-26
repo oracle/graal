@@ -60,7 +60,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     /**
      * Factory for creating moves.
      */
-    public interface MoveFactory {
+    interface MoveFactory {
 
         /**
          * Checks whether the supplied constant can be used without loading it into a register for
@@ -312,4 +312,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     default void emitConvertZeroToNull(AllocatableValue result, Value input) {
         emitMove(result, input);
     }
+
+    /**
+     * Emits an instruction that prevents speculative execution from proceeding: no instruction
+     * after this fence will execute until all previous instructions have retired.
+     */
+    void emitSpeculationFence();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+package org.graalvm.compiler.lir.aarch64;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.runtime.JVMCI;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-public class HotSpotTruffleInstalledCode extends InstalledCode implements OptimizedAssumptionDependency {
-    private final CompilableTruffleAST compilable;
+public class AArch64SpeculativeBarrier extends AArch64LIRInstruction {
+    private static final LIRInstructionClass<AArch64SpeculativeBarrier> TYPE = LIRInstructionClass.create(AArch64SpeculativeBarrier.class);
 
-    public HotSpotTruffleInstalledCode(CompilableTruffleAST compilable) {
-        super(compilable == null ? null : compilable.getName());
-        this.compilable = compilable;
+    public AArch64SpeculativeBarrier() {
+        super(TYPE);
     }
 
     @Override
-    public CompilableTruffleAST getCompilable() {
-        return compilable;
-    }
-
-    @Override
-    public void invalidate() {
-        if (isValid()) {
-            JVMCI.getRuntime().getHostJVMCIBackend().getCodeCache().invalidateInstalledCode(this);
-        }
-    }
-
-    @Override
-    public String toString() {
-        return compilable == null ? super.toString() : compilable.toString();
+    protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        masm.csdb();
     }
 }

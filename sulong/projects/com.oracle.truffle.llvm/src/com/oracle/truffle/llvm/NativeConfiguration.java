@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,8 +51,8 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 public final class NativeConfiguration implements Configuration {
 
     @Override
-    public String getConfigurationName() {
-        return "native";
+    public boolean isActive(TruffleLanguage.Env env) {
+        return true;
     }
 
     @Override
@@ -78,9 +79,9 @@ public final class NativeConfiguration implements Configuration {
     @Override
     @SuppressWarnings("deprecation")
     public <E> E getCapability(Class<E> type) {
-        if (type.equals(LLVMMemory.class)) {
+        if (type == LLVMMemory.class) {
             return type.cast(LLVMNativeMemory.getInstance());
-        } else if (type.equals(UnsafeArrayAccess.class)) {
+        } else if (type == UnsafeArrayAccess.class) {
             return type.cast(UnsafeArrayAccess.getInstance());
         }
         return null;

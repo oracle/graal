@@ -47,7 +47,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a type as being generated based on another class or method of a class.
- * 
+ *
  * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.RUNTIME)

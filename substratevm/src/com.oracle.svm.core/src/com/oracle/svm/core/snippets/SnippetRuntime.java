@@ -46,6 +46,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
@@ -265,6 +266,7 @@ public class SnippetRuntime {
     }
 
     static class ExceptionStackFrameVisitor implements StackFrameVisitor {
+        @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
@@ -303,8 +305,14 @@ public class SnippetRuntime {
 
     protected static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
+    @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
+    public static boolean isUnwindingForException() {
+        return currentException.get() != null;
+    }
+
     /** Foreign call: {@link #UNWIND_EXCEPTION}. */
     @SubstrateForeignCallTarget
+    @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindException(Throwable exception, Pointer callerSP, CodePointer callerIP) {
         if (currentException.get() != null) {

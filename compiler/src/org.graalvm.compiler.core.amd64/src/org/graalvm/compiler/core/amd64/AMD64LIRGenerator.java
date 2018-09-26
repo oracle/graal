@@ -649,7 +649,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return new AMD64ZapStackOp(zappedStack, zapValues);
     }
 
-    public void emitLFence() {
+    @Override
+    public void emitSpeculationFence() {
         append(new AMD64LFenceOp());
     }
 }

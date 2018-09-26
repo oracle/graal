@@ -335,7 +335,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_context_builder_allow_create_thread(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_create_thread) {
         return withHandledErrors(() -> {
             Context.Builder contextBuilder = fetchHandle(context_builder);
-            contextBuilder.allowNativeAccess(allow_create_thread);
+            contextBuilder.allowCreateThread(allow_create_thread);
         });
     }
 

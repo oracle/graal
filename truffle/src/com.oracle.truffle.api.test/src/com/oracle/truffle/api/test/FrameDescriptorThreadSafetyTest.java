@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -206,19 +205,6 @@ public class FrameDescriptorThreadSafetyTest {
     }
 
     @Test
-    public void shallowCopySharesLock() throws NoSuchFieldException, IllegalAccessException {
-        final FrameDescriptor frameDescriptor = new FrameDescriptor();
-        frameDescriptor.addFrameSlot("v");
-        final FrameDescriptor copyBeforeSafe = getShallowCopy(frameDescriptor);
-        makeThreadSafe(frameDescriptor);
-        final FrameDescriptor copyAfterSafe = getShallowCopy(frameDescriptor);
-
-        Object lock = getLock(frameDescriptor);
-        assertEquals(lock, getLock(copyBeforeSafe));
-        assertEquals(lock, getLock(copyAfterSafe));
-    }
-
-    @Test
     public void getNotInFrameAssumption() throws InterruptedException {
         final FrameDescriptor frameDescriptor = makeThreadSafe(new FrameDescriptor());
 
@@ -229,17 +215,6 @@ public class FrameDescriptorThreadSafetyTest {
             Object assumption = results.get(i).get(0);
             assertTrue(results.get(i).stream().allMatch(v -> v == assumption));
         }
-    }
-
-    private static Object getLock(FrameDescriptor copyBeforeSafe) throws IllegalAccessException, NoSuchFieldException {
-        Field lockField = FrameDescriptor.class.getDeclaredField("lock");
-        lockField.setAccessible(true);
-        return lockField.get(copyBeforeSafe);
-    }
-
-    @SuppressWarnings("deprecation")
-    private static FrameDescriptor getShallowCopy(FrameDescriptor d) {
-        return d.shallowCopy();
     }
 
     @SuppressWarnings("unused")

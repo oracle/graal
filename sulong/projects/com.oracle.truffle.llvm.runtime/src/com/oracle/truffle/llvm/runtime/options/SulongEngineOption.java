@@ -45,10 +45,6 @@ public final class SulongEngineOption {
 
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
-    public static final OptionKey<String> CONFIGURATION = new OptionKey<>("native");
-    public static final String CONFIGURATION_NAME = "llvm.configuration";
-    public static final String CONFIGURATION_INFO = "Sulongs configuration (default=basic).";
-
     public static final OptionKey<Integer> STACK_SIZE_KB = new OptionKey<>(81920);
     public static final String STACK_SIZE_KB_NAME = "llvm.stackSizeKB";
     public static final String STACK_SIZE_KB_INFO = "The stack size in KB.";
@@ -104,7 +100,6 @@ public final class SulongEngineOption {
 
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
-        options.add(OptionDescriptor.newBuilder(CONFIGURATION, CONFIGURATION_NAME).help(CONFIGURATION_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(STACK_SIZE_KB, STACK_SIZE_KB_NAME).help(STACK_SIZE_KB_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(LIBRARIES, LIBRARIES_NAME).help(LIBRARIES_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(LIBRARY_PATH, LIBRARY_PATH_NAME).help(LIBRARY_PATH_INFO).category(OptionCategory.USER).build());
@@ -135,14 +130,14 @@ public final class SulongEngineOption {
 
     public static List<String> getPolyglotOptionSearchPaths(TruffleLanguage.Env env) {
         String libraryPathOption = env.getOptions().get(LIBRARY_PATH);
-        String[] libraryPath = libraryPathOption.equals("") ? new String[0] : libraryPathOption.split(OPTION_ARRAY_SEPARATOR);
+        String[] libraryPath = "".equals(libraryPathOption) ? new String[0] : libraryPathOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(libraryPath);
     }
 
     public static List<String> getPolyglotOptionExternalLibraries(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         String librariesOption = env.getOptions().get(LIBRARIES);
-        String[] userLibraries = librariesOption.equals("") ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
+        String[] userLibraries = "".equals(librariesOption) ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(userLibraries);
     }
 }

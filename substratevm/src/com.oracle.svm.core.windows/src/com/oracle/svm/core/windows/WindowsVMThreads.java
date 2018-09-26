@@ -46,9 +46,13 @@ public final class WindowsVMThreads extends VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     @Override
-    protected void initializeOnce() {
+    protected boolean initializeOnce() {
+        /*
+         * TODO: Check for failures here.
+         */
         VMThreadTL.initialize();
         WindowsVMLockSupport.initialize();
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code. Too late for safepoints.")

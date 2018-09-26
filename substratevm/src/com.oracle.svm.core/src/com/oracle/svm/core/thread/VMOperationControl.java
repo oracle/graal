@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
@@ -135,6 +136,11 @@ public final class VMOperationControl {
                  */
                 callbackTime = System.nanoTime();
                 callbackValue = Safepoint.getSafepointRequested(CEntryPointContext.getCurrentIsolateThread());
+                /*
+                 * Reset the counter so that we do not run into a callback immediately while
+                 * acquiring the lock.
+                 */
+                Safepoint.setSafepointRequested(CEntryPointContext.getCurrentIsolateThread(), SafepointRequestValues.RESET);
             }
 
             getVMOperationControl().acquireLock();

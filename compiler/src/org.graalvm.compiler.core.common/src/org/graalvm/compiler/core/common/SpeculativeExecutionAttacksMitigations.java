@@ -22,23 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.function;
+package org.graalvm.compiler.core.common;
 
-/**
- * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
- * implementation, including snippets and foreign function calls. These are non-API, with the
- * exception of 0 = success.
- */
-public interface CEntryPointErrors {
-    int NO_ERROR = 0;
-    int UNSPECIFIED = 1;
-    int NULL_ARGUMENT = 2;
-    int UNATTACHED_THREAD = 4;
-    int UNINITIALIZED_ISOLATE = 5;
-    int LOCATE_IMAGE_FAILED = 6;
-    int OPEN_IMAGE_FAILED = 7;
-    int MAP_HEAP_FAILED = 8;
-    int PROTECT_HEAP_FAILED = 9;
-    int UNSUPPORTED_ISOLATE_PARAMETERS_VERSION = 10;
-    int THREAD_INITIALIZATION_FAILED = 11;
+import org.graalvm.compiler.options.EnumOptionKey;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+
+public enum SpeculativeExecutionAttacksMitigations {
+    None,
+    AllTargets,
+    GuardTargets,
+    NonDeoptGuardTargets;
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Select a strategy to mitigate speculative execution attacks (e.g., SPECTRE)", type = OptionType.User)
+        public static final EnumOptionKey<SpeculativeExecutionAttacksMitigations> MitigateSpeculativeExecutionAttacks = new EnumOptionKey<>(None);
+        @Option(help = "Use index masking after bounds check to mitigate speculative execution attacks", type = OptionType.User)
+        public static final OptionKey<Boolean> UseIndexMasking = new OptionKey<>(false);
+        // @formatter:on
+    }
 }

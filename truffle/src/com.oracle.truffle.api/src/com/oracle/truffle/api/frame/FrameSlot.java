@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.api.frame;
 
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
@@ -58,13 +55,6 @@ public final class FrameSlot implements Cloneable {
     private final Object info;
     private final int index;
     /*
-     * The sharedWith has to be precisely tracked per FrameSlot. If it was tracked in
-     * FrameDescriptor then it could cause large number of invalidations. When a single
-     * FrameDescriptor is used as a template and large number of FrameDescriptors is created based
-     * of it with shallowCopy, then any kind change in one of them would invalidate all of them.
-     */
-    Map<FrameDescriptor, Object> sharedWith;
-    /*
      * The FrameSlot cannot be made immutable by moving the kind field to FrameDescriptor, because
      * it would force getFrameSlotKind and setFrameSlotKind to check frameSlot removal which would
      * require locking the FrameDescriptor, instead of current simple read from the volatile kind
@@ -78,7 +68,6 @@ public final class FrameSlot implements Cloneable {
         this.info = info;
         this.index = index;
         this.kind = kind;
-        this.sharedWith = null;
     }
 
     /**
@@ -150,28 +139,5 @@ public final class FrameSlot implements Cloneable {
     public String toString() {
         CompilerAsserts.neverPartOfCompilation("do not call FrameSlot.toString from compiled code");
         return "[" + index + "," + identifier + "," + kind + "]";
-    }
-
-    /**
-     * Frame descriptor this slot is associated with. When the slot was shared using
-     * {@link FrameDescriptor#shallowCopy()} it returns the original {@link FrameDescriptor}.
-     *
-     * @return instance of descriptor that {@link FrameDescriptor#addFrameSlot(java.lang.Object)
-     *         created} the slot
-     * @since 0.8 or earlier
-     * @deprecated in 1.0 without direct replacement. When {@link FrameDescriptor#shallowCopy()} is
-     *             removed the frame slot will always belong only to the descriptor which created
-     *             it.
-     */
-    @Deprecated
-    public FrameDescriptor getFrameDescriptor() {
-        return this.descriptor;
-    }
-
-    void shareWith(FrameDescriptor frameDescriptor) {
-        if (sharedWith == null) {
-            sharedWith = new WeakHashMap<>();
-        }
-        sharedWith.put(frameDescriptor, null);
     }
 }

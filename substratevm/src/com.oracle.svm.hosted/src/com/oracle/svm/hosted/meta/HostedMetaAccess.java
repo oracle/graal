@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.List;
@@ -39,6 +41,7 @@ import com.oracle.svm.hosted.ameta.HostedDynamicHubFeature;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HostedMetaAccess extends UniverseMetaAccess {
@@ -110,5 +113,15 @@ public class HostedMetaAccess extends UniverseMetaAccess {
     @Override
     public int decodeDebugId(JavaConstant constant) {
         return Deoptimizer.decodeDebugId(constant);
+    }
+
+    @Override
+    public int getArrayBaseOffset(JavaKind elementKind) {
+        return getObjectLayout().getArrayBaseOffset(elementKind);
+    }
+
+    @Override
+    public int getArrayIndexScale(JavaKind elementKind) {
+        return getObjectLayout().getArrayIndexScale(elementKind);
     }
 }
