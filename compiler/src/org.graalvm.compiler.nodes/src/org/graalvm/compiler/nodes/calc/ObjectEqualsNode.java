@@ -129,7 +129,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
         if (virtual instanceof VirtualBoxingNode && other.isConstant()) {
             VirtualBoxingNode virtualBoxingNode = (VirtualBoxingNode) virtual;
             if (virtualBoxingNode.getBoxingKind() == JavaKind.Boolean) {
-                JavaConstant otherUnboxed = tool.getConstantReflectionProvider().unboxPrimitive(other.asJavaConstant());
+                JavaConstant otherUnboxed = tool.getConstantReflection().unboxPrimitive(other.asJavaConstant());
                 if (otherUnboxed != null && otherUnboxed.getJavaKind() == JavaKind.Boolean) {
                     int expectedValue = otherUnboxed.asBoolean() ? 1 : 0;
                     IntegerEqualsNode equals = new IntegerEqualsNode(virtualBoxingNode.getBoxedValue(tool), ConstantNode.forInt(expectedValue, graph()));
@@ -171,7 +171,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             } else if (!xVirtual.hasIdentity() && !yVirtual.hasIdentity()) {
                 ResolvedJavaType type = xVirtual.type();
                 if (type.equals(yVirtual.type())) {
-                    MetaAccessProvider metaAccess = tool.getMetaAccessProvider();
+                    MetaAccessProvider metaAccess = tool.getMetaAccess();
                     if (type.equals(metaAccess.lookupJavaType(Integer.class)) || type.equals(metaAccess.lookupJavaType(Long.class))) {
                         // both are virtual without identity: check contents
                         assert xVirtual.entryCount() == 1 && yVirtual.entryCount() == 1;

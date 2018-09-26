@@ -22,13 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common.spi;
+package com.oracle.svm.hosted.analysis;
+
+import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
+
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
-public interface ArrayOffsetProvider {
+public class SVMAnalysisMetaAccess extends AnalysisMetaAccess {
+    public SVMAnalysisMetaAccess(AnalysisUniverse analysisUniverse, MetaAccessProvider originalMetaAccess) {
+        super(analysisUniverse, originalMetaAccess);
+    }
 
-    int arrayBaseOffset(JavaKind elementKind);
+    @Override
+    public int getArrayBaseOffset(JavaKind elementKind) {
+        return getObjectLayout().getArrayBaseOffset(elementKind);
+    }
 
-    int arrayScalingFactor(JavaKind elementKind);
+    @Override
+    public int getArrayIndexScale(JavaKind elementKind) {
+        return getObjectLayout().getArrayBaseOffset(elementKind);
+    }
 }

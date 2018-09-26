@@ -209,16 +209,6 @@ public class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    public int arrayBaseOffset(JavaKind kind) {
-        return getObjectLayout().getArrayBaseOffset(kind);
-    }
-
-    @Override
-    public int arrayScalingFactor(JavaKind elementKind) {
-        return getObjectLayout().getArrayIndexScale(elementKind);
-    }
-
-    @Override
     public NewInstanceNode createNewInstanceFromVirtual(VirtualObjectNode virtual) {
         if (virtual instanceof SubstrateVirtualInstanceNode) {
             return new SubstrateNewInstanceNode(virtual.type(), true, null);
