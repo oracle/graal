@@ -428,6 +428,8 @@ public class OptionProcessor extends AbstractProcessor {
         builder.startCall("", "help").doubleQuote(info.help).end();
         builder.startCall("", "category").staticReference(context.getType(OptionCategory.class), info.category.name()).end();
         builder.startCall("", "stability").staticReference(context.getType(OptionStability.class), info.stability.name()).end();
+        builder.startCall("", "namePredicate").staticReference(context.getType(NamePredicate.class), info.predicate.name()).end();
+
         builder.startCall("", "build").end();
         return builder.build();
     }

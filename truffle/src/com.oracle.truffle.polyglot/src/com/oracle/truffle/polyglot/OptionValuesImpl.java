@@ -147,7 +147,10 @@ final class OptionValuesImpl implements OptionValues {
         String suffix = null;
         switch (descriptor.getNamePredicate()) {
             case PREFIX:
-                suffix = name.substring(name.length(), key.length());
+                suffix = key.substring(name.length());
+                if (suffix.startsWith(".")) {
+                    suffix = suffix.substring(1);
+                }
                 break;
             case EXACT:
                 break;
