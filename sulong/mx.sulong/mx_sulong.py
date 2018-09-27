@@ -172,9 +172,8 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
 
 def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses=None):
     test_suite = 'SULONG_TEST_SUITES'
-    dist = mx.distribution(test_suite)
     unittestArgs = [
-        "-Dsulongtest.testSuitePath=" + dist.get_output(),
+        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
         ]
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
 
@@ -225,9 +224,8 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     if unittestArgs is None:
         unittestArgs = []
     test_suite = 'SULONG_TEST_SUITES'
-    dist = mx.distribution(test_suite)
     unittestArgs += [
-        "-Dsulongtest.testSuitePath=" + dist.get_output(),
+        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
         ]
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
     mx_testsuites.run(args + unittestArgs, testName)
@@ -252,12 +250,12 @@ def runLLVMUnittests(unittest_runner):
     libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_TEST_NATIVE>')
     libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
     test_suite = 'SULONG_TEST_SUITES'
-    dist = mx.distribution(test_suite)
     unittestArgs = [
-        "-Dsulongtest.testSuitePath=" + dist.get_output(),
+        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
         ]
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs] + unittestArgs)
+    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs] + unittestArgs,
+                    build_args=unittestArgs + (unittest_runner.keywords['build_args'] if 'build_args' in unittest_runner.keywords else []))
 
 
 def clangformatcheck(args=None):
