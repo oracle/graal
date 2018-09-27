@@ -59,7 +59,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.HostedIdentityHashCodeProvider;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -260,7 +259,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    @Alias private static java.security.ProtectionDomain allPermDomain;
+    private static java.security.ProtectionDomain allPermDomain;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic,
