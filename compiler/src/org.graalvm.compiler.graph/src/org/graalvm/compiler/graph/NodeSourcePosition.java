@@ -28,6 +28,7 @@ import static org.graalvm.compiler.graph.NodeSourcePosition.Marker.None;
 import static org.graalvm.compiler.graph.NodeSourcePosition.Marker.Placeholder;
 import static org.graalvm.compiler.graph.NodeSourcePosition.Marker.Substitution;
 
+import java.util.Iterator;
 import java.util.Objects;
 
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
@@ -40,7 +41,7 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class NodeSourcePosition extends BytecodePosition {
+public class NodeSourcePosition extends BytecodePosition implements Iterable<NodeSourcePosition> {
 
     private static final boolean STRICT_SOURCE_POSITION = Boolean.getBoolean("debug.graal.SourcePositionStrictChecks");
     private static final boolean SOURCE_POSITION_BYTECODES = Boolean.getBoolean("debug.graal.SourcePositionDisassemble");
@@ -78,6 +79,25 @@ public class NodeSourcePosition extends BytecodePosition {
         assert root.equals(currentRoot) || root.getName().equals(currentRoot.getName()) && root.getSignature().toMethodDescriptor().equals(currentRoot.getSignature().toMethodDescriptor()) &&
                         root.getDeclaringClass().getName().equals(currentRoot.getDeclaringClass().getName()) : root + " " + currentRoot;
         return true;
+    }
+
+    @Override
+    public Iterator<NodeSourcePosition> iterator() {
+        return new Iterator<NodeSourcePosition>() {
+            private NodeSourcePosition currentPosition = NodeSourcePosition.this;
+
+            @Override
+            public boolean hasNext() {
+                return currentPosition != null;
+            }
+
+            @Override
+            public NodeSourcePosition next() {
+                NodeSourcePosition current = currentPosition;
+                currentPosition = currentPosition.getCaller();
+                return current;
+            }
+        };
     }
 
     enum Marker {
