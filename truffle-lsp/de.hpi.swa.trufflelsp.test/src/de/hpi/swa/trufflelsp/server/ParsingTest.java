@@ -20,7 +20,7 @@ public class ParsingTest extends TruffleLSPTest {
 
     @Test
     public void didOpenClose() {
-        URI uri = createDummyFileUri();
+        URI uri = createDummyFileUriForSL();
         String text = "function main() {return 3+3;}";
         truffleAdapter.didOpen(uri, text, "sl");
         truffleAdapter.didClose(uri);
@@ -28,16 +28,24 @@ public class ParsingTest extends TruffleLSPTest {
 
     @Test(expected = UnknownLanguageException.class)
     public void unknownlanguage() throws InterruptedException, ExecutionException {
-        URI uri = createDummyFileUri();
+        URI uri = URI.create("file:///tmp/truffle-lsp-test-file-unknown-lang-id");
 
         Future<?> future = truffleAdapter.parse("", "unknown-lang-id", uri);
+        future.get();
+    }
+
+    @Test()
+    public void unknownlanguageIdButMIMETypeFound() throws InterruptedException, ExecutionException {
+        URI uri = createDummyFileUriForSL();
+
+        Future<?> future = truffleAdapter.parse("function main() {return 42;}", "unknown-lang-id", uri);
         future.get();
     }
 
     @Test
     public void parse() throws InterruptedException, ExecutionException {
         {
-            URI uri = createDummyFileUri();
+            URI uri = createDummyFileUriForSL();
             String text = "function main() {return 3+3;}";
             truffleAdapter.didOpen(uri, text, "sl");
             Future<?> future = truffleAdapter.parse(text, "sl", uri);
@@ -63,7 +71,7 @@ public class ParsingTest extends TruffleLSPTest {
             diagnostics.clear();
 
             TextDocumentSurrogate surrogate;
-            URI uri = createDummyFileUri();
+            URI uri = createDummyFileUriForSL();
 
             {
                 String text = "function main() {return 3+3;}";

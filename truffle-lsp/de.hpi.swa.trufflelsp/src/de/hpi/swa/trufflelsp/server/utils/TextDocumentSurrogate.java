@@ -1,7 +1,6 @@
 package de.hpi.swa.trufflelsp.server.utils;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,53 +12,43 @@ import java.util.stream.Collectors;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class TextDocumentSurrogate {
 
     private final URI uri;
-    private final String langId;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing;
     private final Map<SourceLocation, List<CoverageData>> location2coverageData;
     private String editorText;
     private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper sourceWrapper;
     private TextDocumentContentChangeEvent lastChange = null;
-    private List<String> completionTriggerCharacters;
+    private final List<String> completionTriggerCharacters;
+    private final LanguageInfo languageInfo;
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
         this.uri = blueprint.uri;
-        this.langId = blueprint.langId;
         this.location2coverageData = blueprint.location2coverageData;
         this.changeEventsSinceLastSuccessfulParsing = blueprint.changeEventsSinceLastSuccessfulParsing;
         this.editorText = blueprint.editorText;
         this.sourceWrapper = blueprint.sourceWrapper;
         this.lastChange = blueprint.lastChange;
         this.completionTriggerCharacters = blueprint.completionTriggerCharacters;
+        this.languageInfo = blueprint.languageInfo;
     }
 
-    public TextDocumentSurrogate(final URI uri, final String langId, final List<String> completionTriggerCharacters) {
+    public TextDocumentSurrogate(final URI uri, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters) {
         this.uri = uri;
-        String actualLangId = org.graalvm.polyglot.Source.findLanguage(langId);
-        if (actualLangId == null) {
-            try {
-                actualLangId = org.graalvm.polyglot.Source.findLanguage(new File(uri));
-            } catch (IOException e) {
-            }
-
-            if (actualLangId == null) {
-                actualLangId = langId;
-            }
-        }
-        this.langId = actualLangId;
         this.completionTriggerCharacters = completionTriggerCharacters;
         this.location2coverageData = new HashMap<>();
         this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
+        this.languageInfo = languageInfo;
     }
 
-    public TextDocumentSurrogate(final URI uri, final String langId, final List<String> completionTriggerCharacters, final String editorText) {
-        this(uri, langId, completionTriggerCharacters);
+    public TextDocumentSurrogate(final URI uri, LanguageInfo languageInfo, List<String> completionTriggerCharacters, final String editorText) {
+        this(uri, languageInfo, completionTriggerCharacters);
         this.editorText = editorText;
     }
 
@@ -68,7 +57,7 @@ public final class TextDocumentSurrogate {
     }
 
     public String getLangId() {
-        return langId;
+        return languageInfo.getId();
     }
 
     public String getEditorText() {
@@ -97,6 +86,10 @@ public final class TextDocumentSurrogate {
 
     public List<String> getCompletionTriggerCharacters() {
         return completionTriggerCharacters;
+    }
+
+    public LanguageInfo getLanguageInfo() {
+        return languageInfo;
     }
 
     @Override
@@ -167,7 +160,7 @@ public final class TextDocumentSurrogate {
     }
 
     public Source buildSource() {
-        return Source.newBuilder(new File(uri)).name(uri.toString()).language(langId).cached(false).content(getEditorText()).build();
+        return Source.newBuilder(new File(uri)).name(uri.toString()).language(languageInfo.getId()).cached(false).content(getEditorText()).build();
     }
 
     public SourceWrapper prepareParsing() {

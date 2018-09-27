@@ -20,7 +20,7 @@ public class DocumentSmybolTest extends TruffleLSPTest {
 
     @Test
     public void documentSymbol() throws InterruptedException, ExecutionException {
-        URI uri = createDummyFileUri();
+        URI uri = createDummyFileUriForSL();
         //@formatter:off
         /**
          *  0 function main() {

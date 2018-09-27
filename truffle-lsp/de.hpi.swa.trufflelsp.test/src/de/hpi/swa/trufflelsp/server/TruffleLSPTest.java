@@ -96,7 +96,7 @@ public abstract class TruffleLSPTest {
         context.close();
     }
 
-    public URI createDummyFileUri() {
-        return URI.create("file:///tmp/truffle-lsp-test-file-" + globalCounter.incrementAndGet());
+    public URI createDummyFileUriForSL() {
+        return URI.create("file:///tmp/truffle-lsp-test-file-" + globalCounter.incrementAndGet() + ".sl");
     }
 }

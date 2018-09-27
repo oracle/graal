@@ -1,5 +1,7 @@
 package de.hpi.swa.trufflelsp.server.request;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -185,29 +187,9 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
 
     public EvaluationResult runToSectionAndEval(final TextDocumentSurrogate surrogate, final SourceSection sourceSection, SourceSectionFilter eventFilter, SourceSectionFilter inputFilter)
                     throws DiagnosticsNotification {
-        final URI uri = surrogate.getUri();
         Set<URI> coverageUris = surrogate.getCoverageUris(sourceSection);
-        // TODO(ds) run code of all URIs?
-        URI coverageUri = coverageUris == null ? null : coverageUris.stream().findFirst().orElseGet(() -> null);
-
-        if (coverageUri == null) {
-            try {
-                coverageUri = RunScriptUtils.extractScriptPath(surrogate);
-            } catch (InvalidCoverageScriptURI e) {
-                throw DiagnosticsNotification.create(uri, new Diagnostic(new Range(new Position(0, e.getIndex()), new Position(0, e.getLength())), e.getReason(), DiagnosticSeverity.Error,
-                                "Coverage analysis"));
-            }
-
-            if (coverageUri == null) {
-// return EvaluationResult.createUnknownExecutionTarget();
-                coverageUri = uri;
-            }
-        }
-
-        // TODO(ds) can we always assume the same language for the source and its test?
-        TextDocumentSurrogate surrogateOfTestFile = uri2TextDocumentSurrogate.computeIfAbsent(coverageUri,
-                        (_uri) -> new TextDocumentSurrogate(_uri, surrogate.getLangId(), env.getCompletionTriggerCharacters(surrogate.getLangId())));
-
+        URI runScriptUriFallback = coverageUris == null ? null : coverageUris.stream().findFirst().orElseGet(() -> null);
+        TextDocumentSurrogate surrogateOfTestFile = createSurrogateForTestFile(surrogate, runScriptUriFallback);
         final CallTarget callTarget = parse(surrogateOfTestFile);
         final boolean isInputFilterDefined = inputFilter != null;
 
@@ -293,6 +275,37 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             binding.dispose();
         }
         return EvaluationResult.createEvaluationSectionNotReached();
+    }
+
+    public TextDocumentSurrogate createSurrogateForTestFile(TextDocumentSurrogate surrogateOfOpenedFile, URI runScriptUriFallback) throws DiagnosticsNotification {
+        URI runScriptUri;
+        try {
+            runScriptUri = RunScriptUtils.extractScriptPath(surrogateOfOpenedFile);
+        } catch (InvalidCoverageScriptURI e) {
+            throw DiagnosticsNotification.create(surrogateOfOpenedFile.getUri(),
+                            new Diagnostic(new Range(new Position(0, e.getIndex()), new Position(0, e.getLength())), e.getReason(), DiagnosticSeverity.Error,
+                                            "Graal LSP"));
+        }
+
+        if (runScriptUri == null) {
+            runScriptUri = runScriptUriFallback != null ? runScriptUriFallback : surrogateOfOpenedFile.getUri();
+        }
+
+        final String langIdOfTestFile = findLanguageOfTestFile(runScriptUri, surrogateOfOpenedFile.getLangId());
+        LanguageInfo languageInfo = env.getLanguages().get(langIdOfTestFile);
+        assert languageInfo != null;
+        TextDocumentSurrogate surrogateOfTestFile = uri2TextDocumentSurrogate.computeIfAbsent(runScriptUri,
+                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, env.getCompletionTriggerCharacters(langIdOfTestFile)));
+        return surrogateOfTestFile;
+
+    }
+
+    private static String findLanguageOfTestFile(URI runScriptUri, String fallbackLangId) {
+        try {
+            return org.graalvm.polyglot.Source.findLanguage(new File(runScriptUri));
+        } catch (IOException e) {
+            return fallbackLangId;
+        }
     }
 
     private EvaluationResult evalInGlobalScope(String langId, Node nearestNode) {

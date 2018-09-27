@@ -1,5 +1,7 @@
 package de.hpi.swa.trufflelsp.server;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
@@ -58,8 +61,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     private void createLSPRequestHandlers() {
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, uri2TextDocumentSurrogate, contextAwareExecutor);
-        this.completionHandler = new CompletionRequestHandler(env, uri2TextDocumentSurrogate,
-                        contextAwareExecutor, sourceCodeEvaluator);
+        this.completionHandler = new CompletionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
         this.documentSymbolHandler = new DocumentSymbolRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor);
         this.definitionHandler = new DefinitionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
         this.hoverHandler = new HoverRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, completionHandler);
@@ -69,7 +71,9 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     public Future<TextDocumentSurrogate> didOpen(URI uri, String text, String langId) {
         return contextAwareExecutor.executeWithDefaultContext(() -> {
-            TextDocumentSurrogate surrogate = new TextDocumentSurrogate(uri, langId, env.getCompletionTriggerCharacters(langId), text);
+            LanguageInfo languageInfo = findLanguageInfo(langId, uri);
+
+            TextDocumentSurrogate surrogate = new TextDocumentSurrogate(uri, languageInfo, env.getCompletionTriggerCharacters(langId), text);
             uri2TextDocumentSurrogate.put(uri, surrogate);
 
             sourceCodeEvaluator.parse(surrogate);
@@ -86,14 +90,45 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
-        if (!env.getLanguages().containsKey(langId)) {
-            throw new UnknownLanguageException("Unknown language: " + langId + ". Known languages are: " + env.getLanguages().keySet());
-        }
+        LanguageInfo languageInfo = findLanguageInfo(langId, uri);
 
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.computeIfAbsent(uri, (_uri) -> new TextDocumentSurrogate(_uri, langId, env.getCompletionTriggerCharacters(langId)));
+        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.computeIfAbsent(uri,
+                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, env.getCompletionTriggerCharacters(languageInfo.getId())));
         surrogate.setEditorText(text);
 
         return sourceCodeEvaluator.parse(surrogate);
+    }
+
+    /**
+     * Special handling needed, because some LSP clients send a MIME type as langId.
+     *
+     * @param langId an id for a language, e.g. "sl" or "python", or a MIME type
+     * @param uri of the concerning file
+     * @return a language info
+     */
+    private LanguageInfo findLanguageInfo(final String langId, final URI uri) {
+        if (env.getLanguages().containsKey(langId)) {
+            return env.getLanguages().get(langId);
+        }
+
+        String possibleMimeType = langId;
+        String actualLangId = org.graalvm.polyglot.Source.findLanguage(possibleMimeType);
+        if (actualLangId == null) {
+            try {
+                actualLangId = org.graalvm.polyglot.Source.findLanguage(new File(uri));
+            } catch (IOException e) {
+            }
+
+            if (actualLangId == null) {
+                actualLangId = langId;
+            }
+        }
+
+        if (!env.getLanguages().containsKey(actualLangId)) {
+            throw new UnknownLanguageException("Unknown language: " + actualLangId + ". Known languages are: " + env.getLanguages().keySet());
+        }
+
+        return env.getLanguages().get(actualLangId);
     }
 
     public Future<Void> processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {

@@ -25,14 +25,13 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
-import de.hpi.swa.trufflelsp.exceptions.InvalidCoverageScriptURI;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
-import de.hpi.swa.trufflelsp.server.utils.RunScriptUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
@@ -47,52 +46,40 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
     }
 
     public Boolean runCoverageAnalysisWithNestedEnteredContext(final URI uri) throws DiagnosticsNotification {
-        final TextDocumentSurrogate surrogateOfOpendFile = uri2TextDocumentSurrogate.get(uri);
-        URI tempRunScriptUri;
-        try {
-            tempRunScriptUri = RunScriptUtils.extractScriptPath(surrogateOfOpendFile);
-        } catch (InvalidCoverageScriptURI e) {
-            throw DiagnosticsNotification.create(uri,
-                            new Diagnostic(new Range(new Position(0, e.getIndex()), new Position(0, e.getLength())), e.getReason(), DiagnosticSeverity.Error, "Coverage analysis"));
-        }
-
-        if (tempRunScriptUri == null) {
-// throw DiagnosticsNotification.create(uri, new Diagnostic(new Range(new Position(), new
-// Position()), "No RUN_SCRIPT_PATH:<path> found anywhere in first line.", DiagnosticSeverity.Error,
-// "Coverage analysis"));
-// return;
-            tempRunScriptUri = uri;
-        }
-
-        final URI runScriptUri = tempRunScriptUri;
+        final TextDocumentSurrogate surrogateOfOpenedFile = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentSurrogate surrogateOfTestFile = sourceCodeEvaluator.createSurrogateForTestFile(surrogateOfOpenedFile, null);
+        final URI runScriptUri = surrogateOfTestFile.getUri();
 
         // Clean-up TODO(ds) how to do this without dropping everything? If we have different tests,
         // the coverage run of one test will remove any coverage info provided from the other tests.
         uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage());
 
         try {
-            // TODO(ds) can we always assume the same language for the source and its test?
-            TextDocumentSurrogate surrogateOfTestFile = uri2TextDocumentSurrogate.computeIfAbsent(runScriptUri,
-                            (_uri) -> new TextDocumentSurrogate(_uri, surrogateOfOpendFile.getLangId(), env.getCompletionTriggerCharacters(surrogateOfOpendFile.getLangId())));
-
             final CallTarget callTarget = sourceCodeEvaluator.parse(surrogateOfTestFile);
             final String langId = surrogateOfTestFile.getLangId();
+            LanguageInfo languageInfo = surrogateOfTestFile.getLanguageInfo();
+            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(src -> langId.equals(src.getLanguage()) || languageInfo.getMimeTypes().contains(src.getMimeType())).build();
+            eventFilter = SourceSectionFilter.ANY;
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
-// SourceSectionFilter.newBuilder().tagIs(StatementTag.class, ExpressionTag.class).build(),
-// SourceSectionFilter.ANY,
-                            SourceSectionFilter.newBuilder().sourceIs(s -> langId.equals(s.getLanguage())).build(),
+                            eventFilter,
                             new ExecutionEventNodeFactory() {
+                                private final long creatorThreadId = Thread.currentThread().getId();
 
                                 public ExecutionEventNode create(final EventContext eventContext) {
                                     final SourceSection section = eventContext.getInstrumentedSourceSection();
                                     if (section != null && section.isAvailable()) {
                                         final Node instrumentedNode = eventContext.getInstrumentedNode();
-                                        Function<URI, TextDocumentSurrogate> func = (sourceUri) -> uri2TextDocumentSurrogate.computeIfAbsent(
-                                                        sourceUri,
-                                                        (_uri) -> new TextDocumentSurrogate(_uri, instrumentedNode.getRootNode().getLanguageInfo().getId(),
-                                                                        env.getCompletionTriggerCharacters(instrumentedNode.getRootNode().getLanguageInfo().getId())));
+                                        Function<URI, TextDocumentSurrogate> func = (sourceUri) -> {
+                                            return uri2TextDocumentSurrogate.computeIfAbsent(
+                                                            sourceUri,
+                                                            (_uri) -> {
+                                                                LanguageInfo langInfo = instrumentedNode.getRootNode().getLanguageInfo();
+                                                                return new TextDocumentSurrogate(_uri, langInfo,
+                                                                                env.getCompletionTriggerCharacters(langInfo.getId()));
+                                                            });
+                                        };
 
-                                        return new CoverageEventNode(section, instrumentedNode, runScriptUri, func);
+                                        return new CoverageEventNode(section, instrumentedNode, runScriptUri, func, creatorThreadId);
                                     } else {
                                         return new ExecutionEventNode() {
                                         };
@@ -105,7 +92,7 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
                 eventFactoryBinding.dispose();
             }
 
-            surrogateOfOpendFile.setCoverageAnalysisDone(true);
+            surrogateOfOpenedFile.setCoverageAnalysisDone(true);
 
             return Boolean.TRUE;
         } catch (DiagnosticsNotification e) {

@@ -39,14 +39,15 @@ import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
 import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
+import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.NearestNodeHolder;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
+import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SourceUtils.SourceFix;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
-import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NodeLocationType;
-import de.hpi.swa.trufflelsp.server.utils.SourceUtils.SourceFix;
 
 public class CompletionRequestHandler extends AbstractRequestHandler {
 
@@ -154,7 +155,13 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             Node nearestNode = nearestNodeHolder.getNearestNode();
 
             if (isInstrumentable(nearestNode)) {
-                fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
+                VirtualFrame frame = null;
+                List<CoverageData> coverages = surrogate.getCoverageData(nearestNode.getSourceSection());
+                if (coverages != null && !coverages.isEmpty()) {
+                    CoverageData coverageData = coverages.get(0);
+                    frame = coverageData.getFrame();
+                }
+                fillCompletionsWithLocals(surrogate, nearestNode, completions, frame);
             }
         }
     }

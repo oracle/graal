@@ -18,7 +18,7 @@ public class DefinitionTest extends TruffleLSPTest {
 
     @Test
     public void gotoDefinitionForFunctions() throws InterruptedException, ExecutionException {
-        URI uri = createDummyFileUri();
+        URI uri = createDummyFileUriForSL();
         //@formatter:off
         /**
          *  0 function main() {

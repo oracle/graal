@@ -29,7 +29,7 @@ public class CompletionTest extends TruffleLSPTest {
 
     @Test
     public void globalsAndLocals() throws InterruptedException, ExecutionException {
-        URI uri = createDummyFileUri();
+        URI uri = createDummyFileUriForSL();
         //@formatter:off
         /**
          * 0 function main() {
@@ -196,7 +196,7 @@ public class CompletionTest extends TruffleLSPTest {
 
     @Test
     public void objectPropertyCompletionLocalFile() throws InterruptedException, ExecutionException {
-        URI uri = createDummyFileUri();
+        URI uri = createDummyFileUriForSL();
         //@formatter:off
         /**
          *  0 function main() {
