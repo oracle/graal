@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -130,7 +131,7 @@ class ContainerForeignAccess {
 }
 
 @NodeChild(type = LLVMExpressionNode.class)
-public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternalTruffleObject {
+public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternalTruffleObject, LLVMObjectNativeLibrary.Provider {
 
     long address;
     Object contents;
@@ -321,5 +322,48 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
             memory.free(address);
             address = 0;
         }
+    }
+
+    private static final class LLVMGlobalContainerNativeLibrary extends LLVMObjectNativeLibrary {
+
+        @Child private LLVMToNativeNode toNative;
+
+        @Override
+        public boolean guard(Object obj) {
+            return obj instanceof LLVMGlobalContainer;
+        }
+
+        @Override
+        public boolean isPointer(Object obj) {
+            return ((LLVMGlobalContainer) obj).address != 0;
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            return false;
+        }
+
+        @Override
+        public long asPointer(Object obj) {
+            return ((LLVMGlobalContainer) obj).address;
+        }
+
+        @Override
+        public Object toNative(Object obj) {
+            LLVMGlobalContainer receiver = (LLVMGlobalContainer) obj;
+            if (receiver.address == 0) {
+                if (toNative == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
+                }
+                receiver.transformToNative(toNative);
+            }
+            return receiver;
+        }
+    }
+
+    @Override
+    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
+        return new LLVMGlobalContainerNativeLibrary();
     }
 }
