@@ -56,7 +56,7 @@ public class NativeTestObject implements TruffleObject {
     }
 
     public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof ManagedTestObject;
+        return obj instanceof NativeTestObject;
     }
 
     public ManagedTestObject getObject() {
