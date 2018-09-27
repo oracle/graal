@@ -126,10 +126,10 @@ public class ProfileCompiledMethodsPhase extends Phase {
         for (Loop<Block> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
-        double weight = getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency();
-        DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), (long) weight, true, start.next());
+        long increment = DynamicCounterNode.clampIncrement((long) (getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency()));
+        DynamicCounterNode.addCounterBefore(GROUP_NAME, sectionHead(start), increment, true, start.next());
         if (WITH_INVOKE_FREE_SECTIONS && !hasInvoke(blocks)) {
-            DynamicCounterNode.addCounterBefore(GROUP_NAME_WITHOUT, sectionHead(start), (long) weight, true, start.next());
+            DynamicCounterNode.addCounterBefore(GROUP_NAME_WITHOUT, sectionHead(start), increment, true, start.next());
         }
     }
 

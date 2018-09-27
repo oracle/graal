@@ -104,6 +104,10 @@ public class BenchmarkCounterOverflowTest extends LIRTest {
         vmArgs.add("-Dgraal." + BenchmarkCounters.Options.AbortOnBenchmarkCounterOverflow.getName() + "=true");
         vmArgs.add("-D" + SUBPROCESS_PROPERTY + "=true");
 
+        // Disable increment range checks (e.g. HotSpotCounterOp.checkIncrements())
+        vmArgs.add("-dsa");
+        vmArgs.add("-da");
+
         List<String> mainClassAndArgs = new ArrayList<>();
         mainClassAndArgs.add("com.oracle.mxtool.junit.MxJUnitWrapper");
         mainClassAndArgs.add(BenchmarkCounterOverflowTest.class.getName());
@@ -131,6 +135,6 @@ public class BenchmarkCounterOverflowTest extends LIRTest {
                 Assert.fail("Unexpected stack trace: " + line);
             }
         }
-        Assert.fail("Could not find method in error message");
+        Assert.fail(String.format("Could not find method in output:%n%s", proc));
     }
 }
