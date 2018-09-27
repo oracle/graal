@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -98,6 +99,14 @@ abstract class DebuggerNode extends ExecutionEventNode implements InsertableNode
     @Override
     public void setParentOf(Node child) {
         insert(child);
+    }
+
+    @Override
+    protected Object onUnwind(VirtualFrame frame, Object info) {
+        if (info instanceof ChangedReturnInfo) {
+            return ((ChangedReturnInfo) info).returnValue;
+        }
+        return super.onUnwind(frame, info);
     }
 
     void markAsDuplicate(DebuggerSession session) {

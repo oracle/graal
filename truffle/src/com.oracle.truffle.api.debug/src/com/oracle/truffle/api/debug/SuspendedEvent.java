@@ -130,7 +130,7 @@ public final class SuspendedEvent {
     private InsertableNode insertableNode;
     private List<Breakpoint> breakpoints;
     private InputValuesProvider inputValuesProvider;
-    private Object returnValue;
+    private volatile Object returnValue;
     private DebugException exception;
 
     private volatile boolean disposed;
@@ -321,6 +321,26 @@ public final class SuspendedEvent {
             return null;
         }
         return getTopStackFrame().wrapHeapValue(ret);
+    }
+
+    Object getReturnObject() {
+        return returnValue;
+    }
+
+    /**
+     * Change the return value. When there is a {@link #getReturnValue() return value} at the
+     * current location, this method modifies the return value to a new one.
+     *
+     * @param newValue the new return value, can not be <code>null</code>
+     * @throws IllegalStateException when {@link #getReturnValue()} returns <code>null</code>
+     * @since 1.0
+     */
+    public void setReturnValue(DebugValue newValue) {
+        verifyValidState(false);
+        if (returnValue == null) {
+            throw new IllegalStateException("Can not set return value when there is no current return value.");
+        }
+        this.returnValue = newValue.get();
     }
 
     /**

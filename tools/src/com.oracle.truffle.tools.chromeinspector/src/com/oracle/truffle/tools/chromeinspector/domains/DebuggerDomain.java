@@ -82,6 +82,8 @@ public abstract class DebuggerDomain extends Domain {
 
     public abstract void setVariableValue(int scopeNumber, String variableName, CallArgument newValue, String callFrameId) throws CommandProcessException;
 
+    public abstract void setReturnValue(CallArgument newValue) throws CommandProcessException;
+
     protected final void resumed() {
         eventHandler.event(new Event("Debugger.resumer", null));
     }

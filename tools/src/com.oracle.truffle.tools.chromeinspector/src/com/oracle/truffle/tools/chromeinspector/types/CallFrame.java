@@ -36,10 +36,11 @@ public final class CallFrame {
     private final Location location;
     private final Location functionLocation;
     private final RemoteObject thisObject;
+    private final RemoteObject returnObject;
     private final Scope[] scopes;
 
     public CallFrame(DebugStackFrame frame, int depth, Script script, SourceSection sourceSection,
-                    SourceSection functionSourceSection, RemoteObject thisObject, Scope... scopes) {
+                    SourceSection functionSourceSection, RemoteObject thisObject, RemoteObject returnObject, Scope... scopes) {
         this.frame = frame;
         this.depth = depth;
         this.location = new Location(script.getId(), sourceSection.getStartLine(), sourceSection.getStartColumn());
@@ -49,6 +50,7 @@ public final class CallFrame {
             this.functionLocation = null;
         }
         this.thisObject = thisObject;
+        this.returnObject = returnObject;
         this.scopes = scopes;
     }
 
@@ -81,6 +83,9 @@ public final class CallFrame {
         json.put("scopeChain", Scope.createScopesJSON(scopes));
         if (thisObject != null) {
             json.put("this", thisObject.toJSON());
+        }
+        if (returnObject != null) {
+            json.put("returnValue", returnObject.toJSON());
         }
         return json;
     }
