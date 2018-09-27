@@ -469,7 +469,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         //   780      int n;
         int n;
         //   781      SOCKADDR remote_addr;
-        Socket.sockaddr remote_addr = StackValue.get(Socket.sockaddr.class);
+        Socket.sockaddr remote_addr = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
         //   782      int len;
         CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
 
@@ -682,7 +682,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                     //   921              if (packetAddress != NULL) {
                     if (packetAddress != null) {
                         //   922                  if (!NET_SockaddrEqualsInetAddress(env, (struct sockaddr *)&remote_addr, packetAddress)) {
-                        if (JavaNetNetUtil.NET_SockaddrEqualsInetAddress(remote_addr, packetAddress)) {
+                        if (!JavaNetNetUtil.NET_SockaddrEqualsInetAddress(remote_addr, packetAddress)) {
                             //   923                      /* force a new InetAddress to be created */
                             //   924                      packetAddress = NULL;
                             packetAddress = null;
@@ -708,7 +708,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                     //   938              (*env)->SetIntField(env, packet, dp_portID, port);
                     Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).port = port_Pointer.read();
                     //   939              (*env)->SetIntField(env, packet, dp_lengthID, n);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length = len_Pointer.read();
+                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length = n;
                 }
                 //   942      } while (retry);
             } while (retry);
