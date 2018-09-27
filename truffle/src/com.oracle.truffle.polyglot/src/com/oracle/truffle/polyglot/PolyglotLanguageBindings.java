@@ -91,7 +91,7 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     private static final class LanguageBindingsFactory implements StandardFactory {
 
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(PolyglotBindings.class, new LanguageBindingsFactory());
+        private static final ForeignAccess INSTANCE = ForeignAccess.create(PolyglotLanguageBindings.class, new LanguageBindingsFactory());
 
         @Override
         public CallTarget accessWrite() {
