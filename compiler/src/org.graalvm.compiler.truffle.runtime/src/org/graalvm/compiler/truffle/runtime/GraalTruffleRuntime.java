@@ -126,6 +126,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+import java.io.Closeable;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -235,7 +236,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return tvmci;
     }
 
-    protected TVMCI.Test<?> getTestTvmci() {
+    protected TVMCI.Test<?, ?> getTestTvmci() {
         if (testTvmci == null) {
             synchronized (this) {
                 if (testTvmci == null) {
@@ -703,23 +704,81 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    /**
+     * Helper class that adds a "Truffle::method_name" group around all graph dumps of a single
+     * compilation, and makes sure the group is properly closed at the end of the compilation.
+     */
+    private static final class OutputGroup implements Closeable {
+
+        private final GraphOutput<Void, ?> output;
+
+        private OutputGroup(DebugContext debug, CallTarget callTarget) {
+            if (debug != null && debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
+                String name = "Truffle::" + callTarget.toString();
+                GraphOutput<Void, ?> out = null;
+                try {
+                    out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
+                    out.beginGroup(null, name, name, null, 0, DebugContext.addVersionProperties(null));
+                } catch (Throwable e) {
+                    if (out != null) {
+                        out.close();
+                        out = null;
+                    }
+                }
+                this.output = out;
+            } else {
+                this.output = null;
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (output != null) {
+                try {
+                    output.endGroup();
+                } finally {
+                    output.close();
+                }
+            }
+        }
+    }
+
     @SuppressWarnings("try")
-    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
+    protected void doCompile(DebugContext debug, CompilationIdentifier compilationId, OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
-        try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
-            try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+        try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+            // Open the "Truffle::methodName" dump group if dumping is enabled.
+            try (OutputGroup o = new OutputGroup(debug, callTarget)) {
+                // Create "AST" and "Call Tree" groups if dumping is enabled.
                 maybeDumpTruffleTree(debug, options, callTarget, inlining);
+                // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
                 compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
-            } catch (RuntimeException | Error e) {
-                throw e;
-            } catch (Throwable e) {
-                throw new InternalError(e);
+            }
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new InternalError(e);
+        } finally {
+            if (debug != null) {
+                /*
+                 * The graph dumping code of Graal might leave inlining dump groups open, in case
+                 * there are more graphs coming. Close these groups at the end of the compilation.
+                 */
+                debug.closeDumpHandlers(false);
             }
         }
         dequeueInlinedCallSites(inlining, callTarget);
+    }
+
+    @SuppressWarnings("try")
+    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, Cancellable task) {
+        TruffleCompiler compiler = getTruffleCompiler();
+        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
+        try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
+            doCompile(debug, compilationId, options, callTarget, task);
+        }
     }
 
     @SuppressWarnings("try")
@@ -729,23 +788,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             Description description = new Description(callTarget, "TruffleTree:" + callTarget.getName());
             debug = DebugContext.create(options, description, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, singletonList(new TruffleTreeDebugHandlersFactory()));
         }
-        GraphOutput<Void, ?> output = null;
         try (Scope c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-                output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
-                output.beginGroup(null, "Truffle::" + callTarget.toString(), "Truffle::" + callTarget.toString(), null, 0, DebugContext.addVersionProperties(null));
                 debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget, inlining), "TruffleTree");
             }
-        } catch (Throwable e) {
-            if (output != null) {
-                try {
-                    output.endGroup();
-                    output.close();
-                } catch (IOException ex) {
-                    throw debug.handle(ex);
-                }
-            }
-            throw debug.handle(e);
         }
     }
 
