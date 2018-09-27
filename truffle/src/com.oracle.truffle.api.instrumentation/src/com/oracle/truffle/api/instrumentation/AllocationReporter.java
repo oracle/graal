@@ -80,20 +80,8 @@ public final class AllocationReporter {
      */
     public static final long SIZE_UNKNOWN = Long.MIN_VALUE;
 
-    /**
-     * Name of a property that is fired when an {@link #isActive() active} property of this reporter
-     * changes.
-     *
-     * @since 0.27
-     * @see #isActive()
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     * @deprecated Use {@link #addActiveListener(Consumer)}
-     */
-    @Deprecated public static final String PROPERTY_ACTIVE = "active";
-
     final LanguageInfo language;
     private final List<Consumer<Boolean>> activeListeners = new CopyOnWriteArrayList<>();
-    private final PropChangeSupport propSupport = new PropChangeSupport(this);
     private final ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
 
     @CompilationFinal private volatile Assumption listenersNotChangedAssumption = Truffle.getRuntime().createAssumption();
@@ -125,33 +113,6 @@ public final class AllocationReporter {
      */
     public void removeActiveListener(Consumer<Boolean> listener) {
         activeListeners.remove(listener);
-    }
-
-    /**
-     * Add a property change listener that is notified when a property of this reporter changes. Use
-     * it to get notified when {@link #isActive()} changes.
-     *
-     * @since 0.27
-     * @see #PROPERTY_ACTIVE
-     * @deprecated Use {@link #addActiveListener(Consumer)} instead.
-     */
-    @Deprecated
-    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
-        propSupport.addPropertyChangeListener(listener);
-    }
-
-    /**
-     * Remove a property change listener that is notified when state of this reporter changes.
-     *
-     * @since 0.27
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     * @deprecated Use {@link #removeActiveListener(Consumer)} instead.
-     */
-    @Deprecated
-    public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
-        propSupport.removePropertyChangeListener(listener);
     }
 
     /**
@@ -194,7 +155,6 @@ public final class AllocationReporter {
             for (Consumer<Boolean> listener : activeListeners) {
                 listener.accept(true);
             }
-            propSupport.firePropertyChange(PROPERTY_ACTIVE, false, true);
         }
     }
 
@@ -233,7 +193,6 @@ public final class AllocationReporter {
             for (Consumer<Boolean> listener : activeListeners) {
                 listener.accept(false);
             }
-            propSupport.firePropertyChange(PROPERTY_ACTIVE, true, false);
         }
     }
 
