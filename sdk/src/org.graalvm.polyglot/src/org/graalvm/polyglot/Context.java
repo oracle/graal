@@ -973,8 +973,7 @@ public final class Context implements AutoCloseable {
          * {@code JavaScriptLanguage} class.<br>
          * <p>
          * If the {@code logHandler} is not set on {@link Engine} nor on {@link Context} the log
-         * messages are printed to {@link #out(java.io.OutputStream) Context's standard output
-         * stream}.
+         * messages are printed to {@link #err(java.io.OutputStream) Context's error output stream}.
          *
          * @param logHandler the {@link Handler} to use for logging in built {@link Context}.
          * @return the {@link Builder}
