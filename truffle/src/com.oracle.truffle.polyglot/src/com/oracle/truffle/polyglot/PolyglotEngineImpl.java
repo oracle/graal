@@ -1015,7 +1015,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
 
         Handler useHandler = logHandler != null ? logHandler : this.logHandler;
-        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(useOut, false, true);
+        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(useErr, false, true);
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 

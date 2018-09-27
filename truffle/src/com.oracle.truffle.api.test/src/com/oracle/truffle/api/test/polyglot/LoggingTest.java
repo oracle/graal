@@ -441,12 +441,12 @@ public class LoggingTest {
                 return false;
             }
         };
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context ctx = Context.newBuilder().out(out).build()) {
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder().err(err).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
         }
-        out.close();
-        final String output = new String(out.toByteArray());
+        err.close();
+        final String output = new String(err.toByteArray());
         final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
         for (String line : output.split("\n")) {
             final Matcher m = p.matcher(line);

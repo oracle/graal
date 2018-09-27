@@ -875,18 +875,18 @@ public class ContextPreInitializationTest {
     public void testLogging() throws Exception {
         setPatchable(FIRST);
         // In context pre-initialization there is no sdk Context to set log handler,
-        // logging is done to System.out
-        final PrintStream origOut = System.out;
-        final ByteArrayOutputStream preInitOut = new ByteArrayOutputStream();
-        try (PrintStream printStream = new PrintStream(preInitOut)) {
-            System.setOut(printStream);
+        // logging is done to System.err
+        final PrintStream origErr = System.err;
+        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        try (PrintStream printStream = new PrintStream(preInitErr)) {
+            System.setErr(printStream);
             System.setProperty("polyglot.log.engine.level", "FINE");
             doContextPreinitialize(FIRST);
         } finally {
-            System.setOut(origOut);
+            System.setErr(origErr);
             System.getProperties().remove("polyglot.log.engine.level");
         }
-        final String preInitLog = preInitOut.toString("UTF-8");
+        final String preInitLog = preInitErr.toString("UTF-8");
         assertTrue(preInitLog.contains("Pre-initialized context for language: ContextPreInitializationFirst"));
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
