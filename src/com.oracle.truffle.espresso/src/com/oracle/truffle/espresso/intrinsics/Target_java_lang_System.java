@@ -27,9 +27,11 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.Map;
 import java.util.Properties;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -50,6 +52,7 @@ public class Target_java_lang_System {
     @Intrinsic
     public static @Type(Properties.class) StaticObject initProperties(@Type(Properties.class) StaticObject props) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
+
         final String[] importedProps = new String[]{
                         "java.version",
                         "java.vendor",
@@ -90,13 +93,14 @@ public class Target_java_lang_System {
                 propValue = System.getProperty(prop);
             }
             if (propValue != null) {
-                StaticObject guestPropKey = context.getMeta().toGuest(prop);
-                StaticObject guestPropValue = context.getMeta().toGuest(propValue);
-                setProperty.invokeDirect(guestPropKey, guestPropValue);
+                setProperty.invoke(prop, propValue);
             }
         }
 
         // setProperty.invoke("sun.misc.URLClassPath.debug", "true");
+        for (Map.Entry<String, String> entry : EspressoLanguage.getCurrentContext().getEnv().getOptions().get(EspressoOptions.Properties).entrySet()) {
+            setProperty.invoke(entry.getKey(), entry.getValue());
+        }
 
         return props;
     }

@@ -30,6 +30,7 @@ import org.graalvm.options.OptionKey;
 
 import com.oracle.truffle.api.Option;
 
+@Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
     @Option(help = "User-defined system properties.", category = OptionCategory.USER, namePredicate = OptionDescriptor.NamePredicate.PREFIX) //
     public static final OptionKey<Map<String, String>> Properties = OptionKey.mapOf(String.class);

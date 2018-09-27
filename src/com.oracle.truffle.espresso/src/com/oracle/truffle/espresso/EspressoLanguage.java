@@ -55,18 +55,10 @@ import com.oracle.truffle.espresso.types.TypeDescriptors;
 @TruffleLanguage.Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
-    public static final OptionKey<String> CLASSPATH = new OptionKey<>("");
-    public static final String CLASSPATH_NAME = "java.classpath";
-
     public static final String ID = "java";
     public static final String NAME = "Java";
     public static final String VERSION = "1.8";
     public static final String MIME_TYPE = "application/x-java";
-
-    public static final String CLASSPATH_HELP = "A " + File.pathSeparator + " separated list of directories, JAR archives, and ZIP archives to search for class files.";
-
-    public static final String BOOT_CLASSPATH_NAME = "java.bootclasspath";
-    public static final OptionKey<String> BOOT_CLASSPATH = new OptionKey<>("");
 
     public static final String FILE_EXTENSION = ".class";
 
@@ -79,13 +71,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        ArrayList<OptionDescriptor> options = new ArrayList<>();
-        options.add(OptionDescriptor.newBuilder(CLASSPATH, CLASSPATH_NAME).help(CLASSPATH_HELP).category(OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(BOOT_CLASSPATH, BOOT_CLASSPATH_NAME).category(OptionCategory.USER).build());
-        return OptionDescriptors.create(options);
+        return new EspressoOptionsOptionDescriptors();
     }
 
-    static enum LaunchMode {               // cf. sun.launcher.LauncherHelper
+    // cf. sun.launcher.LauncherHelper
+    enum LaunchMode {
         LM_UNKNOWN,
         LM_CLASS,
         LM_JAR,
@@ -102,7 +92,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
         context.setMainArguments(env.getApplicationArguments());
 
-        String classpathValue = options.get(CLASSPATH);
+        String classpathValue = options.get(EspressoOptions.Classpath);
 
         // classpath provenance order:
         // (1) the -cp command line option
@@ -122,7 +112,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.setClasspath(new Classpath(classpathValue));
 
         // TODO(peterssen): Investigate boot classpath whereabouts/sources.
-        String bootClasspathValue = options.get(BOOT_CLASSPATH);
+        String bootClasspathValue = options.get(EspressoOptions.BootClasspath);
         if (bootClasspathValue.equals("")) {
             bootClasspathValue = System.getProperty("sun.boot.class.path");
         }

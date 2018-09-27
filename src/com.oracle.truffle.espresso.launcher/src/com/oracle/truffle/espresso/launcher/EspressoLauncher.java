@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +39,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
     public static void main(String[] args) {
@@ -49,6 +49,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
     private VersionAction versionAction = VersionAction.None;
+    private Map<String, String> properties = new HashMap<>();
 
     @Override
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
@@ -58,7 +59,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             String arg = arguments.get(i);
             switch (arg) {
                 case "-cp":
-                case "--class-path":
+                case "-classpath":
                     i += 1;
                     if (i < arguments.size()) {
                         classPathString = arguments.get(i);
@@ -82,7 +83,17 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndContinue;
                     break;
                 default:
-                    if (!arg.startsWith("-")) {
+                    // -Dsystem.property=value
+                    if (arg.startsWith("-D")) {
+                        int splitAt = arg.indexOf("=");
+                        String key = arg.substring(2);
+                        String value = "";
+                        if (splitAt >= 0) {
+                            key = arg.substring(2, splitAt);
+                            value = arg.substring(splitAt + 1);
+                        }
+                        properties.put(key, value);
+                    } else if (!arg.startsWith("-")) {
                         mainClassName = arg;
                     } else {
                         unrecognized.add(arg);
@@ -166,7 +177,11 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
 
         if (classPathString != null) {
-            contextBuilder.option("java.classpath", classPathString);
+            contextBuilder.option("java.Classpath", classPathString);
+        }
+
+        for (String propKey : properties.keySet()) {
+            contextBuilder.option("java.Properties." + propKey, properties.get(propKey));
         }
 
         int rc = 1;
@@ -212,7 +227,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         // This list of arguments is used when we are launched through the Polyglot
         // launcher
         options.add("-cp");
-        options.add("--class-path");
+        options.add("-classpath");
         options.add("--version");
         options.add("--show-version");
     }
