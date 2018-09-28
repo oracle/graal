@@ -27,13 +27,10 @@ package com.oracle.truffle.tools.profiler;
 import java.io.Closeable;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.tools.profiler.impl.HeapAllocationMonitorInstrument;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -46,6 +43,7 @@ import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.profiler.impl.HeapAllocationMonitorInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
 /**
@@ -67,7 +65,7 @@ public class HeapAllocationMonitor implements Closeable {
 
     private EventBinding<?> activeBinding;
 
-    private Map<String, MetaObjInfo> heapInfo;
+    final private Map<String, MetaObjInfo> heapInfo;
 
     private ReferenceQueue<Object> referenceQueue;
 
@@ -75,7 +73,7 @@ public class HeapAllocationMonitor implements Closeable {
 
     private ReferenceManagerThread refThread;
 
-    HeapAllocationMonitor(TruffleInstrument.Env env) {
+    private HeapAllocationMonitor(TruffleInstrument.Env env) {
         this.env = env;
         heapInfo = new HashMap<>();
         referenceQueue = new ReferenceQueue<>();
@@ -184,7 +182,7 @@ public class HeapAllocationMonitor implements Closeable {
      */
     public void clearData() {
         synchronized (heapInfo) {
-            heapInfo = new HashMap<>();
+            heapInfo.clear();
             referenceQueue = new ReferenceQueue<>();
             objSet = new WeakHashMap<>();
         }
@@ -364,7 +362,7 @@ public class HeapAllocationMonitor implements Closeable {
             }
         }
 
-        public void terminate() {
+        void terminate() {
             terminated = true;
         }
     }
