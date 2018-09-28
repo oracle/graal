@@ -49,11 +49,6 @@ public final class TextDocumentSurrogate {
         this.languageInfo = languageInfo;
     }
 
-    public TextDocumentSurrogate(final URI uri, LanguageInfo languageInfo, List<String> completionTriggerCharacters, final String editorText) {
-        this(uri, languageInfo, completionTriggerCharacters);
-        this.editorText = editorText;
-    }
-
     public URI getUri() {
         return uri;
     }
@@ -145,6 +140,10 @@ public final class TextDocumentSurrogate {
 
     public boolean hasCoverageData() {
         return !location2coverageData.isEmpty();
+    }
+
+    public void clearCoverage() {
+        location2coverageData.clear();
     }
 
     public void clearCoverage(URI runScriptUri) {

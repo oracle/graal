@@ -45,7 +45,6 @@ public class CompletionTest extends TruffleLSPTest {
          */
         //@formatter:on
         String text = "function main() {\n  return 3+3;\n}\nfunction abc(p1, p2) {\n  varA = p1 + p2;\n\n  varB = p1 * p2;\n  return varA;\n}\n";
-        truffleAdapter.didOpen(uri, text, "sl");
         Future<?> future = truffleAdapter.parse(text, "sl", uri);
         future.get();
 
@@ -217,7 +216,6 @@ public class CompletionTest extends TruffleLSPTest {
          */
         //@formatter:on
         String text = "function main() {\n    obj = abc();\n    obj;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction never_called(obj) {\n    obj;\n}\n";
-        truffleAdapter.didOpen(uri, text, "sl");
         Future<?> future = truffleAdapter.parse(text, "sl", uri);
         future.get();
 

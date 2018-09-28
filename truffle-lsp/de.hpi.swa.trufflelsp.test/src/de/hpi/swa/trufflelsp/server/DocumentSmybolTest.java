@@ -14,8 +14,6 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.junit.Test;
 
-import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
-
 public class DocumentSmybolTest extends TruffleLSPTest {
 
     @Test
@@ -37,7 +35,7 @@ public class DocumentSmybolTest extends TruffleLSPTest {
          */
         //@formatter:on
         String text = "function main() {\n    abc();\n    x = abc();\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n";
-        Future<TextDocumentSurrogate> futureOpen = truffleAdapter.didOpen(uri, text, "sl");
+        Future<?> futureOpen = truffleAdapter.parse(text, "sl", uri);
         futureOpen.get();
 
         Future<List<? extends SymbolInformation>> futureSymbol = truffleAdapter.documentSymbol(uri);

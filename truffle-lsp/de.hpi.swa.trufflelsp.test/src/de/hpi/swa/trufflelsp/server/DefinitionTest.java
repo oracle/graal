@@ -12,8 +12,6 @@ import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.junit.Test;
 
-import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
-
 public class DefinitionTest extends TruffleLSPTest {
 
     @Test
@@ -35,7 +33,7 @@ public class DefinitionTest extends TruffleLSPTest {
          */
         //@formatter:on
         String text = "function main() {\n    abc();\n    x = abc();\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n";
-        Future<TextDocumentSurrogate> futureOpen = truffleAdapter.didOpen(uri, text, "sl");
+        Future<?> futureOpen = truffleAdapter.parse(text, "sl", uri);
         futureOpen.get();
 
         Range abcRange = new Range(new Position(5, 9), new Position(9, 1));

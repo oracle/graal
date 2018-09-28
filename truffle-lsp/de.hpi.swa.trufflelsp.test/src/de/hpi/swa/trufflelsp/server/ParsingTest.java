@@ -22,7 +22,7 @@ public class ParsingTest extends TruffleLSPTest {
     public void didOpenClose() {
         URI uri = createDummyFileUriForSL();
         String text = "function main() {return 3+3;}";
-        truffleAdapter.didOpen(uri, text, "sl");
+        truffleAdapter.parse(text, "sl", uri);
         truffleAdapter.didClose(uri);
     }
 
@@ -47,7 +47,6 @@ public class ParsingTest extends TruffleLSPTest {
         {
             URI uri = createDummyFileUriForSL();
             String text = "function main() {return 3+3;}";
-            truffleAdapter.didOpen(uri, text, "sl");
             Future<?> future = truffleAdapter.parse(text, "sl", uri);
             future.get();
 
@@ -75,7 +74,6 @@ public class ParsingTest extends TruffleLSPTest {
 
             {
                 String text = "function main() {return 3+3;}";
-                truffleAdapter.didOpen(uri, text, "sl");
                 Future<?> future = truffleAdapter.parse(text, "sl", uri);
                 future.get();
             }

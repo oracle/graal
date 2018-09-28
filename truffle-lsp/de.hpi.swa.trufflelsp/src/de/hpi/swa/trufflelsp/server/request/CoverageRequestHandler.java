@@ -121,9 +121,14 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
      * Clears all coverage data from previous runs, which was collected by running the runScriptUri
      * resource. This avoids clearing coverage data collected by other script runs.
      *
+     * Also clears all coverage data for the runScriptUri resource itself.
+     *
      * @param runScriptUri URI of the script to kick-off the coverage analysis
      */
     private void clearRelatedCoverageData(final URI runScriptUri) {
+        TextDocumentSurrogate surrogateOfRunScript = uri2TextDocumentSurrogate.get(runScriptUri);
+        assert surrogateOfRunScript != null;
+        surrogateOfRunScript.clearCoverage();
         uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage(runScriptUri));
     }
 

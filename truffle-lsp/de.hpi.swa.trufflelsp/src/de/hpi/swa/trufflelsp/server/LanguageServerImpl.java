@@ -75,11 +75,12 @@ import com.google.gson.JsonPrimitive;
 
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
-import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
     private static final String SHOW_COVERAGE = "show_coverage";
     private static final String ANALYSE_COVERAGE = "analyse_coverage";
+    private static final String CLEAR_COVERAGE = "clear_coverage";
+    private static final String CLEAR_ALL_COVERAGE = "clear_all_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
     private final TruffleAdapter truffleAdapter;
     private final PrintWriter err;
@@ -121,7 +122,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(true);
 
-        capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE)));
+        capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
 
         return CompletableFuture.completedFuture(new InitializeResult(capabilities));
     }
@@ -224,7 +225,17 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
             commandShowCoverage.setArguments(Arrays.asList(params.getTextDocument().getUri()));
             codeLensShowCoverage.setCommand(commandShowCoverage);
 
-            return Arrays.asList(codeLens, codeLensShowCoverage);
+            CodeLens codeLensClear = new CodeLens(new Range(new Position(), new Position()));
+            Command commandClear = new Command("Clear coverage", CLEAR_COVERAGE);
+            commandClear.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            codeLensClear.setCommand(commandClear);
+
+            CodeLens codeLensClearAll = new CodeLens(new Range(new Position(), new Position()));
+            Command commandClearAll = new Command("Clear coverage (all files)", CLEAR_ALL_COVERAGE);
+            commandClearAll.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            codeLensClearAll.setCommand(commandClearAll);
+
+            return Arrays.asList(codeLens, codeLensShowCoverage, codeLensClear, codeLensClearAll);
         });
     }
 
@@ -263,7 +274,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         URI uri = URI.create(params.getTextDocument().getUri());
         openedFileUri2LangId.put(uri, params.getTextDocument().getLanguageId());
 
-        Future<TextDocumentSurrogate> future = truffleAdapter.didOpen(uri, params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
+        Future<?> future = truffleAdapter.parse(params.getTextDocument().getText(), params.getTextDocument().getLanguageId(), uri);
         CompletableFuture.runAsync(() -> waitForResultAndHandleExceptions(future, null, uri));
     }
 
@@ -358,6 +369,14 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
             Future<?> futureCoverage = truffleAdapter.showCoverage(URI.create(uri));
             return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCoverage));
+        } else if (CLEAR_COVERAGE.equals(params.getCommand())) {
+            String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+
+            Future<?> futureClear = truffleAdapter.clearCoverage(URI.create(uri));
+            return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClear));
+        } else if (CLEAR_ALL_COVERAGE.equals(params.getCommand())) {
+            Future<?> futureClearAll = truffleAdapter.clearCoverage();
+            return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClearAll));
         } else {
             err.println("Unkown command: " + params.getCommand());
             return CompletableFuture.completedFuture(new Object());

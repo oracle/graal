@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +14,7 @@ import java.util.concurrent.Future;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.SignatureHelp;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -69,16 +72,11 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         this.coverageHandler = new CoverageRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
     }
 
-    public Future<TextDocumentSurrogate> didOpen(URI uri, String text, String langId) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> {
-            LanguageInfo languageInfo = findLanguageInfo(langId, uri);
-
-            TextDocumentSurrogate surrogate = new TextDocumentSurrogate(uri, languageInfo, env.getCompletionTriggerCharacters(langId), text);
-            uri2TextDocumentSurrogate.put(uri, surrogate);
-
-            sourceCodeEvaluator.parse(surrogate);
-            return surrogate;
-        });
+    private TextDocumentSurrogate getOrCreateSurrogate(URI uri, String text, LanguageInfo languageInfo) {
+        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.computeIfAbsent(uri,
+                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, env.getCompletionTriggerCharacters(languageInfo.getId())));
+        surrogate.setEditorText(text);
+        return surrogate;
     }
 
     public void didClose(URI uri) {
@@ -91,11 +89,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
         LanguageInfo languageInfo = findLanguageInfo(langId, uri);
-
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, env.getCompletionTriggerCharacters(languageInfo.getId())));
-        surrogate.setEditorText(text);
-
+        TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, text, languageInfo);
         return sourceCodeEvaluator.parse(surrogate);
     }
 
@@ -192,7 +186,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<?> showCoverage(URI uri) {
-        return contextAwareExecutor.executeWithNestedContext(() -> {
+        return contextAwareExecutor.executeWithDefaultContext(() -> {
             coverageHandler.showCoverageWithEnteredContext(uri);
             return null;
         });
@@ -204,6 +198,49 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     public Future<List<String>> getCompletionTriggerCharacters(String langId) {
         return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.getCompletionTriggerCharactersWithEnteredContext(langId));
+    }
+
+    /**
+     * Clears all collected coverage data for all files. See {@link #clearCoverage(URI)} for
+     * details.
+     */
+    public Future<?> clearCoverage() {
+        return contextAwareExecutor.executeWithDefaultContext(() -> {
+            System.out.println("Clearing and re-parsing all files with coverage data...");
+            List<PublishDiagnosticsParams> params = new ArrayList<>();
+            uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> {
+                TextDocumentSurrogate surrogate = entry.getValue();
+                surrogate.clearCoverage();
+                try {
+                    sourceCodeEvaluator.parse(surrogate);
+                    params.add(new PublishDiagnosticsParams(entry.getKey().toString(), Collections.emptyList()));
+                } catch (DiagnosticsNotification e) {
+                    params.addAll(e.getDiagnosticParamsCollection());
+                }
+            });
+            System.out.println("Clearing and re-parsing done.");
+
+            throw new DiagnosticsNotification(params);
+        });
+    }
+
+    /**
+     * Clears the coverage data for a specific URI. Clearing means removing all Diagnostics used to
+     * highlight covered code. To avoid hiding syntax errors, the URIs source is parsed again. If
+     * errors occur during parsing, a {@link DiagnosticsNotification} is thrown. If not, we still
+     * have to clear all Diagnostics by throwing an empty {@link DiagnosticsNotification}
+     * afterwards.
+     *
+     * @param uri to source to clear coverage data for
+     */
+    public Future<?> clearCoverage(URI uri) {
+        return contextAwareExecutor.executeWithDefaultContext(() -> {
+            TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+            surrogate.clearCoverage();
+            sourceCodeEvaluator.parse(surrogate);
+
+            throw new DiagnosticsNotification(new PublishDiagnosticsParams(uri.toString(), Collections.emptyList()));
+        });
     }
 
     public String getSourceText(Path path) {
