@@ -610,11 +610,7 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        LLVMGlobal result = globalsReverseMap.get(pointer);
-        if (result == null) {
-            throw new IllegalStateException("Could not find pointer " + pointer);
-        }
-        return result;
+        return globalsReverseMap.get(pointer);
     }
 
     public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
