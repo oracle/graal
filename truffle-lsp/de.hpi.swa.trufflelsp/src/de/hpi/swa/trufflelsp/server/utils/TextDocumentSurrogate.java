@@ -4,8 +4,10 @@ import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -145,8 +147,19 @@ public final class TextDocumentSurrogate {
         return !location2coverageData.isEmpty();
     }
 
-    public void clearCoverage() {
-        location2coverageData.clear();
+    public void clearCoverage(URI runScriptUri) {
+        for (Iterator<Entry<SourceLocation, List<CoverageData>>> iterator = location2coverageData.entrySet().iterator(); iterator.hasNext();) {
+            Entry<SourceLocation, List<CoverageData>> entry = iterator.next();
+            for (Iterator<CoverageData> iteratorData = entry.getValue().iterator(); iteratorData.hasNext();) {
+                CoverageData coverageData = iteratorData.next();
+                if (coverageData.getCovarageUri().equals(runScriptUri)) {
+                    iteratorData.remove();
+                }
+            }
+            if (entry.getValue().isEmpty()) {
+                iterator.remove();
+            }
+        }
     }
 
     public List<SourceLocation> getCoverageLocations() {

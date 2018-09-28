@@ -50,9 +50,7 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
         TextDocumentSurrogate surrogateOfTestFile = sourceCodeEvaluator.createSurrogateForTestFile(surrogateOfOpenedFile, null);
         final URI runScriptUri = surrogateOfTestFile.getUri();
 
-        // Clean-up TODO(ds) how to do this without dropping everything? If we have different tests,
-        // the coverage run of one test will remove any coverage info provided from the other tests.
-        uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage());
+        clearRelatedCoverageData(runScriptUri);
 
         try {
             final CallTarget callTarget = sourceCodeEvaluator.parse(surrogateOfTestFile);
@@ -117,6 +115,16 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
 
             throw e;
         }
+    }
+
+    /**
+     * Clears all coverage data from previous runs, which was collected by running the runScriptUri
+     * resource. This avoids clearing coverage data collected by other script runs.
+     *
+     * @param runScriptUri URI of the script to kick-off the coverage analysis
+     */
+    private void clearRelatedCoverageData(final URI runScriptUri) {
+        uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage(runScriptUri));
     }
 
     public void showCoverageWithEnteredContext(URI uri) throws DiagnosticsNotification {
