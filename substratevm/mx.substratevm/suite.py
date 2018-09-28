@@ -493,7 +493,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
-                "com.oracle.svm.junit",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
@@ -554,6 +553,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
+                "com.oracle.svm.junit",
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
             ],
