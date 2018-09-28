@@ -101,16 +101,14 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public Klass getSuperclass() {
-        Object classLoader = null; // BCL
-        if (getConstantPool() != null) {
-            classLoader = getConstantPool().getClassLoader();
-        }
-        return getContext().getRegistries().resolve(getContext().getTypeDescriptors().OBJECT, classLoader);
+        return getContext().getMeta().OBJECT.rawKlass();
     }
 
     @Override
     public Klass[] getInterfaces() {
-        return Klass.EMPTY_ARRAY;
+        Klass cloneable = getContext().getMeta().CLONEABLE.rawKlass();
+        Klass serializable = getContext().getMeta().SERIALIZABLE.rawKlass();
+        return new Klass[]{cloneable, serializable};
     }
 
     @Override

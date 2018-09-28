@@ -338,10 +338,39 @@ public class Target_java_lang_Class {
         return outerKlass;
     }
 
+    /**
+     * Determines if the specified {@code Object} is assignment-compatible
+     * with the object represented by this {@code Class}.  This method is
+     * the dynamic equivalent of the Java language {@code instanceof}
+     * operator. The method returns {@code true} if the specified
+     * {@code Object} argument is non-null and can be cast to the
+     * reference type represented by this {@code Class} object without
+     * raising a {@code ClassCastException.} It returns {@code false}
+     * otherwise.
+     *
+     * <p> Specifically, if this {@code Class} object represents a
+     * declared class, this method returns {@code true} if the specified
+     * {@code Object} argument is an instance of the represented class (or
+     * of any of its subclasses); it returns {@code false} otherwise. If
+     * this {@code Class} object represents an array class, this method
+     * returns {@code true} if the specified {@code Object} argument
+     * can be converted to an object of the array class by an identity
+     * conversion or by a widening reference conversion; it returns
+     * {@code false} otherwise. If this {@code Class} object
+     * represents an interface, this method returns {@code true} if the
+     * class or any superclass of the specified {@code Object} argument
+     * implements this interface; it returns {@code false} otherwise. If
+     * this {@code Class} object represents a primitive type, this method
+     * returns {@code false}.
+     *
+     * @param   obj the object to check
+     * @return  true if {@code obj} is an instance of this class
+     *
+     * @since JDK1.1
+     */
     @Intrinsic(hasReceiver = true)
     public static boolean isInstance(StaticObjectClass self, Object obj) {
-        Meta meta = meta(self.getKlass()).getMeta();
-        return meta(self.getMirror()).isAssignableFrom(meta.meta(obj));
+        return EspressoLanguage.getCurrentContext().getVm().instanceOf(obj, self.getMirror());
     }
 
     @Intrinsic

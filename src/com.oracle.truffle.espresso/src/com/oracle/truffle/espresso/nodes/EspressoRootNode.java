@@ -998,7 +998,7 @@ public class EspressoRootNode extends RootNode {
                 // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
                 CompilerDirectives.transferToInterpreter();
                 Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-                StaticObject ex = meta.createEx(e.getClass());
+                StaticObject ex = meta.initEx(e.getClass());
                 ExceptionHandler handler = resolveExceptionHandlers(bs.currentBCI(curBCI), ex);
                 if (handler != null) {
                     stack.clear();
@@ -1107,7 +1107,8 @@ public class EspressoRootNode extends RootNode {
     private void invokeVirtual(OperandStack stack, MethodInfo method) {
         if (Modifier.isFinal(method.getModifiers())) {
             // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-            StaticObject receiver = (StaticObject) nullCheck(stack.peekReceiver(method));
+            // Receiver can be a primitive array (not a StaticObject).
+            Object receiver = nullCheck(stack.peekReceiver(method));
             invoke(stack, method, receiver);
         } else {
             resolveAndInvoke(stack, method);
@@ -1129,7 +1130,7 @@ public class EspressoRootNode extends RootNode {
         return methodInfo;
     }
 
-    private void invoke(OperandStack stack, MethodInfo method, StaticObject receiver) {
+    private void invoke(OperandStack stack, MethodInfo method, Object receiver) {
         CallTarget redirectedMethod = vm.getIntrinsic(method);
         if (redirectedMethod != null) {
             invokeRedirectedMethodViaVM(stack, method, redirectedMethod);

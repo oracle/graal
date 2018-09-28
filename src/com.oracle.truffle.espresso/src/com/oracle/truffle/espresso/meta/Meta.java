@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 
+import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -51,6 +52,7 @@ import com.oracle.truffle.espresso.types.SignatureDescriptor;
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
 public final class Meta {
+
     final EspressoContext context;
 
     public Meta(EspressoContext context) {
@@ -70,6 +72,9 @@ public final class Meta {
         THROWABLE = knownKlass(Throwable.class);
         STACK_OVERFLOW_ERROR = knownKlass(StackOverflowError.class);
         OUT_OF_MEMORY_ERROR = knownKlass(OutOfMemoryError.class);
+
+        CLONEABLE = knownKlass(Cloneable.class);
+        SERIALIZABLE = knownKlass(Serializable.class);
     }
 
     public static Klass.WithInstance meta(StaticObject obj) {
@@ -139,33 +144,37 @@ public final class Meta {
     public final Klass INT;
     public final Klass DOUBLE;
     public final Klass LONG;
+
     public final Klass STACK_OVERFLOW_ERROR;
     public final Klass OUT_OF_MEMORY_ERROR;
     public final Klass THROWABLE;
+
+    public final Klass CLONEABLE;
+    public final Klass SERIALIZABLE;
 
     private static boolean isKnownClass(java.lang.Class<?> clazz) {
         // Cheap check: known classes are loaded by the BCL.
         return clazz.getClassLoader() == null;
     }
 
-    public StaticObject createEx(java.lang.Class<?> clazz) {
+    public StaticObject initEx(java.lang.Class<?> clazz) {
         StaticObject ex = throwableKlass(clazz).allocateInstance();
         meta(ex).method("<init>", void.class).invokeDirect();
         return ex;
     }
 
-    public StaticObject createEx(java.lang.Class<?> clazz, String message) {
+    public StaticObject initEx(java.lang.Class<?> clazz, String message) {
         StaticObject ex = throwableKlass(clazz).allocateInstance();
         meta(ex).method("<init>", void.class, String.class).invoke(message);
         return ex;
     }
 
     public EspressoException throwEx(java.lang.Class<?> clazz) {
-        throw new EspressoException(createEx(clazz));
+        throw new EspressoException(initEx(clazz));
     }
 
     public EspressoException throwEx(java.lang.Class<?> clazz, String message) {
-        throw new EspressoException(createEx(clazz, message));
+        throw new EspressoException(initEx(clazz, message));
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -388,19 +397,18 @@ public final class Meta {
          * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
          */
         public boolean isAssignableFrom(Meta.Klass other) {
-            assert !isPrimitive() && !other.isPrimitive();
             if (this.rawKlass() == other.rawKlass()) {
                 return true;
             }
-
+            if (this.isPrimitive() || other.isPrimitive()) {
+                // Reference equality is enough within the same context.
+                return this == other;
+            }
             if (this.isArray() && other.isArray()) {
                 return getComponentType().isAssignableFrom(other.getComponentType());
             }
             if (isInterface()) {
                 return other.getInterfacesStream(true).anyMatch(i -> i.rawKlass() == this.rawKlass());
-            }
-            if (!isPrimaryType() || !other.isPrimaryType()) {
-                throw EspressoError.unimplemented();
             }
             return other.getSupertypesStream(true).anyMatch(k -> k.rawKlass() == this.rawKlass());
         }

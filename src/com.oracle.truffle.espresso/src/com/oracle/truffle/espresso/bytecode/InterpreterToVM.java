@@ -619,7 +619,7 @@ public class InterpreterToVM {
         if (length < 0) {
             throw componentType.getContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
-        assert !componentType.isPrimitive() : "use allocatePrimitiveArray for primitives";
+        assert !componentType.isPrimitive() : "use allocateNativeArray for primitives";
         assert length >= 0;
         Object[] arr = new Object[length];
         Arrays.fill(arr, StaticObject.NULL);

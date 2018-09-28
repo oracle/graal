@@ -24,6 +24,9 @@
 package com.oracle.truffle.espresso.intrinsics;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 
 @EspressoIntrinsics
@@ -31,6 +34,11 @@ public class Target_java_lang_reflect_Array {
 
     @Intrinsic
     public static Object newArray(@Type(Class.class) StaticObjectClass componentType, int length) {
-        return EspressoLanguage.getCurrentContext().getVm().newArray(componentType.getMirror(), length);
+        if (componentType.getMirror().isPrimitive()) {
+            byte jvmPrimitiveType = (byte) componentType.getMirror().getJavaKind().getBasicType();
+            return InterpreterToVM.allocateNativeArray(jvmPrimitiveType, length);
+        }
+        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getVm();
+        return vm.newArray(componentType.getMirror(), length);
     }
 }
