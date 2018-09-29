@@ -117,4 +117,38 @@ public class DefinitionTest extends TruffleLSPTest {
             assertEquals(0, definitions.size());
         }
     }
+
+    @Test
+    public void gotoDefinitionForFunctionsStatic() throws InterruptedException, ExecutionException {
+        URI uri = createDummyFileUriForSL();
+        //@formatter:off
+        /**
+         *  0 function main() {
+         *  1     x = 1;
+         *  2     return x;
+         *  3 }
+         *  4
+         *  5 function abc() {
+         *  6   obj = new();
+         *  7   obj.p = 1;
+         *  8   return obj;
+         *  9 }
+         * 10
+         * 11 function notCalled() {
+         * 12   return abc();
+         * 13 }
+         */
+        //@formatter:on
+        String text = "function main() {\n    x = 1;\n    return x;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction notCalled() {\n  return abc();\n}";
+        Future<?> futureOpen = truffleAdapter.parse(text, "sl", uri);
+        futureOpen.get();
+
+        {
+            Future<List<? extends Location>> future = truffleAdapter.definition(uri, 12, 10);
+            List<? extends Location> definitions = future.get();
+            assertEquals(1, definitions.size());
+            Location location = definitions.get(0);
+            assertEquals(new Range(new Position(5, 9), new Position(9, 1)), location.getRange());
+        }
+    }
 }

@@ -66,7 +66,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, uri2TextDocumentSurrogate, contextAwareExecutor);
         this.completionHandler = new CompletionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
         this.documentSymbolHandler = new DocumentSymbolRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor);
-        this.definitionHandler = new DefinitionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
+        this.definitionHandler = new DefinitionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator, documentSymbolHandler);
         this.hoverHandler = new HoverRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, completionHandler);
         this.signatureHelpHandler = new SignatureHelpRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
         this.coverageHandler = new CoverageRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);

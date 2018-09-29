@@ -54,9 +54,8 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
 
         try {
             final CallTarget callTarget = sourceCodeEvaluator.parse(surrogateOfTestFile);
-            final String langId = surrogateOfTestFile.getLangId();
             LanguageInfo languageInfo = surrogateOfTestFile.getLanguageInfo();
-            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(src -> langId.equals(src.getLanguage()) || languageInfo.getMimeTypes().contains(src.getMimeType())).build();
+            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(SourceUtils.createLanguageFilterPredicate(languageInfo)).build();
             eventFilter = SourceSectionFilter.ANY;
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
                             eventFilter,

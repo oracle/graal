@@ -33,4 +33,14 @@ public class LanguageSpecificHacks {
         }
         return null;
     }
+
+    public static String normalizeSymbol(String definitionSearchSymbol) {
+        if (enableLanguageSpecificHacks) {
+            int idx = definitionSearchSymbol.indexOf('(');
+            if (idx > -1) {
+                return definitionSearchSymbol.substring(0, idx);
+            }
+        }
+        return definitionSearchSymbol;
+    }
 }

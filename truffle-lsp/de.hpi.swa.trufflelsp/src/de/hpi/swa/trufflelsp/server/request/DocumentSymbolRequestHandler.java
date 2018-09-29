@@ -16,6 +16,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -37,10 +38,10 @@ public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
     public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
         Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
 
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
-
+        SourcePredicate srcPredicate = SourceUtils.createUriOrTruffleNameMatchingPredicate(uri);
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(srcPredicate).tagIs(DeclarationTag.class).build();
         env.getInstrumenter().attachLoadSourceSectionListener(
-                        SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(DeclarationTag.class).build(),
+                        filter,
                         new LoadSourceSectionListener() {
 
                             public void onLoad(LoadSourceSectionEvent event) {
@@ -58,7 +59,8 @@ public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
                                 SymbolKind kind = map.containsKey(DeclarationTag.KIND) ? declarationKindToSmybolKind(map.get(DeclarationTag.KIND)) : null;
                                 Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
                                 String container = map.containsKey(DeclarationTag.CONTAINER) ? map.get(DeclarationTag.CONTAINER).toString() : "";
-                                SymbolInformation si = new SymbolInformation(name, kind != null ? kind : SymbolKind.Null, new Location(node.getSourceSection().getSource().getURI().toString(), range),
+                                URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());
+                                SymbolInformation si = new SymbolInformation(name, kind != null ? kind : SymbolKind.Null, new Location(fixedUri.toString(), range),
                                                 container);
                                 symbolInformation.add(si);
                             }
@@ -75,15 +77,19 @@ public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
         // Fallback: search for generic RootTags
         if (symbolInformation.isEmpty()) {
             env.getInstrumenter().attachLoadSourceSectionListener(
-                            SourceSectionFilter.newBuilder().sourceIs(surrogate.getSourceWrapper().getSource()).tagIs(StandardTags.RootTag.class).build(),
+                            SourceSectionFilter.newBuilder().sourceIs(srcPredicate).tagIs(StandardTags.RootTag.class).build(),
                             new LoadSourceSectionListener() {
 
                                 public void onLoad(LoadSourceSectionEvent event) {
+                                    if (!event.getSourceSection().isAvailable()) {
+                                        return;
+                                    }
+
                                     Node node = event.getNode();
                                     SymbolKind kind = SymbolKind.Function;
                                     Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
-                                    SymbolInformation si = new SymbolInformation(node.getRootNode().getName(),
-                                                    kind, new Location(node.getSourceSection().getSource().getURI().toString(), range));
+                                    URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());
+                                    SymbolInformation si = new SymbolInformation(node.getRootNode().getName(), kind, new Location(fixedUri.toString(), range));
                                     symbolInformation.add(si);
                                 }
                             }, true).dispose();

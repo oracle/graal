@@ -1,5 +1,8 @@
 package de.hpi.swa.trufflelsp.server.utils;
 
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -10,6 +13,7 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
@@ -177,8 +181,29 @@ public class SourceUtils {
                         .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
                         .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
                         .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
-                        .sourceIs(source -> source.getURI().equals(surrogate.getUri()) || source.getName().equals(surrogate.getUri().getPath()));
+                        .sourceIs(createUriOrTruffleNameMatchingPredicate(surrogate.getUri()));
         // @formatter:on
+    }
+
+    public static SourcePredicate createUriOrTruffleNameMatchingPredicate(URI uri) {
+        return src -> src.getURI().equals(uri) || (src.getURI().getScheme().equals("truffle") && src.getName().equals(uri.getPath()));
+    }
+
+    public static SourcePredicate createLanguageFilterPredicate(final LanguageInfo languageInfo) {
+        return src -> languageInfo.getId().equals(src.getLanguage()) || languageInfo.getMimeTypes().contains(src.getMimeType());
+    }
+
+    public static URI getOrFixFileUri(Source source) {
+        if (source.getURI().getScheme().equals("file")) {
+            return source.getURI();
+        } else if (source.getURI().getScheme().equals("truffle")) {
+            // We assume, that the source name is a valid file path if
+            // the URI has no file scheme
+            Path path = Paths.get(source.getName());
+            return path.toUri();
+        } else {
+            throw new IllegalStateException("Source has an URI with unknown schema: " + source.getURI());
+        }
     }
 
     private static int fixColumn(Source source, int column, int boundLine) {
