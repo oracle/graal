@@ -36,9 +36,12 @@ public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
     }
 
     public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
-        Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
-
         SourcePredicate srcPredicate = SourceUtils.createUriOrTruffleNameMatchingPredicate(uri);
+        return documentSymbolWithEnteredContext(srcPredicate);
+    }
+
+    List<? extends SymbolInformation> documentSymbolWithEnteredContext(SourcePredicate srcPredicate) {
+        Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(srcPredicate).tagIs(DeclarationTag.class).build();
         env.getInstrumenter().attachLoadSourceSectionListener(
                         filter,

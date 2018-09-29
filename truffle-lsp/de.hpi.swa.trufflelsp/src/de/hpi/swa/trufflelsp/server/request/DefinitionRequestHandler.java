@@ -2,6 +2,7 @@ package de.hpi.swa.trufflelsp.server.request;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -10,24 +11,17 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceListener;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
-import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
-import de.hpi.swa.trufflelsp.interop.ObjectStructures;
-import de.hpi.swa.trufflelsp.interop.ObjectStructures.MessageNodes;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
+import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
@@ -44,7 +38,6 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     }
 
     public List<? extends Location> definitionWithEnteredContext(URI uri, int line, int character) throws DiagnosticsNotification {
-        List<Location> locations = new ArrayList<>();
         TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
         InstrumentableNode definitionSearchNode = findNodeAtCaret(surrogate, line, character, StandardTags.CallTag.class);
         if (definitionSearchNode != null) {
@@ -59,45 +52,34 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
             EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, definitionSearchSection, eventFilter, inputFilter);
             if (evalResult.isEvaluationDone() && !evalResult.isError()) {
                 SourceSection sourceSection = SourceUtils.findSourceLocation(env, surrogate.getLangId(), evalResult.getResult());
+                List<Location> locations = new ArrayList<>();
                 if (sourceSection != null && sourceSection.isAvailable()) {
                     Range range = SourceUtils.sourceSectionToRange(sourceSection);
                     URI definitionUri = SourceUtils.getOrFixFileUri(sourceSection.getSource());
                     locations.add(new Location(definitionUri.toString(), range));
                 }
+                if (!locations.isEmpty()) {
+                    return locations;
+                }
             }
 
-            if (locations.isEmpty()) {
-                // Fallback: Static String-based name matching of symbols
-                System.out.println("Trying static symbol matching...");
-                String definitionSearchSymbol = definitionSearchSection.getCharacters().toString();
-                Object nodeObject = definitionSearchNode.getNodeObject();
-                if (!(nodeObject instanceof TruffleObject)) {
-                    definitionSearchSymbol = LanguageSpecificHacks.normalizeSymbol(definitionSearchSymbol);
-                } else {
-                    Map<Object, Object> map = ObjectStructures.asMap(new MessageNodes(), (TruffleObject) nodeObject);
-                    if (map.containsKey(DeclarationTag.NAME)) {
-                        String name = map.get(DeclarationTag.NAME).toString();
-                        definitionSearchSymbol = name;
-                    }
-                }
+            // Fallback: Static String-based name matching of symbols
+            System.out.println("Trying static symbol matching...");
+            String definitionSearchSymbol = definitionSearchSection.getCharacters().toString();
+            definitionSearchSymbol = InteropUtils.getNormalizedSymbolName(definitionSearchNode.getNodeObject(), definitionSearchSymbol);
 
-                final List<Source> sources = new ArrayList<>();
-                SourceFilter filter = SourceFilter.newBuilder().sourceIs(SourceUtils.createLanguageFilterPredicate(surrogate.getLanguageInfo())).includeInternal(false).build();
-                env.getInstrumenter().attachLoadSourceListener(filter, new LoadSourceListener() {
+            return findMatchingSymbols(surrogate, definitionSearchSymbol);
+        }
+        return Collections.emptyList();
+    }
 
-                    public void onLoad(LoadSourceEvent event) {
-                        sources.add(event.getSource());
-                    }
-                }, true).dispose();
-
-                for (Source src : sources) {
-                    List<? extends SymbolInformation> docSymbols = documentSymbolHandler.documentSymbolWithEnteredContext(src.getURI());
-                    for (SymbolInformation symbolInfo : docSymbols) {
-                        if (definitionSearchSymbol.equals(symbolInfo.getName())) {
-                            locations.add(symbolInfo.getLocation());
-                        }
-                    }
-                }
+    private List<Location> findMatchingSymbols(TextDocumentSurrogate surrogate, String symbol) {
+        List<Location> locations = new ArrayList<>();
+        SourcePredicate srcPredicate = SourceUtils.createLanguageFilterPredicate(surrogate.getLanguageInfo());
+        List<? extends SymbolInformation> docSymbols = documentSymbolHandler.documentSymbolWithEnteredContext(srcPredicate);
+        for (SymbolInformation symbolInfo : docSymbols) {
+            if (symbol.equals(symbolInfo.getName())) {
+                locations.add(symbolInfo.getLocation());
             }
         }
         return locations;

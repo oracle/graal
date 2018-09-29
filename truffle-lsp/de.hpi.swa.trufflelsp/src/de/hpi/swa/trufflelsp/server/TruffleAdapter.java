@@ -34,6 +34,7 @@ import de.hpi.swa.trufflelsp.server.request.CoverageRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.DefinitionRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.DocumentSymbolRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.HoverRequestHandler;
+import de.hpi.swa.trufflelsp.server.request.ReferencesRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SignatureHelpRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SourceCodeEvaluator;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -52,6 +53,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     private HoverRequestHandler hoverHandler;
     private SignatureHelpRequestHandler signatureHelpHandler;
     private CoverageRequestHandler coverageHandler;
+    private ReferencesRequestHandler referencesHandler;
 
     public TruffleAdapter(Env env) {
         this.env = env;
@@ -70,6 +72,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         this.hoverHandler = new HoverRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, completionHandler);
         this.signatureHelpHandler = new SignatureHelpRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
         this.coverageHandler = new CoverageRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
+        this.referencesHandler = new ReferencesRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor);
     }
 
     private TextDocumentSurrogate getOrCreateSurrogate(URI uri, String text, LanguageInfo languageInfo) {
@@ -241,6 +244,10 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
             throw new DiagnosticsNotification(new PublishDiagnosticsParams(uri.toString(), Collections.emptyList()));
         });
+    }
+
+    public Future<List<? extends Location>> references(URI uri, int line, int character) {
+        return contextAwareExecutor.executeWithDefaultContext(() -> referencesHandler.referencesWithEnteredContext(uri, line, character));
     }
 
     public String getSourceText(Path path) {

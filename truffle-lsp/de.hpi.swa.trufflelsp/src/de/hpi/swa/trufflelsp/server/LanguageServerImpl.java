@@ -121,6 +121,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         capabilities.setCodeActionProvider(true);
         capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(true);
+        capabilities.setReferencesProvider(true);
 
         capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
 
@@ -186,8 +187,10 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
     @Override
     public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
-        // TODO Auto-generated method stub
-        return null;
+        Future<List<? extends Location>> future = truffleAdapter.references(URI.create(params.getTextDocument().getUri()), params.getPosition().getLine(),
+                        params.getPosition().getCharacter());
+        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, new ArrayList<>());
+        return CompletableFuture.supplyAsync(supplier);
     }
 
     @Override
