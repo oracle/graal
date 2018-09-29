@@ -14,6 +14,12 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -40,18 +46,36 @@ public class HoverRequestHandler extends AbstractRequestHandler {
 
     public Hover hoverWithEnteredContext(URI uri, int line, int column) {
         TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
-        if (surrogate.hasCoverageData()) {
-            InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column + 1);
-            if (nodeAtCaret != null) {
-                SourceSection hoverSection = ((Node) nodeAtCaret).getSourceSection();
-                System.out.println("hover: SourceSection(" + hoverSection.getCharacters() + ")");
+        InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column + 1);
+        if (nodeAtCaret != null) {
+            SourceSection hoverSection = ((Node) nodeAtCaret).getSourceSection();
+            System.out.println("hover: SourceSection(" + hoverSection.getCharacters() + ")");
+            if (surrogate.hasCoverageData()) {
                 List<CoverageData> coverages = surrogate.getCoverageData(hoverSection);
                 if (coverages != null) {
                     return evalHoverInfos(coverages, hoverSection, surrogate.getLangId());
                 }
+            } else {
+                String sourceText = hoverSection.getCharacters().toString();
+                List<Either<String, MarkedString>> contents = new ArrayList<>();
+                contents.add(Either.forRight(new MarkedString(surrogate.getLangId(), sourceText)));
+                contents.add(Either.forLeft("Node class: " + nodeAtCaret.getClass().getSimpleName()));
+                contents.add(Either.forLeft("Tags: " + getTags(nodeAtCaret)));
+                return new Hover(contents, SourceUtils.sourceSectionToRange(hoverSection));
             }
         }
         return new Hover(new ArrayList<>());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String getTags(InstrumentableNode nodeAtCaret) {
+        List<String> tags = new ArrayList<>();
+        for (Class<Tag> tagClass : new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class, DeclarationTag.class}) {
+            if (nodeAtCaret.hasTag(tagClass)) {
+                tags.add(Tag.getIdentifier(tagClass));
+            }
+        }
+        return tags.toString();
     }
 
     private Hover evalHoverInfos(List<CoverageData> coverages, SourceSection hoverSection, String langId) {
