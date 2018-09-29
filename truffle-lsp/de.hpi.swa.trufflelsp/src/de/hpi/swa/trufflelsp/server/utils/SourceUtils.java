@@ -56,9 +56,15 @@ public class SourceUtils {
         if (section == null) {
             return new Range(new Position(), new Position());
         }
+        int endColumn = section.getEndColumn();
+        if (section.getCharacters().toString().endsWith("\n")) {
+            // TODO(ds) Python problem - without correction, goto definition highlighting is not
+            // working
+            endColumn -= 1;
+        }
         return new Range(
                         new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
-                        new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
+                        new Position(section.getEndLine() - 1, endColumn));
     }
 
     public static SourceSection findSourceLocation(TruffleInstrument.Env env, String langId, Object object) {
