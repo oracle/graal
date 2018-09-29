@@ -19,16 +19,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
-import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
-import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
-import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class HoverRequestHandler extends AbstractRequestHandler {
@@ -42,16 +40,14 @@ public class HoverRequestHandler extends AbstractRequestHandler {
 
     public Hover hoverWithEnteredContext(URI uri, int line, int column) {
         TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
-        SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
-        if (sourceWrapper.isParsingSuccessful() && surrogate.hasCoverageData()) {
-            Source source = sourceWrapper.getSource();
-            NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, SourceUtils.zeroBasedLineToOneBasedLine(line, source), column + 1);
-            SourceSection containsSection = nearestSections.getContainsSourceSection();
-            if (containsSection != null) {
-                System.out.println("hover: SourceSection(" + containsSection.getCharacters() + ")");
-                List<CoverageData> coverages = surrogate.getCoverageData(containsSection);
+        if (surrogate.hasCoverageData()) {
+            InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column + 1);
+            if (nodeAtCaret != null) {
+                SourceSection hoverSection = ((Node) nodeAtCaret).getSourceSection();
+                System.out.println("hover: SourceSection(" + hoverSection.getCharacters() + ")");
+                List<CoverageData> coverages = surrogate.getCoverageData(hoverSection);
                 if (coverages != null) {
-                    return evalHoverInfos(coverages, containsSection, surrogate.getLangId());
+                    return evalHoverInfos(coverages, hoverSection, surrogate.getLangId());
                 }
             }
         }
