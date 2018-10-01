@@ -296,7 +296,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
      *         position
      */
     public Future<CompletionList> completion(final URI uri, int line, int column) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
+        return contextAwareExecutor.executeWithNestedContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
     }
 
     public Future<List<? extends Location>> definition(URI uri, int line, int character) {
