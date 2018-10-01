@@ -1877,7 +1877,7 @@ suite = {
         "JVMCI_HOTSPOT",
       ],
       "allowsJavadocWarnings": True,
-      "description":  "",
+      "description":  "The Graal compiler and the Graal-truffle optimizer.",
       "maven" : {
         "artifactId" : "compiler",
       },
