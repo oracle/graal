@@ -1,9 +1,10 @@
 suite = {
-  "mxversion" : "5.149.0",
+  "mxversion" : "5.176.0",
 
   "name" : "regex",
 
   "version" : "1.0.0-rc8",
+  "release" : False,
   "groupId" : "com.oracle.truffle",
   "url" : "http://www.graalvm.org/",
   "developer" : {
