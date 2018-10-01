@@ -187,7 +187,7 @@ public final class TextDocumentSurrogate {
     }
 
     public Source getSource() {
-        return sourceWrapper.getSource();
+        return sourceWrapper != null ? sourceWrapper.getSource() : null;
     }
 
     public TextDocumentSurrogate copy() {
