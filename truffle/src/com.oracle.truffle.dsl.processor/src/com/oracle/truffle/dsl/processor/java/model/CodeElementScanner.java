@@ -48,9 +48,9 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.util.ElementScanner7;
+import javax.lang.model.util.ElementScanner8;
 
-public abstract class CodeElementScanner<R, P> extends ElementScanner7<R, P> {
+public abstract class CodeElementScanner<R, P> extends ElementScanner8<R, P> {
 
     @Override
     public final R visitExecutable(ExecutableElement e, P p) {
