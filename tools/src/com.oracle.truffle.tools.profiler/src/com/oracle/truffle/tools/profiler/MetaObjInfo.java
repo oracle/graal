@@ -5,8 +5,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+
 /**
- * TODO
+ * Contains information about all allocated instances that share a
+ * {@link TruffleInstrument.Env#findMetaObject(LanguageInfo, Object) meta object}.
+ *
+ * @since 1.0
  */
 public class MetaObjInfo {
 
@@ -23,48 +29,48 @@ public class MetaObjInfo {
     }
 
     /**
-     * TODO
-     * @return
+     * The name of the meta object is a {@link TruffleInstrument.Env#toString(LanguageInfo, Object)
+     * language specific} representation of it or the string {@code "null"} if none is provided by
+     * the language.
+     *
+     * @return the name of the meta object.
      */
     public String getName() {
         return name;
     }
 
     /**
-     * TODO
-     * @return
+     * @return name of the language from which the meta object hails from.
      */
     public String getLanguage() {
         return language;
     }
 
     /**
-     * TODO
-     * @return
+     * @return Total number of allocated instances associated with this meta object.
      */
     public long getAllocatedInstancesCount() {
         return allocatedInstances;
     }
 
     /**
-     * TODO
-     * @return
+     * @return Live (i.e. not garbage-collected) number of allocated instances associated with this
+     *         meta object.
      */
     public long getLiveInstancesCount() {
         return liveInstances;
     }
 
     /**
-     * TODO
-     * @return
+     * @return Size (in bytes) of all allocated instances associated with this meta object.
      */
     public long getBytes() {
         return bytes;
     }
 
     /**
-     * TODO
-     * @return
+     * @return Size (in bytes) of live (i.e. not garbage-collected) instances associated with this
+     *         mete object.
      */
     public long getLiveBytes() {
         return liveBytes;
