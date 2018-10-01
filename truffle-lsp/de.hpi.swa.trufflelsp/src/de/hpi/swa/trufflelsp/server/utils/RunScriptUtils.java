@@ -23,7 +23,7 @@ public class RunScriptUtils {
         } catch (IOException e1) {
             throw new IllegalStateException(e1);
         }
-        int startIndex = firstLine.indexOf(RUN_SCRIPT_PATH);
+        int startIndex = firstLine != null ? firstLine.indexOf(RUN_SCRIPT_PATH) : -1;
         if (startIndex >= 0) {
             Path scriptPath;
             try {
