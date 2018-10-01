@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class MainArgsTest extends BaseSulongOnlyHarness {
 
-    private static final Path OTHER_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/other/main-args").toPath();
+    private static final Path OTHER_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;
@@ -61,7 +61,7 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
         configs.add(new RunConfiguration(96, null, new String[]{"hello", "world!"}));
         configs.add(new RunConfiguration(154, null, new String[]{"1", "2", "3"}));
         configs.add(new RunConfiguration(193, null, new String[]{"a", "b", "cd", "efg"}));
-        return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args_clang_O1.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
+        return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args/O1.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
     }
 
     @Override

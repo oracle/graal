@@ -47,9 +47,9 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class GCCSuite extends BaseSuiteHarness {
 
-    private static final Path GCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/gcc").toPath();
-    private static final Path GCC_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/gcc-5.2.0").toPath();
-    private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/configs").toPath();
+    private static final Path GCC_SUITE_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
+    private static final Path GCC_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
+    private static final Path GCC_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
@@ -80,8 +80,8 @@ public final class GCCSuite extends BaseSuiteHarness {
         printStatistics("GCC", GCC_SOURCE_DIR, GCC_CONFIG_DIR, f -> !f.toString().contains("/compile/") && !f.toString().contains("/noncompile/"));
 
         // gcc torture execute only
-        printStatistics("gcc.c-torture/execute", Paths.get(GCC_SOURCE_DIR.toAbsolutePath().toString() + "/gcc/testsuite/gcc.c-torture/execute"),
-                        Paths.get(GCC_CONFIG_DIR.toAbsolutePath().toString() + "/gcc.c-torture/execute"),
+        printStatistics("gcc.c-torture/execute", Paths.get(GCC_SOURCE_DIR.toAbsolutePath().toString(), "gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute"),
+                        Paths.get(GCC_CONFIG_DIR.toAbsolutePath().toString(), "gcc.c-torture", "execute"),
                         t -> true);
     }
 
