@@ -35,9 +35,9 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.HeapAllocationMonitor;
 
 /**
- * // TODO Javadoc
- * 
- * @author Tomas Hurka
+ * The {@link TruffleInstrument} for the heap allocation monitor.
+ *
+ * @since 1.0
  */
 @TruffleInstrument.Registration(id = HeapAllocationMonitorInstrument.ID, name = "Heap Allocation Monitor", version = HeapAllocationMonitorInstrument.VERSION, services = {HeapAllocationMonitor.class})
 public class HeapAllocationMonitorInstrument extends TruffleInstrument {

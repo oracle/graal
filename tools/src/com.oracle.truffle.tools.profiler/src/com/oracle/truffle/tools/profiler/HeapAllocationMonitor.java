@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -47,9 +48,18 @@ import com.oracle.truffle.tools.profiler.impl.HeapAllocationMonitorInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
 /**
- * // TODO: Javadoc
- * 
- * @author Tomas Hurka
+ * Implementation of a heap allocation monitor for
+ * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle languages} built on top of the
+ * {@linkplain TruffleInstrument Truffle instrumentation framework}.
+ * <p>
+ * The monitor tracks object allocations as reported by the language as well as the reclaiming of
+ * said objects by the garbage collector and offers {@link HeapAllocationMonitor#snapshot API} to
+ * get a summary of the current state of the heap.
+ *
+ * <p>
+ * Usage example: {@codesnippet HeapAllocationMonitorSnippets#example}
+ *
+ * @since 1.0
  */
 public class HeapAllocationMonitor implements Closeable {
 
@@ -164,8 +174,19 @@ public class HeapAllocationMonitor implements Closeable {
     }
 
     /**
-     * TODO
-     * @return
+     * Takes a snapshot of the current state of the heap as observed by the
+     * {@link HeapAllocationMonitor} and returns a summary of that state in the form of a
+     * {@link MetaObjInfo meta object histogram}.
+     * <p>
+     * The {@link HeapAllocationMonitor} only tracks allocations and reclaiming starting from the
+     * time it was {@link HeapAllocationMonitor#setCollecting(boolean) enabled to collect data}.
+     * This means that the earlier state of the actual heap (i.e. all the objects allocated before
+     * this) is ignored. In other words the {@link HeapAllocationMonitor} reports snapshots as if
+     * the heap was completely empty when it was "enabled".
+     *
+     * @return A snapshot of the state of the heap where instances are grouped by meta object.
+     *
+     * @since 1.0
      */
     public MetaObjInfo[] snapshot() {
         MetaObjInfo heap[];
@@ -374,5 +395,32 @@ public class HeapAllocationMonitor implements Closeable {
                 return new HeapAllocationMonitor(env);
             }
         });
+    }
+}
+
+class HeapAllocationMonitorSnippets {
+
+    @SuppressWarnings("unused")
+    public void example() throws InterruptedException {
+        // @formatter:off
+        // BEGIN: HeapAllocationMonitorSnippets#example
+        try (Context context = Context.create(); HeapAllocationMonitor monitor = HeapAllocationMonitor.find(context.getEngine())) {
+            monitor.setCollecting(true);
+            final Thread thread = new Thread(() -> {
+                context.eval("...", "...");
+            });
+            thread.start();
+            for (int i = 0; i < 10; i++) {
+                final MetaObjInfo[] snapshot = monitor.snapshot();
+                for (MetaObjInfo metaObjInfo : snapshot) {
+                    System.out.print(metaObjInfo.getLanguage() + ":" + metaObjInfo.getName() + "->" + metaObjInfo.getLiveInstancesCount());
+                    Thread.sleep(100);
+                }
+            }
+            monitor.setCollecting(false);
+        }
+        // Print the number of live instances per meta object every 100ms.
+        // END: HeapAllocationMonitorSnippets#example
+        // @formatter:on
     }
 }
