@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class VAArgsTest extends BaseSulongOnlyHarness {
 
-    private static final String OTHER_DIR = TestOptions.TEST_SUITE_PATH;
+    private static final String OTHER_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "other").toString();
     private static final String testSuffix = "O1.bc";
 
     @Parameter(value = 0) public Path path;

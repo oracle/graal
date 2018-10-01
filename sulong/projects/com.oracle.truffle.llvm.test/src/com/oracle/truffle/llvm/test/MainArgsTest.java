@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.test;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -46,7 +47,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class MainArgsTest extends BaseSulongOnlyHarness {
 
-    private static final Path OTHER_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
+    private static final Path OTHER_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "other");
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;

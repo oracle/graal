@@ -677,6 +677,9 @@ suite = {
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
       ],
+      "javaProperties" : {
+        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>"
+      },
       "license" : "BSD-new",
       "testDistribution" : True,
       "defaultBuild" : False,

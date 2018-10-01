@@ -82,9 +82,6 @@ class SulongTestSuite(mx.NativeProject):
     def runTestSuite(self, testClasses=None, vmArgs=None):
         if vmArgs is None:
             vmArgs = []
-        vmArgs += [
-            "-Dsulongtest.testSuitePath=" + self.getOutput(),
-            ]
         if hasattr(self, 'extraLibs'):
             vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
         if hasattr(self, 'fileExts'):
@@ -168,7 +165,7 @@ class ExternalTestSuite(SulongTestSuite):
         if vmArgs is None:
             vmArgs = []
         vmArgs += [
-            "-Dsulongtest.testSuitePath=" + self.getOutput(),
+            "-Dsulongtest.externalTestSuitePath=" + self.getOutput(),
             "-Dsulongtest.testSourcePath=" + self.get_test_source(),
             "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, self.configDir),
             ]
