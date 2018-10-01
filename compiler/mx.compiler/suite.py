@@ -1282,6 +1282,19 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.compiler.core.test.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.core.test",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
     "org.graalvm.compiler.jtt" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1665,6 +1678,7 @@ suite = {
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.compiler.replacements.jdk9.test",
+        "org.graalvm.compiler.core.test.jdk9",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",

@@ -155,11 +155,10 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
         if (equalsNode instanceof LogicConstantNode) {
             fieldValue = ((LogicConstantNode) equalsNode).getValue() ? newValue : currentValue;
         } else {
-            if (newValueAlias instanceof VirtualObjectNode) {
-                tool.getDebug().log(DETAILED_LEVEL, "%s.virtualize() -> Unknown outcome and new value is virtual", this);
+            if (currentValue instanceof VirtualObjectNode || newValueAlias instanceof VirtualObjectNode) {
+                tool.getDebug().log(DETAILED_LEVEL, "%s.virtualize() -> Unknown outcome and current or new value is virtual", this);
                 return;
             }
-            assert !(currentValue instanceof VirtualObjectNode);
             fieldValue = ConditionalNode.create(equalsNode, newValueAlias, currentValue, NodeView.DEFAULT);
         }
         if (!tool.setVirtualEntry(obj, index, fieldValue, valueKind, constantOffset)) {
@@ -170,11 +169,11 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
         if (!equalsNode.isAlive()) {
             tool.addNode(equalsNode);
         }
-        if (!fieldValue.isAlive()) {
+        if (!fieldValue.isAlive() && !(fieldValue instanceof VirtualObjectNode)) {
             tool.addNode(fieldValue);
         }
-        finishVirtualize(tool, equalsNode, fieldValue);
+        finishVirtualize(tool, equalsNode, currentValue);
     }
 
-    protected abstract void finishVirtualize(VirtualizerTool tool, LogicNode equalsNode, ValueNode fieldValue);
+    protected abstract void finishVirtualize(VirtualizerTool tool, LogicNode equalsNode, ValueNode currentValue);
 }

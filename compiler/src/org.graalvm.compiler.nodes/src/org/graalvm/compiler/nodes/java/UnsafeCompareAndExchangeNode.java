@@ -24,25 +24,16 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.word.LocationIdentity;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.InputType.Value;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Represents an atomic compare-and-swap operation. The result is the current value of the memory
@@ -63,7 +54,7 @@ public final class UnsafeCompareAndExchangeNode extends AbstractUnsafeCompareAnd
     }
 
     @Override
-    protected void finishVirtualize(VirtualizerTool tool, LogicNode equalsNode, ValueNode fieldValue) {
-        tool.replaceWith(fieldValue);
+    protected void finishVirtualize(VirtualizerTool tool, LogicNode equalsNode, ValueNode currentValue) {
+        tool.replaceWith(currentValue);
     }
 }
