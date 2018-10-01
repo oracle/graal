@@ -30,9 +30,7 @@ import mx_vm
 import mx_subst
 from mx_gate import Task
 
-import os
 from os.path import join, exists
-import tempfile
 import functools
 from contextlib import contextmanager
 
