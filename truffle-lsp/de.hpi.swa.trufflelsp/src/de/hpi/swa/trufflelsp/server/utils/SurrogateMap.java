@@ -63,8 +63,9 @@ public class SurrogateMap {
     }
 
     public boolean isSourceNewestInSurrogate(Source source) {
-        if (containsSurrogate(source.getURI())) {
-            return source.getCharacters().toString().equals(get(source.getURI()).getEditorText());
+        TextDocumentSurrogate surrogate = get(source.getURI());
+        if (surrogate != null) {
+            return source.equals(surrogate.getSource());
         }
         return false;
     }

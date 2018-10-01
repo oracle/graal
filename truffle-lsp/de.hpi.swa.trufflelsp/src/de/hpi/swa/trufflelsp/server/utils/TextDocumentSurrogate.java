@@ -77,10 +77,6 @@ public final class TextDocumentSurrogate {
         return sourceWrapper;
     }
 
-    public void setSourceWrapper(SourceWrapper sourceWrapper) {
-        this.sourceWrapper = sourceWrapper;
-    }
-
     public List<String> getCompletionTriggerCharacters() {
         return completionTriggerCharacters;
     }

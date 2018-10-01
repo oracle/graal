@@ -37,7 +37,7 @@ public class SymbolRequestHandler extends AbstractRequestHandler {
 
     public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
         SourcePredicate srcPredicate = SourceUtils.createUriOrTruffleNameMatchingPredicate(uri);
-        return symbolWithEnteredContext(src -> srcPredicate.test(src) && surrogateMap.isSourceNewestInSurrogate(src));
+        return symbolWithEnteredContext(srcPredicate);
     }
 
     List<? extends SymbolInformation> symbolWithEnteredContext(SourcePredicate otherPedicate) {
