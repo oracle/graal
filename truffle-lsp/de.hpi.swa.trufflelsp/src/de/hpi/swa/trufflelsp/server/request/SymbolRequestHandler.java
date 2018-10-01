@@ -29,18 +29,19 @@ import de.hpi.swa.trufflelsp.interop.ObjectStructures.MessageNodes;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 
-public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
+public class SymbolRequestHandler extends AbstractRequestHandler {
 
-    public DocumentSymbolRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
+    public SymbolRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
         super(env, surrogateMap, contextAwareExecutor);
     }
 
     public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
         SourcePredicate srcPredicate = SourceUtils.createUriOrTruffleNameMatchingPredicate(uri);
-        return documentSymbolWithEnteredContext(srcPredicate);
+        return symbolWithEnteredContext(src -> srcPredicate.test(src) && surrogateMap.isSourceNewestInSurrogate(src));
     }
 
-    List<? extends SymbolInformation> documentSymbolWithEnteredContext(SourcePredicate srcPredicate) {
+    List<? extends SymbolInformation> symbolWithEnteredContext(SourcePredicate otherPedicate) {
+        SourcePredicate srcPredicate = src -> otherPedicate.test(src) && surrogateMap.isSourceNewestInSurrogate(src);
         Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(srcPredicate).tagIs(DeclarationTag.class).build();
         env.getInstrumenter().attachLoadSourceSectionListener(
@@ -99,5 +100,10 @@ public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
         }
 
         return new ArrayList<>(symbolInformation);
+    }
+
+    public List<? extends SymbolInformation> workspaceSymbolWithEnteredContext(@SuppressWarnings("unused") String query) {
+        SourcePredicate srcPredicate = src -> !src.isInternal();
+        return symbolWithEnteredContext(srcPredicate);
     }
 }

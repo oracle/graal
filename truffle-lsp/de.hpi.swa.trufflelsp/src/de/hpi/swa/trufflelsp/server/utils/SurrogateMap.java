@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.source.Source;
 
 public class SurrogateMap {
     private final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
@@ -59,5 +60,12 @@ public class SurrogateMap {
 
     public void remove(URI uri) {
         uri2TextDocumentSurrogate.remove(uri);
+    }
+
+    public boolean isSourceNewestInSurrogate(Source source) {
+        if (containsSurrogate(source.getURI())) {
+            return source.getCharacters().toString().equals(get(source.getURI()).getEditorText());
+        }
+        return false;
     }
 }

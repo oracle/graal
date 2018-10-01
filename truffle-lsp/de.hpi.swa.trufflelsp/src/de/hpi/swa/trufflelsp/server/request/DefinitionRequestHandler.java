@@ -28,13 +28,13 @@ import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 public class DefinitionRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
-    private final DocumentSymbolRequestHandler documentSymbolHandler;
+    private final SymbolRequestHandler symbolHandler;
 
     public DefinitionRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator evaluator,
-                    DocumentSymbolRequestHandler documentSymbolHandler) {
+                    SymbolRequestHandler documentSymbolHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = evaluator;
-        this.documentSymbolHandler = documentSymbolHandler;
+        this.symbolHandler = documentSymbolHandler;
     }
 
     public List<? extends Location> definitionWithEnteredContext(URI uri, int line, int character) throws DiagnosticsNotification {
@@ -76,7 +76,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     private List<Location> findMatchingSymbols(TextDocumentSurrogate surrogate, String symbol) {
         List<Location> locations = new ArrayList<>();
         SourcePredicate srcPredicate = SourceUtils.createLanguageFilterPredicate(surrogate.getLanguageInfo());
-        List<? extends SymbolInformation> docSymbols = documentSymbolHandler.documentSymbolWithEnteredContext(srcPredicate);
+        List<? extends SymbolInformation> docSymbols = symbolHandler.symbolWithEnteredContext(srcPredicate);
         for (SymbolInformation symbolInfo : docSymbols) {
             if (symbol.equals(symbolInfo.getName())) {
                 locations.add(symbolInfo.getLocation());

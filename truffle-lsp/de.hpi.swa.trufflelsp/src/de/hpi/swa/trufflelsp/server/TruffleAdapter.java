@@ -39,7 +39,7 @@ import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 import de.hpi.swa.trufflelsp.server.request.CompletionRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.CoverageRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.DefinitionRequestHandler;
-import de.hpi.swa.trufflelsp.server.request.DocumentSymbolRequestHandler;
+import de.hpi.swa.trufflelsp.server.request.SymbolRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.HoverRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.ReferencesRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SignatureHelpRequestHandler;
@@ -54,7 +54,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     ContextAwareExecutorWrapper contextAwareExecutor;
     private SourceCodeEvaluator sourceCodeEvaluator;
     private CompletionRequestHandler completionHandler;
-    private DocumentSymbolRequestHandler documentSymbolHandler;
+    private SymbolRequestHandler symbolHandler;
     private DefinitionRequestHandler definitionHandler;
     private HoverRequestHandler hoverHandler;
     private SignatureHelpRequestHandler signatureHelpHandler;
@@ -78,8 +78,8 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     private void createLSPRequestHandlers() {
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
-        this.documentSymbolHandler = new DocumentSymbolRequestHandler(env, surrogateMap, contextAwareExecutor);
-        this.definitionHandler = new DefinitionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, documentSymbolHandler);
+        this.symbolHandler = new SymbolRequestHandler(env, surrogateMap, contextAwareExecutor);
+        this.definitionHandler = new DefinitionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, symbolHandler);
         this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler);
         this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
@@ -278,7 +278,11 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<List<? extends SymbolInformation>> documentSymbol(URI uri) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> documentSymbolHandler.documentSymbolWithEnteredContext(uri));
+        return contextAwareExecutor.executeWithDefaultContext(() -> symbolHandler.documentSymbolWithEnteredContext(uri));
+    }
+
+    public Future<List<? extends SymbolInformation>> workspaceSymbol(String query) {
+        return contextAwareExecutor.executeWithDefaultContext(() -> symbolHandler.workspaceSymbolWithEnteredContext(query));
     }
 
     /**

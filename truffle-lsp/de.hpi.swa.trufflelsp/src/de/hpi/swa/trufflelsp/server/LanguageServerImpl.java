@@ -339,8 +339,8 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> symbol(WorkspaceSymbolParams params) {
-        List<? extends SymbolInformation> result = new ArrayList<>();
-        return CompletableFuture.completedFuture(result);
+        Future<List<? extends SymbolInformation>> future = truffleAdapter.workspaceSymbol(params.getQuery());
+        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, new ArrayList<>()));
     }
 
     @Override
