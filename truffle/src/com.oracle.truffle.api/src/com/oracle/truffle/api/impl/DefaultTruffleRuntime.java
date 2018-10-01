@@ -99,6 +99,13 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     public DefaultTruffleRuntime() {
     }
 
+    /**
+     * Utility method that casts the singleton {@link TruffleRuntime}.
+     */
+    static DefaultTruffleRuntime getRuntime() {
+        return (DefaultTruffleRuntime) Truffle.getRuntime();
+    }
+
     public DefaultTVMCI getTvmci() {
         return tvmci;
     }

@@ -486,12 +486,17 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             int currentMaxIndex = maxIndex;
             for (int i = 0; i < frameSlots.length; i++) {
                 FrameSlot frameSlot = frameSlots[i];
-                if (frameSlot.getIndex() > currentMaxIndex) {
-                    currentMaxIndex = frameSlot.getIndex();
+                if (getFrameSlotIndex(frameSlot) > currentMaxIndex) {
+                    currentMaxIndex = getFrameSlotIndex(frameSlot);
                 }
                 tags[i] = frameDescriptor.getFrameSlotKind(frameSlot).tag;
             }
             return currentMaxIndex;
+        }
+
+        @SuppressWarnings("deprecation")
+        private static int getFrameSlotIndex(FrameSlot slot) {
+            return slot.getIndex();
         }
 
         @Override
@@ -530,7 +535,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
             for (int i = 0; i < frameSlots.length; i++) {
                 FrameSlot slot = frameSlots[i];
-                int index = slot.getIndex();
+                int index = getFrameSlotIndex(slot);
 
                 byte speculatedTag = speculatedTags[i];
                 byte currentSourceTag = currentSourceTags[index];
