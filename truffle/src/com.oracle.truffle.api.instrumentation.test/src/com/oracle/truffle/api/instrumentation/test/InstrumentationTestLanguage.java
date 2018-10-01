@@ -145,7 +145,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  */
-@Registration(id = InstrumentationTestLanguage.ID, name = "", version = "2.0")
+@Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0")
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class,
                 StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
@@ -153,6 +153,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 implements SpecialService {
 
     public static final String ID = "instrumentation-test-language";
+    public static final String NAME = "Instrumentation Test Language";
     public static final String FILENAME_EXTENSION = ".titl";
 
     @Identifier("DEFINE")
@@ -1215,7 +1216,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public Object execute(VirtualFrame frame) {
             getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onEnter(null, 0, 1);
-            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onReturnValue("Not Important", 0, 1);
+            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onReturnValue(0, 0, 1);
             return null;
         }
     }
