@@ -67,7 +67,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
-import javax.lang.model.util.AbstractAnnotationValueVisitor7;
+import javax.lang.model.util.AbstractAnnotationValueVisitor8;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -348,7 +348,7 @@ public final class OrganizedImports {
             e.accept(new AnnotationValueReferenceVisitor(enclosingElement), null);
         }
 
-        private class AnnotationValueReferenceVisitor extends AbstractAnnotationValueVisitor7<Void, Void> {
+        private class AnnotationValueReferenceVisitor extends AbstractAnnotationValueVisitor8<Void, Void> {
 
             private final Element enclosingElement;
 
