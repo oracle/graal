@@ -52,7 +52,6 @@ import java.util.logging.Level;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.polyglot.io.MessageTransport;
 
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];

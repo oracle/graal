@@ -2,45 +2,58 @@
  * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * The Universal Permissive License (UPL), Version 1.0
+ * 
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ * 
+ * (a) the Software, and
+ * 
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ * 
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ * 
+ * This license is subject to the following condition:
+ * 
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.test.polyglot;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
-import com.oracle.truffle.api.TruffleMessageTransportHandler;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-
-public class MessageTransportTest {
-
-    private static final String INSTRUMENT_ID = "messageTransportTestInstrument1";
+public class MessageTransportTest extends AbstractPolyglotTest {
 
     private final URI testUri = createTestUri();
 
@@ -54,56 +67,45 @@ public class MessageTransportTest {
 
     @Test
     public void defaultTransportTest() throws Exception {
-        Engine engine = Engine.create();
-        Instrument access = engine.getInstruments().get(INSTRUMENT_ID);
-        TruffleInstrument.Env env = access.lookup(TruffleInstrument.Env.class);
+        setupEnv();
         URI[] uris = new URI[]{testUri, new URI("ws", "a", "b"), new URI("file", "/a", "")};
         for (URI uri : uris) {
-            Assert.assertNull(env.getMessageTransportHandler(uri, true));
+            Assert.assertNull(instrumentEnv.startServer(uri, new MessageHandlerVerifier()));
         }
     }
 
     @Test
     public void vetoedTransportTest() throws Exception {
-        Engine engine = Engine.newBuilder().messageTransportInterceptor(new MessageTransport.Interceptor() {
+        Engine engine = Engine.newBuilder().serverTransport(new MessageTransport() {
             @Override
-            public boolean handle(URI uri, boolean server) throws VetoException {
+            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
                 throw new VetoException("No access to " + testUri);
             }
-
-            @Override
-            public MessageTransport.MessageHandler onOpen(URI uri, boolean server, MessageTransport transport) {
-                Assert.fail();
-                return null;
-            }
         }).build();
-        Instrument access = engine.getInstruments().get(INSTRUMENT_ID);
-        TruffleInstrument.Env env = access.lookup(TruffleInstrument.Env.class);
+        setupEnv(Context.newBuilder().engine(engine).build());
         try {
-            env.getMessageTransportHandler(testUri, false);
+            instrumentEnv.startServer(testUri, new MessageHandlerVerifier());
             Assert.fail();
-        } catch (MessageTransport.Interceptor.VetoException ex) {
+        } catch (MessageTransport.VetoException ex) {
             Assert.assertEquals("No access to " + testUri, ex.getMessage());
         }
     }
 
     @Test
     public void noTransportTest() throws Exception {
-        Engine engine = Engine.newBuilder().messageTransportInterceptor(new MessageTransport.Interceptor() {
+        Engine engine = Engine.newBuilder().serverTransport(new MessageTransport() {
             @Override
-            public boolean handle(URI uri, boolean server) throws VetoException {
-                return false;
-            }
-
-            @Override
-            public MessageTransport.MessageHandler onOpen(URI uri, boolean server, MessageTransport transport) {
-                Assert.fail();
+            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
                 return null;
             }
         }).build();
-        Instrument access = engine.getInstruments().get(INSTRUMENT_ID);
-        TruffleInstrument.Env env = access.lookup(TruffleInstrument.Env.class);
-        Assert.assertNull(env.getMessageTransportHandler(testUri, false));
+        setupEnv(Context.newBuilder().engine(engine).build());
+        Assert.assertNull(instrumentEnv.startServer(testUri, new MessageHandlerVerifier()));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void sharedEngineFails() {
+        Context.newBuilder().serverTransport((uri, peerEndpoint) -> null).engine(Engine.create()).build();
     }
 
     @Test
@@ -118,69 +120,50 @@ public class MessageTransportTest {
     }
 
     private void testMessages(MessageKind kind, String... messages) throws Exception {
-        MessageTransport[] polyglotTransport = new MessageTransport[1];
-        PolyglotMessageHandler[] polyglotMessageHandlerRef = new PolyglotMessageHandler[]{null};
-        Engine engine = Engine.newBuilder().messageTransportInterceptor(new MessageTransport.Interceptor() {
+        MessageEndpoint[] embedderPeerEndpoint = new MessageEndpoint[1];
+        MessageHandlerVerifier[] embedderEndpoint = new MessageHandlerVerifier[]{null};
+        Context cntx = Context.newBuilder().serverTransport(new MessageTransport() {
             @Override
-            public boolean handle(URI uri, boolean server) throws VetoException {
+            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
                 Assert.assertSame(testUri, uri);
-                return true;
-            }
-
-            @Override
-            public MessageTransport.MessageHandler onOpen(URI uri, boolean server, MessageTransport transport) {
-                Assert.assertSame(testUri, uri);
-                sendMessage(kind, transport, messages[0]);
-                polyglotTransport[0] = transport;
-                PolyglotMessageHandler pmh = new PolyglotMessageHandler();
-                polyglotMessageHandlerRef[0] = pmh;
+                // The first message goes from embedder to the instrument
+                sendMessage(kind, peerEndpoint, messages[0]);
+                embedderPeerEndpoint[0] = peerEndpoint;
+                MessageHandlerVerifier pmh = new MessageHandlerVerifier();
+                embedderEndpoint[0] = pmh;
                 return pmh;
             }
         }).build();
-        Instrument access = engine.getInstruments().get(INSTRUMENT_ID);
-        TruffleInstrument.Env env = access.lookup(TruffleInstrument.Env.class);
-        TruffleMessageTransportHandler messageTransportHandler = env.getMessageTransportHandler(testUri, true);
-        TruffleMessageHandler truffleMessageHandler = new TruffleMessageHandler();
-        truffleMessageHandler.setExpect(kind, messages[0]);
-        TruffleMessageTransportHandler.Endpoint endpoint = messageTransportHandler.open(truffleMessageHandler);
-        truffleMessageHandler.assertWasCalled();
-        polyglotMessageHandlerRef[0].setExpect(kind, messages[1]);
-        switch (kind) {
-            case TEXT:
-                endpoint.sendText(messages[1]);
-                break;
-            case BINARY:
-                endpoint.sendBinary(ByteBuffer.wrap(messages[1].getBytes()));
-                break;
-            case PING:
-                endpoint.sendPing(ByteBuffer.wrap(messages[1].getBytes()));
-                break;
-            case PONG:
-                endpoint.sendPong(ByteBuffer.wrap(messages[1].getBytes()));
-                break;
-            case CLOSE:
-                messageTransportHandler.close();
-                break;
-            default:
-                throw new IllegalStateException("Unknown kind: " + kind);
-        }
+        setupEnv(cntx);
+        MessageHandlerVerifier instrumentEndpoint = new MessageHandlerVerifier();
+        // Instrument has received the first message from the embedder
+        instrumentEndpoint.setExpect(kind, messages[0]);
+        MessageEndpoint instrumentPeerEndpoint = instrumentEnv.startServer(testUri, instrumentEndpoint);
+        instrumentEndpoint.assertWasCalled();
+        // Instrument sends the second message to embedder
+        embedderEndpoint[0].setExpect(kind, messages[1]);
+        sendMessage(kind, instrumentPeerEndpoint, messages[1]);
         if (kind != MessageKind.CLOSE) {
-            polyglotMessageHandlerRef[0].assertWasCalled();
-            // Send a next message back
-            truffleMessageHandler.setExpect(kind, messages[2]);
-            sendMessage(kind, polyglotTransport[0], messages[2]);
-            truffleMessageHandler.assertWasCalled();
+            embedderEndpoint[0].assertWasCalled();
+            // Send a next message back from embedder to the instrument
+            instrumentEndpoint.setExpect(kind, messages[2]);
+            sendMessage(kind, embedderPeerEndpoint[0], messages[2]);
+            instrumentEndpoint.assertWasCalled();
             // Close the transport
-            truffleMessageHandler.setExpect(MessageKind.CLOSE, null);
-            polyglotMessageHandlerRef[0].setExpect(MessageKind.CLOSE, null);
-            messageTransportHandler.close();
-            truffleMessageHandler.assertWasCalled();
-            polyglotMessageHandlerRef[0].assertWasCalled();
+            embedderEndpoint[0].setExpect(MessageKind.CLOSE, null);
+            instrumentPeerEndpoint.sendClose();
+            embedderEndpoint[0].assertWasCalled();
+            instrumentEndpoint.setExpect(MessageKind.CLOSE, null);
+            embedderPeerEndpoint[0].sendClose();
+            instrumentEndpoint.assertWasCalled();
         }
+        // Assert that implementation class of embedder is not accessible to the instrument
+        // and vice versa:
+        Assert.assertNotEquals(embedderEndpoint[0], instrumentPeerEndpoint);
+        Assert.assertNotEquals(instrumentEndpoint, embedderPeerEndpoint[0]);
     }
 
-    private static void sendMessage(MessageKind kind, MessageTransport transport, String message) {
-        MessageTransport.Endpoint endpoint = transport.getDefaultEndpoint();
+    private static void sendMessage(MessageKind kind, MessageEndpoint endpoint, String message) throws IOException {
         switch (kind) {
             case TEXT:
                 endpoint.sendText(message);
@@ -195,7 +178,7 @@ public class MessageTransportTest {
                 endpoint.sendPong(ByteBuffer.wrap(message.getBytes()));
                 break;
             case CLOSE:
-                transport.close();
+                endpoint.sendClose();
                 break;
             default:
                 throw new IllegalStateException("Unknown kind: " + kind);
@@ -210,7 +193,7 @@ public class MessageTransportTest {
         CLOSE
     }
 
-    private static class MessageHandlerVerifier {
+    private static class MessageHandlerVerifier implements MessageEndpoint {
 
         private MessageKind expectedKind;
         private String expectedText;
@@ -226,28 +209,33 @@ public class MessageTransportTest {
             this.numCallbacks = 0;
         }
 
-        public void onTextMessage(String text) {
+        @Override
+        public void sendText(String text) {
             Assert.assertSame(MessageKind.TEXT, expectedKind);
             Assert.assertEquals(expectedText, text);
             numCallbacks++;
         }
 
-        public void onBinaryMessage(ByteBuffer data) {
+        @Override
+        public void sendBinary(ByteBuffer data) {
             Assert.assertSame(MessageKind.BINARY, expectedKind);
             assertData(data);
         }
 
-        public void onPing(ByteBuffer data) {
+        @Override
+        public void sendPing(ByteBuffer data) {
             Assert.assertSame(MessageKind.PING, expectedKind);
             assertData(data);
         }
 
-        public void onPong(ByteBuffer data) {
+        @Override
+        public void sendPong(ByteBuffer data) {
             Assert.assertSame(MessageKind.PONG, expectedKind);
             assertData(data);
         }
 
-        public void onClose() {
+        @Override
+        public void sendClose() {
             Assert.assertSame(MessageKind.CLOSE, expectedKind);
             Assert.assertNull(expectedText);
             numCallbacks++;
@@ -258,23 +246,6 @@ public class MessageTransportTest {
             data.get(bytes);
             Assert.assertArrayEquals(expectedText.getBytes(), bytes);
             numCallbacks++;
-        }
-    }
-
-    private static class PolyglotMessageHandler extends MessageHandlerVerifier implements MessageTransport.MessageHandler {
-
-    }
-
-    private static class TruffleMessageHandler extends MessageHandlerVerifier implements TruffleMessageTransportHandler.MessageHandler {
-
-    }
-
-    @TruffleInstrument.Registration(id = INSTRUMENT_ID, name = INSTRUMENT_ID, services = TruffleInstrument.Env.class)
-    public static class TestAccessInstruments extends TruffleInstrument {
-
-        @Override
-        protected void onCreate(final TruffleInstrument.Env env) {
-            env.registerService(env);
         }
     }
 

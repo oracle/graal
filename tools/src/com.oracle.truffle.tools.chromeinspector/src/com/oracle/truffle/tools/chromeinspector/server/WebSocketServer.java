@@ -27,7 +27,6 @@ package com.oracle.truffle.tools.chromeinspector.server;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,6 +36,7 @@ import java.io.PrintWriter;
 import java.io.PushbackInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -46,23 +46,20 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLServerSocketFactory;
 
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoWSD;
 
+import org.graalvm.polyglot.io.MessageEndpoint;
+
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
-import com.oracle.truffle.tools.chromeinspector.TruffleProfiler;
-import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
-import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
-import com.oracle.truffle.tools.chromeinspector.domains.ProfilerDomain;
-import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 
 /**
@@ -75,10 +72,12 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 
     private final Map<String, ServerPathSession> sessions = new HashMap<>();
+    private final AtomicReference<InspectServerSession> initialSession;
     private final PrintStream log;
 
-    private WebSocketServer(InetSocketAddress isa, PrintStream log) {
+    private WebSocketServer(InetSocketAddress isa, InspectServerSession initialSession, PrintStream log) {
         super(isa.getHostName(), isa.getPort());
+        this.initialSession = new AtomicReference<>(initialSession);
         this.log = log;
         if (log != null) {
             log.println("New WebSocketServer at " + isa);
@@ -87,25 +86,13 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
     }
 
     public static WebSocketServer get(InetSocketAddress isa, String path, TruffleExecutionContext context, boolean debugBrk,
-                    boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher) throws IOException {
+                    boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
+                    InspectServerSession initialSession) throws IOException {
         WebSocketServer wss;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                PrintStream traceLog = null;
-                String traceLogFile = System.getProperty("chromeinspector.traceMessages");
-                if (traceLogFile != null) {
-                    if (Boolean.parseBoolean(traceLogFile)) {
-                        traceLog = System.err;
-                    } else if (!"false".equalsIgnoreCase(traceLogFile)) {
-                        if ("tmp".equalsIgnoreCase(traceLogFile)) {
-                            traceLog = new PrintStream(new FileOutputStream(File.createTempFile("ChromeInspectorProtocol", ".txt")));
-                        } else {
-                            traceLog = new PrintStream(new FileOutputStream(traceLogFile));
-                        }
-                    }
-                }
-                wss = new WebSocketServer(isa, traceLog);
+                wss = new WebSocketServer(isa, initialSession, context.getLogger());
                 if (secure) {
                     if (TruffleOptions.AOT) {
                         throw new IOException("Secure connection is not available in the native-image yet.");
@@ -207,11 +194,10 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
         if (session != null) {
             // Do the initial break for the first time only, do not break on reconnect
             boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
-            TruffleExecutionContext context = session.getContext();
-            RuntimeDomain runtime = new TruffleRuntime(context);
-            DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
-            ProfilerDomain profiler = new TruffleProfiler(context, session.getConnectionWatcher());
-            InspectServerSession iss = new InspectServerSession(runtime, debugger, profiler, context);
+            InspectServerSession iss = initialSession.getAndSet(null);
+            if (iss == null) {
+                iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher());
+            }
             return new InspectWebSocket(handshake, iss, session.getConnectionWatcher(), log);
         } else {
             return new ClosedWebSocket(handshake);
@@ -319,21 +305,32 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
                 log.flush();
             }
             connectionWatcher.notifyOpen();
-            iss.setMessageListener(new InspectServerSession.MessageListener() {
+            iss.setMessageListener(new MessageEndpoint() {
                 @Override
-                public void sendMessage(String message) {
+                public void sendText(String message) throws IOException {
                     if (log != null) {
                         log.println("SERVER: " + message);
                         log.flush();
                     }
-                    try {
-                        send(message);
-                    } catch (IOException ex) {
-                        if (log != null) {
-                            ex.printStackTrace(log);
-                            log.flush();
-                        }
-                    }
+                    send(message);
+                }
+
+                @Override
+                public void sendBinary(ByteBuffer data) throws IOException {
+                    throw new UnsupportedOperationException("Binary messages are not supported.");
+                }
+
+                @Override
+                public void sendPing(ByteBuffer data) throws IOException {
+                }
+
+                @Override
+                public void sendPong(ByteBuffer data) throws IOException {
+                }
+
+                @Override
+                public void sendClose() throws IOException {
+                    close(WebSocketFrame.CloseCode.NormalClosure, "", true);
                 }
             });
         }
@@ -345,7 +342,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
                 log.flush();
             }
             connectionWatcher.notifyClosing();
-            iss.dispose();
+            iss.sendClose();
         }
 
         @Override
@@ -355,7 +352,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
                 log.println("CLIENT: " + message);
                 log.flush();
             }
-            iss.onMessage(message);
+            iss.sendText(message);
         }
 
         @Override

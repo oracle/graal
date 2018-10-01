@@ -44,7 +44,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Map;
@@ -71,7 +70,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleMessageTransportHandler;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -421,8 +419,6 @@ public abstract class Accessor {
 
         public abstract File asFile(TruffleFile file);
 
-        public abstract TruffleMessageTransportHandler createMessageHandler(URI uri, boolean server, MessageTransport.Interceptor messageInterceptor);
-
     }
 
     public abstract static class InstrumentSupport {
@@ -437,7 +433,7 @@ public abstract class Accessor {
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport.Interceptor messageInterceptor);
+        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor);
 
         public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, TruffleLanguage<?> language);
 

@@ -39,11 +39,11 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleMessageTransportHandler;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
+import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
@@ -149,7 +150,10 @@ public final class InspectorInstrument extends TruffleInstrument {
             info.println("Waiting for the debugger to disconnect...");
             info.flush();
             connectionWatcher.waitForClose();
-            server.close();
+            try {
+                server.close();
+            } catch (IOException ioex) {
+            }
         }
     }
 
@@ -250,16 +254,25 @@ public final class InspectorInstrument extends TruffleInstrument {
             } catch (URISyntaxException ex) {
                 throw new IOException(ex);
             }
-            TruffleMessageTransportHandler messageHandler = getServerMessageHandler(env, wsuri);
-            if (messageHandler == null) {
-                wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher);
+            InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
+            WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss);
+            MessageEndpoint serverEndpoint;
+            try {
+                serverEndpoint = env.startServer(wsuri, iss);
+            } catch (MessageTransport.VetoException vex) {
+                throw new IOException(vex.getLocalizedMessage());
+            }
+            if (serverEndpoint == null) {
+                interceptor.close(path);
+                wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
                 String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
                 info.println("Debugger listening on port " + wss.getListeningPort() + ".");
                 info.println("To start debugging, open the following URL in Chrome:");
                 info.println("    " + address);
                 info.flush();
             } else {
-                wss = new WSInterceptorServer(wsuri, messageHandler, executionContext, debugBreak, connectionWatcher);
+                interceptor.opened(serverEndpoint, connectionWatcher);
+                wss = interceptor;
             }
             if (debugBreak || waitAttached) {
                 final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();
@@ -315,14 +328,6 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
 
-        private static TruffleMessageTransportHandler getServerMessageHandler(Env env, URI uri) throws IOException {
-            try {
-                return env.getMessageTransportHandler(uri, true);
-            } catch (MessageTransport.Interceptor.VetoException vex) {
-                throw new IOException(vex.getLocalizedMessage());
-            }
-        }
-
         private static final String ADDRESS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?ws=";
         private static final String ADDRESS_PREFIX_SECURE = "chrome-devtools://devtools/bundled/js_app.html?wss=";
 
@@ -331,7 +336,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             return prefix + hostAddress + ":" + port + path;
         }
 
-        public void close() {
+        public void close() throws IOException {
             if (wss != null) {
                 wss.close(wsspath);
                 wss = null;

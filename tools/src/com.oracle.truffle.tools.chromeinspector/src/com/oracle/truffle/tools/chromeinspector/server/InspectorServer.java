@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.chromeinspector.server;
 
+import java.io.IOException;
+
 /**
  * An abstraction of an inspector server.
  */
@@ -31,5 +33,5 @@ public interface InspectorServer {
 
     int getListeningPort();
 
-    void close(String path);
+    void close(String path) throws IOException;
 }

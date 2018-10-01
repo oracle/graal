@@ -150,12 +150,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     Map<String, Level> logLevels;    // effectively final
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, ClassLoader contextClassLoader,
-                    boolean boundEngine, MessageTransport.Interceptor messageInterceptor, Handler logHandler) {
+                    boolean boundEngine, MessageTransport messageInterceptor, Handler logHandler) {
         this(impl, out, err, in, options, useSystemProperties, contextClassLoader, boundEngine, false, messageInterceptor, logHandler);
     }
 
     private PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
-                    ClassLoader contextClassLoader, boolean boundEngine, boolean preInitialization, MessageTransport.Interceptor messageInterceptor, Handler logHandler) {
+                    ClassLoader contextClassLoader, boolean boundEngine, boolean preInitialization, MessageTransport messageInterceptor, Handler logHandler) {
         super(impl);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor);
         this.impl = impl;

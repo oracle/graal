@@ -143,12 +143,12 @@ final class InstrumentationHandler {
     private DispatchOutputStream out;   // effectively final
     private DispatchOutputStream err;   // effectively final
     private InputStream in;             // effectively final
-    private MessageTransport.Interceptor messageInterceptor; // effectively final
+    private MessageTransport messageInterceptor; // effectively final
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
     private final EngineInstrumenter engineInstrumenter;
 
-    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport.Interceptor messageInterceptor) {
+    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
         this.sourceVM = sourceVM;
         this.out = out;
         this.err = err;
@@ -2076,7 +2076,7 @@ final class InstrumentationHandler {
         static final class InstrumentImpl extends InstrumentSupport {
 
             @Override
-            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport.Interceptor messageInterceptor) {
+            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
                 return new InstrumentationHandler(vm, out, err, in, messageInterceptor);
             }
 

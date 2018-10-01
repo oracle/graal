@@ -28,41 +28,27 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 
+import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
-
-import com.oracle.truffle.api.TruffleMessageTransportHandler;
-import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
-import com.oracle.truffle.tools.chromeinspector.TruffleProfiler;
-import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
-import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
-import com.oracle.truffle.tools.chromeinspector.domains.ProfilerDomain;
-import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
 
 /**
  * Inspector server that delegates to {@link MessageTransport}.
  */
-public final class WSInterceptorServer implements InspectorServer, InspectServerSession.MessageListener {
+public final class WSInterceptorServer implements InspectorServer, MessageEndpoint {
 
     private final URI uri;
-    private final TruffleMessageTransportHandler messageHandler;
-    private final InspectorMessageHandler inspectMessageHandler;
-    private final TruffleMessageTransportHandler.Endpoint inspectEndpoint;
-    private final InspectServerSession inspectSession;
-    private final ConnectionWatcher connectionWatcher;
+    private MessageEndpoint inspectEndpoint;
+    private ConnectionWatcher connectionWatcher;
 
-    public WSInterceptorServer(URI uri, TruffleMessageTransportHandler messageHandler, TruffleExecutionContext context, boolean debugBreak, ConnectionWatcher connectionWatcher) throws IOException {
+    public WSInterceptorServer(URI uri, InspectServerSession iss) {
         this.uri = uri;
-        this.messageHandler = messageHandler;
-        this.connectionWatcher = connectionWatcher;
-        RuntimeDomain runtime = new TruffleRuntime(context);
-        DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
-        ProfilerDomain profiler = new TruffleProfiler(context, connectionWatcher);
-        inspectSession = new InspectServerSession(runtime, debugger, profiler, context);
-        this.inspectMessageHandler = new InspectorMessageHandler(inspectSession);
-        inspectSession.setMessageListener(this);
-        inspectEndpoint = messageHandler.open(this.inspectMessageHandler);
-        connectionWatcher.notifyOpen();
+        iss.setMessageListener(this);
+    }
+
+    public void opened(MessageEndpoint endpoint, ConnectionWatcher cw) {
+        this.inspectEndpoint = endpoint;
+        this.connectionWatcher = cw;
+        cw.notifyOpen();
     }
 
     @Override
@@ -71,47 +57,40 @@ public final class WSInterceptorServer implements InspectorServer, InspectServer
     }
 
     @Override
-    public void close(String path) {
-        if (path.equals(uri.getPath())) {
-            messageHandler.close();
+    public void close(String path) throws IOException {
+        if (inspectEndpoint != null) {
+            if (path.equals(uri.getPath())) {
+                inspectEndpoint.sendClose();
+            }
         }
     }
 
     @Override
-    public void sendMessage(String message) {
+    public void sendText(String message) throws IOException {
         connectionWatcher.waitForOpen();
         inspectEndpoint.sendText(message);
     }
 
-    private static final class InspectorMessageHandler implements TruffleMessageTransportHandler.MessageHandler {
+    @Override
+    public void sendBinary(ByteBuffer data) throws IOException {
+        inspectEndpoint.sendBinary(data);
+    }
 
-        private final InspectServerSession inspectSession;
+    @Override
+    public void sendPing(ByteBuffer data) throws IOException {
+        inspectEndpoint.sendPing(data);
+    }
 
-        InspectorMessageHandler(InspectServerSession inspectSession) {
-            this.inspectSession = inspectSession;
-        }
+    @Override
+    public void sendPong(ByteBuffer data) throws IOException {
+        inspectEndpoint.sendPong(data);
+    }
 
-        @Override
-        public void onTextMessage(String text) {
-            inspectSession.onMessage(text);
-        }
-
-        @Override
-        public void onBinaryMessage(ByteBuffer data) {
-            throw new UnsupportedOperationException("Binary messages are not supported.");
-        }
-
-        @Override
-        public void onPing(ByteBuffer data) {
-        }
-
-        @Override
-        public void onPong(ByteBuffer data) {
-        }
-
-        @Override
-        public void onClose() {
-            inspectSession.dispose();
+    @Override
+    public void sendClose() throws IOException {
+        if (inspectEndpoint != null) {
+            inspectEndpoint.sendClose();
         }
     }
+
 }

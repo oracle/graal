@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -36,7 +37,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-
+import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
 /**
@@ -92,16 +93,11 @@ public class InspectorMessageTransportTest {
 
     @Test
     public void inspectorVetoedTest() {
-        Engine.Builder engineBuilder = Engine.newBuilder().messageTransportInterceptor(new MessageTransport.Interceptor() {
-            @Override
-            public boolean handle(URI uri, boolean server) throws MessageTransport.Interceptor.VetoException {
-                throw new MessageTransport.Interceptor.VetoException("Server vetoed.");
-            }
+        Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
 
             @Override
-            public MessageTransport.MessageHandler onOpen(URI uri, boolean server, MessageTransport transport) {
-                Assert.fail("Not expected to be called.");
-                return null;
+            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
+                throw new MessageTransport.VetoException("Server vetoed.");
             }
         }).option("inspect", PORT);
         try {
@@ -128,12 +124,12 @@ public class InspectorMessageTransportTest {
             return opened;
         }
 
-        void addMessageHandler(MsgHandler handler) {
+        void addMessageHandler(MsgHandler handler) throws IOException {
             remote.handler = handler;
             sendInitialMessages(handler);
         }
 
-        private static void sendInitialMessages(final MsgHandler handler) {
+        private static void sendInitialMessages(final MsgHandler handler) throws IOException {
             for (String message : INITIAL_MESSAGES) {
                 handler.onMessage(message);
             }
@@ -144,7 +140,7 @@ public class InspectorMessageTransportTest {
         }
 
         interface MsgHandler {
-            void onMessage(String message);
+            void onMessage(String message) throws IOException;
         }
     }
 
@@ -157,7 +153,7 @@ public class InspectorMessageTransportTest {
             this.messages = messages;
         }
 
-        void sendText(String text) {
+        void sendText(String text) throws IOException {
             if (!text.startsWith("{\"method\":\"Debugger.scriptParsed\"")) {
                 messages.add("toClient(" + text + ")");
             }
@@ -172,21 +168,14 @@ public class InspectorMessageTransportTest {
 
         public Engine onOpen(final Session session) {
             assert this != null;
-            Engine engine = Engine.newBuilder().messageTransportInterceptor(new MessageTransport.Interceptor() {
+            Engine engine = Engine.newBuilder().serverTransport(new MessageTransport() {
                 @Override
-                public boolean handle(URI uri, boolean server) throws MessageTransport.Interceptor.VetoException {
-                    Assert.assertEquals("Invalid protocol", "ws", uri.getScheme());
-                    Assert.assertTrue(server);
-                    return true;
-                }
-
-                @Override
-                public MessageTransport.MessageHandler onOpen(URI uri, boolean server, MessageTransport transport) {
-                    String uriStr = uri.toString();
+                public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
+                    Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
+                    String uriStr = requestURI.toString();
                     Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
                     Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT));
-                    Assert.assertTrue(server);
-                    return new ChromeDebuggingProtocolMessageHandler(session, uri, transport);
+                    return new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint);
                 }
             }).option("inspect", PORT).build();
             return engine;
@@ -199,11 +188,11 @@ public class InspectorMessageTransportTest {
 
     }
 
-    private static final class ChromeDebuggingProtocolMessageHandler implements MessageTransport.MessageHandler {
+    private static final class ChromeDebuggingProtocolMessageHandler implements MessageEndpoint {
 
         private final Session session;
 
-        ChromeDebuggingProtocolMessageHandler(Session session, URI uri, MessageTransport transport) {
+        ChromeDebuggingProtocolMessageHandler(Session session, URI uri, MessageEndpoint peerEndpoint) throws IOException {
             this.session = session;
             Assert.assertEquals("ws", uri.getScheme());
 
@@ -211,34 +200,34 @@ public class InspectorMessageTransportTest {
             session.addMessageHandler(message -> {
                 Assert.assertTrue(session.isOpen());
                 session.messages.add("toBackend(" + message + ")");
-                transport.getDefaultEndpoint().sendText(message);
+                peerEndpoint.sendText(message);
             });
         }
 
         /* Forward a JSON message from the backend to the client. */
         @Override
-        public void onTextMessage(String text) {
+        public void sendText(String text) throws IOException {
             Assert.assertTrue(session.isOpen());
             session.getBasicRemote().sendText(text);
         }
 
         @Override
-        public void onBinaryMessage(ByteBuffer data) {
-            throw new UnsupportedOperationException("onBinaryMessage");
+        public void sendBinary(ByteBuffer data) throws IOException {
+            throw new UnsupportedOperationException("sendBinary");
         }
 
         @Override
-        public void onPing(ByteBuffer data) {
+        public void sendPing(ByteBuffer data) throws IOException {
             throw new UnsupportedOperationException("onPing");
         }
 
         @Override
-        public void onPong(ByteBuffer data) {
+        public void sendPong(ByteBuffer data) throws IOException {
             throw new UnsupportedOperationException("onPong");
         }
 
         @Override
-        public void onClose() {
+        public void sendClose() throws IOException {
             session.close();
         }
 
