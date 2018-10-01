@@ -81,11 +81,10 @@ public class ParsingTest extends TruffleLSPTest {
             {
                 String textToInsert = "+4";
                 TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(new Range(new Position(0, 27), new Position(0, 27)), textToInsert.length(), textToInsert);
-                Future<Void> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
-                future.get();
+                Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+                surrogate = future.get();
 
                 assertTrue(diagnostics.isEmpty());
-                surrogate = truffleAdapter.uri2TextDocumentSurrogate.get(uri);
                 assertEquals("function main() {return 3+3+4;}", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -93,7 +92,7 @@ public class ParsingTest extends TruffleLSPTest {
             {
                 String textToDelete = "";
                 TextDocumentContentChangeEvent deletionEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 24), new Position(0, 26)), textToDelete.length(), textToDelete);
-                Future<Void> future = truffleAdapter.processChangesAndParse(Arrays.asList(deletionEvent), uri);
+                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(deletionEvent), uri);
                 future.get();
 
                 assertTrue(diagnostics.isEmpty());
@@ -105,7 +104,7 @@ public class ParsingTest extends TruffleLSPTest {
                 String textToReplaceSingleLine = "\n  return 42;\n}";
                 TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 17), new Position(0, 29)), textToReplaceSingleLine.length(),
                                 textToReplaceSingleLine);
-                Future<Void> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
+                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
                 assertTrue(diagnostics.isEmpty());
@@ -116,7 +115,7 @@ public class ParsingTest extends TruffleLSPTest {
             {
                 String textToInsertAtEnd = "\n";
                 TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(2, 1), new Position(2, 1)), textToInsertAtEnd.length(), textToInsertAtEnd);
-                Future<Void> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
+                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
                 assertTrue(diagnostics.isEmpty());
@@ -128,7 +127,7 @@ public class ParsingTest extends TruffleLSPTest {
                 String textToInsertAtNewLineTerminatedLine = " ";
                 TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(3, 0), new Position(3, 0)), textToInsertAtNewLineTerminatedLine.length(),
                                 textToInsertAtNewLineTerminatedLine);
-                Future<Void> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
+                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
                 assertTrue(diagnostics.isEmpty());
@@ -140,7 +139,7 @@ public class ParsingTest extends TruffleLSPTest {
                 String textToReplaceMultiLine = "{return 1;}";
                 TextDocumentContentChangeEvent replaceEvent = new TextDocumentContentChangeEvent(new Range(new Position(0, 16), new Position(3, 1)), textToReplaceMultiLine.length(),
                                 textToReplaceMultiLine);
-                Future<Void> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
+                Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
                 assertTrue(diagnostics.isEmpty());

@@ -4,7 +4,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Range;
@@ -23,6 +22,7 @@ import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class DefinitionRequestHandler extends AbstractRequestHandler {
@@ -30,15 +30,15 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     private final SourceCodeEvaluator sourceCodeEvaluator;
     private final DocumentSymbolRequestHandler documentSymbolHandler;
 
-    public DefinitionRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator evaluator,
+    public DefinitionRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator evaluator,
                     DocumentSymbolRequestHandler documentSymbolHandler) {
-        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+        super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = evaluator;
         this.documentSymbolHandler = documentSymbolHandler;
     }
 
     public List<? extends Location> definitionWithEnteredContext(URI uri, int line, int character) throws DiagnosticsNotification {
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         InstrumentableNode definitionSearchNode = findNodeAtCaret(surrogate, line, character, StandardTags.CallTag.class);
         if (definitionSearchNode != null) {
             SourceSection definitionSearchSection = ((Node) definitionSearchNode).getSourceSection();

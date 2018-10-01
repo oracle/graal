@@ -27,12 +27,12 @@ import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures.MessageNodes;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
-import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 
 public class DocumentSymbolRequestHandler extends AbstractRequestHandler {
 
-    public DocumentSymbolRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor) {
-        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+    public DocumentSymbolRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
+        super(env, surrogateMap, contextAwareExecutor);
     }
 
     public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {

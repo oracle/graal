@@ -225,7 +225,7 @@ public class CompletionTest extends TruffleLSPTest {
             TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
             boolean thrown = false;
             try {
-                Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+                Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
                 future2.get();
             } catch (RuntimeException e) {
                 thrown = true;
@@ -246,7 +246,7 @@ public class CompletionTest extends TruffleLSPTest {
             String replacement1 = "";
             Range range1 = new Range(new Position(2, 7), new Position(2, 8));
             TextDocumentContentChangeEvent event1 = new TextDocumentContentChangeEvent(range1, replacement1.length(), replacement1);
-            Future<Void> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event1), uri);
+            Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event1), uri);
             future2.get();
 
             String replacement2 = ".";
@@ -254,7 +254,7 @@ public class CompletionTest extends TruffleLSPTest {
             TextDocumentContentChangeEvent event2 = new TextDocumentContentChangeEvent(range2, replacement2.length(), replacement2);
             boolean thrown = false;
             try {
-                Future<Void> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
+                Future<?> future3 = truffleAdapter.processChangesAndParse(Arrays.asList(event2), uri);
                 future3.get();
             } catch (RuntimeException e) {
                 thrown = true;

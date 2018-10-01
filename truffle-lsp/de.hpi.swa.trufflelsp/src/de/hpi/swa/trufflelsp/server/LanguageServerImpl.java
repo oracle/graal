@@ -102,6 +102,8 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     }
 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
+        truffleAdapter.initialize();
+
         List<String> signatureTriggerChars = Arrays.asList("(");
         final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(signatureTriggerChars);
 
@@ -124,6 +126,8 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         capabilities.setReferencesProvider(true);
 
         capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
+
+        CompletableFuture.runAsync(() -> parseWorkspace(params.getRootUri()));
 
         return CompletableFuture.completedFuture(new InitializeResult(capabilities));
     }
@@ -320,7 +324,17 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
     @Override
     public void didSave(DidSaveTextDocumentParams params) {
-        // TODO Auto-generated method stub
+        Future<?> future;
+        URI uri = URI.create(params.getTextDocument().getUri());
+        if (params.getText() != null) {
+            String langId = openedFileUri2LangId.get(uri);
+            assert langId != null : uri;
+            future = truffleAdapter.parse(params.getText(), langId, uri);
+
+        } else {
+            future = truffleAdapter.reparse(uri);
+        }
+        CompletableFuture.runAsync(() -> waitForResultAndHandleExceptions(future, null, uri));
     }
 
     @Override
@@ -383,6 +397,14 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         } else {
             err.println("Unkown command: " + params.getCommand());
             return CompletableFuture.completedFuture(new Object());
+        }
+    }
+
+    private void parseWorkspace(String rootUri) {
+        List<Future<?>> parsingTasks = truffleAdapter.parseWorkspace(URI.create(rootUri));
+
+        for (Future<?> future : parsingTasks) {
+            waitForResultAndHandleExceptions(future);
         }
     }
 

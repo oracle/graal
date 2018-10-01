@@ -1,8 +1,6 @@
 package de.hpi.swa.trufflelsp.server.request;
 
 import java.io.PrintWriter;
-import java.net.URI;
-import java.util.Map;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -14,19 +12,20 @@ import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class AbstractRequestHandler {
 
     protected final TruffleInstrument.Env env;
-    protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate;
+    protected final SurrogateMap surrogateMap;
     protected final PrintWriter err;
     protected final ContextAwareExecutorWrapper contextAwareExecutor;
 
-    public AbstractRequestHandler(TruffleInstrument.Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor) {
+    public AbstractRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
         this.env = env;
         this.err = new PrintWriter(env.err(), true);
-        this.uri2TextDocumentSurrogate = uri2TextDocumentSurrogate;
+        this.surrogateMap = surrogateMap;
         this.contextAwareExecutor = contextAwareExecutor;
     }
 

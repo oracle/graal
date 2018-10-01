@@ -3,7 +3,6 @@ package de.hpi.swa.trufflelsp.server.request;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.MarkedString;
@@ -33,19 +32,20 @@ import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class HoverRequestHandler extends AbstractRequestHandler {
 
     private CompletionRequestHandler completionHandler;
 
-    public HoverRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor, CompletionRequestHandler completionHandler) {
-        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+    public HoverRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, CompletionRequestHandler completionHandler) {
+        super(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = completionHandler;
     }
 
     public Hover hoverWithEnteredContext(URI uri, int line, int column) {
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column + 1);
         if (nodeAtCaret != null) {
             SourceSection hoverSection = ((Node) nodeAtCaret).getSourceSection();

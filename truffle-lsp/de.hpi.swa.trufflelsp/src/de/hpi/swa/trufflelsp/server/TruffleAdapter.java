@@ -3,12 +3,18 @@ package de.hpi.swa.trufflelsp.server;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.eclipse.lsp4j.CompletionList;
@@ -23,6 +29,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.source.Source;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
@@ -38,14 +45,13 @@ import de.hpi.swa.trufflelsp.server.request.ReferencesRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SignatureHelpRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SourceCodeEvaluator;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorWrapperRegistry {
 
-    protected final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
-
     private final TruffleInstrument.Env env;
-    private ContextAwareExecutorWrapper contextAwareExecutor;
+    ContextAwareExecutorWrapper contextAwareExecutor;
     private SourceCodeEvaluator sourceCodeEvaluator;
     private CompletionRequestHandler completionHandler;
     private DocumentSymbolRequestHandler documentSymbolHandler;
@@ -54,6 +60,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     private SignatureHelpRequestHandler signatureHelpHandler;
     private CoverageRequestHandler coverageHandler;
     private ReferencesRequestHandler referencesHandler;
+    private SurrogateMap surrogateMap;
 
     public TruffleAdapter(Env env) {
         this.env = env;
@@ -61,29 +68,65 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     public void register(ContextAwareExecutorWrapper executor) {
         this.contextAwareExecutor = executor;
+    }
+
+    public void initialize() {
+        initSurrogateMap();
         createLSPRequestHandlers();
     }
 
     private void createLSPRequestHandlers() {
-        this.sourceCodeEvaluator = new SourceCodeEvaluator(env, uri2TextDocumentSurrogate, contextAwareExecutor);
-        this.completionHandler = new CompletionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
-        this.documentSymbolHandler = new DocumentSymbolRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor);
-        this.definitionHandler = new DefinitionRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator, documentSymbolHandler);
-        this.hoverHandler = new HoverRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, completionHandler);
-        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
-        this.coverageHandler = new CoverageRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor, sourceCodeEvaluator);
-        this.referencesHandler = new ReferencesRequestHandler(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+        this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
+        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
+        this.documentSymbolHandler = new DocumentSymbolRequestHandler(env, surrogateMap, contextAwareExecutor);
+        this.definitionHandler = new DefinitionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, documentSymbolHandler);
+        this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler);
+        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
+        this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
+        this.referencesHandler = new ReferencesRequestHandler(env, surrogateMap, contextAwareExecutor);
     }
 
-    private TextDocumentSurrogate getOrCreateSurrogate(URI uri, String text, LanguageInfo languageInfo) {
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, env.getCompletionTriggerCharacters(languageInfo.getId())));
+    private void initSurrogateMap() {
+        try {
+            Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithDefaultContext(() -> {
+                Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
+                for (LanguageInfo langInfo : env.getLanguages().values()) {
+                    if (langInfo.isInternal()) {
+                        continue;
+                    }
+                    langInfo.getMimeTypes().stream().forEach(mimeType -> mimeType2LangInfo.put(mimeType, langInfo));
+                }
+                return mimeType2LangInfo;
+            });
+
+            Future<Map<String, List<String>>> futureCompletionTriggerCharacters = contextAwareExecutor.executeWithDefaultContext(() -> {
+                Map<String, List<String>> langId2CompletionTriggerCharacters = new HashMap<>();
+                for (LanguageInfo langInfo : env.getLanguages().values()) {
+                    if (langInfo.isInternal()) {
+                        continue;
+                    }
+                    langId2CompletionTriggerCharacters.put(langInfo.getId(), env.getCompletionTriggerCharacters(langInfo.getId()));
+                }
+                return langId2CompletionTriggerCharacters;
+            });
+
+            Map<String, LanguageInfo> mimeType2LangInfo = futureMimeTypes.get();
+            Map<String, List<String>> langId2CompletionTriggerCharacters = futureCompletionTriggerCharacters.get();
+
+            this.surrogateMap = new SurrogateMap(langId2CompletionTriggerCharacters, mimeType2LangInfo);
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    TextDocumentSurrogate getOrCreateSurrogate(URI uri, String text, LanguageInfo languageInfo) {
+        TextDocumentSurrogate surrogate = surrogateMap.getOrCreateSurrogate(uri, languageInfo);
         surrogate.setEditorText(text);
         return surrogate;
     }
 
     public void didClose(URI uri) {
-        uri2TextDocumentSurrogate.remove(uri);
+        surrogateMap.remove(uri);
     }
 
     public Future<CallTarget> parse(final String text, final String langId, final URI uri) {
@@ -93,7 +136,16 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
         LanguageInfo languageInfo = findLanguageInfo(langId, uri);
         TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, text, languageInfo);
+        return parseWithEnteredContext(surrogate);
+    }
+
+    CallTarget parseWithEnteredContext(TextDocumentSurrogate surrogate) throws DiagnosticsNotification {
         return sourceCodeEvaluator.parse(surrogate);
+    }
+
+    public Future<?> reparse(URI uri) {
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
+        return contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(surrogate));
     }
 
     /**
@@ -128,19 +180,17 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         return env.getLanguages().get(actualLangId);
     }
 
-    public Future<Void> processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> {
-            processChangesAndParseWithContextEntered(list, uri);
-            return null;
-        });
+    public Future<TextDocumentSurrogate> processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {
+        return contextAwareExecutor.executeWithDefaultContext(() -> processChangesAndParseWithContextEntered(list, uri));
     }
 
-    protected void processChangesAndParseWithContextEntered(List<? extends TextDocumentContentChangeEvent> list, URI uri) throws DiagnosticsNotification {
+    protected TextDocumentSurrogate processChangesAndParseWithContextEntered(List<? extends TextDocumentContentChangeEvent> list, URI uri) throws DiagnosticsNotification {
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
+
         if (list.isEmpty()) {
-            return;
+            return surrogate;
         }
 
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
         surrogate.getChangeEventsSinceLastSuccessfulParsing().addAll(list);
         surrogate.setLastChange(list.get(list.size() - 1));
         surrogate.setEditorText(SourceUtils.applyTextDocumentChanges(list, surrogate.getEditorText(), surrogate));
@@ -150,6 +200,81 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         if (surrogate.hasCoverageData()) {
             showCoverage(uri);
         }
+
+        return surrogate;
+    }
+
+    public List<Future<?>> parseWorkspace(URI rootUri) {
+        if (rootUri == null) {
+            return new ArrayList<>();
+        }
+        Path rootPath = Paths.get(rootUri);
+        if (!Files.isDirectory(rootPath)) {
+            throw new IllegalArgumentException("Root URI is not referencing a directory. URI: " + rootUri);
+        }
+
+        Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithDefaultContext(() -> {
+            Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
+            for (LanguageInfo langInfo : env.getLanguages().values()) {
+                if (langInfo.isInternal()) {
+                    continue;
+                }
+                langInfo.getMimeTypes().stream().forEach(mimeType -> mimeType2LangInfo.put(mimeType, langInfo));
+            }
+            return mimeType2LangInfo;
+        });
+
+        try {
+            Map<String, LanguageInfo> mimeTypesAllLang = futureMimeTypes.get();
+            try {
+                WorkspaceWalker walker = new WorkspaceWalker(mimeTypesAllLang);
+                System.out.println("Start walking file tree at: " + rootPath);
+                Files.walkFileTree(rootPath, walker);
+                return walker.parsingTasks;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    final class WorkspaceWalker implements FileVisitor<Path> {
+
+        List<Future<?>> parsingTasks;
+        private Map<String, LanguageInfo> mimeTypesAllLang;
+
+        public WorkspaceWalker(Map<String, LanguageInfo> mimeTypesAllLang) {
+            this.mimeTypesAllLang = mimeTypesAllLang;
+            this.parsingTasks = new ArrayList<>();
+        }
+
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+            if (dir.endsWith(".git")) { // TODO(ds) where to define this?
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            Source source = Source.newBuilder(file.toFile()).build();
+            String mimeType = source.getMimeType();
+            if (!mimeTypesAllLang.containsKey(mimeType)) {
+                return FileVisitResult.CONTINUE;
+            }
+            TextDocumentSurrogate surrogate = getOrCreateSurrogate(file.toUri(), null, mimeTypesAllLang.get(mimeType));
+            parsingTasks.add(contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(surrogate)));
+            return FileVisitResult.CONTINUE;
+        }
+
+        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+
+        public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            return FileVisitResult.CONTINUE;
+        }
+
     }
 
     public Future<List<? extends SymbolInformation>> documentSymbol(URI uri) {
@@ -211,12 +336,11 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         return contextAwareExecutor.executeWithDefaultContext(() -> {
             System.out.println("Clearing and re-parsing all files with coverage data...");
             List<PublishDiagnosticsParams> params = new ArrayList<>();
-            uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> {
-                TextDocumentSurrogate surrogate = entry.getValue();
+            surrogateMap.getSurrogates().stream().forEach(surrogate -> {
                 surrogate.clearCoverage();
                 try {
                     sourceCodeEvaluator.parse(surrogate);
-                    params.add(new PublishDiagnosticsParams(entry.getKey().toString(), Collections.emptyList()));
+                    params.add(new PublishDiagnosticsParams(surrogate.getUri().toString(), Collections.emptyList()));
                 } catch (DiagnosticsNotification e) {
                     params.addAll(e.getDiagnosticParamsCollection());
                 }
@@ -238,7 +362,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
      */
     public Future<?> clearCoverage(URI uri) {
         return contextAwareExecutor.executeWithDefaultContext(() -> {
-            TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+            TextDocumentSurrogate surrogate = surrogateMap.get(uri);
             surrogate.clearCoverage();
             sourceCodeEvaluator.parse(surrogate);
 
@@ -251,11 +375,15 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public String getSourceText(Path path) {
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(path.toUri());
+        if (surrogateMap == null) {
+            return null;
+        }
+
+        TextDocumentSurrogate surrogate = surrogateMap.get(path.toUri());
         return surrogate != null ? surrogate.getEditorText() : null;
     }
 
     public boolean isVirtualFile(Path path) {
-        return uri2TextDocumentSurrogate.containsKey(path.toUri());
+        return surrogateMap.containsSurrogate(path.toUri());
     }
 }

@@ -47,6 +47,7 @@ import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NodeLocationType
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils.SourceFix;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class CompletionRequestHandler extends AbstractRequestHandler {
@@ -73,9 +74,9 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public CompletionRequestHandler(TruffleInstrument.Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper executor,
+    public CompletionRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper executor,
                     SourceCodeEvaluator sourceCodeEvaluator) {
-        super(env, uri2TextDocumentSurrogate, executor);
+        super(env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 
@@ -94,7 +95,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         Source source = surrogate.getSource();
         CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), originalCharacter, surrogate.getCompletionTriggerCharacters());
         if (surrogate.isSourceCodeReadyForCodeCompletion() && !completionKind.equals(CompletionKind.OBJECT_PROPERTY)) {
@@ -124,11 +125,11 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             // We need to replace the original surrogate with the fixed one so that when a test
             // wants to import this fixed source, it will find the fixed surrogate via the custom
             // file system callback
-            uri2TextDocumentSurrogate.put(uri, fixedSurrogate);
+            surrogateMap.put(uri, fixedSurrogate);
             try {
                 return createCompletions(fixedSurrogate, line, sourceFix.characterIdx, getCompletionKind(sourceFix.removedCharacters, surrogate.getCompletionTriggerCharacters()));
             } finally {
-                uri2TextDocumentSurrogate.put(uri, surrogate);
+                surrogateMap.put(uri, surrogate);
             }
         }
     }

@@ -88,6 +88,7 @@ public abstract class TruffleLSPTest {
         registry.register(executorWrapper);
 
         truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).getTruffleAdapter();
+        truffleAdapter.initialize();
     }
 
     @After

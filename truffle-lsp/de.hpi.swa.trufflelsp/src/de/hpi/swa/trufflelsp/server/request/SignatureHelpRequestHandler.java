@@ -4,7 +4,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.lsp4j.ParameterInformation;
 import org.eclipse.lsp4j.SignatureHelp;
@@ -29,6 +28,7 @@ import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class SignatureHelpRequestHandler extends AbstractRequestHandler {
@@ -37,13 +37,13 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
     private static final Node INVOKE = Message.createInvoke(0).createNode();
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public SignatureHelpRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
-        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+    public SignatureHelpRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
+        super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, originalCharacter, StandardTags.CallTag.class);
         if (nodeAtCaret != null) {
             SourceSection signatureSection = ((Node) nodeAtCaret).getSourceSection();

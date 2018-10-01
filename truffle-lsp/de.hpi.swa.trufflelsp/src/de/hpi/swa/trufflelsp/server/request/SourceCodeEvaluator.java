@@ -6,7 +6,6 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 
@@ -51,12 +50,13 @@ import de.hpi.swa.trufflelsp.server.utils.RunScriptUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class SourceCodeEvaluator extends AbstractRequestHandler {
 
-    public SourceCodeEvaluator(TruffleInstrument.Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper executor) {
-        super(env, uri2TextDocumentSurrogate, executor);
+    public SourceCodeEvaluator(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper executor) {
+        super(env, surrogateMap, executor);
     }
 
     public CallTarget parse(final TextDocumentSurrogate surrogate) throws DiagnosticsNotification {
@@ -294,8 +294,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         final String langIdOfTestFile = findLanguageOfTestFile(runScriptUri, surrogateOfOpenedFile.getLangId());
         LanguageInfo languageInfo = env.getLanguages().get(langIdOfTestFile);
         assert languageInfo != null;
-        TextDocumentSurrogate surrogateOfTestFile = uri2TextDocumentSurrogate.computeIfAbsent(runScriptUri,
-                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, env.getCompletionTriggerCharacters(langIdOfTestFile)));
+        TextDocumentSurrogate surrogateOfTestFile = surrogateMap.getOrCreateSurrogate(runScriptUri, languageInfo);
         return surrogateOfTestFile;
 
     }

@@ -3,7 +3,6 @@ package de.hpi.swa.trufflelsp.server.request;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Range;
@@ -21,17 +20,18 @@ import com.oracle.truffle.api.source.SourceSection;
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class ReferencesRequestHandler extends AbstractRequestHandler {
 
-    public ReferencesRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor) {
-        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+    public ReferencesRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
+        super(env, surrogateMap, contextAwareExecutor);
     }
 
     public List<? extends Location> referencesWithEnteredContext(URI uri, int line, int character) {
         List<Location> locations = new ArrayList<>();
-        TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, character, StandardTags.CallTag.class);
         if (nodeAtCaret != null) {
             SourceSection sourceSection = ((Node) nodeAtCaret).getSourceSection();

@@ -34,19 +34,20 @@ import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
+import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class CoverageRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public CoverageRequestHandler(Env env, Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
-        super(env, uri2TextDocumentSurrogate, contextAwareExecutor);
+    public CoverageRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
+        super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 
     public Boolean runCoverageAnalysisWithNestedEnteredContext(final URI uri) throws DiagnosticsNotification {
-        final TextDocumentSurrogate surrogateOfOpenedFile = uri2TextDocumentSurrogate.get(uri);
+        final TextDocumentSurrogate surrogateOfOpenedFile = surrogateMap.get(uri);
         TextDocumentSurrogate surrogateOfTestFile = sourceCodeEvaluator.createSurrogateForTestFile(surrogateOfOpenedFile, null);
         final URI runScriptUri = surrogateOfTestFile.getUri();
 
@@ -67,13 +68,7 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
                                     if (section != null && section.isAvailable()) {
                                         final Node instrumentedNode = eventContext.getInstrumentedNode();
                                         Function<URI, TextDocumentSurrogate> func = (sourceUri) -> {
-                                            return uri2TextDocumentSurrogate.computeIfAbsent(
-                                                            sourceUri,
-                                                            (_uri) -> {
-                                                                LanguageInfo langInfo = instrumentedNode.getRootNode().getLanguageInfo();
-                                                                return new TextDocumentSurrogate(_uri, langInfo,
-                                                                                env.getCompletionTriggerCharacters(langInfo.getId()));
-                                                            });
+                                            return surrogateMap.getOrCreateSurrogate(sourceUri, () -> instrumentedNode.getRootNode().getLanguageInfo());
                                         };
 
                                         return new CoverageEventNode(section, instrumentedNode, runScriptUri, func, creatorThreadId);
@@ -125,14 +120,14 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
      * @param runScriptUri URI of the script to kick-off the coverage analysis
      */
     private void clearRelatedCoverageData(final URI runScriptUri) {
-        TextDocumentSurrogate surrogateOfRunScript = uri2TextDocumentSurrogate.get(runScriptUri);
+        TextDocumentSurrogate surrogateOfRunScript = surrogateMap.get(runScriptUri);
         assert surrogateOfRunScript != null;
         surrogateOfRunScript.clearCoverage();
-        uri2TextDocumentSurrogate.entrySet().stream().forEach(entry -> entry.getValue().clearCoverage(runScriptUri));
+        surrogateMap.getSurrogates().stream().forEach(surrogate -> surrogate.clearCoverage(runScriptUri));
     }
 
     public void showCoverageWithEnteredContext(URI uri) throws DiagnosticsNotification {
-        final TextDocumentSurrogate surrogate = uri2TextDocumentSurrogate.get(uri);
+        final TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         if (surrogate.getSourceWrapper() != null) {
             // @formatter:off
             SourceSectionFilter filter = SourceSectionFilter.newBuilder()

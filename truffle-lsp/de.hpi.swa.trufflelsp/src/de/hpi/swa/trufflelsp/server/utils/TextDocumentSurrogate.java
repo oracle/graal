@@ -58,7 +58,7 @@ public final class TextDocumentSurrogate {
     }
 
     public String getEditorText() {
-        return editorText;
+        return editorText != null ? editorText : (editorText = buildSource().getCharacters().toString());
     }
 
     public void setEditorText(String editorText) {
@@ -172,7 +172,7 @@ public final class TextDocumentSurrogate {
     }
 
     public Source buildSource() {
-        return Source.newBuilder(new File(uri)).name(uri.toString()).language(languageInfo.getId()).cached(false).content(getEditorText()).build();
+        return Source.newBuilder(new File(uri)).name(uri.toString()).language(languageInfo.getId()).cached(false).content(editorText).build();
     }
 
     public SourceWrapper prepareParsing() {
