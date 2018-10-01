@@ -63,6 +63,20 @@ public class HostedDynamicHubFeature implements Feature {
         return source;
     }
 
+    /**
+     * Notes on the identity hash code for classes: We map two different hosted objects (the
+     * java.lang.Class and the DynamicHub) to one object at run time (the DynamicHub). This means we
+     * have two hosted identity hash codes to choose from to use. It is more reasonable to use the
+     * one from java.lang.Class: if, for example, a hash map that is built by a static initializer
+     * has a java.lang.Class as the key, then this hash map works just fine at run time since the
+     * hash codes are the same. In contrast, it is unlikely that we rely on the hash code from our
+     * own DynamicHub instances. We can only access the hash code from java.lang.Class when we
+     * encounter it in this method (which does the substitution to DynamicHub in the above code).
+     * However, if we never encounter a reference to a certain java.lang.Class, this means that this
+     * class is never referenced explicitly from a data structure. Therefore, it also not possible
+     * that we care about its hash code, i.e., it is fine if we use the hash code from the
+     * DynamicHub in this case.
+     */
     public static void setHostedIdentityHashCode(DynamicHub dynamicHub, Class<?> fromClass) {
         /*
          * We do not want to inherit the identity hash code from substitution classes - they are an
