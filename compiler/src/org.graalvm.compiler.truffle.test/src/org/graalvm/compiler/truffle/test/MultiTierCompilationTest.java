@@ -55,6 +55,9 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
             if (GraalCompilerDirectives.inFirstTier()) {
                 return "callee:first-tier";
             }
+            if (CompilerDirectives.inCompilationRoot()) {
+                return "callee:compiled";
+            }
             return "callee:inlined";
         }
     }

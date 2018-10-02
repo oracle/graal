@@ -140,6 +140,10 @@ final class TruffleSplittingStrategy {
     }
 
     private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+        if (TruffleCompilerOptions.TruffleMultiTier.getValue(getOptions())) {
+            return false;
+        }
+
         if (engineData.splitCount + call.getCurrentCallTarget().getUninitializedNodeCount() > engineData.splitLimit) {
             return false;
         }
@@ -166,10 +170,6 @@ final class TruffleSplittingStrategy {
 
         // Disable splitting if it will cause a deep split-only recursion
         if (isRecursiveSplit(call)) {
-            return false;
-        }
-
-        if (TruffleCompilerOptions.TruffleMultiTier.getValue(getOptions())) {
             return false;
         }
 
