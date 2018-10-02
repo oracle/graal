@@ -56,7 +56,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -288,6 +287,8 @@ final class PolyglotProxy {
     private static final class ProxyKeyInfoNode extends ProxyRootNode {
 
         static final Integer KEY = KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+        static final Integer KEY_INVOCABLE = KEY | KeyInfo.INVOCABLE;
+        static final Integer INVOCABLE_NO_KEY = KeyInfo.INVOCABLE | KeyInfo.INSERTABLE;
 
         @Override
         Object executeProxy(PolyglotLanguageContext context, Proxy proxy, Object[] arguments) {
@@ -315,10 +316,19 @@ final class PolyglotProxy {
 
         @TruffleBoundary
         private static Integer keyInfo(ProxyObject proxy, String key) {
+            boolean canInvoke = proxy.canInvokeMember(key);
             if (proxy.hasMember(key)) {
-                return KEY;
+                if (canInvoke) {
+                    return KEY_INVOCABLE;
+                } else {
+                    return KEY;
+                }
             } else {
-                return KeyInfo.INSERTABLE;
+                if (canInvoke) {
+                    return INVOCABLE_NO_KEY;
+                } else {
+                    return KeyInfo.INSERTABLE;
+                }
             }
         }
     }
@@ -337,34 +347,18 @@ final class PolyglotProxy {
             throw UnsupportedMessageException.raise(Message.INVOKE);
         }
 
-        @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-        @Child private Node executeNode = Message.EXECUTE.createNode();
-
         @TruffleBoundary
         Object invoke(PolyglotLanguageContext context, ProxyObject object, String key, Object[] arguments) {
-            if (object.hasMember(key)) {
-                Object member = context.toGuestValue(object.getMember(key));
-                if (member instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutable, (TruffleObject) member)) {
-                    try {
-                        return ForeignAccess.sendExecute(executeNode, ((TruffleObject) member), copyFromStart(arguments, 2));
-                    } catch (InteropException e) {
-                        throw e.raise();
-                    }
-                } else {
-                    throw UnknownIdentifierException.raise(key);
+            if (object.canInvokeMember(key)) {
+                try {
+                    return context.toGuestValue(object.invokeMember(key, context.toHostValues(arguments, 2)));
+                } catch (UnsupportedOperationException e) {
+                    throw UnsupportedMessageException.raise(Message.INVOKE);
                 }
             } else {
-                throw UnknownIdentifierException.raise(key);
+                throw UnsupportedMessageException.raise(Message.INVOKE);
             }
         }
-    }
-
-    private static Object[] copyFromStart(Object[] arguments, int startIndex) {
-        Object[] newArguments = new Object[arguments.length - startIndex];
-        for (int i = startIndex; i < arguments.length; i++) {
-            newArguments[i - startIndex] = arguments[i];
-        }
-        return newArguments;
     }
 
     private static final class ProxyWriteNode extends ProxyRootNode {

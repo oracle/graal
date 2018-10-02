@@ -120,6 +120,31 @@ public interface ProxyObject extends Proxy {
     }
 
     /**
+     * Returns <code>true</code> if the proxy object contains an invocable member with the given
+     * key, or <code>false</code> otherwise.
+     *
+     * @see #invokeMember(String, Value...)
+     * @since 1.0
+     */
+    @SuppressWarnings("unused")
+    default boolean canInvokeMember(String key) {
+        return false;
+    }
+
+    /**
+     * Invokes the member with the given arguments and returns its result.
+     *
+     * @throws UnsupportedOperationException if the member cannot be invoked with the given
+     *             arguments.
+     * @see #canInvokeMember(String)
+     * @since 1.0
+     */
+    @SuppressWarnings("unused")
+    default Object invokeMember(String key, Value... arguments) {
+        throw new UnsupportedOperationException("invokeMember() not supported.");
+    }
+
+    /**
      * Creates a proxy backed by a {@link Map}. If the set values of the map are host values then
      * the they will be {@link Value#asHostObject() unboxed}.
      *

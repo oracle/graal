@@ -587,6 +587,22 @@ public abstract class AbstractPolyglotImpl {
             throw unsupported(receiver, "executeVoid(Object...)", "canExecute()");
         }
 
+        public boolean canInvoke(String identifier, Object receiver) {
+            return false;
+        }
+
+        public Value invoke(Object receiver, String identifier, Object[] arguments) {
+            return invokeUnsupported(receiver, identifier);
+        }
+
+        public Value invoke(Object receiver, String identifier) {
+            return invokeUnsupported(receiver, identifier);
+        }
+
+        public final Value invokeUnsupported(Object receiver, String identifier) {
+            throw unsupported(receiver, "invoke(" + identifier + ", Object...)", "canInvoke(String)");
+        }
+
         public boolean isString(Object receiver) {
             return false;
         }

@@ -500,6 +500,20 @@ public class ValueAPITest {
             assertFalse(value.hasArrayElements());
         });
 
+        MembersAndInvocable invocable = new MembersAndInvocable();
+        invocable.invokeMember = "foo";
+        invocable.invocableResult = "foobarbaz";
+        Function<?, ?> fce = x -> invocable.invocableResult;
+        invocable.map.put("foo", fce);
+
+        objectCoercionTest(invocable, Map.class, (v) -> {
+            Value value = context.asValue(v);
+            assertTrue(value.canInvokeMember("foo"));
+            assertEquals("foobarbaz", value.invokeMember("foo").asString());
+            objectCoercionTest(value.getMember("foo"), Function.class, (mv) -> {
+                assertEquals("foobarbaz", ((Function<Object, Object>) mv).apply(new Object[0]));
+            });
+        });
     }
 
     @SuppressWarnings({"unchecked"})
@@ -765,6 +779,27 @@ public class ValueAPITest {
 
         public Object execute(Value... arguments) {
             return executableResult;
+        }
+
+    }
+
+    private static class MembersAndInvocable extends Members {
+
+        String invokeMember;
+        Object invocableResult;
+
+        @Override
+        public boolean canInvokeMember(String member) {
+            return invokeMember.equals(member);
+        }
+
+        @Override
+        public Object invokeMember(String member, Value... arguments) {
+            if (invokeMember.equals(member)) {
+                return invocableResult;
+            } else {
+                throw new UnsupportedOperationException("Not supported invoke of " + member);
+            }
         }
 
     }
@@ -1192,6 +1227,43 @@ public class ValueAPITest {
                         "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType.f'" +
                                         "(language: Java, type: Bound Method) with arguments ['1'(language: Java, type: java.lang.Integer), " +
                                         "'2'(language: Java, type: java.lang.Integer)].");
+    }
+
+    public static class InvocableType {
+
+        @SuppressWarnings("unused")
+        public String f(int a, byte b) {
+            return "1";
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getCanonicalName();
+        }
+    }
+
+    @Test
+    public void testInvokableErrors() {
+        Value value = context.asValue(new InvocableType());
+        assertTrue(value.canInvokeMember("f"));
+
+        assertFails(() -> value.invokeMember(""), IllegalArgumentException.class,
+                        "Invalid member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType).");
+        assertFails(() -> value.invokeMember("f", 2), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
+                                        "with arguments ['2'(language: Java, type: java.lang.Integer)]. Expected 2 argument(s) but got 1.");
+        assertFails(() -> value.invokeMember("f", "2", "3"), IllegalArgumentException.class,
+                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
+                                        "with arguments ['2'(language: Java, type: java.lang.String), '3'(language: Java, type: java.lang.String)].");
+        assertEquals("1", value.invokeMember("f", 2, 3).asString());
+
+        Value primitiveValue = context.asValue(42);
+        assertFails(() -> primitiveValue.invokeMember(""), UnsupportedOperationException.class,
+                        "Unsupported operation Value.invoke(, Object...) for '42'(language: Java, type: java.lang.Integer)." +
+                                        " You can ensure that the operation is supported using Value.canInvoke(String).");
     }
 
     private static void assertFails(Runnable r, Class<?> hostExceptionType, String message) {

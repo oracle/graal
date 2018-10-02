@@ -1222,6 +1222,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget executeNoArgs;
         final CallTarget executeVoid;
         final CallTarget executeVoidNoArgs;
+        final CallTarget canInvoke;
+        final CallTarget invoke;
+        final CallTarget invokeNoArgs;
         final CallTarget asPrimitive;
 
         final boolean isProxy;
@@ -1249,6 +1252,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.newInstance = createTarget(new NewInstanceNode(this));
             this.canInstantiate = createTarget(new CanInstantiateNode(this));
             this.canExecute = createTarget(new CanExecuteNode(this));
+            this.canInvoke = createTarget(new CanInvokeNode(this));
+            this.invoke = createTarget(new InvokeNode(this));
+            this.invokeNoArgs = createTarget(new InvokeNoArgsNode(this));
             this.hasMembers = createTarget(new HasMembersNode(this));
             this.asPrimitive = createTarget(new AsPrimitiveNode(this));
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiver);
@@ -1401,6 +1407,20 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public Value newInstance(Object receiver, Object[] arguments) {
             return (Value) newInstance.call(receiver, arguments);
+        }
+
+        @Override
+        public boolean canInvoke(String identifier, Object receiver) {
+            return (boolean) VMAccessor.SPI.callProfiled(canInvoke, receiver, identifier);
+        }
+
+        @Override
+        public Value invoke(Object receiver, String identifier, Object[] arguments) {
+            return (Value) VMAccessor.SPI.callProfiled(invoke, receiver, identifier, arguments);
+        }
+
+        public Value invoke(Object receiver, String identifier) {
+            return (Value) VMAccessor.SPI.callProfiled(invokeNoArgs, receiver, identifier);
         }
 
         private Object asPrimitive(Object receiver) {
@@ -2020,17 +2040,33 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class HasMemberNode extends PolyglotNode {
+        private abstract static class AbstractMemberInfoNode extends PolyglotNode {
 
             final Node keyInfoNode = Message.KEY_INFO.createNode();
 
-            protected HasMemberNode(Interop interop) {
+            protected AbstractMemberInfoNode(Interop interop) {
                 super(interop);
             }
 
             @Override
-            protected Class<?>[] getArgumentTypes() {
+            protected final Class<?>[] getArgumentTypes() {
                 return new Class<?>[]{polyglot.receiverType, String.class};
+            }
+
+            @Override
+            protected final Object executeImpl(Object receiver, Object[] args) {
+                String key = (String) args[1];
+                int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, (TruffleObject) receiver, key);
+                return executeImpl(keyInfo);
+            }
+
+            protected abstract Object executeImpl(int keyInfo);
+        }
+
+        private static class HasMemberNode extends AbstractMemberInfoNode {
+
+            protected HasMemberNode(Interop interop) {
+                super(interop);
             }
 
             @Override
@@ -2039,10 +2075,26 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
 
             @Override
-            protected Object executeImpl(Object receiver, Object[] args) {
-                String key = (String) args[1];
-                int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, (TruffleObject) receiver, key);
+            protected Object executeImpl(int keyInfo) {
                 return KeyInfo.isExisting(keyInfo);
+            }
+
+        }
+
+        private static class CanInvokeNode extends AbstractMemberInfoNode {
+
+            protected CanInvokeNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "canInvoke";
+            }
+
+            @Override
+            protected Object executeImpl(int keyInfo) {
+                return KeyInfo.isInvocable(keyInfo);
             }
 
         }
@@ -2293,6 +2345,92 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected String getOperationName() {
                 return "newInstance";
+            }
+
+        }
+
+        private abstract static class AbstractInvokeNode extends PolyglotNode {
+
+            @Child private Node invokeNode = Message.INVOKE.createNode();
+
+            protected AbstractInvokeNode(Interop interop) {
+                super(interop);
+            }
+
+            protected final Object executeShared(Object receiver, String key, Object[] guestArguments) {
+                TruffleObject truffleReceiver = (TruffleObject) receiver;
+                try {
+                    return ForeignAccess.sendInvoke(invokeNode, truffleReceiver, key, guestArguments);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    polyglot.invokeUnsupported(receiver, key);
+                    return null;
+                } catch (UnknownIdentifierException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw invalidMemberKey(polyglot.languageContext, receiver, key);
+                } catch (UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw invalidExecuteArgumentType(polyglot.languageContext, receiver, e);
+                } catch (ArityException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw invalidExecuteArity(polyglot.languageContext, receiver, guestArguments, e.getExpectedArity(), e.getActualArity());
+                }
+            }
+
+        }
+
+        private static class InvokeNode extends AbstractInvokeNode {
+
+            @Child private Node invokeNode = Message.INVOKE.createNode();
+            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
+
+            protected InvokeNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{polyglot.receiverType, String.class, Object[].class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "invoke";
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                String key = (String) args[1];
+                Object[] guestArguments = toGuestValues.apply(polyglot.languageContext, (Object[]) args[2]);
+                return toHostValue.execute(executeShared((TruffleObject) receiver, key, guestArguments));
+            }
+
+        }
+
+        private static class InvokeNoArgsNode extends AbstractInvokeNode {
+
+            @Child private Node invokeNode = Message.INVOKE.createNode();
+            private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
+
+            protected InvokeNoArgsNode(Interop interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{polyglot.receiverType, String.class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "invoke";
+            }
+
+            @Override
+            protected Object executeImpl(Object receiver, Object[] args) {
+                String key = (String) args[1];
+                return toHostValue.execute(executeShared((TruffleObject) receiver, key, ExecuteVoidNoArgsNode.NO_ARGS));
             }
 
         }

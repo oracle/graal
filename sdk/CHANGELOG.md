@@ -4,6 +4,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 
 ## Version 1.0 RC8
 * Added `MessageTransport` and `MessageEndpoint` to virtualize transport of messages to a peer URI.
+* Added `Value.canInvokeMember()`, `Value.invokeMember()`, `ProxyObject.canInvokeMember()` and `ProxyObject.invokeMember()` to invoke a member of an object value.
 
 ## Version 1.0 RC7
 * Graal SDK was relicensed from GPLv2 with CPE to Universal Permissive License (UPL).
