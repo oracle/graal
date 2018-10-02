@@ -72,7 +72,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
@@ -164,7 +163,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected HotSpotPartialEvaluator createPartialEvaluator() {
-        return new HotSpotPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
+        return new HotSpotPartialEvaluator(lastTierProviders, config, snippetReflection, backend.getTarget().arch);
     }
 
     @Override
@@ -187,7 +186,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                             Activation a = debug.activate();
                             DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {
                 CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);
-                CodeCacheProvider codeCache = providers.getCodeCache();
+                CodeCacheProvider codeCache = lastTierProviders.getCodeCache();
                 try (DebugContext.Scope s = debug.scope("CodeInstall", codeCache, method, compResult)) {
                     CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult);
                     codeCache.setDefaultCode(method, compiledCode);
@@ -211,7 +210,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     private CompilationResultBuilderFactory getTruffleCallBoundaryInstrumentationFactory(String arch) {
         for (TruffleCallBoundaryInstrumentationFactory factory : GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
-                factory.init(providers.getMetaAccess(), hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
+                factory.init(lastTierProviders.getMetaAccess(), hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
                 return factory;
             }
         }
@@ -226,22 +225,22 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * {@link TruffleCallBoundaryInstrumentationFactory}.
      */
     private CompilationResult compileTruffleCallBoundaryMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId, DebugContext debug) {
-        Suites newSuites = this.suites.copy();
+        Suites newSuites = this.lastTierSuites.copy();
         removeInliningPhase(newSuites);
         OptionValues options = TruffleCompilerOptions.getOptions();
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        MetaAccessProvider metaAccess = lastTierProviders.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins());
-        HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) providers.getCodeCache();
+        HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) lastTierProviders.getCodeCache();
         boolean infoPoints = codeCache.shouldDebugNonSafepoints();
         GraphBuilderConfiguration newConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true).withNodeSourcePosition(infoPoints);
-        new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), newConfig, OptimisticOptimizations.ALL,
-                        null).apply(graph);
+        new GraphBuilderPhase.Instance(metaAccess, lastTierProviders.getStampProvider(), lastTierProviders.getConstantReflection(), lastTierProviders.getConstantFieldProvider(), newConfig,
+                        OptimisticOptimizations.ALL, null).apply(graph);
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, backend.getSuites());
         CompilationResultBuilderFactory factory = getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName());
-        return compileGraph(graph, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, lirSuites, new CompilationResult(compilationId),
-                        factory, false);
+        return compileGraph(graph, javaMethod, lastTierProviders, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, lastTierLirSuites,
+                        new CompilationResult(compilationId), factory, false);
     }
 
     private static PhaseSuite<HighTierContext> getGraphBuilderSuite(CodeCacheProvider codeCache, SuitesProvider suitesProvider) {

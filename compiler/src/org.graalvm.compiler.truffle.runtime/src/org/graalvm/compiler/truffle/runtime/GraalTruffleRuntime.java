@@ -718,7 +718,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     protected void doCompile(DebugContext debug, CompilationIdentifier compilationId, OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
-                    TruffleInlining inlining = new TruffleInlining(callTarget, task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy(options) : TruffleInliningPolicy.getNoInliningPolicy(options));
+        TruffleInlining inlining = new TruffleInlining(callTarget, task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy(options) : TruffleInliningPolicy.getNoInliningPolicy(options));
         try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
             try (OutputGroup o = new OutputGroup(debug, callTarget)) {

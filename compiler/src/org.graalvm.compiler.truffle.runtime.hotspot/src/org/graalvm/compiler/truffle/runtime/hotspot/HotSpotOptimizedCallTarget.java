@@ -69,8 +69,8 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
      * This method may only be called during compilation, and only by the compiling thread.
      */
     public void setInstalledCode(InstalledCode code) {
-        if (installedCode != code) {
-            invalidateCode();
+        if (installedCode == code) {
+            return;
         }
         if (code instanceof HotSpotNmethod) {
             HotSpotNmethod nmethod = (HotSpotNmethod) code;
