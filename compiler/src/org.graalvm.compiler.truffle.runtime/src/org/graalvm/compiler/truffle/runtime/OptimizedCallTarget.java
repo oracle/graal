@@ -336,7 +336,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
     public final boolean compile(boolean lastTierCompilation) {
-        if (isValid() && !isCurrentCompilationOverriding(lastTierCompilation)) {
+        if (!needsCompile(lastTierCompilation)) {
             return true;
         }
         if (!isCompiling()) {
@@ -348,7 +348,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (isValid() && !isCurrentCompilationOverriding(lastTierCompilation)) {
+                if (!needsCompile(lastTierCompilation)) {
                     return true;
                 }
                 if (this.compilationProfile == null) {
@@ -369,8 +369,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    private boolean isCurrentCompilationOverriding(boolean isLastTierCompilation) {
-        return isLastTierCompilation && !isValidLastTier();
+    private final boolean needsCompile(boolean isLastTierCompilation) {
+        return !isValid() || (isLastTierCompilation && !isValidLastTier());
     }
 
     public final boolean isCompiling() {
