@@ -331,6 +331,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
+     * @deprecated Please use {@code compile(boolean)} instead.
+     */
+    @Deprecated
+    public final boolean compile() {
+        return compile(true);
+    }
+
+    /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
