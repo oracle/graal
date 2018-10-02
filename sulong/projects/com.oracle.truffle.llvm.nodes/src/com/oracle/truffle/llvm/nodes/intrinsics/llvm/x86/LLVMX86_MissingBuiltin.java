@@ -38,7 +38,7 @@ public final class LLVMX86_MissingBuiltin extends LLVMBuiltin {
     private final LLVMSourceLocation sourceLocation;
     private final String name;
 
-    public LLVMX86_MissingBuiltin(LLVMSourceLocation sourceLocation, String name) {
+    private LLVMX86_MissingBuiltin(LLVMSourceLocation sourceLocation, String name) {
         this.sourceLocation = sourceLocation;
         this.name = name;
     }

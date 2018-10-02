@@ -280,7 +280,7 @@ public final class LLVMContext {
 
         // free the space allocated for non-pointer globals
         LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
-        RootCallTarget free = provider.generateIntrinsic("@free", null);
+        RootCallTarget free = provider.generateIntrinsicTarget("@free", 2);
 
         for (LLVMPointer store : globalsNonPointerStore) {
             if (store != null) {
