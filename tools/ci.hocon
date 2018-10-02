@@ -39,6 +39,4 @@ builds += [
   ${darwin-amd64} ${oraclejdk11} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-11"
   }
-  ${linux-amd64} ${linux-deploy} ${labsjdk8}  ${maven-deploy-dry-run} ${toolsCommon} {name: "gate-tools-maven-dry-run-8"}
-  ${linux-amd64} ${linux-deploy} ${oraclejdk11} ${maven-deploy-dry-run} ${toolsCommon} {name: "gate-tools-maven-dry-run-11"}
 ]

@@ -31,6 +31,4 @@ builds += [
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${regexWeekly} {
     name: "gate-regex-mac-lite-11"
   }
-  ${linux-amd64} ${linux-deploy} ${labsjdk8}  ${maven-deploy-dry-run} ${regexCommon} {name: "gate-regex-maven-dry-run-8"}
-  ${linux-amd64} ${linux-deploy} ${oraclejdk11} ${maven-deploy-dry-run} ${regexCommon} {name: "gate-regex-maven-dry-run-11"}
 ]
