@@ -97,10 +97,14 @@ public abstract class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
+        return compileHelper(methodName, root, arguments, true);
+    }
+
+    protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments, boolean lastTierCompilation) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-        truffleCompiler.compilePEGraph(actual, methodName, null, compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(true));
+        truffleCompiler.compilePEGraph(actual, methodName, null, compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(lastTierCompilation));
         return compilable;
     }
 
