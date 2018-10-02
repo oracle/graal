@@ -104,7 +104,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         final Source inlineEvalSource = Source.newBuilder(textAtHoverPosition).name("inline eval").language(info.getId()).mimeType("content/unknown").cached(false).build();
         ExecutableNode executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
         if (executableNode == null) {
-            return null;
+            return new Hover(new ArrayList<>());
         }
 
         CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
