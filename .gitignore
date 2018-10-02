@@ -17,3 +17,4 @@ env
 *nbproject*
 build.xml
 *.iml
+.vscode
