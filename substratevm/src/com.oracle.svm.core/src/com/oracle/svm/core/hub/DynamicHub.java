@@ -30,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
@@ -74,7 +75,6 @@ import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
-import java.lang.reflect.Array;
 
 import jdk.vm.ci.meta.JavaKind;
 import sun.reflect.ReflectionFactory;
@@ -738,18 +738,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Override
     @SuppressWarnings("unchecked")
     public <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
-        if (sun.reflect.annotation.AnnotationType.getInstance(annotationClass) == null) {
-            // Not repeatable annotation or repeatable annotation is unused
-            T annotation = getAnnotation(annotationClass);
-            if (annotation != null) {
-                T[] result = (T[]) Array.newInstance(annotationClass, 1);
-                result[0] = annotation;
-                return result;
-            } else {
-                return (T[]) Array.newInstance(annotationClass, 0);
+
+        /*
+         * Custom rewrite of GenericDeclaration.super.getAnnotationsByType(annotationClass) to avoid
+         * the call to AnnotationType.getInstance(annotationClass).isInherited(). Calling
+         * AnnotationType.getInstance(annotationClass) requires registration of the corresponding
+         * AnnotationType objects in the image heap during image build time. This is currently done
+         * only for repeatable annotations for space economy reasons.
+         */
+        T[] result = getDeclaredAnnotationsByType(annotationClass);
+
+        if (result.length == 0 && annotationClass.getAnnotation(Inherited.class) != null) {
+            DynamicHub superClass = (DynamicHub) this.getSuperclass();
+            if (superClass != null) {
+                /* Determine if the annotation is associated with the superclass. */
+                result = superClass.getAnnotationsByType(annotationClass);
             }
         }
-        return GenericDeclaration.super.getAnnotationsByType(annotationClass);
+
+        return result;
     }
 
     @Substitute
