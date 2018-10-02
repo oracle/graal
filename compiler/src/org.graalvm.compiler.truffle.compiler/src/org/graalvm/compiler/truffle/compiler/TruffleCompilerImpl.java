@@ -372,7 +372,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             if (listener != null) {
                 listener.onTruffleTierFinished(compilable, inliningPlan, new GraphInfoImpl(graph));
             }
-            String compilationName = compilable.toString() + (task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
+            String compilationName = compilable.toString() + (task != null && task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
             CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, compilable, asCompilationRequest(compilationId), listener, task);
             if (listener != null) {
                 listener.onSuccess(compilable, inliningPlan, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult));
@@ -428,7 +428,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             Suites selectedSuites = suites;
             LIRSuites selectedLirSuites = lirSuites;
             Providers selectedProviders = providers;
-            if (!task.isLastTier()) {
+            if (task != null && !task.isLastTier()) {
                 selectedSuites = firstTierSuites;
                 selectedLirSuites = firstTierLirSuites;
                 selectedProviders = firstTierProviders;
