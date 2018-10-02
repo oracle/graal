@@ -67,14 +67,29 @@ def runTestSuite(testsuiteproject, args, testClasses=None, vmArgs=None):
     assert isinstance(project, SulongTestSuite)
     project.runTestSuite(testClasses, vmArgs)
 
+
+class SulongTestSuiteBuildTask(mx.NativeBuildTask):
+    """Track whether we are checking if a build is required or actually building."""
+    def needsBuild(self, newestInput):
+        try:
+            self.subject._is_needs_rebuild_call = True
+            return super(SulongTestSuiteBuildTask, self).needsBuild(newestInput)
+        finally:
+            self.subject._is_needs_rebuild_call = False
+
+
 class SulongTestSuite(mx.NativeProject):
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **args):
         d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
         mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef
+        self._is_needs_rebuild_call = False
         if not hasattr(self, 'testClasses'):
             self.testClasses = self.defaultTestClasses()
+
+    def getBuildTask(self, args):
+        return SulongTestSuiteBuildTask(args, self)
 
     def defaultTestClasses(self):
         return ["SulongSuite"]
@@ -119,7 +134,6 @@ class SulongTestSuite(mx.NativeProject):
                 self._variants.append(v)
         return self._variants
 
-
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
         env['VPATH'] = os.path.join(self.dir, self.name)
@@ -134,6 +148,8 @@ class SulongTestSuite(mx.NativeProject):
             env['DRAGONEGG_LLVMAS'] = mx_sulong.findLLVMProgramForDragonegg("llvm-as")
             env['DRAGONEGG_FC'] = mx_sulong.getGFortran()
             env['FC'] = mx_sulong.getGFortran()
+        elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
+            mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return env
 
     def getResults(self, replaceVar=mx_subst.results_substitutions):
