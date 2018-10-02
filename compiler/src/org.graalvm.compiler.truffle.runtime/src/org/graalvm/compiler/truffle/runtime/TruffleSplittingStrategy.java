@@ -140,6 +140,8 @@ final class TruffleSplittingStrategy {
     }
 
     private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+        // In general, splitting in multi-tier compilations could be useful,
+        // but enabling splitting as-is currently overflows the compiler with too many requests.
         if (TruffleCompilerOptions.TruffleMultiTier.getValue(getOptions())) {
             return false;
         }
