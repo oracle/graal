@@ -373,6 +373,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             if (listener != null) {
                 listener.onTruffleTierFinished(compilable, inliningPlan, new GraphInfoImpl(graph));
             }
+            // The Truffle compiler owns the last 2 characters of the compilation name, and uses them to
+            // encode the compilation tier, so escaping the target name is not necessary.
             String compilationName = compilable.toString() + (task != null && task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
             CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, compilable, asCompilationRequest(compilationId), listener, task);
             if (listener != null) {

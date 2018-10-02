@@ -32,8 +32,8 @@ import org.graalvm.compiler.options.OptionValues;
  * A compiler that partially evaluates and compiles a {@link CompilableTruffleAST} to machine code.
  */
 public interface TruffleCompiler {
-    String FIRST_TIER_COMPILATION_SUFFIX = "@1";
-    String SECOND_TIER_COMPILATION_SUFFIX = "@2";
+    String FIRST_TIER_COMPILATION_SUFFIX = "#1";
+    String SECOND_TIER_COMPILATION_SUFFIX = "#2";
 
     /**
      * Gets a compilation identifier for a given compilable.
