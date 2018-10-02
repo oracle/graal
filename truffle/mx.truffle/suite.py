@@ -123,7 +123,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
-        "com.oracle.truffle.api.impl to jdk.internal.vm.compiler", # exported to the Graal compiler
+        "com.oracle.truffle.api.impl", # exported to the Graal compiler
       ],
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
