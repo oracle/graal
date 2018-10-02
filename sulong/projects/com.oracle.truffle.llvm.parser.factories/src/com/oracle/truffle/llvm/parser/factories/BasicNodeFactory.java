@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
@@ -167,6 +168,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObject
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
@@ -383,6 +385,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
@@ -533,7 +536,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
+    public LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
         if (resolvedResultType instanceof VectorType) {
             return createLoadVector((VectorType) resolvedResultType, loadTarget, ((VectorType) resolvedResultType).getNumberOfElements());
         } else {
@@ -2126,11 +2129,21 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMVarArgCompoundAddressNodeGen.create(parameterNode, length, alignment);
     }
 
-    private static LLVMDebugBuilder getDebugDynamicValueBuilder(boolean isDeclaration) {
+    // these have no internal state but are used often, so we cache and reuse them
+    private LLVMDebugBuilder debugDeclarationBuilder = null;
+    private LLVMDebugBuilder debugValueBuilder = null;
+
+    private LLVMDebugBuilder getDebugDynamicValueBuilder(boolean isDeclaration) {
         if (isDeclaration) {
-            return LLVMDebugBuilder.NATIVE_DECLARATION;
+            if (debugDeclarationBuilder == null) {
+                debugDeclarationBuilder = LLVMDebugBuilder.createDeclaration(this);
+            }
+            return debugDeclarationBuilder;
         } else {
-            return LLVMDebugBuilder.NATIVE_VALUE;
+            if (debugValueBuilder == null) {
+                debugValueBuilder = LLVMDebugBuilder.createValue(this);
+            }
+            return debugValueBuilder;
         }
     }
 
@@ -2161,7 +2174,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal) {
-        LLVMDebugValue.Builder toDebugNode = LLVMToDebugValueNodeGen.create();
+        LLVMDebugValue.Builder toDebugNode = createDebugValueBuilder();
 
         Object value = null;
         if (isGlobal) {
@@ -2184,8 +2197,23 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
+    public LLVMDebugValue.Builder createDebugValueBuilder() {
+        return LLVMToDebugValueNodeGen.create();
+    }
+
+    @Override
+    public LLVMDebugValue.Builder createDebugDeclarationBuilder() {
+        return LLVMToDebugDeclarationNodeGen.create();
+    }
+
+    @Override
     public LLVMStatementNode createDebugTrap(LLVMSourceLocation location) {
         return new LLVMDebugTrapNode(location);
+    }
+
+    @Override
+    public TruffleObject toGenericDebuggerValue(Object llvmType, Object value) {
+        return LLVMDebugManagedValue.create(llvmType, value);
     }
 
     @Override
@@ -2296,7 +2324,7 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    private static LLVMExpressionNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
+    private static LLVMLoadNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
         if (resultType instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType).getPrimitiveKind()) {
                 case I1:

@@ -134,7 +134,7 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
         if (isNative()) {
             return String.format("0x%x", asNative());
         } else {
-            return String.format("%s:0x%x", getObject().getClass().getSimpleName(), getOffset());
+            return String.format("%s+0x%x", getObject().getClass().getSimpleName(), getOffset());
         }
     }
 

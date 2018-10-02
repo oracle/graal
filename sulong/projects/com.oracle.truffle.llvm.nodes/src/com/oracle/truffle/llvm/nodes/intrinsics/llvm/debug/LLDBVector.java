@@ -42,13 +42,13 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 
 import java.math.BigInteger;
 
-abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider {
+abstract class LLDBVector extends LLDBConstant {
 
     private final int elementSize;
 
     private final int length;
 
-    LLVMConstantVectorValueProvider(int elementSize, int length) {
+    LLDBVector(int elementSize, int length) {
         this.elementSize = elementSize;
         this.length = length;
     }
@@ -71,7 +71,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         return "Vector";
     }
 
-    static final class I1 extends LLVMConstantVectorValueProvider {
+    static final class I1 extends LLDBVector {
 
         private final LLVMI1Vector value;
 
@@ -81,7 +81,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -95,7 +95,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class I8 extends LLVMConstantVectorValueProvider {
+    static final class I8 extends LLDBVector {
 
         private final LLVMI8Vector value;
 
@@ -105,7 +105,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -124,7 +124,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class I16 extends LLVMConstantVectorValueProvider {
+    static final class I16 extends LLDBVector {
 
         private final LLVMI16Vector value;
 
@@ -134,7 +134,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -153,7 +153,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class I32 extends LLVMConstantVectorValueProvider {
+    static final class I32 extends LLDBVector {
 
         private final LLVMI32Vector value;
 
@@ -163,7 +163,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -182,7 +182,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class I64 extends LLVMConstantVectorValueProvider {
+    static final class I64 extends LLDBVector {
 
         private final LLVMI64Vector value;
 
@@ -192,7 +192,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -211,7 +211,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class Float extends LLVMConstantVectorValueProvider {
+    static final class Float extends LLDBVector {
 
         private final LLVMFloatVector value;
 
@@ -221,7 +221,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -235,7 +235,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class Double extends LLVMConstantVectorValueProvider {
+    static final class Double extends LLDBVector {
 
         private final LLVMDoubleVector value;
 
@@ -245,7 +245,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
@@ -259,7 +259,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
     }
 
-    static final class Address extends LLVMConstantVectorValueProvider {
+    static final class Address extends LLDBVector {
 
         private final LLVMPointerVector value;
 
@@ -269,7 +269,7 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
         }
 
         @Override
-        Object getBaseValue() {
+        protected Object getBaseValue() {
             return value;
         }
 
