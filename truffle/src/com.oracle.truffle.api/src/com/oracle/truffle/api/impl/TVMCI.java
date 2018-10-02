@@ -55,6 +55,7 @@ import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.Closeable;
 
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
@@ -67,30 +68,45 @@ public abstract class TVMCI {
     /**
      * An interface between the Truffle test runner and hosting virtual machine.
      *
+     * @param <C> an {@link Closeable} subclass for cleaning up after a test run
      * @param <T> the {@link CallTarget} subclass of the hosting virtual machine
      *
      * @since 0.25
      */
-    public abstract static class Test<T extends CallTarget> {
+    public abstract static class Test<C extends Closeable, T extends CallTarget> {
+
+        /**
+         * Create a test context object. This method will be called once for every unit test run,
+         * and the returned object will be closed when the unit test is finished. Implementors may
+         * return null if no context object is needed.
+         *
+         * @param testName the name of the unit test
+         * @return a context object
+         *
+         * @since 1.0
+         */
+        protected abstract C createTestContext(String testName);
 
         /**
          * Create a call target for the purpose of running a unit test.
          *
+         * @param testContext the context of the current unit test
          * @param testNode the root node containing the test code
          * @return a call target
          *
          * @since 0.25
          */
-        protected abstract T createTestCallTarget(RootNode testNode);
+        protected abstract T createTestCallTarget(C testContext, RootNode testNode);
 
         /**
          * Notify the VM that the warmup is finished, and it should now compile the test code.
          *
+         * @param testContext the context of the current unit test
          * @param callTarget a call target that was created with {@link #createTestCallTarget}
          *
          * @since 0.25
          */
-        protected abstract void finishWarmup(T callTarget, String testName);
+        protected abstract void finishWarmup(C testContext, T callTarget);
     }
 
     /**
@@ -250,27 +266,32 @@ public abstract class TVMCI {
     /**
      * Accessor for {@link TVMCI#Test} class.
      *
+     * @param <C>
      * @param <T>
      *
      * @since 0.25
      */
-    public static class TestAccessor<T extends CallTarget> {
+    public static class TestAccessor<C extends Closeable, T extends CallTarget> {
 
-        private final TVMCI.Test<T> testTvmci;
+        private final TVMCI.Test<C, T> testTvmci;
 
-        protected TestAccessor(TVMCI.Test<T> testTvmci) {
+        protected TestAccessor(TVMCI.Test<C, T> testTvmci) {
             if (!this.getClass().getPackage().getName().equals("com.oracle.truffle.tck")) {
                 throw new IllegalStateException();
             }
             this.testTvmci = testTvmci;
         }
 
-        protected final T createTestCallTarget(RootNode testNode) {
-            return testTvmci.createTestCallTarget(testNode);
+        protected final C createTestContext(String testName) {
+            return testTvmci.createTestContext(testName);
         }
 
-        protected final void finishWarmup(T callTarget, String testName) {
-            testTvmci.finishWarmup(callTarget, testName);
+        protected final T createTestCallTarget(C testContext, RootNode testNode) {
+            return testTvmci.createTestCallTarget(testContext, testNode);
+        }
+
+        protected final void finishWarmup(C testContext, T callTarget) {
+            testTvmci.finishWarmup(testContext, callTarget);
         }
     }
 

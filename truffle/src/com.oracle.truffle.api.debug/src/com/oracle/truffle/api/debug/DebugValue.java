@@ -455,7 +455,7 @@ public abstract class DebugValue {
         // identifies the debugger and engine
         private final Debugger debugger;
         private final String name;
-        private final Object value;
+        private Object value;
 
         HeapValue(Debugger debugger, String name, Object value) {
             this(debugger, null, name, value);
@@ -523,12 +523,13 @@ public abstract class DebugValue {
 
         @Override
         public void set(DebugValue expression) {
-            throw new IllegalStateException("Value is not writable");
+            value = expression.get();
         }
 
         @Override
         public void set(Object primitiveValue) {
-            throw new IllegalStateException("Value is not writable");
+            checkPrimitive(primitiveValue);
+            value = primitiveValue;
         }
 
         @Override
@@ -543,7 +544,7 @@ public abstract class DebugValue {
 
         @Override
         public boolean isWritable() {
-            return false;
+            return true;
         }
 
         @Override

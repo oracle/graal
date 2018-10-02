@@ -65,9 +65,14 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     protected StructuredGraph testGraph(final String snippet, String name) {
+        return testGraph(getResolvedJavaMethod(snippet), name);
+    }
+
+    @SuppressWarnings("try")
+    protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("MethodSubstitutionTest", getResolvedJavaMethod(snippet))) {
-            StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, debug);
+        try (DebugContext.Scope s = debug.scope("MethodSubstitutionTest", method)) {
+            StructuredGraph graph = parseEager(method, AllowAssumptions.YES, debug);
             HighTierContext context = getDefaultHighTierContext();
             debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
             createInliningPhase(graph).apply(graph, context);

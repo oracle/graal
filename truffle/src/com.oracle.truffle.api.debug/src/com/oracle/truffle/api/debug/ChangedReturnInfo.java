@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.debug;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+final class ChangedReturnInfo {
 
-final class PropChangeSupport {
-    private final AllocationReporter source;
-    // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
-    private final List<Object> propSupport = new CopyOnWriteArrayList<>();
+    final Object returnValue;
 
-    PropChangeSupport(AllocationReporter source) {
-        this.source = source;
-    }
-
-    void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        propSupport.add(listener);
-    }
-
-    void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        propSupport.remove(listener);
-    }
-
-    void firePropertyChange(String prop, Object old, Object n) {
-        if (propSupport.isEmpty()) {
-            return;
-        }
-        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
-        final java.beans.PropertyChangeEvent ev = new java.beans.PropertyChangeEvent(source, prop, old, n);
-        for (java.beans.PropertyChangeListener l : propSupport.toArray(new java.beans.PropertyChangeListener[0])) {
-            l.propertyChange(ev);
-        }
+    ChangedReturnInfo(Object returnValue) {
+        this.returnValue = returnValue;
     }
 
 }

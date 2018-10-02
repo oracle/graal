@@ -56,6 +56,7 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import org.graalvm.polyglot.Source;
@@ -138,7 +139,47 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 assertEquals("42", event.getReturnValue().as(String.class));
             });
 
-            expectDone();
+            assertEquals("42", expectDone());
+        }
+    }
+
+    @Test
+    public void testReturnValueChanged() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  DEFINE(bar, VARIABLE(a, 41), STATEMENT(CONSTANT(42))), \n" +
+                        "  DEFINE(foo, VARIABLE(b, 40), CALL(bar)), \n" +
+                        "  VARIABLE(c, 24), STATEMENT(CALL(foo))\n" +
+                        ")\n");
+
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).suspendAnchor(SuspendAnchor.AFTER).build();
+            session.install(breakpoint);
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, false, "STATEMENT(CONSTANT(42))", "a", "41").prepareStepInto(1);
+                assertEquals("42", event.getReturnValue().as(String.class));
+                DebugValue a = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
+                assertEquals("a", a.getName());
+                event.setReturnValue(a);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, false, "CALL(bar)", "b", "40").prepareStepInto(1);
+                assertEquals("41", event.getReturnValue().as(String.class));
+                DebugValue b = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
+                assertEquals("b", b.getName());
+                event.setReturnValue(b);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, false, "CALL(foo)", "c", "24").prepareContinue();
+                assertEquals("40", event.getReturnValue().as(String.class));
+                DebugValue c = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
+                assertEquals("c", c.getName());
+                event.setReturnValue(c);
+            });
+
+            assertEquals("24", expectDone());
         }
     }
 

@@ -36,9 +36,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
@@ -157,7 +155,6 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
     private static final class LLVMManagedPointerNativeLibrary extends LLVMObjectNativeLibrary {
 
         @Child private LLVMObjectNativeLibrary lib;
-        @Child private Node isNull;
 
         private LLVMManagedPointerNativeLibrary(LLVMObjectNativeLibrary lib) {
             this.lib = lib;
@@ -178,22 +175,20 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
             if (lib.isPointer(pointer.getObject())) {
                 return true;
             } else {
-                if (isNull == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    isNull = insert(Message.IS_NULL.createNode());
-                }
-                return ForeignAccess.sendIsNull(isNull, pointer.getObject());
+                return lib.isNull(pointer.getObject());
             }
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            LLVMManagedPointer pointer = LLVMManagedPointer.cast(obj);
+            return lib.isNull(pointer.getObject());
         }
 
         @Override
         public long asPointer(Object obj) throws InteropException {
             LLVMManagedPointer pointer = LLVMManagedPointer.cast(obj);
-            if (isNull == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isNull = insert(Message.IS_NULL.createNode());
-            }
-            if (ForeignAccess.sendIsNull(isNull, pointer.getObject())) {
+            if (lib.isNull(pointer.getObject())) {
                 return pointer.getOffset();
             } else {
                 long base = lib.asPointer(pointer.getObject());
@@ -223,6 +218,11 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
         @Override
         public boolean isPointer(Object obj) {
             return true;
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            return LLVMPointer.cast(obj).isNull();
         }
 
         @Override

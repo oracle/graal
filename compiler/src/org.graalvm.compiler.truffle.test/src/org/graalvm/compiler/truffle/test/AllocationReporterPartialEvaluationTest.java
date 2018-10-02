@@ -55,8 +55,6 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
 
     @Test
     public void testConsistentAssertions() {
-        TruffleTestUtil.assumeJavaDesktopModuleIsAvailable();
-
         // Test that onEnter()/onReturnValue() are not broken
         // when only one of them is compiled with PE.
         Context context = Context.newBuilder(AllocationReporterLanguage.ID).build();

@@ -659,35 +659,37 @@ public class Breakpoint {
     }
 
     @TruffleBoundary
-    private void doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception, BreakpointConditionFailure failure) {
+    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception, BreakpointConditionFailure failure) {
         DebugException de;
         if (exception != null) {
             de = new DebugException(debugger, exception, null, source, false, null);
         } else {
             de = null;
         }
-        doBreak(source, breakInSessions, frame, onEnter, result, de, failure);
+        return doBreak(source, breakInSessions, frame, onEnter, result, de, failure);
     }
 
     @TruffleBoundary
-    private void doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, DebugException exception,
+    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, DebugException exception,
                     BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
             // binding was disposed.
-            return;
+            return result;
         }
         if (this.hitCount.incrementAndGet() <= ignoreCount) {
             // breakpoint hit was ignored
-            return;
+            return result;
         }
         SuspendAnchor anchor = onEnter ? SuspendAnchor.BEFORE : SuspendAnchor.AFTER;
+        Object newResult = result;
         for (DebuggerSession session : breakInSessions) {
             if (session.isBreakpointsActive(getKind())) {
-                session.notifyCallback(source, frame, anchor, null, result, exception, failure);
+                newResult = session.notifyCallback(source, frame, anchor, null, newResult, exception, failure);
             }
         }
+        return newResult;
     }
 
     Breakpoint getROWrapper() {
@@ -1082,7 +1084,11 @@ public class Breakpoint {
 
         @Override
         protected void onReturnValue(VirtualFrame frame, Object result) {
-            onNode(frame, false, result, null);
+            Object newResult = onNode(frame, false, result, null);
+            if (newResult != result) {
+                CompilerDirectives.transferToInterpreter();
+                throw getContext().createUnwind(new ChangedReturnInfo(newResult));
+            }
         }
 
         @Override
@@ -1218,7 +1224,7 @@ public class Breakpoint {
         }
 
         @ExplodeLoop
-        protected final void onNode(VirtualFrame frame, boolean onEnter, Object result, Throwable exception) {
+        protected final Object onNode(VirtualFrame frame, boolean onEnter, Object result, Throwable exception) {
             if (!sessionsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeSessions();
@@ -1231,7 +1237,7 @@ public class Breakpoint {
                     if (sessionsWithUniqueNodes == null) {
                         if (debuggerSessions.length == 1) {
                             // This node is marked as duplicate in the only session that's there.
-                            return;
+                            return result;
                         }
                     }
                     sessionsWithUniqueNodes = removeDuplicateSession(debuggerSessions, session, sessionsWithUniqueNodes);
@@ -1240,11 +1246,11 @@ public class Breakpoint {
                 }
             }
             if (!active) {
-                return;
+                return result;
             }
             if (sessionsWithUniqueNodes != null) {
                 if (sessionsWithUniqueNodes.isEmpty()) {
-                    return;
+                    return result;
                 }
                 debuggerSessions = toSessionsArray(sessionsWithUniqueNodes);
             }
@@ -1261,13 +1267,13 @@ public class Breakpoint {
             BreakpointConditionFailure conditionError = null;
             try {
                 if (!testCondition(frame)) {
-                    return;
+                    return result;
                 }
             } catch (BreakpointConditionFailure e) {
                 conditionError = e;
             }
             breakBranch.enter();
-            breakpoint.doBreak(this, debuggerSessions, frame.materialize(), onEnter, result, exception, conditionError);
+            return breakpoint.doBreak(this, debuggerSessions, frame.materialize(), onEnter, result, exception, conditionError);
         }
 
         final DebuggerSession[] getSessions() {

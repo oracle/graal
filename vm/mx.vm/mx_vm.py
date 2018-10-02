@@ -1333,6 +1333,7 @@ def get_lib_polyglot_project():
                     destination="<lib:polyglot>",
                     jar_distributions=polyglot_lib_jar_dependencies,
                     build_args=[
+                        "-H:+IncludeAllTimeZones",
                         "--language:all",
                         "-Dgraalvm.libpolyglot=true",
                         "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>"

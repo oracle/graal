@@ -166,18 +166,13 @@ hfds preferredLanguage
 hcls HeapValue,PropertyNamedValue,PropertyValue
 
 CLSS public final com.oracle.truffle.api.debug.Debugger
-fld public final static java.lang.String PROPERTY_BREAKPOINTS = "breakpoints"
 meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback,com.oracle.truffle.api.debug.SourceElement[])
 meth public com.oracle.truffle.api.debug.Breakpoint install(com.oracle.truffle.api.debug.Breakpoint)
 meth public com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SuspendedCallback)
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
-meth public java.util.List<com.oracle.truffle.api.source.Source> getLoadedSources()
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.TruffleLanguage$Env)
 meth public static com.oracle.truffle.api.debug.Debugger find(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth public static com.oracle.truffle.api.debug.Debugger find(org.graalvm.polyglot.Engine)
-meth public void addPropertyChangeListener(java.beans.PropertyChangeListener)
-meth public void removePropertyChangeListener(java.beans.PropertyChangeListener)
 supr java.lang.Object
 hfds ACCESSOR,TRACE,alwaysHaltBreakpoint,breakpoints,env,msgNodes,propSupport,sessions
 hcls AccessorDebug

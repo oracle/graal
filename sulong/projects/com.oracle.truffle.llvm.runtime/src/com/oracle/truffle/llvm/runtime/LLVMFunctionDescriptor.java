@@ -460,6 +460,11 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
             return fd.toNative();
         }
+
+        @Override
+        public boolean isNull(Object obj) {
+            return false;
+        }
     }
 
     private long asPointer() {

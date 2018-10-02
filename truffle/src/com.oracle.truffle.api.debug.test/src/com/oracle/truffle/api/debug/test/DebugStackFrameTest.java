@@ -175,14 +175,8 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertInvalidDebugValue(data.stackValueWithIterator);
 
                 assertEquals("45", data.heapValue.as(String.class));
-                assertFalse(data.heapValue.isWritable());
+                assertTrue(data.heapValue.isWritable());
                 assertTrue(data.heapValue.isReadable());
-
-                try {
-                    data.heapValue.set(data.heapValue);
-                    fail();
-                } catch (IllegalStateException e) {
-                }
             });
 
             expectDone();

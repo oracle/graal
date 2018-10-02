@@ -422,6 +422,13 @@ public class NativeImage {
         addImageBuilderJavaArgs("-server", "-d64", "-noverify");
         addImageBuilderJavaArgs("-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI");
 
+        /*
+         * GR-8656: Do not run with Graal as JIT compiler until libgraal is available. Note that we
+         * really need to explicitly disable UseJVMCICompiler, otherwise it is implicitly enabled
+         * when a "lib/jvmci/compiler-name" file is present in the JDK.
+         */
+        addImageBuilderJavaArgs("-XX:-UseJVMCICompiler");
+
         addImageBuilderJavaArgs("-XX:-UseJVMCIClassLoader");
 
         addImageBuilderJavaArgs("-Dgraal.EagerSnippets=true");

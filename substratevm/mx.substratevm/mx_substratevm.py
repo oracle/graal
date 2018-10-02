@@ -58,8 +58,10 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
-GRAAL_COMPILER_FLAGS = ['-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
-                        ]
+GRAAL_COMPILER_FLAGS = [
+    '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
+    '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
+]
 
 if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
@@ -238,7 +240,11 @@ def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
         sym_target = os.path.relpath(real_target_path, dirname(dest_path))
         if debug_gr_8964:
             mx.log('      symlink target: ' + sym_target)
-        os.symlink(sym_target, dest_path)
+        try:
+            os.symlink(sym_target, dest_path)
+        except AttributeError:
+            # no `symlink` on Windows
+            copy2(real_target_path, dest_path)
     else:
         # Else copy the file to so it can not change out from under me.
         if debug_gr_8964:
@@ -379,7 +385,7 @@ def native_image_on_jvm(args, **kwargs):
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
-    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp),
+    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 def build_native_image_image():
@@ -432,7 +438,13 @@ def layout_native_image_root(native_image_root):
     native_image_layout_dists(svm_subdir, librarySupportDistribution)
     native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
     for clibrary_path in clibrary_paths():
-        copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
+        from distutils.errors import DistutilsFileError  # pylint: disable=no-name-in-module
+        try:
+            copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
+        except DistutilsFileError:
+            # ignore until GR-7932 is resolved
+            pass
+
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True, debug_gr_8964=False):
     """

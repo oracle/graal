@@ -93,16 +93,6 @@ public final class LLVMTruffleWrite {
             this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-        protected Object cached(LLVMManagedPointer value, Object id, Object v,
-                        @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(id)") String cachedId) {
-            TruffleObject foreign = asForeign.execute(value);
-            doWrite(foreignWrite, foreign, cachedId, prepareValueForEscape.executeWithTarget(v));
-            return null;
-        }
-
         @Specialization
         protected Object doIntrinsic(LLVMManagedPointer value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {

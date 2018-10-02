@@ -145,7 +145,7 @@ public abstract class BaseTestHarness {
      * Returns a Map whitelistEntry (relative path) -> testFolder (absolute path).
      */
     public static final Map<Path, Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
-        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), removeFileEnding(wl.toString())).normalize()));
+        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), sourceFileNameToSuiteDirectory(wl.toString())).normalize()));
     }
 
     private static Set<Path> getWhiteListEntries(Path configDir) {
@@ -178,8 +178,12 @@ public abstract class BaseTestHarness {
         }
     }
 
-    private static String removeFileEnding(String s) {
-        return s.substring(0, s.lastIndexOf('.'));
+    /**
+     * Turns a test source file name (e.g. a *.c file) into the directory file name containing the
+     * compiled test binaries.
+     */
+    private static String sourceFileNameToSuiteDirectory(String s) {
+        return s + ".dir";
     }
 
     public static Set<Path> getFiles(Path source) {
