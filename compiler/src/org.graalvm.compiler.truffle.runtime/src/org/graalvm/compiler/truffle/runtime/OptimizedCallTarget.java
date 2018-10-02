@@ -756,7 +756,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
         if (depth > TruffleCompilerOptions.getValue(TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
-                        compilationProfile.getInterpreterCallCount() == 1) {
+                        compilationProfile.getCallCount() == 1) {
             return false;
         }
         if (numberOfKnownCallNodes == 1) {

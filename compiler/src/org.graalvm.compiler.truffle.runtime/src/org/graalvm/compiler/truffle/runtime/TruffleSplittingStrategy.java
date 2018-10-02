@@ -60,7 +60,7 @@ final class TruffleSplittingStrategy {
         if (traceSplittingSummary) {
             final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
             reporter.engineDataSet.add(engineData);
-            if (call.getCurrentCallTarget().getCompilationProfile().getInterpreterCallCount() == 0) {
+            if (call.getCurrentCallTarget().getCompilationProfile().getCallCount() == 0) {
                 reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             }
         }

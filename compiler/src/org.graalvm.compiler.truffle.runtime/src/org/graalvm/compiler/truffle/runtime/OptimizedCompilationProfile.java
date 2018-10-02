@@ -58,13 +58,11 @@ public class OptimizedCompilationProfile {
     private int invalidationCount;
     private int deferredCount;
 
-    private int interpreterCallCount;
-    private int interpreterCallAndLoopCount;
+    private int callCount;
+    private int callAndLoopCount;
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
-    private int firstTierCallCount;
-    private int firstTierCompilationCallThreshold;
-    private int firstTierCompilationCallAndLoopThreshold;
+    private int lastTierCompilationCallAndLoopThreshold;
     private boolean multiTierEnabled;
 
     private long timestamp;
@@ -90,24 +88,27 @@ public class OptimizedCompilationProfile {
     @CompilationFinal private boolean callProfiled;
 
     public OptimizedCompilationProfile(OptionValues options) {
+        boolean compileImmediately = TruffleCompilerOptions.getValue(TruffleCompileImmediately);
         int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
-        int firstTierCallThreshold = TruffleCompilerOptions.getValue(TruffleFirstTierMinInvokeThreshold);
-        int firstTierCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierCompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        boolean compileImmediately = TruffleCompilerOptions.getValue(TruffleCompileImmediately);
+        this.multiTierEnabled = TruffleCompilerOptions.getValue(TruffleMultiTier);
         this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
-        this.firstTierCompilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
-        this.firstTierCompilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
+        this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
+        if (multiTierEnabled) {
+            int firstTierCallThreshold = TruffleCompilerOptions.getValue(TruffleFirstTierMinInvokeThreshold);
+            int firstTierCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierCompilationThreshold);
+            this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
+            this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
+        }
         this.timestamp = System.nanoTime();
-        this.multiTierEnabled = TruffleCompilerOptions.getValue(TruffleMultiTier);
     }
 
     @Override
     public String toString() {
-        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", interpreterCallCount, compilationCallThreshold, interpreterCallAndLoopCount,
+        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", callCount, compilationCallThreshold, callAndLoopCount,
                         compilationCallAndLoopThreshold);
     }
 
@@ -289,7 +290,7 @@ public class OptimizedCompilationProfile {
     }
 
     final void reportLoopCount(int count) {
-        interpreterCallAndLoopCount += count;
+        callAndLoopCount += count;
     }
 
     final void reportInvalidated() {
@@ -310,8 +311,9 @@ public class OptimizedCompilationProfile {
     }
 
     final boolean firstTierCall(OptimizedCallTarget callTarget) {
-        int callCount = ++firstTierCallCount;
-        if (callCount >= compilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
+        // The increment and the check must be inlined into the compilation unit.
+        int totalCallCount = ++callCount;
+        if (totalCallCount >= lastTierCompilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
             return firstTierCompile(callTarget);
         }
         return false;
@@ -319,12 +321,12 @@ public class OptimizedCompilationProfile {
 
     @SuppressWarnings("try")
     final boolean interpreterCall(OptimizedCallTarget callTarget) {
-        int intCallCount = ++interpreterCallCount;
-        int intAndLoopCallCount = ++interpreterCallAndLoopCount;
+        int intCallCount = ++callCount;
+        int intAndLoopCallCount = ++callAndLoopCount;
         if (!callTarget.isCompiling() && !compilationFailed) {
             // Check if call target is hot enough to compile, but took not too long to get hot.
-            int callAndLoopThreshold = multiTierEnabled ? firstTierCompilationCallAndLoopThreshold : compilationCallAndLoopThreshold;
-            int callThreshold = multiTierEnabled ? firstTierCompilationCallThreshold : compilationCallThreshold; // 0 if TruffleCompileImmediately
+            int callAndLoopThreshold = compilationCallAndLoopThreshold;
+            int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
             if ((intAndLoopCallCount >= callAndLoopThreshold && intCallCount >= callThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
                 return callTarget.compile(!multiTierEnabled);
             }
@@ -421,12 +423,12 @@ public class OptimizedCompilationProfile {
         if (this.compilationCallThreshold == 0) { // TruffleCompileImmediately
             return;
         }
-        int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
+        int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.callAndLoopCount);
         if (increaseCallAndLoopThreshold > 0) {
             this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;
         }
 
-        int increaseCallsThreshold = calls - (this.compilationCallThreshold - this.interpreterCallCount);
+        int increaseCallsThreshold = calls - (this.compilationCallThreshold - this.callCount);
         if (increaseCallsThreshold > 0) {
             this.compilationCallThreshold += increaseCallsThreshold;
         }
@@ -434,8 +436,8 @@ public class OptimizedCompilationProfile {
 
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        String callsThreshold = String.format("%7d/%5d", getInterpreterCallCount(), getCompilationCallThreshold());
-        String loopsThreshold = String.format("%7d/%5d", getInterpreterCallAndLoopCount(), getCompilationCallAndLoopThreshold());
+        String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());
+        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), getCompilationCallAndLoopThreshold());
         String invalidations = String.format("%5d", invalidationCount);
         properties.put("Calls/Thres", callsThreshold);
         properties.put("CallsAndLoop/Thres", loopsThreshold);
@@ -447,12 +449,12 @@ public class OptimizedCompilationProfile {
         return invalidationCount;
     }
 
-    public int getInterpreterCallAndLoopCount() {
-        return interpreterCallAndLoopCount;
+    public int getCallAndLoopCount() {
+        return callAndLoopCount;
     }
 
-    public int getInterpreterCallCount() {
-        return interpreterCallCount;
+    public int getCallCount() {
+        return callCount;
     }
 
     public int getDeferredCount() {

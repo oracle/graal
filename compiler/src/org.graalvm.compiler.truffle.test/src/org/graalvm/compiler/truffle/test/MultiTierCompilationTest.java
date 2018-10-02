@@ -84,12 +84,12 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @SuppressWarnings("try")
     @Test
     public void testCompilationTiers() {
-        final int firstTierCompilationThreshold = PolyglotCompilerOptions.FirstTierCompilationThreshold.getDefaultValue();
-        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
-        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
-        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false, TruffleCompilerOptions.TruffleMultiTier, true,
                         TruffleCompilerOptions.TruffleSplitting, false)) {
+            final int firstTierCompilationThreshold = PolyglotCompilerOptions.FirstTierCompilationThreshold.getDefaultValue();
+            final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+            OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
+            OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
             for (int i = 0; i < firstTierCompilationThreshold; i++) {
                 multiTierTarget.call();
             }
