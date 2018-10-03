@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.driver;
 
-import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGKILL;
-import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGTERM;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -57,12 +54,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
 import com.oracle.svm.hosted.server.NativeImageBuildServer;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
@@ -87,6 +82,13 @@ final class NativeImageServer extends NativeImage {
     NativeImageServer(BuildConfiguration buildConfiguration) {
         super(buildConfiguration);
         registerOptionHandler(new ServerOptionHandler(this));
+    }
+
+    static NativeImage create(BuildConfiguration config) {
+        if (NativeImageServerHelper.isInConfiguration()) {
+            return new NativeImageServer(config);
+        }
+        return new NativeImage(config);
     }
 
     @SuppressWarnings("serial")
@@ -119,7 +121,7 @@ final class NativeImageServer extends NativeImage {
             this.pid = Integer.parseInt(properties.get(pKeyPID));
             this.port = Integer.parseInt(properties.get(pKeyPort));
             if (this.port == 0) {
-                Signal.kill(this.pid, SIGKILL.getCValue());
+                ProcessProperties.destroyForcibly(this.pid);
                 deleteAllFiles(this.serverDir);
                 throw new ServerInstanceError();
             }
@@ -256,14 +258,14 @@ final class NativeImageServer extends NativeImage {
                 long now = System.currentTimeMillis();
                 if (!sentSIGTERM && terminationTimeout < now) {
                     showWarning(this + " keeps responding to port " + port + " even after sending STOP_SERVER");
-                    Signal.kill(pid, SIGTERM.getCValue());
+                    ProcessProperties.destroy(pid);
                     sentSIGTERM = true;
                 } else if (!sentSIGKILL && killTimeout < now) {
-                    showWarning(this + " keeps responding to port " + port + " even after killing with SIGTERM");
-                    Signal.kill(pid, SIGKILL.getCValue());
+                    showWarning(this + " keeps responding to port " + port + " even after destroying");
+                    ProcessProperties.destroyForcibly(pid);
                     sentSIGKILL = true;
                 } else if (killedTimeout < now) {
-                    throw showError(this + " keeps responding to port " + port + " even after killing with SIGKILL");
+                    throw showError(this + " keeps responding to port " + port + " even after destroying forcefully");
                 }
             } while (isAlive());
             deleteAllFiles(serverDir);
@@ -335,7 +337,7 @@ final class NativeImageServer extends NativeImage {
         if (sessionName != null) {
             return sessionDirPrefix + sessionName;
         }
-        return sessionDirPrefix + Long.toHexString(Unistd.getsid(Unistd.getpid()));
+        return sessionDirPrefix + Long.toHexString(Unistd.getsid(Math.toIntExact(ProcessProperties.getProcessID())));
     }
 
     private static String getMachineID() {
@@ -551,12 +553,12 @@ final class NativeImageServer extends NativeImage {
         showVerboseMessage(isVerbose(), "StartServer [");
         showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining(" \\\n")));
         showVerboseMessage(isVerbose(), "]");
-        int childPid = daemonize(() -> {
+        int childPid = NativeImageServerHelper.daemonize(() -> {
             try {
                 ensureDirectoryExists(serverDir);
                 showVerboseMessage(verboseServer, "Starting new server ...");
                 Process process = pb.start();
-                int serverPID = PosixUtils.getpid(process);
+                long serverPID = ProcessProperties.getProcessID(process);
                 showVerboseMessage(verboseServer, "PID of new server: " + serverPID);
                 int selectedPort = serverPort;
                 if (selectedPort == 0) {
@@ -590,7 +592,7 @@ final class NativeImageServer extends NativeImage {
         });
         if (childPid >= 0) {
             Server server = null;
-            while (Signal.kill(childPid, 0) == 0) {
+            while (ProcessProperties.isAlive(childPid)) {
                 try {
                     /* Wait for server.properties to appear in serverDir */
                     if (server == null) {
@@ -619,27 +621,7 @@ final class NativeImageServer extends NativeImage {
         return null;
     }
 
-    /*
-     * Ensures started server keeps running even after native-image completes.
-     */
-    private static int daemonize(Runnable runnable) {
-        int pid = Unistd.fork();
-        switch (pid) {
-            case 0:
-                break;
-            default:
-                return pid;
-        }
-
-        /* The server should not get signals from the native-image during the first run. */
-        Unistd.setsid();
-
-        runnable.run();
-        System.exit(0);
-        return -1;
-    }
-
-    private static void writeServerFile(Path serverDir, int port, int pid, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> javaArgs) throws Exception {
+    private static void writeServerFile(Path serverDir, int port, long pid, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> javaArgs) throws Exception {
         Properties sp = new Properties();
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));

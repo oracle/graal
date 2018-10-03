@@ -815,7 +815,7 @@ public class NativeImage {
     }
 
     public static void build(BuildConfiguration config) {
-        NativeImage nativeImage = IS_AOT ? new NativeImageServer(config) : new NativeImage(config);
+        NativeImage nativeImage = IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
         if (config.getBuildArgs().isEmpty()) {
             nativeImage.showMessage(usageText);
         } else {

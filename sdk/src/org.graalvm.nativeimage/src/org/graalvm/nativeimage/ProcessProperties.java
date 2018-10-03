@@ -68,6 +68,48 @@ public final class ProcessProperties {
     }
 
     /**
+     * Get the Process ID of the given process object.
+     *
+     * @since 1.0
+     */
+    public static long getProcessID(Process process) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).getProcessID(process);
+    }
+
+    /**
+     * Kills the process. Whether the process represented by the given Process ID is normally
+     * terminated or not is implementation dependent.
+     *
+     * @since 1.0
+     */
+    public static void destroy(long processID) {
+        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
+    }
+
+    /**
+     * Kills the process forcibly. The process represented by the given Process ID is forcibly
+     * terminated. Forcible process destruction is defined as the immediate termination of a
+     * process, whereas normal termination allows the process to shut down cleanly.
+     *
+     * @since 1.0
+     */
+    public static void destroyForcibly(long processID) {
+        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
+    }
+
+    /**
+     * Tests whether the process represented by the given Process ID is alive.
+     *
+     * @return true if the process represented by the given Process ID object has not yet
+     *         terminated.
+     *
+     * @since 1.0
+     */
+    public static boolean isAlive(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).isAlive(processID);
+    }
+
+    /**
      * Return the path of the object file defining the symbol specified as a {@link String}
      * containing the symbol name.
      * 

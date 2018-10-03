@@ -220,7 +220,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
                 "com.oracle.svm.reflect",
-                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11750
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",
