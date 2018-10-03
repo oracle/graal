@@ -911,7 +911,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (negateCondition) {
                     cond1 = cond1.negate();
                 }
-                // cond1 is EQ, LT, or GE
+                // cond1 is EQ, NE, LT, or GE
                 Condition cond2 = ((CompareNode) conditional.condition()).condition().asCondition();
                 ValueNode x = ((CompareNode) condition()).getX();
                 ValueNode y = ((CompareNode) condition()).getY();
@@ -936,6 +936,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         return graph().unique(new ConditionalNode(condition(), conditional.trueValue(), constant));
                     } else if (cond1 == Condition.GE && cond2 == Condition.GT) {
                         // x >= y ? v1 : (x > y ? v2 : v3) => x >= y ? v1 : v3
+                        return graph().unique(new ConditionalNode(condition(), conditional.falseValue(), constant));
+                    } else if (cond1 == Condition.EQ && cond2 == Condition.EQ) {
+                        // x == y ? v1 : (x == y ? v2 : v3) => x == y ? v1 : v3
+                        return graph().unique(new ConditionalNode(condition(), conditional.falseValue(), constant));
+                    } else if (cond1 == Condition.NE && cond2 == Condition.LT) {
+                        // x != y ? v1 : (x < y ? v2 : v3) => x != y ? v1 : v3
                         return graph().unique(new ConditionalNode(condition(), conditional.falseValue(), constant));
                     } else if (cond1 == Condition.LT && cond2 == Condition.EQ && c1 == -1 && c2 == 0 && c3 == 1) {
                         // x < y ? -1 : (x == y ? 0 : 1) => x cmp y
